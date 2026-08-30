@@ -2,6 +2,8 @@
 
 Neuron Agent is a production-oriented Python baseline for a LangChain/LangGraph agent service. It provides a small deployable graph, typed configuration, a FastAPI API, structured logging, bounded tools, security checks, deterministic tests, and documentation for operating and extending the system.
 
+![Neuron Agent — AI and LangGraph architecture](assets/neuron-readme-hero.png)
+
 ## Architecture Summary
 
 The application uses a single LangGraph `StateGraph` with one agent node. The node invokes a LangChain `create_agent` harness configured with:
