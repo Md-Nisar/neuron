@@ -1,0 +1,10 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "python_version": "3.13",
+  "dependencies": ["."],
+  "graphs": {
+    "main": "neuron_agent.graphs.main_graph:graph"
+  },
+  "env": ".env",
+  "image_distro": "wolfi"
+}
