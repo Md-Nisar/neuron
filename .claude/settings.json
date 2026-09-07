@@ -1,0 +1,43 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | tr -d '\\r' | { read -r f; case \"$f\" in *.py) case \"$f\" in *\"/.venv/\"*|*\"\\\\.venv\\\\\"*) ;; *) uv run python -m ruff format \"$f\" 2>/dev/null; uv run python -m ruff check --fix \"$f\" 2>/dev/null;; esac;; esac; } 2>/dev/null || true",
+            "shell": "bash",
+            "timeout": 30,
+            "statusMessage": "Running ruff format/lint..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | tr -d '\\r' | { read -r f; b=$(basename -- \"$f\" 2>/dev/null); venv=0; case \"$f\" in *\"/.venv/\"*|*\"\\\\.venv\\\\\"*) venv=1;; esac; if [ \"$b\" = \".env\" ] || [ \"$b\" = \"uv.lock\" ] || [ \"$venv\" = \"1\" ]; then jq -n --arg reason \"Blocked: $f is a protected secrets/lockfile/venv path per SECURITY.md. Use environment variables or run uv sync/uv lock instead.\" '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":$reason}}'; fi; } 2>/dev/null",
+            "shell": "bash",
+            "timeout": 10,
+            "statusMessage": "Checking protected paths..."
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "langchain-skills@langchain-skills": true
+  }
+}
