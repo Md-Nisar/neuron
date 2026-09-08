@@ -11,6 +11,11 @@ def test_settings_require_openai_key_in_production() -> None:
         Settings(env="production", default_model="openai:gpt-5.4-mini", openai_api_key=None)
 
 
+def test_settings_require_openai_key_in_staging() -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="staging", default_model="openai:gpt-5.4-mini", openai_api_key=None)
+
+
 def test_settings_allow_test_without_provider_key() -> None:
     settings = Settings(env="test", default_model="openai:gpt-5.4-mini", openai_api_key=None)
     assert settings.env == "test"
