@@ -27,7 +27,7 @@ class FakeAgent:
     async def ainvoke(
         self, _: dict[str, object], *, config: dict[str, object]
     ) -> dict[str, object]:
-        assert config == {"recursion_limit": 5, "timeout": 20}
+        assert config == {"recursion_limit": 5}
         return {
             "messages": [AIMessage(content="4")],
             "structured_response": AgentAnswer(

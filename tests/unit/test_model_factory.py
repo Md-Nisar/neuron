@@ -14,6 +14,7 @@ from neuron_agent.errors.base import (
     ProviderError,
     ProviderTimeoutError,
     RateLimitError,
+    ToolExecutionError,
 )
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.models.factory import (
@@ -41,10 +42,13 @@ def test_create_chat_model_configures_openai_model_limits() -> None:
 
 
 def test_agent_invocation_config_uses_max_agent_iterations() -> None:
-    settings = Settings(
-        env="test", max_agent_iterations=5, tool_timeout_seconds=20, openai_api_key=None
-    )
-    assert agent_invocation_config(settings) == {"recursion_limit": 5, "timeout": 20}
+    settings = Settings(env="test", max_agent_iterations=5, openai_api_key=None)
+    assert agent_invocation_config(settings) == {"recursion_limit": 5}
+
+
+def test_classify_agent_error_passes_through_app_errors() -> None:
+    error = ToolExecutionError("tool timed out")
+    assert classify_agent_error(error) is error
 
 
 def test_create_chat_model_rejects_unsupported_provider() -> None:
