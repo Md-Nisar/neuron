@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from collections.abc import Awaitable, Callable
 
@@ -15,6 +16,7 @@ from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse
+from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
 settings = get_settings()
@@ -27,6 +29,11 @@ configure_logging(
 logger = structlog.get_logger(__name__)
 app = FastAPI(title=settings.name, version=settings.version)
 service = AgentService(settings)
+rate_limiter = InMemoryTokenBucketRateLimiter(
+    capacity=settings.rate_limit_burst,
+    requests_per_window=settings.rate_limit_requests_per_window,
+    window_seconds=settings.rate_limit_window_seconds,
+)
 
 
 @app.middleware("http")
@@ -42,6 +49,26 @@ async def limit_request_body_size(
         if declared_size > settings.max_request_body_bytes:
             logger.warning("agent_request_body_too_large", content_length=declared_size)
             return JSONResponse(status_code=413, content={"detail": "payload_too_large"})
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def enforce_rate_limit(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    if settings.rate_limit_enabled and request.url.path == "/v1/agent/invoke":
+        client_host = request.client.host if request.client else "unknown"
+        decision = rate_limiter.check(client_host)
+        if not decision.allowed:
+            retry_after = max(1, math.ceil(decision.retry_after_seconds))
+            logger.warning(
+                "agent_request_rate_limited", client=client_host, retry_after=retry_after
+            )
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "rate_limited"},
+                headers={"Retry-After": str(retry_after)},
+            )
     return await call_next(request)
 
 
