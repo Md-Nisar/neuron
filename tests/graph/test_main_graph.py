@@ -5,6 +5,7 @@ import openai
 import pytest
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.errors import GraphRecursionError
 
 from neuron_agent.errors.base import (
     AgentExecutionError,
@@ -36,6 +37,13 @@ class FakeAgent:
         }
 
 
+class RawTextAgent:
+    async def ainvoke(
+        self, _: dict[str, object], *, config: dict[str, object]
+    ) -> dict[str, object]:
+        return {"messages": [AIMessage(content="raw text answer")]}
+
+
 class FailingAgent:
     def __init__(self, error: Exception) -> None:
         self._error = error
@@ -58,6 +66,13 @@ async def test_call_agent_uses_structured_response() -> None:
     result = await call_agent(_state(), agent=FakeAgent())
     assert result["answer"].answer == "4"
     assert result["answer"].used_tools == ["calculator"]
+
+
+async def test_call_agent_falls_back_to_raw_text_when_structured_response_missing() -> None:
+    result = await call_agent(_state(), agent=RawTextAgent())
+    assert result["answer"].answer == "raw text answer"
+    assert result["answer"].used_tools == []
+    assert result["answer"].confidence == 0.5
 
 
 async def test_call_agent_wraps_rate_limit_error() -> None:
@@ -83,6 +98,12 @@ async def test_call_agent_wraps_authentication_error() -> None:
 async def test_call_agent_wraps_generic_provider_error() -> None:
     error = openai.APIConnectionError(request=_REQUEST)
     with pytest.raises(ProviderError):
+        await call_agent(_state(), agent=FailingAgent(error))
+
+
+async def test_call_agent_wraps_recursion_limit_error() -> None:
+    error = GraphRecursionError("Recursion limit of 5 reached")
+    with pytest.raises(AgentExecutionError):
         await call_agent(_state(), agent=FailingAgent(error))
 
 
