@@ -100,6 +100,12 @@ def test_classify_agent_error_maps_generic_provider_error() -> None:
     assert isinstance(classify_agent_error(error), ProviderError)
 
 
+def test_classify_agent_error_maps_internal_server_error() -> None:
+    response = httpx.Response(status_code=500, request=_REQUEST)
+    error = openai.InternalServerError("internal error", response=response, body=None)
+    assert isinstance(classify_agent_error(error), ProviderError)
+
+
 def test_classify_agent_error_maps_structured_output_failure() -> None:
     error = StructuredOutputValidationError(
         tool_name="AgentAnswer",
