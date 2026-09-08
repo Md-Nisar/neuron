@@ -61,7 +61,8 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
             error_code=exc.context.code,
             retryable=exc.context.retryable,
         )
-        raise HTTPException(status_code=400, detail=exc.context.code) from exc
+        detail = exc.context.code if exc.context.user_visible else "internal_server_error"
+        raise HTTPException(status_code=exc.context.http_status, detail=detail) from exc
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "agent_request_unexpected_error",

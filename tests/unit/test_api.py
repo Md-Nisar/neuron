@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
+from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
+from neuron_agent.errors.base import (
+    AgentExecutionError,
+    AuthorizationError,
+    ConfigurationError,
+    ProviderError,
+    ProviderTimeoutError,
+    RateLimitError,
+    StructuredOutputError,
+    ToolExecutionError,
+    ValidationAppError,
+)
 
 
 def test_live_health_endpoint() -> None:
@@ -16,3 +29,44 @@ def test_agent_invoke_rejects_empty_message() -> None:
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": ""})
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_status", "expected_detail"),
+    [
+        (ValidationAppError("bad input"), 400, "validation_error"),
+        (AuthorizationError("not allowed"), 403, "authorization_error"),
+        (RateLimitError("slow down"), 429, "rate_limit_error"),
+        (ProviderTimeoutError("timed out"), 504, "provider_timeout_error"),
+        (ConfigurationError("bad config"), 500, "internal_server_error"),
+        (ProviderError("upstream failed"), 502, "internal_server_error"),
+        (ToolExecutionError("tool failed"), 502, "internal_server_error"),
+        (StructuredOutputError("bad structured output"), 502, "internal_server_error"),
+        (AgentExecutionError("agent failed"), 500, "internal_server_error"),
+    ],
+)
+def test_agent_invoke_maps_app_errors_to_http(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+    expected_status: int,
+    expected_detail: str,
+) -> None:
+    async def raise_error(self: object, request: object) -> None:
+        raise error
+
+    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    client = TestClient(app)
+    response = client.post("/v1/agent/invoke", json={"message": "hi"})
+    assert response.status_code == expected_status
+    assert response.json()["detail"] == expected_detail
+
+
+def test_agent_invoke_maps_unexpected_exception_to_500(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def raise_error(self: object, request: object) -> None:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    client = TestClient(app)
+    response = client.post("/v1/agent/invoke", json={"message": "hi"})
+    assert response.status_code == 500
+    assert response.json()["detail"] == "internal_server_error"

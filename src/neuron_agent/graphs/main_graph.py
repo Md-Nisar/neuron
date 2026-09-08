@@ -10,8 +10,7 @@ from langgraph.graph import END, START, StateGraph
 
 from neuron_agent.agents.factory import build_agent
 from neuron_agent.config.settings import Settings, get_settings
-from neuron_agent.errors.base import ModelExecutionError
-from neuron_agent.models.factory import agent_invocation_config
+from neuron_agent.models.factory import agent_invocation_config, classify_agent_error
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.state.main import MainGraphState
 
@@ -37,13 +36,16 @@ async def call_agent(
             config=agent_invocation_config(resolved_settings),
         )
     except Exception as exc:  # noqa: BLE001
-        logger.exception(
+        error = classify_agent_error(exc)
+        log = logger.exception if error.context.alert else logger.warning
+        log(
             "agent_execution_failed",
             request_id=request_id,
             thread_id=thread_id,
-            retryable=True,
+            error_code=error.context.code,
+            retryable=error.context.retryable,
         )
-        raise ModelExecutionError("agent execution failed") from exc
+        raise error from exc
 
     structured = result.get("structured_response")
     if isinstance(structured, AgentAnswer):
