@@ -34,10 +34,7 @@ class AgentService:
                 "thread_id": thread_id,
                 "user_id_hash": user_id_hash,
             },
-            config={
-                "configurable": {"thread_id": thread_id},
-                "timeout": self._settings.tool_timeout_seconds,
-            },
+            config={"configurable": {"thread_id": thread_id}},
         )
         answer = result["answer"]
         return AgentResponse(
