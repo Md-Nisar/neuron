@@ -5,6 +5,7 @@ import openai
 import pytest
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_core.messages import AIMessage
+from langgraph.errors import GraphRecursionError
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
@@ -117,6 +118,11 @@ def test_classify_agent_error_maps_structured_output_failure() -> None:
 
 def test_classify_agent_error_falls_back_to_agent_execution_error() -> None:
     assert isinstance(classify_agent_error(RuntimeError("boom")), AgentExecutionError)
+
+
+def test_classify_agent_error_maps_recursion_limit_exceeded() -> None:
+    error = GraphRecursionError("Recursion limit of 5 reached")
+    assert isinstance(classify_agent_error(error), AgentExecutionError)
 
 
 @pytest.mark.parametrize(
