@@ -26,15 +26,18 @@ _UNARY_OPERATORS: dict[type[ast.unaryop], Callable[[Number], Number]] = {
     ast.USub: operator.neg,
 }
 _MAX_ABS_RESULT = 10**12
+_MAX_EXPRESSION_LENGTH = 200
 
 
 @tool
 def calculator(expression: str) -> str:
     """Evaluate a simple arithmetic expression with no names, calls, or attributes."""
+    if len(expression) > _MAX_EXPRESSION_LENGTH:
+        raise ValidationAppError(f"expression exceeds {_MAX_EXPRESSION_LENGTH} character limit")
     try:
         parsed = ast.parse(expression, mode="eval")
         result = _evaluate(parsed.body)
-    except (SyntaxError, ValueError, ZeroDivisionError, OverflowError) as exc:
+    except (SyntaxError, ValueError, ZeroDivisionError, OverflowError, RecursionError) as exc:
         raise ValidationAppError(f"invalid arithmetic expression: {exc}") from exc
     if abs(float(result)) > _MAX_ABS_RESULT:
         raise ValidationAppError("calculator result exceeds configured bound")

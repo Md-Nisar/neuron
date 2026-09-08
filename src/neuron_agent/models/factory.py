@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
@@ -22,6 +23,7 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
+from langgraph.errors import GraphBubbleUp
 from langgraph.types import Command
 
 from neuron_agent.config.settings import Settings
@@ -46,6 +48,47 @@ _RETRYABLE_PROVIDER_ERRORS: tuple[type[Exception], ...] = (
     openai.RateLimitError,
     openai.InternalServerError,
 )
+
+
+def tool_failure_isolation_middleware() -> AgentMiddleware:
+    """Log every tool call safely and isolate unclassified failures as `ToolExecutionError`."""
+
+    @wrap_tool_call
+    async def isolate_tool_failure(
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command[Any]]],
+    ) -> ToolMessage | Command[Any]:
+        tool_name = request.tool_call.get("name", "unknown")
+        started = time.monotonic()
+        try:
+            result = await handler(request)
+        except GraphBubbleUp:
+            raise
+        except AppError as exc:
+            logger.warning(
+                "tool_call_failed",
+                tool_name=tool_name,
+                error_code=exc.context.code,
+                duration_ms=round((time.monotonic() - started) * 1000, 2),
+            )
+            raise
+        except Exception as exc:
+            logger.warning(
+                "tool_call_failed",
+                tool_name=tool_name,
+                error_code=ToolExecutionError.context.code,
+                error_type=type(exc).__name__,
+                duration_ms=round((time.monotonic() - started) * 1000, 2),
+            )
+            raise ToolExecutionError(f"tool '{tool_name}' failed unexpectedly") from exc
+        logger.info(
+            "tool_call_succeeded",
+            tool_name=tool_name,
+            duration_ms=round((time.monotonic() - started) * 1000, 2),
+        )
+        return result
+
+    return isolate_tool_failure
 
 
 def tool_timeout_middleware(timeout_seconds: float) -> AgentMiddleware:
@@ -93,6 +136,7 @@ def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
         system_prompt=load_prompt("system/main.md"),
         response_format=AgentAnswer,
         middleware=[
+            tool_failure_isolation_middleware(),
             tool_timeout_middleware(settings.tool_timeout_seconds),
             provider_retry_middleware(settings),
         ],

@@ -18,3 +18,8 @@ def test_calculator_rejects_function_calls() -> None:
 def test_calculator_rejects_huge_result() -> None:
     with pytest.raises(ValidationAppError):
         calculator.invoke({"expression": "10 ** 20"})
+
+
+def test_calculator_rejects_oversized_expression() -> None:
+    with pytest.raises(ValidationAppError):
+        calculator.invoke({"expression": "1" + "+1" * 200})
