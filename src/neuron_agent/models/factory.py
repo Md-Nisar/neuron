@@ -7,8 +7,14 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 import openai
+import structlog
 from langchain.agents import create_agent
-from langchain.agents.middleware import AgentMiddleware, ToolCallRequest, wrap_tool_call
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    ModelRetryMiddleware,
+    ToolCallRequest,
+    wrap_tool_call,
+)
 from langchain.agents.structured_output import (
     StructuredOutputError as LangChainStructuredOutputError,
 )
@@ -32,6 +38,15 @@ from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutpu
 from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
 
+logger = structlog.get_logger(__name__)
+
+_RETRYABLE_PROVIDER_ERRORS: tuple[type[Exception], ...] = (
+    openai.APIConnectionError,
+    openai.APITimeoutError,
+    openai.RateLimitError,
+    openai.InternalServerError,
+)
+
 
 def tool_timeout_middleware(timeout_seconds: float) -> AgentMiddleware:
     """Bound every tool call to `timeout_seconds`, raising ToolExecutionError past it."""
@@ -52,6 +67,23 @@ def tool_timeout_middleware(timeout_seconds: float) -> AgentMiddleware:
     return enforce_tool_timeout
 
 
+def _is_retryable_provider_error(exc: Exception) -> bool:
+    """Classify raw provider exceptions as retryable without exposing secrets in logs."""
+    if not isinstance(exc, _RETRYABLE_PROVIDER_ERRORS):
+        return False
+    logger.warning("provider_call_retry_candidate", error_type=type(exc).__name__)
+    return True
+
+
+def provider_retry_middleware(settings: Settings) -> AgentMiddleware:
+    """Bound retries for transient model-provider failures with backoff and jitter."""
+    return ModelRetryMiddleware(
+        max_retries=settings.provider_max_retries,
+        retry_on=_is_retryable_provider_error,
+        on_failure="error",
+    )
+
+
 def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
     """Create the configurable LangChain agent harness."""
     model = create_chat_model(settings)
@@ -60,7 +92,10 @@ def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
         tools=list(tools),
         system_prompt=load_prompt("system/main.md"),
         response_format=AgentAnswer,
-        middleware=[tool_timeout_middleware(settings.tool_timeout_seconds)],
+        middleware=[
+            tool_timeout_middleware(settings.tool_timeout_seconds),
+            provider_retry_middleware(settings),
+        ],
         name="neuron_main_agent",
     )
 
@@ -80,6 +115,7 @@ def create_chat_model(settings: Settings) -> ChatOpenAI | FakeListChatModel:
         api_key=api_key,
         timeout=settings.request_timeout_seconds,
         max_tokens=settings.max_output_tokens,
+        max_retries=0,
     )
 
 

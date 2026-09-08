@@ -23,3 +23,9 @@ def test_settings_defaults_are_openai_production_safe() -> None:
     assert settings.tool_timeout_seconds == 20
     assert settings.max_agent_iterations == 5
     assert settings.max_output_tokens == 2000
+    assert settings.provider_max_retries == 2
+
+
+def test_settings_rejects_provider_max_retries_out_of_bounds() -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="test", openai_api_key=None, provider_max_retries=6)

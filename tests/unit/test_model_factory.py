@@ -18,6 +18,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.models.factory import (
+    _is_retryable_provider_error,
     agent_invocation_config,
     classify_agent_error,
     create_chat_model,
@@ -39,6 +40,12 @@ def test_create_chat_model_configures_openai_model_limits() -> None:
     assert model.model_name == "gpt-5.4-mini"
     assert model.request_timeout == 60
     assert model.max_tokens == 2000
+
+
+def test_create_chat_model_disables_sdk_level_retries() -> None:
+    settings = Settings(env="production", openai_api_key=SecretStr("test-key"))
+    model = create_chat_model(settings)
+    assert model.max_retries == 0
 
 
 def test_agent_invocation_config_uses_max_agent_iterations() -> None:
@@ -104,3 +111,45 @@ def test_classify_agent_error_maps_structured_output_failure() -> None:
 
 def test_classify_agent_error_falls_back_to_agent_execution_error() -> None:
     assert isinstance(classify_agent_error(RuntimeError("boom")), AgentExecutionError)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        openai.APIConnectionError(request=_REQUEST),
+        openai.APITimeoutError(request=_REQUEST),
+        openai.RateLimitError(
+            "rate limited",
+            response=httpx.Response(status_code=429, request=_REQUEST),
+            body=None,
+        ),
+        openai.InternalServerError(
+            "internal error",
+            response=httpx.Response(status_code=500, request=_REQUEST),
+            body=None,
+        ),
+    ],
+)
+def test_is_retryable_provider_error_accepts_transient_failures(error: Exception) -> None:
+    assert _is_retryable_provider_error(error) is True
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        openai.AuthenticationError(
+            "bad key",
+            response=httpx.Response(status_code=401, request=_REQUEST),
+            body=None,
+        ),
+        openai.BadRequestError(
+            "bad request",
+            response=httpx.Response(status_code=400, request=_REQUEST),
+            body=None,
+        ),
+        ConfigurationError("malformed config"),
+        RuntimeError("unexpected bug"),
+    ],
+)
+def test_is_retryable_provider_error_rejects_non_transient_failures(error: Exception) -> None:
+    assert _is_retryable_provider_error(error) is False
