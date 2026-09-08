@@ -14,7 +14,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 
 ## Current Controls
 
-- Typed request validation with Pydantic.
+- Typed request validation with Pydantic, including a request body size limit, a rejected-unknown-fields policy, and control-character rejection in user messages.
 - Centralized settings and `.env.example`.
 - Read-only initial tools.
 - AST-based calculator without `eval`.

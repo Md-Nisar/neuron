@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     provider_max_retries: int = Field(default=2, ge=0, le=5)
     max_output_tokens: int = Field(default=2000, ge=1, le=16_384)
     max_prompt_chars: int = Field(default=12_000, ge=100, le=200_000)
+    max_request_body_bytes: int = Field(default=65_536, ge=1024, le=1_048_576)
     enable_langsmith: bool = False
     openai_api_key: SecretStr | None = Field(
         default=None,

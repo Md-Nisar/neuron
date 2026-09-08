@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Awaitable, Callable
 
 import structlog
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
@@ -24,6 +27,30 @@ configure_logging(
 logger = structlog.get_logger(__name__)
 app = FastAPI(title=settings.name, version=settings.version)
 service = AgentService(settings)
+
+
+@app.middleware("http")
+async def limit_request_body_size(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            declared_size = int(content_length)
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "validation_error"})
+        if declared_size > settings.max_request_body_bytes:
+            logger.warning("agent_request_body_too_large", content_length=declared_size)
+            return JSONResponse(status_code=413, content={"detail": "payload_too_large"})
+    return await call_next(request)
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    logger.warning("agent_request_validation_failed", errors=exc.errors())
+    return JSONResponse(status_code=422, content={"detail": "validation_error"})
 
 
 @app.get("/health/live")

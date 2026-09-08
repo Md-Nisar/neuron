@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AgentRequest(BaseModel):
     """Agent invocation request."""
 
-    message: str = Field(min_length=1, max_length=12_000)
+    model_config = ConfigDict(extra="forbid")
+
+    # max_length is the absolute ceiling (matches Settings.max_prompt_chars upper
+    # bound); the actually configured limit is enforced by validate_user_message.
+    message: str = Field(min_length=1, max_length=200_000)
     thread_id: str | None = Field(default=None, max_length=255)
     user_id: str | None = Field(default=None, max_length=128)
 

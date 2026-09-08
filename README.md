@@ -48,6 +48,18 @@ curl -X POST http://127.0.0.1:8000/v1/agent/invoke \
   -d '{"message":"What is 19 * 3?"}'
 ```
 
+## Request Limits
+
+The `/v1/agent/invoke` endpoint enforces, before model execution:
+
+- request body size, via `APP_MAX_REQUEST_BODY_BYTES` (default 65536 bytes; rejected with `413`)
+- message length, via `APP_MAX_PROMPT_CHARS` (default 12000 characters; rejected with `400`)
+- `thread_id` (max 255 chars) and `user_id` (max 128 chars)
+- unknown request fields and malformed JSON (rejected with `422`)
+- empty, whitespace-only, or control-character-containing messages (rejected with `400`)
+
+Error responses return a stable `{"detail": "<error_code>"}` shape and never include internal validation details.
+
 LangGraph local server:
 
 ```bash
