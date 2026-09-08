@@ -20,6 +20,17 @@ def test_validate_user_message_rejects_oversized() -> None:
         validate_user_message("x" * 11, max_chars=10)
 
 
+def test_validate_user_message_rejects_control_characters() -> None:
+    with pytest.raises(ValidationAppError):
+        validate_user_message("hello\x00world", max_chars=100)
+
+
+def test_validate_user_message_allows_newlines_and_tabs() -> None:
+    assert validate_user_message("line one\nline two\ttabbed", max_chars=100) == (
+        "line one\nline two\ttabbed"
+    )
+
+
 def test_tool_allow_list_blocks_unknown_tool() -> None:
     with pytest.raises(AuthorizationError):
         require_allowed_tool("delete_record", {"calculator"})

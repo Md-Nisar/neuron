@@ -29,6 +29,37 @@ def test_agent_invoke_rejects_empty_message() -> None:
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": ""})
     assert response.status_code == 422
+    assert response.json() == {"detail": "validation_error"}
+
+
+def test_agent_invoke_rejects_unexpected_fields() -> None:
+    client = TestClient(app)
+    response = client.post("/v1/agent/invoke", json={"message": "hi", "unexpected_field": "value"})
+    assert response.status_code == 422
+    assert response.json() == {"detail": "validation_error"}
+
+
+def test_agent_invoke_rejects_malformed_json() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/v1/agent/invoke",
+        content=b"{not valid json",
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+    assert response.json() == {"detail": "validation_error"}
+
+
+def test_agent_invoke_rejects_oversized_body_via_content_length() -> None:
+    client = TestClient(app)
+    oversized = api_main.settings.max_request_body_bytes + 1
+    response = client.post(
+        "/v1/agent/invoke",
+        content=b"x" * oversized,
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 413
+    assert response.json() == {"detail": "payload_too_large"}
 
 
 @pytest.mark.parametrize(

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Iterable
 from urllib.parse import urlparse
 
 from neuron_agent.errors.base import AuthorizationError, ValidationAppError
 
 HIGH_RISK_TOOL_NAMES = frozenset({"send_email", "write_file", "delete_record", "execute_payment"})
+
+_ALLOWED_CONTROL_CHARS = frozenset({"\t", "\n", "\r"})
 
 
 def validate_user_message(message: str, *, max_chars: int) -> str:
@@ -17,6 +20,11 @@ def validate_user_message(message: str, *, max_chars: int) -> str:
         raise ValidationAppError("message must not be empty")
     if len(normalized) > max_chars:
         raise ValidationAppError(f"message exceeds {max_chars} characters")
+    if any(
+        unicodedata.category(char) == "Cc" and char not in _ALLOWED_CONTROL_CHARS
+        for char in normalized
+    ):
+        raise ValidationAppError("message contains disallowed control characters")
     return normalized
 
 
