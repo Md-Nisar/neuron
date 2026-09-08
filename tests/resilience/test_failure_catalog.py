@@ -31,7 +31,7 @@ from neuron_agent.errors.base import (
 from neuron_agent.schemas.agent import AgentResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 
-_SECRET_MARKER = "sk-test-secret-should-never-leak"
+_SECRET_MARKER = "sk-test-secret-should-never-leak"  # noqa: S105 -- leakage-detection fixture, not a real secret
 
 
 @pytest.mark.parametrize(
