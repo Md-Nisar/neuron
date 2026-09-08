@@ -34,6 +34,22 @@ from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 _SECRET_MARKER = "sk-test-secret-should-never-leak"  # noqa: S105 -- leakage-detection fixture, not a real secret
 
 
+@pytest.fixture(autouse=True)
+def _generous_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Neutralize the shared token bucket so unrelated failure tests never hit it.
+
+    `api_main.rate_limiter` is a module-level singleton reused for every request
+    in the process, keyed by client host ("testclient" for every TestClient call
+    in the whole suite). Without this, the many real requests this file issues
+    would exhaust the same bucket other test files already draw from.
+    """
+    monkeypatch.setattr(
+        api_main,
+        "rate_limiter",
+        InMemoryTokenBucketRateLimiter(capacity=1000, requests_per_window=1000, window_seconds=60),
+    )
+
+
 @pytest.mark.parametrize(
     ("error", "expected_status", "expected_detail"),
     [
