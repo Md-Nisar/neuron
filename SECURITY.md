@@ -21,6 +21,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Tool allow-list helper and high-impact tool deny list.
 - Localhost URL rejection helper.
 - Hashed user IDs before entering graph state.
+- Token-bucket rate limiting at `/v1/agent/invoke`, keyed by client IP, returning `429` with `Retry-After` when exceeded (ADR 0004).
 - Structured logging with no deliberate raw secret logging.
 - Bandit security scan in CI.
 

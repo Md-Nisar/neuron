@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 
 
