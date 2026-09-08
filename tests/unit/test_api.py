@@ -16,6 +16,8 @@ from neuron_agent.errors.base import (
     ToolExecutionError,
     ValidationAppError,
 )
+from neuron_agent.schemas.agent import AgentResponse
+from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 
 
 def test_live_health_endpoint() -> None:
@@ -101,3 +103,37 @@ def test_agent_invoke_maps_unexpected_exception_to_500(monkeypatch: pytest.Monke
     response = client.post("/v1/agent/invoke", json={"message": "hi"})
     assert response.status_code == 500
     assert response.json()["detail"] == "internal_server_error"
+
+
+def test_agent_invoke_returns_429_when_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fast_invoke(self: object, request: object) -> AgentResponse:
+        return AgentResponse(
+            request_id="request-1", thread_id="thread-1", answer="ok", used_tools=[], confidence=1.0
+        )
+
+    monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
+    monkeypatch.setattr(
+        api_main,
+        "rate_limiter",
+        InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
+    )
+    client = TestClient(app)
+    first = client.post("/v1/agent/invoke", json={"message": "hi"})
+    assert first.status_code == 200
+
+    second = client.post("/v1/agent/invoke", json={"message": "hi"})
+    assert second.status_code == 429
+    assert second.json() == {"detail": "rate_limited"}
+    assert 1 <= int(second.headers["Retry-After"]) <= 60
+
+
+def test_health_endpoints_are_not_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        api_main,
+        "rate_limiter",
+        InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
+    )
+    client = TestClient(app)
+    for _ in range(3):
+        response = client.get("/health/live")
+        assert response.status_code == 200

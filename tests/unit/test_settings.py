@@ -25,6 +25,10 @@ def test_settings_defaults_are_openai_production_safe() -> None:
     assert settings.max_output_tokens == 2000
     assert settings.provider_max_retries == 2
     assert settings.max_request_body_bytes == 65_536
+    assert settings.rate_limit_enabled is True
+    assert settings.rate_limit_requests_per_window == 60
+    assert settings.rate_limit_window_seconds == 60
+    assert settings.rate_limit_burst == 20
 
 
 def test_settings_rejects_provider_max_retries_out_of_bounds() -> None:
@@ -35,3 +39,8 @@ def test_settings_rejects_provider_max_retries_out_of_bounds() -> None:
 def test_settings_rejects_max_request_body_bytes_out_of_bounds() -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", openai_api_key=None, max_request_body_bytes=100)
+
+
+def test_settings_rejects_rate_limit_burst_out_of_bounds() -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="test", openai_api_key=None, rate_limit_burst=0)

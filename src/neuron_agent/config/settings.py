@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     max_output_tokens: int = Field(default=2000, ge=1, le=16_384)
     max_prompt_chars: int = Field(default=12_000, ge=100, le=200_000)
     max_request_body_bytes: int = Field(default=65_536, ge=1024, le=1_048_576)
+    rate_limit_enabled: bool = True
+    rate_limit_requests_per_window: int = Field(default=60, ge=1, le=10_000)
+    rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
+    rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     enable_langsmith: bool = False
     openai_api_key: SecretStr | None = Field(
         default=None,
