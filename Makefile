@@ -1,4 +1,4 @@
-.PHONY: install dev run api format lint typecheck test test-unit test-graph test-security test-integration eval security build
+.PHONY: install dev run api format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -22,7 +22,7 @@ typecheck:
 	uv run python -m mypy src
 
 test:
-	uv run python -m pytest tests/unit tests/graph tests/security tests/evals
+	uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/evals
 
 test-unit:
 	uv run python -m pytest tests/unit
@@ -32,6 +32,9 @@ test-graph:
 
 test-security:
 	uv run python -m pytest tests/security
+
+test-resilience:
+	uv run python -m pytest tests/resilience
 
 test-integration:
 	uv run python -m pytest tests/integration
