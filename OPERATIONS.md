@@ -27,7 +27,29 @@ LANGSMITH_API_KEY=...
 LANGSMITH_PROJECT=neuron-agent-production
 ```
 
-Do not log raw secrets, authorization headers, or sensitive user content.
+Do not log raw secrets, authorization headers, or sensitive user content. User prompts and
+model completions are never logged; only metadata about the request is.
+
+### Correlation and telemetry fields
+
+Every log line carries stable service metadata (`service`, `version`, `environment`) plus,
+where available, these correlation and telemetry fields:
+
+| Field                  | Meaning                                                             |
+| ---------------------- | -------------------------------------------------------------------- |
+| `request_id`           | Per-HTTP-request identifier, generated in `AgentService.invoke`.     |
+| `thread_id`            | Conversation/thread identifier (caller-supplied or generated).       |
+| `run_id`               | Per-graph-invocation identifier; also passed as the LangChain/LangSmith run id, so a log line can be cross-referenced with its trace. |
+| `model`                | The configured model identifier (`APP_DEFAULT_MODEL`).               |
+| `tool_name`            | The tool being invoked, on tool-call logs.                           |
+| `error_code`           | The application error taxonomy code (see `errors/base.py`).          |
+| `error_type`           | The raw Python exception class name, for filtering without parsing tracebacks. |
+| `duration_ms`          | Latency of the operation the log line reports on (request, agent execution, or tool call). |
+| `retry_count`          | Number of provider-call retries attempted so far in the current agent execution. |
+
+Correlation fields are bound via `structlog.contextvars` in `AgentService.invoke` and
+`api/main.py`, so they propagate automatically to every log line emitted while handling
+that request.
 
 ## Scaling
 

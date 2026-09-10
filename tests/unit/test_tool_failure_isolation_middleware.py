@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import structlog
 from langchain_core.messages import ToolMessage
 
 from neuron_agent.errors.base import ToolExecutionError, ValidationAppError
@@ -42,3 +43,26 @@ async def test_tool_failure_isolation_middleware_wraps_unexpected_exceptions() -
 
     with pytest.raises(ToolExecutionError):
         await middleware.awrap_tool_call(_FakeRequest("calculator"), broken_handler)
+
+
+async def test_tool_failure_isolation_middleware_logs_error_type_for_app_errors() -> None:
+    middleware = tool_failure_isolation_middleware()
+
+    async def invalid_input_handler(request: object) -> ToolMessage:
+        raise ValidationAppError("invalid arithmetic expression")
+
+    with structlog.testing.capture_logs() as captured:
+        with pytest.raises(ValidationAppError):
+            await middleware.awrap_tool_call(_FakeRequest("calculator"), invalid_input_handler)
+
+    failure_events = [entry for entry in captured if entry["event"] == "tool_call_failed"]
+    assert failure_events == [
+        {
+            "event": "tool_call_failed",
+            "log_level": "warning",
+            "tool_name": "calculator",
+            "error_code": "validation_error",
+            "error_type": "ValidationAppError",
+            "duration_ms": failure_events[0]["duration_ms"],
+        }
+    ]

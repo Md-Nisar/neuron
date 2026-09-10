@@ -24,17 +24,19 @@ class AgentService:
     async def invoke(self, request: AgentRequest) -> AgentResponse:
         request_id = str(uuid.uuid4())
         thread_id = request.thread_id or str(uuid.uuid4())
+        run_id = uuid.uuid4()
         user_id_hash = _hash_identifier(request.user_id) if request.user_id else None
         message = validate_user_message(request.message, max_chars=self._settings.max_prompt_chars)
-        bind_correlation_context(request_id=request_id, thread_id=thread_id)
+        bind_correlation_context(request_id=request_id, thread_id=thread_id, run_id=str(run_id))
         result = await self._graph.ainvoke(
             {
                 "messages": [HumanMessage(content=message)],
                 "request_id": request_id,
                 "thread_id": thread_id,
+                "run_id": str(run_id),
                 "user_id_hash": user_id_hash,
             },
-            config={"configurable": {"thread_id": thread_id}},
+            config={"configurable": {"thread_id": thread_id}, "run_id": run_id},
         )
         answer = result["answer"]
         return AgentResponse(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import openai
 import pytest
+import structlog
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_core.messages import AIMessage
 from langgraph.errors import GraphRecursionError
@@ -165,3 +166,24 @@ def test_is_retryable_provider_error_accepts_transient_failures(error: Exception
 )
 def test_is_retryable_provider_error_rejects_non_transient_failures(error: Exception) -> None:
     assert _is_retryable_provider_error(error) is False
+
+
+def test_is_retryable_provider_error_increments_bound_retry_count() -> None:
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(retry_count=0)
+    error = openai.APIConnectionError(request=_REQUEST)
+
+    _is_retryable_provider_error(error)
+    assert structlog.contextvars.get_contextvars()["retry_count"] == 1
+
+    _is_retryable_provider_error(error)
+    assert structlog.contextvars.get_contextvars()["retry_count"] == 2
+
+
+def test_is_retryable_provider_error_does_not_increment_for_non_retryable() -> None:
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(retry_count=0)
+    error = ConfigurationError("malformed config")
+
+    _is_retryable_provider_error(error)
+    assert structlog.contextvars.get_contextvars()["retry_count"] == 0

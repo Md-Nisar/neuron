@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import openai
 import pytest
+import structlog
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
@@ -59,6 +60,7 @@ def _state() -> MainGraphState:
         "messages": [HumanMessage(content="2+2")],
         "request_id": "request-1",
         "thread_id": "thread-1",
+        "run_id": "run-1",
     }
 
 
@@ -120,3 +122,31 @@ async def test_call_agent_wraps_structured_output_error() -> None:
 async def test_call_agent_wraps_unexpected_error() -> None:
     with pytest.raises(AgentExecutionError):
         await call_agent(_state(), agent=FailingAgent(RuntimeError("boom")))
+
+
+async def test_call_agent_logs_correlation_fields_on_success() -> None:
+    with structlog.testing.capture_logs() as captured:
+        await call_agent(_state(), agent=FakeAgent())
+
+    started = next(entry for entry in captured if entry["event"] == "agent_execution_started")
+    completed = next(entry for entry in captured if entry["event"] == "agent_execution_completed")
+    for entry in (started, completed):
+        assert entry["request_id"] == "request-1"
+        assert entry["thread_id"] == "thread-1"
+        assert entry["run_id"] == "run-1"
+        assert entry["model"] == "openai:gpt-5.4-mini"
+    assert isinstance(completed["duration_ms"], float)
+
+
+async def test_call_agent_logs_error_type_and_duration_on_failure() -> None:
+    with structlog.testing.capture_logs() as captured:
+        with pytest.raises(AgentExecutionError):
+            await call_agent(_state(), agent=FailingAgent(RuntimeError("boom")))
+
+    failed = next(entry for entry in captured if entry["event"] == "agent_execution_failed")
+    assert failed["request_id"] == "request-1"
+    assert failed["thread_id"] == "thread-1"
+    assert failed["run_id"] == "run-1"
+    assert failed["model"] == "openai:gpt-5.4-mini"
+    assert failed["error_type"] == "RuntimeError"
+    assert isinstance(failed["duration_ms"], float)

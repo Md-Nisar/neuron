@@ -69,6 +69,7 @@ def tool_failure_isolation_middleware() -> AgentMiddleware:
                 "tool_call_failed",
                 tool_name=tool_name,
                 error_code=exc.context.code,
+                error_type=type(exc).__name__,
                 duration_ms=round((time.monotonic() - started) * 1000, 2),
             )
             raise
@@ -114,7 +115,11 @@ def _is_retryable_provider_error(exc: Exception) -> bool:
     """Classify raw provider exceptions as retryable without exposing secrets in logs."""
     if not isinstance(exc, _RETRYABLE_PROVIDER_ERRORS):
         return False
-    logger.warning("provider_call_retry_candidate", error_type=type(exc).__name__)
+    retry_count = structlog.contextvars.get_contextvars().get("retry_count", 0) + 1
+    structlog.contextvars.bind_contextvars(retry_count=retry_count)
+    logger.warning(
+        "provider_call_retry_candidate", error_type=type(exc).__name__, retry_count=retry_count
+    )
     return True
 
 

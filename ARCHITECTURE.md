@@ -55,7 +55,7 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 
 ## State Model
 
-`MainGraphState` contains message history, request ID, thread ID, optional hashed user ID, answer, and error fields. User IDs are hashed before entering telemetry-oriented state.
+`MainGraphState` contains message history, request ID, thread ID, run ID, optional hashed user ID, answer, and error fields. User IDs are hashed before entering telemetry-oriented state.
 
 ## Persistence
 

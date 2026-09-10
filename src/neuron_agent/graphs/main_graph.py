@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import structlog
@@ -24,12 +25,18 @@ async def call_agent(
     resolved_settings = settings or get_settings()
     request_id = state.get("request_id")
     thread_id = state.get("thread_id")
+    run_id = state.get("run_id")
+    model = resolved_settings.default_model
+    structlog.contextvars.bind_contextvars(retry_count=0)
     logger.info(
         "agent_execution_started",
         request_id=request_id,
         thread_id=thread_id,
+        run_id=run_id,
+        model=model,
         recursion_limit=resolved_settings.max_agent_iterations,
     )
+    started = time.monotonic()
     try:
         result = await agent.ainvoke(
             {"messages": state["messages"]},
@@ -42,8 +49,12 @@ async def call_agent(
             "agent_execution_failed",
             request_id=request_id,
             thread_id=thread_id,
+            run_id=run_id,
+            model=model,
             error_code=error.context.code,
+            error_type=type(exc).__name__,
             retryable=error.context.retryable,
+            duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         raise error from exc
 
@@ -54,6 +65,14 @@ async def call_agent(
         output_text = str(result["messages"][-1].content)
         answer = AgentAnswer(answer=output_text, used_tools=[], confidence=0.5)
 
+    logger.info(
+        "agent_execution_completed",
+        request_id=request_id,
+        thread_id=thread_id,
+        run_id=run_id,
+        model=model,
+        duration_ms=round((time.monotonic() - started) * 1000, 2),
+    )
     return {
         "messages": [AIMessage(content=answer.answer)],
         "answer": answer,

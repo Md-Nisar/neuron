@@ -27,12 +27,16 @@ def configure_logging(*, level: str, service: str, version: str, environment: st
     )
 
 
-def bind_correlation_context(*, request_id: str | None, thread_id: str | None) -> None:
-    """Attach request and thread identifiers to the logging context for the active scope."""
+def bind_correlation_context(
+    *, request_id: str | None, thread_id: str | None, run_id: str | None = None
+) -> None:
+    """Attach request, thread, and run identifiers to the logging context for the active scope."""
     if request_id is not None:
         structlog.contextvars.bind_contextvars(request_id=request_id)
     if thread_id is not None:
         structlog.contextvars.bind_contextvars(thread_id=thread_id)
+    if run_id is not None:
+        structlog.contextvars.bind_contextvars(run_id=run_id)
 
 
 def _add_service_metadata(*, service: str, version: str, environment: str) -> Any:

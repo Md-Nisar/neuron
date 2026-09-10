@@ -16,6 +16,7 @@ class MainGraphState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     request_id: str
     thread_id: str
+    run_id: NotRequired[str]
     user_id_hash: NotRequired[str]
     answer: NotRequired[AgentAnswer]
     error: NotRequired[str]
