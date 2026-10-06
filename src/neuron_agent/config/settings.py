@@ -9,6 +9,7 @@ from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production", "test"]
+CheckpointerBackend = Literal["memory", "postgres", "none"]
 
 
 class Settings(BaseSettings):
@@ -38,6 +39,11 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     enable_langsmith: bool = False
+    checkpointer: CheckpointerBackend = "none"
+    checkpointer_setup_on_startup: bool = False
+    postgres_dsn: SecretStr | None = None
+    postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
+    postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     openai_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices(
@@ -54,6 +60,19 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "OPENAI_API_KEY is required for OpenAI models in staging/production"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def validate_checkpointer(self) -> Settings:
+        """Reject persistence backends that cannot work in the configured environment."""
+        if self.checkpointer == "memory" and self.env in {"staging", "production"}:
+            raise ValueError(
+                "APP_CHECKPOINTER=memory is not durable; use postgres or none in staging/production"
+            )
+        if self.checkpointer == "postgres" and (
+            self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
+        ):
+            raise ValueError("APP_POSTGRES_DSN is required when APP_CHECKPOINTER=postgres")
         return self
 
 

@@ -6,8 +6,10 @@ import pytest
 import structlog.testing
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphRecursionError
 
+from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
     ConfigurationError,
@@ -16,7 +18,7 @@ from neuron_agent.errors.base import (
     RateLimitError,
 )
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
-from neuron_agent.graphs.main_graph import call_agent
+from neuron_agent.graphs.main_graph import build_graph, call_agent, graph
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.state.main import MainGraphState
 
@@ -151,3 +153,17 @@ async def test_call_agent_logs_correlation_ids_error_type_and_retry_count_on_fai
 async def test_call_agent_wraps_unexpected_error() -> None:
     with pytest.raises(AgentExecutionError):
         await call_agent(_state(), agent=FailingAgent(RuntimeError("boom")))
+
+
+def test_exported_agent_server_graph_has_no_checkpointer() -> None:
+    assert graph.checkpointer is None
+
+
+async def test_build_graph_with_checkpointer_persists_state() -> None:
+    saver = InMemorySaver()
+    compiled = build_graph(Settings(env="test"), checkpointer=saver)
+    config = {"configurable": {"thread_id": "thread-1"}}
+    await compiled.ainvoke(_state(), config=config)
+    snapshot = await compiled.aget_state(config)
+    assert snapshot.values["answer"].answer
+    assert len(snapshot.values["messages"]) == 2

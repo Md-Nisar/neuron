@@ -7,6 +7,7 @@ from typing import Any
 
 import structlog
 from langchain_core.messages import AIMessage
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
 from neuron_agent.agents.factory import build_agent
@@ -86,8 +87,10 @@ async def call_agent(
     }
 
 
-def build_graph(settings: Settings | None = None) -> Any:
-    """Build and compile the graph."""
+def build_graph(
+    settings: Settings | None = None, checkpointer: BaseCheckpointSaver[Any] | None = None
+) -> Any:
+    """Build and compile the graph, persisting thread state when a checkpointer is given."""
     resolved_settings = settings or get_settings()
     agent = build_agent(resolved_settings)
 
@@ -98,7 +101,8 @@ def build_graph(settings: Settings | None = None) -> Any:
     builder.add_node("agent", agent_node)
     builder.add_edge(START, "agent")
     builder.add_edge("agent", END)
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 
+# Exported to langgraph.json. Compiled without a checkpointer: Agent Server supplies its own.
 graph = build_graph()

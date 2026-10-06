@@ -5,7 +5,8 @@ from __future__ import annotations
 import math
 import os
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 
 import structlog
 import uvicorn
@@ -28,8 +29,19 @@ configure_logging(
     environment=settings.env,
 )
 logger = structlog.get_logger(__name__)
-app = FastAPI(title=settings.name, version=settings.version)
 service = AgentService(settings)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    await service.startup()
+    try:
+        yield
+    finally:
+        await service.shutdown()
+
+
+app = FastAPI(title=settings.name, version=settings.version, lifespan=lifespan)
 rate_limiter = InMemoryTokenBucketRateLimiter(
     capacity=settings.rate_limit_burst,
     requests_per_window=settings.rate_limit_requests_per_window,
@@ -87,8 +99,10 @@ async def live() -> dict[str, str]:
 
 
 @app.get("/health/ready")
-async def ready() -> dict[str, str]:
-    return {"status": "ready", "environment": settings.env}
+async def ready() -> JSONResponse:
+    if not await service.is_ready():
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
+    return JSONResponse(content={"status": "ready", "environment": settings.env})
 
 
 @app.post("/v1/agent/invoke", response_model=AgentResponse)

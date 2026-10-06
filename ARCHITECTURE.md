@@ -47,6 +47,7 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 - `models/`: LangChain `create_agent` boundary, provider configuration, and provider/harness exception classification.
 - `tools/`: bounded tool implementations.
 - `state/`: graph state type definitions.
+- `persistence/`: checkpointer construction and lifecycle (`APP_CHECKPOINTER`), plus the `setup` operator command.
 - `schemas/`: public API and structured output contracts.
 - `security/`: input, URL, and tool policy checks.
 - `observability/`: structured logging setup.
@@ -59,7 +60,14 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 
 ## Persistence
 
-Thread persistence and streaming are governed by ADR 0005 (`docs/decisions/0005-conversation-state-and-streaming.md`): checkpointer selection per environment (`memory`, `postgres`, `none`), thread ID and ownership rules, atomic turn commits, history trimming, the SSE event protocol, and the reject-on-busy concurrency policy. The graph exported to `langgraph.json` is compiled without a checkpointer, because Agent Server supplies its own persistence. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
+Thread persistence and streaming are governed by ADR 0005 (`docs/decisions/0005-conversation-state-and-streaming.md`): checkpointer selection per environment (`memory`, `postgres`, `none`), thread ID and ownership rules, atomic turn commits, history trimming, the SSE event protocol, and the reject-on-busy concurrency policy. The graph exported to `langgraph.json` is compiled without a checkpointer, because Agent Server supplies its own persistence.
+
+`persistence/checkpointer.py::build_persistence` selects the backend from `APP_CHECKPOINTER`:
+- `none` is the default.
+- `memory` (`InMemorySaver`) is rejected in staging and production.
+- `postgres` uses `AsyncPostgresSaver` over a `psycopg_pool.AsyncConnectionPool` sized by `APP_POSTGRES_POOL_MAX_SIZE` and `APP_POSTGRES_POOL_TIMEOUT_SECONDS`.
+
+`AgentService` passes the checkpointer to `build_graph`. The FastAPI `lifespan` opens the pool on startup and closes it on shutdown. Schema creation is explicit: `make db-setup`, or `APP_CHECKPOINTER_SETUP_ON_STARTUP=true` for local use. `/health/ready` returns `503 {"status": "not_ready"}` while the database is unreachable. A `psycopg` failure during a run is classified as `PersistenceError` (`503 persistence_error`, retryable, detail hidden from clients). The DSN is a `SecretStr` and is never logged. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
 
 ## Security Boundaries
 
@@ -94,6 +102,7 @@ Expected failures are classified through `AppError` subclasses (`src/neuron_agen
 | `ToolExecutionError` | `tool_execution_error` | 502 | yes | no |
 | `StructuredOutputError` | `structured_output_error` | 502 | yes | no |
 | `AgentExecutionError` | `agent_execution_error` | 500 | yes | no |
+| `PersistenceError` | `persistence_error` | 503 | yes | no |
 
 `api/main.py` centralizes the HTTP mapping: it raises `HTTPException(status_code=exc.context.http_status, detail=...)`, where `detail` is the stable `code` when `user_visible` is `True`, or the generic `internal_server_error` otherwise — so provider/tool/internal failure detail never reaches the client, only the server logs (via `logger.warning`/`logger.exception`). Any exception that isn't an `AppError` also maps to a generic `500 internal_server_error`.
 
