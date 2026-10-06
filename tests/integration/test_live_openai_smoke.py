@@ -8,18 +8,19 @@ from langchain_core.messages import HumanMessage
 from neuron_agent.config.settings import Settings
 from neuron_agent.graphs.main_graph import build_graph
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.anyio]
 
 
 @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not configured")
-def test_live_openai_smoke() -> None:
+async def test_live_openai_smoke() -> None:
     settings = Settings(
         env="development",
         default_model="openai:gpt-5.4-mini",
         openai_api_key=os.environ["OPENAI_API_KEY"],
     )
     graph = build_graph(settings)
-    result = graph.invoke(
+    # The agent node is async, so the graph must be driven through the async API.
+    result = await graph.ainvoke(
         {
             "messages": [HumanMessage(content="Reply with exactly: ok")],
             "request_id": "smoke-request",
