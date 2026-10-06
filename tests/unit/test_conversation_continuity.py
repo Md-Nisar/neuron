@@ -115,3 +115,19 @@ async def test_per_run_fields_are_reset_each_turn(echo_agent: Any) -> None:
     assert state.values["request_id"] == second.request_id != first.request_id
     assert state.values["user_message"] is None
     assert state.values["answer"].answer == second.answer
+
+
+async def test_inner_agent_state_is_never_checkpointed() -> None:
+    # Regression: the create_agent subgraph inherited the thread checkpointer and stored its
+    # internal state (tool calls/results) under an `agent:<id>` namespace.
+    service = _service()
+    first = await service.invoke(AgentRequest(message="one"))
+    await service.invoke(AgentRequest(message="two", thread_id=first.thread_id))
+
+    checkpointer = service._persistence.checkpointer
+    assert checkpointer is not None
+    namespaces = {
+        checkpoint.config["configurable"]["checkpoint_ns"]
+        async for checkpoint in checkpointer.alist(None)
+    }
+    assert namespaces == {""}
