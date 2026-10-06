@@ -65,4 +65,4 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-Currently v0.1.0 ("Functional Agent Runtime") per `docs/ROADMAP.md`. v0.2.0 ("Reliable Agent Runtime") is the active target — error taxonomy, enforced runtime limits, provider retry/backoff, hardened tool/input boundaries, rate limiting, an expanded failure-path test suite, and eval dataset v1. Check `docs/ROADMAP.md` and open issues/milestones before assuming a reliability feature (retries, rate limiting, structured error taxonomy) already exists — most are planned, not yet implemented.
+Currently v0.2.0 ("Reliable Agent Runtime") per `docs/ROADMAP.md` — error taxonomy, enforced runtime limits, provider retry/backoff, hardened tool/input boundaries, rate limiting, an expanded failure-path test suite, eval dataset v1, and structured logging/telemetry are all implemented (see `CHANGELOG.md`). v0.3.0 ("Stateful + Streaming") is the active target. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
