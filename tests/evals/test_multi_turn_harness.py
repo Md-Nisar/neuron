@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess  # nosec B404 - runs this project's own CLI under test
 import sys
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -53,14 +55,17 @@ async def test_multi_turn_runner_requires_persistence(monkeypatch: pytest.Monkey
         await run_multi_turn_suite(MULTI_TURN_CASES)
 
 
-def test_cli_report_is_clean_json_with_multi_turn_section() -> None:
+def test_cli_report_is_clean_json_with_multi_turn_section(tmp_path: Path) -> None:
     # A real process: stdout must hold only the report (logs go to stderr), so that
-    # `neuron-eval > report.json` stays diffable JSON. Runs on the fake local model.
+    # `neuron-eval > report.json` stays diffable JSON. Runs on the fake local model, from a
+    # directory without the developer's `.env`, which could otherwise supply a live key.
+    shutil.copytree(SINGLE_TURN_CASES.parent, tmp_path / SINGLE_TURN_CASES.parent)
     completed = subprocess.run(  # noqa: S603 - fixed interpreter and arguments
         [sys.executable, "-c", "from neuron_agent.evaluation import main; main()"],
         capture_output=True,
         text=True,
         check=True,
+        cwd=tmp_path,
         env={
             **{k: v for k, v in os.environ.items() if not k.endswith("OPENAI_API_KEY")},
             "APP_ENV": "test",
