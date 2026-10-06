@@ -86,6 +86,14 @@ class RateLimitError(AppError):
     context = ErrorContext(code="rate_limit_error", http_status=429, retryable=True)
 
 
+class ProviderQuotaError(AppError):
+    """Model provider account has no remaining credit or quota; retrying cannot help."""
+
+    context = ErrorContext(
+        code="provider_quota_exhausted", http_status=503, user_visible=False, alert=True
+    )
+
+
 class ProviderTimeoutError(AppError):
     """Model provider did not respond within the configured timeout."""
 

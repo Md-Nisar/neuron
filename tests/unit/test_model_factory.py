@@ -13,6 +13,7 @@ from neuron_agent.errors.base import (
     AgentExecutionError,
     ConfigurationError,
     ProviderError,
+    ProviderQuotaError,
     ProviderTimeoutError,
     RateLimitError,
     ToolExecutionError,
@@ -84,6 +85,33 @@ def test_create_chat_model_rejects_malformed_model_identifier() -> None:
     )
     with pytest.raises(ConfigurationError):
         create_chat_model(settings)
+
+
+def _quota_error(**body: str) -> openai.RateLimitError:
+    response = httpx.Response(status_code=429, request=_REQUEST)
+    return openai.RateLimitError("no credits remaining", response=response, body=body)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"type": "insufficient_quota", "code": "credit_balance_exhausted"},
+        {"type": "insufficient_quota", "code": "insufficient_quota"},
+    ],
+)
+def test_quota_errors_are_not_retried_and_classified_distinctly(body: dict[str, str]) -> None:
+    error = _quota_error(**body)
+    assert _is_retryable_provider_error(error) is False
+    classified = classify_agent_error(error)
+    assert isinstance(classified, ProviderQuotaError)
+    assert classified.context.retryable is False
+    assert "no API credit" in str(classified)
+
+
+def test_rate_limit_without_quota_marker_is_still_retried() -> None:
+    error = _quota_error(type="requests", code="rate_limit_exceeded")
+    assert _is_retryable_provider_error(error) is True
+    assert isinstance(classify_agent_error(error), RateLimitError)
 
 
 def test_classify_agent_error_maps_rate_limit() -> None:

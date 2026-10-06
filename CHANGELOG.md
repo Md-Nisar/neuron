@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A model provider account with no API credit (OpenAI `429 insufficient_quota`) is no longer retried or reported as a rate limit. It fails at once as `ProviderQuotaError` (`provider_quota_exhausted`, `503`, alerting) (#50).
+
 ## 0.3.0
 
 "Stateful + Streaming": multi-turn conversations and real-time responses (ADR 0005).

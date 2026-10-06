@@ -36,6 +36,7 @@ from neuron_agent.errors.base import (
     AppError,
     ConfigurationError,
     ProviderError,
+    ProviderQuotaError,
     ProviderTimeoutError,
     ToolExecutionError,
 )
@@ -52,6 +53,16 @@ _RETRYABLE_PROVIDER_ERRORS: tuple[type[Exception], ...] = (
     openai.RateLimitError,
     openai.InternalServerError,
 )
+
+# OpenAI reports an exhausted account as a 429, like a rate limit, but it never clears on retry.
+_QUOTA_ERROR_MARKERS = frozenset({"insufficient_quota", "credit_balance_exhausted"})
+
+
+def _is_quota_error(exc: Exception) -> bool:
+    return isinstance(exc, openai.RateLimitError) and bool(
+        _QUOTA_ERROR_MARKERS & {exc.code, exc.type}
+    )
+
 
 _retry_attempts: ContextVar[int] = ContextVar("provider_retry_attempts", default=0)
 
@@ -128,7 +139,7 @@ def tool_timeout_middleware(timeout_seconds: float) -> AgentMiddleware:
 
 def _is_retryable_provider_error(exc: Exception) -> bool:
     """Classify raw provider exceptions as retryable without exposing secrets in logs."""
-    if not isinstance(exc, _RETRYABLE_PROVIDER_ERRORS):
+    if not isinstance(exc, _RETRYABLE_PROVIDER_ERRORS) or _is_quota_error(exc):
         return False
     attempt = _retry_attempts.get() + 1
     _retry_attempts.set(attempt)
@@ -222,6 +233,8 @@ def classify_agent_error(exc: Exception) -> AppError:
     """Map a raw exception from the agent harness to the application error taxonomy."""
     if isinstance(exc, AppError):
         return exc
+    if _is_quota_error(exc):
+        return ProviderQuotaError("model provider has no API credit; add credit to the account")
     if isinstance(exc, openai.RateLimitError):
         return AppRateLimitError("model provider rate limit exceeded")
     if isinstance(exc, openai.APITimeoutError):
