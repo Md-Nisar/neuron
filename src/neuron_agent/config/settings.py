@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     name: str = "neuron-agent"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
     env: Environment = "development"
     log_level: str = "INFO"
     default_model: str = "openai:gpt-5.4-mini"

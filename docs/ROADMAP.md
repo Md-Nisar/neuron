@@ -1,7 +1,7 @@
 | Release    | Theme                      | Primary outcome                       |
 | ---------- | -------------------------- | ------------------------------------- |
 | **v0.1.0** | Functional Agent Runtime   | ✅ Real agent works                    |
-| **v0.2.0** | Reliable Agent Runtime     | Predictable failures + resilience     |
+| **v0.2.0** | Reliable Agent Runtime     | ✅ Predictable failures + resilience   |
 | **v0.3.0** | Stateful + Streaming       | Conversations + real-time responses   |
 | **v0.4.0** | Secure Multi-User          | Authentication + authorization        |
 | **v0.5.0** | Evaluation + Observability | Measure quality + production behavior |
