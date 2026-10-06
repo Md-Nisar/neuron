@@ -6,7 +6,14 @@ import time
 from typing import Any
 
 import structlog
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    RemoveMessage,
+    trim_messages,
+)
+from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
@@ -51,7 +58,17 @@ async def call_agent(
     user_message = state.get("user_message")
     if user_message:
         new_turn.append(HumanMessage(content=user_message))
-    history = [*state.get("messages", []), *new_turn]
+    stored = list(state.get("messages", []))
+    history = bound_model_history(
+        [*stored, *new_turn], max_tokens=resolved_settings.max_history_tokens
+    )
+    if len(history) < len(stored) + len(new_turn):
+        logger.info(
+            "history_trimmed",
+            messages_total=len(stored) + len(new_turn),
+            messages_sent=len(history),
+            max_history_tokens=resolved_settings.max_history_tokens,
+        )
     reset_retry_attempts()
     started = time.monotonic()
     try:
@@ -94,11 +111,48 @@ async def call_agent(
     )
     # Only the user turn and the final answer are persisted; the agent's intermediate
     # tool-call/tool-result messages stay inside this run.
+    turn = [*new_turn, AIMessage(content=answer.answer)]
+    evicted = evict_oldest_turns(
+        stored, incoming=len(turn), limit=resolved_settings.max_thread_messages
+    )
     return {
-        "messages": [*new_turn, AIMessage(content=answer.answer)],
+        "messages": [*(RemoveMessage(id=m.id) for m in evicted if m.id), *turn],
         "answer": answer,
         "user_message": None,
     }
+
+
+def bound_model_history(messages: list[BaseMessage], *, max_tokens: int) -> list[BaseMessage]:
+    """Keep the newest messages within `max_tokens`, starting on a user turn.
+
+    Trimming keeps a contiguous suffix that begins with a `HumanMessage`, so a tool call is
+    never separated from its result. The newest message (the current user turn) is always
+    kept, even when it alone exceeds the budget; `APP_MAX_PROMPT_CHARS` bounds it instead.
+    """
+    trimmed = trim_messages(
+        messages,
+        max_tokens=max_tokens,
+        token_counter=count_tokens_approximately,
+        strategy="last",
+        start_on="human",
+        allow_partial=False,
+    )
+    return trimmed or messages[-1:]
+
+
+def evict_oldest_turns(
+    stored: list[BaseMessage], *, incoming: int, limit: int
+) -> list[BaseMessage]:
+    """Return the oldest stored messages to drop so the thread holds at most `limit` messages.
+
+    Whole turns are dropped: the remaining history always starts on a `HumanMessage`.
+    """
+    cut = len(stored) + incoming - limit
+    if cut <= 0:
+        return []
+    while cut < len(stored) and not isinstance(stored[cut], HumanMessage):
+        cut += 1
+    return stored[:cut]
 
 
 def build_graph(

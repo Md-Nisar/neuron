@@ -82,7 +82,12 @@ Thread rules (`AgentService._resolve_thread`):
 - A request without `thread_id` starts a new thread with a server-minted UUIDv4.
 - A supplied `thread_id` must be a UUID (`422 validation_error` otherwise) and is normalized to its canonical lowercase form.
 - With persistence enabled, a supplied `thread_id` must name an existing thread whose stored `user_id_hash` matches the request's. A missing thread and another user's thread both return `404 thread_not_found`.
-- With `none`, a supplied `thread_id` is only a correlation ID. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
+- With `none`, a supplied `thread_id` is only a correlation ID.
+
+History bounds (`graphs/main_graph.py`, ADR 0005 decision 3):
+- **Model input:** before each agent call, `bound_model_history` trims the thread to `APP_MAX_HISTORY_TOKENS` (default `8000`, approximate token count) with `trim_messages`. It keeps the newest messages as a contiguous suffix that starts on a `HumanMessage`, so a tool call is never separated from its result. The current user turn is always sent, even when it alone exceeds the budget; `APP_MAX_PROMPT_CHARS` bounds it instead. Trimming logs `history_trimmed` with message counts only.
+- **Storage:** after each successful turn, `evict_oldest_turns` removes the oldest whole turns, through `RemoveMessage`, so a thread holds at most `APP_MAX_THREAD_MESSAGES` messages (default `200`).
+- **No summarization:** `SummarizationMiddleware` is deliberately not used (ADR 0005), so no model-written summaries are persisted. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
 
 ## Security Boundaries
 

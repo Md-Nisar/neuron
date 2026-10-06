@@ -85,3 +85,17 @@ def test_settings_reject_postgres_pool_size_out_of_bounds() -> None:
         Settings(env="test", postgres_pool_max_size=0)
     with pytest.raises(ValidationError):
         Settings(env="test", postgres_pool_max_size=101)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"max_history_tokens": 255},
+        {"max_history_tokens": 200_001},
+        {"max_thread_messages": 1},
+        {"max_thread_messages": 10_001},
+    ],
+)
+def test_settings_reject_history_limits_out_of_bounds(overrides: dict[str, int]) -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="test", **overrides)
