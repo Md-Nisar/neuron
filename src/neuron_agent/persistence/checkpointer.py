@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import functools
+import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -21,6 +24,55 @@ logger = structlog.get_logger(__name__)
 
 # Types stored in graph state that the checkpoint serializer may rebuild on load.
 _ALLOWED_MSGPACK_MODULES = [("neuron_agent.schemas.agent", "AgentAnswer")]
+
+# Checkpointer operations that are timed, and the latency above which one is logged.
+_INSTRUMENTED_OPERATIONS = ("aget_tuple", "aput", "aput_writes", "adelete_thread")
+SLOW_CHECKPOINT_MS = 250.0
+
+
+def instrument_checkpointer(
+    checkpointer: BaseCheckpointSaver[Any], backend: str
+) -> BaseCheckpointSaver[Any]:
+    """Time the saver's async read/write operations and log slow or failed ones.
+
+    Methods are wrapped on the instance, so the object remains the original saver class
+    (LangGraph type checks still hold) and every other method stays untouched. Logs carry
+    the operation, backend, duration and error type: never keys, values or the DSN.
+    """
+    for operation in _INSTRUMENTED_OPERATIONS:
+        original = getattr(checkpointer, operation)
+        setattr(checkpointer, operation, _timed(original, operation, backend))
+    return checkpointer
+
+
+def _timed(
+    func: Callable[..., Awaitable[Any]], operation: str, backend: str
+) -> Callable[..., Awaitable[Any]]:
+    @functools.wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        started = time.monotonic()
+        try:
+            result = await func(*args, **kwargs)
+        except Exception as exc:
+            logger.warning(
+                "checkpoint_operation_failed",
+                operation=operation,
+                backend=backend,
+                error_type=type(exc).__name__,
+                duration_ms=round((time.monotonic() - started) * 1000, 2),
+            )
+            raise
+        duration_ms = round((time.monotonic() - started) * 1000, 2)
+        if duration_ms >= SLOW_CHECKPOINT_MS:
+            logger.warning(
+                "checkpoint_operation_slow",
+                operation=operation,
+                backend=backend,
+                duration_ms=duration_ms,
+            )
+        return result
+
+    return wrapper
 
 
 @dataclass
@@ -47,7 +99,9 @@ class Persistence:
         if self.pool is None:
             return
         await self.pool.open(wait=False)
-        self.checkpointer = AsyncPostgresSaver(self.pool, serde=self.serde)
+        self.checkpointer = instrument_checkpointer(
+            AsyncPostgresSaver(self.pool, serde=self.serde), self.backend
+        )
         if run_setup:
             await setup_schema(self)
         logger.info("checkpointer_opened", backend=self.backend)
@@ -82,7 +136,8 @@ def build_persistence(settings: Settings) -> Persistence:
     """Build (but do not open) the checkpointer selected by settings."""
     serde = JsonPlusSerializer(allowed_msgpack_modules=_ALLOWED_MSGPACK_MODULES)
     if settings.checkpointer == "memory":
-        return Persistence(backend="memory", checkpointer=InMemorySaver(serde=serde))
+        saver = InMemorySaver(serde=serde)
+        return Persistence(backend="memory", checkpointer=instrument_checkpointer(saver, "memory"))
     if settings.checkpointer != "postgres":
         return Persistence(backend="none", checkpointer=None)
 

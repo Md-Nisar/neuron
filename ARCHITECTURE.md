@@ -151,6 +151,12 @@ Logs are JSON-formatted through `structlog` and include service, version, enviro
 
 Beyond correlation IDs, structured logs carry, where applicable: `model` (the configured `provider:model` identifier), `tool` (as `tool_name` on tool-call logs), `error_type` (the raw exception class name) alongside the stable `error_code` from the `AppError` taxonomy, `duration_ms` (per tool call, per agent execution, and per HTTP request), and `retry_count`/`retry_attempt` (provider-retry attempts tracked for the current agent execution via `models/factory.py::get_retry_attempts`). Key log events: `agent_request_completed`/`agent_request_failed`/`agent_request_unexpected_error` (API layer), `agent_execution_started`/`agent_execution_completed`/`agent_execution_failed` (graph layer), `tool_call_succeeded`/`tool_call_failed` and `provider_call_retry_candidate` (model/tool layer).
 
+Streaming and conversation-state telemetry, listed in full in `OPERATIONS.md#streaming-and-conversation-state-events`:
+- **Stream summary.** `services/agent_service.py::_StreamStats` emits one summary per stream: `stream_completed` with a `termination` reason or `stream_cancelled` on disconnect. It includes `ttft_ms`, `duration_ms`, and token and event counts. Correlation IDs are set explicitly on these events rather than relying on contextvars, because streams run across tasks.
+- **Turn position.** `agent_execution_started` adds `turn` and `history_messages`.
+- **Checkpoint I/O.** `persistence/checkpointer.py::instrument_checkpointer` wraps the saver's async read and write methods on the instance, so the saver keeps its class, and logs slow (at least 250 ms) or failed checkpoint operations. Logs carry the operation, backend and duration only, never keys, values or the DSN.
+- **LangSmith.** Streamed runs pass the same `run_id` into the `RunnableConfig` as `invoke`, so they're tagged identically in LangSmith.
+
 Logging never includes raw user prompts, tool arguments, exception text, or provider secrets — only stable, pre-classified fields (IDs, names, codes, counts, durations). API keys are read once in `models/factory.py::create_chat_model` and are never passed to a logger. See `SECURITY.md` for the broader logging/secrets policy.
 
 ## Scaling

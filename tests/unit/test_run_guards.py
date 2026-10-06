@@ -88,7 +88,7 @@ async def test_closing_the_stream_cancels_the_run_and_keeps_history(gated: Gated
         await stream.aclose()
 
     assert gated.cancelled is True
-    assert any(log["event"] == "agent_stream_cancelled" for log in logs)
+    assert any(log["event"] == "stream_cancelled" for log in logs)
     assert _idle(service)
     assert await _messages(service, thread_id) == ["first", "answer 1"]
 

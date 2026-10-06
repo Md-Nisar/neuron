@@ -1,29 +1,19 @@
 from __future__ import annotations
 
 import json
-import re
-import uuid
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
 import structlog.testing
 from fastapi.testclient import TestClient
-from langchain_core.callbacks import CallbackManagerForLLMRun
-from langchain_core.language_models import LanguageModelInput
-from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
-from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
-from langchain_core.messages.tool import tool_call_chunk
-from langchain_core.outputs import ChatGenerationChunk
-from langchain_core.runnables import Runnable
-from langchain_core.tools import BaseTool
+from langchain_core.messages import AIMessage, AIMessageChunk
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import RateLimitError
 from neuron_agent.graphs import main_graph
-from neuron_agent.models import factory
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
@@ -32,68 +22,6 @@ from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, t
 pytestmark = pytest.mark.anyio
 
 _ANSWER_JSON = '{"answer": "Hello there world", "used_tools": [], "confidence": 0.9}'
-
-
-class StreamingFakeModel(GenericFakeChatModel):
-    """Streams scripted replies chunk by chunk; tool binding is a no-op.
-
-    Unlike the base class, tool calls are streamed too: as `tool_call_chunks` whose JSON
-    arguments arrive in small fragments, the way OpenAI streams them.
-    """
-
-    def _stream(
-        self,
-        messages: list[BaseMessage],
-        stop: list[str] | None = None,
-        run_manager: CallbackManagerForLLMRun | None = None,
-        **kwargs: Any,
-    ) -> Iterator[ChatGenerationChunk]:
-        reply = next(self.messages)
-        if not isinstance(reply, AIMessage) or not reply.tool_calls:
-            yield from _content_chunks(reply, run_manager)
-            return
-        message_id = f"run-{uuid.uuid4()}"
-        for index, call in enumerate(reply.tool_calls):
-            args = json.dumps(call["args"])
-            pieces = [args[i : i + 4] for i in range(0, len(args), 4)]
-            for n, piece in enumerate(pieces):
-                tool_chunk = tool_call_chunk(
-                    name=call["name"] if n == 0 else None,
-                    args=piece,
-                    id=call["id"] if n == 0 else None,
-                    index=index,
-                )
-                chunk = ChatGenerationChunk(
-                    message=AIMessageChunk(content="", id=message_id, tool_call_chunks=[tool_chunk])
-                )
-                if run_manager:
-                    run_manager.on_llm_new_token("", chunk=chunk)
-                yield chunk
-
-    def bind_tools(
-        self,
-        tools: Sequence[dict[str, Any] | type | Callable[..., Any] | BaseTool],
-        *,
-        tool_choice: str | None = None,
-        **kwargs: Any,
-    ) -> Runnable[LanguageModelInput, AIMessage]:
-        return self
-
-
-def _content_chunks(
-    reply: BaseMessage, run_manager: CallbackManagerForLLMRun | None
-) -> Iterator[ChatGenerationChunk]:
-    message_id = f"run-{uuid.uuid4()}"
-    for token in re.split(r"(\s)", str(reply.content)):
-        chunk = ChatGenerationChunk(message=AIMessageChunk(content=token, id=message_id))
-        if run_manager:
-            run_manager.on_llm_new_token(token, chunk=chunk)
-        yield chunk
-
-
-def _use_model(monkeypatch: pytest.MonkeyPatch, *replies: AIMessage) -> None:
-    model = StreamingFakeModel(messages=iter(replies))
-    monkeypatch.setattr(factory, "create_chat_model", lambda settings: model)
 
 
 async def _collect(service: AgentService, request: AgentRequest) -> list[StreamEvent]:
@@ -168,8 +96,8 @@ def test_tool_call_names_exclude_structured_output_and_continuations() -> None:
 # --- service event sequence -------------------------------------------------------
 
 
-async def test_stream_emits_run_started_tokens_final_done(monkeypatch: pytest.MonkeyPatch) -> None:
-    _use_model(monkeypatch, AIMessage(content="plain streamed answer"))
+async def test_stream_emits_run_started_tokens_final_done(stream_replies: Any) -> None:
+    stream_replies(AIMessage(content="plain streamed answer"))
     service = AgentService(Settings(env="test"))
     events = await _collect(service, AgentRequest(message="hi"))
 
@@ -185,10 +113,10 @@ async def test_stream_emits_run_started_tokens_final_done(monkeypatch: pytest.Mo
 
 
 async def test_stream_structured_output_tool_call_yields_answer_tokens(
-    monkeypatch: pytest.MonkeyPatch,
+    stream_replies: Any,
 ) -> None:
     tool_call = {"name": "AgentAnswer", "args": json.loads(_ANSWER_JSON), "id": "c1"}
-    _use_model(monkeypatch, AIMessage(content="", tool_calls=[tool_call]))
+    stream_replies(AIMessage(content="", tool_calls=[tool_call]))
     events = await _collect(AgentService(Settings(env="test")), AgentRequest(message="hi"))
 
     final = events[-2]
@@ -199,10 +127,9 @@ async def test_stream_structured_output_tool_call_yields_answer_tokens(
     assert "tool_call" not in _names(events)
 
 
-async def test_stream_reports_tool_calls_by_name_only(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_stream_reports_tool_calls_by_name_only(stream_replies: Any) -> None:
     calculator = {"name": "calculator", "args": {"expression": "6*7"}, "id": "c1"}
-    _use_model(
-        monkeypatch,
+    stream_replies(
         AIMessage(content="", tool_calls=[calculator]),
         AIMessage(content="It is 42"),
     )
@@ -247,8 +174,8 @@ async def test_stream_unexpected_exception_is_not_leaked(monkeypatch: pytest.Mon
     assert "secret" not in json.dumps([event.data for event in events])
 
 
-async def test_streamed_turn_is_persisted_to_the_thread(monkeypatch: pytest.MonkeyPatch) -> None:
-    _use_model(monkeypatch, AIMessage(content="first answer"), AIMessage(content="second"))
+async def test_streamed_turn_is_persisted_to_the_thread(stream_replies: Any) -> None:
+    stream_replies(AIMessage(content="first answer"), AIMessage(content="second"))
     service = AgentService(Settings(env="test"))
     first = await _collect(service, AgentRequest(message="one"))
     thread_id = first[0].data["thread_id"]
@@ -271,8 +198,10 @@ def _parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
     return events
 
 
-def test_stream_endpoint_returns_event_stream(monkeypatch: pytest.MonkeyPatch) -> None:
-    _use_model(monkeypatch, AIMessage(content="sse answer"))
+def test_stream_endpoint_returns_event_stream(
+    monkeypatch: pytest.MonkeyPatch, stream_replies: Any
+) -> None:
+    stream_replies(AIMessage(content="sse answer"))
     monkeypatch.setattr(api_main, "service", AgentService(Settings(env="test")))
     client = TestClient(app)
     response = client.post("/v1/agent/stream", json={"message": "hi"})

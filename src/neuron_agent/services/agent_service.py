@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import time
 import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 import anyio
@@ -171,13 +172,23 @@ class AgentService:
         bind_correlation_context(
             request_id=run.request_id, thread_id=run.thread_id, run_id=run.run_id
         )
+        stats = _StreamStats(
+            ids={"request_id": run.request_id, "thread_id": run.thread_id, "run_id": run.run_id}
+        )
+        logger.info("stream_started", **stats.ids)
         queue: asyncio.Queue[StreamEvent | None] = asyncio.Queue()
         producer = asyncio.create_task(self._produce(run, queue))
         stop_waiter = asyncio.ensure_future(stop.wait()) if stop is not None else None
         try:
-            yield StreamEvent(
-                "run_started",
-                {"request_id": run.request_id, "thread_id": run.thread_id, "run_id": run.run_id},
+            yield stats.record(
+                StreamEvent(
+                    "run_started",
+                    {
+                        "request_id": run.request_id,
+                        "thread_id": run.thread_id,
+                        "run_id": run.run_id,
+                    },
+                )
             )
             while True:
                 getter = asyncio.ensure_future(queue.get())
@@ -186,21 +197,22 @@ class AgentService:
                 if getter not in done:
                     getter.cancel()
                     await _cancel(producer)
-                    logger.info("agent_stream_stopped_for_shutdown")
-                    yield _error_event(ShuttingDownError("server is shutting down"))
+                    stats.termination = "shutdown"
+                    yield stats.record(_error_event(ShuttingDownError("server is shutting down")))
                     break
                 event = getter.result()
                 if event is None:
                     break
-                yield event
-            yield StreamEvent("done")
+                yield stats.record(event)
+            stats.finished = True
+            yield stats.record(StreamEvent("done"))
         finally:
             if not producer.done():
-                logger.info("agent_stream_cancelled")
                 await _cancel(producer)
             if stop_waiter is not None:
                 stop_waiter.cancel()
             run.lease.release()
+            stats.log()
 
     async def _produce(self, run: PreparedRun, queue: asyncio.Queue[StreamEvent | None]) -> None:
         """Run the graph, translating its stream into events; always ends with `None`.
@@ -395,6 +407,56 @@ def _error_event(exc: AppError) -> StreamEvent:
 
 # Upper bound on waiting for a cancelled run to unwind (LangGraph cancels its node tasks).
 _CANCEL_GRACE_SECONDS = 5.0
+
+
+@dataclass
+class _StreamStats:
+    """Per-stream telemetry: counts, time to first token, and how the stream ended.
+
+    Logged once when the stream ends: `stream_completed` (with `termination` = completed,
+    error, timeout, or shutdown) or `stream_cancelled` (the client disconnected before
+    `done`). Only counts and codes are logged, never streamed text.
+    """
+
+    ids: dict[str, str]
+    started: float = field(default_factory=time.monotonic)
+    first_token_ms: float | None = None
+    tokens: int = 0
+    events: int = 0
+    termination: str | None = None
+    error_code: str | None = None
+    finished: bool = False
+
+    def record(self, event: StreamEvent) -> StreamEvent:
+        self.events += 1
+        if event.event == "token":
+            self.tokens += 1
+            if self.first_token_ms is None:
+                self.first_token_ms = self._elapsed_ms()
+        elif event.event == "final":
+            self.termination = "completed"
+        elif event.event == "error":
+            self.error_code = event.data.get("code")
+            if self.termination is None:
+                self.termination = "timeout" if self.error_code == "run_timeout" else "error"
+        return event
+
+    def log(self) -> None:
+        fields: dict[str, Any] = {
+            **self.ids,
+            "duration_ms": self._elapsed_ms(),
+            "ttft_ms": self.first_token_ms,
+            "tokens_streamed": self.tokens,
+            "events_streamed": self.events,
+        }
+        if not self.finished:
+            logger.info("stream_cancelled", termination="client_disconnect", **fields)
+            return
+        log = logger.info if self.termination == "completed" else logger.warning
+        log("stream_completed", termination=self.termination, error_code=self.error_code, **fields)
+
+    def _elapsed_ms(self) -> float:
+        return round((time.monotonic() - self.started) * 1000, 2)
 
 
 async def _cancel(task: asyncio.Task[Any]) -> None:
