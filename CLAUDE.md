@@ -72,4 +72,4 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 The current version is v0.3.0 ("Stateful + Streaming") per `docs/ROADMAP.md`. It adds multi-turn conversations with Postgres or in-memory thread persistence, SSE streaming, cancellation, concurrency and timeout guards, a thread history and deletion API with retention, streaming telemetry, and eval dataset v2 (see `CHANGELOG.md`).
 
-Release verification is recorded in `docs/releases/v0.3.0-release-verification.md`. The live-credential checks were still pending at the time of writing, so check issue #30's status. v0.4.0 ("Secure Multi-User") is next. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
+Release verification is recorded in `docs/releases/v0.3.0-release-verification.md`. v0.3.0 shipped with one known issue: the live OpenAI checks could not complete (no API credit), so model-facing behaviour is verified only with fake models. v0.4.0 ("Secure Multi-User") is next. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
