@@ -59,7 +59,7 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 
 ## Persistence
 
-Local direct invocation does not configure a production checkpointer. For LangGraph Agent Server deployment, persistence is managed by Agent Server. Long-term memory and domain persistence are not implemented because there is no product requirement yet.
+Thread persistence and streaming are governed by ADR 0005 (`docs/decisions/0005-conversation-state-and-streaming.md`): checkpointer selection per environment (`memory`, `postgres`, `none`), thread ID and ownership rules, atomic turn commits, history trimming, the SSE event protocol, and the reject-on-busy concurrency policy. The graph exported to `langgraph.json` is compiled without a checkpointer, because Agent Server supplies its own persistence. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
 
 ## Security Boundaries
 
