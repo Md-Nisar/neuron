@@ -367,7 +367,8 @@ class AgentService:
                 logger.info("agent_thread_busy")
                 raise ThreadBusyError("a run is already in progress on this thread")
             checkpointer = self._persistence.checkpointer
-            assert checkpointer is not None  # nosec B101 - checked by _owned_thread_state
+            # _owned_thread_state already raised if there is no checkpointer.
+            assert checkpointer is not None  # nosec B101
             await checkpointer.adelete_thread(thread_id)
         logger.info("thread_deleted")
 
