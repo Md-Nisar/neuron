@@ -238,3 +238,42 @@ async def test_disconnect_via_anyio_cancel_scope_stops_the_run(gated: GatedAgent
     assert gated.cancelled is True
     assert _idle(service)
     assert asyncio.all_tasks() - tasks_before == set()
+
+
+async def test_run_budget_holds_when_client_stops_reading(gated: GatedAgent) -> None:
+    # Regression: the deadline used to be checked only while the generator awaited the
+    # next event, so a client that stopped reading kept the run (and its lease) alive.
+    service = _service(run_timeout_seconds=1)
+    run = await service.prepare(AgentRequest(message="slow"), streaming=True)
+    stream = service.stream(run)
+    assert (await anext(stream)).event == "run_started"  # then the client stops reading
+
+    await asyncio.sleep(1.5)
+    assert gated.cancelled is True  # the producer enforced the budget on its own
+    rest = [event async for event in stream]
+    assert [event.event for event in rest] == ["error", "done"]
+    assert rest[0].data["code"] == "run_timeout"
+    assert _idle(service)
+
+
+async def test_lease_released_when_response_fails_before_streaming(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Regression: sse-starlette skips its `background` hook when sending fails, which
+    # leaked the lease (thread stuck busy, stream slot lost).
+    service = AgentService(Settings(env="test"))
+    monkeypatch.setattr(api_main, "service", service)
+    response = await api_main.stream_agent(AgentRequest(message="hi"))
+    assert service._open_streams == 1
+
+    async def receive() -> dict[str, Any]:
+        await anyio.sleep_forever()
+        return {}  # pragma: no cover
+
+    async def send(message: dict[str, Any]) -> None:
+        raise OSError("client went away")
+
+    scope = {"type": "http", "method": "POST", "path": "/v1/agent/stream", "headers": []}
+    with pytest.raises(BaseException):  # noqa: B017 - sse-starlette may wrap it in a group
+        await response(scope, receive, send)
+    assert _idle(service)

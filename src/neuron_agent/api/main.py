@@ -8,6 +8,7 @@ import os
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import Any
 
 import anyio
 import structlog
@@ -16,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
-from starlette.background import BackgroundTask
+from starlette.types import Receive, Scope, Send
 
 from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
@@ -56,6 +57,27 @@ rate_limiter = InMemoryTokenBucketRateLimiter(
 _RATE_LIMITED_PATHS = frozenset({"/v1/agent/invoke", "/v1/agent/stream"})
 # On server shutdown, open streams get this long to send their final `error` event.
 _STREAM_SHUTDOWN_GRACE_SECONDS = 2.0
+# A client that stops reading for this long is disconnected, freeing its run and lease.
+_STREAM_SEND_TIMEOUT_SECONDS = 30.0
+
+
+class _CleanupEventSourceResponse(EventSourceResponse):
+    """An `EventSourceResponse` that runs `on_close` however the response ends.
+
+    sse-starlette's `background` hook is skipped when sending fails (the client is gone
+    before headers, or `send_timeout` fires). The run lease must still be released, or the
+    thread stays busy and the stream slot leaks.
+    """
+
+    def __init__(self, *args: Any, on_close: Callable[[], Awaitable[None]], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_close = on_close
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self._on_close()
 
 
 @app.middleware("http")
@@ -185,19 +207,22 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
         async for event in stream:
             yield {"event": event.event, "data": json.dumps(event.data)}
 
-    async def cleanup() -> None:
-        # Safety net for a disconnect that interrupted the stream mid-yield: closing the
-        # generator cancels its run, and the lease is released even if it never started.
-        await stream.aclose()
-        run.lease.release()
+    async def close() -> None:
+        # Closing the generator cancels its run if still active; the lease is released even
+        # if the generator never started.
+        try:
+            await stream.aclose()
+        finally:
+            run.lease.release()
 
-    return EventSourceResponse(
+    return _CleanupEventSourceResponse(
         events(),
         ping=settings.stream_heartbeat_seconds,
         headers={"Cache-Control": "no-cache"},
         shutdown_event=shutdown,
         shutdown_grace_period=_STREAM_SHUTDOWN_GRACE_SECONDS,
-        background=BackgroundTask(cleanup),
+        send_timeout=_STREAM_SEND_TIMEOUT_SECONDS,
+        on_close=close,
     )
 
 
