@@ -6,6 +6,7 @@ import json
 import math
 import os
 import time
+import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
@@ -13,7 +14,7 @@ from typing import Any
 import anyio
 import structlog
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
@@ -22,7 +23,7 @@ from starlette.types import Receive, Scope, Send
 from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
-from neuron_agent.schemas.agent import AgentRequest, AgentResponse
+from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
@@ -54,7 +55,7 @@ rate_limiter = InMemoryTokenBucketRateLimiter(
 )
 
 
-_RATE_LIMITED_PATHS = frozenset({"/v1/agent/invoke", "/v1/agent/stream"})
+_RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/")
 # On server shutdown, open streams get this long to send their final `error` event.
 _STREAM_SHUTDOWN_GRACE_SECONDS = 2.0
 # A client that stops reading for this long is disconnected, freeing its run and lease.
@@ -100,7 +101,7 @@ async def limit_request_body_size(
 async def enforce_rate_limit(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    if settings.rate_limit_enabled and request.url.path in _RATE_LIMITED_PATHS:
+    if settings.rate_limit_enabled and request.url.path.startswith(_RATE_LIMITED_PREFIXES):
         client_host = request.client.host if request.client else "unknown"
         decision = rate_limiter.check(client_host)
         if not decision.allowed:
@@ -224,6 +225,47 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
         send_timeout=_STREAM_SEND_TIMEOUT_SECONDS,
         on_close=close,
     )
+
+
+# Pre-auth caller identity for body-less thread endpoints; replaced by authentication in
+# v0.4.0. A header rather than a query parameter keeps it out of URLs and access logs.
+_UserIdHeader = Header(default=None, alias="X-User-Id", max_length=128)
+
+
+@app.get("/v1/threads/{thread_id}/messages", response_model=ThreadHistoryResponse)
+async def get_thread_messages(
+    thread_id: uuid.UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user_id: str | None = _UserIdHeader,
+) -> ThreadHistoryResponse:
+    """Return a page of a thread's user/assistant turns (ADR 0005, decision 7)."""
+    try:
+        return await service.get_history(str(thread_id), user_id, limit=limit, offset=offset)
+    except AppError as exc:
+        raise _http_error("thread_history_failed", exc) from exc
+
+
+@app.delete("/v1/threads/{thread_id}", status_code=204)
+async def delete_thread(thread_id: uuid.UUID, user_id: str | None = _UserIdHeader) -> Response:
+    """Delete all stored state for a thread (ADR 0005, decision 7)."""
+    try:
+        await service.delete_thread(str(thread_id), user_id)
+    except AppError as exc:
+        raise _http_error("thread_delete_failed", exc) from exc
+    return Response(status_code=204)
+
+
+def _http_error(event: str, exc: AppError) -> HTTPException:
+    """Log an `AppError` and map it to an HTTP error, hiding non-user-visible detail."""
+    logger.warning(
+        event,
+        error_code=exc.context.code,
+        error_type=type(exc).__name__,
+        retryable=exc.context.retryable,
+    )
+    detail = exc.context.code if exc.context.user_visible else "internal_server_error"
+    return HTTPException(status_code=exc.context.http_status, detail=detail)
 
 
 def main() -> None:

@@ -115,6 +115,16 @@ Event protocol, version 1. Each event is an SSE `event:` name with a JSON `data:
 
 Deltas are a best-effort preview; `final` is authoritative. `error` codes follow the same `user_visible` rule as HTTP errors, so internal failures appear as `internal_server_error`. Heartbeat comments are sent every `APP_STREAM_HEARTBEAT_SECONDS` (default `15`). Responses set `Cache-Control: no-cache` and `X-Accel-Buffering: no`. A streamed turn is persisted to the thread exactly like an `/invoke` turn.
 
+### Thread history and lifecycle
+
+ADR 0005, decision 7.
+
+- **History.** `GET /v1/threads/{thread_id}/messages?limit=&offset=` returns `{thread_id, messages: [{role, content}], total, limit, offset}`, oldest first. `limit` is 1–100 (default 50). Only user and assistant turns with text are included.
+- **Deletion.** `DELETE /v1/threads/{thread_id}` returns `204` after `adelete_thread` removes every checkpoint. It returns `409 thread_busy` while a run is in flight, because that run's final write would re-create the thread.
+- **Ownership.** Both endpoints apply the same owner check as conversations, using `X-User-Id` as the pre-auth identity because GET and DELETE have no body. Missing, foreign and non-persisted threads all return `404 thread_not_found`.
+- **Retention.** `persistence/retention.py::prune_threads` deletes threads whose newest root checkpoint is older than the cutoff. On Postgres this is one SQL aggregate; for other savers it scans `alist(None)`. Run it with `make prune-threads`.
+- **Rate limiting** applies to every `/v1/agent/*` and `/v1/threads/*` route.
+
 ### Cancellation, timeouts and concurrency
 
 ADR 0005, decisions 5 and 6.
@@ -181,4 +191,4 @@ Model calls are retried up to `APP_PROVIDER_MAX_RETRIES` times (default `2`, i.e
 
 ## Rate Limiting
 
-`/v1/agent/invoke` (only — health endpoints are exempt) is protected by a token-bucket limiter (`security/rate_limiter.py::InMemoryTokenBucketRateLimiter`, ADR 0004) applied in `api/main.py` before the request reaches `AgentService`. Keyed by client IP, with capacity `APP_RATE_LIMIT_BURST` (default `20`) refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW` / `APP_RATE_LIMIT_WINDOW_SECONDS` (default `60` requests per `60`s). An exceeded limit returns `429 {"detail": "rate_limited"}` with an integer `Retry-After` header, independent of the unrelated `RateLimitError` in the `AppError` taxonomy above (which classifies the *model provider's* rate limiting, not this API-boundary control). The limiter is in-process and resets on restart; it does not coordinate across multiple worker processes or instances (see ADR 0004's Consequences). Disable with `APP_RATE_LIMIT_ENABLED=false`.
+Every `/v1/agent/*` and `/v1/threads/*` route is protected by a token-bucket limiter, and health endpoints are exempt. This is (`security/rate_limiter.py::InMemoryTokenBucketRateLimiter`, ADR 0004) applied in `api/main.py` before the request reaches `AgentService`. Keyed by client IP, with capacity `APP_RATE_LIMIT_BURST` (default `20`) refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW` / `APP_RATE_LIMIT_WINDOW_SECONDS` (default `60` requests per `60`s). An exceeded limit returns `429 {"detail": "rate_limited"}` with an integer `Retry-After` header, independent of the unrelated `RateLimitError` in the `AppError` taxonomy above (which classifies the *model provider's* rate limiting, not this API-boundary control). The limiter is in-process and resets on restart; it does not coordinate across multiple worker processes or instances (see ADR 0004's Consequences). Disable with `APP_RATE_LIMIT_ENABLED=false`.

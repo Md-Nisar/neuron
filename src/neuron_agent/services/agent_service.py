@@ -13,7 +13,7 @@ from typing import Any, Protocol
 import anyio
 import psycopg
 import structlog
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
@@ -28,7 +28,13 @@ from neuron_agent.errors.base import (
 from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.observability.logging import bind_correlation_context
 from neuron_agent.persistence.checkpointer import Persistence, build_persistence
-from neuron_agent.schemas.agent import AgentAnswer, AgentRequest, AgentResponse
+from neuron_agent.schemas.agent import (
+    AgentAnswer,
+    AgentRequest,
+    AgentResponse,
+    ThreadHistoryResponse,
+    ThreadMessage,
+)
 from neuron_agent.security.input_policy import validate_user_message
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
 
@@ -305,11 +311,68 @@ class AgentService:
             return str(uuid.uuid4())
         if self._persistence.checkpointer is None:
             return thread_id
+        await self._owned_thread_state(thread_id, user_id_hash)
+        return thread_id
+
+    async def get_history(
+        self, thread_id: str, user_id: str | None, *, limit: int, offset: int
+    ) -> ThreadHistoryResponse:
+        """Return a page of the thread's user/assistant turns, oldest first.
+
+        Only `HumanMessage`/`AIMessage` turns with text are exposed; system prompts, tool
+        calls and tool results are never returned.
+        """
+        user_id_hash = _hash_identifier(user_id) if user_id else None
+        bind_correlation_context(request_id=None, thread_id=thread_id)
+        with self._persistence_errors():
+            values = await self._owned_thread_state(thread_id, user_id_hash)
+        turns = [
+            ThreadMessage(
+                role="user" if isinstance(message, HumanMessage) else "assistant",
+                content=message.content,
+            )
+            for message in values.get("messages", [])
+            if isinstance(message, HumanMessage | AIMessage)
+            and isinstance(message.content, str)
+            and message.content
+        ]
+        return ThreadHistoryResponse(
+            thread_id=thread_id,
+            messages=turns[offset : offset + limit],
+            total=len(turns),
+            limit=limit,
+            offset=offset,
+        )
+
+    async def delete_thread(self, thread_id: str, user_id: str | None) -> None:
+        """Delete every checkpoint of an owned thread. Rejected while a run is in flight."""
+        user_id_hash = _hash_identifier(user_id) if user_id else None
+        bind_correlation_context(request_id=None, thread_id=thread_id)
+        with self._persistence_errors():
+            await self._owned_thread_state(thread_id, user_id_hash)
+            if thread_id in self._active_threads:
+                # The in-flight run would re-create the thread with its final write.
+                logger.info("agent_thread_busy")
+                raise ThreadBusyError("a run is already in progress on this thread")
+            checkpointer = self._persistence.checkpointer
+            assert checkpointer is not None  # nosec B101 - checked by _owned_thread_state
+            await checkpointer.adelete_thread(thread_id)
+        logger.info("thread_deleted")
+
+    async def _owned_thread_state(self, thread_id: str, user_id_hash: str | None) -> dict[str, Any]:
+        """Return the thread's state if it exists and belongs to `user_id_hash`.
+
+        A missing thread, another user's thread, and a service without persistence all raise
+        the same `ThreadNotFoundError`, so thread IDs cannot be probed.
+        """
+        if self._persistence.checkpointer is None:
+            raise ThreadNotFoundError("thread not found")
         snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
         if not snapshot.values or snapshot.values.get("user_id_hash") != user_id_hash:
             logger.info("thread_access_denied")
             raise ThreadNotFoundError("thread not found")
-        return thread_id
+        values: dict[str, Any] = snapshot.values
+        return values
 
 
 def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:
