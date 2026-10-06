@@ -161,6 +161,10 @@ def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
             provider_retry_middleware(settings),
         ],
         name="neuron_main_agent",
+        # Runs as a subgraph of the main graph. Never checkpoint its internal state
+        # (tool calls/results, intermediate steps): only the main graph's user turns and
+        # final answers are thread history (ADR 0005).
+        checkpointer=False,
     )
 
 
