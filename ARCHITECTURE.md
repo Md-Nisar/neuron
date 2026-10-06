@@ -64,7 +64,7 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 
 User IDs are hashed before entering telemetry-oriented state.
 
-A turn is committed atomically (ADR 0005). `AgentService` passes the new user text as `user_message` with an empty `messages` input. The `agent` node sends `history + HumanMessage(user_message)` to the agent and, only on success, appends that `HumanMessage` and the final `AIMessage` to `messages` while clearing `user_message`. A failed run leaves `messages` unchanged. The agent's intermediate tool-call and tool-result messages are not persisted. Inputs that already carry the user turn in `messages`, as Agent Server and LangGraph Studio send them, still work: the node appends only the answer.
+A turn is committed atomically (ADR 0005). `AgentService` passes the new user text as `user_message` with an empty `messages` input. The `agent` node sends `history + HumanMessage(user_message)` to the agent and, only on success, appends that `HumanMessage` and the final `AIMessage` to `messages` while clearing `user_message`. A failed run leaves `messages` unchanged. Its `user_message` does remain in that run's checkpoint until the next turn overwrites it. History is only ever read from `messages`, so the stale value is never replayed. Like every turn's input, it is part of the stored checkpoint history, which is user data removed by thread deletion and retention (ADR 0005, decision 7). The agent's intermediate tool-call and tool-result messages are not persisted. Inputs that already carry the user turn in `messages`, as Agent Server and LangGraph Studio send them, still work: the node appends only the answer.
 
 ## Persistence
 
