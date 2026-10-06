@@ -11,12 +11,15 @@ from neuron_agent.api.main import app
 from neuron_agent.errors.base import (
     AgentExecutionError,
     AuthorizationError,
+    CapacityError,
     ConfigurationError,
     PersistenceError,
     ProviderError,
     ProviderTimeoutError,
     RateLimitError,
+    RunTimeoutError,
     StructuredOutputError,
+    ThreadBusyError,
     ThreadNotFoundError,
     ToolExecutionError,
     ValidationAppError,
@@ -83,6 +86,9 @@ def test_agent_invoke_rejects_oversized_body_via_content_length() -> None:
         (AgentExecutionError("agent failed"), 500, "internal_server_error"),
         (PersistenceError("db down"), 503, "internal_server_error"),
         (ThreadNotFoundError("missing"), 404, "thread_not_found"),
+        (ThreadBusyError("busy"), 409, "thread_busy"),
+        (CapacityError("full"), 503, "too_many_streams"),
+        (RunTimeoutError("slow"), 504, "run_timeout"),
     ],
 )
 def test_agent_invoke_maps_app_errors_to_http(

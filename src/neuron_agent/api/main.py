@@ -9,12 +9,14 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
+import anyio
 import structlog
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
+from starlette.background import BackgroundTask
 
 from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
@@ -52,6 +54,8 @@ rate_limiter = InMemoryTokenBucketRateLimiter(
 
 
 _RATE_LIMITED_PATHS = frozenset({"/v1/agent/invoke", "/v1/agent/stream"})
+# On server shutdown, open streams get this long to send their final `error` event.
+_STREAM_SHUTDOWN_GRACE_SECONDS = 2.0
 
 
 @app.middleware("http")
@@ -163,7 +167,7 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
     """
     bind_correlation_context(request_id=None, thread_id=request.thread_id)
     try:
-        run = await service.prepare(request)
+        run = await service.prepare(request, streaming=True)
     except AppError as exc:
         logger.warning(
             "agent_stream_rejected",
@@ -174,14 +178,26 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
         detail = exc.context.code if exc.context.user_visible else "internal_server_error"
         raise HTTPException(status_code=exc.context.http_status, detail=detail) from exc
 
+    shutdown = anyio.Event()
+    stream = service.stream(run, stop=shutdown)
+
     async def events() -> AsyncIterator[dict[str, str]]:
-        async for event in service.stream(run):
+        async for event in stream:
             yield {"event": event.event, "data": json.dumps(event.data)}
+
+    async def cleanup() -> None:
+        # Safety net for a disconnect that interrupted the stream mid-yield: closing the
+        # generator cancels its run, and the lease is released even if it never started.
+        await stream.aclose()
+        run.lease.release()
 
     return EventSourceResponse(
         events(),
         ping=settings.stream_heartbeat_seconds,
         headers={"Cache-Control": "no-cache"},
+        shutdown_event=shutdown,
+        shutdown_grace_period=_STREAM_SHUTDOWN_GRACE_SECONDS,
+        background=BackgroundTask(cleanup),
     )
 
 

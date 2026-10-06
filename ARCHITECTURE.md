@@ -115,6 +115,20 @@ Event protocol, version 1. Each event is an SSE `event:` name with a JSON `data:
 
 Deltas are a best-effort preview; `final` is authoritative. `error` codes follow the same `user_visible` rule as HTTP errors, so internal failures appear as `internal_server_error`. Heartbeat comments are sent every `APP_STREAM_HEARTBEAT_SECONDS` (default `15`). Responses set `Cache-Control: no-cache` and `X-Accel-Buffering: no`. A streamed turn is persisted to the thread exactly like an `/invoke` turn.
 
+### Cancellation, timeouts and concurrency
+
+ADR 0005, decisions 5 and 6.
+
+- **Run lease.** `AgentService.prepare` claims a `RunLease` before any output. `invoke` and `stream` release it when the run ends, whatever the outcome. The SSE response's background task releases it again as a safety net; release is idempotent.
+  - **Busy thread:** with persistence enabled, a second run on a thread that already has a run in flight is rejected with `409 thread_busy`, and the first run is unaffected. Without persistence, `thread_id` is only a correlation ID and isn't guarded.
+  - **Stream cap:** streams also take one of `APP_MAX_CONCURRENT_STREAMS` slots (default `100`); beyond that, `503 too_many_streams`.
+  - **Per process:** both guards live in process memory. Like ADR 0004's rate limiter, they don't coordinate across replicas or workers.
+- **Run timeout.** Every run, `invoke` or `stream`, is bounded by `APP_RUN_TIMEOUT_SECONDS` (default `120`), which covers all model calls, retries and tool calls. `APP_REQUEST_TIMEOUT_SECONDS` still bounds each individual provider call. On timeout, `invoke` returns `504 run_timeout`; a stream emits `error {"code": "run_timeout", "retryable": true}`, then `done`.
+- **Disconnect.** The graph runs in a producer task feeding a queue, and the SSE generator relays it. When the client disconnects, `sse-starlette` cancels the generator, whose `finally` cancels the producer exactly once and waits for it to unwind, logging `agent_stream_cancelled`. Cancelling LangGraph's `astream` cancels the running `agent` node, so model and tool calls stop.
+  - The wait uses `asyncio.wait` inside a shielded, bounded anyio scope. A plain `await task` inside the already-cancelled anyio scope would forward a new `cancel()` to the producer on every retry, interrupting LangGraph's cleanup and orphaning the model call (covered by a regression test).
+- **Shutdown.** On server shutdown, `sse-starlette` sets the stream's `shutdown_event`. The generator stops the run and sends `error {"code": "service_shutting_down", "retryable": true}` and `done` within a 2-second grace period.
+- **Thread state.** A cancelled, timed-out or stopped run doesn't touch the thread's `messages`, because turns commit only on success. The thread can be continued immediately.
+
 ## Security Boundaries
 
 The model is not trusted as a security boundary. Tool availability is enforced in application code. Current tools are read-only and bounded. External URLs are rejected if they target local hosts.
@@ -150,6 +164,10 @@ Expected failures are classified through `AppError` subclasses (`src/neuron_agen
 | `AgentExecutionError` | `agent_execution_error` | 500 | yes | no |
 | `PersistenceError` | `persistence_error` | 503 | yes | no |
 | `ThreadNotFoundError` | `thread_not_found` | 404 | no | yes |
+| `ThreadBusyError` | `thread_busy` | 409 | yes | yes |
+| `CapacityError` | `too_many_streams` | 503 | yes | yes |
+| `RunTimeoutError` | `run_timeout` | 504 | yes | yes |
+| `ShuttingDownError` | `service_shutting_down` | 503 | yes | yes |
 
 `api/main.py` centralizes the HTTP mapping: it raises `HTTPException(status_code=exc.context.http_status, detail=...)`, where `detail` is the stable `code` when `user_visible` is `True`, or the generic `internal_server_error` otherwise — so provider/tool/internal failure detail never reaches the client, only the server logs (via `logger.warning`/`logger.exception`). Any exception that isn't an `AppError` also maps to a generic `500 internal_server_error`.
 
