@@ -23,9 +23,11 @@ from neuron_agent.models.factory import (
     agent_invocation_config,
     classify_agent_error,
     create_chat_model,
+    create_main_agent,
     get_retry_attempts,
     reset_retry_attempts,
 )
+from neuron_agent.tools import calculator, utc_now
 
 _REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
 
@@ -187,3 +189,19 @@ def test_retry_attempts_counts_only_retryable_errors() -> None:
 
     reset_retry_attempts()
     assert get_retry_attempts() == 0
+
+
+@pytest.mark.anyio
+async def test_fake_chat_model_tolerates_create_agent_tool_binding() -> None:
+    """Regression test: `create_agent` always calls `model.bind_tools(...)`, even when
+    `create_chat_model` falls back to the fake model because no provider key is set.
+    The base fake model's `bind_tools` raises `NotImplementedError`, which previously
+    crashed every `/v1/agent/invoke` call made without credentials configured."""
+    settings = Settings(env="test", openai_api_key=None)
+    agent = create_main_agent(settings, tools=[utc_now, calculator])
+
+    result = await agent.ainvoke(
+        {"messages": [AIMessage(content="hi")]}, config={"recursion_limit": 5}
+    )
+
+    assert result["messages"][-1].content == "Local test response."

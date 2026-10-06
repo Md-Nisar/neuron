@@ -21,8 +21,10 @@ from langchain.agents.middleware import (
 from langchain.agents.structured_output import (
     StructuredOutputError as LangChainStructuredOutputError,
 )
+from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphBubbleUp
@@ -162,10 +164,29 @@ def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
     )
 
 
-def create_chat_model(settings: Settings) -> ChatOpenAI | FakeListChatModel:
+class _FakeChatModel(FakeListChatModel):
+    """`FakeListChatModel` that tolerates `create_agent`'s unconditional `bind_tools` call.
+
+    `create_agent` always calls `model.bind_tools(...)` to wire the approved tool set,
+    even when `create_chat_model` falls back to this model because no provider key is
+    configured. The base `bind_tools` raises `NotImplementedError`; this fake model
+    never calls tools, so binding is a no-op that returns itself unchanged.
+    """
+
+    def bind_tools(
+        self,
+        tools: Sequence[dict[str, Any] | type | Callable[..., Any] | BaseTool],
+        *,
+        tool_choice: str | None = None,
+        **kwargs: Any,
+    ) -> Runnable[LanguageModelInput, AIMessage]:
+        return self
+
+
+def create_chat_model(settings: Settings) -> ChatOpenAI | _FakeChatModel:
     """Create the chat model with provider-specific runtime limits."""
     if settings.env in {"development", "test"} and settings.openai_api_key is None:
-        return FakeListChatModel(responses=["Local test response."])
+        return _FakeChatModel(responses=["Local test response."])
 
     provider, model_name = _split_model_identifier(settings.default_model)
     if provider != "openai":
