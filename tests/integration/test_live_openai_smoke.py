@@ -24,6 +24,7 @@ def test_live_openai_smoke() -> None:
             "messages": [HumanMessage(content="Reply with exactly: ok")],
             "request_id": "smoke-request",
             "thread_id": "smoke-thread",
+            "run_id": "12345678-1234-5678-1234-567812345678",
         }
     )
     answer = result["answer"]
