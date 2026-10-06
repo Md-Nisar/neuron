@@ -51,8 +51,12 @@ def test_settings_rejects_rate_limit_burst_out_of_bounds() -> None:
         Settings(env="test", openai_api_key=None, rate_limit_burst=0)
 
 
-def test_settings_default_checkpointer_is_none() -> None:
-    assert Settings(env="test").checkpointer == "none"
+@pytest.mark.parametrize(
+    ("env", "expected"),
+    [("development", "memory"), ("test", "memory"), ("staging", "none"), ("production", "none")],
+)
+def test_settings_auto_checkpointer_resolves_per_environment(env: str, expected: str) -> None:
+    assert Settings(env=env, openai_api_key="sk-test").checkpointer == expected
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])

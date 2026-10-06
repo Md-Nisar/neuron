@@ -56,18 +56,33 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 
 ## State Model
 
-`MainGraphState` contains message history, request ID, thread ID, run ID, optional hashed user ID, answer, and error fields. User IDs are hashed before entering telemetry-oriented state.
+`MainGraphState` contains:
+- message history (`messages`), the thread's persisted conversation;
+- per-run fields, overwritten every turn: request ID, run ID, `user_message`, answer, and error;
+- the thread ID;
+- the optional hashed user ID, which also records the thread's owner.
+
+User IDs are hashed before entering telemetry-oriented state.
+
+A turn is committed atomically (ADR 0005). `AgentService` passes the new user text as `user_message` with an empty `messages` input. The `agent` node sends `history + HumanMessage(user_message)` to the agent and, only on success, appends that `HumanMessage` and the final `AIMessage` to `messages` while clearing `user_message`. A failed run leaves `messages` unchanged. The agent's intermediate tool-call and tool-result messages are not persisted. Inputs that already carry the user turn in `messages`, as Agent Server and LangGraph Studio send them, still work: the node appends only the answer.
 
 ## Persistence
 
 Thread persistence and streaming are governed by ADR 0005 (`docs/decisions/0005-conversation-state-and-streaming.md`): checkpointer selection per environment (`memory`, `postgres`, `none`), thread ID and ownership rules, atomic turn commits, history trimming, the SSE event protocol, and the reject-on-busy concurrency policy. The graph exported to `langgraph.json` is compiled without a checkpointer, because Agent Server supplies its own persistence.
 
 `persistence/checkpointer.py::build_persistence` selects the backend from `APP_CHECKPOINTER`:
-- `none` is the default.
+- `auto` is the default. It resolves to `memory` in development and test and to `none` in staging and production, so an upgrade never breaks an unconfigured deployment.
+- `none` keeps v0.2.0's stateless behaviour.
 - `memory` (`InMemorySaver`) is rejected in staging and production.
 - `postgres` uses `AsyncPostgresSaver` over a `psycopg_pool.AsyncConnectionPool` sized by `APP_POSTGRES_POOL_MAX_SIZE` and `APP_POSTGRES_POOL_TIMEOUT_SECONDS`.
 
-`AgentService` passes the checkpointer to `build_graph`. The FastAPI `lifespan` opens the pool on startup and closes it on shutdown. Schema creation is explicit: `make db-setup`, or `APP_CHECKPOINTER_SETUP_ON_STARTUP=true` for local use. `/health/ready` returns `503 {"status": "not_ready"}` while the database is unreachable. A `psycopg` failure during a run is classified as `PersistenceError` (`503 persistence_error`, retryable, detail hidden from clients). The DSN is a `SecretStr` and is never logged. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
+`AgentService` passes the checkpointer to `build_graph`. The FastAPI `lifespan` opens the pool on startup and closes it on shutdown. Schema creation is explicit: `make db-setup`, or `APP_CHECKPOINTER_SETUP_ON_STARTUP=true` for local use. `/health/ready` returns `503 {"status": "not_ready"}` while the database is unreachable. A `psycopg` failure during a run is classified as `PersistenceError` (`503 persistence_error`, retryable, detail hidden from clients). The DSN is a `SecretStr` and is never logged.
+
+Thread rules (`AgentService._resolve_thread`):
+- A request without `thread_id` starts a new thread with a server-minted UUIDv4.
+- A supplied `thread_id` must be a UUID (`422 validation_error` otherwise) and is normalized to its canonical lowercase form.
+- With persistence enabled, a supplied `thread_id` must name an existing thread whose stored `user_id_hash` matches the request's. A missing thread and another user's thread both return `404 thread_not_found`.
+- With `none`, a supplied `thread_id` is only a correlation ID. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
 
 ## Security Boundaries
 
@@ -103,6 +118,7 @@ Expected failures are classified through `AppError` subclasses (`src/neuron_agen
 | `StructuredOutputError` | `structured_output_error` | 502 | yes | no |
 | `AgentExecutionError` | `agent_execution_error` | 500 | yes | no |
 | `PersistenceError` | `persistence_error` | 503 | yes | no |
+| `ThreadNotFoundError` | `thread_not_found` | 404 | no | yes |
 
 `api/main.py` centralizes the HTTP mapping: it raises `HTTPException(status_code=exc.context.http_status, detail=...)`, where `detail` is the stable `code` when `user_visible` is `True`, or the generic `internal_server_error` otherwise — so provider/tool/internal failure detail never reaches the client, only the server logs (via `logger.warning`/`logger.exception`). Any exception that isn't an `AppError` also maps to a generic `500 internal_server_error`.
 

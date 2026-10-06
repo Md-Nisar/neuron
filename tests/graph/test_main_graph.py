@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import openai
 import pytest
@@ -167,3 +169,35 @@ async def test_build_graph_with_checkpointer_persists_state() -> None:
     snapshot = await compiled.aget_state(config)
     assert snapshot.values["answer"].answer
     assert len(snapshot.values["messages"]) == 2
+
+
+async def test_user_message_and_answer_are_committed_together(echo_agent: Any) -> None:
+    compiled = build_graph(Settings(env="test"), checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "thread-1"}}
+    turn = {**_state(), "messages": [], "user_message": "hello"}
+    result = await compiled.ainvoke(turn, config=config)
+
+    assert [type(m) for m in result["messages"]] == [HumanMessage, AIMessage]
+    assert result["user_message"] is None
+    # The agent saw the new user turn even though it was not yet in persisted history.
+    assert [m.content for m in echo_agent.calls[0]] == ["hello"]
+
+
+async def test_failed_run_does_not_commit_user_message(echo_agent: Any) -> None:
+    compiled = build_graph(Settings(env="test"), checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "thread-1"}}
+    echo_agent.fail_next = True
+    with pytest.raises(AgentExecutionError):
+        await compiled.ainvoke({**_state(), "messages": [], "user_message": "lost"}, config=config)
+
+    snapshot = await compiled.aget_state(config)
+    assert snapshot.values["messages"] == []
+
+
+async def test_messages_input_without_user_message_still_supported(echo_agent: Any) -> None:
+    # Agent Server / LangGraph Studio send the user turn inside `messages`.
+    compiled = build_graph(Settings(env="test"))
+    result = await compiled.ainvoke(_state())
+
+    assert [type(m) for m in result["messages"]] == [HumanMessage, AIMessage]
+    assert result["answer"].answer == "2+2"

@@ -9,7 +9,7 @@ from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production", "test"]
-CheckpointerBackend = Literal["memory", "postgres", "none"]
+CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
 
 
 class Settings(BaseSettings):
@@ -39,7 +39,8 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     enable_langsmith: bool = False
-    checkpointer: CheckpointerBackend = "none"
+    # "auto" resolves to memory in development/test and none in staging/production.
+    checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
     postgres_dsn: SecretStr | None = None
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
@@ -64,7 +65,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_checkpointer(self) -> Settings:
-        """Reject persistence backends that cannot work in the configured environment."""
+        """Resolve `auto` and reject backends that cannot work in the configured environment."""
+        if self.checkpointer == "auto":
+            self.checkpointer = "memory" if self.env in {"development", "test"} else "none"
         if self.checkpointer == "memory" and self.env in {"staging", "production"}:
             raise ValueError(
                 "APP_CHECKPOINTER=memory is not durable; use postgres or none in staging/production"
