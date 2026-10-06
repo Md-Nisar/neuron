@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
     max_thread_messages: int = Field(default=200, ge=2, le=10_000)
     stream_heartbeat_seconds: int = Field(default=15, ge=1, le=120)
+    run_timeout_seconds: int = Field(default=120, ge=1, le=900)
+    max_concurrent_streams: int = Field(default=100, ge=1, le=10_000)
     openai_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices(

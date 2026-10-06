@@ -40,6 +40,30 @@ class ThreadNotFoundError(AppError):
     context = ErrorContext(code="thread_not_found", http_status=404)
 
 
+class ThreadBusyError(AppError):
+    """Another run is already in flight on this thread (ADR 0005 reject strategy)."""
+
+    context = ErrorContext(code="thread_busy", http_status=409, retryable=True)
+
+
+class CapacityError(AppError):
+    """The process is at its concurrent-stream limit."""
+
+    context = ErrorContext(code="too_many_streams", http_status=503, retryable=True)
+
+
+class RunTimeoutError(AppError):
+    """A whole agent run exceeded `APP_RUN_TIMEOUT_SECONDS`."""
+
+    context = ErrorContext(code="run_timeout", http_status=504, retryable=True)
+
+
+class ShuttingDownError(AppError):
+    """The server is shutting down; the run was stopped."""
+
+    context = ErrorContext(code="service_shutting_down", http_status=503, retryable=True)
+
+
 class ConfigurationError(AppError):
     """Application or provider misconfiguration."""
 
