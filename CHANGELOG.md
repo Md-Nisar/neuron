@@ -16,6 +16,8 @@
 - Operations documentation: Postgres, reverse-proxy settings for SSE, runbook entries, a `docker compose` stack with Postgres, and the full `.env.example` (#29).
 - Release verification (#30) found and fixed a defect present since 0.2.0: every Agent Server or LangGraph Studio run failed, because inputs without a `run_id` crashed `agent_invocation_config`.
 
+Known issue: the live OpenAI smoke tests and live evals could not complete, because the available API account had no credit (`429 insufficient_quota`). Deterministic suites, Postgres integration and real-server checks all pass; see `docs/releases/v0.3.0-release-verification.md`.
+
 ## 0.2.0
 
 "Reliable Agent Runtime" — predictable failures, bounded execution, and operational visibility.
