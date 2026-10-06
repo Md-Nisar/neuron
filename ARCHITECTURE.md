@@ -89,6 +89,32 @@ History bounds (`graphs/main_graph.py`, ADR 0005 decision 3):
 - **Storage:** after each successful turn, `evict_oldest_turns` removes the oldest whole turns, through `RemoveMessage`, so a thread holds at most `APP_MAX_THREAD_MESSAGES` messages (default `200`).
 - **No summarization:** `SummarizationMiddleware` is deliberately not used (ADR 0005), so no model-written summaries are persisted. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
 
+## Streaming
+
+`POST /v1/agent/stream` takes the same `AgentRequest` body as `/v1/agent/invoke` and returns `text/event-stream` (ADR 0005, decision 4). It is rate-limited and body-size-limited like `/invoke`.
+
+- **Before the first byte:** `AgentService.prepare` validates the message and resolves the thread. Those failures (`422`, `400`, `404 thread_not_found`, `429`, `413`) are ordinary HTTP responses.
+- **After the stream starts:** `AgentService.stream` drives `graph.astream(stream_mode=["messages", "updates"], subgraphs=True)`. `subgraphs=True` is required because `create_agent` runs as a nested graph inside the `agent` node; without it, LangGraph drops the model's token events.
+- **Token filtering:** only `AIMessageChunk`s from the nested `model` node become `token` and `tool_call` events. The outer node's own output, which repeats the user turn and the final answer, is ignored.
+
+Event protocol, version 1. Each event is an SSE `event:` name with a JSON `data:` payload:
+
+| Event | Data | When |
+| --- | --- | --- |
+| `run_started` | `request_id`, `thread_id`, `run_id` | always first |
+| `token` | `text` | answer delta; zero or more |
+| `tool_call` | `name` | a real tool call starts; never arguments or results |
+| `final` | `request_id`, `thread_id`, `answer`, `used_tools`, `confidence` | success; same shape as the `/invoke` response |
+| `error` | `code`, `retryable` | failure after start; replaces `final` |
+| `done` | `{}` | always last |
+
+`token` deltas come from `services/streaming.py::AnswerTokenExtractor`:
+- For JSON structured output, whether in message content or in the `AgentAnswer` tool-call arguments, it re-parses the partial JSON on each chunk (`parse_partial_json`) and emits only the growth of the `answer` field.
+- Plain text is passed through.
+- Other tools' arguments are never fed in.
+
+Deltas are a best-effort preview; `final` is authoritative. `error` codes follow the same `user_visible` rule as HTTP errors, so internal failures appear as `internal_server_error`. Heartbeat comments are sent every `APP_STREAM_HEARTBEAT_SECONDS` (default `15`). Responses set `Cache-Control: no-cache` and `X-Accel-Buffering: no`. A streamed turn is persisted to the thread exactly like an `/invoke` turn.
+
 ## Security Boundaries
 
 The model is not trusted as a security boundary. Tool availability is enforced in application code. Current tools are read-only and bounded. External URLs are rejected if they target local hosts.

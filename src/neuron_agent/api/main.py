@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import time
@@ -13,6 +14,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sse_starlette.sse import EventSourceResponse
 
 from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
@@ -49,6 +51,9 @@ rate_limiter = InMemoryTokenBucketRateLimiter(
 )
 
 
+_RATE_LIMITED_PATHS = frozenset({"/v1/agent/invoke", "/v1/agent/stream"})
+
+
 @app.middleware("http")
 async def limit_request_body_size(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -69,7 +74,7 @@ async def limit_request_body_size(
 async def enforce_rate_limit(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    if settings.rate_limit_enabled and request.url.path == "/v1/agent/invoke":
+    if settings.rate_limit_enabled and request.url.path in _RATE_LIMITED_PATHS:
         client_host = request.client.host if request.client else "unknown"
         decision = rate_limiter.check(client_host)
         if not decision.allowed:
@@ -146,6 +151,38 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
             duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         raise HTTPException(status_code=500, detail="internal_server_error") from exc
+
+
+@app.post("/v1/agent/stream")
+async def stream_agent(request: AgentRequest) -> EventSourceResponse:
+    """Stream a run as server-sent events (ADR 0005, decision 4).
+
+    Validation, rate limiting and thread resolution happen before the first byte, so those
+    failures use normal HTTP status codes. Failures after the stream starts become a single
+    `error` event followed by `done`.
+    """
+    bind_correlation_context(request_id=None, thread_id=request.thread_id)
+    try:
+        run = await service.prepare(request)
+    except AppError as exc:
+        logger.warning(
+            "agent_stream_rejected",
+            thread_id=request.thread_id,
+            error_code=exc.context.code,
+            error_type=type(exc).__name__,
+        )
+        detail = exc.context.code if exc.context.user_visible else "internal_server_error"
+        raise HTTPException(status_code=exc.context.http_status, detail=detail) from exc
+
+    async def events() -> AsyncIterator[dict[str, str]]:
+        async for event in service.stream(run):
+            yield {"event": event.event, "data": json.dumps(event.data)}
+
+    return EventSourceResponse(
+        events(),
+        ping=settings.stream_heartbeat_seconds,
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 def main() -> None:

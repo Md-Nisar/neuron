@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
     max_thread_messages: int = Field(default=200, ge=2, le=10_000)
+    stream_heartbeat_seconds: int = Field(default=15, ge=1, le=120)
     openai_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices(
