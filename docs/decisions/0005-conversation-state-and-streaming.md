@@ -30,10 +30,12 @@ A new `persistence/` module owns checkpointer construction, selected by `APP_CHE
 
 | Value | Saver | Allowed in |
 | --- | --- | --- |
-| `memory` (default) | `langgraph.checkpoint.memory.InMemorySaver` | `development`, `test` |
+| `auto` (default) | resolves to `memory` in `development`/`test` and `none` in `staging`/`production` | any |
+| `memory` | `langgraph.checkpoint.memory.InMemorySaver` | `development`, `test` |
 | `postgres` | `langgraph.checkpoint.postgres.aio.AsyncPostgresSaver` over a `psycopg_pool.AsyncConnectionPool` (`autocommit=True`, `row_factory=dict_row`, `prepare_threshold=0`) | any |
 | `none` | no checkpointer: stateless, v0.2.0 behaviour | any |
 
+- `auto` keeps upgrades safe. An existing staging or production deployment that doesn't set `APP_CHECKPOINTER` keeps v0.2.0's stateless behaviour instead of failing at startup, while local development gets conversations with no setup.
 - `memory` is rejected at startup in `staging` and `production`. Process memory isn't durable and isn't shared across replicas (the same reasoning ADR 0002 used).
 - The Postgres DSN is a `SecretStr` read only through `Settings`, and it's never logged.
 - The pool is opened and closed in the FastAPI `lifespan`. Schema creation (`AsyncPostgresSaver.setup()`) is an explicit, idempotent operator step (`make db-setup`), with an opt-in `APP_CHECKPOINTER_SETUP_ON_STARTUP` for local use. It never runs implicitly per request.

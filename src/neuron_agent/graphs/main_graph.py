@@ -6,7 +6,7 @@ import time
 from typing import Any
 
 import structlog
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
@@ -27,7 +27,13 @@ logger = structlog.get_logger(__name__)
 async def call_agent(
     state: MainGraphState, *, agent: Any, settings: Settings | None = None
 ) -> dict[str, Any]:
-    """Invoke the LangChain agent and normalize its output into application state."""
+    """Invoke the LangChain agent and normalize its output into application state.
+
+    When `user_message` is set (the `AgentService` path), the new `HumanMessage` and the
+    final `AIMessage` are committed to `messages` together, so a failed run leaves no
+    dangling user turn in the thread (ADR 0005). Inputs that already carry the user turn in
+    `messages` (Agent Server, LangGraph Studio) are supported unchanged.
+    """
     resolved_settings = settings or get_settings()
     request_id = state.get("request_id")
     thread_id = state.get("thread_id")
@@ -41,11 +47,16 @@ async def call_agent(
         model=model,
         recursion_limit=resolved_settings.max_agent_iterations,
     )
+    new_turn: list[BaseMessage] = []
+    user_message = state.get("user_message")
+    if user_message:
+        new_turn.append(HumanMessage(content=user_message))
+    history = [*state.get("messages", []), *new_turn]
     reset_retry_attempts()
     started = time.monotonic()
     try:
         result = await agent.ainvoke(
-            {"messages": state["messages"]},
+            {"messages": history},
             config=agent_invocation_config(resolved_settings, run_id=run_id),
         )
     except Exception as exc:  # noqa: BLE001
@@ -81,9 +92,12 @@ async def call_agent(
         retry_count=get_retry_attempts(),
         duration_ms=round((time.monotonic() - started) * 1000, 2),
     )
+    # Only the user turn and the final answer are persisted; the agent's intermediate
+    # tool-call/tool-result messages stay inside this run.
     return {
-        "messages": [AIMessage(content=answer.answer)],
+        "messages": [*new_turn, AIMessage(content=answer.answer)],
         "answer": answer,
+        "user_message": None,
     }
 
 

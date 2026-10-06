@@ -34,6 +34,12 @@ class AuthorizationError(AppError):
     context = ErrorContext(code="authorization_error", http_status=403)
 
 
+class ThreadNotFoundError(AppError):
+    """Thread does not exist or belongs to another user (deliberately indistinguishable)."""
+
+    context = ErrorContext(code="thread_not_found", http_status=404)
+
+
 class ConfigurationError(AppError):
     """Application or provider misconfiguration."""
 

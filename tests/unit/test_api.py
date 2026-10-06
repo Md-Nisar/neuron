@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 import pytest
 import structlog.testing
 from fastapi.testclient import TestClient
@@ -15,10 +17,11 @@ from neuron_agent.errors.base import (
     ProviderTimeoutError,
     RateLimitError,
     StructuredOutputError,
+    ThreadNotFoundError,
     ToolExecutionError,
     ValidationAppError,
 )
-from neuron_agent.schemas.agent import AgentResponse
+from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 
 
@@ -79,6 +82,7 @@ def test_agent_invoke_rejects_oversized_body_via_content_length() -> None:
         (StructuredOutputError("bad structured output"), 502, "internal_server_error"),
         (AgentExecutionError("agent failed"), 500, "internal_server_error"),
         (PersistenceError("db down"), 503, "internal_server_error"),
+        (ThreadNotFoundError("missing"), 404, "thread_not_found"),
     ],
 )
 def test_agent_invoke_maps_app_errors_to_http(
@@ -214,3 +218,38 @@ def test_lifespan_opens_and_closes_service(monkeypatch: pytest.MonkeyPatch) -> N
         assert client.get("/health/live").status_code == 200
         assert calls == ["startup"]
     assert calls == ["startup", "shutdown"]
+
+
+@pytest.mark.parametrize("thread_id", ["thread-1", "not-a-uuid", "", "1234"])
+def test_agent_invoke_rejects_malformed_thread_id(thread_id: str) -> None:
+    client = TestClient(app)
+    response = client.post("/v1/agent/invoke", json={"message": "hi", "thread_id": thread_id})
+    assert response.status_code == 422
+    assert response.json() == {"detail": "validation_error"}
+
+
+def test_agent_request_normalizes_thread_id_to_canonical_uuid() -> None:
+    upper = "6F9619FF-8B86-D011-B42D-00C04FC964FF"
+    assert AgentRequest(message="hi", thread_id=upper).thread_id == upper.lower()
+
+
+def test_agent_invoke_returns_404_for_unknown_or_foreign_thread() -> None:
+    client = TestClient(app)
+    created = client.post("/v1/agent/invoke", json={"message": "hi", "user_id": "alice"})
+    assert created.status_code == 200
+    thread_id = created.json()["thread_id"]
+
+    unknown = client.post(
+        "/v1/agent/invoke", json={"message": "hi", "thread_id": str(uuid.uuid4())}
+    )
+    foreign = client.post(
+        "/v1/agent/invoke", json={"message": "hi", "thread_id": thread_id, "user_id": "bob"}
+    )
+    assert unknown.status_code == foreign.status_code == 404
+    assert unknown.json() == foreign.json() == {"detail": "thread_not_found"}
+
+    owner = client.post(
+        "/v1/agent/invoke", json={"message": "again", "thread_id": thread_id, "user_id": "alice"}
+    )
+    assert owner.status_code == 200
+    assert owner.json()["thread_id"] == thread_id

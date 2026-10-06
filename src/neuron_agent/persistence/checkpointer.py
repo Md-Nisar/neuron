@@ -80,11 +80,11 @@ class Persistence:
 
 def build_persistence(settings: Settings) -> Persistence:
     """Build (but do not open) the checkpointer selected by settings."""
-    if settings.checkpointer == "none":
-        return Persistence(backend="none", checkpointer=None)
     serde = JsonPlusSerializer(allowed_msgpack_modules=_ALLOWED_MSGPACK_MODULES)
     if settings.checkpointer == "memory":
         return Persistence(backend="memory", checkpointer=InMemorySaver(serde=serde))
+    if settings.checkpointer != "postgres":
+        return Persistence(backend="none", checkpointer=None)
 
     # Settings validation guarantees a DSN when the backend is postgres.
     assert settings.postgres_dsn is not None  # nosec B101

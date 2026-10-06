@@ -17,6 +17,8 @@ class MainGraphState(TypedDict):
     request_id: str
     thread_id: str
     run_id: str
-    user_id_hash: NotRequired[str]
+    user_id_hash: NotRequired[str | None]
+    # Per-run input: committed to `messages` together with the answer, only on success.
+    user_message: NotRequired[str | None]
     answer: NotRequired[AgentAnswer]
     error: NotRequired[str]

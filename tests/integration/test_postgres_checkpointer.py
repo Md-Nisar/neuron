@@ -6,6 +6,7 @@ import pytest
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.errors.base import ThreadNotFoundError
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.services.agent_service import AgentService
@@ -42,16 +43,25 @@ async def test_thread_state_survives_service_restart() -> None:
     first = AgentService(settings)
     await first.startup()
     try:
-        response = await first.invoke(AgentRequest(message="remember me"))
+        response = await first.invoke(AgentRequest(message="remember me", user_id="alice"))
     finally:
         await first.shutdown()
 
     restarted = AgentService(settings)
     await restarted.startup()
     try:
+        with pytest.raises(ThreadNotFoundError):
+            await restarted.invoke(
+                AgentRequest(message="steal", thread_id=response.thread_id, user_id="bob")
+            )
+        await restarted.invoke(
+            AgentRequest(message="again", thread_id=response.thread_id, user_id="alice")
+        )
         config = {"configurable": {"thread_id": response.thread_id}}
         state = await restarted.graph.aget_state(config)
     finally:
         await restarted.shutdown()
-    assert state.values["messages"][0].content == "remember me"
-    assert state.values["answer"].answer == response.answer
+    contents = [m.content for m in state.values["messages"]]
+    assert contents[0] == "remember me"
+    assert contents[2] == "again"
+    assert len(contents) == 4

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+import uuid
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AgentRequest(BaseModel):
@@ -15,6 +17,17 @@ class AgentRequest(BaseModel):
     message: str = Field(min_length=1, max_length=200_000)
     thread_id: str | None = Field(default=None, max_length=255)
     user_id: str | None = Field(default=None, max_length=128)
+
+    @field_validator("thread_id")
+    @classmethod
+    def require_uuid_thread_id(cls, value: str | None) -> str | None:
+        """Thread IDs are server-minted UUIDs; normalize to the canonical lowercase form."""
+        if value is None:
+            return None
+        try:
+            return str(uuid.UUID(value))
+        except ValueError as exc:
+            raise ValueError("thread_id must be a UUID") from exc
 
 
 class AgentAnswer(BaseModel):
