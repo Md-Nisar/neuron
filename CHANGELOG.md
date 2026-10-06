@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+"Stateful + Streaming": multi-turn conversations and real-time responses (ADR 0005).
+
+- ADR 0005 records the design: checkpointer selection, thread rules, atomic turns, history bounds, the SSE protocol, the concurrency policy, and data retention. It partially supersedes ADR 0002 (#20).
+- Configurable thread persistence through `APP_CHECKPOINTER`: `auto` (the default), `memory`, `postgres` or `none`. Postgres uses `AsyncPostgresSaver` over a validated connection pool opened in the FastAPI lifespan, with `make db-setup` migrations, readiness that reflects database health, and a `PersistenceError` (`503`) error type (#21).
+- Multi-turn conversations: the server mints UUID thread IDs, each thread is bound to its hashed `user_id` (`404 thread_not_found` for missing and foreign threads alike), turns commit atomically, and the nested agent's internal state is never checkpointed (#22).
+- Bounded history: a model-input token budget (`APP_MAX_HISTORY_TOKENS`) that never splits tool pairs, and a stored-message cap (`APP_MAX_THREAD_MESSAGES`) that evicts whole turns (#23).
+- `POST /v1/agent/stream`: server-sent events (`run_started`, `token`, `tool_call`, `final`, `error`, `done`) with answer-field token extraction from structured output. Tool arguments are never streamed (#24).
+- Cancellation and concurrency: client disconnects cancel the run, `APP_RUN_TIMEOUT_SECONDS` bounds whole runs, a busy thread gets `409 thread_busy`, `APP_MAX_CONCURRENT_STREAMS` caps open streams, and shutdown closes streams gracefully. Includes fixes for an anyio cancellation bug that kept model calls running after a disconnect, and a lease leak (#25).
+- Thread history and lifecycle API: `GET /v1/threads/{id}/messages` and `DELETE /v1/threads/{id}`, plus `make prune-threads` retention through `APP_THREAD_RETENTION_DAYS` (#26).
+- Streaming and state telemetry: stream lifecycle events with time to first token, termination reasons, turn and history size, and checkpoint latency and failure logging (#27).
+- Eval dataset v2 (13 multi-turn cases), conversation security tests, and a live streaming smoke test. `neuron-eval` writes clean JSON to stdout again (#28).
+- Operations documentation: Postgres, reverse-proxy settings for SSE, runbook entries, a `docker compose` stack with Postgres, and the full `.env.example` (#29).
+- Release verification (#30) found and fixed a defect present since 0.2.0: every Agent Server or LangGraph Studio run failed, because inputs without a `run_id` crashed `agent_invocation_config`.
+
 ## 0.2.0
 
 "Reliable Agent Runtime" — predictable failures, bounded execution, and operational visibility.
