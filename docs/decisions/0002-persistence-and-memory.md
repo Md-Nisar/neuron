@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. The local-invocation checkpointer decision is superseded by ADR 0005 (`0005-conversation-state-and-streaming.md`), which adds configurable thread persistence for the self-hosted API. The three-way state distinction and the Agent Server delegation below still apply.
 
 ## Decision
 
