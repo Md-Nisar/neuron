@@ -157,9 +157,10 @@ class AgentService:
         `tool_call` events, then exactly one of `final` (success) or `error` (failure,
         timeout, or `stop` being set during shutdown).
 
-        The graph runs in a producer task. If this generator is cancelled or closed (the
-        client disconnected), times out, or is stopped, that task is cancelled so model and
-        tool calls stop. The thread's history is unaffected: turns commit only on success.
+        The graph runs in a producer task that also enforces `APP_RUN_TIMEOUT_SECONDS`. If
+        this generator is cancelled or closed (the client disconnected) or stopped, that task
+        is cancelled so model and tool calls stop. The thread's history is unaffected: turns
+        commit only on success.
         """
         bind_correlation_context(
             request_id=run.request_id, thread_id=run.thread_id, run_id=run.run_id
@@ -167,7 +168,6 @@ class AgentService:
         queue: asyncio.Queue[StreamEvent | None] = asyncio.Queue()
         producer = asyncio.create_task(self._produce(run, queue))
         stop_waiter = asyncio.ensure_future(stop.wait()) if stop is not None else None
-        deadline = asyncio.get_running_loop().time() + self._settings.run_timeout_seconds
         try:
             yield StreamEvent(
                 "run_started",
@@ -176,19 +176,12 @@ class AgentService:
             while True:
                 getter = asyncio.ensure_future(queue.get())
                 waiters = {getter} if stop_waiter is None else {getter, stop_waiter}
-                remaining = deadline - asyncio.get_running_loop().time()
-                done, _ = await asyncio.wait(
-                    waiters, timeout=max(remaining, 0), return_when=asyncio.FIRST_COMPLETED
-                )
+                done, _ = await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
                 if getter not in done:
                     getter.cancel()
                     await _cancel(producer)
-                    if stop_waiter is not None and stop_waiter in done:
-                        logger.info("agent_stream_stopped_for_shutdown")
-                        yield _error_event(ShuttingDownError("server is shutting down"))
-                    else:
-                        logger.warning("agent_run_timed_out")
-                        yield _error_event(RunTimeoutError("agent run exceeded its time budget"))
+                    logger.info("agent_stream_stopped_for_shutdown")
+                    yield _error_event(ShuttingDownError("server is shutting down"))
                     break
                 event = getter.result()
                 if event is None:
@@ -204,33 +197,41 @@ class AgentService:
             run.lease.release()
 
     async def _produce(self, run: PreparedRun, queue: asyncio.Queue[StreamEvent | None]) -> None:
-        """Run the graph, translating its stream into events; always ends with `None`."""
+        """Run the graph, translating its stream into events; always ends with `None`.
+
+        The run budget is enforced here rather than by the consumer, so it holds even when
+        the client stops reading and the generator is parked at a `yield`.
+        """
         extractor = AnswerTokenExtractor()
         answer: AgentAnswer | None = None
         try:
-            with self._persistence_errors():
-                async for namespace, mode, chunk in self.graph.astream(
-                    run.graph_input,
-                    config=run.config,
-                    stream_mode=["messages", "updates"],
-                    # The create_agent loop runs as a nested graph inside the `agent` node;
-                    # its model tokens are only surfaced with subgraphs enabled.
-                    subgraphs=True,
-                ):
-                    if mode == "updates" and not namespace and "agent" in chunk:
-                        answer = chunk["agent"]["answer"]
-                        continue
-                    if mode != "messages" or not namespace:
-                        continue
-                    message, metadata = chunk
-                    if not isinstance(message, AIMessageChunk):
-                        continue
-                    if metadata.get("langgraph_node") != "model":
-                        continue
-                    for name in tool_call_names(message):
-                        queue.put_nowait(StreamEvent("tool_call", {"name": name}))
-                    if delta := extractor.feed(message):
-                        queue.put_nowait(StreamEvent("token", {"text": delta}))
+            async with asyncio.timeout(self._settings.run_timeout_seconds):
+                with self._persistence_errors():
+                    async for namespace, mode, chunk in self.graph.astream(
+                        run.graph_input,
+                        config=run.config,
+                        stream_mode=["messages", "updates"],
+                        # The create_agent loop runs as a nested graph inside the `agent`
+                        # node; its model tokens are only surfaced with subgraphs enabled.
+                        subgraphs=True,
+                    ):
+                        if mode == "updates" and not namespace and "agent" in chunk:
+                            answer = chunk["agent"]["answer"]
+                            continue
+                        if mode != "messages" or not namespace:
+                            continue
+                        message, metadata = chunk
+                        if not isinstance(message, AIMessageChunk):
+                            continue
+                        if metadata.get("langgraph_node") != "model":
+                            continue
+                        for name in tool_call_names(message):
+                            queue.put_nowait(StreamEvent("tool_call", {"name": name}))
+                        if delta := extractor.feed(message):
+                            queue.put_nowait(StreamEvent("token", {"text": delta}))
+        except TimeoutError:
+            logger.warning("agent_run_timed_out")
+            queue.put_nowait(_error_event(RunTimeoutError("agent run exceeded its time budget")))
         except AppError as exc:
             queue.put_nowait(_error_event(exc))
         except Exception as exc:  # noqa: BLE001
@@ -247,6 +248,8 @@ class AgentService:
             else:
                 queue.put_nowait(StreamEvent("final", _response(run, answer).model_dump()))
         finally:
+            # Unbounded queue: its size is bounded by the run's own output
+            # (APP_MAX_OUTPUT_TOKENS per model call, APP_MAX_AGENT_ITERATIONS calls).
             queue.put_nowait(None)
 
     def _claim(self, thread_id: str, *, streaming: bool) -> RunLease:
