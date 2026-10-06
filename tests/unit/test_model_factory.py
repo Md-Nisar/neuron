@@ -23,6 +23,8 @@ from neuron_agent.models.factory import (
     agent_invocation_config,
     classify_agent_error,
     create_chat_model,
+    get_retry_attempts,
+    reset_retry_attempts,
 )
 
 _REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
@@ -49,9 +51,12 @@ def test_create_chat_model_disables_sdk_level_retries() -> None:
     assert model.max_retries == 0
 
 
-def test_agent_invocation_config_uses_max_agent_iterations() -> None:
+def test_agent_invocation_config_uses_max_agent_iterations_and_run_id() -> None:
     settings = Settings(env="test", max_agent_iterations=5, openai_api_key=None)
-    assert agent_invocation_config(settings) == {"recursion_limit": 5}
+    run_id = "12345678-1234-5678-1234-567812345678"
+    config = agent_invocation_config(settings, run_id=run_id)
+    assert config["recursion_limit"] == 5
+    assert str(config["run_id"]) == run_id
 
 
 def test_classify_agent_error_passes_through_app_errors() -> None:
@@ -165,3 +170,20 @@ def test_is_retryable_provider_error_accepts_transient_failures(error: Exception
 )
 def test_is_retryable_provider_error_rejects_non_transient_failures(error: Exception) -> None:
     assert _is_retryable_provider_error(error) is False
+
+
+def test_retry_attempts_counts_only_retryable_errors() -> None:
+    reset_retry_attempts()
+    assert get_retry_attempts() == 0
+
+    _is_retryable_provider_error(openai.APIConnectionError(request=_REQUEST))
+    assert get_retry_attempts() == 1
+
+    _is_retryable_provider_error(ConfigurationError("malformed config"))
+    assert get_retry_attempts() == 1
+
+    _is_retryable_provider_error(openai.APIConnectionError(request=_REQUEST))
+    assert get_retry_attempts() == 2
+
+    reset_retry_attempts()
+    assert get_retry_attempts() == 0
