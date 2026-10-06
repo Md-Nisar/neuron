@@ -17,16 +17,25 @@ Provide a maintainable AI agent application baseline that can be run locally, te
 
 ```mermaid
 flowchart TD
-    Client[Client] --> API[FastAPI API]
+    Client[Client] -->|POST /v1/agent/invoke JSON| API[FastAPI API]
+    Client -->|POST /v1/agent/stream SSE| API
+    Client -->|GET/DELETE /v1/threads/id| API
     API --> Service[AgentService]
     Service --> Graph[LangGraph StateGraph]
     Graph --> Agent[LangChain create_agent Harness]
     Agent --> Model[Configured Model Provider]
     Agent --> Tools[Read-only Tools]
     Graph --> State[Typed Graph State]
+    Graph --> Checkpointer[Checkpointer: memory / Postgres / none]
+    Service --> Checkpointer
     API --> Logs[Structured Logs]
     Graph --> LangSmith[LangSmith Tracing when enabled]
 ```
+
+Request flow:
+- **`/invoke`** returns one JSON response.
+- **`/stream`** runs the same graph through a producer task and relays `astream` output as server-sent events (see Streaming).
+- **Shared preparation:** both go through `AgentService.prepare`, which validates the request, resolves and authorizes the thread, and claims the run lease before any model call. Both commit the turn to the thread's checkpoint the same way.
 
 ## Graph Flow
 

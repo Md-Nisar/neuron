@@ -1,6 +1,35 @@
+# Local development stack: the API with Postgres-backed thread persistence (ADR 0005).
+# Credentials here are for local use only; production injects APP_POSTGRES_DSN from a
+# secret manager (see OPERATIONS.md#thread-persistence-postgres).
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: neuron
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-neuron-local-only}
+      POSTGRES_DB: neuron
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuron -d neuron"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   api:
     build: .
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_CHECKPOINTER: postgres
+      APP_POSTGRES_DSN: postgresql://neuron:${POSTGRES_PASSWORD:-neuron-local-only}@postgres:5432/neuron
+      APP_CHECKPOINTER_SETUP_ON_STARTUP: "true"
     ports:
       - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

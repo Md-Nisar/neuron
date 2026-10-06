@@ -14,6 +14,10 @@ The application uses a single LangGraph `StateGraph` with one agent node. The no
 
 The API layer validates HTTP input and delegates to `AgentService`; the graph does not know about HTTP objects.
 
+Since v0.3.0, conversations are stateful and responses can be streamed (ADR 0005, `docs/decisions/0005-conversation-state-and-streaming.md`):
+- **Persistence.** Thread history is persisted by a LangGraph checkpointer: in memory for local development, Postgres for production.
+- **Streaming.** `POST /v1/agent/stream` returns server-sent events.
+
 ## Prerequisites
 
 - Python 3.13
@@ -57,13 +61,86 @@ curl -X POST http://127.0.0.1:8000/v1/agent/invoke \
   -d '{"message":"What is 19 * 3?"}'
 ```
 
+### Conversations
+
+Every response returns a `thread_id`. Send it back to continue the same conversation, and the agent sees the earlier turns:
+
+```bash
+THREAD=$(curl -s -X POST http://127.0.0.1:8000/v1/agent/invoke \
+  -H "Content-Type: application/json" \
+  -d '{"message":"My name is Ada.","user_id":"user-123"}' | jq -r .thread_id)
+
+curl -s -X POST http://127.0.0.1:8000/v1/agent/invoke \
+  -H "Content-Type: application/json" \
+  -d "{\"message\":\"What is my name?\",\"thread_id\":\"$THREAD\",\"user_id\":\"user-123\"}"
+```
+
+Thread rules:
+- Thread IDs are server-minted UUIDs. Omit `thread_id` to start a new conversation.
+- A supplied `thread_id` must belong to a thread created with the same `user_id`; otherwise the response is `404 thread_not_found`.
+- A second request on a thread while a run is still in flight gets `409 thread_busy`.
+
+Read or delete a thread. `user_id` goes in the `X-User-Id` header:
+
+```bash
+curl -s "http://127.0.0.1:8000/v1/threads/$THREAD/messages?limit=50" -H "X-User-Id: user-123"
+curl -s -X DELETE "http://127.0.0.1:8000/v1/threads/$THREAD" -H "X-User-Id: user-123"   # 204
+```
+
+Persistence is selected with `APP_CHECKPOINTER`:
+- `auto` (the default) keeps threads in memory in development and test. They're lost on restart.
+- `postgres` is the setting for anything durable: see `OPERATIONS.md#thread-persistence-postgres`, or run `docker compose up` for a local API backed by Postgres.
+
+### Streaming
+
+`POST /v1/agent/stream` takes the same body as `/invoke` and streams server-sent events: `run_started`, then `token` events (answer text deltas) and `tool_call` events (tool names only), then `final` (the same fields as the `/invoke` response) or `error`, and finally `done`.
+
+```bash
+curl -N -X POST http://127.0.0.1:8000/v1/agent/stream \
+  -H "Content-Type: application/json" \
+  -d '{"message":"What is 19 * 3?"}'
+```
+
+The browser's `EventSource` only supports `GET`, so read the stream with `fetch`. This minimal reader works in browsers and Node 18+:
+
+```javascript
+const response = await fetch("http://127.0.0.1:8000/v1/agent/stream", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: "What is 19 * 3?" }),
+});
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+
+const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+let buffer = "";
+for (;;) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  buffer += value.replaceAll("\r\n", "\n");
+  let end;
+  while ((end = buffer.indexOf("\n\n")) !== -1) {
+    const block = buffer.slice(0, end);
+    buffer = buffer.slice(end + 2);
+    const event = block.match(/^event: (.*)$/m)?.[1];
+    const data = block.match(/^data: (.*)$/m)?.[1];
+    if (!event) continue; // heartbeat comment
+    const payload = JSON.parse(data);
+    if (event === "token") process.stdout.write(payload.text); // in a browser, append to the page
+    if (event === "final") console.log("\nfinal:", payload.answer);
+    if (event === "error") console.error("\nerror:", payload.code, "retryable:", payload.retryable);
+  }
+}
+```
+
+Treat `token` events as a live preview. The `final` event carries the validated answer. Validation failures, `404`, `409`, `429` and `503` are ordinary HTTP errors returned before the stream starts.
+
 ## Request Limits
 
-The `/v1/agent/invoke` endpoint enforces, before model execution:
+The `/v1/agent/invoke` and `/v1/agent/stream` endpoints enforce, before model execution:
 
 - request body size, via `APP_MAX_REQUEST_BODY_BYTES` (default 65536 bytes; rejected with `413`)
 - message length, via `APP_MAX_PROMPT_CHARS` (default 12000 characters; rejected with `400`)
-- `thread_id` (max 255 chars) and `user_id` (max 128 chars)
+- `thread_id` must be a UUID, and `user_id` is at most 128 chars
 - unknown request fields and malformed JSON (rejected with `422`)
 - empty, whitespace-only, or control-character-containing messages (rejected with `400`)
 
@@ -88,6 +165,11 @@ All reliability settings are `APP_`-prefixed environment variables read once in 
 | Tool call timeout | `APP_TOOL_TIMEOUT_SECONDS` | 20s | `502 tool_execution_error` (never user-visible detail) |
 | Provider retries | `APP_PROVIDER_MAX_RETRIES` | 2 (3 attempts total) | exponential backoff + jitter, then the original provider error propagates |
 | Agent loop iterations | `APP_MAX_AGENT_ITERATIONS` | 5 | `500 agent_execution_error` (recursion limit) |
+| Whole-run budget | `APP_RUN_TIMEOUT_SECONDS` | 120s | `504 run_timeout`, or a stream `error` event with `run_timeout` |
+| Concurrent streams | `APP_MAX_CONCURRENT_STREAMS` | 100 per process | `503 too_many_streams` |
+| Model history budget | `APP_MAX_HISTORY_TOKENS` | 8000 tokens | the oldest turns are left out of the model input |
+| Stored history | `APP_MAX_THREAD_MESSAGES` | 200 messages | the oldest whole turns are evicted |
+| Thread retention | `APP_THREAD_RETENTION_DAYS` | 30 days | `make prune-threads` deletes inactive threads |
 
 See `ARCHITECTURE.md`'s Failure Handling and Rate Limiting sections for the full mechanics, and `OPERATIONS.md` for production configuration guidance.
 
@@ -133,7 +215,11 @@ uv run pytest tests/integration/test_live_openai_smoke.py -m integration -q
 - [SECURITY.md](SECURITY.md)
 - [EVALUATION.md](EVALUATION.md)
 - [AGENTS.md](AGENTS.md)
+- [Architecture decisions](docs/decisions/), including [ADR 0005: conversation state and streaming](docs/decisions/0005-conversation-state-and-streaming.md)
 
 ## Deployment
 
 The repository includes `langgraph.json` for LangGraph Agent Server/LangSmith deployment and a Dockerfile for self-hosted HTTP deployment. Production deployments must provide secrets through environment-specific secret management, not source control.
+
+- **Self-hosted (FastAPI):** set `APP_CHECKPOINTER=postgres` with `APP_POSTGRES_DSN`, and run `make db-setup` once per schema version. Staging and production default to stateless (`none`) unless configured.
+- **Agent Server:** the exported graph has no checkpointer of its own. Agent Server provides persistence, threads and streaming through its own API, and the `/v1/threads/*` endpoints and `APP_CHECKPOINTER` don't apply there. See `OPERATIONS.md`.
