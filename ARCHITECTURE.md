@@ -181,6 +181,7 @@ Expected failures are classified through `AppError` subclasses (`src/neuron_agen
 | `ValidationAppError` | `validation_error` | 400 | no | yes |
 | `AuthorizationError` | `authorization_error` | 403 | no | yes |
 | `RateLimitError` | `rate_limit_error` | 429 | yes | yes |
+| `ProviderQuotaError` | `provider_quota_exhausted` | 503 | no | no |
 | `ProviderTimeoutError` | `provider_timeout_error` | 504 | yes | yes |
 | `ConfigurationError` | `configuration_error` | 500 | no | no |
 | `ProviderError` | `provider_error` | 502 | yes | no |
