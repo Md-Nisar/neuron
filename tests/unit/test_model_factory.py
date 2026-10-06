@@ -205,3 +205,9 @@ async def test_fake_chat_model_tolerates_create_agent_tool_binding() -> None:
     )
 
     assert result["messages"][-1].content == "Local test response."
+
+
+def test_agent_invocation_config_omits_missing_run_id() -> None:
+    config = agent_invocation_config(Settings(env="test"), run_id=None)
+    assert "run_id" not in config
+    assert config["recursion_limit"] == 5

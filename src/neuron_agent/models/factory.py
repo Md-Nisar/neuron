@@ -206,9 +206,16 @@ def create_chat_model(settings: Settings) -> ChatOpenAI | _FakeChatModel:
     )
 
 
-def agent_invocation_config(settings: Settings, *, run_id: str) -> dict[str, Any]:
-    """Return the runtime recursion budget and run ID for the agent loop."""
-    return {"recursion_limit": settings.max_agent_iterations, "run_id": uuid.UUID(run_id)}
+def agent_invocation_config(settings: Settings, *, run_id: str | None) -> dict[str, Any]:
+    """Return the runtime recursion budget and, when known, the run ID for the agent loop.
+
+    `AgentService` always supplies a run ID. Agent Server and LangGraph Studio inputs carry
+    only `messages`, so LangGraph generates the run ID for those.
+    """
+    config: dict[str, Any] = {"recursion_limit": settings.max_agent_iterations}
+    if run_id:
+        config["run_id"] = uuid.UUID(run_id)
+    return config
 
 
 def classify_agent_error(exc: Exception) -> AppError:

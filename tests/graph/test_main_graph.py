@@ -201,3 +201,11 @@ async def test_messages_input_without_user_message_still_supported(echo_agent: A
 
     assert [type(m) for m in result["messages"]] == [HumanMessage, AIMessage]
     assert result["answer"].answer == "2+2"
+
+
+async def test_agent_server_input_without_correlation_ids_runs(echo_agent: Any) -> None:
+    # Regression: Agent Server / LangGraph Studio send only `messages`. A missing run_id
+    # crashed agent_invocation_config (uuid.UUID(None)), failing every Agent Server run.
+    compiled = build_graph(Settings(env="test"))
+    result = await compiled.ainvoke({"messages": [HumanMessage(content="hi")]})
+    assert result["answer"].answer == "hi"
