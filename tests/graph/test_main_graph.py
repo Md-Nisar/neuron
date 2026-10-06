@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import openai
 import pytest
+import structlog.testing
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
@@ -28,7 +29,8 @@ class FakeAgent:
     async def ainvoke(
         self, _: dict[str, object], *, config: dict[str, object]
     ) -> dict[str, object]:
-        assert config == {"recursion_limit": 5}
+        assert config["recursion_limit"] == 5
+        assert str(config["run_id"]) == "12345678-1234-5678-1234-567812345678"
         return {
             "messages": [AIMessage(content="4")],
             "structured_response": AgentAnswer(
@@ -59,6 +61,7 @@ def _state() -> MainGraphState:
         "messages": [HumanMessage(content="2+2")],
         "request_id": "request-1",
         "thread_id": "thread-1",
+        "run_id": "12345678-1234-5678-1234-567812345678",
     }
 
 
@@ -115,6 +118,34 @@ async def test_call_agent_wraps_structured_output_error() -> None:
     )
     with pytest.raises(AppStructuredOutputError):
         await call_agent(_state(), agent=FailingAgent(error))
+
+
+async def test_call_agent_logs_correlation_ids_model_and_latency_on_success() -> None:
+    with structlog.testing.capture_logs() as logs:
+        await call_agent(_state(), agent=FakeAgent())
+
+    completed = next(log for log in logs if log["event"] == "agent_execution_completed")
+    assert completed["request_id"] == "request-1"
+    assert completed["thread_id"] == "thread-1"
+    assert completed["run_id"] == "12345678-1234-5678-1234-567812345678"
+    assert completed["model"]
+    assert completed["retry_count"] == 0
+    assert completed["duration_ms"] >= 0
+
+
+async def test_call_agent_logs_correlation_ids_error_type_and_retry_count_on_failure() -> None:
+    with structlog.testing.capture_logs() as logs:
+        with pytest.raises(AgentExecutionError):
+            await call_agent(_state(), agent=FailingAgent(RuntimeError("boom")))
+
+    failed = next(log for log in logs if log["event"] == "agent_execution_failed")
+    assert failed["request_id"] == "request-1"
+    assert failed["thread_id"] == "thread-1"
+    assert failed["run_id"] == "12345678-1234-5678-1234-567812345678"
+    assert failed["model"]
+    assert failed["error_type"] == "RuntimeError"
+    assert failed["retry_count"] == 0
+    assert failed["duration_ms"] >= 0
 
 
 async def test_call_agent_wraps_unexpected_error() -> None:

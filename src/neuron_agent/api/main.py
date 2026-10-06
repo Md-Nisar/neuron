@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import os
+import time
 from collections.abc import Awaitable, Callable
 
 import structlog
@@ -95,6 +96,7 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
     request_id = None
     thread_id = request.thread_id
     bind_correlation_context(request_id=request_id, thread_id=thread_id)
+    started = time.monotonic()
     try:
         response = await service.invoke(request)
         request_id = response.request_id
@@ -105,6 +107,7 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
             request_id=request_id,
             thread_id=thread_id,
             confidence=response.confidence,
+            duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         return response
     except AppError as exc:
@@ -113,7 +116,9 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
             request_id=request_id,
             thread_id=thread_id,
             error_code=exc.context.code,
+            error_type=type(exc).__name__,
             retryable=exc.context.retryable,
+            duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         detail = exc.context.code if exc.context.user_visible else "internal_server_error"
         raise HTTPException(status_code=exc.context.http_status, detail=detail) from exc
@@ -122,7 +127,9 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
             "agent_request_unexpected_error",
             request_id=request_id,
             thread_id=thread_id,
+            error_type=type(exc).__name__,
             retryable=False,
+            duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         raise HTTPException(status_code=500, detail="internal_server_error") from exc
 

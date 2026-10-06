@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 from collections.abc import Awaitable, Callable, Sequence
+from contextvars import ContextVar
 from typing import Any
 
 import openai
@@ -48,6 +50,18 @@ _RETRYABLE_PROVIDER_ERRORS: tuple[type[Exception], ...] = (
     openai.RateLimitError,
     openai.InternalServerError,
 )
+
+_retry_attempts: ContextVar[int] = ContextVar("provider_retry_attempts", default=0)
+
+
+def reset_retry_attempts() -> None:
+    """Zero the provider retry counter for a new agent invocation."""
+    _retry_attempts.set(0)
+
+
+def get_retry_attempts() -> int:
+    """Return how many provider calls were retried during the current invocation."""
+    return _retry_attempts.get()
 
 
 def tool_failure_isolation_middleware() -> AgentMiddleware:
@@ -114,7 +128,11 @@ def _is_retryable_provider_error(exc: Exception) -> bool:
     """Classify raw provider exceptions as retryable without exposing secrets in logs."""
     if not isinstance(exc, _RETRYABLE_PROVIDER_ERRORS):
         return False
-    logger.warning("provider_call_retry_candidate", error_type=type(exc).__name__)
+    attempt = _retry_attempts.get() + 1
+    _retry_attempts.set(attempt)
+    logger.warning(
+        "provider_call_retry_candidate", error_type=type(exc).__name__, retry_attempt=attempt
+    )
     return True
 
 
@@ -163,9 +181,9 @@ def create_chat_model(settings: Settings) -> ChatOpenAI | FakeListChatModel:
     )
 
 
-def agent_invocation_config(settings: Settings) -> dict[str, int]:
-    """Return the runtime recursion budget for the agent loop."""
-    return {"recursion_limit": settings.max_agent_iterations}
+def agent_invocation_config(settings: Settings, *, run_id: str) -> dict[str, Any]:
+    """Return the runtime recursion budget and run ID for the agent loop."""
+    return {"recursion_limit": settings.max_agent_iterations, "run_id": uuid.UUID(run_id)}
 
 
 def classify_agent_error(exc: Exception) -> AppError:

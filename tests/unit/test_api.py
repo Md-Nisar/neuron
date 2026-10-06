@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import structlog.testing
 from fastapi.testclient import TestClient
 
 from neuron_agent.api import main as api_main
@@ -125,6 +126,43 @@ def test_agent_invoke_returns_429_when_rate_limited(monkeypatch: pytest.MonkeyPa
     assert second.status_code == 429
     assert second.json() == {"detail": "rate_limited"}
     assert 1 <= int(second.headers["Retry-After"]) <= 60
+
+
+def test_agent_invoke_logs_request_id_thread_id_and_duration_on_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fast_invoke(self: object, request: object) -> AgentResponse:
+        return AgentResponse(
+            request_id="request-1", thread_id="thread-1", answer="ok", used_tools=[], confidence=1.0
+        )
+
+    monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
+    client = TestClient(app)
+    with structlog.testing.capture_logs() as logs:
+        response = client.post("/v1/agent/invoke", json={"message": "hi"})
+    assert response.status_code == 200
+
+    completed = next(log for log in logs if log["event"] == "agent_request_completed")
+    assert completed["request_id"] == "request-1"
+    assert completed["thread_id"] == "thread-1"
+    assert completed["duration_ms"] >= 0
+
+
+def test_agent_invoke_logs_error_type_and_duration_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def raise_error(self: object, request: object) -> None:
+        raise RateLimitError("slow down")
+
+    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    client = TestClient(app)
+    with structlog.testing.capture_logs() as logs:
+        response = client.post("/v1/agent/invoke", json={"message": "hi"})
+    assert response.status_code == 429
+
+    failed = next(log for log in logs if log["event"] == "agent_request_failed")
+    assert failed["error_type"] == "RateLimitError"
+    assert failed["duration_ms"] >= 0
 
 
 def test_health_endpoints_are_not_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import structlog
@@ -10,7 +11,12 @@ from langgraph.graph import END, START, StateGraph
 
 from neuron_agent.agents.factory import build_agent
 from neuron_agent.config.settings import Settings, get_settings
-from neuron_agent.models.factory import agent_invocation_config, classify_agent_error
+from neuron_agent.models.factory import (
+    agent_invocation_config,
+    classify_agent_error,
+    get_retry_attempts,
+    reset_retry_attempts,
+)
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.state.main import MainGraphState
 
@@ -24,16 +30,22 @@ async def call_agent(
     resolved_settings = settings or get_settings()
     request_id = state.get("request_id")
     thread_id = state.get("thread_id")
+    run_id = state.get("run_id")
+    model = resolved_settings.default_model
     logger.info(
         "agent_execution_started",
         request_id=request_id,
         thread_id=thread_id,
+        run_id=run_id,
+        model=model,
         recursion_limit=resolved_settings.max_agent_iterations,
     )
+    reset_retry_attempts()
+    started = time.monotonic()
     try:
         result = await agent.ainvoke(
             {"messages": state["messages"]},
-            config=agent_invocation_config(resolved_settings),
+            config=agent_invocation_config(resolved_settings, run_id=run_id),
         )
     except Exception as exc:  # noqa: BLE001
         error = classify_agent_error(exc)
@@ -42,8 +54,13 @@ async def call_agent(
             "agent_execution_failed",
             request_id=request_id,
             thread_id=thread_id,
+            run_id=run_id,
+            model=model,
             error_code=error.context.code,
+            error_type=type(exc).__name__,
             retryable=error.context.retryable,
+            retry_count=get_retry_attempts(),
+            duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         raise error from exc
 
@@ -54,6 +71,15 @@ async def call_agent(
         output_text = str(result["messages"][-1].content)
         answer = AgentAnswer(answer=output_text, used_tools=[], confidence=0.5)
 
+    logger.info(
+        "agent_execution_completed",
+        request_id=request_id,
+        thread_id=thread_id,
+        run_id=run_id,
+        model=model,
+        retry_count=get_retry_attempts(),
+        duration_ms=round((time.monotonic() - started) * 1000, 2),
+    )
     return {
         "messages": [AIMessage(content=answer.answer)],
         "answer": answer,
