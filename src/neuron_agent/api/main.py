@@ -193,7 +193,8 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
         run = await service.prepare(request, streaming=True)
     except AppError as exc:
         logger.warning(
-            "agent_stream_rejected",
+            "stream_rejected",
+            termination=exc.context.code,
             thread_id=request.thread_id,
             error_code=exc.context.code,
             error_type=type(exc).__name__,

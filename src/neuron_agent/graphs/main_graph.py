@@ -46,6 +46,11 @@ async def call_agent(
     thread_id = state.get("thread_id")
     run_id = state.get("run_id")
     model = resolved_settings.default_model
+    new_turn: list[BaseMessage] = []
+    user_message = state.get("user_message")
+    if user_message:
+        new_turn.append(HumanMessage(content=user_message))
+    stored = list(state.get("messages", []))
     logger.info(
         "agent_execution_started",
         request_id=request_id,
@@ -53,12 +58,10 @@ async def call_agent(
         run_id=run_id,
         model=model,
         recursion_limit=resolved_settings.max_agent_iterations,
+        # Conversation position: 1-based user turn number and stored history size.
+        turn=sum(isinstance(m, HumanMessage) for m in [*stored, *new_turn]),
+        history_messages=len(stored),
     )
-    new_turn: list[BaseMessage] = []
-    user_message = state.get("user_message")
-    if user_message:
-        new_turn.append(HumanMessage(content=user_message))
-    stored = list(state.get("messages", []))
     history = bound_model_history(
         [*stored, *new_turn], max_tokens=resolved_settings.max_history_tokens
     )

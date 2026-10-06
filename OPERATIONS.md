@@ -29,6 +29,31 @@ LANGSMITH_PROJECT=neuron-agent-production
 
 Do not log raw secrets, authorization headers, or sensitive user content.
 
+### Streaming and conversation-state events
+
+Every event carries `request_id`, `thread_id` and `run_id`. None of them contains prompt text, streamed tokens or tool arguments.
+
+| Event | Level | Key fields | Meaning |
+| --- | --- | --- | --- |
+| `stream_started` | info | — | a `/v1/agent/stream` run began |
+| `stream_completed` | info / warning | `termination` (`completed`, `error`, `timeout`, `shutdown`), `error_code`, `ttft_ms`, `duration_ms`, `tokens_streamed`, `events_streamed` | the stream reached `done`; warning unless `completed` |
+| `stream_cancelled` | info | `termination=client_disconnect`, plus the same timing and count fields | the client went away before `done`; the run was cancelled |
+| `stream_rejected` | warning | `termination` (the error code, e.g. `thread_busy`, `too_many_streams`, `thread_not_found`) | the stream was refused before the first byte |
+| `agent_execution_started` | info | `turn`, `history_messages`, `model` | `turn` is the 1-based user-turn number in the thread |
+| `history_trimmed` | info | `messages_total`, `messages_sent`, `max_history_tokens` | older turns were left out of the model input |
+| `checkpoint_operation_slow` | warning | `operation`, `backend`, `duration_ms` | a checkpointer read or write took at least 250 ms |
+| `checkpoint_operation_failed` | warning | `operation`, `backend`, `error_type`, `duration_ms` | a checkpointer read or write raised |
+| `checkpointer_unreachable` | warning | `backend`, `error_type` | readiness probe failed |
+| `threads_pruned` | info | `count`, `retention_days` | the retention job finished |
+
+Suggested alerts:
+- **Time to first token:** sustained rise in p95 `ttft_ms`.
+- **Failed streams:** `stream_completed` with `termination != completed` above a few percent of streams.
+- **Disconnects:** a spike in `stream_cancelled`. This usually means client or proxy timeouts, so check proxy buffering and timeouts first.
+- **Capacity:** any `stream_rejected` with `too_many_streams`, which means you're at capacity; scale out or raise `APP_MAX_CONCURRENT_STREAMS`.
+- **Database:** any `checkpoint_operation_failed`, or a sustained `checkpoint_operation_slow` rate.
+- **Retention:** `threads_pruned` missing for longer than the job's schedule interval.
+
 ## Scaling
 
 The API can scale horizontally. Durable conversations require Agent Server managed persistence or an explicit production checkpointer/store.
