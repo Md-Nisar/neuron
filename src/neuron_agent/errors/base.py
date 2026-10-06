@@ -86,6 +86,18 @@ class StructuredOutputError(AppError):
     )
 
 
+class PersistenceError(AppError):
+    """Thread persistence backend (checkpointer) is unavailable or failed."""
+
+    context = ErrorContext(
+        code="persistence_error",
+        http_status=503,
+        retryable=True,
+        user_visible=False,
+        alert=True,
+    )
+
+
 class AgentExecutionError(AppError):
     """Agent execution failed for a reason not otherwise classified."""
 

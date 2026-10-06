@@ -10,6 +10,7 @@ from neuron_agent.errors.base import (
     AgentExecutionError,
     AuthorizationError,
     ConfigurationError,
+    PersistenceError,
     ProviderError,
     ProviderTimeoutError,
     RateLimitError,
@@ -77,6 +78,7 @@ def test_agent_invoke_rejects_oversized_body_via_content_length() -> None:
         (ToolExecutionError("tool failed"), 502, "internal_server_error"),
         (StructuredOutputError("bad structured output"), 502, "internal_server_error"),
         (AgentExecutionError("agent failed"), 500, "internal_server_error"),
+        (PersistenceError("db down"), 503, "internal_server_error"),
     ],
 )
 def test_agent_invoke_maps_app_errors_to_http(
@@ -175,3 +177,40 @@ def test_health_endpoints_are_not_rate_limited(monkeypatch: pytest.MonkeyPatch) 
     for _ in range(3):
         response = client.get("/health/live")
         assert response.status_code == 200
+
+
+def test_ready_endpoint_reports_ready_when_dependencies_reachable() -> None:
+    client = TestClient(app)
+    response = client.get("/health/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+
+
+def test_ready_endpoint_returns_503_when_checkpointer_unreachable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def not_ready(self: object) -> bool:
+        return False
+
+    monkeypatch.setattr(api_main.AgentService, "is_ready", not_ready)
+    client = TestClient(app)
+    response = client.get("/health/ready")
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready"}
+
+
+def test_lifespan_opens_and_closes_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def startup(self: object) -> None:
+        calls.append("startup")
+
+    async def shutdown(self: object) -> None:
+        calls.append("shutdown")
+
+    monkeypatch.setattr(api_main.AgentService, "startup", startup)
+    monkeypatch.setattr(api_main.AgentService, "shutdown", shutdown)
+    with TestClient(app) as client:
+        assert client.get("/health/live").status_code == 200
+        assert calls == ["startup"]
+    assert calls == ["startup", "shutdown"]

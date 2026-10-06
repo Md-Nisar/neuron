@@ -1,4 +1,4 @@
-.PHONY: install dev run api format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -11,6 +11,9 @@ run:
 
 api:
 	uv run uvicorn neuron_agent.api.main:app --host 127.0.0.1 --port 8000
+
+db-setup:
+	uv run python -m neuron_agent.persistence.cli setup
 
 format:
 	uv run python -m ruff format src tests

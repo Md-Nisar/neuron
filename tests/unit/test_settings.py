@@ -49,3 +49,35 @@ def test_settings_rejects_max_request_body_bytes_out_of_bounds() -> None:
 def test_settings_rejects_rate_limit_burst_out_of_bounds() -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", openai_api_key=None, rate_limit_burst=0)
+
+
+def test_settings_default_checkpointer_is_none() -> None:
+    assert Settings(env="test").checkpointer == "none"
+
+
+@pytest.mark.parametrize("env", ["staging", "production"])
+def test_settings_reject_memory_checkpointer_outside_dev(env: str) -> None:
+    with pytest.raises(ValidationError, match="not durable"):
+        Settings(env=env, openai_api_key="sk-test", checkpointer="memory")
+
+
+@pytest.mark.parametrize("env", ["development", "test"])
+def test_settings_allow_memory_checkpointer_in_dev(env: str) -> None:
+    assert Settings(env=env, checkpointer="memory").checkpointer == "memory"
+
+
+def test_settings_require_dsn_for_postgres_checkpointer() -> None:
+    with pytest.raises(ValidationError, match="APP_POSTGRES_DSN"):
+        Settings(env="test", checkpointer="postgres", postgres_dsn=None)
+
+
+def test_settings_reject_unknown_checkpointer() -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="test", checkpointer="sqlite")
+
+
+def test_settings_reject_postgres_pool_size_out_of_bounds() -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="test", postgres_pool_max_size=0)
+    with pytest.raises(ValidationError):
+        Settings(env="test", postgres_pool_max_size=101)
