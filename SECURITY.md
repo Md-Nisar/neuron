@@ -43,6 +43,15 @@ Mutating or high-impact tools require:
 - audit logs
 - tests for unauthorized calls and duplicate execution
 
+## Streaming Output Policy
+
+`POST /v1/agent/stream` (ADR 0005) applies the same controls as `/invoke`: validation, body limit, rate limit, thread ownership. In addition:
+
+- **Tool calls:** `tool_call` events carry the tool's **name only**. Tool arguments and tool results are never streamed; both are untrusted.
+- **Tokens:** `token` events carry only the growth of the `answer` field of the structured output. Raw JSON and other fields aren't streamed.
+- **Errors:** `error` events use the same visibility rule as HTTP errors: internal failures appear only as `internal_server_error`, never with exception text or stack traces.
+- **Resource exhaustion:** runs are bounded by `APP_RUN_TIMEOUT_SECONDS`, `APP_MAX_CONCURRENT_STREAMS` and a send timeout. Disconnected clients' runs are cancelled.
+
 ## Conversation Data at Rest
 
 With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 0005), checkpoints store user prompts and model answers. Treat them as user data.
