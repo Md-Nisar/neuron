@@ -43,6 +43,25 @@ Mutating or high-impact tools require:
 - audit logs
 - tests for unauthorized calls and duplicate execution
 
+## Conversation Data at Rest
+
+With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 0005), checkpoints store user prompts and model answers. Treat them as user data.
+
+- **What is stored.** Per thread:
+  - the user turns and final answers (`messages`);
+  - per-run fields, including the latest raw `user_message`;
+  - the hashed `user_id` of the owner.
+
+  The nested agent's tool calls and tool results aren't checkpointed. LangGraph keeps a checkpoint per step, so earlier versions of the state remain until the thread is deleted.
+- **Where.**
+  - `memory`: process memory only, gone on restart.
+  - `postgres`: the `checkpoints`, `checkpoint_blobs` and `checkpoint_writes` tables.
+- **Deletion.** `DELETE /v1/threads/{thread_id}` removes every checkpoint of a thread, for the owner only.
+- **Retention.** `make prune-threads` deletes threads inactive for longer than `APP_THREAD_RETENTION_DAYS` (default `30`). Run it on a schedule; Postgres has no built-in TTL.
+- **Backups.** Deleted or pruned threads persist in database backups until those backups expire. Align backup retention with `APP_THREAD_RETENTION_DAYS`.
+- **Encryption.** Encryption at rest is the database's responsibility (managed-service or disk encryption). LangGraph's `EncryptedSerializer` is available if application-level encryption is required; it isn't enabled by default.
+- **Access.** Thread history is exposed only through `GET /v1/threads/{thread_id}/messages`, with the same owner check as conversations. System prompts, tool calls and tool output are never returned. Until v0.4.0, owner identity comes from the unauthenticated `X-User-Id` header, or `user_id` in the body (see Current Controls).
+
 ## Secrets
 
 Secrets must come from environment variables or deployment secret stores. `.env` is ignored by git.

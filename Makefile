@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -14,6 +14,9 @@ api:
 
 db-setup:
 	uv run python -m neuron_agent.persistence.cli setup
+
+prune-threads:
+	uv run python -m neuron_agent.persistence.cli prune
 
 format:
 	uv run python -m ruff format src tests

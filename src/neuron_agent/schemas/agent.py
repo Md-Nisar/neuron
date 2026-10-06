@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -46,3 +47,20 @@ class AgentResponse(BaseModel):
     answer: str
     used_tools: list[str]
     confidence: float
+
+
+class ThreadMessage(BaseModel):
+    """One conversation turn as exposed to clients."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ThreadHistoryResponse(BaseModel):
+    """A page of a thread's conversation, oldest first."""
+
+    thread_id: str
+    messages: list[ThreadMessage]
+    total: int
+    limit: int
+    offset: int

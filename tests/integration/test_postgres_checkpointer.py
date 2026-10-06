@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta
 
 import pytest
 from pydantic import SecretStr
@@ -8,6 +9,7 @@ from pydantic import SecretStr
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import ThreadNotFoundError
 from neuron_agent.persistence.checkpointer import build_persistence
+from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.services.agent_service import AgentService
 
@@ -65,3 +67,38 @@ async def test_thread_state_survives_service_restart() -> None:
     assert contents[0] == "remember me"
     assert contents[2] == "again"
     assert len(contents) == 4
+
+
+async def test_postgres_delete_and_prune_threads() -> None:
+    settings = _settings()
+    service = AgentService(settings)
+    await service.startup()
+    try:
+        old = (await service.invoke(AgentRequest(message="old"))).thread_id
+        recent = (await service.invoke(AgentRequest(message="recent"))).thread_id
+        doomed = (await service.invoke(AgentRequest(message="doomed"))).thread_id
+
+        await service.delete_thread(doomed, None)
+        with pytest.raises(ThreadNotFoundError):
+            await service.get_history(doomed, None, limit=10, offset=0)
+
+        checkpointer = service._persistence.checkpointer
+        assert checkpointer is not None
+        old_ts = (await checkpointer.aget_tuple({"configurable": {"thread_id": old}})).checkpoint[
+            "ts"
+        ]
+        recent_ts = (
+            await checkpointer.aget_tuple({"configurable": {"thread_id": recent}})
+        ).checkpoint["ts"]
+        old_at, recent_at = datetime.fromisoformat(old_ts), datetime.fromisoformat(recent_ts)
+        cutoff = old_at + (recent_at - old_at) / 2
+
+        persistence = service._persistence
+        # Other threads in the shared test database are older than `old`, so count >= 1.
+        assert await prune_threads(persistence, older_than=timedelta(0), now=cutoff) >= 1
+        assert await prune_threads(persistence, older_than=timedelta(0), now=cutoff) == 0
+        with pytest.raises(ThreadNotFoundError):
+            await service.get_history(old, None, limit=10, offset=0)
+        assert (await service.get_history(recent, None, limit=10, offset=0)).total == 2
+    finally:
+        await service.shutdown()
