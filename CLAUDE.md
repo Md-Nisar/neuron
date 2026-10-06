@@ -51,7 +51,12 @@ Module boundaries (enforced, see `AGENTS.md`):
 - `observability/` — structlog JSON logging setup.
 - `schemas/` — public API contracts and the `AgentAnswer` structured-output schema.
 
-Do not add retrieval, queues, custom persistence, subgraphs, or multi-agent orchestration without a concrete product requirement **and** a new/updated ADR in `docs/decisions/` — this is a deliberate constraint, not an oversight (see ADR 0001, 0002). There is currently no checkpointer for local invocation; durable thread state is deferred to LangGraph Agent Server persistence when deployed.
+Do not add retrieval, queues, custom persistence, subgraphs, or multi-agent orchestration without a concrete product requirement **and** a new or updated ADR in `docs/decisions/`. This is a deliberate constraint, not an oversight (see ADR 0001, 0002, 0005).
+
+Thread persistence follows ADR 0005:
+- `persistence/` selects a LangGraph checkpointer from `APP_CHECKPOINTER`: `auto`, `memory`, `postgres` or `none`.
+- `AgentService` owns thread rules, run leases and streaming (`POST /v1/agent/stream`).
+- The `langgraph.json` graph is compiled without a checkpointer, because Agent Server supplies its own.
 
 ## Security model
 
@@ -65,4 +70,6 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-Currently v0.2.0 ("Reliable Agent Runtime") per `docs/ROADMAP.md` — error taxonomy, enforced runtime limits, provider retry/backoff, hardened tool/input boundaries, rate limiting, an expanded failure-path test suite, eval dataset v1, and structured logging/telemetry are all implemented (see `CHANGELOG.md`). v0.3.0 ("Stateful + Streaming") is the active target. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
+The current version is v0.3.0 ("Stateful + Streaming") per `docs/ROADMAP.md`. It adds multi-turn conversations with Postgres or in-memory thread persistence, SSE streaming, cancellation, concurrency and timeout guards, a thread history and deletion API with retention, streaming telemetry, and eval dataset v2 (see `CHANGELOG.md`).
+
+Release verification is recorded in `docs/releases/v0.3.0-release-verification.md`. The live-credential checks were still pending at the time of writing, so check issue #30's status. v0.4.0 ("Secure Multi-User") is next. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
