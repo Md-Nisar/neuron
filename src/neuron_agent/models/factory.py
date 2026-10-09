@@ -43,6 +43,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.errors.base import RateLimitError as AppRateLimitError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
+from neuron_agent.observability.audit import audit
 from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext, require_permission
@@ -91,10 +92,30 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
             try:
                 require_permission(permission, permissions)
             except AuthorizationError:
-                logger.warning("authorization_denied", permission=permission, tool=tool_name)
+                audit(
+                    "authorization_denied",
+                    outcome="denied",
+                    actor=context.actor if isinstance(context, AuthorizationContext) else None,
+                    issuer_id=context.issuer_id
+                    if isinstance(context, AuthorizationContext)
+                    else None,
+                    action=permission,
+                    resource_type="tool",
+                    resource_id=tool_name,
+                    reason="insufficient_scope",
+                )
                 raise
         elif tool_name != "utc_now":
-            logger.warning("authorization_denied", permission="none", tool=tool_name)
+            audit(
+                "authorization_denied",
+                outcome="denied",
+                actor=context.actor if isinstance(context, AuthorizationContext) else None,
+                issuer_id=context.issuer_id if isinstance(context, AuthorizationContext) else None,
+                action="none",
+                resource_type="tool",
+                resource_id=tool_name,
+                reason="unknown_tool",
+            )
             raise AuthorizationError("tool is not authorized")
         return await handler(request)
 

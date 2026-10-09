@@ -29,6 +29,16 @@ LANGSMITH_PROJECT=neuron-agent-production
 
 Do not log raw secrets, authorization headers, or sensitive user content.
 
+Security audit records use the separate `neuron_agent.audit` logger (also present as the
+JSON `logger` field). Route that logger to the SIEM independently from application logs;
+do not apply application-log sampling or filtering that drops denials. Records use the
+fixed schema in `ARCHITECTURE.md#observability`; authentication success records are off
+unless `APP_AUTH_AUDIT_SUCCESS_ENABLED=true`. Configure `APP_AUTH_ISSUER_ID` as a stable,
+non-secret alias (for example `primary`), not an issuer URL. Choose SIEM retention under
+your security/compliance policy; keep it separate from `APP_THREAD_RETENTION_DAYS`, since
+audit records contain metadata and are not deleted with conversation data. Protect audit
+sink access and retention against unauthorized modification/deletion.
+
 ### Streaming and conversation-state events
 
 Every event carries `request_id`, `thread_id` and `run_id`. None of them contains prompt text, streamed tokens or tool arguments.
@@ -44,7 +54,8 @@ Every event carries `request_id`, `thread_id` and `run_id`. None of them contain
 | `checkpoint_operation_slow` | warning | `operation`, `backend`, `duration_ms` | a checkpointer read or write took at least 250 ms |
 | `checkpoint_operation_failed` | warning | `operation`, `backend`, `error_type`, `duration_ms` | a checkpointer read or write raised |
 | `checkpointer_unreachable` | warning | `backend`, `error_type` | readiness probe failed |
-| `threads_pruned` | info | `count`, `retention_days` | the retention job finished |
+| `thread_prune_job_completed` | info | `count`, `retention_days` | the retention job finished |
+| `threads_pruned` | audit | `count` | the retention run's security audit record |
 
 Suggested alerts:
 - **Time to first token:** sustained rise in p95 `ttft_ms`.
@@ -52,7 +63,22 @@ Suggested alerts:
 - **Disconnects:** a spike in `stream_cancelled`. This usually means client or proxy timeouts, so check proxy buffering and timeouts first.
 - **Capacity:** any `stream_rejected` with `too_many_streams`, which means you're at capacity; scale out or raise `APP_MAX_CONCURRENT_STREAMS`.
 - **Database:** any `checkpoint_operation_failed`, or a sustained `checkpoint_operation_slow` rate.
-- **Retention:** `threads_pruned` missing for longer than the job's schedule interval.
+- **Retention:** `thread_prune_job_completed` missing for longer than the job's schedule interval.
+
+### Security incident runbook
+
+- **401/authentication failure spike:** query `logger="neuron_agent.audit" AND event="auth_failed"`
+  and group by `reason`, `issuer_id` and time. `jwks_unavailable` indicates identity-provider
+  connectivity trouble; invalid-token reasons indicate caller credentials or abuse. Verify
+  issuer/JWKS health and key rotation before changing auth policy. Never copy bearer tokens
+  into tickets or logs.
+- **403/authorization denial spike:** query `event="authorization_denied"`, group by
+  `action` and `reason`, and check for repeated scope mismatch or thread-access attempts.
+  Verify role-to-scope configuration; never broaden permissions as a diagnostic shortcut.
+- **Quota exhaustion:** query `event="limit_exceeded"` grouped by `reason` and `actor`.
+  `token_budget` is the per-principal rolling budget; `request_rate`,
+  `authentication_attempts`, and `concurrent_runs` identify other guards. Check legitimate
+  workload and provider capacity before tuning limits; do not disable guards during an incident.
 
 ## Scaling
 
@@ -111,7 +137,7 @@ Clients that disconnect stop their run: model and tool calls are cancelled. A cl
 
 - **Schedule retention.** Run `make prune-threads` (`python -m neuron_agent.persistence.cli prune`) daily, for example from cron or a Kubernetes CronJob, using the same `APP_CHECKPOINTER` and `APP_POSTGRES_DSN` as the API.
   - It deletes threads whose last checkpoint is older than `APP_THREAD_RETENTION_DAYS` (default `30`); `--older-than-days N` overrides that.
-  - It's idempotent and logs `threads_pruned` with a count.
+  - It's idempotent and logs `thread_prune_job_completed` with a count and emits the `threads_pruned` audit record.
   - On Postgres it selects stale threads with one aggregate query over root-namespace checkpoints.
 - **User deletion requests.** Handle them with `DELETE /v1/threads/{thread_id}` (`204`). It returns `409 thread_busy` while a run is in flight; retry after it finishes.
 - **Backups.** Database backups keep deleted threads until the backups expire. Size backup retention against your data-retention policy.
@@ -136,7 +162,7 @@ The supported rollout preserves security and lets old threads expire:
    threads. Do not promise old-thread access during the transition.
 4. Continue scheduled pruning for one full `APP_THREAD_RETENTION_DAYS` window
    after the last legacy write. After that window, all legacy threads should
-   have been pruned; verify the `threads_pruned` job logs and database state
+   have been pruned; verify the `thread_prune_job_completed` job logs and database state
    before considering the migration complete.
 
 If customers require uninterrupted access, stop the rollout and design a
