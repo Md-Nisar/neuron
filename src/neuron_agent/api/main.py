@@ -26,6 +26,7 @@ from starlette.types import Receive, Scope, Send
 
 from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
+from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
 from neuron_agent.security.auth import Principal, TokenVerifier, require_permission
@@ -178,6 +179,14 @@ def _rate_limited_response(retry_after_seconds: float, key: str) -> JSONResponse
         limit_type="request_rate",
         owner_key_prefix=_opaque_identity_prefix(key),
         retry_after=retry_after,
+    )
+    audit(
+        "limit_exceeded",
+        outcome="denied",
+        issuer_id=settings.auth_issuer_id,
+        action="request",
+        resource_type="api",
+        reason="request_rate",
     )
     return JSONResponse(
         status_code=429,

@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
@@ -253,7 +254,7 @@ async def test_authentication_logs_never_contain_token_or_claim_values() -> None
     private, public = _key_pair()
     verifier = TokenVerifier(_settings())
     verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
-    token = _token(private, sub="sensitive-subject-value")
+    token = _token(private, sub="audit.person@example.test")
 
     with structlog.testing.capture_logs() as events:
         with pytest.raises(AuthenticationError):
@@ -261,7 +262,12 @@ async def test_authentication_logs_never_contain_token_or_claim_values() -> None
 
     rendered = json.dumps(events)
     assert token not in rendered
-    assert "sensitive-subject-value" not in rendered
+    assert "audit.person@example.test" not in rendered
+    assert not re.search(r"\bsub\b", rendered)
+    assert not re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", rendered)
+    assert not re.search(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", rendered)
+    assert not re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", rendered)
+    assert [entry["event"] for entry in events].count("auth_failed") == 1
 
 
 @pytest.mark.anyio

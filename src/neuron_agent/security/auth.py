@@ -34,6 +34,7 @@ from neuron_agent.errors.base import (
     AuthenticationUnavailableError,
     AuthorizationError,
 )
+from neuron_agent.observability.audit import audit
 from neuron_agent.security.authorization import (
     DEV_PERMISSIONS,
 )
@@ -118,10 +119,20 @@ class TokenVerifier:
             raise
         except PyJWKClientConnectionError as exc:
             self._last_unavailable_at = time.monotonic()
-            logger.warning("auth_failed", reason="jwks_unavailable")
+            audit(
+                "auth_failed",
+                outcome="error",
+                issuer_id=self._settings.auth_issuer_id,
+                reason="jwks_unavailable",
+            )
             raise AuthenticationUnavailableError() from exc
         except PyJWKClientError as exc:
-            logger.warning("auth_failed", reason="unknown_signing_key")
+            audit(
+                "auth_failed",
+                outcome="denied",
+                issuer_id=self._settings.auth_issuer_id,
+                reason="unknown_signing_key",
+            )
             raise AuthenticationError() from exc
         except ExpiredSignatureError as exc:
             raise self._reject("expired") from exc
@@ -170,14 +181,23 @@ class TokenVerifier:
             self._last_unavailable_at = None
             return key
 
-    @staticmethod
-    def _extract_bearer_token(authorization: str | None) -> str:
+    def _extract_bearer_token(self, authorization: str | None) -> str:
         if authorization is None:
-            logger.warning("auth_failed", reason="missing_token")
+            audit(
+                "auth_failed",
+                outcome="denied",
+                issuer_id=self._settings.auth_issuer_id,
+                reason="missing_token",
+            )
             raise AuthenticationError()
         scheme, separator, token = authorization.partition(" ")
         if scheme.lower() != "bearer" or not separator or not token or " " in token:
-            logger.warning("auth_failed", reason="invalid_scheme")
+            audit(
+                "auth_failed",
+                outcome="denied",
+                issuer_id=self._settings.auth_issuer_id,
+                reason="invalid_scheme",
+            )
             raise AuthenticationError()
         return token
 
@@ -221,9 +241,13 @@ class TokenVerifier:
             expires_at=datetime.fromtimestamp(expires_at, tz=UTC),
         )
 
-    @staticmethod
-    def _reject(reason: str) -> AuthenticationError:
-        logger.warning("auth_failed", reason=reason)
+    def _reject(self, reason: str) -> AuthenticationError:
+        audit(
+            "auth_failed",
+            outcome="denied",
+            issuer_id=self._settings.auth_issuer_id,
+            reason=reason,
+        )
         return AuthenticationError()
 
 
@@ -267,12 +291,33 @@ async def require_principal(
                     owner_key_prefix=api_main._opaque_identity_prefix(ip_key),
                     retry_after=retry_after,
                 )
+                audit(
+                    "limit_exceeded",
+                    outcome="denied",
+                    issuer_id=api_main.settings.auth_issuer_id,
+                    action="authentication",
+                    resource_type="api",
+                    reason="authentication_attempts",
+                )
                 raise HTTPException(
                     status_code=429,
                     detail="rate_limited",
                     headers={"Retry-After": str(retry_after)},
                 ) from exc
         raise authentication_http_error(exc) from exc
+    if api_main.settings.auth_audit_success_enabled:
+        identity_key = api_main.settings.identity_hash_key
+        actor = (
+            principal_owner_key(principal, identity_key.get_secret_value())[:12]
+            if principal is not None and identity_key is not None
+            else None
+        )
+        audit(
+            "auth_succeeded",
+            outcome="allowed",
+            actor=actor,
+            issuer_id=api_main.settings.auth_issuer_id,
+        )
     return principal
 
 
@@ -310,6 +355,15 @@ def require_permission(permission: str) -> Any:
                     owner_key_prefix=owner_key[:12],
                     retry_after=retry_after,
                 )
+                audit(
+                    "limit_exceeded",
+                    outcome="denied",
+                    actor=owner_key[:12],
+                    issuer_id=api_main.settings.auth_issuer_id,
+                    action=permission,
+                    resource_type="api",
+                    reason="request_rate",
+                )
                 raise HTTPException(
                     status_code=429,
                     detail="rate_limited",
@@ -318,11 +372,22 @@ def require_permission(permission: str) -> Any:
         try:
             check_permission(permission, permissions)
         except AuthorizationError as exc:
-            logger.warning(
+            thread_id = request.path_params.get("thread_id")
+            identity_key = api_main.settings.identity_hash_key
+            actor = (
+                principal_owner_key(principal, identity_key.get_secret_value())[:12]
+                if principal is not None and identity_key is not None
+                else None
+            )
+            audit(
                 "authorization_denied",
-                permission=permission,
-                route=request.url.path,
-                correlation_id=getattr(request.state, "correlation_id", None),
+                outcome="denied",
+                actor=actor,
+                issuer_id=api_main.settings.auth_issuer_id,
+                action=permission,
+                resource_type="thread" if thread_id else "agent",
+                resource_id=str(thread_id) if thread_id else None,
+                reason="insufficient_scope",
             )
             raise HTTPException(
                 status_code=403,
