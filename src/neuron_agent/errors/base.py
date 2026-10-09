@@ -66,6 +66,22 @@ class CapacityError(AppError):
     context = ErrorContext(code="too_many_streams", http_status=503, retryable=True)
 
 
+class ConcurrentRunsExceededError(AppError):
+    """Caller exceeded its concurrent invoke/stream run allowance."""
+
+    context = ErrorContext(code="too_many_concurrent_runs", http_status=429, retryable=True)
+
+
+class QuotaExceededError(AppError):
+    """Caller exceeded the rolling provider-token budget."""
+
+    context = ErrorContext(code="quota_exceeded", http_status=429, retryable=True)
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__("user token budget exceeded")
+        self.retry_after_seconds = max(1, retry_after_seconds)
+
+
 class RunTimeoutError(AppError):
     """A whole agent run exceeded `APP_RUN_TIMEOUT_SECONDS`."""
 
