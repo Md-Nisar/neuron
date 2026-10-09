@@ -9,6 +9,7 @@ import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import anyio
@@ -22,6 +23,7 @@ from neuron_agent.errors.base import (
     AuthenticationError,
     CapacityError,
     ConcurrentRunsExceededError,
+    ExportTooLargeError,
     PersistenceError,
     QuotaExceededError,
     RunTimeoutError,
@@ -37,8 +39,13 @@ from neuron_agent.schemas.agent import (
     AgentAnswer,
     AgentRequest,
     AgentResponse,
+    ExportedThread,
     ThreadHistoryResponse,
     ThreadMessage,
+    UserDataErasureResponse,
+    UserDataExportResponse,
+    UserThreadsResponse,
+    UserThreadSummary,
 )
 from neuron_agent.security.auth import Principal, principal_owner_key
 from neuron_agent.security.authorization import (
@@ -85,12 +92,16 @@ class PreparedRun:
     graph_input: dict[str, Any]
     authorization: AuthorizationContext
     budget_key: str
+    checkpoint_owner: str | None
     created_thread: bool
     lease: RunLease
 
     @property
     def config(self) -> dict[str, Any]:
-        return {"configurable": {"thread_id": self.thread_id}}
+        config: dict[str, Any] = {"configurable": {"thread_id": self.thread_id}}
+        if self.checkpoint_owner is not None:
+            config["metadata"] = {"owner": self.checkpoint_owner}
+        return config
 
 
 class AgentService:
@@ -111,6 +122,7 @@ class AgentService:
         self._graph: Any | None = None
         # Process-local run guards (ADR 0005 decisions 5 and 6); not shared across replicas.
         self._active_threads: set[str] = set()
+        self._active_thread_owners: dict[str, str] = {}
         self._active_runs_by_owner: dict[str, int] = {}
         self._open_streams = 0
         if self._persistence.is_open:
@@ -208,6 +220,7 @@ class AgentService:
                 issuer_id=self._settings.auth_issuer_id,
             ),
             budget_key=budget_key,
+            checkpoint_owner=owner_key,
             created_thread=request.thread_id is None,
             lease=lease,
         )
@@ -422,12 +435,14 @@ class AgentService:
         self._active_runs_by_owner[owner_key] = active_for_owner + 1
         if guard_thread:
             self._active_threads.add(thread_id)
+            self._active_thread_owners[thread_id] = owner_key
 
         def release() -> None:
             if streaming:
                 self._open_streams -= 1
             if guard_thread:
                 self._active_threads.discard(thread_id)
+                self._active_thread_owners.pop(thread_id, None)
             remaining = self._active_runs_by_owner[owner_key] - 1
             if remaining:
                 self._active_runs_by_owner[owner_key] = remaining
@@ -494,16 +509,7 @@ class AgentService:
         bind_correlation_context(request_id=None, thread_id=thread_id)
         with self._persistence_errors():
             values = await self._owned_thread_state(thread_id, owner_key)
-        turns = [
-            ThreadMessage(
-                role="user" if isinstance(message, HumanMessage) else "assistant",
-                content=message.content,
-            )
-            for message in values.get("messages", [])
-            if isinstance(message, HumanMessage | AIMessage)
-            and isinstance(message.content, str)
-            and message.content
-        ]
+        turns = _public_thread_messages(values.get("messages", []))
         response = ThreadHistoryResponse(
             thread_id=thread_id,
             messages=turns[offset : offset + limit],
@@ -521,6 +527,169 @@ class AgentService:
             resource_id=thread_id,
         )
         return response
+
+    async def list_user_threads(
+        self,
+        user_id: str | None,
+        *,
+        limit: int,
+        offset: int,
+        principal: Principal | None = None,
+    ) -> UserThreadsResponse:
+        """List only the caller's threads, newest activity first, without content."""
+        records = await self._owned_thread_records(self._owner_key(user_id, principal))
+        summaries = [
+            UserThreadSummary(
+                thread_id=record["thread_id"],
+                created_at=record["created_at"],
+                updated_at=record["updated_at"],
+                message_count=len(record["messages"]),
+            )
+            for record in records
+        ]
+        return UserThreadsResponse(
+            threads=summaries[offset : offset + limit],
+            total=len(summaries),
+            limit=limit,
+            offset=offset,
+        )
+
+    async def export_user_data(
+        self,
+        user_id: str | None,
+        *,
+        limit: int,
+        offset: int,
+        message_limit: int,
+        message_offset: int,
+        principal: Principal | None = None,
+    ) -> UserDataExportResponse:
+        """Export owner-scoped public turns with independent thread/message pagination."""
+        owner_key = self._owner_key(user_id, principal)
+        records = await self._owned_thread_records(owner_key)
+        page = records[offset : offset + limit]
+        exported = [
+            ExportedThread(
+                thread_id=record["thread_id"],
+                created_at=record["created_at"],
+                updated_at=record["updated_at"],
+                message_total=len(record["messages"]),
+                messages=record["messages"][message_offset : message_offset + message_limit],
+            )
+            for record in page
+        ]
+        response = UserDataExportResponse(
+            threads=exported,
+            total_threads=len(records),
+            limit=limit,
+            offset=offset,
+            message_limit=message_limit,
+            message_offset=message_offset,
+            has_more_messages=any(
+                message_offset + message_limit < len(record["messages"]) for record in page
+            ),
+        )
+        if (
+            len(response.model_dump_json().encode("utf-8"))
+            > self._settings.user_data_export_max_bytes
+        ):
+            raise ExportTooLargeError("reduce the thread or message page size and retry")
+        audit(
+            "user_data_exported",
+            outcome="allowed",
+            actor=(
+                owner_key[:12]
+                if self._settings.auth_mode == "jwt" and owner_key is not None
+                else None
+            ),
+            issuer_id=self._settings.auth_issuer_id,
+            action="threads:export",
+            resource_type="user_data",
+            count=len(exported),
+        )
+        return response
+
+    async def erase_user_data(
+        self, user_id: str | None, *, principal: Principal | None = None
+    ) -> UserDataErasureResponse:
+        """Delete all discoverable owned threads, skipping active runs idempotently."""
+        owner_key = self._owner_key(user_id, principal)
+        records = await self._owned_thread_records(owner_key)
+        erased = 0
+        active_owned = {
+            thread_id
+            for thread_id, active_owner in self._active_thread_owners.items()
+            if active_owner == owner_key
+        }
+        skipped_busy = len(active_owned)
+        checkpointer = self._persistence.checkpointer
+        if checkpointer is not None:
+            with self._persistence_errors():
+                for record in records:
+                    thread_id = record["thread_id"]
+                    if thread_id in active_owned or thread_id in self._active_threads:
+                        continue
+                    await checkpointer.adelete_thread(thread_id)
+                    erased += 1
+        audit(
+            "user_data_erased",
+            outcome="allowed",
+            actor=(
+                owner_key[:12]
+                if self._settings.auth_mode == "jwt" and owner_key is not None
+                else None
+            ),
+            issuer_id=self._settings.auth_issuer_id,
+            action="threads:erase_all",
+            resource_type="user_data",
+            count=erased,
+            reason="busy_threads_skipped" if skipped_busy else None,
+        )
+        return UserDataErasureResponse(erased_count=erased, skipped_busy_count=skipped_busy)
+
+    async def _owned_thread_records(self, owner_key: str | None) -> list[dict[str, Any]]:
+        """Resolve owner-indexed root checkpoints into current public thread records."""
+        checkpointer = self._persistence.checkpointer
+        if checkpointer is None or owner_key is None:
+            return []
+        latest: dict[str, tuple[datetime, list[ThreadMessage]]] = {}
+        with self._persistence_errors():
+            async for item in checkpointer.alist(None, filter={"owner": owner_key}):
+                configurable = item.config.get("configurable", {})
+                if configurable.get("checkpoint_ns", "") != "":
+                    continue
+                thread_id = configurable.get("thread_id")
+                if not isinstance(thread_id, str):
+                    continue
+                timestamp = _checkpoint_time(item.checkpoint.get("ts"))
+                current = latest.get(thread_id)
+                if current is None or timestamp > current[0]:
+                    channels = item.checkpoint.get("channel_values", {})
+                    raw_messages = (
+                        channels.get("messages", []) if isinstance(channels, dict) else []
+                    )
+                    latest[thread_id] = (timestamp, _public_thread_messages(raw_messages))
+
+            records: list[dict[str, Any]] = []
+            for thread_id, (updated_at, messages) in latest.items():
+                created_at = updated_at
+                async for item in checkpointer.alist({"configurable": {"thread_id": thread_id}}):
+                    configurable = item.config.get("configurable", {})
+                    if configurable.get("checkpoint_ns", "") != "":
+                        continue
+                    created_at = min(created_at, _checkpoint_time(item.checkpoint.get("ts")))
+                records.append(
+                    {
+                        "thread_id": thread_id,
+                        "created_at": created_at,
+                        "updated_at": updated_at,
+                        "messages": messages,
+                    }
+                )
+        return sorted(
+            records,
+            key=lambda record: (-record["updated_at"].timestamp(), record["thread_id"]),
+        )
 
     async def delete_thread(
         self, thread_id: str, user_id: str | None, *, principal: Principal | None = None
@@ -673,3 +842,29 @@ async def _cancel(task: asyncio.Task[Any]) -> None:
 
 def _hash_identifier(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _checkpoint_time(value: Any) -> datetime:
+    if not isinstance(value, str):
+        raise PersistenceError("checkpoint timestamp is unavailable")
+    try:
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise PersistenceError("checkpoint timestamp is invalid") from exc
+    return timestamp if timestamp.tzinfo is not None else timestamp.replace(tzinfo=UTC)
+
+
+def _public_thread_messages(messages: Any) -> list[ThreadMessage]:
+    """Match the history API's safe user/assistant-only message projection."""
+    if not isinstance(messages, list):
+        return []
+    return [
+        ThreadMessage(
+            role="user" if isinstance(message, HumanMessage) else "assistant",
+            content=message.content,
+        )
+        for message in messages
+        if isinstance(message, HumanMessage | AIMessage)
+        and isinstance(message.content, str)
+        and message.content
+    ]
