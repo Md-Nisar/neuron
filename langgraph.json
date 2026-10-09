@@ -5,6 +5,9 @@
   "graphs": {
     "main": "neuron_agent.graphs.main_graph:graph"
   },
+  "auth": {
+    "path": "neuron_agent.security.agent_server:auth"
+  },
   "env": ".env",
   "image_distro": "wolfi"
 }

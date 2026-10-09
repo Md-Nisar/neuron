@@ -43,6 +43,7 @@ from neuron_agent.security.authorization import (
 )
 
 logger = structlog.get_logger(__name__)
+_shared_token_verifier: TokenVerifier | None = None
 
 
 @dataclass(frozen=True)
@@ -249,6 +250,14 @@ class TokenVerifier:
             reason=reason,
         )
         return AuthenticationError()
+
+
+def get_shared_token_verifier(settings: Settings) -> TokenVerifier:
+    """Return the process-wide verifier shared by both deployment entrypoints."""
+    global _shared_token_verifier
+    if _shared_token_verifier is None:
+        _shared_token_verifier = TokenVerifier(settings)
+    return _shared_token_verifier
 
 
 def authentication_http_error(

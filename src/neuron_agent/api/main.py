@@ -29,7 +29,11 @@ from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, Quot
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
-from neuron_agent.security.auth import Principal, TokenVerifier, require_permission
+from neuron_agent.security.auth import (
+    Principal,
+    get_shared_token_verifier,
+    require_permission,
+)
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
@@ -42,7 +46,7 @@ configure_logging(
 )
 logger = structlog.get_logger(__name__)
 service = AgentService(settings)
-auth_verifier = TokenVerifier(settings)
+auth_verifier = get_shared_token_verifier(settings)
 
 
 @asynccontextmanager
