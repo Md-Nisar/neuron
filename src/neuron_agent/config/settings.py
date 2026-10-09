@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     thread_retention_days: int = Field(default=30, ge=1, le=3650)
     auth_mode: AuthMode = "none"
     auth_issuer: str | None = None
+    auth_issuer_id: str = Field(
+        default="default", min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$"
+    )
+    auth_audit_success_enabled: bool = False
     auth_audience: str | None = None
     auth_jwks_url: str | None = None
     auth_algorithms: list[str] = Field(default_factory=lambda: ["RS256", "ES256"])

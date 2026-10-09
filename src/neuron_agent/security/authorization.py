@@ -20,6 +20,8 @@ class AuthorizationContext:
     permissions: frozenset[str]
     principal: Principal | None = None
     usage: TokenUsageAccumulator | None = None
+    actor: str | None = None
+    issuer_id: str | None = None
 
 
 @dataclass

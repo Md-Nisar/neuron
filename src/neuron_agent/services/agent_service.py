@@ -30,6 +30,7 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
+from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 from neuron_agent.persistence.checkpointer import Persistence, build_persistence
 from neuron_agent.schemas.agent import (
@@ -84,6 +85,7 @@ class PreparedRun:
     graph_input: dict[str, Any]
     authorization: AuthorizationContext
     budget_key: str
+    created_thread: bool
     lease: RunLease
 
     @property
@@ -159,6 +161,15 @@ class AgentService:
                 owner_key_prefix=budget_key[:12],
                 retry_after=budget_decision.retry_after_seconds,
             )
+            audit(
+                "limit_exceeded",
+                outcome="denied",
+                actor=budget_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="agent:invoke",
+                resource_type="agent",
+                reason="token_budget",
+            )
             raise QuotaExceededError(budget_decision.retry_after_seconds)
         bind_correlation_context(request_id=request_id, thread_id=request.thread_id, run_id=run_id)
         with self._persistence_errors():
@@ -190,9 +201,14 @@ class AgentService:
                 **owner_state,
             },
             authorization=AuthorizationContext(
-                permissions, principal, usage=TokenUsageAccumulator()
+                permissions,
+                principal,
+                usage=TokenUsageAccumulator(),
+                actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+                issuer_id=self._settings.auth_issuer_id,
             ),
             budget_key=budget_key,
+            created_thread=request.thread_id is None,
             lease=lease,
         )
 
@@ -214,7 +230,20 @@ class AgentService:
                 self._finish_usage(run)
             finally:
                 run.lease.release()
-        return _response(run, result["answer"])
+        response = _response(run, result["answer"])
+        if run.created_thread:
+            audit(
+                "thread_created",
+                outcome="allowed",
+                actor=run.budget_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="agent:invoke",
+                resource_type="thread",
+                resource_id=run.thread_id,
+                request_id=run.request_id,
+                run_id=run.run_id,
+            )
+        return response
 
     async def stream(
         self, run: PreparedRun, *, stop: StopSignal | None = None
@@ -329,6 +358,18 @@ class AgentService:
                     StreamEvent("error", {"code": "internal_server_error", "retryable": False})
                 )
             else:
+                if run.created_thread:
+                    audit(
+                        "thread_created",
+                        outcome="allowed",
+                        actor=run.budget_key[:12] if self._settings.auth_mode == "jwt" else None,
+                        issuer_id=self._settings.auth_issuer_id,
+                        action="agent:invoke",
+                        resource_type="thread",
+                        resource_id=run.thread_id,
+                        request_id=run.request_id,
+                        run_id=run.run_id,
+                    )
                 queue.put_nowait(StreamEvent("final", _response(run, answer).model_dump()))
         finally:
             # Unbounded queue: its size is bounded by the run's own output
@@ -346,6 +387,15 @@ class AgentService:
             logger.warning(
                 "agent_stream_capacity_exceeded", limit=self._settings.max_concurrent_streams
             )
+            audit(
+                "limit_exceeded",
+                outcome="denied",
+                actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="agent:invoke",
+                resource_type="agent",
+                reason="concurrent_streams",
+            )
             raise CapacityError("too many concurrent streams")
         active_for_owner = self._active_runs_by_owner.get(owner_key, 0)
         if active_for_owner >= self._settings.max_concurrent_runs_per_user:
@@ -353,6 +403,15 @@ class AgentService:
                 "user_limit_exceeded",
                 limit_type="concurrent_runs",
                 owner_key_prefix=owner_key[:12],
+            )
+            audit(
+                "limit_exceeded",
+                outcome="denied",
+                actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="agent:invoke",
+                resource_type="agent",
+                reason="concurrent_runs",
             )
             raise ConcurrentRunsExceededError("too many concurrent runs")
         if guard_thread and thread_id in self._active_threads:
@@ -445,13 +504,23 @@ class AgentService:
             and isinstance(message.content, str)
             and message.content
         ]
-        return ThreadHistoryResponse(
+        response = ThreadHistoryResponse(
             thread_id=thread_id,
             messages=turns[offset : offset + limit],
             total=len(turns),
             limit=limit,
             offset=offset,
         )
+        audit(
+            "thread_read",
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="threads:read",
+            resource_type="thread",
+            resource_id=thread_id,
+        )
+        return response
 
     async def delete_thread(
         self, thread_id: str, user_id: str | None, *, principal: Principal | None = None
@@ -469,7 +538,15 @@ class AgentService:
             # _owned_thread_state already raised if there is no checkpointer.
             assert checkpointer is not None  # nosec B101
             await checkpointer.adelete_thread(thread_id)
-        logger.info("thread_deleted")
+        audit(
+            "thread_deleted",
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="threads:delete",
+            resource_type="thread",
+            resource_id=thread_id,
+        )
 
     async def _owned_thread_state(self, thread_id: str, owner_key: str | None) -> dict[str, Any]:
         """Return the thread's state if it exists and belongs to the effective owner.
@@ -483,6 +560,16 @@ class AgentService:
         owner_field = "owner_key" if self._settings.auth_mode == "jwt" else "user_id_hash"
         if not snapshot.values or snapshot.values.get(owner_field) != owner_key:
             logger.info("thread_access_denied")
+            audit(
+                "authorization_denied",
+                outcome="denied",
+                actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="threads:access",
+                resource_type="thread",
+                resource_id=thread_id,
+                reason="thread_not_found",
+            )
             raise ThreadNotFoundError("thread not found")
         values: dict[str, Any] = snapshot.values
         return values
