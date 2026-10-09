@@ -20,13 +20,14 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - AST-based calculator without `eval`.
 - Tool allow-list helper and high-impact tool deny list.
 - Localhost URL rejection helper.
-- Hashed user IDs before entering graph state.
+- Request user IDs are hashed before entering graph state in `AUTH_MODE=none`;
+  JWT mode uses a keyed HMAC owner key derived from the verified principal.
 - Conversation thread isolation (ADR 0005; v0.4.0 authentication and identity are defined by ADR 0006):
   - thread IDs are server-minted UUIDv4s, and malformed IDs are rejected;
-  - a supplied thread must already exist and belong to the same hashed `user_id`;
+  - a supplied thread must already exist and belong to the same effective owner;
   - a missing thread and another user's thread return the same `404 thread_not_found`, so thread IDs can't be probed.
 
-  **v0.3.0 limitation:** `user_id` comes from the request body and is not authenticated. In v0.4.0 JWT mode, ownership is derived from the verified `(iss, sub)` principal through a keyed HMAC; request-provided identity fields cannot override it.
+  In v0.4.0 JWT mode, ownership is derived from the verified `(iss, sub)` principal through a keyed HMAC; request-provided identity fields cannot override it. The unauthenticated request identity remains available only in explicit `AUTH_MODE=none` development/test mode.
 - Token-bucket rate limiting at `/v1/agent/invoke`, keyed by client IP, returning `429` with `Retry-After` when exceeded (ADR 0004).
 - Bounded provider/tool timeouts and capped provider retries (`APP_REQUEST_TIMEOUT_SECONDS`, `APP_TOOL_TIMEOUT_SECONDS`, `APP_PROVIDER_MAX_RETRIES`) and an agent-loop recursion limit (`APP_MAX_AGENT_ITERATIONS`) as resource-exhaustion controls, alongside rate limiting (see `OPERATIONS.md`'s Timeouts and Retries section).
 - Structured logging with no deliberate raw secret logging: log fields are limited to IDs, names, stable error codes/types, durations, and retry counts — never raw user prompts, tool arguments, exception text, or provider API keys (see `ARCHITECTURE.md#observability`).

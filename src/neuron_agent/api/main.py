@@ -9,7 +9,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Annotated, Any
 
 import anyio
 import structlog
@@ -24,7 +24,7 @@ from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
-from neuron_agent.security.auth import TokenVerifier, require_principal
+from neuron_agent.security.auth import Principal, TokenVerifier, require_principal
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
@@ -142,15 +142,17 @@ async def ready() -> JSONResponse:
 @app.post(
     "/v1/agent/invoke",
     response_model=AgentResponse,
-    dependencies=[Depends(require_principal)],
 )
-async def invoke_agent(request: AgentRequest) -> AgentResponse:
+async def invoke_agent(
+    request: AgentRequest,
+    principal: Annotated[Principal | None, Depends(require_principal)],
+) -> AgentResponse:
     request_id = None
     thread_id = request.thread_id
     bind_correlation_context(request_id=request_id, thread_id=thread_id)
     started = time.monotonic()
     try:
-        response = await service.invoke(request)
+        response = await service.invoke(request, principal=principal)
         request_id = response.request_id
         thread_id = response.thread_id
         bind_correlation_context(request_id=request_id, thread_id=thread_id)
@@ -186,8 +188,11 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
         raise HTTPException(status_code=500, detail="internal_server_error") from exc
 
 
-@app.post("/v1/agent/stream", dependencies=[Depends(require_principal)])
-async def stream_agent(request: AgentRequest) -> EventSourceResponse:
+@app.post("/v1/agent/stream")
+async def stream_agent(
+    request: AgentRequest,
+    principal: Annotated[Principal | None, Depends(require_principal)],
+) -> EventSourceResponse:
     """Stream a run as server-sent events (ADR 0005, decision 4).
 
     Validation, rate limiting and thread resolution happen before the first byte, so those
@@ -196,7 +201,7 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
     """
     bind_correlation_context(request_id=None, thread_id=request.thread_id)
     try:
-        run = await service.prepare(request, streaming=True)
+        run = await service.prepare(request, streaming=True, principal=principal)
     except AppError as exc:
         logger.warning(
             "stream_rejected",
@@ -242,26 +247,32 @@ _UserIdHeader = Header(default=None, alias="X-User-Id", max_length=128)
 @app.get(
     "/v1/threads/{thread_id}/messages",
     response_model=ThreadHistoryResponse,
-    dependencies=[Depends(require_principal)],
 )
 async def get_thread_messages(
     thread_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_principal)],
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user_id: str | None = _UserIdHeader,
 ) -> ThreadHistoryResponse:
     """Return a page of a thread's user/assistant turns (ADR 0005, decision 7)."""
     try:
-        return await service.get_history(str(thread_id), user_id, limit=limit, offset=offset)
+        return await service.get_history(
+            str(thread_id), user_id, limit=limit, offset=offset, principal=principal
+        )
     except AppError as exc:
         raise _http_error("thread_history_failed", exc) from exc
 
 
-@app.delete("/v1/threads/{thread_id}", status_code=204, dependencies=[Depends(require_principal)])
-async def delete_thread(thread_id: uuid.UUID, user_id: str | None = _UserIdHeader) -> Response:
+@app.delete("/v1/threads/{thread_id}", status_code=204)
+async def delete_thread(
+    thread_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_principal)],
+    user_id: str | None = _UserIdHeader,
+) -> Response:
     """Delete all stored state for a thread (ADR 0005, decision 7)."""
     try:
-        await service.delete_thread(str(thread_id), user_id)
+        await service.delete_thread(str(thread_id), user_id, principal=principal)
     except AppError as exc:
         raise _http_error("thread_delete_failed", exc) from exc
     return Response(status_code=204)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -9,6 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import ThreadNotFoundError
 from neuron_agent.schemas.agent import AgentRequest
+from neuron_agent.security.auth import Principal, principal_owner_key
 from neuron_agent.services.agent_service import AgentService
 
 pytestmark = pytest.mark.anyio
@@ -60,6 +62,61 @@ async def test_raw_user_id_is_never_stored(echo_agent: Any) -> None:
         )
     ]
     assert stored and not any("alice@example.test" in blob for blob in stored)
+
+
+async def test_jwt_thread_owner_is_hmac_of_issuer_and_subject(echo_agent: Any) -> None:
+    settings = Settings(
+        env="test",
+        auth_mode="jwt",
+        auth_issuer="https://issuer.example.test",
+        auth_audience="neuron-api",
+        auth_jwks_url="https://issuer.example.test/jwks.json",
+        identity_hash_key="k" * 32,
+    )
+    service = AgentService(settings)
+    principal = Principal(
+        issuer="https://issuer.example.test",
+        subject="subject-123",
+        scopes=frozenset({"agent:invoke"}),
+        token_id=None,
+        expires_at=datetime.now(UTC) + timedelta(minutes=5),
+    )
+
+    response = await service.invoke(
+        AgentRequest(message="secret", user_id="attacker-controlled"), principal=principal
+    )
+    state = await service.graph.aget_state({"configurable": {"thread_id": response.thread_id}})
+
+    assert state.values["owner_key"] == principal_owner_key(principal, "k" * 32)
+    assert "subject-123" not in repr(state.values)
+    assert "attacker-controlled" not in repr(state.values)
+
+    continued = await service.invoke(
+        AgentRequest(message="again", thread_id=response.thread_id, user_id="different"),
+        principal=principal,
+    )
+    assert continued.answer == "secret | again"
+
+    foreign = Principal(
+        issuer=principal.issuer,
+        subject="another-subject",
+        scopes=principal.scopes,
+        token_id=None,
+        expires_at=principal.expires_at,
+    )
+    with pytest.raises(ThreadNotFoundError):
+        await service.get_history(
+            response.thread_id, "attacker-controlled", limit=10, offset=0, principal=foreign
+        )
+
+    foreign_issuer = Principal(
+        issuer="https://other-issuer.example.test",
+        subject=principal.subject,
+        scopes=principal.scopes,
+        token_id=None,
+        expires_at=principal.expires_at,
+    )
+    assert principal_owner_key(principal, "k" * 32) != principal_owner_key(foreign_issuer, "k" * 32)
 
 
 async def test_guessed_thread_ids_are_rejected(echo_agent: Any) -> None:
