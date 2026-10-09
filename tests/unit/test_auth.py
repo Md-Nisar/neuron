@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 
 import jwt
 import pytest
+import structlog
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWKClientError
@@ -41,7 +47,9 @@ def _key_pair() -> tuple[Any, Any]:
     return private, private.public_key()
 
 
-def _token(private: Any, **overrides: Any) -> str:
+def _token(
+    private: Any, *, kid: str = "key-1", headers: dict[str, str] | None = None, **overrides: Any
+) -> str:
     now = datetime.now(UTC)
     claims = {
         "iss": "https://issuer.example.test",
@@ -54,7 +62,12 @@ def _token(private: Any, **overrides: Any) -> str:
         "scope": "agent:invoke threads:read",
         **overrides,
     }
-    return jwt.encode(claims, private, algorithm="RS256", headers={"kid": "key-1"})
+    return jwt.encode(
+        claims,
+        private,
+        algorithm="RS256",
+        headers={"kid": kid, **(headers or {})},
+    )
 
 
 @pytest.mark.anyio
@@ -119,12 +132,109 @@ async def test_unknown_key_refresh_is_rate_limited() -> None:
 
     client = MissingKeyClient()
     verifier._client = client  # type: ignore[assignment]
-    encoded = f"Bearer {_token(private)}"
+    encoded = f"Bearer {_token(private, kid='random-a')}"
     with pytest.raises(AuthenticationError):
         await verifier.verify(encoded)
+    # A fresh attacker-controlled kid must not bypass the process-wide limit.
     with pytest.raises(AuthenticationError):
-        await verifier.verify(encoded)
+        await verifier.verify(f"Bearer {_token(private, kid='random-b')}")
     assert client.calls == 1
+
+
+@pytest.mark.anyio
+async def test_verify_rejects_none_and_hmac_algorithms_before_key_lookup() -> None:
+    private, public = _key_pair()
+    verifier = TokenVerifier(_settings())
+    unsigned = jwt.encode(
+        {"iss": "https://issuer.example.test", "sub": "user-123"},
+        key="",
+        algorithm="none",
+        headers={"kid": "key-1"},
+    )
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(f"Bearer {unsigned}")
+
+    hmac_token = jwt.encode(
+        {"iss": "https://issuer.example.test", "sub": "user-123"},
+        key="attacker-controlled-secret",
+        algorithm="HS256",
+        headers={"kid": "key-1"},
+    )
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(f"Bearer {hmac_token}")
+
+    # Construct the classic RSA-public-key-as-HMAC-secret confusion token;
+    # the verifier rejects the algorithm before it ever consumes this key.
+    public_pem = public.public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    def encode(value: bytes) -> bytes:
+        return base64.urlsafe_b64encode(value).rstrip(b"=")
+
+    encoded_header = encode(b'{"alg":"HS256","kid":"key-1"}')
+    encoded_payload = encode(b'{"iss":"https://issuer.example.test","sub":"user-123"}')
+    signing_input = encoded_header + b"." + encoded_payload
+    signature = encode(hmac.new(public_pem, signing_input, hashlib.sha256).digest())
+    confusion_token = b".".join((signing_input, signature)).decode()
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(f"Bearer {confusion_token}")
+
+
+@pytest.mark.anyio
+async def test_verify_rejects_bad_signature_and_not_yet_valid_token() -> None:
+    signing_key, trusted_key = _key_pair()
+    other_key, _ = _key_pair()
+    verifier = TokenVerifier(_settings())
+    verifier._client = FakeJWKClient(trusted_key)  # type: ignore[assignment]
+
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(f"Bearer {_token(other_key)}")
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(
+            f"Bearer {_token(signing_key, nbf=datetime.now(UTC) + timedelta(minutes=5))}"
+        )
+
+
+@pytest.mark.anyio
+async def test_verify_requires_subject_and_configured_access_token_type() -> None:
+    private, public = _key_pair()
+    settings = _settings().model_copy(update={"auth_require_typ": True})
+    verifier = TokenVerifier(settings)
+    verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
+
+    missing_subject = {
+        "iss": "https://issuer.example.test",
+        "aud": "neuron-api",
+        "iat": datetime.now(UTC),
+        "nbf": datetime.now(UTC),
+        "exp": datetime.now(UTC) + timedelta(minutes=5),
+    }
+    token_without_subject = jwt.encode(
+        missing_subject, private, algorithm="RS256", headers={"kid": "key-1", "typ": "at+jwt"}
+    )
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(f"Bearer {token_without_subject}")
+
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(f"Bearer {_token(private)}")
+
+
+@pytest.mark.anyio
+async def test_authentication_logs_never_contain_token_or_claim_values() -> None:
+    private, public = _key_pair()
+    verifier = TokenVerifier(_settings())
+    verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
+    token = _token(private, sub="sensitive-subject-value")
+
+    with structlog.testing.capture_logs() as events:
+        with pytest.raises(AuthenticationError):
+            await verifier.verify(f"Bearer {token[:-3]}bad")
+
+    rendered = json.dumps(events)
+    assert token not in rendered
+    assert "sensitive-subject-value" not in rendered
 
 
 @pytest.mark.anyio
