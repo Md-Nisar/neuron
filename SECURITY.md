@@ -2,11 +2,16 @@
 
 ## Threat Model
 
-Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, dependency vulnerabilities, and accidental exposure of provider secrets.
+Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, dependency vulnerabilities, accidental exposure of provider secrets, and unauthorized access to persisted conversations. In staging and production, callers must authenticate through the configured external identity provider; human users and service accounts use the same bearer-token verification and scope-based authorization path. v0.4.0 trusts one configured issuer per deployment.
 
 ## Trust Boundaries
 
 - User input is untrusted.
+- Bearer tokens are untrusted until signature, issuer, audience, time claims, and required subject are verified against the configured issuer and JWKS.
+- Verified `(iss, sub)` is the principal identity; request body fields and `X-User-Id` are not identity sources in JWT mode. Service accounts have no alternate header or bypass.
+- The configured identity provider and its JWKS endpoint are external trust dependencies. Key-fetch failure without a usable cached key fails closed; JWKS URLs must use HTTPS outside development.
+- A thread UUID is not authorization. Invoke, stream, history, and delete enforce ownership from the verified principal and return the same not-found response for absent and foreign threads.
+- Legacy v0.3 SHA-256 owner values are not accepted in JWT mode. Operators must follow ADR 0006's retention or separately reviewed re-key procedure; no dual-hash fallback is permitted.
 - Tool output is untrusted.
 - Retrieved or external content is untrusted.
 - The system prompt is guidance, not an enforcement mechanism.
