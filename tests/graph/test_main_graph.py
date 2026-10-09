@@ -163,7 +163,7 @@ def test_exported_agent_server_graph_has_no_checkpointer() -> None:
 
 async def test_build_graph_with_checkpointer_persists_state() -> None:
     saver = InMemorySaver()
-    compiled = build_graph(Settings(env="test"), checkpointer=saver)
+    compiled = build_graph(Settings(env="test", openai_api_key=None), checkpointer=saver)
     config = {"configurable": {"thread_id": "thread-1"}}
     await compiled.ainvoke(_state(), config=config)
     snapshot = await compiled.aget_state(config)
