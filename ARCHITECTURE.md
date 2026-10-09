@@ -63,6 +63,27 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 - `prompts/`: versionable prompt assets.
 - `errors/`: shared `AppError` taxonomy and HTTP/retry/visibility metadata.
 
+## Authentication Across Deployment Paths
+
+FastAPI and the `langgraph.json` Agent Server path use the same process-wide
+`TokenVerifier` and identity model. In JWT mode, the verified `(issuer, subject)`
+is converted to the HMAC owner key from `APP_IDENTITY_HASH_KEY`; that opaque key
+is the Agent Server identity and the `owner` metadata value on created threads
+and assistants. Raw JWT subjects and claims are not returned to LangGraph's
+authorization context. Scope and role-to-permission mapping is the same as for
+FastAPI routes.
+
+`security/agent_server.py` is registered in `langgraph.json`. Its global authz
+handler denies unregistered actions; explicit thread and assistant handlers
+enforce permissions and add owner filters for resource access. Runs are scoped
+through their parent thread. `agent:invoke` permits assistant discovery and
+thread/run creation; assistant mutations additionally require
+`assistants:write` or `assistants:delete`, since invocation alone does not grant
+administrative access. The only bearer-free path is the explicit local
+development Studio identity (`APP_ENV=development` and `APP_AUTH_MODE=none`);
+production-like settings reject `APP_AUTH_MODE=none` and never enable that
+identity.
+
 ## State Model
 
 `MainGraphState` contains:
