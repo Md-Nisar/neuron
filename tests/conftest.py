@@ -26,6 +26,10 @@ from langchain_core.tools import BaseTool
 # Must run before importing neuron_agent: settings and the exported graph build at import.
 os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("APP_DEFAULT_MODEL", "openai:gpt-5.4-mini")
+# Developer shells may export provider credentials. Unit tests must never turn
+# those credentials into live LLM calls through default Settings construction.
+os.environ.pop("APP_OPENAI_API_KEY", None)
+os.environ.pop("OPENAI_API_KEY", None)
 
 from neuron_agent.api import main as api_main  # noqa: E402
 from neuron_agent.graphs import main_graph  # noqa: E402
@@ -60,7 +64,9 @@ class HistoryEchoAgent:
         self.calls: list[list[BaseMessage]] = []
         self.fail_next = False
 
-    async def ainvoke(self, inputs: dict[str, Any], *, config: dict[str, Any]) -> dict[str, Any]:
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
         messages = list(inputs["messages"])
         self.calls.append(messages)
         if self.fail_next:

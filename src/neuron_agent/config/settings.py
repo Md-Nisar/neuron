@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production", "test"]
 CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
+AuthMode = Literal["none", "jwt"]
 
 
 class Settings(BaseSettings):
@@ -51,6 +52,20 @@ class Settings(BaseSettings):
     run_timeout_seconds: int = Field(default=120, ge=1, le=900)
     max_concurrent_streams: int = Field(default=100, ge=1, le=10_000)
     thread_retention_days: int = Field(default=30, ge=1, le=3650)
+    auth_mode: AuthMode = "none"
+    auth_issuer: str | None = None
+    auth_audience: str | None = None
+    auth_jwks_url: str | None = None
+    auth_algorithms: list[str] = Field(default_factory=lambda: ["RS256", "ES256"])
+    auth_leeway_seconds: int = Field(default=30, ge=0, le=300)
+    auth_jwks_cache_seconds: int = Field(default=300, ge=1, le=86_400)
+    auth_jwks_timeout_seconds: int = Field(default=5, ge=1, le=30)
+    auth_token_max_bytes: int = Field(default=16_384, ge=1024, le=131_072)
+    auth_require_typ: bool = False
+    auth_scope_claim: str = "scope"
+    auth_roles_claim: str | None = "roles"
+    auth_role_permissions: dict[str, list[str]] = Field(default_factory=dict)
+    identity_hash_key: SecretStr | None = None
     openai_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices(
@@ -82,6 +97,31 @@ class Settings(BaseSettings):
             self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
         ):
             raise ValueError("APP_POSTGRES_DSN is required when APP_CHECKPOINTER=postgres")
+        return self
+
+    @model_validator(mode="after")
+    def validate_authentication(self) -> Settings:
+        """Require a complete and safe JWT configuration outside local mode."""
+        if self.auth_mode == "none":
+            if self.env in {"staging", "production"}:
+                raise ValueError("APP_AUTH_MODE=none is only allowed in development and test")
+            return self
+
+        if not self.auth_issuer:
+            raise ValueError("APP_AUTH_ISSUER is required when APP_AUTH_MODE=jwt")
+        if not self.auth_audience:
+            raise ValueError("APP_AUTH_AUDIENCE is required when APP_AUTH_MODE=jwt")
+        if not self.auth_jwks_url:
+            raise ValueError("APP_AUTH_JWKS_URL is required when APP_AUTH_MODE=jwt")
+        if self.env != "development" and not self.auth_jwks_url.startswith("https://"):
+            raise ValueError("APP_AUTH_JWKS_URL must use HTTPS outside development")
+        if not self.auth_algorithms or any(
+            algorithm not in {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
+            for algorithm in self.auth_algorithms
+        ):
+            raise ValueError("APP_AUTH_ALGORITHMS must contain only allowed asymmetric algorithms")
+        if self.identity_hash_key is None or len(self.identity_hash_key.get_secret_value()) < 32:
+            raise ValueError("APP_IDENTITY_HASH_KEY must be at least 32 characters in JWT mode")
         return self
 
 

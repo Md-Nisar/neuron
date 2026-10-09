@@ -66,7 +66,9 @@ class _FailingAgent:
         self.delay = delay
         self.started = asyncio.Event()
 
-    async def ainvoke(self, inputs: dict[str, Any], *, config: dict[str, Any]) -> dict[str, Any]:
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
         self.started.set()
         await asyncio.sleep(self.delay)
         if self.error is not None:
@@ -128,8 +130,8 @@ async def test_shutdown_and_disconnect_log_termination_reason(
     assert cancelled["run_id"] == run.run_id
 
 
-def test_rejected_stream_logs_termination(monkeypatch: pytest.MonkeyPatch) -> None:
-    service = AgentService(Settings(env="test"))
+def test_rejected_stream_logs_termination(monkeypatch: pytest.MonkeyPatch, echo_agent: Any) -> None:
+    service = AgentService(Settings(env="test", openai_api_key=None))
     monkeypatch.setattr(api_main, "service", service)
     client = TestClient(app)
     thread_id = client.post("/v1/agent/invoke", json={"message": "hi"}).json()["thread_id"]

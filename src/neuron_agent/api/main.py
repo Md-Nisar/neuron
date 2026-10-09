@@ -9,12 +9,12 @@ import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Annotated, Any
 
 import anyio
 import structlog
 import uvicorn
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
@@ -24,6 +24,7 @@ from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
+from neuron_agent.security.auth import Principal, TokenVerifier, require_permission
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
@@ -36,6 +37,7 @@ configure_logging(
 )
 logger = structlog.get_logger(__name__)
 service = AgentService(settings)
+auth_verifier = TokenVerifier(settings)
 
 
 @asynccontextmanager
@@ -79,6 +81,28 @@ class _CleanupEventSourceResponse(EventSourceResponse):
             await super().__call__(scope, receive, send)
         finally:
             await self._on_close()
+
+
+@app.middleware("http")
+async def bind_request_correlation(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    correlation_id = request.headers.get("X-Correlation-ID")
+    if (
+        correlation_id is None
+        or len(correlation_id) > 128
+        or any(
+            char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+            for char in correlation_id
+        )
+    ):
+        correlation_id = str(uuid.uuid4())
+    request.state.correlation_id = correlation_id
+    structlog.contextvars.clear_contextvars()
+    bind_correlation_context(request_id=correlation_id, thread_id=None)
+    response = await call_next(request)
+    response.headers["X-Correlation-ID"] = correlation_id
+    return response
 
 
 @app.middleware("http")
@@ -132,19 +156,31 @@ async def live() -> dict[str, str]:
 
 @app.get("/health/ready")
 async def ready() -> JSONResponse:
-    if not await service.is_ready():
+    if not await service.is_ready() or not await auth_verifier.ready():
         return JSONResponse(status_code=503, content={"status": "not_ready"})
     return JSONResponse(content={"status": "ready", "environment": settings.env})
 
 
-@app.post("/v1/agent/invoke", response_model=AgentResponse)
-async def invoke_agent(request: AgentRequest) -> AgentResponse:
+@app.post(
+    "/v1/agent/invoke",
+    response_model=AgentResponse,
+)
+async def invoke_agent(
+    request: AgentRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:invoke"))] = None,
+) -> AgentResponse:
     request_id = None
     thread_id = request.thread_id
     bind_correlation_context(request_id=request_id, thread_id=thread_id)
     started = time.monotonic()
     try:
-        response = await service.invoke(request)
+        # Preserve the pre-auth service call shape for local mode and direct
+        # callers; authenticated requests always carry the verified principal.
+        response = (
+            await service.invoke(request)
+            if principal is None
+            else await service.invoke(request, principal=principal)
+        )
         request_id = response.request_id
         thread_id = response.thread_id
         bind_correlation_context(request_id=request_id, thread_id=thread_id)
@@ -181,7 +217,10 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
 
 
 @app.post("/v1/agent/stream")
-async def stream_agent(request: AgentRequest) -> EventSourceResponse:
+async def stream_agent(
+    request: AgentRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:invoke"))] = None,
+) -> EventSourceResponse:
     """Stream a run as server-sent events (ADR 0005, decision 4).
 
     Validation, rate limiting and thread resolution happen before the first byte, so those
@@ -190,7 +229,11 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
     """
     bind_correlation_context(request_id=None, thread_id=request.thread_id)
     try:
-        run = await service.prepare(request, streaming=True)
+        run = (
+            await service.prepare(request, streaming=True)
+            if principal is None
+            else await service.prepare(request, streaming=True, principal=principal)
+        )
     except AppError as exc:
         logger.warning(
             "stream_rejected",
@@ -233,25 +276,40 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
 _UserIdHeader = Header(default=None, alias="X-User-Id", max_length=128)
 
 
-@app.get("/v1/threads/{thread_id}/messages", response_model=ThreadHistoryResponse)
+@app.get(
+    "/v1/threads/{thread_id}/messages",
+    response_model=ThreadHistoryResponse,
+)
 async def get_thread_messages(
     thread_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("threads:read"))] = None,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user_id: str | None = _UserIdHeader,
 ) -> ThreadHistoryResponse:
     """Return a page of a thread's user/assistant turns (ADR 0005, decision 7)."""
     try:
-        return await service.get_history(str(thread_id), user_id, limit=limit, offset=offset)
+        if principal is None:
+            return await service.get_history(str(thread_id), user_id, limit=limit, offset=offset)
+        return await service.get_history(
+            str(thread_id), user_id, limit=limit, offset=offset, principal=principal
+        )
     except AppError as exc:
         raise _http_error("thread_history_failed", exc) from exc
 
 
 @app.delete("/v1/threads/{thread_id}", status_code=204)
-async def delete_thread(thread_id: uuid.UUID, user_id: str | None = _UserIdHeader) -> Response:
+async def delete_thread(
+    thread_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> Response:
     """Delete all stored state for a thread (ADR 0005, decision 7)."""
     try:
-        await service.delete_thread(str(thread_id), user_id)
+        if principal is None:
+            await service.delete_thread(str(thread_id), user_id)
+        else:
+            await service.delete_thread(str(thread_id), user_id, principal=principal)
     except AppError as exc:
         raise _http_error("thread_delete_failed", exc) from exc
     return Response(status_code=204)

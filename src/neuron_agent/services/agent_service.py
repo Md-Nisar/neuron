@@ -19,6 +19,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AppError,
+    AuthenticationError,
     CapacityError,
     PersistenceError,
     RunTimeoutError,
@@ -36,6 +37,8 @@ from neuron_agent.schemas.agent import (
     ThreadHistoryResponse,
     ThreadMessage,
 )
+from neuron_agent.security.auth import Principal, principal_owner_key
+from neuron_agent.security.authorization import DEV_PERMISSIONS, AuthorizationContext
 from neuron_agent.security.input_policy import validate_user_message
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
 
@@ -72,6 +75,7 @@ class PreparedRun:
     thread_id: str
     run_id: str
     graph_input: dict[str, Any]
+    authorization: AuthorizationContext
     lease: RunLease
 
     @property
@@ -116,17 +120,35 @@ class AgentService:
         """Return whether the service's dependencies are reachable."""
         return await self._persistence.is_ready()
 
-    async def prepare(self, request: AgentRequest, *, streaming: bool = False) -> PreparedRun:
+    async def prepare(
+        self,
+        request: AgentRequest,
+        *,
+        streaming: bool = False,
+        principal: Principal | None = None,
+    ) -> PreparedRun:
         """Validate, resolve and claim the request's thread. Raises `AppError` before any output."""
         request_id = str(uuid.uuid4())
         run_id = str(uuid.uuid4())
-        user_id_hash = _hash_identifier(request.user_id) if request.user_id else None
+        owner_key = self._owner_key(request.user_id, principal)
         message = validate_user_message(request.message, max_chars=self._settings.max_prompt_chars)
         bind_correlation_context(request_id=request_id, thread_id=request.thread_id, run_id=run_id)
         with self._persistence_errors():
-            thread_id = await self._resolve_thread(request.thread_id, user_id_hash)
+            thread_id = await self._resolve_thread(request.thread_id, owner_key)
         bind_correlation_context(request_id=None, thread_id=thread_id)
         lease = self._claim(thread_id, streaming=streaming)
+        owner_state = (
+            {"owner_key": owner_key}
+            if self._settings.auth_mode == "jwt"
+            else {"user_id_hash": owner_key}
+        )
+        permissions = (
+            DEV_PERMISSIONS
+            if self._settings.auth_mode == "none"
+            else principal.scopes
+            if principal is not None
+            else frozenset()
+        )
         return PreparedRun(
             request_id=request_id,
             thread_id=thread_id,
@@ -137,17 +159,22 @@ class AgentService:
                 "request_id": request_id,
                 "thread_id": thread_id,
                 "run_id": run_id,
-                "user_id_hash": user_id_hash,
+                **owner_state,
             },
+            authorization=AuthorizationContext(permissions, principal),
             lease=lease,
         )
 
-    async def invoke(self, request: AgentRequest) -> AgentResponse:
-        run = await self.prepare(request)
+    async def invoke(
+        self, request: AgentRequest, *, principal: Principal | None = None
+    ) -> AgentResponse:
+        run = await self.prepare(request, principal=principal)
         try:
             with self._persistence_errors():
                 async with asyncio.timeout(self._settings.run_timeout_seconds):
-                    result = await self.graph.ainvoke(run.graph_input, config=run.config)
+                    result = await self.graph.ainvoke(
+                        run.graph_input, config=run.config, context=run.authorization
+                    )
         except TimeoutError as exc:
             logger.warning("agent_run_timed_out")
             raise RunTimeoutError("agent run exceeded its time budget") from exc
@@ -228,6 +255,7 @@ class AgentService:
                     async for namespace, mode, chunk in self.graph.astream(
                         run.graph_input,
                         config=run.config,
+                        context=run.authorization,
                         stream_mode=["messages", "updates"],
                         # The create_agent loop runs as a nested graph inside the `agent`
                         # node; its model tokens are only surfaced with subgraphs enabled.
@@ -311,7 +339,7 @@ class AgentService:
             )
             raise PersistenceError("thread persistence failed") from exc
 
-    async def _resolve_thread(self, thread_id: str | None, user_id_hash: str | None) -> str:
+    async def _resolve_thread(self, thread_id: str | None, owner_key: str | None) -> str:
         """Return the thread to run on, enforcing ADR 0005's thread rules.
 
         Without a thread ID the server mints a new UUID. With persistence enabled, a supplied
@@ -323,21 +351,27 @@ class AgentService:
             return str(uuid.uuid4())
         if self._persistence.checkpointer is None:
             return thread_id
-        await self._owned_thread_state(thread_id, user_id_hash)
+        await self._owned_thread_state(thread_id, owner_key)
         return thread_id
 
     async def get_history(
-        self, thread_id: str, user_id: str | None, *, limit: int, offset: int
+        self,
+        thread_id: str,
+        user_id: str | None,
+        *,
+        limit: int,
+        offset: int,
+        principal: Principal | None = None,
     ) -> ThreadHistoryResponse:
         """Return a page of the thread's user/assistant turns, oldest first.
 
         Only `HumanMessage`/`AIMessage` turns with text are exposed; system prompts, tool
         calls and tool results are never returned.
         """
-        user_id_hash = _hash_identifier(user_id) if user_id else None
+        owner_key = self._owner_key(user_id, principal)
         bind_correlation_context(request_id=None, thread_id=thread_id)
         with self._persistence_errors():
-            values = await self._owned_thread_state(thread_id, user_id_hash)
+            values = await self._owned_thread_state(thread_id, owner_key)
         turns = [
             ThreadMessage(
                 role="user" if isinstance(message, HumanMessage) else "assistant",
@@ -356,12 +390,14 @@ class AgentService:
             offset=offset,
         )
 
-    async def delete_thread(self, thread_id: str, user_id: str | None) -> None:
+    async def delete_thread(
+        self, thread_id: str, user_id: str | None, *, principal: Principal | None = None
+    ) -> None:
         """Delete every checkpoint of an owned thread. Rejected while a run is in flight."""
-        user_id_hash = _hash_identifier(user_id) if user_id else None
+        owner_key = self._owner_key(user_id, principal)
         bind_correlation_context(request_id=None, thread_id=thread_id)
         with self._persistence_errors():
-            await self._owned_thread_state(thread_id, user_id_hash)
+            await self._owned_thread_state(thread_id, owner_key)
             if thread_id in self._active_threads:
                 # The in-flight run would re-create the thread with its final write.
                 logger.info("agent_thread_busy")
@@ -372,8 +408,8 @@ class AgentService:
             await checkpointer.adelete_thread(thread_id)
         logger.info("thread_deleted")
 
-    async def _owned_thread_state(self, thread_id: str, user_id_hash: str | None) -> dict[str, Any]:
-        """Return the thread's state if it exists and belongs to `user_id_hash`.
+    async def _owned_thread_state(self, thread_id: str, owner_key: str | None) -> dict[str, Any]:
+        """Return the thread's state if it exists and belongs to the effective owner.
 
         A missing thread, another user's thread, and a service without persistence all raise
         the same `ThreadNotFoundError`, so thread IDs cannot be probed.
@@ -381,11 +417,22 @@ class AgentService:
         if self._persistence.checkpointer is None:
             raise ThreadNotFoundError("thread not found")
         snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
-        if not snapshot.values or snapshot.values.get("user_id_hash") != user_id_hash:
+        owner_field = "owner_key" if self._settings.auth_mode == "jwt" else "user_id_hash"
+        if not snapshot.values or snapshot.values.get(owner_field) != owner_key:
             logger.info("thread_access_denied")
             raise ThreadNotFoundError("thread not found")
         values: dict[str, Any] = snapshot.values
         return values
+
+    def _owner_key(self, user_id: str | None, principal: Principal | None) -> str | None:
+        """Resolve the owner without allowing request identity to override JWT identity."""
+        if self._settings.auth_mode == "jwt":
+            if principal is None or self._settings.identity_hash_key is None:
+                raise AuthenticationError("authenticated principal is required")
+            return principal_owner_key(
+                principal, self._settings.identity_hash_key.get_secret_value()
+            )
+        return _hash_identifier(user_id) if user_id else None
 
 
 def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:

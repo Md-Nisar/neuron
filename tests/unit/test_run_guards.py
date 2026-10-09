@@ -29,7 +29,9 @@ class GatedAgent:
         self.cancelled = False
         self.calls = 0
 
-    async def ainvoke(self, inputs: dict[str, Any], *, config: dict[str, Any]) -> dict[str, Any]:
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
         self.calls += 1
         self.started.set()
         try:
@@ -186,7 +188,9 @@ def test_run_lease_release_is_idempotent() -> None:
 # --- HTTP mapping -----------------------------------------------------------------
 
 
-def test_invoke_returns_409_for_busy_thread(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_invoke_returns_409_for_busy_thread(
+    monkeypatch: pytest.MonkeyPatch, echo_agent: Any
+) -> None:
     service = AgentService(Settings(env="test"))
     monkeypatch.setattr(api_main, "service", service)
     client = TestClient(app)

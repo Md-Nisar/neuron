@@ -15,7 +15,7 @@ pytestmark = pytest.mark.anyio
 
 
 def _service(checkpointer: str = "memory") -> AgentService:
-    return AgentService(Settings(env="test", checkpointer=checkpointer))
+    return AgentService(Settings(env="test", checkpointer=checkpointer, openai_api_key=None))
 
 
 @pytest.mark.usefixtures("echo_agent")
