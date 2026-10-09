@@ -116,6 +116,34 @@ Clients that disconnect stop their run: model and tool calls are cancelled. A cl
 - **User deletion requests.** Handle them with `DELETE /v1/threads/{thread_id}` (`204`). It returns `409 thread_busy` while a run is in flight; retry after it finishes.
 - **Backups.** Database backups keep deleted threads until the backups expire. Size backup retention against your data-retention policy.
 
+### Upgrade from v0.3 identity to JWT ownership
+
+v0.3 threads store an unkeyed SHA-256 owner derived from request-provided identity;
+JWT mode uses a keyed HMAC of the verified `(iss, sub)`. These formats are
+intentionally incompatible, and JWT mode will treat every legacy thread as
+not-found. Do not add a dual-hash fallback.
+
+The supported rollout preserves security and lets old threads expire:
+
+1. Before enabling JWT mode, provision the issuer, audience, JWKS URL, and a
+   stable `APP_IDENTITY_HASH_KEY` (at least 32 characters) as deployment
+   secrets. Keep the key stable across all replicas and restarts.
+2. Confirm `make prune-threads` runs at least daily against the same Postgres
+   database and `APP_THREAD_RETENTION_DAYS` configuration as the API. Configure
+   backup expiration to match the approved conversation retention policy.
+3. Record the time of the last v0.3 write, then deploy with `APP_AUTH_MODE=jwt`.
+   Legacy conversations are unavailable after the switch; clients start new
+   threads. Do not promise old-thread access during the transition.
+4. Continue scheduled pruning for one full `APP_THREAD_RETENTION_DAYS` window
+   after the last legacy write. After that window, all legacy threads should
+   have been pruned; verify the `threads_pruned` job logs and database state
+   before considering the migration complete.
+
+If customers require uninterrupted access, stop the rollout and design a
+separately reviewed migration that can authenticate each legacy owner and map
+it to a verified principal. Do not infer that mapping from user-controlled
+values or rewrite checkpoint ownership in place without an auditable plan.
+
 ## Rate Limiting
 
 `/v1/agent/*` and `/v1/threads/*` enforce a token-bucket rate limit per client IP (`APP_RATE_LIMIT_ENABLED=true` by default). Defaults: burst capacity `APP_RATE_LIMIT_BURST=20`, refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW=60` per `APP_RATE_LIMIT_WINDOW_SECONDS=60`. Exceeding it returns `429 {"detail": "rate_limited"}` with a `Retry-After` header; health endpoints are exempt. The limiter is in-process: it resets on restart and does not coordinate across replicas, so each instance behind a load balancer enforces its own limit independently (see ADR 0004). Tune the window/burst/rate settings per deployment traffic profile, or set `APP_RATE_LIMIT_ENABLED=false` to disable it (not recommended in production).

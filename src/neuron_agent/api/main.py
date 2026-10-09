@@ -145,14 +145,20 @@ async def ready() -> JSONResponse:
 )
 async def invoke_agent(
     request: AgentRequest,
-    principal: Annotated[Principal | None, Depends(require_principal)],
+    principal: Annotated[Principal | None, Depends(require_principal)] = None,
 ) -> AgentResponse:
     request_id = None
     thread_id = request.thread_id
     bind_correlation_context(request_id=request_id, thread_id=thread_id)
     started = time.monotonic()
     try:
-        response = await service.invoke(request, principal=principal)
+        # Preserve the pre-auth service call shape for local mode and direct
+        # callers; authenticated requests always carry the verified principal.
+        response = (
+            await service.invoke(request)
+            if principal is None
+            else await service.invoke(request, principal=principal)
+        )
         request_id = response.request_id
         thread_id = response.thread_id
         bind_correlation_context(request_id=request_id, thread_id=thread_id)
@@ -191,7 +197,7 @@ async def invoke_agent(
 @app.post("/v1/agent/stream")
 async def stream_agent(
     request: AgentRequest,
-    principal: Annotated[Principal | None, Depends(require_principal)],
+    principal: Annotated[Principal | None, Depends(require_principal)] = None,
 ) -> EventSourceResponse:
     """Stream a run as server-sent events (ADR 0005, decision 4).
 
@@ -201,7 +207,11 @@ async def stream_agent(
     """
     bind_correlation_context(request_id=None, thread_id=request.thread_id)
     try:
-        run = await service.prepare(request, streaming=True, principal=principal)
+        run = (
+            await service.prepare(request, streaming=True)
+            if principal is None
+            else await service.prepare(request, streaming=True, principal=principal)
+        )
     except AppError as exc:
         logger.warning(
             "stream_rejected",
@@ -250,13 +260,15 @@ _UserIdHeader = Header(default=None, alias="X-User-Id", max_length=128)
 )
 async def get_thread_messages(
     thread_id: uuid.UUID,
-    principal: Annotated[Principal | None, Depends(require_principal)],
+    principal: Annotated[Principal | None, Depends(require_principal)] = None,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user_id: str | None = _UserIdHeader,
 ) -> ThreadHistoryResponse:
     """Return a page of a thread's user/assistant turns (ADR 0005, decision 7)."""
     try:
+        if principal is None:
+            return await service.get_history(str(thread_id), user_id, limit=limit, offset=offset)
         return await service.get_history(
             str(thread_id), user_id, limit=limit, offset=offset, principal=principal
         )
@@ -267,12 +279,15 @@ async def get_thread_messages(
 @app.delete("/v1/threads/{thread_id}", status_code=204)
 async def delete_thread(
     thread_id: uuid.UUID,
-    principal: Annotated[Principal | None, Depends(require_principal)],
+    principal: Annotated[Principal | None, Depends(require_principal)] = None,
     user_id: str | None = _UserIdHeader,
 ) -> Response:
     """Delete all stored state for a thread (ADR 0005, decision 7)."""
     try:
-        await service.delete_thread(str(thread_id), user_id, principal=principal)
+        if principal is None:
+            await service.delete_thread(str(thread_id), user_id)
+        else:
+            await service.delete_thread(str(thread_id), user_id, principal=principal)
     except AppError as exc:
         raise _http_error("thread_delete_failed", exc) from exc
     return Response(status_code=204)
