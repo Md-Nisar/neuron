@@ -34,6 +34,9 @@ def test_settings_defaults_are_openai_production_safe() -> None:
     assert settings.rate_limit_requests_per_window == 60
     assert settings.rate_limit_window_seconds == 60
     assert settings.rate_limit_burst == 20
+    assert settings.max_concurrent_runs_per_user == 2
+    assert settings.user_token_budget == 100_000
+    assert settings.user_token_budget_window_seconds == 3600
 
 
 def test_settings_rejects_provider_max_retries_out_of_bounds() -> None:
@@ -49,6 +52,21 @@ def test_settings_rejects_max_request_body_bytes_out_of_bounds() -> None:
 def test_settings_rejects_rate_limit_burst_out_of_bounds() -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", openai_api_key=None, rate_limit_burst=0)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"max_concurrent_runs_per_user": 0},
+        {"user_token_budget": 0},
+        {"user_token_budget_window_seconds": 0},
+    ],
+)
+def test_settings_rejects_resource_limits_out_of_bounds(
+    overrides: dict[str, int],
+) -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="test", openai_api_key=None, **overrides)
 
 
 @pytest.mark.parametrize(

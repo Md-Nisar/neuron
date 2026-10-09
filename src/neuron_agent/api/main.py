@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import ipaddress
 import json
 import math
 import os
+import secrets
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -21,7 +25,7 @@ from sse_starlette.sse import EventSourceResponse
 from starlette.types import Receive, Scope, Send
 
 from neuron_agent.config.settings import get_settings
-from neuron_agent.errors.base import AppError
+from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
 from neuron_agent.security.auth import Principal, TokenVerifier, require_permission
@@ -58,6 +62,7 @@ rate_limiter = InMemoryTokenBucketRateLimiter(
 
 
 _RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/")
+_LOG_IDENTITY_KEY = secrets.token_bytes(32)
 # On server shutdown, open streams get this long to send their final `error` event.
 _STREAM_SHUTDOWN_GRACE_SECONDS = 2.0
 # A client that stops reading for this long is disconnected, freeing its run and lease.
@@ -126,19 +131,63 @@ async def enforce_rate_limit(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     if settings.rate_limit_enabled and request.url.path.startswith(_RATE_LIMITED_PREFIXES):
-        client_host = request.client.host if request.client else "unknown"
-        decision = rate_limiter.check(client_host)
-        if not decision.allowed:
-            retry_after = max(1, math.ceil(decision.retry_after_seconds))
-            logger.warning(
-                "agent_request_rate_limited", client=client_host, retry_after=retry_after
-            )
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "rate_limited"},
-                headers={"Retry-After": str(retry_after)},
-            )
+        if settings.auth_mode == "none":
+            decision = rate_limiter.check(f"ip:{_client_ip(request)}")
+            if not decision.allowed:
+                return _rate_limited_response(
+                    decision.retry_after_seconds, f"ip:{_client_ip(request)}"
+                )
     return await call_next(request)
+
+
+def _client_ip(request: Request) -> str:
+    """Use X-Forwarded-For only when the immediate peer is a configured trusted proxy."""
+    peer = request.client.host if request.client else "unknown"
+    try:
+        address = ipaddress.ip_address(peer)
+    except ValueError:
+        return peer
+    trusted = _trusted_proxy(address)
+    if not trusted:
+        return str(address)
+    chain: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
+    for candidate in request.headers.get("X-Forwarded-For", "").split(","):
+        try:
+            chain.append(ipaddress.ip_address(candidate.strip()))
+        except (TypeError, ValueError):
+            continue
+    while chain and _trusted_proxy(address):
+        address = chain.pop()
+    return str(address)
+
+
+def _trusted_proxy(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    for proxy in settings.trusted_proxies:
+        try:
+            if address in ipaddress.ip_network(proxy, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def _rate_limited_response(retry_after_seconds: float, key: str) -> JSONResponse:
+    retry_after = max(1, math.ceil(retry_after_seconds))
+    logger.warning(
+        "user_limit_exceeded",
+        limit_type="request_rate",
+        owner_key_prefix=_opaque_identity_prefix(key),
+        retry_after=retry_after,
+    )
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "rate_limited"},
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
+def _opaque_identity_prefix(key: str) -> str:
+    return hmac.new(_LOG_IDENTITY_KEY, key.encode(), hashlib.sha256).hexdigest()[:12]
 
 
 @app.exception_handler(RequestValidationError)
@@ -203,7 +252,9 @@ async def invoke_agent(
             duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         detail = exc.context.code if exc.context.user_visible else "internal_server_error"
-        raise HTTPException(status_code=exc.context.http_status, detail=detail) from exc
+        raise HTTPException(
+            status_code=exc.context.http_status, detail=detail, headers=_retry_headers(exc)
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "agent_request_unexpected_error",
@@ -243,7 +294,9 @@ async def stream_agent(
             error_type=type(exc).__name__,
         )
         detail = exc.context.code if exc.context.user_visible else "internal_server_error"
-        raise HTTPException(status_code=exc.context.http_status, detail=detail) from exc
+        raise HTTPException(
+            status_code=exc.context.http_status, detail=detail, headers=_retry_headers(exc)
+        ) from exc
 
     shutdown = anyio.Event()
     stream = service.stream(run, stop=shutdown)
@@ -324,7 +377,17 @@ def _http_error(event: str, exc: AppError) -> HTTPException:
         retryable=exc.context.retryable,
     )
     detail = exc.context.code if exc.context.user_visible else "internal_server_error"
-    return HTTPException(status_code=exc.context.http_status, detail=detail)
+    return HTTPException(
+        status_code=exc.context.http_status, detail=detail, headers=_retry_headers(exc)
+    )
+
+
+def _retry_headers(exc: AppError) -> dict[str, str] | None:
+    if isinstance(exc, QuotaExceededError):
+        return {"Retry-After": str(exc.retry_after_seconds)}
+    if isinstance(exc, ConcurrentRunsExceededError):
+        return {"Retry-After": "1"}
+    return None
 
 
 def main() -> None:
