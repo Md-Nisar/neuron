@@ -347,7 +347,7 @@ def require_permission(permission: str) -> Any:
         if (
             api_main.settings.rate_limit_enabled
             and principal is not None
-            and request.url.path.startswith(("/v1/agent/", "/v1/threads/"))
+            and request.url.path.startswith(("/v1/agent/", "/v1/threads/", "/v1/me/"))
         ):
             identity_hash_key = api_main.settings.identity_hash_key
             if identity_hash_key is None:
