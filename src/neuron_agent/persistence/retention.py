@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
+from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.checkpointer import Persistence
 
 logger = structlog.get_logger(__name__)
@@ -30,6 +31,13 @@ async def prune_threads(
     """
     checkpointer = persistence.checkpointer
     if checkpointer is None:
+        audit(
+            "threads_pruned",
+            outcome="allowed",
+            action="threads:prune",
+            resource_type="thread",
+            count=0,
+        )
         return 0
     cutoff = (now or datetime.now(UTC)) - older_than
     if isinstance(checkpointer, AsyncPostgresSaver) and persistence.pool is not None:
@@ -47,5 +55,12 @@ async def prune_threads(
         stale = [thread_id for thread_id, ts in last_activity.items() if ts < cutoff]
     for thread_id in stale:
         await checkpointer.adelete_thread(thread_id)
-    logger.info("threads_pruned", count=len(stale), retention_days=older_than.days)
+    logger.info("thread_prune_job_completed", count=len(stale), retention_days=older_than.days)
+    audit(
+        "threads_pruned",
+        outcome="allowed",
+        action="threads:prune",
+        resource_type="thread",
+        count=len(stale),
+    )
     return len(stale)

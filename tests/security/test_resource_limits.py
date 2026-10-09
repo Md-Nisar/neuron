@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import structlog
 from fastapi import Request
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
@@ -106,14 +109,24 @@ def test_invalid_jwt_attempts_are_limited_before_verification(
 
     verifier = RejectingVerifier()
     monkeypatch.setattr(api_main, "auth_verifier", verifier)
-    with TestClient(api_main.app) as client:
-        first = client.post("/v1/agent/invoke", json={"message": "hi"})
-        second = client.post("/v1/agent/invoke", json={"message": "hi"})
+    with structlog.testing.capture_logs() as logs:
+        with TestClient(api_main.app) as client:
+            headers = {
+                "Authorization": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJzZW5zaXRpdmUifQ.signature"
+            }
+            first = client.post("/v1/agent/invoke", json={"message": "hi"}, headers=headers)
+            second = client.post("/v1/agent/invoke", json={"message": "hi"}, headers=headers)
 
     assert first.status_code == 401
     assert second.status_code == 429
     assert second.headers["retry-after"] == "60"
     assert verifier.calls == 2
+    rendered = json.dumps(logs)
+    assert "eyJhbGciOiJub25lIn0.eyJzdWIiOiJzZW5zaXRpdmUifQ.signature" not in rendered
+    assert not re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", rendered)
+    assert not re.search(r'"sub"\s*:', rendered)
+    assert not re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", rendered)
+    assert sum(entry.get("event") == "limit_exceeded" for entry in logs) == 1
 
 
 def test_untrusted_forwarded_for_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:

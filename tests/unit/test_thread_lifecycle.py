@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
+import structlog
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 
@@ -88,6 +91,27 @@ async def test_history_is_not_readable_by_others() -> None:
             await service.get_history(thread_id, user_id, limit=10, offset=0)
 
 
+@pytest.mark.usefixtures("echo_agent")
+async def test_bola_denial_is_audited_once_without_identity_or_network_data() -> None:
+    service = _service()
+    thread_id = await _thread(service, "private", user_id="victim@example.test")
+
+    with structlog.testing.capture_logs() as logs:
+        with pytest.raises(ThreadNotFoundError):
+            await service.get_history(thread_id, "attacker@example.test", limit=10, offset=0)
+
+    rendered = json.dumps(logs)
+    assert "victim@example.test" not in rendered
+    assert "attacker@example.test" not in rendered
+    assert not re.search(r"\bsub\b", rendered)
+    assert not re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", rendered)
+    assert not re.search(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", rendered)
+    assert not re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", rendered)
+    denials = [entry for entry in logs if entry.get("event") == "authorization_denied"]
+    assert len(denials) == 1
+    assert denials[0]["reason"] == "thread_not_found"
+
+
 async def test_history_without_persistence_is_not_found() -> None:
     with pytest.raises(ThreadNotFoundError):
         await _service("none").get_history(str(uuid.uuid4()), None, limit=10, offset=0)
@@ -150,11 +174,33 @@ async def test_prune_deletes_only_stale_threads_and_is_idempotent() -> None:
     old_ts, recent_ts = await _last_activity(service, old), await _last_activity(service, recent)
     cutoff = old_ts + (recent_ts - old_ts) / 2
 
-    pruned = await prune_threads(service._persistence, older_than=timedelta(0), now=cutoff)
+    with structlog.testing.capture_logs() as logs:
+        pruned = await prune_threads(service._persistence, older_than=timedelta(0), now=cutoff)
+        assert await prune_threads(service._persistence, older_than=timedelta(0), now=cutoff) == 0
     assert pruned == 1
+    prune_events = [
+        entry
+        for entry in logs
+        if entry.get("audit") is True and entry.get("event") == "threads_pruned"
+    ]
+    assert len(prune_events) == 2
+    assert [entry["count"] for entry in prune_events] == [1, 0]
     assert await _checkpoint_count(service, old) == 0
     assert await _checkpoint_count(service, recent) > 0
-    assert await prune_threads(service._persistence, older_than=timedelta(0), now=cutoff) == 0
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_thread_lifecycle_emits_each_audit_event_once() -> None:
+    service = _service()
+    with structlog.testing.capture_logs() as logs:
+        thread_id = await _thread(service, "hello", user_id="alice")
+        await service.get_history(thread_id, "alice", limit=10, offset=0)
+        await service.delete_thread(thread_id, "alice")
+
+    events = [entry["event"] for entry in logs if entry.get("audit") is True]
+    assert events.count("thread_created") == 1
+    assert events.count("thread_read") == 1
+    assert events.count("thread_deleted") == 1
 
 
 async def test_prune_without_persistence_is_a_no_op() -> None:

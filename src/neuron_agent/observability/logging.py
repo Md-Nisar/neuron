@@ -16,6 +16,7 @@ def configure_logging(*, level: str, service: str, version: str, environment: st
         processors=[
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
+            structlog.stdlib.add_logger_name,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
             _add_service_metadata(service=service, version=version, environment=environment),
             structlog.processors.JSONRenderer(),
@@ -23,6 +24,7 @@ def configure_logging(*, level: str, service: str, version: str, environment: st
         wrapper_class=structlog.make_filtering_bound_logger(
             getattr(logging, level.upper(), logging.INFO)
         ),
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
 
@@ -37,6 +39,11 @@ def bind_correlation_context(
         structlog.contextvars.bind_contextvars(thread_id=thread_id)
     if run_id is not None:
         structlog.contextvars.bind_contextvars(run_id=run_id)
+
+
+def correlation_context() -> dict[str, Any]:
+    """Return only correlation IDs for use by the dedicated audit emitter."""
+    return structlog.contextvars.get_contextvars()
 
 
 def _add_service_metadata(*, service: str, version: str, environment: str) -> Any:
