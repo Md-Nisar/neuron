@@ -146,7 +146,13 @@ values or rewrite checkpoint ownership in place without an auditable plan.
 
 ## Rate Limiting
 
-`/v1/agent/*` and `/v1/threads/*` enforce a token-bucket rate limit per client IP (`APP_RATE_LIMIT_ENABLED=true` by default). Defaults: burst capacity `APP_RATE_LIMIT_BURST=20`, refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW=60` per `APP_RATE_LIMIT_WINDOW_SECONDS=60`. Exceeding it returns `429 {"detail": "rate_limited"}` with a `Retry-After` header; health endpoints are exempt. The limiter is in-process: it resets on restart and does not coordinate across replicas, so each instance behind a load balancer enforces its own limit independently (see ADR 0004). Tune the window/burst/rate settings per deployment traffic profile, or set `APP_RATE_LIMIT_ENABLED=false` to disable it (not recommended in production).
+`/v1/agent/*` and `/v1/threads/*` enforce token-bucket limits (`APP_RATE_LIMIT_ENABLED=true` by default). Authenticated requests are keyed by the verified principal's opaque owner HMAC; in local `AUTH_MODE=none`, and after failed JWT authentication, the key is the client IP. Defaults: burst capacity `APP_RATE_LIMIT_BURST=20`, refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW=60` per `APP_RATE_LIMIT_WINDOW_SECONDS=60`. Exceeding it returns `429 {"detail": "rate_limited"}` with `Retry-After`; health endpoints are exempt.
+
+By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON list of trusted proxy IP addresses/CIDRs only when the app is reachable exclusively through those proxies. Configure Uvicorn's `--forwarded-allow-ips` to the same trusted hops; never use `*` on an internet-reachable deployment. The app uses forwarded addresses only when its immediate peer is in `APP_TRUSTED_PROXIES`, preventing clients from choosing their own IP bucket.
+
+`APP_MAX_CONCURRENT_RUNS_PER_USER=2` caps active invoke and stream runs together per principal; the existing `APP_MAX_CONCURRENT_STREAMS=100` remains a per-process global stream cap. Exceeding the principal cap returns `429 too_many_concurrent_runs` and `Retry-After`.
+
+Provider token usage from model `usage_metadata` is charged to a rolling per-principal window: `APP_USER_TOKEN_BUDGET=100000` tokens per `APP_USER_TOKEN_BUDGET_WINDOW_SECONDS=3600`. Admission is rejected before a run with `429 quota_exceeded` and `Retry-After` when the budget is exhausted. Usage is charged after successful, failed, or cancelled runs whenever the provider returns usage metadata. Each worker keeps independent in-memory counters; they reset on restart and are not coordinated across replicas. Multi-replica deployments must account for per-worker enforcement; a shared Redis/Postgres backend is intentionally out of scope. Tune all limits to provider quotas and workload sizes. Set `APP_RATE_LIMIT_ENABLED=false` only for controlled local diagnostics, not production.
 
 ## Timeouts and Retries
 
