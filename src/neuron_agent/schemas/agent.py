@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -64,3 +65,50 @@ class ThreadHistoryResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class UserThreadSummary(BaseModel):
+    """Privacy-safe thread listing item without conversation content."""
+
+    thread_id: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+
+
+class UserThreadsResponse(BaseModel):
+    """One page of the authenticated caller's thread summaries."""
+
+    threads: list[UserThreadSummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class ExportedThread(BaseModel):
+    """A thread page in a caller's data export."""
+
+    thread_id: str
+    created_at: datetime
+    updated_at: datetime
+    message_total: int
+    messages: list[ThreadMessage]
+
+
+class UserDataExportResponse(BaseModel):
+    """Paginated conversation export, with independent thread/message offsets."""
+
+    threads: list[ExportedThread]
+    total_threads: int
+    limit: int
+    offset: int
+    message_limit: int
+    message_offset: int
+    has_more_messages: bool
+
+
+class UserDataErasureResponse(BaseModel):
+    """Result of an idempotent erase-all request."""
+
+    erased_count: int
+    skipped_busy_count: int

@@ -28,7 +28,14 @@ from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
-from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
+from neuron_agent.schemas.agent import (
+    AgentRequest,
+    AgentResponse,
+    ThreadHistoryResponse,
+    UserDataErasureResponse,
+    UserDataExportResponse,
+    UserThreadsResponse,
+)
 from neuron_agent.security.auth import (
     Principal,
     get_shared_token_verifier,
@@ -66,7 +73,7 @@ rate_limiter = InMemoryTokenBucketRateLimiter(
 )
 
 
-_RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/")
+_RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/", "/v1/me/")
 _LOG_IDENTITY_KEY = secrets.token_bytes(32)
 # On server shutdown, open streams get this long to send their final `error` event.
 _STREAM_SHUTDOWN_GRACE_SECONDS = 2.0
@@ -379,6 +386,57 @@ async def delete_thread(
     except AppError as exc:
         raise _http_error("thread_delete_failed", exc) from exc
     return Response(status_code=204)
+
+
+@app.get("/v1/me/threads", response_model=UserThreadsResponse)
+async def list_my_threads(
+    principal: Annotated[Principal | None, Depends(require_permission("threads:read"))] = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user_id: str | None = _UserIdHeader,
+) -> UserThreadsResponse:
+    """List this caller's threads without exposing conversation contents."""
+    try:
+        return await service.list_user_threads(
+            user_id, limit=limit, offset=offset, principal=principal
+        )
+    except AppError as exc:
+        raise _http_error("user_threads_list_failed", exc) from exc
+
+
+@app.get("/v1/me/export", response_model=UserDataExportResponse)
+async def export_my_data(
+    principal: Annotated[Principal | None, Depends(require_permission("threads:read"))] = None,
+    limit: int = Query(default=5, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    message_limit: int = Query(default=20, ge=1, le=100),
+    message_offset: int = Query(default=0, ge=0),
+    user_id: str | None = _UserIdHeader,
+) -> UserDataExportResponse:
+    """Export paginated user/assistant turns, capped by APP_USER_DATA_EXPORT_MAX_BYTES."""
+    try:
+        return await service.export_user_data(
+            user_id,
+            limit=limit,
+            offset=offset,
+            message_limit=message_limit,
+            message_offset=message_offset,
+            principal=principal,
+        )
+    except AppError as exc:
+        raise _http_error("user_data_export_failed", exc) from exc
+
+
+@app.delete("/v1/me/threads", response_model=UserDataErasureResponse)
+async def erase_my_threads(
+    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> UserDataErasureResponse:
+    """Delete all discoverable caller-owned threads; active threads are skipped."""
+    try:
+        return await service.erase_user_data(user_id, principal=principal)
+    except AppError as exc:
+        raise _http_error("user_data_erasure_failed", exc) from exc
 
 
 def _http_error(event: str, exc: AppError) -> HTTPException:
