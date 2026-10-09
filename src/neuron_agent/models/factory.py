@@ -71,7 +71,14 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
             if tool.name == "utc_now"
             or (tool.name in _TOOL_PERMISSIONS and _TOOL_PERMISSIONS[tool.name] in permissions)
         ]
-        return await handler(request.override(tools=visible))
+        response = await handler(request.override(tools=visible))
+        if isinstance(context, AuthorizationContext) and context.usage is not None:
+            messages = getattr(response, "result", [])
+            if not isinstance(messages, list):
+                messages = [messages]
+            for message in messages:
+                context.usage.record(getattr(message, "usage_metadata", None))
+        return response
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         tool_name = request.tool_call.get("name", "unknown")

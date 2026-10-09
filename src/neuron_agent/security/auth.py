@@ -241,6 +241,7 @@ def authentication_http_error(
 
 
 async def require_principal(
+    request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> Principal | None:
     """FastAPI dependency used on every protected `/v1/*` route."""
@@ -248,10 +249,31 @@ async def require_principal(
 
     if api_main.settings.auth_mode == "none":
         return None
+    ip_key: str | None = None
+    if api_main.settings.rate_limit_enabled and request.url.path.startswith(
+        ("/v1/agent/", "/v1/threads/")
+    ):
+        ip_key = f"ip:{api_main._client_ip(request)}"
     try:
-        return await api_main.auth_verifier.verify(authorization)
+        principal = await api_main.auth_verifier.verify(authorization)
     except (AuthenticationError, AuthenticationUnavailableError) as exc:
+        if ip_key is not None and isinstance(exc, AuthenticationError):
+            decision = api_main.rate_limiter.check(ip_key)
+            if not decision.allowed:
+                retry_after = max(1, int(decision.retry_after_seconds + 0.999))
+                logger.warning(
+                    "user_limit_exceeded",
+                    limit_type="authentication_attempts",
+                    owner_key_prefix=api_main._opaque_identity_prefix(ip_key),
+                    retry_after=retry_after,
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail="rate_limited",
+                    headers={"Retry-After": str(retry_after)},
+                ) from exc
         raise authentication_http_error(exc) from exc
+    return principal
 
 
 def require_permission(permission: str) -> Any:
@@ -268,6 +290,31 @@ def require_permission(permission: str) -> Any:
             if api_main.settings.auth_mode == "none"
             else (principal.scopes if principal is not None else frozenset())
         )
+        if (
+            api_main.settings.rate_limit_enabled
+            and principal is not None
+            and request.url.path.startswith(("/v1/agent/", "/v1/threads/"))
+        ):
+            identity_hash_key = api_main.settings.identity_hash_key
+            if identity_hash_key is None:
+                raise RuntimeError(
+                    "APP_IDENTITY_HASH_KEY is required for authenticated rate limits"
+                )
+            owner_key = principal_owner_key(principal, identity_hash_key.get_secret_value())
+            decision = api_main.rate_limiter.check(f"principal:{owner_key}")
+            if not decision.allowed:
+                retry_after = max(1, int(decision.retry_after_seconds + 0.999))
+                logger.warning(
+                    "user_limit_exceeded",
+                    limit_type="request_rate",
+                    owner_key_prefix=owner_key[:12],
+                    retry_after=retry_after,
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail="rate_limited",
+                    headers={"Retry-After": str(retry_after)},
+                )
         try:
             check_permission(permission, permissions)
         except AuthorizationError as exc:
