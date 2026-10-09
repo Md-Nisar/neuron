@@ -51,9 +51,9 @@ Rejected:
 
 - The server mints thread IDs as UUIDv4 when the request omits `thread_id`. Client-supplied IDs must be canonical UUIDs (`422 validation_error` otherwise).
 - When persistence is enabled, a supplied `thread_id` must refer to an **existing** thread. New threads are only created by the server. This keeps "exists but not yours" and "doesn't exist" indistinguishable.
-- A thread is bound to the `user_id_hash` that created it (`None` for anonymous threads). A request whose hashed `user_id` doesn't match gets the same `404 thread_not_found` as a missing thread.
+- A thread is bound to the owner key that created it. In v0.3.0 this is the `user_id_hash` derived from the request; v0.4.0 replaces it in JWT mode with the keyed principal owner defined by ADR 0006. A request whose owner key doesn't match gets the same `404 thread_not_found` as a missing thread.
 - With `APP_CHECKPOINTER=none`, there is nothing to look up, so `thread_id` remains a correlation ID (backward compatible).
-- `user_id` is **not authenticated** until v0.4.0. Before then, the guard prevents accidental cross-use, and the real protection is the unguessability of server-minted UUIDv4 thread IDs. This limitation is documented in `SECURITY.md`.
+- v0.3.0's `user_id` is not authenticated. JWT authentication, principal ownership, and the migration boundary are defined by ADR 0006 for v0.4.0.
 
 ### 3. What is persisted, and the context window
 
@@ -111,7 +111,7 @@ Rejected: enqueue, interrupt, and rollback (Agent Server's other multitask strat
 - Resumable or replayable streams.
 - WebSockets.
 - Multi-replica concurrency coordination.
-- Authentication: v0.4.0.
+- Authentication: v0.4.0, defined by ADR 0006.
 
 ## Consequences
 
