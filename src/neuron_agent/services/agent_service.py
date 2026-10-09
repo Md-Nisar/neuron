@@ -21,7 +21,9 @@ from neuron_agent.errors.base import (
     AppError,
     AuthenticationError,
     CapacityError,
+    ConcurrentRunsExceededError,
     PersistenceError,
+    QuotaExceededError,
     RunTimeoutError,
     ShuttingDownError,
     ThreadBusyError,
@@ -38,8 +40,13 @@ from neuron_agent.schemas.agent import (
     ThreadMessage,
 )
 from neuron_agent.security.auth import Principal, principal_owner_key
-from neuron_agent.security.authorization import DEV_PERMISSIONS, AuthorizationContext
+from neuron_agent.security.authorization import (
+    DEV_PERMISSIONS,
+    AuthorizationContext,
+    TokenUsageAccumulator,
+)
 from neuron_agent.security.input_policy import validate_user_message
+from neuron_agent.security.usage_budget import InMemoryRollingTokenBudget, TokenBudget
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
 
 logger = structlog.get_logger(__name__)
@@ -76,6 +83,7 @@ class PreparedRun:
     run_id: str
     graph_input: dict[str, Any]
     authorization: AuthorizationContext
+    budget_key: str
     lease: RunLease
 
     @property
@@ -86,12 +94,22 @@ class PreparedRun:
 class AgentService:
     """Invoke the graph behind a stable application boundary."""
 
-    def __init__(self, settings: Settings, persistence: Persistence | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        persistence: Persistence | None = None,
+        token_budget: TokenBudget | None = None,
+    ) -> None:
         self._settings = settings
+        self._token_budget = token_budget or InMemoryRollingTokenBudget(
+            token_limit=settings.user_token_budget,
+            window_seconds=settings.user_token_budget_window_seconds,
+        )
         self._persistence = persistence or build_persistence(settings)
         self._graph: Any | None = None
         # Process-local run guards (ADR 0005 decisions 5 and 6); not shared across replicas.
         self._active_threads: set[str] = set()
+        self._active_runs_by_owner: dict[str, int] = {}
         self._open_streams = 0
         if self._persistence.is_open:
             self._graph = build_graph(settings, checkpointer=self._persistence.checkpointer)
@@ -132,11 +150,21 @@ class AgentService:
         run_id = str(uuid.uuid4())
         owner_key = self._owner_key(request.user_id, principal)
         message = validate_user_message(request.message, max_chars=self._settings.max_prompt_chars)
+        budget_key = owner_key or "anonymous"
+        budget_decision = self._token_budget.check(budget_key)
+        if not budget_decision.allowed:
+            logger.warning(
+                "user_limit_exceeded",
+                limit_type="token_budget",
+                owner_key_prefix=budget_key[:12],
+                retry_after=budget_decision.retry_after_seconds,
+            )
+            raise QuotaExceededError(budget_decision.retry_after_seconds)
         bind_correlation_context(request_id=request_id, thread_id=request.thread_id, run_id=run_id)
         with self._persistence_errors():
             thread_id = await self._resolve_thread(request.thread_id, owner_key)
         bind_correlation_context(request_id=None, thread_id=thread_id)
-        lease = self._claim(thread_id, streaming=streaming)
+        lease = self._claim(thread_id, streaming=streaming, owner_key=budget_key)
         owner_state = (
             {"owner_key": owner_key}
             if self._settings.auth_mode == "jwt"
@@ -161,7 +189,10 @@ class AgentService:
                 "run_id": run_id,
                 **owner_state,
             },
-            authorization=AuthorizationContext(permissions, principal),
+            authorization=AuthorizationContext(
+                permissions, principal, usage=TokenUsageAccumulator()
+            ),
+            budget_key=budget_key,
             lease=lease,
         )
 
@@ -179,7 +210,10 @@ class AgentService:
             logger.warning("agent_run_timed_out")
             raise RunTimeoutError("agent run exceeded its time budget") from exc
         finally:
-            run.lease.release()
+            try:
+                self._finish_usage(run)
+            finally:
+                run.lease.release()
         return _response(run, result["answer"])
 
     async def stream(
@@ -238,7 +272,10 @@ class AgentService:
                 await _cancel(producer)
             if stop_waiter is not None:
                 stop_waiter.cancel()
-            run.lease.release()
+            try:
+                self._finish_usage(run)
+            finally:
+                run.lease.release()
             stats.log()
 
     async def _produce(self, run: PreparedRun, queue: asyncio.Queue[StreamEvent | None]) -> None:
@@ -298,7 +335,7 @@ class AgentService:
             # (APP_MAX_OUTPUT_TOKENS per model call, APP_MAX_AGENT_ITERATIONS calls).
             queue.put_nowait(None)
 
-    def _claim(self, thread_id: str, *, streaming: bool) -> RunLease:
+    def _claim(self, thread_id: str, *, streaming: bool, owner_key: str) -> RunLease:
         """Claim the thread (reject-on-busy) and, for streams, a concurrency slot.
 
         The busy guard applies only with persistence: without it, `thread_id` is just a
@@ -310,11 +347,20 @@ class AgentService:
                 "agent_stream_capacity_exceeded", limit=self._settings.max_concurrent_streams
             )
             raise CapacityError("too many concurrent streams")
+        active_for_owner = self._active_runs_by_owner.get(owner_key, 0)
+        if active_for_owner >= self._settings.max_concurrent_runs_per_user:
+            logger.warning(
+                "user_limit_exceeded",
+                limit_type="concurrent_runs",
+                owner_key_prefix=owner_key[:12],
+            )
+            raise ConcurrentRunsExceededError("too many concurrent runs")
         if guard_thread and thread_id in self._active_threads:
             logger.info("agent_thread_busy")
             raise ThreadBusyError("a run is already in progress on this thread")
         if streaming:
             self._open_streams += 1
+        self._active_runs_by_owner[owner_key] = active_for_owner + 1
         if guard_thread:
             self._active_threads.add(thread_id)
 
@@ -323,8 +369,25 @@ class AgentService:
                 self._open_streams -= 1
             if guard_thread:
                 self._active_threads.discard(thread_id)
+            remaining = self._active_runs_by_owner[owner_key] - 1
+            if remaining:
+                self._active_runs_by_owner[owner_key] = remaining
+            else:
+                self._active_runs_by_owner.pop(owner_key, None)
 
         return RunLease(release)
+
+    def _finish_usage(self, run: PreparedRun) -> None:
+        usage = run.authorization.usage
+        tokens = usage.total_tokens if usage is not None else 0
+        self._token_budget.charge(run.budget_key, tokens)
+        logger.info(
+            "model_token_usage",
+            request_id=run.request_id,
+            run_id=run.run_id,
+            owner_key_prefix=run.budget_key[:12],
+            provider_tokens=tokens,
+        )
 
     @contextmanager
     def _persistence_errors(self) -> Iterator[None]:

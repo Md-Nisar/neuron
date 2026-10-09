@@ -49,11 +49,24 @@ Enforcement is a new `app.middleware("http")` in `api/main.py`, scoped to `reque
 
 Default configuration values are chosen so the existing test suite (which issues a modest number of sequential requests against a shared `TestClient`/app instance) is not incidentally throttled; tests targeting rate-limit behavior construct or substitute a limiter with a small capacity explicitly.
 
-## v0.4.0 Identity Update
+## v0.4.0 Resource Limits
 
-In JWT mode, the rate-limit identity is superseded by the verified principal
-defined in ADR 0006; the v0.3.0 IP-based behavior remains for `AUTH_MODE=none`.
-Issue #56 defines the per-principal limiter and quota migration.
+In JWT mode, request buckets are keyed by the principal's keyed-HMAC owner key
+from ADR 0006. IP buckets are used only in local `AUTH_MODE=none` and after
+failed bearer authentication (to slow token guessing). Forwarded client IPs are
+accepted only when the immediate peer matches `APP_TRUSTED_PROXIES`; otherwise
+proxy headers are ignored. Uvicorn `--forwarded-allow-ips` must be configured to
+the same trusted proxy set.
+
+`APP_MAX_CONCURRENT_RUNS_PER_USER` caps invoke and stream runs together per
+principal, while `APP_MAX_CONCURRENT_STREAMS` remains the process-wide stream
+cap. `APP_USER_TOKEN_BUDGET` and `APP_USER_TOKEN_BUDGET_WINDOW_SECONDS` define a
+rolling, per-principal provider-token budget charged from model `usage_metadata`
+after each run. When usage metadata is unavailable, no provider-token charge can
+be inferred. In-process budgets reset on restart and each replica enforces its
+own limits; cross-replica coordination remains out of scope. Limit-exceeded
+telemetry logs only the limit type and an opaque owner-key prefix, never a raw
+subject or IP address.
 
 ## Consequences
 

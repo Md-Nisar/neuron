@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     rate_limit_requests_per_window: int = Field(default=60, ge=1, le=10_000)
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
+    trusted_proxies: list[str] = Field(default_factory=list)
     enable_langsmith: bool = False
     # "auto" resolves to memory in development/test and none in staging/production.
     checkpointer: CheckpointerBackend = "auto"
@@ -51,6 +52,9 @@ class Settings(BaseSettings):
     stream_heartbeat_seconds: int = Field(default=15, ge=1, le=120)
     run_timeout_seconds: int = Field(default=120, ge=1, le=900)
     max_concurrent_streams: int = Field(default=100, ge=1, le=10_000)
+    max_concurrent_runs_per_user: int = Field(default=2, ge=1, le=1000)
+    user_token_budget: int = Field(default=100_000, ge=1, le=10_000_000)
+    user_token_budget_window_seconds: int = Field(default=3600, ge=1, le=86_400)
     thread_retention_days: int = Field(default=30, ge=1, le=3650)
     auth_mode: AuthMode = "none"
     auth_issuer: str | None = None
