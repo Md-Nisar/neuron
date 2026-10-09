@@ -73,11 +73,13 @@ With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 00
 - **Where.**
   - `memory`: process memory only, gone on restart.
   - `postgres`: the `checkpoints`, `checkpoint_blobs` and `checkpoint_writes` tables.
-- **Deletion.** `DELETE /v1/threads/{thread_id}` removes every checkpoint of a thread, for the owner only.
+- **Deletion.** `DELETE /v1/threads/{thread_id}` removes every checkpoint of a thread, for the owner only. `DELETE /v1/me/threads` performs the same operation for all discoverable threads belonging to the caller, is idempotent, and reports busy threads that it skipped rather than racing an active run.
+- **Export and listing.** `GET /v1/me/threads` returns paginated metadata summaries without content. `GET /v1/me/export` returns paginated user/assistant text only (no system prompts, tool calls, or tool output), capped by `APP_USER_DATA_EXPORT_MAX_BYTES` (default 5 MB). Both require `threads:read`; bulk erasure requires `threads:delete`. These endpoints audit `user_data_exported` and `user_data_erased` events. The cap applies to serialized response data; clients should use pagination for larger exports.
+- **Legacy checkpoint coverage.** Owner discovery uses checkpoint metadata. Threads created before owner metadata was added are not included in list, export, or bulk erasure until a successful authenticated run writes a checkpoint with owner metadata. For those threads, use the known thread ID with the existing owner-checked history/delete endpoints, or perform an explicitly reviewed migration to backfill ownership metadata before bulk operations.
 - **Retention.** `make prune-threads` deletes threads inactive for longer than `APP_THREAD_RETENTION_DAYS` (default `30`). Run it on a schedule; Postgres has no built-in TTL.
-- **Backups.** Deleted or pruned threads persist in database backups until those backups expire. Align backup retention with `APP_THREAD_RETENTION_DAYS`.
+- **Coverage limits.** Erasure deletes checkpoints and associated writes/blobs from the active configured checkpointer. It does not purge database backups, provider-side retention, application/deployment logs, or audit records. Deleted or pruned threads persist in database backups until those backups expire; align backup retention with `APP_THREAD_RETENTION_DAYS`. Provider retention is controlled by the configured model provider and its account settings.
 - **Encryption.** Encryption at rest is the database's responsibility (managed-service or disk encryption). LangGraph's `EncryptedSerializer` is available if application-level encryption is required; it isn't enabled by default.
-- **Access.** Thread history is exposed only through `GET /v1/threads/{thread_id}/messages`, with the same owner check as conversations. System prompts, tool calls and tool output are never returned. In v0.3.0, owner identity comes from the unauthenticated `X-User-Id` header or `user_id` in the body. In v0.4.0 JWT mode, it comes from the verified principal defined by ADR 0006.
+- **Access.** Thread history is exposed through the owner-checked history endpoint and `/v1/me/export`. System prompts, tool calls and tool output are never returned. In v0.3.0, owner identity comes from the unauthenticated `X-User-Id` header or `user_id` in the body. In v0.4.0 JWT mode, it comes from the verified principal defined by ADR 0006.
 
 ## Secrets
 

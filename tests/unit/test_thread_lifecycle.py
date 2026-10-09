@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
 import uuid
@@ -15,7 +16,7 @@ from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import ThreadBusyError, ThreadNotFoundError
+from neuron_agent.errors.base import ExportTooLargeError, ThreadBusyError, ThreadNotFoundError
 from neuron_agent.persistence import cli
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
@@ -154,6 +155,92 @@ async def test_delete_is_rejected_while_a_run_is_in_flight() -> None:
     assert await _checkpoint_count(service, thread_id) > 0
 
 
+@pytest.mark.usefixtures("echo_agent")
+async def test_list_user_threads_is_owner_scoped_and_paginated() -> None:
+    service = _service()
+    alice_old = await _thread(service, "old", user_id="alice")
+    await asyncio.sleep(0.01)
+    alice_new = await _thread(service, "new", user_id="alice")
+    bob_thread = await _thread(service, "private", user_id="bob")
+
+    page = await service.list_user_threads("alice", limit=1, offset=0)
+    next_page = await service.list_user_threads("alice", limit=1, offset=1)
+
+    assert page.total == 2
+    assert [item.thread_id for item in page.threads] == [alice_new]
+    assert page.threads[0].message_count == 2
+    assert [item.thread_id for item in next_page.threads] == [alice_old]
+    assert bob_thread not in {item.thread_id for item in [*page.threads, *next_page.threads]}
+    checkpointer = service._persistence.checkpointer
+    assert checkpointer is not None
+    owner = hashlib.sha256(b"alice").hexdigest()
+    indexed = [
+        item
+        async for item in checkpointer.alist(None, filter={"owner": owner})
+        if item.config["configurable"].get("checkpoint_ns", "") == ""
+    ]
+    assert indexed
+    assert all(item.metadata["owner"] == owner for item in indexed)
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_user_export_contains_only_public_messages_and_paginates() -> None:
+    service = _service()
+    alice_thread = await _thread(service, "alice prompt", user_id="alice")
+    await _thread(service, "bob private prompt", user_id="bob")
+
+    first_page = await service.export_user_data(
+        "alice", limit=10, offset=0, message_limit=1, message_offset=0
+    )
+    second_page = await service.export_user_data(
+        "alice", limit=10, offset=0, message_limit=1, message_offset=1
+    )
+
+    assert first_page.total_threads == 1
+    assert first_page.threads[0].thread_id == alice_thread
+    assert first_page.threads[0].message_total == 2
+    assert first_page.threads[0].messages[0].content == "alice prompt"
+    assert first_page.has_more_messages is True
+    assert second_page.threads[0].messages[0].content == "alice prompt"
+    contents = [message.content for message in second_page.threads[0].messages]
+    assert "bob private prompt" not in contents
+    assert not any("system" in content or "tool" in content for content in contents)
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_erase_all_is_owner_scoped_busy_aware_and_idempotent() -> None:
+    service = _service()
+    alice_busy = await _thread(service, "busy", user_id="alice")
+    alice_delete = await _thread(service, "delete", user_id="alice")
+    bob_thread = await _thread(service, "keep", user_id="bob")
+    service._active_threads.add(alice_busy)
+    service._active_thread_owners[alice_busy] = hashlib.sha256(b"alice").hexdigest()
+
+    first = await service.erase_user_data("alice")
+    second = await service.erase_user_data("alice")
+
+    assert first.erased_count == 1
+    assert first.skipped_busy_count == 1
+    assert second.erased_count == 0
+    assert second.skipped_busy_count == 1
+    with pytest.raises(ThreadNotFoundError):
+        await service.get_history(alice_delete, "alice", limit=10, offset=0)
+    assert (await service.get_history(bob_thread, "bob", limit=10, offset=0)).total == 2
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_export_page_honors_configured_size_cap() -> None:
+    service = _service()
+    service._settings.user_data_export_max_bytes = 65_536
+    for index in range(4):
+        await _thread(service, f"{index}:" + "x" * 10_000, user_id="alice")
+
+    with pytest.raises(ExportTooLargeError):
+        await service.export_user_data(
+            "alice", limit=10, offset=0, message_limit=100, message_offset=0
+        )
+
+
 # --- retention --------------------------------------------------------------------
 
 
@@ -257,6 +344,57 @@ def test_delete_endpoint_then_thread_is_gone(client: TestClient) -> None:
     thread_id = client.post("/v1/agent/invoke", json={"message": "hi"}).json()["thread_id"]
     assert client.delete(f"/v1/threads/{thread_id}").status_code == 204
     assert client.get(f"/v1/threads/{thread_id}/messages").status_code == 404
+
+
+def test_user_data_rights_endpoints_are_scoped_paginated_and_idempotent(
+    client: TestClient,
+) -> None:
+    alice_headers = {"X-User-Id": "alice"}
+    alice_thread_ids = [
+        client.post(
+            "/v1/agent/invoke",
+            json={"message": f"alice-{i}", "user_id": "alice"},
+            headers=alice_headers,
+        ).json()["thread_id"]
+        for i in range(2)
+    ]
+    bob_thread_id = client.post(
+        "/v1/agent/invoke", json={"message": "bob-secret", "user_id": "bob"}
+    ).json()["thread_id"]
+
+    first = client.get("/v1/me/threads", params={"limit": 1}, headers=alice_headers)
+    second = client.get("/v1/me/threads", params={"limit": 1, "offset": 1}, headers=alice_headers)
+    listed_ids = {
+        first.json()["threads"][0]["thread_id"],
+        second.json()["threads"][0]["thread_id"],
+    }
+    assert first.json()["total"] == 2
+    assert listed_ids == set(alice_thread_ids)
+    assert bob_thread_id not in listed_ids
+    assert "messages" not in first.json()["threads"][0]
+
+    exported = client.get(
+        "/v1/me/export",
+        params={"limit": 1, "message_limit": 1},
+        headers=alice_headers,
+    )
+    assert exported.status_code == 200
+    assert exported.json()["total_threads"] == 2
+    assert exported.json()["threads"][0]["thread_id"] in set(alice_thread_ids)
+    assert exported.json()["threads"][0]["messages"][0]["content"].startswith("alice-")
+    assert "bob-secret" not in exported.text
+
+    erased = client.delete("/v1/me/threads", headers=alice_headers)
+    assert erased.status_code == 200
+    assert erased.json() == {"erased_count": 2, "skipped_busy_count": 0}
+    repeated = client.delete("/v1/me/threads", headers=alice_headers)
+    assert repeated.json() == {"erased_count": 0, "skipped_busy_count": 0}
+    assert (
+        client.get(
+            f"/v1/threads/{bob_thread_id}/messages", headers={"X-User-Id": "bob"}
+        ).status_code
+        == 200
+    )
 
 
 @pytest.mark.parametrize(
