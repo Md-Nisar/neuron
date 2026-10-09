@@ -33,14 +33,26 @@ from neuron_agent.tools import calculator, utc_now
 _REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
 
 
-def test_create_chat_model_configures_openai_model_limits() -> None:
-    settings = Settings(
+def _production_settings(**overrides: object) -> Settings:
+    """Build production-valid settings without depending on developer env vars."""
+    return Settings(
         env="production",
+        auth_mode="jwt",
+        auth_issuer="https://issuer.example.test",
+        auth_audience="neuron-api",
+        auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
+        identity_hash_key="x" * 32,
+        openai_api_key=SecretStr("test-key"),
+        **overrides,
+    )
+
+
+def test_create_chat_model_configures_openai_model_limits() -> None:
+    settings = _production_settings(
         default_model="openai:gpt-5.4-mini",
         request_timeout_seconds=60,
         tool_timeout_seconds=20,
         max_output_tokens=2000,
-        openai_api_key=SecretStr("test-key"),
     )
     model = create_chat_model(settings)
     assert model.model_name == "gpt-5.4-mini"
@@ -49,7 +61,7 @@ def test_create_chat_model_configures_openai_model_limits() -> None:
 
 
 def test_create_chat_model_disables_sdk_level_retries() -> None:
-    settings = Settings(env="production", openai_api_key=SecretStr("test-key"))
+    settings = _production_settings()
     model = create_chat_model(settings)
     assert model.max_retries == 0
 
@@ -68,20 +80,16 @@ def test_classify_agent_error_passes_through_app_errors() -> None:
 
 
 def test_create_chat_model_rejects_unsupported_provider() -> None:
-    settings = Settings(
-        env="production",
+    settings = _production_settings(
         default_model="anthropic:claude",
-        openai_api_key=SecretStr("test-key"),
     )
     with pytest.raises(ConfigurationError):
         create_chat_model(settings)
 
 
 def test_create_chat_model_rejects_malformed_model_identifier() -> None:
-    settings = Settings(
-        env="production",
+    settings = _production_settings(
         default_model="not-a-valid-identifier",
-        openai_api_key=SecretStr("test-key"),
     )
     with pytest.raises(ConfigurationError):
         create_chat_model(settings)

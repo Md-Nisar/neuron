@@ -59,7 +59,9 @@ class TokenVerifier:
             else None
         )
         self._refresh_lock = anyio.Lock()
-        self._recent_unknown_kids: dict[str, float] = {}
+        # One process-wide cooldown bounds refreshes for attacker-chosen kids.
+        # A per-kid map would grow without bound and is trivially bypassed.
+        self._last_unknown_kid_failure: float | None = None
         self._last_unavailable_at: float | None = None
 
     async def verify(self, authorization: str | None) -> Principal:
@@ -127,15 +129,26 @@ class TokenVerifier:
             raise RuntimeError("JWT client is not configured")
         now = time.monotonic()
         async with self._refresh_lock:
-            previous_failure = self._recent_unknown_kids.get(kid)
+            # Preserve valid tokens from the local JWKS cache during the
+            # unknown-kid cooldown. PyJWKClient's public method uses its cache.
+            get_signing_keys = getattr(self._client, "get_signing_keys", None)
+            if get_signing_keys is not None:
+                cached_keys = await anyio.to_thread.run_sync(get_signing_keys)
+                for cached_key in cached_keys:
+                    if cached_key.key_id == kid:
+                        self._last_unavailable_at = None
+                        return cached_key
+
+            previous_failure = self._last_unknown_kid_failure
             if previous_failure is not None and now - previous_failure < 1.0:
                 raise PyJWKClientError("signing-key refresh rate limited")
             try:
                 key = await anyio.to_thread.run_sync(self._client.get_signing_key_from_jwt, token)
-            except PyJWKClientError:
-                self._recent_unknown_kids[kid] = now
+            except PyJWKClientConnectionError:
                 raise
-            self._recent_unknown_kids.pop(kid, None)
+            except PyJWKClientError:
+                self._last_unknown_kid_failure = time.monotonic()
+                raise
             self._last_unavailable_at = None
             return key
 
