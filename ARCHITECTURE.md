@@ -162,6 +162,22 @@ The model is not trusted as a security boundary. Tool availability is enforced i
 
 ## Observability
 
+Security events use the separate `neuron_agent.audit` logger and the fixed JSON schema
+below (`timestamp` is UTC ISO-8601). Route this logger/`logger` field to a SIEM sink
+independently of application logs. `actor` is only the first 12 hex characters of the
+principal owner HMAC; `issuer_id` is the configured `APP_AUTH_ISSUER_ID` alias, never the
+issuer URL. Fields with no applicable value are `null`. Reasons are stable codes, not
+exception or claim text. Authentication success auditing is off by default and can be
+enabled with `APP_AUTH_AUDIT_SUCCESS_ENABLED=true`.
+
+```json
+{"audit":true,"event":"authorization_denied","outcome":"denied","actor":"4a3f...","issuer_id":"primary","action":"threads:read","resource_type":"thread","resource_id":"00000000-0000-0000-0000-000000000001","request_id":"...","run_id":null,"reason":"insufficient_scope","count":null,"timestamp":"2026-10-10T12:00:00+00:00"}
+```
+
+Audit events never contain bearer tokens, raw claims/subjects, email addresses, client IPs,
+prompts, answers or tool arguments. `observability/audit.py::audit` is the only emitter;
+it accepts only explicit schema fields and emits through the dedicated logger.
+
 Logs are JSON-formatted through `structlog` and include service, version, environment, request ID, and thread ID where available. LangSmith tracing can be enabled through environment variables.
 
 `AgentService.invoke` generates a `run_id` per graph invocation alongside `request_id` (per HTTP call) and `thread_id` (per conversation), binds all three to `structlog`'s contextvars (`observability/logging.py::bind_correlation_context`), and passes `run_id` into the LangChain/LangGraph `RunnableConfig` so the same ID also tags the LangSmith trace when tracing is enabled. Because contextvars are merged into every log line for the duration of the request, correlation IDs appear on tool-call and provider-retry logs without those call sites needing to pass them explicitly.
