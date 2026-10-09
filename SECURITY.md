@@ -21,12 +21,12 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Tool allow-list helper and high-impact tool deny list.
 - Localhost URL rejection helper.
 - Hashed user IDs before entering graph state.
-- Conversation thread isolation (ADR 0005):
+- Conversation thread isolation (ADR 0005; v0.4.0 authentication and identity are defined by ADR 0006):
   - thread IDs are server-minted UUIDv4s, and malformed IDs are rejected;
   - a supplied thread must already exist and belong to the same hashed `user_id`;
   - a missing thread and another user's thread return the same `404 thread_not_found`, so thread IDs can't be probed.
 
-  **Limitation until v0.4.0:** `user_id` comes from the request body and is not authenticated. The guard prevents accidental cross-use, and the unguessable server-minted thread ID is the effective access control.
+  **v0.3.0 limitation:** `user_id` comes from the request body and is not authenticated. In v0.4.0 JWT mode, ownership is derived from the verified `(iss, sub)` principal through a keyed HMAC; request-provided identity fields cannot override it.
 - Token-bucket rate limiting at `/v1/agent/invoke`, keyed by client IP, returning `429` with `Retry-After` when exceeded (ADR 0004).
 - Bounded provider/tool timeouts and capped provider retries (`APP_REQUEST_TIMEOUT_SECONDS`, `APP_TOOL_TIMEOUT_SECONDS`, `APP_PROVIDER_MAX_RETRIES`) and an agent-loop recursion limit (`APP_MAX_AGENT_ITERATIONS`) as resource-exhaustion controls, alongside rate limiting (see `OPERATIONS.md`'s Timeouts and Retries section).
 - Structured logging with no deliberate raw secret logging: log fields are limited to IDs, names, stable error codes/types, durations, and retry counts — never raw user prompts, tool arguments, exception text, or provider API keys (see `ARCHITECTURE.md#observability`).
@@ -69,7 +69,7 @@ With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 00
 - **Retention.** `make prune-threads` deletes threads inactive for longer than `APP_THREAD_RETENTION_DAYS` (default `30`). Run it on a schedule; Postgres has no built-in TTL.
 - **Backups.** Deleted or pruned threads persist in database backups until those backups expire. Align backup retention with `APP_THREAD_RETENTION_DAYS`.
 - **Encryption.** Encryption at rest is the database's responsibility (managed-service or disk encryption). LangGraph's `EncryptedSerializer` is available if application-level encryption is required; it isn't enabled by default.
-- **Access.** Thread history is exposed only through `GET /v1/threads/{thread_id}/messages`, with the same owner check as conversations. System prompts, tool calls and tool output are never returned. Until v0.4.0, owner identity comes from the unauthenticated `X-User-Id` header, or `user_id` in the body (see Current Controls).
+- **Access.** Thread history is exposed only through `GET /v1/threads/{thread_id}/messages`, with the same owner check as conversations. System prompts, tool calls and tool output are never returned. In v0.3.0, owner identity comes from the unauthenticated `X-User-Id` header or `user_id` in the body. In v0.4.0 JWT mode, it comes from the verified principal defined by ADR 0006.
 
 ## Secrets
 
