@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     user_token_budget: int = Field(default=100_000, ge=1, le=10_000_000)
     user_token_budget_window_seconds: int = Field(default=3600, ge=1, le=86_400)
     thread_retention_days: int = Field(default=30, ge=1, le=3650)
+    user_data_export_max_bytes: int = Field(default=5_000_000, ge=65_536, le=50_000_000)
     auth_mode: AuthMode = "none"
     auth_issuer: str | None = None
     auth_issuer_id: str = Field(

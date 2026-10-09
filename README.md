@@ -85,7 +85,12 @@ Read or delete a thread. `user_id` goes in the `X-User-Id` header:
 ```bash
 curl -s "http://127.0.0.1:8000/v1/threads/$THREAD/messages?limit=50" -H "X-User-Id: user-123"
 curl -s -X DELETE "http://127.0.0.1:8000/v1/threads/$THREAD" -H "X-User-Id: user-123"   # 204
+curl -s "http://127.0.0.1:8000/v1/me/threads?limit=50&offset=0" -H "X-User-Id: user-123"
+curl -s "http://127.0.0.1:8000/v1/me/export?limit=5&offset=0&message_limit=20&message_offset=0" -H "X-User-Id: user-123"
+curl -s -X DELETE "http://127.0.0.1:8000/v1/me/threads" -H "X-User-Id: user-123"
 ```
+
+The `/v1/me/*` routes require `threads:read` for listing/export and `threads:delete` for bulk erasure in JWT mode. Export returns only user and assistant text and is bounded by `APP_USER_DATA_EXPORT_MAX_BYTES` (default 5 MB); use the returned pagination fields to fetch further threads/messages. Listing returns summaries without conversation content. See `SECURITY.md` for retention and coverage limitations. In local no-auth mode, `X-User-Id` is the development identity.
 
 Persistence is selected with `APP_CHECKPOINTER`:
 - `auto` (the default) keeps threads in memory in development and test. They're lost on restart.

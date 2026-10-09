@@ -60,6 +60,12 @@ class ThreadBusyError(AppError):
     context = ErrorContext(code="thread_busy", http_status=409, retryable=True)
 
 
+class ExportTooLargeError(AppError):
+    """A user export page exceeds the configured response-size cap."""
+
+    context = ErrorContext(code="export_too_large", http_status=413)
+
+
 class CapacityError(AppError):
     """The process is at its concurrent-stream limit."""
 

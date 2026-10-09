@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import datetime, timedelta
 
@@ -100,5 +101,42 @@ async def test_postgres_delete_and_prune_threads() -> None:
         with pytest.raises(ThreadNotFoundError):
             await service.get_history(old, None, limit=10, offset=0)
         assert (await service.get_history(recent, None, limit=10, offset=0)).total == 2
+    finally:
+        await service.shutdown()
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_postgres_owner_metadata_listing_and_bulk_erasure() -> None:
+    settings = _settings()
+    service = AgentService(settings)
+    await service.startup()
+    try:
+        alice_thread = (
+            await service.invoke(AgentRequest(message="alice data", user_id="alice"))
+        ).thread_id
+        bob_thread = (
+            await service.invoke(AgentRequest(message="bob data", user_id="bob"))
+        ).thread_id
+
+        alice_page = await service.list_user_threads("alice", limit=100, offset=0)
+        assert alice_page.total == 1
+        assert [item.thread_id for item in alice_page.threads] == [alice_thread]
+
+        checkpointer = service._persistence.checkpointer
+        assert checkpointer is not None
+        alice_owner = hashlib.sha256(b"alice").hexdigest()
+        owner_checkpoints = [
+            item
+            async for item in checkpointer.alist(None, filter={"owner": alice_owner})
+            if item.config["configurable"].get("checkpoint_ns", "") == ""
+        ]
+        assert owner_checkpoints
+        assert all(item.metadata["owner"] == alice_owner for item in owner_checkpoints)
+
+        erased = await service.erase_user_data("alice")
+        assert erased.erased_count == 1
+        assert erased.skipped_busy_count == 0
+        assert (await service.list_user_threads("alice", limit=100, offset=0)).total == 0
+        assert (await service.get_history(bob_thread, "bob", limit=10, offset=0)).total == 2
     finally:
         await service.shutdown()

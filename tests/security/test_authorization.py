@@ -13,7 +13,13 @@ from langgraph.runtime import Runtime
 from pydantic import SecretStr
 
 from neuron_agent.api import main as api_main
-from neuron_agent.schemas.agent import AgentResponse, ThreadHistoryResponse
+from neuron_agent.schemas.agent import (
+    AgentResponse,
+    ThreadHistoryResponse,
+    UserDataErasureResponse,
+    UserDataExportResponse,
+    UserThreadsResponse,
+)
 from neuron_agent.security.auth import Principal, require_principal
 from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
 from neuron_agent.services.streaming import StreamEvent
@@ -64,6 +70,9 @@ def test_routes_without_required_permissions_return_insufficient_scope(
             None,
             "threads:delete",
         ),
+        ("GET", "/v1/me/threads", None, "threads:read"),
+        ("GET", "/v1/me/export", None, "threads:read"),
+        ("DELETE", "/v1/me/threads", None, "threads:delete"),
     ]
     try:
         with TestClient(api_main.app) as client:
@@ -124,6 +133,23 @@ def test_each_route_succeeds_with_its_required_permission(
     async def delete(*_: object, **__: object) -> None:
         return None
 
+    async def list_user_threads(*_: object, **__: object) -> UserThreadsResponse:
+        return UserThreadsResponse(threads=[], total=0, limit=50, offset=0)
+
+    async def export_user_data(*_: object, **__: object) -> UserDataExportResponse:
+        return UserDataExportResponse(
+            threads=[],
+            total_threads=0,
+            limit=5,
+            offset=0,
+            message_limit=20,
+            message_offset=0,
+            has_more_messages=False,
+        )
+
+    async def erase_user_data(*_: object, **__: object) -> UserDataErasureResponse:
+        return UserDataErasureResponse(erased_count=0, skipped_busy_count=0)
+
     async def startup() -> None:
         return None
 
@@ -139,6 +165,9 @@ def test_each_route_succeeds_with_its_required_permission(
             stream=stream,
             get_history=history,
             delete_thread=delete,
+            list_user_threads=list_user_threads,
+            export_user_data=export_user_data,
+            erase_user_data=erase_user_data,
             startup=startup,
             shutdown=shutdown,
         ),
@@ -158,6 +187,9 @@ def test_each_route_succeeds_with_its_required_permission(
             None,
             "threads:delete",
         ),
+        ("GET", "/v1/me/threads", None, "threads:read"),
+        ("GET", "/v1/me/export", None, "threads:read"),
+        ("DELETE", "/v1/me/threads", None, "threads:delete"),
     ]
     try:
         with TestClient(api_main.app) as client:
