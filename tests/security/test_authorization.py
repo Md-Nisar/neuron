@@ -6,14 +6,16 @@ from types import SimpleNamespace
 import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
-from langchain.agents.middleware import ModelRequest
+from langchain.agents.middleware import ModelRequest, ModelResponse
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
+from langchain_core.messages import AIMessage
 from langgraph.runtime import Runtime
+from pydantic import SecretStr
 
 from neuron_agent.api import main as api_main
 from neuron_agent.schemas.agent import AgentResponse, ThreadHistoryResponse
 from neuron_agent.security.auth import Principal, require_principal
-from neuron_agent.security.authorization import AuthorizationContext
+from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
 from neuron_agent.services.streaming import StreamEvent
 from neuron_agent.tools import calculator, utc_now
 
@@ -38,6 +40,7 @@ def test_routes_without_required_permissions_return_insufficient_scope(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(api_main.settings, "auth_mode", "jwt")
+    monkeypatch.setattr(api_main.settings, "identity_hash_key", SecretStr("i" * 32))
     denied = Principal(
         issuer="https://issuer.test",
         subject="caller",
@@ -79,6 +82,7 @@ def test_each_route_succeeds_with_its_required_permission(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(api_main.settings, "auth_mode", "jwt")
+    monkeypatch.setattr(api_main.settings, "identity_hash_key", SecretStr("i" * 32))
     principal = Principal(
         issuer="https://issuer.test",
         subject="caller",
@@ -176,20 +180,33 @@ async def test_model_only_sees_tools_granted_to_the_run() -> None:
     from neuron_agent.models.factory import tool_authorization_middleware
 
     middleware = tool_authorization_middleware()
+    usage = TokenUsageAccumulator()
     request = ModelRequest(
         model=FakeListChatModel(responses=["ok"]),
         messages=[],
         tools=[utc_now, calculator],
-        runtime=Runtime(context=AuthorizationContext(frozenset())),
+        runtime=Runtime(context=AuthorizationContext(frozenset(), usage=usage)),
     )
     offered: list[str] = []
 
-    async def handler(filtered: ModelRequest[object]) -> str:
+    async def handler(filtered: ModelRequest[object]) -> ModelResponse:
         offered.extend(tool.name for tool in filtered.tools)
-        return "ok"
+        return ModelResponse(
+            result=[
+                AIMessage(
+                    content="ok",
+                    usage_metadata={
+                        "input_tokens": 2,
+                        "output_tokens": 1,
+                        "total_tokens": 3,
+                    },
+                )
+            ]
+        )
 
-    assert await middleware.awrap_model_call(request, handler) == "ok"
+    await middleware.awrap_model_call(request, handler)
     assert offered == ["utc_now"]
+    assert usage.total_tokens == 3
 
 
 @pytest.mark.anyio
