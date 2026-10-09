@@ -20,11 +20,15 @@ API and LangGraph Agent Server without introducing a user database or login UI.
 ## Requirements
 
 - Verify OAuth 2.0/OIDC access tokens issued by an external identity provider.
+- Authenticate human users and service accounts through the same bearer-token
+  validation and authorization boundary; distinguish their permissions through
+  scopes, not alternate identity headers or authentication mechanisms.
 - Reject unauthenticated or invalid requests before agent, tool, or checkpoint work.
 - Bind conversation ownership to a stable authenticated principal, not an email,
   username, request field, or header.
-- Support multiple issuers without allowing the same `sub` from different issuers
-  to collide.
+- Bind issuer into principal identity so equal `sub` values from different
+  issuers cannot collide. A deployment trusts exactly one configured issuer in
+  v0.4.0; multi-issuer routing is explicitly out of scope.
 - Restrict endpoint and tool capabilities using explicit permissions.
 - Fail closed when signing keys cannot be obtained and no valid cached key exists.
 - Keep health endpoints public and retain an explicit, local-only development mode.
@@ -77,7 +81,10 @@ API and LangGraph Agent Server without introducing a user database or login UI.
 
 ### Authentication boundary
 
-The API is an OAuth 2.0 resource server. Every `/v1/*` route receives a verified
+The API is an OAuth 2.0 resource server. Human callers and machine/service
+accounts use the same bearer-token path; the IdP issues their tokens and scopes,
+and Neuron applies the same validation and permission checks to both. There is
+no service-account header bypass. Every `/v1/*` route receives a verified
 `Principal` from a FastAPI dependency. `/health/live` and `/health/ready` remain
 public; readiness reports an unavailable JWKS provider when JWT mode has no usable
 cached key.
@@ -145,8 +152,16 @@ history, and delete.
 
 The v0.3.0 SHA-256 owner values are not automatically accepted in JWT mode.
 Automatic dual-hash reads would weaken the new boundary and make migration
-ambiguous. Existing deployments must run an explicit operator migration to
-re-key known threads or allow them to expire under retention. `none` mode
+ambiguous. Existing deployments must either run an explicit operator migration
+to re-key known threads or allow them to expire under retention. The supported
+v0.4.0 rollout is retention: before enabling JWT mode, operators must schedule
+`make prune-threads` at least daily, retain the configured
+`APP_THREAD_RETENTION_DAYS` window, and wait one full window after the last
+legacy write before treating all legacy threads as expired. During the window,
+legacy SHA-256 owners are intentionally inaccessible in JWT mode; do not enable
+a dual-hash lookup. If access continuity is required, pause rollout and plan a
+separately reviewed, authenticated re-key process rather than modifying hashes
+in place without an owner-to-principal mapping. `none` mode
 continues to support v0.3.0 behavior for local compatibility.
 
 ### Permissions
