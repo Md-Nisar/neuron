@@ -29,7 +29,9 @@ class GatedAgent:
         self.cancelled = False
         self.calls = 0
 
-    async def ainvoke(self, inputs: dict[str, Any], *, config: dict[str, Any]) -> dict[str, Any]:
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
         self.calls += 1
         self.started.set()
         try:

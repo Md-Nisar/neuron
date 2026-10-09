@@ -85,6 +85,33 @@ async def test_verify_returns_principal_without_raw_claims_in_extra_state() -> N
 
 
 @pytest.mark.anyio
+async def test_verify_maps_configured_scope_claim_and_roles_to_permissions() -> None:
+    private, public = _key_pair()
+    settings = _settings()
+    settings.auth_scope_claim = "permissions"
+    settings.auth_roles_claim = "groups"
+    settings.auth_role_permissions = {"operators": ["threads:delete"]}
+    verifier = TokenVerifier(settings)
+    verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
+
+    token = _token(private, permissions=["agent:invoke"], groups=["operators"])
+    principal = await verifier.verify(f"Bearer {token}")
+
+    assert principal.scopes == {"agent:invoke", "threads:delete"}
+
+
+@pytest.mark.anyio
+async def test_verify_unknown_permission_claim_grants_nothing() -> None:
+    private, public = _key_pair()
+    verifier = TokenVerifier(_settings())
+    verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
+
+    principal = await verifier.verify(f"Bearer {_token(private, scope=None, scp=None)}")
+
+    assert principal.scopes == frozenset()
+
+
+@pytest.mark.anyio
 async def test_verify_rejects_missing_or_malformed_bearer_tokens() -> None:
     verifier = TokenVerifier(_settings())
 

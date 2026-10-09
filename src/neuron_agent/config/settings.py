@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     auth_jwks_timeout_seconds: int = Field(default=5, ge=1, le=30)
     auth_token_max_bytes: int = Field(default=16_384, ge=1024, le=131_072)
     auth_require_typ: bool = False
+    auth_scope_claim: str = "scope"
+    auth_roles_claim: str | None = "roles"
+    auth_role_permissions: dict[str, list[str]] = Field(default_factory=dict)
     identity_hash_key: SecretStr | None = None
     openai_api_key: SecretStr | None = Field(
         default=None,

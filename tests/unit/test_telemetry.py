@@ -66,7 +66,9 @@ class _FailingAgent:
         self.delay = delay
         self.started = asyncio.Event()
 
-    async def ainvoke(self, inputs: dict[str, Any], *, config: dict[str, Any]) -> dict[str, Any]:
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
         self.started.set()
         await asyncio.sleep(self.delay)
         if self.error is not None:

@@ -64,7 +64,9 @@ class HistoryEchoAgent:
         self.calls: list[list[BaseMessage]] = []
         self.fail_next = False
 
-    async def ainvoke(self, inputs: dict[str, Any], *, config: dict[str, Any]) -> dict[str, Any]:
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
         messages = list(inputs["messages"])
         self.calls.append(messages)
         if self.fail_next:

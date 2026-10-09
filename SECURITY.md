@@ -22,6 +22,8 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Typed request validation with Pydantic, including a request body size limit, a rejected-unknown-fields policy, and control-character rejection in user messages.
 - Centralized settings and `.env.example`.
 - Read-only initial tools.
+- Scope-based function authorization: `/v1/agent/*` requires `agent:invoke`, thread history requires `threads:read`, and thread deletion requires `threads:delete`. JWT permissions come from the configured `APP_AUTH_SCOPE_CLAIM` (space-delimited string or list, with `scp` fallback) and optionally explicit `APP_AUTH_ROLE_PERMISSIONS` mappings. Missing/unknown claims grant nothing; denied requests return `403 authorization_error` with `insufficient_scope`.
+- Tool capabilities are filtered from model-visible tools per run and checked again immediately before execution. `utc_now` is public; `calculator` requires `tools:calculator`. Permissions and the verified principal travel only in runtime context, never prompts or checkpoint state. `AUTH_MODE=none` grants the documented development permission set.
 - AST-based calculator without `eval`.
 - Tool allow-list helper and high-impact tool deny list.
 - Localhost URL rejection helper.
