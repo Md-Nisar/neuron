@@ -56,7 +56,18 @@ def test_settings_rejects_rate_limit_burst_out_of_bounds() -> None:
     [("development", "memory"), ("test", "memory"), ("staging", "none"), ("production", "none")],
 )
 def test_settings_auto_checkpointer_resolves_per_environment(env: str, expected: str) -> None:
-    assert Settings(env=env, openai_api_key="sk-test").checkpointer == expected
+    overrides: dict[str, object] = {"env": env, "openai_api_key": "sk-test"}
+    if env in {"staging", "production"}:
+        overrides.update(
+            {
+                "auth_mode": "jwt",
+                "auth_issuer": "https://issuer.example.test",
+                "auth_audience": "neuron-api",
+                "auth_jwks_url": "https://issuer.example.test/jwks.json",
+                "identity_hash_key": "x" * 32,
+            }
+        )
+    assert Settings(**overrides).checkpointer == expected
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])

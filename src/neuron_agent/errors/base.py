@@ -34,6 +34,20 @@ class AuthorizationError(AppError):
     context = ErrorContext(code="authorization_error", http_status=403)
 
 
+class AuthenticationError(AppError):
+    """Caller credentials are missing or invalid."""
+
+    context = ErrorContext(code="authentication_error", http_status=401)
+
+
+class AuthenticationUnavailableError(AppError):
+    """The identity provider's signing keys are temporarily unavailable."""
+
+    context = ErrorContext(
+        code="authentication_unavailable", http_status=503, retryable=True, user_visible=False
+    )
+
+
 class ThreadNotFoundError(AppError):
     """Thread does not exist or belongs to another user (deliberately indistinguishable)."""
 

@@ -14,7 +14,7 @@ from typing import Any
 import anyio
 import structlog
 import uvicorn
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
@@ -24,6 +24,7 @@ from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
+from neuron_agent.security.auth import TokenVerifier, require_principal
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
@@ -36,6 +37,7 @@ configure_logging(
 )
 logger = structlog.get_logger(__name__)
 service = AgentService(settings)
+auth_verifier = TokenVerifier(settings)
 
 
 @asynccontextmanager
@@ -132,12 +134,16 @@ async def live() -> dict[str, str]:
 
 @app.get("/health/ready")
 async def ready() -> JSONResponse:
-    if not await service.is_ready():
+    if not await service.is_ready() or not await auth_verifier.ready():
         return JSONResponse(status_code=503, content={"status": "not_ready"})
     return JSONResponse(content={"status": "ready", "environment": settings.env})
 
 
-@app.post("/v1/agent/invoke", response_model=AgentResponse)
+@app.post(
+    "/v1/agent/invoke",
+    response_model=AgentResponse,
+    dependencies=[Depends(require_principal)],
+)
 async def invoke_agent(request: AgentRequest) -> AgentResponse:
     request_id = None
     thread_id = request.thread_id
@@ -180,7 +186,7 @@ async def invoke_agent(request: AgentRequest) -> AgentResponse:
         raise HTTPException(status_code=500, detail="internal_server_error") from exc
 
 
-@app.post("/v1/agent/stream")
+@app.post("/v1/agent/stream", dependencies=[Depends(require_principal)])
 async def stream_agent(request: AgentRequest) -> EventSourceResponse:
     """Stream a run as server-sent events (ADR 0005, decision 4).
 
@@ -233,7 +239,11 @@ async def stream_agent(request: AgentRequest) -> EventSourceResponse:
 _UserIdHeader = Header(default=None, alias="X-User-Id", max_length=128)
 
 
-@app.get("/v1/threads/{thread_id}/messages", response_model=ThreadHistoryResponse)
+@app.get(
+    "/v1/threads/{thread_id}/messages",
+    response_model=ThreadHistoryResponse,
+    dependencies=[Depends(require_principal)],
+)
 async def get_thread_messages(
     thread_id: uuid.UUID,
     limit: int = Query(default=50, ge=1, le=100),
@@ -247,7 +257,7 @@ async def get_thread_messages(
         raise _http_error("thread_history_failed", exc) from exc
 
 
-@app.delete("/v1/threads/{thread_id}", status_code=204)
+@app.delete("/v1/threads/{thread_id}", status_code=204, dependencies=[Depends(require_principal)])
 async def delete_thread(thread_id: uuid.UUID, user_id: str | None = _UserIdHeader) -> Response:
     """Delete all stored state for a thread (ADR 0005, decision 7)."""
     try:
