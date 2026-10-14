@@ -16,4 +16,4 @@ jobs:
       - run: uv run python -m ruff check src tests
       - run: uv run python -m mypy src
       - run: uv run python -m pytest tests/unit tests/graph tests/security tests/evals
-      - run: uv run python -m bandit -q -r src
+      - run: make security

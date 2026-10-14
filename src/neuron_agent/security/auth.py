@@ -102,9 +102,11 @@ class TokenVerifier:
 
             signing_key = await self._get_signing_key(token, kid)
             options = cast(Any, {"require": ["iss", "aud", "exp", "nbf", "iat", "sub"]})
+            # Pass the PyJWK itself, not its raw key: PyJWT then verifies with the key's
+            # own algorithm and rejects a token whose `alg` names a different one.
             claims = jwt.decode(
                 token,
-                signing_key.key,
+                signing_key,
                 algorithms=self._settings.auth_algorithms,
                 issuer=self._settings.auth_issuer,
                 audience=self._settings.auth_audience,
@@ -207,9 +209,9 @@ class TokenVerifier:
         subject = claims["sub"]
         expires_at = claims["exp"]
         if not isinstance(issuer, str) or not issuer or not isinstance(subject, str) or not subject:
-            raise AuthenticationError()
+            raise self._reject("invalid_claims")
         if not isinstance(expires_at, (int, float)):
-            raise AuthenticationError()
+            raise self._reject("invalid_claims")
         raw_scope = claims.get(
             self._settings.auth_scope_claim,
             claims.get("scp" if self._settings.auth_scope_claim != "scp" else "scope", ""),

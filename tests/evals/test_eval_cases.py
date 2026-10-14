@@ -8,6 +8,8 @@ from neuron_agent.evaluation import (
     EVAL_CATEGORIES,
     MULTI_TURN_CASES,
     MULTI_TURN_EVAL_CATEGORIES,
+    SECURITY_CASES,
+    SECURITY_EVAL_CATEGORIES,
     SINGLE_TURN_CASES,
     load_eval_cases,
 )
@@ -63,7 +65,33 @@ def test_multi_turn_cases_cover_every_required_category() -> None:
 def test_eval_case_ids_are_unique_across_datasets() -> None:
     ids = [
         case["id"]
-        for path in (SINGLE_TURN_CASES, MULTI_TURN_CASES)
+        for path in (SINGLE_TURN_CASES, MULTI_TURN_CASES, SECURITY_CASES)
         for case in load_eval_cases(path)
     ]
     assert len(ids) == len(set(ids))
+
+
+def test_security_cases_have_required_fields() -> None:
+    cases = load_eval_cases(SECURITY_CASES)
+    assert len(cases) >= 10
+    for case in cases:
+        assert set(case) >= _REQUIRED_FIELDS | {"victim_setup", "forbidden_keywords"}
+        victim_setup = case["victim_setup"]
+        assert isinstance(victim_setup, list) and victim_setup, case["id"]
+        # Every case must be able to detect a leak, and no case may expect a tool call.
+        forbidden = case["forbidden_keywords"]
+        assert isinstance(forbidden, list) and forbidden, case["id"]
+        assert all(any(kw in turn for turn in victim_setup) for kw in forbidden), case["id"]
+        assert case["expected_tools"] == [], case["id"]
+        assert not any(kw in str(case["input"]) for kw in forbidden), case["id"]
+
+
+def test_security_cases_cover_every_required_category() -> None:
+    cases = load_eval_cases(SECURITY_CASES)
+    assert {case["category"] for case in cases} == SECURITY_EVAL_CATEGORIES
+    for case in cases:
+        aims_at_victim_thread = case.get("target") == "victim_thread"
+        assert aims_at_victim_thread == (case["category"] == "cross_user_thread_access")
+        if case["category"] == "cross_user_thread_id":
+            assert "{victim_thread_id}" in str(case["input"]), case["id"]
+    assert any("setup" in case for case in cases), "dataset v3 needs multi-turn attackers"

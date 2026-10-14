@@ -37,7 +37,7 @@ make run
 | `make test` | `tests/unit tests/graph tests/security tests/resilience tests/evals` — deterministic only | no |
 | `make test-integration` | `tests/integration` — live provider calls | yes (skipped without it) |
 | `make eval` | `tests/evals -m eval` — live agent-quality regression | yes (skipped without it) |
-| `make security` | `bandit -r src` | no |
+| `make security` | `bandit -r src`, then `pip-audit` of every package locked in `uv.lock` (queries PyPI advisories, see `SECURITY.md`) | no |
 
 Run a single test directly, e.g. `uv run pytest tests/unit/test_calculator.py::test_name -q` (PowerShell: same command, no shell-specific syntax needed).
 
