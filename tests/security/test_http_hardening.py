@@ -19,6 +19,7 @@ from tests.conftest import JwtApi, bearer
 
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
+from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 
 _APP_ORIGIN = "https://app.example.com"
 _DOCS_PATHS = ["/docs", "/redoc", "/openapi.json"]
@@ -265,11 +266,49 @@ def test_responses_from_request_guards_carry_security_headers(
     jwt_api_factory: Callable[..., JwtApi], token: dict[str, str]
 ) -> None:
     api = jwt_api_factory(max_request_body_bytes=1024)
-    response = api.client.post("/v1/agent/invoke", headers=token, json={"message": "x" * 2000})
+    with structlog.testing.capture_logs(
+        processors=[structlog.contextvars.merge_contextvars]
+    ) as logs:
+        response = api.client.post(
+            "/v1/agent/invoke",
+            headers={**token, "X-Correlation-ID": "too-big-1"},
+            json={"message": "x" * 2000},
+        )
 
     assert response.status_code == 413
     _assert_security_headers(response)
     assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-correlation-id"] == "too-big-1"
+    [event] = [log for log in logs if log["event"] == "agent_request_body_too_large"]
+    assert event["request_id"] == "too-big-1"
+
+
+@pytest.mark.parametrize("root_path", ["", "/api"])
+@pytest.mark.parametrize("authenticated", [True, False])
+def test_rate_limits_apply_to_every_v1_prefix_and_behind_a_root_path(
+    jwt_api_factory: Callable[..., JwtApi],
+    token: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    root_path: str,
+    authenticated: bool,
+) -> None:
+    """Per-principal limits, and per-IP limits on failed authentication."""
+    jwt_api_factory(rate_limit_enabled=True)
+    monkeypatch.setattr(
+        api_main,
+        "rate_limiter",
+        InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=3600),
+    )
+    client = TestClient(api_main.app, root_path=root_path)
+    headers = {**(token if authenticated else {}), "X-Correlation-ID": "limited-1"}
+
+    first = client.get(f"{root_path}/v1/me/threads", headers=headers)
+    second = client.get(f"{root_path}/v1/me/threads", headers=headers)
+
+    assert first.status_code == (200 if authenticated else 401)
+    assert second.status_code == 429
+    assert second.headers["x-correlation-id"] == "limited-1"
+    assert second.headers["cache-control"] == "no-store"
 
 
 def test_unhandled_errors_keep_cors_and_security_headers(

@@ -107,6 +107,38 @@ class _CleanupEventSourceResponse(EventSourceResponse):
 
 
 @app.middleware("http")
+async def limit_request_body_size(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            declared_size = int(content_length)
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "validation_error"})
+        if declared_size > settings.max_request_body_bytes:
+            logger.warning("agent_request_body_too_large", content_length=declared_size)
+            return JSONResponse(status_code=413, content={"detail": "payload_too_large"})
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def enforce_rate_limit(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    if settings.rate_limit_enabled and _route_path(request.scope).startswith(
+        _RATE_LIMITED_PREFIXES
+    ):
+        if settings.auth_mode == "none":
+            decision = rate_limiter.check(f"ip:{_client_ip(request)}")
+            if not decision.allowed:
+                return _rate_limited_response(
+                    decision.retry_after_seconds, f"ip:{_client_ip(request)}"
+                )
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def bind_request_correlation(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
@@ -132,36 +164,6 @@ async def bind_request_correlation(
         response = JSONResponse(status_code=500, content={"detail": "internal_server_error"})
     response.headers["X-Correlation-ID"] = correlation_id
     return response
-
-
-@app.middleware("http")
-async def limit_request_body_size(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    content_length = request.headers.get("content-length")
-    if content_length is not None:
-        try:
-            declared_size = int(content_length)
-        except ValueError:
-            return JSONResponse(status_code=400, content={"detail": "validation_error"})
-        if declared_size > settings.max_request_body_bytes:
-            logger.warning("agent_request_body_too_large", content_length=declared_size)
-            return JSONResponse(status_code=413, content={"detail": "payload_too_large"})
-    return await call_next(request)
-
-
-@app.middleware("http")
-async def enforce_rate_limit(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    if settings.rate_limit_enabled and request.url.path.startswith(_RATE_LIMITED_PREFIXES):
-        if settings.auth_mode == "none":
-            decision = rate_limiter.check(f"ip:{_client_ip(request)}")
-            if not decision.allowed:
-                return _rate_limited_response(
-                    decision.retry_after_seconds, f"ip:{_client_ip(request)}"
-                )
-    return await call_next(request)
 
 
 class _HostAndCorsMiddleware:
