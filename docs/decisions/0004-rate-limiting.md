@@ -49,6 +49,12 @@ Enforcement is a new `app.middleware("http")` in `api/main.py`, scoped to `reque
 
 Default configuration values are chosen so the existing test suite (which issues a modest number of sequential requests against a shared `TestClient`/app instance) is not incidentally throttled; tests targeting rate-limit behavior construct or substitute a limiter with a small capacity explicitly.
 
+## v0.4.0 Identity Update
+
+In JWT mode, the rate-limit identity is superseded by the verified principal
+defined in ADR 0006; the v0.3.0 IP-based behavior remains for `AUTH_MODE=none`.
+Issue #56 defines the per-principal limiter and quota migration.
+
 ## Consequences
 
 Callers are protected from a single high-volume source at the cost of only IP-granularity limiting (shared IPs — NAT, proxies — share a bucket). The limiter is process-local: it resets on restart and does not coordinate across multiple worker processes or instances, which is an explicit, documented limitation rather than a hidden one. Moving to a multi-instance deployment requires implementing `RateLimiter` against a shared backend (e.g. Redis) and swapping the instance constructed in `api/main.py` — no other call site changes.

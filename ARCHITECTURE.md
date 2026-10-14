@@ -130,7 +130,7 @@ ADR 0005, decision 7.
 
 - **History.** `GET /v1/threads/{thread_id}/messages?limit=&offset=` returns `{thread_id, messages: [{role, content}], total, limit, offset}`, oldest first. `limit` is 1–100 (default 50). Only user and assistant turns with text are included.
 - **Deletion.** `DELETE /v1/threads/{thread_id}` returns `204` after `adelete_thread` removes every checkpoint. It returns `409 thread_busy` while a run is in flight, because that run's final write would re-create the thread.
-- **Ownership.** Both endpoints apply the same owner check as conversations, using `X-User-Id` as the pre-auth identity because GET and DELETE have no body. Missing, foreign and non-persisted threads all return `404 thread_not_found`.
+- **Ownership.** Both endpoints apply the same owner check as conversations. In v0.3.0, GET and DELETE use `X-User-Id` as the pre-auth identity because they have no body; v0.4.0 JWT mode derives ownership from the verified principal under ADR 0006. Missing, foreign and non-persisted threads all return `404 thread_not_found`.
 - **Retention.** `persistence/retention.py::prune_threads` deletes threads whose newest root checkpoint is older than the cutoff. On Postgres this is one SQL aggregate; for other savers it scans `alist(None)`. Run it with `make prune-threads`.
 - **Rate limiting** applies to every `/v1/agent/*` and `/v1/threads/*` route.
 
