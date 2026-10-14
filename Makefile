@@ -48,8 +48,14 @@ test-integration:
 eval:
 	uv run python -m pytest tests/evals -m eval
 
+# Dependency audit ignores: each needs an entry, with a review date, in SECURITY.md
+# (Dependency Vulnerabilities).
+AUDIT_IGNORES := --ignore-vuln PYSEC-2026-4146
+
 security:
 	uv run python -m bandit -q -r src
+	uv export --frozen --format requirements-txt --no-emit-project --all-groups \
+		| uv run pip-audit -r /dev/stdin --disable-pip --progress-spinner off $(AUDIT_IGNORES)
 
 build:
 	uv build

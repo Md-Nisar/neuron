@@ -9,7 +9,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - User input is untrusted.
 - Bearer tokens are untrusted until signature, issuer, audience, time claims, and required subject are verified against the configured issuer and JWKS.
 - Verified `(iss, sub)` is the principal identity; request body fields and `X-User-Id` are not identity sources in JWT mode. Service accounts have no alternate header or bypass.
-- The configured identity provider and its JWKS endpoint are external trust dependencies. Key-fetch failure without a usable cached key fails closed; JWKS URLs must use HTTPS outside development.
+- The configured identity provider and its JWKS endpoint are external trust dependencies. Key-fetch failure without a usable cached key fails closed; JWKS URLs must use HTTPS outside development. Each token is verified with the algorithm bound to its `kid`'s JWK (the JWK's `alg`, or RS256/ES256 inferred from its key type when `alg` is absent), so a token can't pick a different algorithm for a trusted key.
 - A thread UUID is not authorization. Invoke, stream, history, and delete enforce ownership from the verified principal and return the same not-found response for absent and foreign threads.
 - Legacy v0.3 SHA-256 owner values are not accepted in JWT mode. Operators must follow ADR 0006's retention or separately reviewed re-key procedure; no dual-hash fallback is permitted.
 - Tool output is untrusted.
@@ -39,6 +39,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Bounded provider/tool timeouts and capped provider retries (`APP_REQUEST_TIMEOUT_SECONDS`, `APP_TOOL_TIMEOUT_SECONDS`, `APP_PROVIDER_MAX_RETRIES`) and an agent-loop recursion limit (`APP_MAX_AGENT_ITERATIONS`) as resource-exhaustion controls, alongside rate limiting (see `OPERATIONS.md`'s Timeouts and Retries section).
 - Structured logging with no deliberate raw secret logging: log fields are limited to IDs, names, stable error codes/types, durations, and retry counts — never raw user prompts, tool arguments, exception text, or provider API keys (see `ARCHITECTURE.md#observability`).
 - Bandit security scan in CI.
+- Dependency vulnerability audit: `make security` runs `pip-audit` against every locked dependency (`uv export` of `uv.lock`, all groups) after Bandit. See Dependency Vulnerabilities.
 
 ## Future Mutating Tools
 
@@ -80,6 +81,19 @@ With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 00
 - **Coverage limits.** Erasure deletes checkpoints and associated writes/blobs from the active configured checkpointer. It does not purge database backups, provider-side retention, application/deployment logs, or audit records. Deleted or pruned threads persist in database backups until those backups expire; align backup retention with `APP_THREAD_RETENTION_DAYS`. Provider retention is controlled by the configured model provider and its account settings.
 - **Encryption.** Encryption at rest is the database's responsibility (managed-service or disk encryption). LangGraph's `EncryptedSerializer` is available if application-level encryption is required; it isn't enabled by default.
 - **Access.** Thread history is exposed through the owner-checked history endpoint and `/v1/me/export`. System prompts, tool calls and tool output are never returned. In v0.3.0, owner identity comes from the unauthenticated `X-User-Id` header or `user_id` in the body. In v0.4.0 JWT mode, it comes from the verified principal defined by ADR 0006.
+
+## Dependency Vulnerabilities
+
+`make security` fails on any known vulnerability in a locked dependency (OWASP LLM03, supply chain). It resolves nothing itself: it audits exactly the versions pinned in `uv.lock`, using the PyPI advisory database.
+
+When it fails:
+
+1. **Upgrade.** If a fixed version exists, raise the lower bound in `pyproject.toml` for direct dependencies, or run `uv lock --upgrade-package <name>` for transitive ones. Then run all quality gates. Treat auth, crypto and HTTP-client libraries (`pyjwt`, `cryptography`, `urllib3`, `httpx`) as urgent.
+2. **Ignore only with a reason.** If no fix exists, or the vulnerable code path isn't reachable from this project, add the ID to `AUDIT_IGNORES` in the `Makefile` and to the table below. Record why it doesn't apply and a review date no more than 90 days out. On or after that date, re-check upstream and either upgrade or renew the entry with fresh reasoning.
+
+| ID | Package | Why it doesn't apply | Review by |
+|---|---|---|---|
+| PYSEC-2026-4146 (GHSA-gvp8-978c-rx2q) | pyjwt | No fixed release yet. `jwt.decode` mutates a caller's reused `options` dict when `verify_signature` is falsy. `TokenVerifier.verify` builds a fresh `options` dict per call and never disables signature verification. | 2027-01-12 |
 
 ## Secrets
 

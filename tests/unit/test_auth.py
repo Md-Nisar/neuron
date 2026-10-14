@@ -6,7 +6,6 @@ import hmac
 import json
 import re
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import Any
 
 import jwt
@@ -28,7 +27,8 @@ class FakeJWKClient:
         self.key = key
 
     def get_signing_key_from_jwt(self, token: str) -> Any:
-        return SimpleNamespace(key=self.key)
+        jwk = json.loads(jwt.get_algorithm_by_name("RS256").to_jwk(self.key))
+        return jwt.PyJWK({**jwk, "kid": "key-1"}, algorithm="RS256")
 
 
 def _settings() -> Settings:

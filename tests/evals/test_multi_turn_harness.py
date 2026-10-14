@@ -15,6 +15,7 @@ from neuron_agent import evaluation
 from neuron_agent.config.settings import Settings
 from neuron_agent.evaluation import (
     MULTI_TURN_CASES,
+    SECURITY_CASES,
     SINGLE_TURN_CASES,
     load_eval_cases,
     run_eval_suite,
@@ -55,7 +56,7 @@ async def test_multi_turn_runner_requires_persistence(monkeypatch: pytest.Monkey
         await run_multi_turn_suite(MULTI_TURN_CASES)
 
 
-def test_cli_report_is_clean_json_with_multi_turn_section(tmp_path: Path) -> None:
+def test_cli_report_is_clean_json_with_multi_turn_and_security_sections(tmp_path: Path) -> None:
     # A real process: stdout must hold only the report (logs go to stderr), so that
     # `neuron-eval > report.json` stays diffable JSON. Runs on the fake local model, from a
     # directory without the developer's `.env`, which could otherwise supply a live key.
@@ -75,4 +76,6 @@ def test_cli_report_is_clean_json_with_multi_turn_section(tmp_path: Path) -> Non
     report = json.loads(completed.stdout)
     assert report["total"] == len(load_eval_cases(SINGLE_TURN_CASES))
     assert report["multi_turn"]["total"] == len(load_eval_cases(MULTI_TURN_CASES))
+    assert report["security"]["total"] == len(load_eval_cases(SECURITY_CASES))
+    assert report["security"]["passed"] == report["security"]["total"]
     assert {"model", "passed", "results"} <= set(report)

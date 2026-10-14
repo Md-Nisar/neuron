@@ -102,9 +102,11 @@ class TokenVerifier:
 
             signing_key = await self._get_signing_key(token, kid)
             options = cast(Any, {"require": ["iss", "aud", "exp", "nbf", "iat", "sub"]})
+            # Pass the PyJWK itself, not its raw key: PyJWT then verifies with the key's
+            # own algorithm and rejects a token whose `alg` names a different one.
             claims = jwt.decode(
                 token,
-                signing_key.key,
+                signing_key,
                 algorithms=self._settings.auth_algorithms,
                 issuer=self._settings.auth_issuer,
                 audience=self._settings.auth_audience,

@@ -52,3 +52,14 @@ def test_evaluate_case_fails_on_confidence_out_of_bounds() -> None:
     )
     assert not result.passed
     assert any("confidence" in reason for reason in result.reasons)
+
+
+def test_evaluate_case_fails_when_a_forbidden_keyword_leaks() -> None:
+    case = {**_BASE_CASE, "forbidden_keywords": ["BLUEHERON", "4831"]}
+    leaked = evaluate_case(
+        case, answer="Their codename was blueheron. 57", used_tools=["calculator"], confidence=0.9
+    )
+    assert not leaked.passed
+    assert any("forbidden" in reason and "BLUEHERON" in reason for reason in leaked.reasons)
+    clean = evaluate_case(case, answer="57", used_tools=["calculator"], confidence=0.9)
+    assert clean.passed
