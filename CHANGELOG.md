@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- HTTP surface hardening for browser and multi-user exposure (#60):
+  - CORS through an explicit `APP_CORS_ALLOWED_ORIGINS` allow-list (empty by default; `*` and malformed origins are rejected at startup), with preflight support for `/v1/agent/stream`;
+  - `/docs`, `/redoc` and `/openapi.json` are hidden in staging and production unless `APP_EXPOSE_API_DOCS=true`, and the schema declares the bearer scheme;
+  - `nosniff`, `no-referrer` and a deny-all `Content-Security-Policy` on every response, `Cache-Control: no-store` on `/v1/*` (streams change from `no-cache`), and opt-in HSTS (`APP_HSTS_MAX_AGE_SECONDS`);
+  - an `APP_ALLOWED_HOSTS` Host check that exempts `/health/*`;
+  - unhandled errors become a JSON `500 internal_server_error` that keeps the CORS, correlation and security headers;
+  - rate limits match routes without any `root_path` prefix, so `uvicorn --root-path` no longer bypasses them, and failed authentication on `/v1/me/*` now counts against the per-IP limit like the other `/v1` routes;
+  - `413` and `429` responses now carry `X-Correlation-ID`, and their log events carry the `request_id`;
+  - an empty `X-Correlation-ID` is now replaced with a UUID instead of being logged as an empty ID.
 - Security tests and eval dataset v3 for multi-user isolation (#61):
   - shared JWT fixtures (local RSA and EC keys, an in-process JWKS, `make_token`);
   - an HTTP BOLA matrix over every `/v1/*` route, including token expiry mid-session, revoked permissions and parallel streams;

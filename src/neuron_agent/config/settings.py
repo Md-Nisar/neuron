@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from typing import Literal
 
@@ -11,6 +12,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 Environment = Literal["development", "staging", "production", "test"]
 CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
 AuthMode = Literal["none", "jwt"]
+# Browsers send origins as lowercase `scheme://host[:port]`; CORS matching is exact.
+# Starlette compares hostnames without the port, so entries can't carry ports or schemes.
+_HOST_PATTERN = re.compile(r"^(\*|(\*\.)?[a-z0-9.-]+)$")
+_ORIGIN_PATTERN = re.compile(r"^https?://([a-z0-9.-]+|\[[0-9a-f:]+\])(:[0-9]{1,5})?$")
 
 
 class Settings(BaseSettings):
@@ -75,6 +80,13 @@ class Settings(BaseSettings):
     auth_roles_claim: str | None = "roles"
     auth_role_permissions: dict[str, list[str]] = Field(default_factory=dict)
     identity_hash_key: SecretStr | None = None
+    cors_allowed_origins: list[str] = Field(default_factory=list)
+    # None resolves to exposed in development/test and hidden in staging/production.
+    expose_api_docs: bool | None = None
+    # Empty disables the Host check; `/health/*` is always exempt for platform probes.
+    allowed_hosts: list[str] = Field(default_factory=list)
+    # 0 disables HSTS; set it only when every client reaches the API over TLS.
+    hsts_max_age_seconds: int = Field(default=0, ge=0, le=63_072_000)
     openai_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices(
@@ -131,6 +143,30 @@ class Settings(BaseSettings):
             raise ValueError("APP_AUTH_ALGORITHMS must contain only allowed asymmetric algorithms")
         if self.identity_hash_key is None or len(self.identity_hash_key.get_secret_value()) < 32:
             raise ValueError("APP_IDENTITY_HASH_KEY must be at least 32 characters in JWT mode")
+        return self
+
+    @model_validator(mode="after")
+    def validate_http_surface(self) -> Settings:
+        """Resolve the docs default and reject origins and hosts that can't be safe or match."""
+        if self.expose_api_docs is None:
+            self.expose_api_docs = self.env in {"development", "test"}
+        for origin in self.cors_allowed_origins:
+            if origin == "*":
+                raise ValueError(
+                    "APP_CORS_ALLOWED_ORIGINS must not contain '*': requests carry credentials "
+                    "in the Authorization header, so list each trusted origin explicitly"
+                )
+            if not _ORIGIN_PATTERN.fullmatch(origin):
+                raise ValueError(
+                    f"APP_CORS_ALLOWED_ORIGINS entry {origin!r} must be a lowercase "
+                    "scheme://host[:port] origin with no path or trailing slash"
+                )
+        for host in self.allowed_hosts:
+            if not _HOST_PATTERN.fullmatch(host):
+                raise ValueError(
+                    f"APP_ALLOWED_HOSTS entry {host!r} must be a lowercase hostname with no "
+                    "scheme or port, optionally starting with '*.'"
+                )
         return self
 
 

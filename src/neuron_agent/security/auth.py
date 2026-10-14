@@ -285,8 +285,8 @@ async def require_principal(
     if api_main.settings.auth_mode == "none":
         return None
     ip_key: str | None = None
-    if api_main.settings.rate_limit_enabled and request.url.path.startswith(
-        ("/v1/agent/", "/v1/threads/")
+    if api_main.settings.rate_limit_enabled and api_main._route_path(request.scope).startswith(
+        api_main._RATE_LIMITED_PREFIXES
     ):
         ip_key = f"ip:{api_main._client_ip(request)}"
     try:
@@ -349,7 +349,7 @@ def require_permission(permission: str) -> Any:
         if (
             api_main.settings.rate_limit_enabled
             and principal is not None
-            and request.url.path.startswith(("/v1/agent/", "/v1/threads/", "/v1/me/"))
+            and api_main._route_path(request.scope).startswith(api_main._RATE_LIMITED_PREFIXES)
         ):
             identity_hash_key = api_main.settings.identity_hash_key
             if identity_hash_key is None:

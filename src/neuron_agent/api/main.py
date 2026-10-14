@@ -20,11 +20,14 @@ import structlog
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
-from starlette.types import Receive, Scope, Send
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
-from neuron_agent.config.settings import get_settings
+from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
@@ -74,6 +77,9 @@ rate_limiter = InMemoryTokenBucketRateLimiter(
 
 
 _RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/", "/v1/me/")
+_DOCS_PATHS = frozenset({"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"})
+# The API only returns JSON and SSE; nothing may load, run or frame its responses.
+_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'"
 _LOG_IDENTITY_KEY = secrets.token_bytes(32)
 # On server shutdown, open streams get this long to send their final `error` event.
 _STREAM_SHUTDOWN_GRACE_SECONDS = 2.0
@@ -101,28 +107,6 @@ class _CleanupEventSourceResponse(EventSourceResponse):
 
 
 @app.middleware("http")
-async def bind_request_correlation(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    correlation_id = request.headers.get("X-Correlation-ID")
-    if (
-        correlation_id is None
-        or len(correlation_id) > 128
-        or any(
-            char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
-            for char in correlation_id
-        )
-    ):
-        correlation_id = str(uuid.uuid4())
-    request.state.correlation_id = correlation_id
-    structlog.contextvars.clear_contextvars()
-    bind_correlation_context(request_id=correlation_id, thread_id=None)
-    response = await call_next(request)
-    response.headers["X-Correlation-ID"] = correlation_id
-    return response
-
-
-@app.middleware("http")
 async def limit_request_body_size(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
@@ -142,7 +126,9 @@ async def limit_request_body_size(
 async def enforce_rate_limit(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    if settings.rate_limit_enabled and request.url.path.startswith(_RATE_LIMITED_PREFIXES):
+    if settings.rate_limit_enabled and _route_path(request.scope).startswith(
+        _RATE_LIMITED_PREFIXES
+    ):
         if settings.auth_mode == "none":
             decision = rate_limiter.check(f"ip:{_client_ip(request)}")
             if not decision.allowed:
@@ -150,6 +136,130 @@ async def enforce_rate_limit(
                     decision.retry_after_seconds, f"ip:{_client_ip(request)}"
                 )
     return await call_next(request)
+
+
+@app.middleware("http")
+async def bind_request_correlation(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    correlation_id = request.headers.get("X-Correlation-ID")
+    if (
+        not correlation_id
+        or len(correlation_id) > 128
+        or any(
+            char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+            for char in correlation_id
+        )
+    ):
+        correlation_id = str(uuid.uuid4())
+    request.state.correlation_id = correlation_id
+    structlog.contextvars.clear_contextvars()
+    bind_correlation_context(request_id=correlation_id, thread_id=None)
+    try:
+        response = await call_next(request)
+    except Exception as exc:  # noqa: BLE001
+        # Answer here rather than in Starlette's outermost error handler, so the 500 still
+        # passes through the CORS and security-header middleware.
+        logger.exception("request_unhandled_error", error_type=type(exc).__name__)
+        response = JSONResponse(status_code=500, content={"detail": "internal_server_error"})
+    response.headers["X-Correlation-ID"] = correlation_id
+    return response
+
+
+class _HostAndCorsMiddleware:
+    """Apply `APP_ALLOWED_HOSTS` and `APP_CORS_ALLOWED_ORIGINS` from the current `settings`.
+
+    Starlette's middlewares fix their configuration when built, so the stack is rebuilt
+    whenever `settings` is replaced (tests swap it per case).
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+        self._built_for: Settings | None = None
+        self._stack: ASGIApp = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self._built_for is not settings:
+            self._stack = _host_and_cors_stack(self.app, settings)
+            self._built_for = settings
+        await self._stack(scope, receive, send)
+
+
+def _host_and_cors_stack(app: ASGIApp, config: Settings) -> ASGIApp:
+    stack = app
+    if config.cors_allowed_origins:
+        # Bearer tokens, not cookies: credentialed CORS stays off.
+        stack = CORSMiddleware(
+            stack,
+            allow_origins=config.cors_allowed_origins,
+            allow_methods=["GET", "POST", "DELETE"],
+            allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],
+            expose_headers=["Retry-After", "X-Correlation-ID"],
+            max_age=600,
+        )
+    if not config.allowed_hosts:
+        return stack
+    checked = TrustedHostMiddleware(stack, allowed_hosts=config.allowed_hosts, www_redirect=False)
+    unchecked = stack
+
+    async def check_host(scope: Scope, receive: Receive, send: Send) -> None:
+        # Platform probes address the instance by IP, so health checks skip the Host check.
+        if scope["type"] == "http" and _route_path(scope).startswith("/health/"):
+            await unchecked(scope, receive, send)
+        else:
+            await checked(scope, receive, send)
+
+    return check_host
+
+
+def _route_path(scope: Scope) -> str:
+    """The path routing matches, without any `root_path` prefix a proxy setup adds."""
+    path: str = scope["path"]
+    root_path: str = scope.get("root_path", "")
+    return path.removeprefix(root_path) if root_path else path
+
+
+app.add_middleware(_HostAndCorsMiddleware)
+
+
+@app.middleware("http")
+async def harden_http_responses(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    path = _route_path(request.scope)
+    serving_docs = path in _DOCS_PATHS and bool(settings.expose_api_docs)
+    if path in _DOCS_PATHS and not serving_docs:
+        response: Response = JSONResponse(status_code=404, content={"detail": "Not Found"})
+    else:
+        response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    if not serving_docs:
+        # The docs pages load Swagger UI and ReDoc assets, so they keep the browser default.
+        response.headers["Content-Security-Policy"] = _CONTENT_SECURITY_POLICY
+    if path.startswith("/v1/"):
+        response.headers["Cache-Control"] = "no-store"
+    if settings.hsts_max_age_seconds:
+        response.headers["Strict-Transport-Security"] = f"max-age={settings.hsts_max_age_seconds}"
+    return response
+
+
+def _openapi() -> dict[str, Any]:
+    """Generate the OpenAPI schema, declaring the bearer scheme every `/v1` route requires."""
+    if app.openapi_schema is None:
+        schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
+        schema.setdefault("components", {})["securitySchemes"] = {
+            "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        }
+        for path, operations in schema["paths"].items():
+            if path.startswith("/v1/"):
+                for operation in operations.values():
+                    operation["security"] = [{"bearerAuth": []}]
+        app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = _openapi  # type: ignore[method-assign]
 
 
 def _client_ip(request: Request) -> str:
@@ -336,7 +446,6 @@ async def stream_agent(
     return _CleanupEventSourceResponse(
         events(),
         ping=settings.stream_heartbeat_seconds,
-        headers={"Cache-Control": "no-cache"},
         shutdown_event=shutdown,
         shutdown_grace_period=_STREAM_SHUTDOWN_GRACE_SECONDS,
         send_timeout=_STREAM_SEND_TIMEOUT_SECONDS,

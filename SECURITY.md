@@ -38,6 +38,12 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Token-bucket rate limiting at `/v1/agent/invoke`, keyed by client IP, returning `429` with `Retry-After` when exceeded (ADR 0004).
 - Bounded provider/tool timeouts and capped provider retries (`APP_REQUEST_TIMEOUT_SECONDS`, `APP_TOOL_TIMEOUT_SECONDS`, `APP_PROVIDER_MAX_RETRIES`) and an agent-loop recursion limit (`APP_MAX_AGENT_ITERATIONS`) as resource-exhaustion controls, alongside rate limiting (see `OPERATIONS.md`'s Timeouts and Retries section).
 - Structured logging with no deliberate raw secret logging: log fields are limited to IDs, names, stable error codes/types, durations, and retry counts — never raw user prompts, tool arguments, exception text, or provider API keys (see `ARCHITECTURE.md#observability`).
+- HTTP surface hardening (`OPERATIONS.md`'s HTTP Surface section):
+  - CORS is off unless `APP_CORS_ALLOWED_ORIGINS` lists exact origins. `*` is rejected, because requests carry credentials in `Authorization`; credentialed (cookie) CORS is never enabled.
+  - `/docs`, `/redoc` and `/openapi.json` return `404` in staging and production unless `APP_EXPOSE_API_DOCS=true`.
+  - Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (the docs pages, when served, keep the browser default). `/v1/*` responses are `Cache-Control: no-store`. HSTS is opt-in through `APP_HSTS_MAX_AGE_SECONDS`.
+  - `APP_ALLOWED_HOSTS` rejects other `Host` headers with `400`; `/health/*` is exempt for platform probes.
+  - A client `X-Correlation-ID` is logged and echoed only if it's 1-128 characters of `[A-Za-z0-9._-]`; anything else is replaced with a UUID. `X-Request-Id` is ignored.
 - Bandit security scan in CI.
 - Dependency vulnerability audit: `make security` runs `pip-audit` against every locked dependency (`uv export` of `uv.lock`, all groups) after Bandit. See Dependency Vulnerabilities.
 
