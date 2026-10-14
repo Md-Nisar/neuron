@@ -38,6 +38,7 @@ from neuron_agent.schemas.agent import (
     ThreadMessage,
 )
 from neuron_agent.security.auth import Principal, principal_owner_key
+from neuron_agent.security.authorization import DEV_PERMISSIONS, AuthorizationContext
 from neuron_agent.security.input_policy import validate_user_message
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
 
@@ -74,6 +75,7 @@ class PreparedRun:
     thread_id: str
     run_id: str
     graph_input: dict[str, Any]
+    authorization: AuthorizationContext
     lease: RunLease
 
     @property
@@ -140,6 +142,13 @@ class AgentService:
             if self._settings.auth_mode == "jwt"
             else {"user_id_hash": owner_key}
         )
+        permissions = (
+            DEV_PERMISSIONS
+            if self._settings.auth_mode == "none"
+            else principal.scopes
+            if principal is not None
+            else frozenset()
+        )
         return PreparedRun(
             request_id=request_id,
             thread_id=thread_id,
@@ -152,6 +161,7 @@ class AgentService:
                 "run_id": run_id,
                 **owner_state,
             },
+            authorization=AuthorizationContext(permissions, principal),
             lease=lease,
         )
 
@@ -162,7 +172,9 @@ class AgentService:
         try:
             with self._persistence_errors():
                 async with asyncio.timeout(self._settings.run_timeout_seconds):
-                    result = await self.graph.ainvoke(run.graph_input, config=run.config)
+                    result = await self.graph.ainvoke(
+                        run.graph_input, config=run.config, context=run.authorization
+                    )
         except TimeoutError as exc:
             logger.warning("agent_run_timed_out")
             raise RunTimeoutError("agent run exceeded its time budget") from exc
@@ -243,6 +255,7 @@ class AgentService:
                     async for namespace, mode, chunk in self.graph.astream(
                         run.graph_input,
                         config=run.config,
+                        context=run.authorization,
                         stream_mode=["messages", "updates"],
                         # The create_agent loop runs as a nested graph inside the `agent`
                         # node; its model tokens are only surfaced with subgraphs enabled.

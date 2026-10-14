@@ -175,9 +175,20 @@ The initial application permission vocabulary is:
 | `threads:delete` | `DELETE /v1/threads/{thread_id}` |
 
 Permission checks happen outside the model loop and before service work. Tool
-authorization remains code-enforced through the existing input-policy boundary;
-v0.4.0 does not expose mutating tools. A tool is never authorized merely because
-the model requested it.
+authorization is applied twice: unauthorized tools are removed from the model's
+per-run tool list, then checked again at execution using trusted runtime context.
+`utc_now` is public and `calculator` requires `tools:calculator`. Runtime context
+contains the verified principal and its effective permissions; neither is placed
+in prompt text or checkpoint state. `AUTH_MODE=none` grants the local development
+permission set (`agent:invoke`, `threads:read`, `threads:delete`,
+`tools:calculator`).
+
+JWT permissions are read from `APP_AUTH_SCOPE_CLAIM` (space-separated string or
+string list; the standard `scp` claim is accepted as fallback) and can be
+augmented by an explicitly configured role claim and role-to-permission map.
+Unknown or missing claims grant no permissions. Denials return `403
+authorization_error` with the RFC 6750 `insufficient_scope` challenge and log the
+permission plus route/tool and request correlation ID, never the subject.
 
 ### Rate limits, audit, and Agent Server
 

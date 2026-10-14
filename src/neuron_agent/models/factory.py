@@ -34,6 +34,7 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
     AppError,
+    AuthorizationError,
     ConfigurationError,
     ProviderError,
     ProviderQuotaError,
@@ -44,8 +45,52 @@ from neuron_agent.errors.base import RateLimitError as AppRateLimitError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
+from neuron_agent.security.authorization import AuthorizationContext, require_permission
 
 logger = structlog.get_logger(__name__)
+
+_TOOL_PERMISSIONS = {"calculator": "tools:calculator"}
+
+
+def tool_authorization_middleware() -> AgentMiddleware:
+    """Filter model-visible tools and enforce the same decision at tool execution."""
+    return _ToolAuthorizationMiddleware()
+
+
+class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
+    """Combine model-side filtering and execution-side authorization hooks."""
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        context = request.runtime.context
+        permissions = (
+            context.permissions if isinstance(context, AuthorizationContext) else frozenset()
+        )
+        visible = [
+            tool
+            for tool in request.tools
+            if tool.name == "utc_now"
+            or (tool.name in _TOOL_PERMISSIONS and _TOOL_PERMISSIONS[tool.name] in permissions)
+        ]
+        return await handler(request.override(tools=visible))
+
+    async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
+        tool_name = request.tool_call.get("name", "unknown")
+        permission = _TOOL_PERMISSIONS.get(tool_name)
+        context = request.runtime.context
+        permissions = (
+            context.permissions if isinstance(context, AuthorizationContext) else frozenset()
+        )
+        if permission is not None:
+            try:
+                require_permission(permission, permissions)
+            except AuthorizationError:
+                logger.warning("authorization_denied", permission=permission, tool=tool_name)
+                raise
+        elif tool_name != "utc_now":
+            logger.warning("authorization_denied", permission="none", tool=tool_name)
+            raise AuthorizationError("tool is not authorized")
+        return await handler(request)
+
 
 _RETRYABLE_PROVIDER_ERRORS: tuple[type[Exception], ...] = (
     openai.APIConnectionError,
@@ -167,11 +212,13 @@ def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
         system_prompt=load_prompt("system/main.md"),
         response_format=AgentAnswer,
         middleware=[
+            tool_authorization_middleware(),
             tool_failure_isolation_middleware(),
             tool_timeout_middleware(settings.tool_timeout_seconds),
             provider_retry_middleware(settings),
         ],
         name="neuron_main_agent",
+        context_schema=AuthorizationContext,
         # Runs as a subgraph of the main graph. Never checkpoint its internal state
         # (tool calls/results, intermediate steps): only the main graph's user turns and
         # final answers are thread history (ADR 0005).

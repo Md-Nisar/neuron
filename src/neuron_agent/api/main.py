@@ -24,7 +24,7 @@ from neuron_agent.config.settings import get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ThreadHistoryResponse
-from neuron_agent.security.auth import Principal, TokenVerifier, require_principal
+from neuron_agent.security.auth import Principal, TokenVerifier, require_permission
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
@@ -81,6 +81,28 @@ class _CleanupEventSourceResponse(EventSourceResponse):
             await super().__call__(scope, receive, send)
         finally:
             await self._on_close()
+
+
+@app.middleware("http")
+async def bind_request_correlation(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    correlation_id = request.headers.get("X-Correlation-ID")
+    if (
+        correlation_id is None
+        or len(correlation_id) > 128
+        or any(
+            char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+            for char in correlation_id
+        )
+    ):
+        correlation_id = str(uuid.uuid4())
+    request.state.correlation_id = correlation_id
+    structlog.contextvars.clear_contextvars()
+    bind_correlation_context(request_id=correlation_id, thread_id=None)
+    response = await call_next(request)
+    response.headers["X-Correlation-ID"] = correlation_id
+    return response
 
 
 @app.middleware("http")
@@ -145,7 +167,7 @@ async def ready() -> JSONResponse:
 )
 async def invoke_agent(
     request: AgentRequest,
-    principal: Annotated[Principal | None, Depends(require_principal)] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:invoke"))] = None,
 ) -> AgentResponse:
     request_id = None
     thread_id = request.thread_id
@@ -197,7 +219,7 @@ async def invoke_agent(
 @app.post("/v1/agent/stream")
 async def stream_agent(
     request: AgentRequest,
-    principal: Annotated[Principal | None, Depends(require_principal)] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:invoke"))] = None,
 ) -> EventSourceResponse:
     """Stream a run as server-sent events (ADR 0005, decision 4).
 
@@ -260,7 +282,7 @@ _UserIdHeader = Header(default=None, alias="X-User-Id", max_length=128)
 )
 async def get_thread_messages(
     thread_id: uuid.UUID,
-    principal: Annotated[Principal | None, Depends(require_principal)] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("threads:read"))] = None,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user_id: str | None = _UserIdHeader,
@@ -279,7 +301,7 @@ async def get_thread_messages(
 @app.delete("/v1/threads/{thread_id}", status_code=204)
 async def delete_thread(
     thread_id: uuid.UUID,
-    principal: Annotated[Principal | None, Depends(require_principal)] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
     user_id: str | None = _UserIdHeader,
 ) -> Response:
     """Delete all stored state for a thread (ADR 0005, decision 7)."""

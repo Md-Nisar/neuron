@@ -152,7 +152,9 @@ async def test_stream_failure_after_start_emits_single_error_then_done(echo_agen
 
 async def test_stream_user_visible_error_keeps_its_code(monkeypatch: pytest.MonkeyPatch) -> None:
     class RateLimitedAgent:
-        async def ainvoke(self, inputs: dict[str, Any], *, config: dict[str, Any]) -> None:
+        async def ainvoke(
+            self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+        ) -> None:
             raise RateLimitError("slow down")
 
     monkeypatch.setattr(main_graph, "build_agent", lambda settings: RateLimitedAgent())

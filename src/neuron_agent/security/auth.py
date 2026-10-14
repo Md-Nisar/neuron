@@ -12,7 +12,7 @@ from typing import Any, cast
 import anyio
 import jwt
 import structlog
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from jwt import PyJWKClient
 from jwt.exceptions import (
     DecodeError,
@@ -29,7 +29,17 @@ from jwt.exceptions import (
 )
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import AuthenticationError, AuthenticationUnavailableError
+from neuron_agent.errors.base import (
+    AuthenticationError,
+    AuthenticationUnavailableError,
+    AuthorizationError,
+)
+from neuron_agent.security.authorization import (
+    DEV_PERMISSIONS,
+)
+from neuron_agent.security.authorization import (
+    require_permission as check_permission,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -171,8 +181,7 @@ class TokenVerifier:
             raise AuthenticationError()
         return token
 
-    @staticmethod
-    def _principal_from_claims(claims: dict[str, Any]) -> Principal:
+    def _principal_from_claims(self, claims: dict[str, Any]) -> Principal:
         issuer = claims["iss"]
         subject = claims["sub"]
         expires_at = claims["exp"]
@@ -180,13 +189,27 @@ class TokenVerifier:
             raise AuthenticationError()
         if not isinstance(expires_at, (int, float)):
             raise AuthenticationError()
-        raw_scope = claims.get("scope", claims.get("scp", ""))
+        raw_scope = claims.get(
+            self._settings.auth_scope_claim,
+            claims.get("scp" if self._settings.auth_scope_claim != "scp" else "scope", ""),
+        )
         if isinstance(raw_scope, str):
             scopes = frozenset(value for value in raw_scope.split() if value)
         elif isinstance(raw_scope, list) and all(isinstance(value, str) for value in raw_scope):
             scopes = frozenset(raw_scope)
         else:
             scopes = frozenset()
+        role_claim = self._settings.auth_roles_claim
+        roles = claims.get(role_claim, []) if role_claim else []
+        if isinstance(roles, str):
+            roles = [roles]
+        if isinstance(roles, list):
+            scopes = scopes | frozenset(
+                permission
+                for role in roles
+                if isinstance(role, str)
+                for permission in self._settings.auth_role_permissions.get(role, [])
+            )
         token_id = claims.get("jti")
         if token_id is not None and not isinstance(token_id, str):
             token_id = None
@@ -229,3 +252,39 @@ async def require_principal(
         return await api_main.auth_verifier.verify(authorization)
     except (AuthenticationError, AuthenticationUnavailableError) as exc:
         raise authentication_http_error(exc) from exc
+
+
+def require_permission(permission: str) -> Any:
+    """Create the single route dependency that authenticates and authorizes a `/v1` route."""
+
+    async def dependency(
+        request: Request,
+        principal: Principal | None = Depends(require_principal),  # noqa: B008
+    ) -> Principal | None:
+        from neuron_agent.api import main as api_main
+
+        permissions = (
+            DEV_PERMISSIONS
+            if api_main.settings.auth_mode == "none"
+            else (principal.scopes if principal is not None else frozenset())
+        )
+        try:
+            check_permission(permission, permissions)
+        except AuthorizationError as exc:
+            logger.warning(
+                "authorization_denied",
+                permission=permission,
+                route=request.url.path,
+                correlation_id=getattr(request.state, "correlation_id", None),
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="authorization_error",
+                headers={
+                    "WWW-Authenticate": f'Bearer error="insufficient_scope", scope="{permission}"'
+                },
+            ) from exc
+        return principal
+
+    dependency.required_permission = permission  # type: ignore[attr-defined]
+    return dependency

@@ -16,6 +16,7 @@ from langchain_core.messages import (
 from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.runtime import Runtime
 
 from neuron_agent.agents.factory import build_agent
 from neuron_agent.config.settings import Settings, get_settings
@@ -26,13 +27,18 @@ from neuron_agent.models.factory import (
     reset_retry_attempts,
 )
 from neuron_agent.schemas.agent import AgentAnswer
+from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.state.main import MainGraphState
 
 logger = structlog.get_logger(__name__)
 
 
 async def call_agent(
-    state: MainGraphState, *, agent: Any, settings: Settings | None = None
+    state: MainGraphState,
+    *,
+    agent: Any,
+    settings: Settings | None = None,
+    authorization: AuthorizationContext | None = None,
 ) -> dict[str, Any]:
     """Invoke the LangChain agent and normalize its output into application state.
 
@@ -75,10 +81,12 @@ async def call_agent(
     reset_retry_attempts()
     started = time.monotonic()
     try:
-        result = await agent.ainvoke(
-            {"messages": history},
-            config=agent_invocation_config(resolved_settings, run_id=run_id),
-        )
+        invocation: dict[str, Any] = {
+            "config": agent_invocation_config(resolved_settings, run_id=run_id),
+        }
+        if authorization is not None:
+            invocation["context"] = authorization
+        result = await agent.ainvoke({"messages": history}, **invocation)
     except Exception as exc:  # noqa: BLE001
         error = classify_agent_error(exc)
         log = logger.exception if error.context.alert else logger.warning
@@ -165,10 +173,14 @@ def build_graph(
     resolved_settings = settings or get_settings()
     agent = build_agent(resolved_settings)
 
-    async def agent_node(state: MainGraphState) -> dict[str, Any]:
-        return await call_agent(state, agent=agent, settings=resolved_settings)
+    async def agent_node(
+        state: MainGraphState, runtime: Runtime[AuthorizationContext]
+    ) -> dict[str, Any]:
+        return await call_agent(
+            state, agent=agent, settings=resolved_settings, authorization=runtime.context
+        )
 
-    builder = StateGraph(MainGraphState)
+    builder = StateGraph(MainGraphState, context_schema=AuthorizationContext)
     builder.add_node("agent", agent_node)
     builder.add_edge(START, "agent")
     builder.add_edge("agent", END)
