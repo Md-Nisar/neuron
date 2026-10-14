@@ -19,7 +19,8 @@ from neuron_agent.persistence.checkpointer import Persistence
 
 # Threads are found by the `owner` metadata every run writes, and timed over all their
 # root checkpoints, so checkpoints written before that metadata existed still count toward
-# `created_at`. The lateral join keeps the total when `offset` is past the last thread.
+# `created_at`. The lateral join keeps the total when `offset` is past the last thread, and
+# `COLLATE "C"` breaks `updated_at` ties by code point, like the in-memory sort.
 _OWNED_THREADS_SQL = """
 WITH owned AS (
     SELECT c.thread_id,
@@ -37,7 +38,7 @@ SELECT counted.total, page.thread_id, page.created_at, page.updated_at
 FROM (SELECT count(*) AS total FROM owned) AS counted
 LEFT JOIN LATERAL (
     SELECT * FROM owned
-    ORDER BY updated_at DESC, thread_id
+    ORDER BY updated_at DESC, thread_id COLLATE "C"
     LIMIT %(limit)s OFFSET %(offset)s
 ) AS page ON true
 """
