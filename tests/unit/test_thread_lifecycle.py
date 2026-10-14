@@ -22,6 +22,7 @@ from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from neuron_agent.services import agent_service
 from neuron_agent.services.agent_service import AgentService
 
 pytestmark = pytest.mark.anyio
@@ -239,6 +240,110 @@ async def test_export_page_honors_configured_size_cap() -> None:
         await service.export_user_data(
             "alice", limit=10, offset=0, message_limit=100, message_offset=0
         )
+
+
+def _count_state_loads(service: AgentService) -> list[str]:
+    """Record the thread ID of every checkpoint state load (`aget_tuple`)."""
+    checkpointer = service._persistence.checkpointer
+    assert checkpointer is not None
+    loaded: list[str] = []
+    original = checkpointer.aget_tuple
+
+    async def counting(config: Any) -> Any:
+        loaded.append(config["configurable"]["thread_id"])
+        return await original(config)
+
+    checkpointer.aget_tuple = counting  # type: ignore[method-assign]
+    return loaded
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_user_data_endpoints_load_state_only_for_returned_threads() -> None:
+    """#76: work tracks the page, not the caller's whole checkpoint history."""
+    service = _service()
+    threads = [await _thread(service, f"{i}a", f"{i}b", f"{i}c", user_id="alice") for i in range(8)]
+    await _thread(service, "bob", user_id="bob")
+    loaded = _count_state_loads(service)
+
+    page = await service.list_user_threads("alice", limit=3, offset=2)
+    assert page.total == 8
+    assert [item.thread_id for item in page.threads] == threads[::-1][2:5]
+    assert loaded == [item.thread_id for item in page.threads]
+    assert all(item.message_count == 6 for item in page.threads)
+    assert all(item.created_at < item.updated_at for item in page.threads)
+
+    loaded.clear()
+    past_the_end = await service.list_user_threads("alice", limit=3, offset=8)
+    assert (past_the_end.total, past_the_end.threads, loaded) == (8, [], [])
+
+    export = await service.export_user_data(
+        "alice", limit=2, offset=0, message_limit=1, message_offset=0
+    )
+    assert export.total_threads == 8
+    assert loaded == [item.thread_id for item in export.threads] == threads[::-1][:2]
+
+    loaded.clear()
+    erased = await service.erase_user_data("alice")
+    assert erased.erased_count == 8
+    assert loaded == []
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_export_stops_reading_once_the_size_cap_is_exceeded() -> None:
+    service = _service()
+    service._settings.user_data_export_max_bytes = 65_536
+    for index in range(10):
+        await _thread(service, f"{index}:" + "x" * 10_000, user_id="alice")
+    loaded = _count_state_loads(service)
+
+    with pytest.raises(ExportTooLargeError):
+        await service.export_user_data(
+            "alice", limit=10, offset=0, message_limit=100, message_offset=0
+        )
+
+    # Each thread exports about 20 KB, so the cap is crossed on the fourth.
+    assert len(loaded) == 4
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_state_is_owner_checked_even_if_the_index_returns_a_foreign_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    bob_thread = await _thread(service, "bob secret", user_id="bob")
+    bob_index = await service._owned_threads(hashlib.sha256(b"bob").hexdigest(), limit=None)
+
+    async def wrong_index(*args: Any, **kwargs: Any) -> Any:
+        return bob_index
+
+    monkeypatch.setattr(agent_service, "owned_threads", wrong_index)
+    listed = await service.list_user_threads("alice", limit=10, offset=0)
+    exported = await service.export_user_data(
+        "alice", limit=10, offset=0, message_limit=10, message_offset=0
+    )
+
+    assert bob_thread not in [item.thread_id for item in listed.threads]
+    assert exported.threads == []
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_thread_deleted_after_indexing_is_left_out_of_the_page() -> None:
+    service = _service()
+    kept = await _thread(service, "kept", user_id="alice")
+    deleted = await _thread(service, "deleted", user_id="alice")
+    checkpointer = service._persistence.checkpointer
+    assert checkpointer is not None
+    original = checkpointer.aget_tuple
+
+    async def deleted_meanwhile(config: Any) -> Any:
+        if config["configurable"]["thread_id"] == deleted:
+            await checkpointer.adelete_thread(deleted)
+        return await original(config)
+
+    checkpointer.aget_tuple = deleted_meanwhile  # type: ignore[method-assign]
+    page = await service.list_user_threads("alice", limit=10, offset=0)
+
+    assert [item.thread_id for item in page.threads] == [kept]
 
 
 # --- retention --------------------------------------------------------------------

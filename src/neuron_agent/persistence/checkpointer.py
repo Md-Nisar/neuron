@@ -29,6 +29,14 @@ _ALLOWED_MSGPACK_MODULES = [("neuron_agent.schemas.agent", "AgentAnswer")]
 _INSTRUMENTED_OPERATIONS = ("aget_tuple", "aput", "aput_writes", "adelete_thread")
 SLOW_CHECKPOINT_MS = 250.0
 
+# Serves the per-owner thread listing (`persistence/thread_index.py`). It is created after
+# LangGraph's own migrations, on the table they own.
+_OWNER_INDEX_SQL = """
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_checkpoints_owner_idx
+ON checkpoints ((metadata->>'owner'), thread_id)
+WHERE checkpoint_ns = ''
+"""
+
 
 def instrument_checkpointer(
     checkpointer: BaseCheckpointSaver[Any], backend: str
@@ -165,4 +173,7 @@ async def setup_schema(persistence: Persistence) -> None:
     """Create or migrate the checkpoint tables. Idempotent."""
     if isinstance(persistence.checkpointer, AsyncPostgresSaver):
         await persistence.checkpointer.setup()
+        assert persistence.pool is not None  # nosec B101
+        async with persistence.pool.connection() as conn:
+            await conn.execute(_OWNER_INDEX_SQL)
         logger.info("checkpointer_schema_ready", backend=persistence.backend)
