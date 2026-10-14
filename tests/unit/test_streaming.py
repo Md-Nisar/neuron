@@ -210,7 +210,7 @@ def test_stream_endpoint_returns_event_stream(
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
-    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-accel-buffering"] == "no"
     events = _parse_sse(response.text)
     assert events[0][0] == "run_started"

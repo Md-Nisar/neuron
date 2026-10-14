@@ -133,6 +133,19 @@ location /v1/agent/stream {
 
 Clients that disconnect stop their run: model and tool calls are cancelled. A client that stops reading for 30 s is disconnected. On shutdown, open streams receive `error {"code": "service_shutting_down", "retryable": true}` within 2 s, then `done`.
 
+## HTTP Surface
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `APP_CORS_ALLOWED_ORIGINS` | `[]` (CORS off) | JSON list of exact browser origins, such as `["https://app.example.com"]`. Each must be a lowercase `scheme://host[:port]` with no path or trailing slash, because browsers send exactly that. `*` is rejected. |
+| `APP_EXPOSE_API_DOCS` | `true` in development/test, `false` in staging/production | Serve `/docs`, `/redoc` and `/openapi.json`; otherwise they return `404`. The schema declares the bearer (`JWT`) scheme on every `/v1/*` route. |
+| `APP_ALLOWED_HOSTS` | `[]` (any host) | JSON list of accepted lowercase hostnames, without scheme or port (the port is ignored when matching); `*.example.com` matches subdomains. Other hosts get `400 Invalid host header`. `/health/*` is exempt, since probes usually address the instance by IP. Set it in production for self-hosted deployments. |
+| `APP_HSTS_MAX_AGE_SECONDS` | `0` (off) | Sends `Strict-Transport-Security: max-age=N`. Enable only when every client reaches the API over HTTPS. |
+
+CORS allows `GET`, `POST` and `DELETE` with the `Authorization`, `Content-Type` and `X-Correlation-ID` request headers, and exposes `Retry-After` and `X-Correlation-ID` to scripts. Preflights are cached for 10 minutes. Credentialed (cookie) CORS is never enabled: browsers send the bearer token in `Authorization`.
+
+Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. `/v1/*` responses, including errors and streams, carry `Cache-Control: no-store`. Unhandled errors are answered as `500 {"detail": "internal_server_error"}` with the same headers. If the proxy adds security headers of its own, don't repeat these: nginx `add_header` appends rather than replaces, so clients would receive both copies. The stream's `X-Accel-Buffering: no` is consumed by nginx and is unaffected by these headers.
+
 ## Conversation Retention and Deletion
 
 - **Schedule retention.** Run `make prune-threads` (`python -m neuron_agent.persistence.cli prune`) daily, for example from cron or a Kubernetes CronJob, using the same `APP_CHECKPOINTER` and `APP_POSTGRES_DSN` as the API.
