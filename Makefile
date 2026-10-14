@@ -50,12 +50,16 @@ eval:
 
 # Dependency audit ignores: each needs an entry, with a review date, in SECURITY.md
 # (Dependency Vulnerabilities).
-AUDIT_IGNORES := --ignore-vuln PYSEC-2026-4146
+# Format: --ignore-vuln <ID> per entry. Currently none.
+AUDIT_IGNORES :=
 
 security:
 	uv run python -m bandit -q -r src
-	uv export --frozen --format requirements-txt --no-emit-project --all-groups \
-		| uv run pip-audit -r /dev/stdin --disable-pip --progress-spinner off $(AUDIT_IGNORES)
+	@# Two steps, not a pipe: /bin/sh has no pipefail, so a failed export would audit nothing.
+	@reqs=$$(mktemp) \
+		&& uv export --frozen --format requirements-txt --no-emit-project --all-groups -q -o "$$reqs" \
+		&& uv run pip-audit -r "$$reqs" --disable-pip --progress-spinner off $(AUDIT_IGNORES); \
+		status=$$?; rm -f "$$reqs"; exit $$status
 
 build:
 	uv build

@@ -8,7 +8,7 @@
   - a token-attack suite;
   - 12 multi-user security eval cases;
   - a `pip-audit` dependency audit in `make security` and CI.
-- PyJWT is upgraded to 2.15.1 (14 advisories against 2.13.0, including algorithm confusion and JWKS redirects) and urllib3 to 2.8.0. A token whose `alg` doesn't match its `kid`'s key now gets `401` instead of `500`: the verifier passes the `PyJWK` to `jwt.decode`, which binds verification to the key's algorithm (#61).
+- PyJWT is upgraded to 2.15.1 (14 advisories against 2.13.0, including algorithm confusion and JWKS redirects) and urllib3 to 2.8.0. A token whose `alg` doesn't match its `kid`'s key now gets `401` instead of `500`: the verifier passes the `PyJWK` to `jwt.decode`, which binds verification to the key's algorithm. Tokens with an empty or non-string `iss`/`sub` are now audited as `auth_failed` (#61).
 - A model provider account with no API credit (OpenAI `429 insufficient_quota`) is no longer retried or reported as a rate limit. It fails at once as `ProviderQuotaError` (`provider_quota_exhausted`, `503`, alerting) (#50).
 
 ## 0.3.0

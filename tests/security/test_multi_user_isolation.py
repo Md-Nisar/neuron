@@ -10,19 +10,20 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import anyio
 import httpx
-import jwt.api_jwt
 import pytest
 import structlog.testing
 from fastapi.routing import APIRoute
 from langchain_core.messages import HumanMessage
-from tests.conftest import JWT_ISSUER, HistoryEchoAgent, JwtApi, bearer
+from tests.conftest import JWT_ISSUER, HistoryEchoAgent, JwtApi, JwtClock, bearer
 
 from neuron_agent.api import main as api_main
+from neuron_agent.schemas.agent import AgentRequest
+from neuron_agent.security.auth import Principal
 
 _MARKER = "alice-secret-7f3c"  # conversation content that must never cross users
 
@@ -89,19 +90,22 @@ def test_other_user_cannot_reach_owned_thread_on_any_route(
     thread_id = _owned_thread(jwt_api, alice)
     unknown = str(uuid.uuid4())
 
+    # Request-supplied identity fields naming the owner must not matter in JWT mode.
+    spoofed = {**bearer(intruder_token), "X-User-Id": "alice"}
     for (method, path, body), (_, unknown_path, unknown_body) in zip(
         _route_requests(thread_id), _route_requests(unknown), strict=True
     ):
-        response = jwt_api.client.request(method, path, json=body, headers=bearer(intruder_token))
+        if body is not None:
+            body = {**body, "user_id": "alice"}
+            unknown_body = {**unknown_body, "user_id": "alice"} if unknown_body else None
+        response = jwt_api.client.request(method, path, json=body, headers=spoofed)
         assert _MARKER not in response.text, (method, path)
         if unknown_path == path and unknown_body == body:
             # A caller-scoped `/v1/me/*` route: it succeeds, scoped to the intruder only.
             assert response.status_code == 200, (method, path, response.text)
             assert thread_id not in response.text, (method, path)
             continue
-        baseline = jwt_api.client.request(
-            method, unknown_path, json=unknown_body, headers=bearer(intruder_token)
-        )
+        baseline = jwt_api.client.request(method, unknown_path, json=unknown_body, headers=spoofed)
         # Another user's thread is indistinguishable from a thread that doesn't exist.
         assert response.status_code == baseline.status_code == 404, (method, path)
         assert response.json() == baseline.json() == {"detail": "thread_not_found"}
@@ -151,35 +155,51 @@ def test_same_subject_from_another_issuer_is_not_the_owner(
     assert _MARKER in _history(jwt_api, thread_id, alice).text
 
 
-class _Clock:
-    offset = timedelta(0)
-
-    @classmethod
-    def now(cls, tz: Any = None) -> datetime:
-        return datetime.now(tz or UTC) + cls.offset
-
-
 def test_token_expiring_mid_session_loses_access_on_every_route(
-    jwt_api: JwtApi, make_token: Callable[..., str], monkeypatch: pytest.MonkeyPatch
+    jwt_api: JwtApi, make_token: Callable[..., str], jwt_clock: type[JwtClock]
 ) -> None:
     alice = make_token("alice", exp=timedelta(minutes=5))
+    renewed = make_token("alice", exp=timedelta(minutes=30))
     thread_id = _owned_thread(jwt_api, alice)
     assert _history(jwt_api, thread_id, alice).status_code == 200
-    # Minted now: the shifted clock below also affects `jwt.encode`.
-    renewed = make_token("alice")
 
-    monkeypatch.setattr(jwt.api_jwt, "datetime", _Clock)
-    _Clock.offset = timedelta(minutes=10)
+    jwt_clock.offset = timedelta(minutes=10)
     for method, path, body in _route_requests(thread_id):
         response = jwt_api.client.request(method, path, json=body, headers=bearer(alice))
         assert response.status_code == 401, (method, path)
         assert response.json() == {"detail": "authentication_error"}
 
     # A fresh token for the same principal resumes the same thread, untouched.
-    _Clock.offset = timedelta(0)
     history = _history(jwt_api, thread_id, renewed)
     assert history.status_code == 200
     assert history.json()["total"] == 2
+
+
+@pytest.mark.anyio
+async def test_busy_thread_of_another_user_is_still_not_found(
+    jwt_api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    """A run in flight must not turn another user's 404 into a revealing 409."""
+    alice, mallory = make_token("alice"), make_token("mallory")
+    thread_id = _owned_thread(jwt_api, alice)
+    principal = await _principal(alice)
+    run = await jwt_api.service.prepare(
+        AgentRequest(message="hold", thread_id=thread_id), streaming=True, principal=principal
+    )
+    try:
+        for path in ("/v1/agent/invoke", "/v1/agent/stream"):
+            body = {"message": "probe", "thread_id": thread_id}
+            busy = jwt_api.client.post(path, json=body, headers=bearer(alice))
+            assert busy.status_code == 409, path
+            foreign = jwt_api.client.post(path, json=body, headers=bearer(mallory))
+            assert foreign.status_code == 404, path
+            assert foreign.json() == {"detail": "thread_not_found"}
+    finally:
+        run.lease.release()
+
+
+async def _principal(token: str) -> Principal:
+    return await api_main.auth_verifier.verify(f"Bearer {token}")
 
 
 _ROUTE_PERMISSION = {
@@ -207,6 +227,7 @@ def test_revoked_permission_is_enforced_on_the_next_token(
     thread_id = _owned_thread(jwt_api, alice)
     reduced = make_token("alice", scopes=" ".join(sorted(granted - {revoked})))
 
+    checked = 0
     for method, path, body in _route_requests(thread_id):
         if _permission(method, path, thread_id) != revoked:
             continue
@@ -214,6 +235,8 @@ def test_revoked_permission_is_enforced_on_the_next_token(
         assert response.status_code == 403, (method, path)
         assert response.json() == {"detail": "authorization_error"}
         assert f'scope="{revoked}"' in response.headers["www-authenticate"]
+        checked += 1
+    assert checked == {"agent:invoke": 2, "threads:read": 3, "threads:delete": 2}[revoked]
     # A denied delete or erase removed nothing.
     assert _MARKER in _history(jwt_api, thread_id, alice).text
 
@@ -298,6 +321,7 @@ async def test_parallel_users_never_observe_each_others_streams_or_tokens(
     for call in agent.calls:
         human = " ".join(str(m.content) for m in call if isinstance(m, HumanMessage))
         assert sum(marker in human for marker in markers.values()) == 1
-    # Neither bearer token reached the logs.
+    # Neither bearer token reached the logs (which did capture the runs).
+    assert any(entry["event"] == "agent_execution_started" for entry in logs)
     rendered = json.dumps(logs, default=str)
     assert not any(token in rendered for token in users.values())

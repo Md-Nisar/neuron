@@ -9,7 +9,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - User input is untrusted.
 - Bearer tokens are untrusted until signature, issuer, audience, time claims, and required subject are verified against the configured issuer and JWKS.
 - Verified `(iss, sub)` is the principal identity; request body fields and `X-User-Id` are not identity sources in JWT mode. Service accounts have no alternate header or bypass.
-- The configured identity provider and its JWKS endpoint are external trust dependencies. Key-fetch failure without a usable cached key fails closed; JWKS URLs must use HTTPS outside development. Each token is verified with the algorithm bound to its `kid`'s JWK (the JWK's `alg`, or RS256/ES256 inferred from its key type when `alg` is absent), so a token can't pick a different algorithm for a trusted key.
+- The configured identity provider and its JWKS endpoint are external trust dependencies. Key-fetch failure without a usable cached key fails closed; JWKS URLs must use HTTPS outside development. Each token is verified with the algorithm bound to its `kid`'s JWK: the JWK's `alg`, or, when that is absent, the default for its key type and curve (RS256 for RSA, ES256/ES384/ES512 for P-256/P-384/P-521). A token whose `alg` differs is rejected, even if `APP_AUTH_ALGORITHMS` allows it, so an identity provider that signs with RS384 or RS512 must publish `alg` in its JWKS.
 - A thread UUID is not authorization. Invoke, stream, history, and delete enforce ownership from the verified principal and return the same not-found response for absent and foreign threads.
 - Legacy v0.3 SHA-256 owner values are not accepted in JWT mode. Operators must follow ADR 0006's retention or separately reviewed re-key procedure; no dual-hash fallback is permitted.
 - Tool output is untrusted.
@@ -89,11 +89,9 @@ With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 00
 When it fails:
 
 1. **Upgrade.** If a fixed version exists, raise the lower bound in `pyproject.toml` for direct dependencies, or run `uv lock --upgrade-package <name>` for transitive ones. Then run all quality gates. Treat auth, crypto and HTTP-client libraries (`pyjwt`, `cryptography`, `urllib3`, `httpx`) as urgent.
-2. **Ignore only with a reason.** If no fix exists, or the vulnerable code path isn't reachable from this project, add the ID to `AUDIT_IGNORES` in the `Makefile` and to the table below. Record why it doesn't apply and a review date no more than 90 days out. On or after that date, re-check upstream and either upgrade or renew the entry with fresh reasoning.
+2. **Ignore only with a reason.** If no fix exists, or the vulnerable code path isn't reachable from this project, add the ID to `AUDIT_IGNORES` in the `Makefile` and list it below with the package, why it doesn't apply, and a review date no more than 90 days out. On or after that date, re-check upstream and either upgrade or renew the entry with fresh reasoning.
 
-| ID | Package | Why it doesn't apply | Review by |
-|---|---|---|---|
-| PYSEC-2026-4146 (GHSA-gvp8-978c-rx2q) | pyjwt | No fixed release yet. `jwt.decode` mutates a caller's reused `options` dict when `verify_signature` is falsy. `TokenVerifier.verify` builds a fresh `options` dict per call and never disables signature verification. | 2027-01-12 |
+Current ignores: none.
 
 ## Secrets
 

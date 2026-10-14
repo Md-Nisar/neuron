@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
+import jwt.api_jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from fastapi.testclient import TestClient
@@ -228,6 +229,8 @@ def jwks_server(monkeypatch: pytest.MonkeyPatch, jwt_keys: JwtKeys) -> JwksServe
                 raise AssertionError(f"unexpected JWKS fetch: {url}")
             return io.BytesIO(json.dumps({"keys": server.keys}).encode())
 
+    # PyJWKClient.fetch_data opens the JWKS URL through `urllib.request.build_opener`. If a
+    # PyJWT upgrade changes that, the AssertionError above or a real fetch attempt shows it.
     monkeypatch.setattr(urllib.request, "build_opener", lambda *handlers: Opener())
     return server
 
@@ -266,9 +269,9 @@ def make_token(jwt_keys: JwtKeys) -> Callable[..., str]:
             "aud": aud,
             "sub": sub,
             "scope": scopes,
-            "iat": now,
-            "nbf": now + nbf,
-            "exp": now + exp,
+            "iat": int(now.timestamp()),
+            "nbf": int((now + nbf).timestamp()),
+            "exp": int((now + exp).timestamp()),
             "jti": str(uuid.uuid4()),
             **claims,
         }
@@ -343,3 +346,23 @@ def jwt_api_factory(
 def jwt_api(jwt_api_factory: Callable[..., JwtApi], echo_agent: HistoryEchoAgent) -> JwtApi:
     """The API in JWT mode, answering with the deterministic `HistoryEchoAgent`."""
     return jwt_api_factory()
+
+
+class JwtClock(datetime):
+    """The clock PyJWT checks `exp`, `nbf` and `iat` against, shifted by `offset`."""
+
+    offset = timedelta(0)
+
+    @classmethod
+    def now(cls, tz: Any = None) -> JwtClock:
+        shifted = datetime.now(tz or UTC) + cls.offset
+        return cls.fromtimestamp(shifted.timestamp(), tz=shifted.tzinfo)
+
+
+@pytest.fixture
+def jwt_clock(monkeypatch: pytest.MonkeyPatch) -> type[JwtClock]:
+    """Shift the time PyJWT verifies tokens against; `make_token` is unaffected."""
+    # A fresh subclass per test, so an offset never leaks into another test.
+    clock = type("ShiftedClock", (JwtClock,), {"offset": timedelta(0)})
+    monkeypatch.setattr(jwt.api_jwt, "datetime", clock)
+    return clock

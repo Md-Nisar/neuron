@@ -209,9 +209,9 @@ class TokenVerifier:
         subject = claims["sub"]
         expires_at = claims["exp"]
         if not isinstance(issuer, str) or not issuer or not isinstance(subject, str) or not subject:
-            raise AuthenticationError()
+            raise self._reject("invalid_claims")
         if not isinstance(expires_at, (int, float)):
-            raise AuthenticationError()
+            raise self._reject("invalid_claims")
         raw_scope = claims.get(
             self._settings.auth_scope_claim,
             claims.get("scp" if self._settings.auth_scope_claim != "scp" else "scope", ""),

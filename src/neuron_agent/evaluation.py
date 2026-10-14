@@ -164,9 +164,9 @@ async def run_security_suite(path: Path, service: AgentService | None = None) ->
     `target: "victim_thread"`, the attacker's `input` is sent on the victim's thread, and
     only a `thread_not_found` rejection passes.
 
-    `service` must be in JWT mode. Without one, the runner builds a JWT-mode service from the
-    normal settings with a fresh identity key. Principals are passed in directly, so no
-    identity provider is contacted.
+    `service` must be in JWT mode, with thread persistence. Without one, the runner builds a
+    JWT-mode service with in-memory threads and a fresh identity key from the normal settings.
+    Principals are passed in directly, so no identity provider is contacted.
     """
     owned = service is None
     service = service or AgentService(_security_eval_settings())
@@ -224,7 +224,10 @@ async def run_security_suite(path: Path, service: AgentService | None = None) ->
 
 
 def _security_eval_settings() -> Settings:
+    # In-memory threads: the identity key is random per run, so threads written to Postgres
+    # (holding the cases' fake secrets) could never be listed or erased afterwards.
     return Settings(
+        checkpointer="memory",
         auth_mode="jwt",
         auth_issuer=_EVAL_ISSUER,
         auth_audience="neuron-eval",

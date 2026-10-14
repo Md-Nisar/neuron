@@ -12,18 +12,25 @@ import hashlib
 import hmac
 import json
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import jwt
 import jwt.api_jwt
 import pytest
+import structlog.testing
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pydantic import ValidationError
-from tests.conftest import JWKS_URL, JwtApi, JwtKeys, bearer, jwt_settings
+from tests.conftest import JWKS_URL, JwksServer, JwtApi, JwtClock, JwtKeys, bearer, jwt_settings
 
 _PROTECTED = "/v1/me/threads"
+# A well-formed key the identity provider never published.
+_ATTACKER_KEY = rsa.generate_private_key(public_exponent=65_537, key_size=2048)
+_ATTACKER_JWK = {
+    **json.loads(jwt.get_algorithm_by_name("RS256").to_jwk(_ATTACKER_KEY.public_key())),
+    "kid": "attacker-1",
+}
 
 
 def _b64(data: bytes) -> str:
@@ -39,7 +46,10 @@ def _claims(token: str) -> dict[str, Any]:
 
 
 def _assert_rejected(api: JwtApi, token: str) -> None:
-    response = api.client.get(_PROTECTED, headers=bearer(token))
+    with structlog.testing.capture_logs() as logs:
+        response = api.client.get(_PROTECTED, headers=bearer(token))
+    # Every rejection is audited, exactly once, and never crashes the request.
+    assert [entry["event"] for entry in logs].count("auth_failed") == 1, logs
     assert response.status_code == 401, response.text
     assert response.json() == {"detail": "authentication_error"}
     assert response.headers["www-authenticate"] == 'Bearer error="invalid_token"'
@@ -115,20 +125,16 @@ def test_kid_injection_is_rejected(
     _assert_rejected(jwt_api, make_token(kid=kid))
 
 
-def test_non_string_kid_is_rejected(jwt_api: JwtApi, make_token: Callable[..., str]) -> None:
-    claims = _claims(make_token())
-    for kid in (1, ["rsa-1"], {"$ne": None}):
-        signed = jwt.encode(claims, _ATTACKER_KEY, algorithm="RS256", headers={"kid": "x"})
-        header = {"alg": "RS256", "kid": kid}
-        _, payload, signature = signed.split(".")
-        _assert_rejected(jwt_api, f"{_b64(json.dumps(header).encode())}.{payload}.{signature}")
-
-
-_ATTACKER_KEY = rsa.generate_private_key(public_exponent=65_537, key_size=2048)
-_ATTACKER_JWK = {
-    **json.loads(jwt.get_algorithm_by_name("RS256").to_jwk(_ATTACKER_KEY.public_key())),
-    "kid": "attacker-1",
-}
+@pytest.mark.parametrize("kid", [1, ["rsa-1"], {"$ne": None}, None])
+def test_non_string_kid_is_rejected_before_key_lookup(
+    jwt_api: JwtApi, jwt_keys: JwtKeys, make_token: Callable[..., str], kid: Any
+) -> None:
+    # Signed by the trusted key, so the kid's type is the only defect.
+    header = {"alg": "RS256", "kid": kid}
+    signing_input = f"{_b64(json.dumps(header).encode())}.{make_token().split('.')[1]}"
+    signature = jwt.get_algorithm_by_name("RS256").sign(signing_input.encode(), jwt_keys.rsa)
+    _assert_rejected(jwt_api, f"{signing_input}.{_b64(signature)}")
+    assert jwt_api.jwks.requested_urls == []
 
 
 @pytest.mark.parametrize(
@@ -166,27 +172,16 @@ def test_id_token_shaped_token_for_another_audience_is_rejected(
     _assert_rejected(jwt_api, make_token(aud="some-spa-client-id", headers={"typ": "JWT"}))
 
 
-class _Clock:
-    """Shift the clock PyJWT validates `exp`/`nbf`/`iat` against."""
-
-    offset = timedelta(0)
-
-    @classmethod
-    def now(cls, tz: Any = None) -> datetime:
-        return datetime.now(tz or UTC) + cls.offset
-
-
 def test_token_replayed_after_expiry_is_rejected(
-    jwt_api: JwtApi, make_token: Callable[..., str], monkeypatch: pytest.MonkeyPatch
+    jwt_api: JwtApi, make_token: Callable[..., str], jwt_clock: type[JwtClock]
 ) -> None:
     token = make_token(exp=timedelta(minutes=5))
     _assert_accepted(jwt_api, token)
 
-    monkeypatch.setattr(jwt.api_jwt, "datetime", _Clock)
     leeway = timedelta(seconds=jwt_api.settings.auth_leeway_seconds)
-    _Clock.offset = timedelta(minutes=5) + leeway - timedelta(seconds=5)
+    jwt_clock.offset = timedelta(minutes=5) + leeway - timedelta(seconds=5)
     _assert_accepted(jwt_api, token)
-    _Clock.offset = timedelta(minutes=5) + leeway + timedelta(seconds=1)
+    jwt_clock.offset = timedelta(minutes=5) + leeway + timedelta(seconds=1)
     _assert_rejected(jwt_api, token)
 
 
@@ -208,7 +203,8 @@ def test_oversized_token_is_rejected_before_parsing(
 
 def test_oversized_authorization_header_is_rejected(jwt_api: JwtApi) -> None:
     response = jwt_api.client.get(_PROTECTED, headers={"Authorization": "Bearer " + "a" * 200_000})
-    assert response.status_code in {401, 431}
+    assert response.status_code == 401
+    assert response.json() == {"detail": "authentication_error"}
     assert jwt_api.jwks.requested_urls == []
 
 
@@ -246,8 +242,10 @@ def _payload(segment: str) -> dict[str, Any]:
         {"aud": None},
         {"sub": None},
         {"sub": ""},
+        {"sub": 123},
         {"exp": timedelta(seconds=-3600)},
         {"iat": None},
+        {"iat": "yesterday"},
     ],
 )
 def test_tokens_with_wrong_or_missing_registered_claims_are_rejected(
@@ -262,3 +260,30 @@ def test_trusted_kid_signed_with_other_algorithm_family_is_rejected(
     """An ES256 signature presented under the RSA key's kid, and vice versa."""
     _assert_rejected(jwt_api, make_token(alg="ES256", kid=jwt_keys.rsa_kid))
     _assert_rejected(jwt_api, make_token(alg="RS256", kid=jwt_keys.ec_kid))
+
+
+def test_allowed_alg_that_differs_from_the_keys_alg_is_rejected(
+    jwt_api_factory: Callable[..., JwtApi],
+    make_token: Callable[..., str],
+    jwt_keys: JwtKeys,
+    echo_agent: Any,
+) -> None:
+    """RS384 is allowed, and the RSA key's signature is valid, but the key is bound to RS256."""
+    api = jwt_api_factory(auth_algorithms=["RS256", "RS384"])
+    _assert_accepted(api, make_token(alg="RS256"))
+    _assert_rejected(api, make_token(alg="RS384", kid=jwt_keys.rsa_kid))
+
+
+def test_jwks_entries_without_alg_bind_the_algorithm_inferred_from_the_key(
+    jwt_api_factory: Callable[..., JwtApi],
+    jwks_server: JwksServer,
+    make_token: Callable[..., str],
+    jwt_keys: JwtKeys,
+    echo_agent: Any,
+) -> None:
+    for key in jwks_server.keys:
+        del key["alg"]
+    api = jwt_api_factory(auth_algorithms=["RS256", "RS384", "ES256"])
+    _assert_accepted(api, make_token(alg="RS256"))
+    _assert_accepted(api, make_token(alg="ES256"))
+    _assert_rejected(api, make_token(alg="RS384", kid=jwt_keys.rsa_kid))
