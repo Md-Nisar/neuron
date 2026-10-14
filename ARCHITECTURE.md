@@ -69,9 +69,13 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 - message history (`messages`), the thread's persisted conversation;
 - per-run fields, overwritten every turn: request ID, run ID, `user_message`, answer, and error;
 - the thread ID;
-- the optional hashed user ID, which also records the thread's owner.
+- the optional owner value, which records the thread's owner. `AUTH_MODE=none`
+  stores the v0.3.0 `user_id_hash`; JWT mode stores the HMAC owner key derived
+  from the verified principal under ADR 0006.
 
-User IDs are hashed before entering telemetry-oriented state.
+Request-provided user IDs are hashed only in `AUTH_MODE=none`. JWT mode ignores
+request identity fields and stores neither the raw principal claims nor the raw
+request user ID.
 
 A turn is committed atomically (ADR 0005). `AgentService` passes the new user text as `user_message` with an empty `messages` input. The `agent` node sends `history + HumanMessage(user_message)` to the agent and, only on success, appends that `HumanMessage` and the final `AIMessage` to `messages` while clearing `user_message`. A failed run leaves `messages` unchanged. Its `user_message` does remain in that run's checkpoint until the next turn overwrites it. History is only ever read from `messages`, so the stale value is never replayed. Like every turn's input, it is part of the stored checkpoint history, which is user data removed by thread deletion and retention (ADR 0005, decision 7). The agent's intermediate tool-call and tool-result messages are not persisted. Inputs that already carry the user turn in `messages`, as Agent Server and LangGraph Studio send them, still work: the node appends only the answer.
 
@@ -90,7 +94,11 @@ Thread persistence and streaming are governed by ADR 0005 (`docs/decisions/0005-
 Thread rules (`AgentService._resolve_thread`):
 - A request without `thread_id` starts a new thread with a server-minted UUIDv4.
 - A supplied `thread_id` must be a UUID (`422 validation_error` otherwise) and is normalized to its canonical lowercase form.
-- With persistence enabled, a supplied `thread_id` must name an existing thread whose stored `user_id_hash` matches the request's. A missing thread and another user's thread both return `404 thread_not_found`.
+- With persistence enabled, a supplied `thread_id` must name an existing thread
+  whose stored owner value matches the effective caller. In `AUTH_MODE=none`
+  this is the request-derived `user_id_hash`; JWT mode uses the principal HMAC
+  owner key. A missing thread and another user's thread both return
+  `404 thread_not_found`.
 - With `none`, a supplied `thread_id` is only a correlation ID.
 
 History bounds (`graphs/main_graph.py`, ADR 0005 decision 3):

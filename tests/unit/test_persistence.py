@@ -25,18 +25,21 @@ def _postgres_settings() -> Settings:
         checkpointer="postgres",
         postgres_dsn=SecretStr(_UNREACHABLE_DSN),
         postgres_pool_timeout_seconds=1,
+        openai_api_key=None,
     )
 
 
 async def test_none_backend_has_no_checkpointer() -> None:
-    persistence = build_persistence(Settings(env="test", checkpointer="none"))
+    persistence = build_persistence(Settings(env="test", checkpointer="none", openai_api_key=None))
     assert persistence.checkpointer is None
     assert persistence.pool is None
     assert await persistence.is_ready() is True
 
 
 async def test_memory_backend_uses_in_memory_saver() -> None:
-    persistence = build_persistence(Settings(env="test", checkpointer="memory"))
+    persistence = build_persistence(
+        Settings(env="test", checkpointer="memory", openai_api_key=None)
+    )
     assert isinstance(persistence.checkpointer, InMemorySaver)
     await persistence.open()
     assert await persistence.is_ready() is True
@@ -84,7 +87,7 @@ async def test_postgres_readiness_fails_without_leaking_dsn() -> None:
 
 
 async def test_memory_checkpointer_persists_thread_state() -> None:
-    service = AgentService(Settings(env="test", checkpointer="memory"))
+    service = AgentService(Settings(env="test", checkpointer="memory", openai_api_key=None))
     response = await service.invoke(AgentRequest(message="hello"))
     state = await service.graph.aget_state({"configurable": {"thread_id": response.thread_id}})
     assert [type(m) for m in state.values["messages"]][0] is HumanMessage
@@ -94,7 +97,7 @@ async def test_memory_checkpointer_persists_thread_state() -> None:
 async def test_service_maps_checkpointer_failure_to_persistence_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = AgentService(Settings(env="test", checkpointer="memory"))
+    service = AgentService(Settings(env="test", checkpointer="memory", openai_api_key=None))
 
     async def fail(*_: object, **__: object) -> None:
         raise psycopg.OperationalError("connection refused")

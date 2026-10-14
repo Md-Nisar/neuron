@@ -156,7 +156,7 @@ async def test_verify_rejects_none_and_hmac_algorithms_before_key_lookup() -> No
 
     hmac_token = jwt.encode(
         {"iss": "https://issuer.example.test", "sub": "user-123"},
-        key="attacker-controlled-secret",
+        key="attacker-controlled-secret-material-longer-than-32-bytes",
         algorithm="HS256",
         headers={"kid": "key-1"},
     )

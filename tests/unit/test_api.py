@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
+from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
     AuthorizationError,
@@ -26,6 +27,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from neuron_agent.services.agent_service import AgentService
 
 
 def test_live_health_endpoint() -> None:
@@ -239,7 +241,14 @@ def test_agent_request_normalizes_thread_id_to_canonical_uuid() -> None:
     assert AgentRequest(message="hi", thread_id=upper).thread_id == upper.lower()
 
 
-def test_agent_invoke_returns_404_for_unknown_or_foreign_thread() -> None:
+def test_agent_invoke_returns_404_for_unknown_or_foreign_thread(
+    monkeypatch: pytest.MonkeyPatch, echo_agent: object
+) -> None:
+    monkeypatch.setattr(
+        api_main,
+        "service",
+        AgentService(Settings(env="test", openai_api_key=None)),
+    )
     client = TestClient(app)
     created = client.post("/v1/agent/invoke", json={"message": "hi", "user_id": "alice"})
     assert created.status_code == 200

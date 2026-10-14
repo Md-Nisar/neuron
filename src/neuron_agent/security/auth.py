@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -41,6 +43,12 @@ class Principal:
     scopes: frozenset[str]
     token_id: str | None
     expires_at: datetime
+
+
+def principal_owner_key(principal: Principal, identity_hash_key: str) -> str:
+    """Derive the non-reversible thread owner key for a verified principal."""
+    identity = f"{principal.issuer}\x1f{principal.subject}".encode()
+    return hmac.new(identity_hash_key.encode("utf-8"), identity, hashlib.sha256).hexdigest()
 
 
 class TokenVerifier:
