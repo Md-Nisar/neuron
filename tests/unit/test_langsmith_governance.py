@@ -240,3 +240,16 @@ def test_graph_module_and_api_both_apply_governance(monkeypatch: pytest.MonkeyPa
 
     assert len(calls) == 1
     assert api_main.configure_langsmith is configure_langsmith
+
+
+def test_enabling_never_turns_on_the_removed_v1_tracer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """LangChain raises if `LANGCHAIN_TRACING` is set while v2 tracing is off for a run."""
+    from langchain_core.callbacks.manager import CallbackManager
+    from langsmith.run_helpers import tracing_context
+
+    monkeypatch.setenv("LANGCHAIN_TRACING", "true")
+    configure_langsmith(_settings(enable_langsmith=True))
+
+    assert ls_utils.tracing_is_enabled() is True
+    with tracing_context(enabled=False):
+        CallbackManager.configure()

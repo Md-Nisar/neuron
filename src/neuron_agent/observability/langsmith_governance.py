@@ -55,7 +55,9 @@ def configure_langsmith(settings: Settings) -> None:
     ]
     value = "true" if settings.enable_langsmith else "false"
     for name in _TRACING_VARS:
-        os.environ[name] = value
+        # The v1 switch is never turned on: with it set, LangChain raises whenever v2
+        # tracing is off for a run (for example under `tracing_context(enabled=False)`).
+        os.environ[name] = "false" if name == "LANGCHAIN_TRACING" else value
 
     hide_content = settings.env != "development" and not settings.langsmith_content_approved
     if settings.env != "development":
