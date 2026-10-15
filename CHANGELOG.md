@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+"Secure Multi-User": verified identity, per-user isolation and limits (ADR 0006).
+
+Breaking changes (README "Migrating from 0.3.x"):
+- **Bearer tokens are required in staging and production.** `APP_AUTH_MODE=none` is rejected there; `jwt` mode needs `APP_AUTH_ISSUER`, `APP_AUTH_AUDIENCE`, an HTTPS `APP_AUTH_JWKS_URL` and `APP_IDENTITY_HASH_KEY`.
+- **`user_id` and `X-User-Id` are ignored in jwt mode**; the verified `(iss, sub)` is the identity. They remain only for `APP_AUTH_MODE=none` local development.
+- **0.3.x threads are not accessible in jwt mode**: ownership is an HMAC of the verified identity, and there is no fallback to the old hash (`OPERATIONS.md`).
+- New `401 authentication_error`, `403 authorization_error`, `503 authentication_unavailable`, `429 quota_exceeded` and `429 too_many_concurrent_runs` responses.
+- `/v1/*` responses are `Cache-Control: no-store` (streams were `no-cache`); API docs are hidden in staging and production by default.
+
+Changes:
+- ADR 0006 defines OAuth 2.0/OIDC JWT authentication, principal identity, authorization and the migration from 0.3 (#52).
+- JWT bearer authentication on every `/v1/*` route: JWKS-backed signature checks, issuer/audience/time-claim validation, an asymmetric-algorithm allow-list, token size limits, throttled key refresh, fail-closed JWKS errors and RFC 6750 responses. Health endpoints stay public (#53).
+- Threads are owned by a keyed HMAC of the verified issuer and subject (#54).
+- Scope-based authorization (`agent:invoke`, `threads:read`, `threads:delete`, `tools:calculator`), with optional role-to-scope mapping; tool availability follows the caller's permissions (#55).
+- Per-user limits: per-principal rate limits, concurrent-run caps and rolling token budgets (#56).
+- Privacy-safe security audit events on a separate `neuron_agent.audit` logger (#57).
+- LangGraph Agent Server deployments use the same verifier, owner keys and permissions (#58).
+- User data rights: `GET /v1/me/threads`, `GET /v1/me/export` and `DELETE /v1/me/threads` (#59).
+- Authentication documentation and local development tokens (#62):
+  - `make dev-auth`, `make dev-jwks` and `make dev-token` (`scripts/dev_token.py`) mint tokens from a local key and serve its JWKS on loopback, with no identity provider. They refuse to run unless `APP_ENV=development`;
+  - README authentication quickstart, bearer `curl`/JavaScript examples and "Migrating from 0.3.x"; `OPERATIONS.md` identity-provider setup, key rotation and JWKS caching, `APP_IDENTITY_HASH_KEY` rotation, and runbook entries for each new error code; `SECURITY.md` IdP trust assumptions and remaining limitations;
+  - a test that keeps `.env.example` in step with `Settings`.
 - `/v1/me/threads`, `/v1/me/export` and `DELETE /v1/me/threads` do work in proportion to the page they return, not the caller's whole checkpoint history (#76):
   - on Postgres, one paginated aggregate query lists the caller's threads, served by a new `neuron_checkpoints_owner_idx` index. Re-run `make db-setup` when upgrading;
   - messages are loaded only from the latest checkpoint of each returned thread;

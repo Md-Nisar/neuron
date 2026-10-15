@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -18,14 +18,24 @@ db-setup:
 prune-threads:
 	uv run python -m neuron_agent.persistence.cli prune
 
+# Development only: a local signing key and JWKS instead of an identity provider.
+dev-auth:
+	@uv run python scripts/dev_token.py setup
+
+dev-jwks:
+	@uv run python scripts/dev_token.py serve
+
+dev-token:
+	@uv run python scripts/dev_token.py
+
 format:
-	uv run python -m ruff format src tests
+	uv run python -m ruff format src tests scripts
 
 lint:
-	uv run python -m ruff check src tests
+	uv run python -m ruff check src tests scripts
 
 typecheck:
-	uv run python -m mypy src
+	uv run python -m mypy src scripts/dev_token.py
 
 test:
 	uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/evals
@@ -54,7 +64,7 @@ eval:
 AUDIT_IGNORES :=
 
 security:
-	uv run python -m bandit -q -r src
+	uv run python -m bandit -q -r src scripts/dev_token.py
 	@# Two steps, not a pipe: /bin/sh has no pipefail, so a failed export would audit nothing.
 	@reqs=$$(mktemp) \
 		&& uv export --frozen --format requirements-txt --no-emit-project --all-groups -q -o "$$reqs" \

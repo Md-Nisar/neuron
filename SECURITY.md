@@ -9,6 +9,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - User input is untrusted.
 - Bearer tokens are untrusted until signature, issuer, audience, time claims, and required subject are verified against the configured issuer and JWKS.
 - Verified `(iss, sub)` is the principal identity; request body fields and `X-User-Id` are not identity sources in JWT mode. Service accounts have no alternate header or bypass.
+- The identity provider is trusted to authenticate users, to keep each `sub` stable and never reassign it to another person (a reused subject inherits the previous owner's threads), to grant scopes and roles correctly, and to protect its signing keys. Neuron cannot detect a failure of any of these.
 - The configured identity provider and its JWKS endpoint are external trust dependencies. Key-fetch failure without a usable cached key fails closed; JWKS URLs must use HTTPS outside development. Each token is verified with the algorithm bound to its `kid`'s JWK: the JWK's `alg`, or, when that is absent, the default for its key type and curve (RS256 for RSA, ES256/ES384/ES512 for P-256/P-384/P-521). A token whose `alg` differs is rejected, even if `APP_AUTH_ALGORITHMS` allows it, so an identity provider that signs with RS384 or RS512 must publish `alg` in its JWKS.
 - A thread UUID is not authorization. Invoke, stream, history, and delete enforce ownership from the verified principal and return the same not-found response for absent and foreign threads.
 - Legacy v0.3 SHA-256 owner values are not accepted in JWT mode. Operators must follow ADR 0006's retention or separately reviewed re-key procedure; no dual-hash fallback is permitted.
@@ -35,7 +36,8 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
   - a missing thread and another user's thread return the same `404 thread_not_found`, so thread IDs can't be probed.
 
   In v0.4.0 JWT mode, ownership is derived from the verified `(iss, sub)` principal through a keyed HMAC; request-provided identity fields cannot override it. The unauthenticated request identity remains available only in explicit `AUTH_MODE=none` development/test mode.
-- Token-bucket rate limiting at `/v1/agent/invoke`, keyed by client IP, returning `429` with `Retry-After` when exceeded (ADR 0004).
+- Token-bucket rate limiting on `/v1/agent/*`, `/v1/threads/*` and `/v1/me/*`, keyed by the verified principal (by client IP for failed authentication and in `AUTH_MODE=none`), returning `429` with `Retry-After` (ADR 0004). Per-principal concurrent-run caps and rolling token budgets return `429 too_many_concurrent_runs` and `429 quota_exceeded`.
+- Local development tokens (`scripts/dev_token.py`, not part of the package) refuse to run unless `APP_ENV=development`; their key stays in the git-ignored `.dev/`, and their JWKS is served on loopback only.
 - Bounded provider/tool timeouts and capped provider retries (`APP_REQUEST_TIMEOUT_SECONDS`, `APP_TOOL_TIMEOUT_SECONDS`, `APP_PROVIDER_MAX_RETRIES`) and an agent-loop recursion limit (`APP_MAX_AGENT_ITERATIONS`) as resource-exhaustion controls, alongside rate limiting (see `OPERATIONS.md`'s Timeouts and Retries section).
 - Structured logging with no deliberate raw secret logging: log fields are limited to IDs, names, stable error codes/types, durations, and retry counts — never raw user prompts, tool arguments, exception text, or provider API keys (see `ARCHITECTURE.md#observability`).
 - HTTP surface hardening (`OPERATIONS.md`'s HTTP Surface section):
@@ -98,6 +100,15 @@ When it fails:
 2. **Ignore only with a reason.** If no fix exists, or the vulnerable code path isn't reachable from this project, add the ID to `AUDIT_IGNORES` in the `Makefile` and list it below with the package, why it doesn't apply, and a review date no more than 90 days out. On or after that date, re-check upstream and either upgrade or renew the entry with fresh reasoning.
 
 Current ignores: none.
+
+## Remaining Limitations
+
+- **No token revocation.** Tokens are verified locally (no introspection), so a stolen access token works until it expires. Keep access-token lifetimes short at the IdP. A stream's token is checked once, when it starts.
+- **One issuer per deployment.** The owner key joins issuer and subject without length-prefixing; supporting several issuers needs that changed first.
+- **Per-process limits.** Rate limits, concurrent-run caps and token budgets are in memory per worker and reset on restart; they aren't shared across replicas.
+- **`typ` check.** With `APP_AUTH_REQUIRE_TYP=true`, only `at+jwt` is accepted, not the `application/at+jwt` spelling RFC 9068 also allows.
+- **`APP_IDENTITY_HASH_KEY` exposure** lets someone with database access link threads to known identities. It grants no access by itself. Rotation orphans every thread (`OPERATIONS.md`).
+- **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`.
 
 ## Secrets
 

@@ -66,6 +66,8 @@ Prompts live under `src/neuron_agent/prompts/`. Prompt changes should include ev
 
 Run `make api` for HTTP debugging or `make run` for LangGraph Studio-compatible local development. Do not add provider secrets to source control.
 
+The default `APP_AUTH_MODE=none` needs no token. To exercise real JWT authentication locally, run `make dev-auth >> .env` once, keep `make dev-jwks` running, and send `Authorization: Bearer $(make -s dev-token)` (README "Authentication"). These tools refuse to run unless `APP_ENV=development`. Tests never use them: they mint tokens with the `make_token` fixture in `tests/conftest.py`.
+
 ## Troubleshooting
 
 See `README.md`'s Troubleshooting section for the common local issues (missing provider key, rate limiting during manual testing, fresh-clone lint/type failures). Additionally, when developing:

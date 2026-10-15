@@ -20,6 +20,8 @@ flowchart TD
     Client[Client] -->|POST /v1/agent/invoke JSON| API[FastAPI API]
     Client -->|POST /v1/agent/stream SSE| API
     Client -->|GET/DELETE /v1/threads/id| API
+    API -->|bearer token| Verifier[TokenVerifier]
+    Verifier -->|signing keys, cached| JWKS[Identity provider JWKS]
     API --> Service[AgentService]
     Service --> Graph[LangGraph StateGraph]
     Graph --> Agent[LangChain create_agent Harness]
@@ -58,12 +60,20 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 - `state/`: graph state type definitions.
 - `persistence/`: checkpointer construction and lifecycle (`APP_CHECKPOINTER`), plus the `setup` operator command.
 - `schemas/`: public API and structured output contracts.
-- `security/`: input, URL, and tool policy checks.
+- `security/`: authentication (`auth.py`: `TokenVerifier`, `Principal`, the `/v1` route dependency), permissions and the per-run `AuthorizationContext` (`authorization.py`), Agent Server auth handlers (`agent_server.py`), rate limiting, and input, URL and tool policy checks.
 - `observability/`: structured logging setup.
 - `prompts/`: versionable prompt assets.
 - `errors/`: shared `AppError` taxonomy and HTTP/retry/visibility metadata.
 
 ## Authentication Across Deployment Paths
+
+Request flow in JWT mode (ADR 0006):
+
+1. **API.** Every `/v1/*` route declares one dependency, `require_permission(<scope>)`. It extracts the bearer token and calls the process-wide `TokenVerifier`: size cap, header checks, signing key by `kid` from the cached JWKS, then signature, `iss`, `aud`, `exp`/`nbf`/`iat` and `sub`. The result is a frozen `Principal` (issuer, subject, scopes, token ID); the raw token goes no further. A failure is `401`, a JWKS outage `503`, a missing scope `403`, and every failure is audited. The same dependency applies the per-principal request rate limit.
+2. **Service.** Routes pass the `Principal` to `AgentService` as a keyword argument; request `user_id` and `X-User-Id` are ignored. The service derives the owner key, HMAC-SHA256(`APP_IDENTITY_HASH_KEY`, issuer + subject), and uses it for thread ownership checks, the per-principal run cap and token budget, and the `owner` checkpoint metadata.
+3. **Graph and tools.** The service passes an `AuthorizationContext` (permissions, the principal, a usage accumulator) as the LangGraph runtime `context`, never in state, prompts or checkpoints. Tool authorization reads it to filter the model-visible tools and to check each call again before it runs.
+
+In `APP_AUTH_MODE=none` (development and test only) the dependency returns no principal, permissions are the fixed development set, and the owner is a SHA-256 of the request's `user_id`.
 
 FastAPI and the `langgraph.json` Agent Server path use the same process-wide
 `TokenVerifier` and identity model. In JWT mode, the verified `(issuer, subject)`
