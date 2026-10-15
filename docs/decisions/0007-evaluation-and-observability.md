@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (v0.5.0).
+Accepted (v0.5.0).
 
 ## Problem
 

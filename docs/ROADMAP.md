@@ -10,3 +10,5 @@
 | **v0.8.0** | User Application           | Web UX + chat experience              |
 | **v0.9.0** | Production Candidate       | Load/security/DR/release freeze       |
 | **v1.0.0** | Production AI Application  | Stable production platform            |
+
+v0.5.0 is designed in [ADR 0007](decisions/0007-evaluation-and-observability.md) and tracked by the issues labelled `v0.5.0`.
