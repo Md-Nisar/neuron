@@ -129,6 +129,11 @@ def mint(
     return jwt.encode(claims, key, algorithm=_ALGORITHM, headers={"kid": kid, "typ": "at+jwt"})
 
 
+class _JwksServer(ThreadingHTTPServer):
+    # On Windows, SO_REUSEADDR lets a second server bind a port that is already listening.
+    allow_reuse_address = os.name != "nt"
+
+
 def jwks_server(directory: Path, port: int) -> ThreadingHTTPServer:
     """A loopback-only server that answers `GET /jwks.json` and nothing else."""
     body = jwks_path(directory).read_bytes()
@@ -144,7 +149,7 @@ def jwks_server(directory: Path, port: int) -> ThreadingHTTPServer:
             self.end_headers()
             self.wfile.write(body)
 
-    return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    return _JwksServer(("127.0.0.1", port), Handler)
 
 
 def _development_settings() -> Settings:
