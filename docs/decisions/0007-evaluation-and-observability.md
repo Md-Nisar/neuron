@@ -154,6 +154,12 @@ label a metric.
 startup. On Agent Server, the platform's own tracing is out of scope for this
 switch and is documented as such.
 
+Implementation note: LangSmith and LangChain read these variables themselves (with cached
+lookups, several aliases, and a hard error for `LANGCHAIN_TRACING` without v2), so
+`observability/langsmith_governance.py` writes the decision over every alias, clears the
+lookup cache and drops any prebuilt client, instead of settings setting them. It runs from
+the API module and from the graph module that Agent Server loads.
+
 ### 6. Evaluation
 
 Three suites, one harness:

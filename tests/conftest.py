@@ -50,6 +50,8 @@ _LIVE_ENV = {n: v for n in _LIVE_VARS if (v := os.environ.get(n) or _dotenv.get(
 os.environ["APP_DEFAULT_MODEL"] = "openai:gpt-5.4-mini"
 # A developer `.env` may enable OpenTelemetry; tests must not export to a real Collector.
 os.environ["APP_OTEL_ENABLED"] = "false"
+# Likewise a developer `.env` or shell must not turn on LangSmith tracing in tests.
+os.environ["APP_ENABLE_LANGSMITH"] = "false"
 for _name in _LIVE_VARS[1:]:
     os.environ[_name] = ""
 
