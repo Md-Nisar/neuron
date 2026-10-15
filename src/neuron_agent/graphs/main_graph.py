@@ -11,6 +11,7 @@ from langchain_core.messages import (
     BaseMessage,
     HumanMessage,
     RemoveMessage,
+    ToolMessage,
     trim_messages,
 )
 from langchain_core.messages.utils import count_tokens_approximately
@@ -21,6 +22,7 @@ from langgraph.runtime import get_runtime
 
 from neuron_agent.agents.factory import build_agent
 from neuron_agent.config.settings import Settings, get_settings
+from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.models.factory import (
     agent_invocation_config,
     classify_agent_error,
@@ -88,6 +90,7 @@ async def call_agent(
         if authorization is not None:
             invocation["context"] = authorization
         result = await agent.ainvoke({"messages": history}, **invocation)
+        answer = _final_answer(result, run_messages=result.get("messages", [])[len(history) :])
     except Exception as exc:  # noqa: BLE001
         error = classify_agent_error(exc)
         log = logger.exception if error.context.alert else logger.warning
@@ -104,13 +107,6 @@ async def call_agent(
             duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         raise error from exc
-
-    structured = result.get("structured_response")
-    if isinstance(structured, AgentAnswer):
-        answer = structured
-    else:
-        output_text = str(result["messages"][-1].content)
-        answer = AgentAnswer(answer=output_text, used_tools=[], confidence=0.5)
 
     logger.info(
         "agent_execution_completed",
@@ -132,6 +128,41 @@ async def call_agent(
         "answer": answer,
         "user_message": None,
     }
+
+
+def _final_answer(result: dict[str, Any], *, run_messages: list[BaseMessage]) -> AgentAnswer:
+    """The run's answer, with `used_tools` taken from the tool calls that actually ran.
+
+    The model's own `used_tools` is not trusted: it can omit tools it called or list ones it
+    did not, such as the `AgentAnswer` structured-output tool.
+    """
+    structured = result.get("structured_response")
+    if isinstance(structured, AgentAnswer):
+        answer = structured
+    else:
+        output_text = str(result["messages"][-1].content) if result.get("messages") else ""
+        if not output_text.strip():
+            raise AppStructuredOutputError("agent returned an empty answer")
+        answer = AgentAnswer(answer=output_text, confidence=0.5)
+    return answer.model_copy(update={"used_tools": _tools_run(run_messages)})
+
+
+def _tools_run(messages: list[BaseMessage]) -> list[str]:
+    """Names of the tools that ran successfully, in first-use order."""
+    names = {
+        call["id"]: call["name"]
+        for message in messages
+        if isinstance(message, AIMessage)
+        for call in message.tool_calls
+    }
+    used: list[str] = []
+    for message in messages:
+        if not isinstance(message, ToolMessage) or message.status == "error":
+            continue
+        name = names.get(message.tool_call_id) or message.name
+        if name and name != AgentAnswer.__name__ and name not in used:
+            used.append(name)
+    return used
 
 
 def bound_model_history(messages: list[BaseMessage], *, max_tokens: int) -> list[BaseMessage]:

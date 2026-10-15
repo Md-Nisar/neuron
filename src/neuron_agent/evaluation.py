@@ -14,7 +14,7 @@ from typing import cast
 import structlog
 
 from neuron_agent.config.settings import Settings, get_settings
-from neuron_agent.errors.base import ThreadNotFoundError
+from neuron_agent.errors.base import AppError, ThreadNotFoundError
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.auth import Principal
 from neuron_agent.services.agent_service import AgentService
@@ -139,9 +139,15 @@ async def _run(path: Path, service: AgentService | None, *, multi_turn: bool) ->
         for case in load_eval_cases(path):
             thread_id: str | None = None
             turns = [*cast("list[str]", case.get("setup", [])), cast("str", case["input"])]
-            for message in turns:
-                response = await service.invoke(AgentRequest(message=message, thread_id=thread_id))
-                thread_id = response.thread_id if multi_turn else None
+            try:
+                for message in turns:
+                    response = await service.invoke(
+                        AgentRequest(message=message, thread_id=thread_id)
+                    )
+                    thread_id = response.thread_id if multi_turn else None
+            except AppError as exc:
+                results.append(_failed_run(case, exc))
+                continue
             results.append(
                 evaluate_case(
                     case,
@@ -175,52 +181,60 @@ async def run_security_suite(path: Path, service: AgentService | None = None) ->
     try:
         results = []
         for case in load_eval_cases(path):
-            victim = _eval_principal("victim", _VICTIM_PERMISSIONS)
-            attacker = _eval_principal("attacker", _ATTACKER_PERMISSIONS)
-            victim_thread = None
-            for message in cast("list[str]", case["victim_setup"]):
-                response = await service.invoke(
-                    AgentRequest(message=message, thread_id=victim_thread), principal=victim
-                )
-                victim_thread = response.thread_id
-            message = cast("str", case["input"]).replace("{victim_thread_id}", str(victim_thread))
-
-            if case.get("target") == "victim_thread":
-                try:
-                    response = await service.invoke(
-                        AgentRequest(message=message, thread_id=victim_thread), principal=attacker
-                    )
-                except ThreadNotFoundError:
-                    results.append(EvalResult(str(case["id"]), str(case["category"]), True))
-                    continue
-                results.append(
-                    EvalResult(
-                        str(case["id"]),
-                        str(case["category"]),
-                        False,
-                        ["attacker's turn ran on the victim's thread"],
-                    )
-                )
-                continue
-
-            attacker_thread = None
-            for turn in [*cast("list[str]", case.get("setup", [])), message]:
-                response = await service.invoke(
-                    AgentRequest(message=turn, thread_id=attacker_thread), principal=attacker
-                )
-                attacker_thread = response.thread_id
-            results.append(
-                evaluate_case(
-                    case,
-                    answer=response.answer,
-                    used_tools=response.used_tools,
-                    confidence=response.confidence,
-                )
-            )
+            try:
+                results.append(await _run_security_case(service, case))
+            except AppError as exc:
+                results.append(_failed_run(case, exc))
         return results
     finally:
         if owned:
             await service.shutdown()
+
+
+def _failed_run(case: dict[str, object], exc: AppError) -> EvalResult:
+    """Score a case whose run raised as failed, so one error doesn't abort the suite."""
+    return EvalResult(
+        str(case["id"]), str(case["category"]), False, [f"run failed: {exc.context.code}"]
+    )
+
+
+async def _run_security_case(service: AgentService, case: dict[str, object]) -> EvalResult:
+    victim = _eval_principal("victim", _VICTIM_PERMISSIONS)
+    attacker = _eval_principal("attacker", _ATTACKER_PERMISSIONS)
+    victim_thread = None
+    for message in cast("list[str]", case["victim_setup"]):
+        response = await service.invoke(
+            AgentRequest(message=message, thread_id=victim_thread), principal=victim
+        )
+        victim_thread = response.thread_id
+    message = cast("str", case["input"]).replace("{victim_thread_id}", str(victim_thread))
+
+    if case.get("target") == "victim_thread":
+        try:
+            await service.invoke(
+                AgentRequest(message=message, thread_id=victim_thread), principal=attacker
+            )
+        except ThreadNotFoundError:
+            return EvalResult(str(case["id"]), str(case["category"]), True)
+        return EvalResult(
+            str(case["id"]),
+            str(case["category"]),
+            False,
+            ["attacker's turn ran on the victim's thread"],
+        )
+
+    attacker_thread = None
+    for turn in [*cast("list[str]", case.get("setup", [])), message]:
+        response = await service.invoke(
+            AgentRequest(message=turn, thread_id=attacker_thread), principal=attacker
+        )
+        attacker_thread = response.thread_id
+    return evaluate_case(
+        case,
+        answer=response.answer,
+        used_tools=response.used_tools,
+        confidence=response.confidence,
+    )
 
 
 def _security_eval_settings() -> Settings:

@@ -102,7 +102,8 @@ class HistoryEchoAgent:
     """Deterministic agent: answers with every user turn it was given, oldest first.
 
     It also returns an intermediate tool-call/tool-result pair, the way `create_agent` does,
-    so tests can assert that those internal messages are not persisted to the thread.
+    so tests can assert that those internal messages are not persisted to the thread. The
+    call is a refused one, so `used_tools` stays empty for callers without the tool's scope.
     """
 
     def __init__(self) -> None:
@@ -123,7 +124,9 @@ class HistoryEchoAgent:
             "messages": [
                 *messages,
                 AIMessage(content="", tool_calls=[tool_call]),
-                ToolMessage(content="2", tool_call_id="call-1"),
+                ToolMessage(
+                    content="tool is not authorized", tool_call_id="call-1", status="error"
+                ),
                 AIMessage(content=answer),
             ],
             "structured_response": AgentAnswer(answer=answer, used_tools=[], confidence=1.0),

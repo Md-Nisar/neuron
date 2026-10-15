@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from neuron_agent.evaluation import evaluate_case
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from neuron_agent.errors.base import ProviderTimeoutError
+from neuron_agent.evaluation import evaluate_case, run_eval_suite, run_security_suite
+from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 
 _BASE_CASE: dict[str, object] = {
     "id": "case-001",
@@ -63,3 +71,42 @@ def test_evaluate_case_fails_when_a_forbidden_keyword_leaks() -> None:
     assert any("forbidden" in reason and "BLUEHERON" in reason for reason in leaked.reasons)
     clean = evaluate_case(case, answer="57", used_tools=["calculator"], confidence=0.9)
     assert clean.passed
+
+
+class _FlakyService:
+    """Answers every message with "57" except those containing "boom", which time out."""
+
+    async def invoke(self, request: AgentRequest, *, principal: Any = None) -> AgentResponse:
+        if "boom" in request.message:
+            raise ProviderTimeoutError("model provider timed out")
+        return AgentResponse(
+            request_id="r", thread_id="t", answer="57", used_tools=[], confidence=0.9
+        )
+
+
+def _cases(tmp_path: Path, *messages: str, **extra: object) -> Path:
+    path = tmp_path / "cases.json"
+    cases = [
+        {"id": f"case-{n}", "category": "c", "input": message, "expected_tools": []}
+        | {"expected_keywords": ["57"], **extra}
+        for n, message in enumerate(messages)
+    ]
+    path.write_text(json.dumps(cases), encoding="utf-8")
+    return path
+
+
+@pytest.mark.anyio
+async def test_eval_suite_scores_a_failed_run_and_keeps_going(tmp_path: Path) -> None:
+    path = _cases(tmp_path, "first", "boom", "last")
+    results = await run_eval_suite(path, _FlakyService())  # type: ignore[arg-type]
+
+    assert [r.passed for r in results] == [True, False, True]
+    assert results[1].reasons == ["run failed: provider_timeout_error"]
+
+
+@pytest.mark.anyio
+async def test_security_suite_scores_a_failed_run_and_keeps_going(tmp_path: Path) -> None:
+    path = _cases(tmp_path, "boom", "fine", victim_setup=["hello"])
+    results = await run_security_suite(path, _FlakyService())  # type: ignore[arg-type]
+
+    assert [r.passed for r in results] == [False, True]
