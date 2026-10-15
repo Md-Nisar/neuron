@@ -183,7 +183,9 @@ Three suites, one harness:
   14/16, multi-turn 11/13, security 12/12), run nightly in CI with an NVIDIA
   free-tier key limited to 40 requests per minute. The eval runner throttles its
   model calls below that limit, and a provider 429 makes the run inconclusive,
-  not a quality failure. The release gate must
+  not a quality failure. Automated runs are allowed but must comply with
+  NVIDIA's applicable API terms, rate limits and usage restrictions; the workflow
+  stays at one scheduled run a night plus manual runs. The release gate must
   eventually run on the production model (OpenAI); until a funded key exists, a
   release that cannot do so lists it as a known issue.
 - **Cost of a run:** one live pass of all suites takes about 20 minutes, so the
