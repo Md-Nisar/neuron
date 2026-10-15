@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 "Secure Multi-User": verified identity, per-user isolation and limits (ADR 0006).
 
@@ -46,6 +46,13 @@ Changes:
   - a `pip-audit` dependency audit in `make security` and CI.
 - PyJWT is upgraded to 2.15.1 (14 advisories against 2.13.0, including algorithm confusion and JWKS redirects) and urllib3 to 2.8.0. A token whose `alg` doesn't match its `kid`'s key now gets `401` instead of `500`: the verifier passes the `PyJWK` to `jwt.decode`, which binds verification to the key's algorithm. Tokens with an empty or non-string `iss`/`sub` are now audited as `auth_failed` (#61).
 - A model provider account with no API credit (OpenAI `429 insufficient_quota`) is no longer retried or reported as a rate limit. It fails at once as `ProviderQuotaError` (`provider_quota_exhausted`, `503`, alerting) (#50).
+- Release gate (#63). It found and fixed one defect present since #58: on Agent Server, the graph built each run's authorization from the run's client-supplied `context`. Runs without one crashed, so every Agent Server and Studio run failed, and a run whose `context` listed `permissions` got those permissions (a function-level authorization bypass for tools). Runs now take permissions and the owner only from the authenticated user Agent Server records; client `context` grants nothing.
+
+Known issues (see `docs/releases/v0.4.0-release-verification.md`):
+- The live OpenAI smoke tests and live evals have still not run (no usable API credentials, as in 0.3.0); model-facing behaviour is verified only with fake models.
+- Agent Server (`langgraph.json`) deployments enforce authentication, scopes, tool permissions and owner isolation, but not the API's per-principal rate limits, run caps, token budgets or message input policy.
+- A newly published IdP signing key can be rejected for up to 30 seconds (PyJWT's forced-refetch cooldown); pre-publish keys.
+- `/health/ready` doesn't probe the JWKS, so an instance marked not ready after an IdP outage recovers only when it serves a request.
 
 ## 0.3.0
 

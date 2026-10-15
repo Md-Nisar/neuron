@@ -109,6 +109,8 @@ Current ignores: none.
 - **`typ` check.** With `APP_AUTH_REQUIRE_TYP=true`, only `at+jwt` is accepted, not the `application/at+jwt` spelling RFC 9068 also allows.
 - **`APP_IDENTITY_HASH_KEY` exposure** lets someone with database access link threads to known identities. It grants no access by itself. Rotation orphans every thread (`OPERATIONS.md`).
 - **Development tokens trust loopback.** In development the API fetches the JWKS over plain HTTP from `127.0.0.1:8765`, so on a shared machine another local user who binds that port first can mint tokens the development API accepts. Use them on single-user machines.
+- **Agent Server runs skip the API-layer guards.** Authentication, scopes, tool permissions and owner isolation apply on both deployment paths, but the per-principal rate limits, concurrent-run caps, token budgets and the message input policy (length, control characters) live in the FastAPI app and `AgentService`, so `langgraph.json` deployments don't get them. Use the platform's own limits there.
+- **Signing-key rotation window.** A newly published key can be rejected for up to 30 seconds (PyJWT's forced-refetch cooldown); IdPs should pre-publish keys (`OPERATIONS.md`).
 - **Readiness and the IdP.** `/health/ready` marks an instance not ready after a JWKS fetch failure and recovers only when a later request obtains a key; it doesn't probe the JWKS (`OPERATIONS.md`).
 - **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`.
 
