@@ -51,6 +51,18 @@ def test_agent_invoke_rejects_unexpected_fields() -> None:
     assert response.json() == {"detail": "validation_error"}
 
 
+def test_validation_failure_log_omits_the_rejected_input() -> None:
+    client = TestClient(app)
+    with structlog.testing.capture_logs() as logs:
+        response = client.post(
+            "/v1/agent/invoke", json={"message": "hi", "unexpected_field": "SECRET-MARKER-42"}
+        )
+    assert response.status_code == 422
+    [event] = [log for log in logs if log["event"] == "agent_request_validation_failed"]
+    assert event["errors"] == [{"type": "extra_forbidden", "loc": ("body", "unexpected_field")}]
+    assert "SECRET-MARKER-42" not in repr(logs)
+
+
 def test_agent_invoke_rejects_malformed_json() -> None:
     client = TestClient(app)
     response = client.post(

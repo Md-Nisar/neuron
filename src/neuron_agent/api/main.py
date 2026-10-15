@@ -324,7 +324,9 @@ def _opaque_identity_prefix(key: str) -> str:
 async def handle_request_validation_error(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    logger.warning("agent_request_validation_failed", errors=exc.errors())
+    # Only each error's type and location: pydantic's `input` would log the request text.
+    errors = [{"type": e["type"], "loc": e["loc"]} for e in exc.errors()]
+    logger.warning("agent_request_validation_failed", errors=errors)
     return JSONResponse(status_code=422, content={"detail": "validation_error"})
 
 
