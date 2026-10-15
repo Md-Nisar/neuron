@@ -7,6 +7,7 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any
 
 import openai
@@ -78,7 +79,7 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
         }
         name = f"{semconv.OPERATION_CHAT} {self._model}"
         with telemetry.start_span(name, kind=SpanKind.CLIENT, attributes=attributes) as span:
-            retries_before = _retry_attempts.get()
+            retries_before = get_retry_attempts()
             try:
                 response = await handler(request)
             except Exception as exc:
@@ -86,7 +87,7 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
                 raise
             finally:
                 span.set_attribute(
-                    semconv.NEURON_RETRY_COUNT, _retry_attempts.get() - retries_before
+                    semconv.NEURON_RETRY_COUNT, get_retry_attempts() - retries_before
                 )
             messages = getattr(response, "result", [])
             _record_model_response(span, messages if isinstance(messages, list) else [messages])
@@ -235,17 +236,27 @@ def _is_quota_error(exc: Exception) -> bool:
     )
 
 
-_retry_attempts: ContextVar[int] = ContextVar("provider_retry_attempts", default=0)
+@dataclass
+class _RetryCounter:
+    count: int = 0
+
+
+# A mutable counter, not an int: retries are counted in a child context of the agent loop,
+# and a `set` there would never be seen by the invocation that reads the count.
+_retry_counter: ContextVar[_RetryCounter | None] = ContextVar(
+    "provider_retry_counter", default=None
+)
 
 
 def reset_retry_attempts() -> None:
-    """Zero the provider retry counter for a new agent invocation."""
-    _retry_attempts.set(0)
+    """Start a new provider retry counter for a new agent invocation."""
+    _retry_counter.set(_RetryCounter())
 
 
 def get_retry_attempts() -> int:
     """Return how many provider calls were retried during the current invocation."""
-    return _retry_attempts.get()
+    counter = _retry_counter.get()
+    return counter.count if counter is not None else 0
 
 
 def tool_failure_isolation_middleware() -> AgentMiddleware:
@@ -312,8 +323,12 @@ def _is_retryable_provider_error(exc: Exception) -> bool:
     """Classify raw provider exceptions as retryable without exposing secrets in logs."""
     if not isinstance(exc, _RETRYABLE_PROVIDER_ERRORS) or _is_quota_error(exc):
         return False
-    attempt = _retry_attempts.get() + 1
-    _retry_attempts.set(attempt)
+    counter = _retry_counter.get()
+    if counter is None:
+        counter = _RetryCounter()
+        _retry_counter.set(counter)
+    counter.count += 1
+    attempt = counter.count
     logger.warning(
         "provider_call_retry_candidate", error_type=type(exc).__name__, retry_attempt=attempt
     )

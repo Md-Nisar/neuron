@@ -5,8 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from typing import Any
 
+import httpx
+import openai
 import pytest
+import structlog.testing
 from fastapi.testclient import TestClient
+from langchain.agents.middleware import ModelRetryMiddleware
 from langchain_core.messages import AIMessage, HumanMessage
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
@@ -291,3 +295,41 @@ async def test_failed_model_call_marks_chat_and_run_spans_with_the_error_code(
         assert span.status.description is None
         assert _attributes(span)[semconv.ERROR_TYPE] == AgentExecutionError.context.code
         assert not span.events
+
+
+class _FlakyModel(StreamingFakeModel):
+    """Fails its first call with a retryable connection error, then answers."""
+
+    calls: int = 0
+
+    def _generate(self, *args: Any, **kwargs: Any) -> Any:
+        self.calls += 1
+        if self.calls == 1:
+            raise openai.APIConnectionError(request=httpx.Request("POST", "https://x.test"))
+        return super()._generate(*args, **kwargs)
+
+
+@pytest.mark.anyio
+async def test_chat_span_covers_retries_and_counts_them(
+    spans: InMemorySpanExporter, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = _FlakyModel(messages=iter([AIMessage(content="ok")]))
+    monkeypatch.setattr(factory, "create_chat_model", lambda settings: model)
+    monkeypatch.setattr(
+        factory,
+        "provider_retry_middleware",
+        lambda settings: ModelRetryMiddleware(
+            max_retries=2, retry_on=factory._is_retryable_provider_error, initial_delay=0
+        ),
+    )
+    graph = build_graph(Settings(env="test"))
+
+    with structlog.testing.capture_logs() as logs:
+        await graph.ainvoke({"messages": [HumanMessage(content="hi")]})
+
+    [chat] = _named(spans.get_finished_spans(), _CHAT)
+    [completed] = [log for log in logs if log["event"] == "agent_execution_completed"]
+    assert completed["retry_count"] == 1
+    assert model.calls == 2
+    assert _attributes(chat)[semconv.NEURON_RETRY_COUNT] == 1
+    assert chat.status.status_code is StatusCode.UNSET

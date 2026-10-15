@@ -1,7 +1,9 @@
 """Every span, metric and attribute name the service emits (ADR 0007, decision 1).
 
-Names follow the OpenTelemetry semantic conventions v1.41.0 and the GenAI conventions in
-`semantic-conventions-genai` as of 2026-10, whose status is Development. Upgrading the
+Names follow the OpenTelemetry semantic conventions v1.41.0 and the GenAI conventions, which
+have moved to the `semantic-conventions-genai` repository, as of 2026-10; their status is
+Development. `gen_ai.usage.input_tokens`/`output_tokens` include the cache-read and
+reasoning counts. Upgrading the
 conventions is a change to this module only; a test rejects these names anywhere else.
 """
 
