@@ -6,11 +6,16 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import SecretStr
 
+from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import AuthenticationError
+from neuron_agent.graphs import main_graph
+from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security import agent_server
 from neuron_agent.security.auth import Principal, principal_owner_key
+from neuron_agent.security.authorization import AuthorizationContext
 
 pytestmark = pytest.mark.anyio
 
@@ -146,3 +151,109 @@ def test_langgraph_json_registers_custom_auth() -> None:
 
     assert config["graphs"]["main"] == "neuron_agent.graphs.main_graph:graph"
     assert config["auth"]["path"] == "neuron_agent.security.agent_server:auth"
+
+
+# --- run authorization inside the graph (found by the v0.4.0 release gate, #63) ------
+
+
+class _ContextRecordingAgent:
+    """Answers "ok" and records the runtime context each run was given."""
+
+    def __init__(self) -> None:
+        self.contexts: list[object] = []
+
+    async def ainvoke(self, inputs: dict, *, config: dict, context: object = None) -> dict:
+        self.contexts.append(context)
+        return {
+            "messages": [*inputs["messages"], AIMessage(content="ok")],
+            "structured_response": AgentAnswer(answer="ok", used_tools=[], confidence=1.0),
+        }
+
+
+@pytest.fixture
+def recording_agent(monkeypatch: pytest.MonkeyPatch) -> _ContextRecordingAgent:
+    agent = _ContextRecordingAgent()
+    monkeypatch.setattr(main_graph, "build_agent", lambda settings: agent)
+    return agent
+
+
+_INPUT = {"messages": [HumanMessage(content="hi")]}
+
+
+@pytest.mark.parametrize(
+    "run_kwargs",
+    [
+        {"context": {"permissions": ["agent:invoke", "tools:calculator"]}},
+        {"config": {"configurable": {"permissions": ["tools:calculator"]}}},
+        {"context": {"permissions": ["tools:calculator"], "actor": "forged", "issuer_id": "x"}},
+    ],
+)
+async def test_client_run_context_cannot_grant_permissions(
+    recording_agent: _ContextRecordingAgent, run_kwargs: dict
+) -> None:
+    """Agent Server passes the client's `context` to the graph; it must carry no authority."""
+    graph = main_graph.build_graph(Settings(env="test"))
+
+    await graph.ainvoke(_INPUT, **run_kwargs)
+
+    [authorization] = recording_agent.contexts
+    assert isinstance(authorization, AuthorizationContext)
+    assert authorization.permissions == frozenset()
+    assert authorization.actor is None
+
+
+async def test_agent_server_runs_use_the_authenticated_users_permissions(
+    recording_agent: _ContextRecordingAgent,
+) -> None:
+    """Agent Server records the authenticated user in reserved, client-proof config keys."""
+    graph = main_graph.build_graph(Settings(env="test", auth_mode="none"))
+    owner = "a" * 64
+    configurable = {
+        "langgraph_auth_user_id": owner,
+        "langgraph_auth_permissions": ["agent:invoke", "tools:calculator"],
+    }
+
+    await graph.ainvoke(
+        _INPUT,
+        config={"configurable": configurable},
+        context={"permissions": ["threads:delete"]},  # ignored
+    )
+
+    [authorization] = recording_agent.contexts
+    assert isinstance(authorization, AuthorizationContext)
+    assert authorization.permissions == frozenset({"agent:invoke", "tools:calculator"})
+    assert authorization.principal is None
+
+
+async def test_agent_server_actor_is_the_owner_key_prefix_in_jwt_mode(
+    recording_agent: _ContextRecordingAgent,
+) -> None:
+    settings = Settings(
+        env="test",
+        auth_mode="jwt",
+        auth_issuer="https://issuer.example",
+        auth_audience="neuron-api",
+        auth_jwks_url="https://issuer.example/jwks.json",
+        identity_hash_key=SecretStr("h" * 32),
+        auth_issuer_id="primary",
+    )
+    graph = main_graph.build_graph(settings)
+    configurable = {"langgraph_auth_user_id": "b" * 64, "langgraph_auth_permissions": []}
+
+    await graph.ainvoke(_INPUT, config={"configurable": configurable})
+
+    [authorization] = recording_agent.contexts
+    assert isinstance(authorization, AuthorizationContext)
+    assert (authorization.actor, authorization.issuer_id) == ("b" * 12, "primary")
+
+
+async def test_agent_service_authorization_object_is_passed_through(
+    recording_agent: _ContextRecordingAgent,
+) -> None:
+    """`AgentService` passes an `AuthorizationContext` object, which no HTTP client can send."""
+    graph = main_graph.build_graph(Settings(env="test"))
+    trusted = AuthorizationContext(frozenset({"tools:calculator"}), actor="actor")
+
+    await graph.ainvoke(_INPUT, context=trusted)
+
+    assert recording_agent.contexts == [trusted]
