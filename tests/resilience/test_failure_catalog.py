@@ -20,7 +20,7 @@ from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
-    AgentExecutionError,
+    AgentStepLimitError,
     ConfigurationError,
     ProviderError,
     ProviderTimeoutError,
@@ -89,9 +89,9 @@ def _generous_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
             "internal_server_error",
         ),
         (
-            AgentExecutionError(f"agent execution failed: {_SECRET_MARKER}"),
-            500,
-            "internal_server_error",
+            AgentStepLimitError(f"Recursion limit of 16 reached: {_SECRET_MARKER}"),
+            422,
+            "agent_step_limit_exceeded",
         ),
     ],
     ids=[

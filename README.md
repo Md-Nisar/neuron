@@ -215,7 +215,7 @@ All reliability settings are `APP_`-prefixed environment variables read once in 
 | Provider request timeout | `APP_REQUEST_TIMEOUT_SECONDS` | 60s | `504 provider_timeout_error` |
 | Tool call timeout | `APP_TOOL_TIMEOUT_SECONDS` | 20s | `502 tool_execution_error` (never user-visible detail) |
 | Provider retries | `APP_PROVIDER_MAX_RETRIES` | 2 (3 attempts total) | exponential backoff + jitter, then the original provider error propagates |
-| Agent loop iterations | `APP_MAX_AGENT_ITERATIONS` | 5 | `500 agent_execution_error` (recursion limit) |
+| Agent loop iterations (model calls) | `APP_MAX_AGENT_ITERATIONS` | 8 | `422 agent_step_limit_exceeded` |
 | Whole-run budget | `APP_RUN_TIMEOUT_SECONDS` | 120s | `504 run_timeout`, or a stream `error` event with `run_timeout` |
 | Concurrent streams | `APP_MAX_CONCURRENT_STREAMS` | 100 per process | `503 too_many_streams` |
 | Model history budget | `APP_MAX_HISTORY_TOKENS` | 8000 tokens | the oldest turns are left out of the model input |

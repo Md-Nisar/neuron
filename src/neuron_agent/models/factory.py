@@ -28,13 +28,14 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
-from langgraph.errors import GraphBubbleUp
+from langgraph.errors import GraphBubbleUp, GraphRecursionError
 from langgraph.types import Command
 from opentelemetry.trace import Span, SpanKind
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     AppError,
     AuthorizationError,
     ConfigurationError,
@@ -420,10 +421,13 @@ def create_chat_model(settings: Settings) -> ChatOpenAI | _FakeChatModel:
 def agent_invocation_config(settings: Settings, *, run_id: str | None) -> dict[str, Any]:
     """Return the runtime recursion budget and, when known, the run ID for the agent loop.
 
+    `APP_MAX_AGENT_ITERATIONS` counts model calls. LangGraph's `recursion_limit` counts steps,
+    and every model call and every tool call is one, so N model calls need 2N steps.
+
     `AgentService` always supplies a run ID. Agent Server and LangGraph Studio inputs carry
     only `messages`, so LangGraph generates the run ID for those.
     """
-    config: dict[str, Any] = {"recursion_limit": settings.max_agent_iterations}
+    config: dict[str, Any] = {"recursion_limit": 2 * settings.max_agent_iterations}
     if run_id:
         config["run_id"] = uuid.UUID(run_id)
     return config
@@ -446,6 +450,8 @@ def classify_agent_error(exc: Exception) -> AppError:
         return ConfigurationError("model provider has no such model for this account")
     if isinstance(exc, openai.OpenAIError):
         return ProviderError("model provider request failed")
+    if isinstance(exc, GraphRecursionError):
+        return AgentStepLimitError("agent did not finish within the iteration limit")
     if isinstance(exc, LangChainStructuredOutputError):
         return AppStructuredOutputError("agent produced invalid structured output")
     return AgentExecutionError("agent execution failed")

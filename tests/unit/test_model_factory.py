@@ -12,6 +12,7 @@ from pydantic import SecretStr
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     ConfigurationError,
     ProviderError,
     ProviderQuotaError,
@@ -99,7 +100,7 @@ def test_agent_invocation_config_uses_max_agent_iterations_and_run_id() -> None:
     settings = Settings(env="test", max_agent_iterations=5, openai_api_key=None)
     run_id = "12345678-1234-5678-1234-567812345678"
     config = agent_invocation_config(settings, run_id=run_id)
-    assert config["recursion_limit"] == 5
+    assert config["recursion_limit"] == 10
     assert str(config["run_id"]) == run_id
 
 
@@ -203,7 +204,7 @@ def test_classify_agent_error_falls_back_to_agent_execution_error() -> None:
 
 def test_classify_agent_error_maps_recursion_limit_exceeded() -> None:
     error = GraphRecursionError("Recursion limit of 5 reached")
-    assert isinstance(classify_agent_error(error), AgentExecutionError)
+    assert isinstance(classify_agent_error(error), AgentStepLimitError)
 
 
 @pytest.mark.parametrize(
@@ -284,4 +285,4 @@ async def test_fake_chat_model_tolerates_create_agent_tool_binding() -> None:
 def test_agent_invocation_config_omits_missing_run_id() -> None:
     config = agent_invocation_config(Settings(env="test"), run_id=None)
     assert "run_id" not in config
-    assert config["recursion_limit"] == 5
+    assert config["recursion_limit"] == 16
