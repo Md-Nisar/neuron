@@ -14,9 +14,10 @@ from langchain_core.messages import (
     trim_messages,
 )
 from langchain_core.messages.utils import count_tokens_approximately
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
-from langgraph.runtime import Runtime
+from langgraph.runtime import get_runtime
 
 from neuron_agent.agents.factory import build_agent
 from neuron_agent.config.settings import Settings, get_settings
@@ -173,18 +174,43 @@ def build_graph(
     resolved_settings = settings or get_settings()
     agent = build_agent(resolved_settings)
 
-    async def agent_node(
-        state: MainGraphState, runtime: Runtime[AuthorizationContext]
-    ) -> dict[str, Any]:
+    async def agent_node(state: MainGraphState, config: RunnableConfig) -> dict[str, Any]:
+        authorization = _run_authorization(get_runtime().context, config, resolved_settings)
         return await call_agent(
-            state, agent=agent, settings=resolved_settings, authorization=runtime.context
+            state, agent=agent, settings=resolved_settings, authorization=authorization
         )
 
-    builder = StateGraph(MainGraphState, context_schema=AuthorizationContext)
+    # No `context_schema`: LangGraph would build one from the run's `context`, which Agent
+    # Server takes from the client's request.
+    builder = StateGraph(MainGraphState)
     builder.add_node("agent", agent_node)
     builder.add_edge(START, "agent")
     builder.add_edge("agent", END)
     return builder.compile(checkpointer=checkpointer)
+
+
+def _run_authorization(
+    context: object, config: RunnableConfig, settings: Settings
+) -> AuthorizationContext:
+    """The run's authorization, from trusted sources only (ADR 0006).
+
+    `AgentService` passes an `AuthorizationContext` object, which no HTTP client can send.
+    Anything else is a client-supplied Agent Server `context` and grants nothing: there the
+    permissions and owner come from the authenticated user, which Agent Server records in
+    reserved `configurable` keys that clients can't set.
+    """
+    if isinstance(context, AuthorizationContext):
+        return context
+    configurable = config.get("configurable", {})
+    permissions = configurable.get("langgraph_auth_permissions")
+    owner = configurable.get("langgraph_auth_user_id")
+    return AuthorizationContext(
+        frozenset(p for p in permissions if isinstance(p, str))
+        if isinstance(permissions, list | tuple)
+        else frozenset(),
+        actor=owner[:12] if settings.auth_mode == "jwt" and isinstance(owner, str) else None,
+        issuer_id=settings.auth_issuer_id,
+    )
 
 
 # Exported to langgraph.json. Compiled without a checkpointer: Agent Server supplies its own.

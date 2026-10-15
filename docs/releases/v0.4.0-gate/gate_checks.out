@@ -1,0 +1,40 @@
+[PASS] CORS preflight for /v1/agent/stream from the allowed origin (via nginx): 200, allow-origin=https://app.example.com
+[PASS] CORS preflight from a disallowed origin: 400, no allow-origin
+[PASS] invoke without a token (via nginx): 401 {'detail': 'authentication_error'} WWW-Authenticate=Bearer error="invalid_token"
+[PASS] authenticated invoke from the allowed origin (via nginx): 200, allow-origin=https://app.example.com, cache-control=no-store
+[PASS] authenticated stream (via nginx, OPERATIONS.md location block): 200, Counter({'token': 19, 'run_started': 1, 'final': 1, 'done': 1}), 0.03s, content-type=text/event-stream; charset=utf-8, cache-control=no-store, X-Accel-Buffering consumed by nginx
+[PASS] token without agent:invoke: 403 {'detail': 'authorization_error'} Bearer error="insufficient_scope", scope="agent:invoke"
+[PASS] Postgres: alice lists her threads: total=2
+[PASS] Postgres: bob lists only his thread: total=1
+[PASS] Postgres: bob reads, deletes or continues alice's thread: [404, 404, 404]
+[PASS] Postgres: alice exports her turns only: total_threads=2, 702 bytes
+[PASS] Postgres: bob's export has nothing of alice's: no alice content
+[PASS] Postgres: alice erases all; bob is untouched: {'erased_count': 2, 'skipped_busy_count': 0}, alice now 0, bob 1
+[PASS] k1 token before rotation: 200
+[PASS] key rotation: a token from newly published k2 is accepted without a restart: first attempt 401; accepted after 2.1s
+[PASS] key rotation: k1 tokens are rejected once k1 leaves the JWKS and the cache expires: 401 {'detail': 'authentication_error'}
+[PASS] IdP/JWKS outage: valid token fails closed: 503 {'detail': 'authentication_unavailable'}
+[PASS] IdP/JWKS outage: readiness: 503 {'status': 'not_ready'}
+[PASS] IdP/JWKS outage: a malformed token is still 401 (no fetch needed): 401
+[PASS] IdP recovery: requests and readiness recover: request 200, ready 200
+[PASS] per-principal rate limit (burst 3): [200, 200, 200, 429], then 429 {'detail': 'rate_limited'} Retry-After=3600
+[PASS] another principal is unaffected: 200
+[PASS] failed authentication is limited per IP: [401, 401, 401, 429]
+[PASS] per-principal concurrent-run cap (2): two runs [200, 200], third 429 {'detail': 'too_many_concurrent_runs'} Retry-After=1
+[PASS] another principal runs during the cap: 200
+[PASS] per-principal token budget (1000 tokens, 400 per model call): after the 2 capped runs: [200, 429], {'detail': 'quota_exceeded'} Retry-After=3597
+[PASS] refuses to start: production, no auth settings: APP_AUTH_MODE=none is only allowed in development and test
+[PASS] refuses to start: staging, no auth settings: APP_AUTH_MODE=none is only allowed in development and test
+[PASS] refuses to start: production, APP_AUTH_MODE=none: APP_AUTH_MODE=none is only allowed in development and test
+[PASS] refuses to start: production, jwt without APP_IDENTITY_HASH_KEY: APP_IDENTITY_HASH_KEY must be at least 32 characters in JWT mode
+[PASS] refuses to start: production, http JWKS URL: APP_AUTH_JWKS_URL must use HTTPS outside development
+[PASS] refuses to start: staging, jwt without APP_AUTH_AUDIENCE: APP_AUTH_AUDIENCE is required when APP_AUTH_MODE=jwt
+[PASS] starts: production with complete jwt settings (control): exit 0
+[PASS] audit: required events present: all present
+[PASS] audit: reasons observed: all present
+[PASS] logs: none of 36 tokens, token signatures, subjects or prompts appear in 112 log lines: none found
+[PASS] audit: no raw client IP in 61 audit records: none
+[PASS] audit: records carry only the documented fields: fixed schema
+audit events: {'auth_failed': 11, 'auth_succeeded': 30, 'thread_created': 7, 'authorization_denied': 4, 'user_data_exported': 2, 'user_data_erased': 2, 'limit_exceeded': 5}
+audit reasons: {'auth_failed:missing_token': 1, 'authorization_denied:insufficient_scope': 1, 'authorization_denied:thread_not_found': 3, 'auth_failed:unknown_signing_key': 4, 'auth_failed:jwks_unavailable': 1, 'auth_failed:invalid_token': 5, 'limit_exceeded:request_rate': 2, 'limit_exceeded:authentication_attempts': 1, 'limit_exceeded:concurrent_runs': 1, 'limit_exceeded:token_budget': 1}
+37/37 checks passed

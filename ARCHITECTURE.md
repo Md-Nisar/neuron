@@ -86,7 +86,11 @@ FastAPI routes.
 `security/agent_server.py` is registered in `langgraph.json`. Its global authz
 handler denies unregistered actions; explicit thread and assistant handlers
 enforce permissions and add owner filters for resource access. Runs are scoped
-through their parent thread. `agent:invoke` permits assistant discovery and
+through their parent thread. Inside a run, the graph takes permissions and the owner key
+from the authenticated user that Agent Server records in reserved `configurable` keys
+(`langgraph_auth_permissions`, `langgraph_auth_user_id`), which clients can't set; the
+run's `context` comes from the client and grants nothing. Only an `AuthorizationContext`
+object, which `AgentService` passes and no HTTP client can send, is used as is. `agent:invoke` permits assistant discovery and
 thread/run creation; assistant mutations additionally require
 `assistants:write` or `assistants:delete`, since invocation alone does not grant
 administrative access. The only bearer-free path is the explicit local
