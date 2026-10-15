@@ -10,8 +10,9 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import AuthenticationError
+from neuron_agent.errors.base import AuthenticationError, AuthorizationError
 from neuron_agent.graphs import main_graph
+from neuron_agent.models.factory import tool_authorization_middleware
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security import agent_server
 from neuron_agent.security.auth import Principal, principal_owner_key
@@ -257,3 +258,27 @@ async def test_agent_service_authorization_object_is_passed_through(
     await graph.ainvoke(_INPUT, context=trusted)
 
     assert recording_agent.contexts == [trusted]
+
+
+def test_agent_server_keeps_the_auth_keys_client_proof() -> None:
+    """The fix relies on Agent Server stripping these keys from client requests."""
+    from langgraph_api.validation import RESERVED_CONFIGURABLE_KEYS
+
+    assert {"langgraph_auth_user_id", "langgraph_auth_permissions"} <= set(
+        RESERVED_CONFIGURABLE_KEYS
+    )
+
+
+async def test_tool_middleware_grants_nothing_to_a_plain_dict_context() -> None:
+    """A client-shaped context never authorizes a tool, even if it lists the permission."""
+    middleware = tool_authorization_middleware()
+    request = SimpleNamespace(
+        tool_call={"name": "calculator", "args": {}, "id": "call-1"},
+        runtime=SimpleNamespace(context={"permissions": ["tools:calculator"]}),
+    )
+
+    async def handler(_: object) -> str:
+        raise AssertionError("the tool must not run")
+
+    with pytest.raises(AuthorizationError):
+        await middleware.awrap_tool_call(request, handler)
