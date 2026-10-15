@@ -7,6 +7,8 @@ Fixes found by the first live eval runs:
 - An empty final answer from the model is a `502 structured_output_error`, not an unclassified internal error.
 - A provider `404` (unknown model, or one the account can't use) is a non-retryable `configuration_error`, not a retryable `provider_error`.
 - The eval runners score a case whose run fails as a failed case (`run failed: <error code>`) and continue, instead of aborting the whole suite.
+- Request validation failures log only each error's `type` and `loc`; the rejected input (request text) is no longer logged.
+- The deterministic eval harness tests run in `make test` and CI again; since the NVIDIA provider change only the live quality evals (now also marked `integration`) are excluded by default.
 
 ## 0.4.0
 

@@ -14,7 +14,8 @@ from neuron_agent.evaluation import (
     run_security_suite,
 )
 
-pytestmark = [pytest.mark.eval, pytest.mark.anyio]
+# Live model calls: `integration` keeps these out of the default run; `make eval` selects them.
+pytestmark = [pytest.mark.eval, pytest.mark.integration, pytest.mark.anyio]
 
 _FIXTURE_PATH = Path("tests/fixtures/eval_cases.json")
 

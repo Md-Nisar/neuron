@@ -77,8 +77,9 @@ packages = ["neuron_agent"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
-# Live suites run only when selected explicitly (`make test-integration`, `make eval`).
-addopts = "-q --strict-markers --strict-config -m 'not integration and not eval'"
+# Live suites (`integration`) run only when selected explicitly (`make test-integration`,
+# `make eval`); the deterministic `eval` harness tests run by default.
+addopts = "-q --strict-markers --strict-config -m 'not integration'"
 testpaths = ["tests"]
 markers = [
     "integration: tests that require external services or credentials",
