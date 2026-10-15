@@ -13,15 +13,17 @@ agent answers or how it behaves in production:
   suites became runnable after v0.4.0, and their first runs found four defects.
 - The `neuron-eval` report is a single pass/fail per case: no repeated trials, no
   confidence intervals, no latency, tokens or cost, no baseline to compare with.
-  CI selects `tests/evals` but the default `-m 'not integration and not eval'`
-  deselects every eval test, so CI runs no evals.
+  Since #83, CI selects `tests/evals` but the default
+  `-m 'not integration and not eval'` deselects every eval test, so CI runs no
+  evals (being fixed separately).
 - Production telemetry is structlog JSON only. There are no metrics, no traces, no
   SLOs and no dashboards. Token usage is logged as one total; cost is unknown.
 - `APP_ENABLE_LANGSMITH` exists but is never read. LangSmith tracing is controlled
   only by `LANGSMITH_TRACING`, which, when set, sends prompts and answers to a SaaS
   regardless of environment.
 - `agent_request_validation_failed` logs Pydantic's `exc.errors()`, whose entries
-  carry the rejected `input` value, so request text can reach logs.
+  carry the rejected `input` value, so request text can reach logs (being fixed
+  separately).
 - The Agent Server path never calls `configure_logging`, carries no `request_id` or
   `run_id`, and does not count tokens.
 
@@ -73,8 +75,8 @@ Chosen: **3**.
 LangSmith experiments, Langfuse, Braintrust, DeepEval, Inspect AI, Promptfoo and
 OpenAI Evals were compared (`docs/research-notes.md`). The existing pytest +
 `neuron-eval` harness already runs cases through `AgentService` with real
-authorization; replacing it buys little. OpenAI's hosted Evals shuts down on
-2026-11-30.
+authorization; replacing it buys little. OpenAI's hosted Evals is a
+vendor-specific service and is not considered.
 
 Chosen: **extend the in-repo harness**, with optional upload of results to
 LangSmith experiments. Promptfoo red-teaming and Inspect/AgentDojo stay optional
@@ -128,14 +130,13 @@ label a metric.
 - A structlog processor adds `trace_id` and `span_id` when a valid span is current.
 - `X-Correlation-ID` stays the request's correlation ID; the service-minted
   `request_id` is kept, and both are recorded on the run span.
-- `agent_request_validation_failed` logs only each error's `type` and `loc`.
 - The graph module configures logging when it is loaded by Agent Server.
 
 ### 4. Tokens and cost
 
 - Usage is recorded by kind (input, output, cache read, reasoning) per model call,
   not only as a total. Budgets keep charging totals (ADR 0006 is unchanged).
-- Estimated cost comes from a versioned pricing file
+- Optional in v0.5.0 (may slip without blocking the release): estimated cost from a versioned pricing file
   (`config/model_pricing.json`: per-model USD per million tokens by kind, with an
   `as_of` date). Unknown models report tokens but no cost and log
   `model_pricing_missing` once. Cost is an estimate for trends, not billing.
@@ -156,9 +157,9 @@ Three suites, one harness:
 
 | Suite | Data | Graders | Runs | Gate |
 | --- | --- | --- | --- | --- |
-| Regression | v1-v2 cases plus cases from fixed defects | Code: schema, tool trajectory, keywords, refusals | Every PR (fake model), nightly and pre-release (live) | Fake: 100%. Live: no drop below baseline beyond the CI. |
+| Regression | v1-v2 cases plus cases from fixed defects | Code: schema, tool trajectory, structured expectations, keywords only where unavoidable, refusals | Every PR (fake model), nightly and pre-release (live) | Fake: 100%. Live: per case (below). |
 | Security | v3 plus v4 injection cases | Code: state, allow-list and isolation invariants | Every PR (fake), nightly and pre-release (live) | pass^k = 100% |
-| Quality | Rubric cases | LLM judge, binary, one dimension per judge, pinned judge model | Nightly and pre-release | Reported only, until the judge is calibrated (TPR, TNR >= 0.9 on >= 100 labelled runs) |
+| Quality | Rubric cases | LLM judge, binary, one dimension per judge, pinned judge model | Deferred beyond v0.5.0 | Reported only, until the judge is calibrated (TPR, TNR >= 0.9 on >= 100 labelled runs) |
 
 - **Trials:** `neuron-eval --trials k` runs each case k times and reports pass rate,
   pass^k, and a 95% Wilson interval per suite and category.
@@ -167,21 +168,37 @@ Three suites, one harness:
   also asserts no tool outside the caller's permissions ran.
 - **Report:** a versioned JSON schema adding latency (p50/p95), tokens by kind and
   estimated cost per case and suite, model, git SHA and dataset versions.
+- **Live regression gate (per case):** a regression case that passed every trial in
+  the baseline must not fail every trial in the candidate. A suite-level confidence
+  interval is too wide to gate on at current sizes (16 cases × 3 trials at ~0.8
+  pass gives a 95% Wilson interval of ~0.67-0.89, so losing two cases looks like
+  noise). Suite intervals are reported, not gated, until a gated suite has about
+  50 cases.
 - **Baselines:** `evals/baselines/<model>.json` is committed;
-  `neuron-eval compare` fails on a regression outside the interval, and reports
-  infrastructure errors (provider/quota/timeout) separately from quality failures.
+  `neuron-eval compare` applies the per-case and security gates, and reports
+  infrastructure errors (provider/quota/timeout) separately; they make a run
+  inconclusive, never a pass or a quality failure.
+- **Models:** the development baseline is the NVIDIA catalog model
+  `nvidia/nemotron-3-super-120b-a12b` (live on `main` at `da1492e`: single-turn
+  14/16, multi-turn 11/13, security 12/12), run with an NVIDIA free-tier key whose
+  CI rate limits and terms are still to be confirmed. The release gate must
+  eventually run on the production model (OpenAI); until a funded key exists, a
+  release that cannot do so lists it as a known issue.
+- **Cost of a run:** one live pass of all suites takes about 20 minutes, so a
+  nightly 3-trial run takes about an hour.
 - **CI:** a PR job runs the eval-marked fake-model suites (fixing the current
   deselection). A scheduled and manually-triggered workflow runs the live suites
   when a provider secret is configured; it uploads the report as an artifact and,
   with `APP_ENABLE_LANGSMITH`, as a LangSmith experiment.
 
-### 7. Production feedback
+### 7. Production feedback (deferred to v0.8.0)
 
-`POST /v1/threads/{thread_id}/runs/{run_id}/feedback` (`{score: -1|1, reason?}`),
-owner-checked like other thread routes, requiring a new `feedback:write` scope. It
-is recorded as a span event and a `user_feedback` log event (score and a fixed
-reason code; free text is not accepted), and forwarded to LangSmith feedback when
-enabled. No feedback store is added in v0.5.0; a negative-feedback rate is a metric.
+A run-scoped feedback endpoint is useful only with a UI, so it moves to v0.8.0.
+The intended shape, for that release: `POST
+/v1/threads/{thread_id}/runs/{run_id}/feedback` (`{score: -1|1, reason?}`),
+owner-checked like other thread routes, a new `feedback:write` scope, recorded as a
+span event, a `user_feedback` log event (fixed reason codes, no free text) and a
+metric, and forwarded to LangSmith feedback when enabled.
 
 ### 8. SLOs, alerts and readiness
 
@@ -191,8 +208,8 @@ enabled. No feedback store is added in v0.5.0; a negative-feedback rate is a met
   gate.
 - `deploy/observability/` ships a Collector configuration (memory limiter,
   allow-list attribute redaction, tail sampling that keeps errors and slow traces,
-  batch) and a development-only Compose file with Grafana, Tempo, Loki and
-  Prometheus, plus dashboards and alert rules as code.
+  batch) and example alert rules. A development-only Compose stack with Grafana,
+  Tempo, Loki, Prometheus and dashboards is optional.
 - `/health/ready` probes JWKS reachability (closing the v0.4.0 known issue); it
   still makes no model call.
 
@@ -208,6 +225,8 @@ enabled. No feedback store is added in v0.5.0; a negative-feedback rate is a met
 ## Non-goals (v0.5.0)
 
 - Capturing prompt or answer content in any telemetry backend.
+- LLM-judge quality evals (deferred; report-only even when built) and the user
+  feedback endpoint (v0.8.0).
 - Online LLM-judge scoring of production traffic (it needs content to leave the
   service; revisit with an anonymiser and explicit consent).
 - A feedback or eval-results database, dashboards UI in the app, billing-grade cost.
@@ -224,7 +243,8 @@ enabled. No feedback store is added in v0.5.0; a negative-feedback rate is a met
   GenAI conventions stabilise.
 - Releases are gated on live, repeated-trial evidence rather than fake-model
   passes, which needs a funded provider key in CI.
-- LLM-judge scores inform but do not block until calibrated.
+- Gating is per case and on deterministic checks only; suite-level statistics are
+  informational until the gated suites grow.
 
 ## References
 
@@ -234,4 +254,3 @@ enabled. No feedback store is added in v0.5.0; a negative-feedback rate is a met
 - https://github.com/open-telemetry/semantic-conventions-genai
 - https://docs.langchain.com/langsmith/trajectory-evals
 - https://docs.langchain.com/langsmith/mask-inputs-outputs
-- https://developers.openai.com/api/docs/guides/evals

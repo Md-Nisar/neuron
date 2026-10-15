@@ -81,9 +81,9 @@ source of the spec; treat pricing and licence details as perishable.
   https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/evaluation-evaluators/agent-evaluators
 - UK AISI Inspect AI: Task = dataset + solver + scorer, `epochs` for repeated
   trials. Research-grade; best for deep security evals. https://inspect.aisi.org.uk/
-- OpenAI's hosted Evals platform becomes read-only on 2026-10-31 and shuts down on
-  2026-11-30; its migration target is Promptfoo. Do not build on it.
-  https://developers.openai.com/api/docs/guides/evals
+- OpenAI's hosted Evals platform is vendor-specific; search excerpts report it is
+  being retired in favour of Promptfoo, but no retirement date could be verified.
+  Not considered.
 - Judge calibration: label ~100 traces per failure mode, require TPR and TNR >= 0.9
   on a held-out split before a judge gates anything; prefer binary,
   one-dimension-per-judge rubrics with a pinned judge model.
@@ -105,7 +105,7 @@ source of the spec; treat pricing and licence details as perishable.
 | DeepEval / Ragas | Apache-2.0 / OSS | Overlap with our harness; Ragas is RAG-centric. Borrow metric ideas only. |
 | Promptfoo | MIT CLI | Best fit for optional red-teaming in CI. |
 | Inspect AI | MIT | Occasional deep security runs, not product CI. |
-| OpenAI Evals | Hosted, shutting down | Avoid. |
+| OpenAI Evals | Hosted, OpenAI-specific | Not considered. |
 
 ### Observability practice
 
