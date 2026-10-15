@@ -229,6 +229,8 @@ Streaming and conversation-state telemetry, listed in full in `OPERATIONS.md#str
 
 Logging never includes raw user prompts, tool arguments, exception text, or provider secrets — only stable, pre-classified fields (IDs, names, codes, counts, durations). API keys are read once in `models/factory.py::create_chat_model` and are never passed to a logger. See `SECURITY.md` for the broader logging/secrets policy.
 
+v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). Until those issues land, the structured logs and optional LangSmith tracing described above are the only telemetry.
+
 ## Scaling
 
 The service is stateless except for provider clients and graph construction. Horizontal scaling is supported for the HTTP layer. Durable thread state requires Agent Server managed persistence or a configured production checkpointer.
