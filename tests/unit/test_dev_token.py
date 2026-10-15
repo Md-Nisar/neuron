@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import stat
 import threading
 import urllib.error
@@ -79,8 +80,9 @@ def test_setup_creates_a_private_key_once_and_a_stable_jwks(tmp_path: Path) -> N
     _, first_kid = dev_token.ensure_keys(tmp_path)
     _, second_kid = dev_token.ensure_keys(tmp_path)
 
-    key_mode = stat.S_IMODE((tmp_path / "jwt-private.pem").stat().st_mode)
-    assert key_mode == 0o600
+    if os.name != "nt":  # Windows has no POSIX permission bits
+        key_mode = stat.S_IMODE((tmp_path / "jwt-private.pem").stat().st_mode)
+        assert key_mode == 0o600
     assert first_kid == second_kid
     [jwk] = json.loads((tmp_path / "jwks.json").read_text())["keys"]
     assert jwk["kid"] == first_kid

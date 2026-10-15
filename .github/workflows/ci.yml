@@ -6,7 +6,11 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
@@ -16,4 +20,6 @@ jobs:
       - run: uv run python -m ruff check src tests
       - run: uv run python -m mypy src
       - run: uv run python -m pytest tests/unit tests/graph tests/security tests/evals
-      - run: make security
+      # The dependency audit is platform-independent and `make` isn't on Windows runners.
+      - if: runner.os == 'Linux'
+        run: make security
