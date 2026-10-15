@@ -327,6 +327,9 @@ def classify_agent_error(exc: Exception) -> AppError:
         return ProviderTimeoutError("model provider timed out")
     if isinstance(exc, openai.AuthenticationError):
         return ConfigurationError("model provider authentication failed")
+    if isinstance(exc, openai.NotFoundError):
+        # An unknown model or one the account can't use: retrying never helps.
+        return ConfigurationError("model provider has no such model for this account")
     if isinstance(exc, openai.OpenAIError):
         return ProviderError("model provider request failed")
     if isinstance(exc, LangChainStructuredOutputError):

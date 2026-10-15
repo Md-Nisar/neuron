@@ -280,10 +280,10 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 | `413 payload_too_large` | request body exceeds `APP_MAX_REQUEST_BODY_BYTES` | reject before parsing |
 | `504 provider_timeout_error` | model provider did not respond within `APP_REQUEST_TIMEOUT_SECONDS` | retried internally first; surfaces only after retries are exhausted |
 | `502 tool_execution_error` | tool exceeded `APP_TOOL_TIMEOUT_SECONDS` or raised an unclassified exception | tool failure is isolated; it cannot crash the agent loop |
-| `502 provider_error` / `structured_output_error` | upstream 5xx, or the model returned output that failed the `AgentAnswer` schema | internal detail is logged, not returned to the caller |
+| `502 provider_error` / `structured_output_error` | upstream 5xx, or the model returned output that failed the `AgentAnswer` schema or was empty | internal detail is logged, not returned to the caller |
 | `500 agent_execution_error` | agent loop exceeded `APP_MAX_AGENT_ITERATIONS`, or an unclassified internal failure | check server logs' `error_type`/`error_code` fields |
 | `503` with log `error_code=provider_quota_exhausted` | the model provider account has no credit (OpenAI `429 insufficient_quota`) | add credit or raise the quota; never retried, alerts on every request until fixed |
-| `500 configuration_error` | unsupported model provider, malformed `provider:model` identifier, or provider auth failure | fix configuration; never retried |
+| `500 configuration_error` | unsupported model provider, malformed `provider:model` identifier, provider auth failure, or a model the provider does not offer this account (`404`) | fix configuration; never retried |
 | `409 thread_busy` | another run on the same thread is still in flight (same process), or `DELETE` during a run | client retries after the current run finishes; normal for double-submits |
 | `404 thread_not_found` | unknown thread, a different `user_id`, or persistence is `none` / was pruned | client starts a new conversation (omit `thread_id`) |
 | `503 too_many_streams` | the process is at `APP_MAX_CONCURRENT_STREAMS` | scale out or raise the cap; watch `stream_rejected` |

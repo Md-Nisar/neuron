@@ -168,6 +168,15 @@ def test_classify_agent_error_maps_authentication_failure() -> None:
     assert isinstance(classify_agent_error(error), ConfigurationError)
 
 
+def test_classify_agent_error_maps_unknown_model_to_configuration_error() -> None:
+    response = httpx.Response(status_code=404, request=_REQUEST)
+    error = openai.NotFoundError("model not found for account", response=response, body=None)
+    assert _is_retryable_provider_error(error) is False
+    classified = classify_agent_error(error)
+    assert isinstance(classified, ConfigurationError)
+    assert classified.context.retryable is False
+
+
 def test_classify_agent_error_maps_generic_provider_error() -> None:
     error = openai.APIConnectionError(request=_REQUEST)
     assert isinstance(classify_agent_error(error), ProviderError)

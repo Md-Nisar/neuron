@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Fixes found by the first live eval runs:
+- `used_tools` lists the tools that actually ran successfully in the request, not the model's own claim, which could omit tools or list the internal `AgentAnswer` output tool.
+- An empty final answer from the model is a `502 structured_output_error`, not an unclassified internal error.
+- A provider `404` (unknown model, or one the account can't use) is a non-retryable `configuration_error`, not a retryable `provider_error`.
+- The eval runners score a case whose run fails as a failed case (`run failed: <error code>`) and continue, instead of aborting the whole suite.
+
 ## 0.4.0
 
 "Secure Multi-User": verified identity, per-user isolation and limits (ADR 0006).

@@ -7,7 +7,7 @@ import openai
 import pytest
 import structlog.testing
 from langchain.agents.structured_output import StructuredOutputValidationError
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphRecursionError
 
@@ -36,11 +36,30 @@ class FakeAgent:
         assert config["recursion_limit"] == 5
         assert str(config["run_id"]) == "12345678-1234-5678-1234-567812345678"
         return {
-            "messages": [AIMessage(content="4")],
+            "messages": [
+                *_state()["messages"],
+                AIMessage(content="", tool_calls=[_call("calculator", "call-1")]),
+                ToolMessage(content="4", tool_call_id="call-1"),
+                AIMessage(content="4"),
+            ],
             "structured_response": AgentAnswer(
                 answer="4", used_tools=["calculator"], confidence=1.0
             ),
         }
+
+
+def _call(name: str, call_id: str) -> dict[str, Any]:
+    return {"name": name, "args": {}, "id": call_id}
+
+
+class ScriptedAgent:
+    def __init__(self, result: dict[str, object]) -> None:
+        self._result = result
+
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, object]
+    ) -> dict[str, object]:
+        return {**self._result, "messages": [*inputs["messages"], *self._result["messages"]]}
 
 
 class RawTextAgent:
@@ -80,6 +99,51 @@ async def test_call_agent_falls_back_to_raw_text_when_structured_response_missin
     assert result["answer"].answer == "raw text answer"
     assert result["answer"].used_tools == []
     assert result["answer"].confidence == 0.5
+
+
+@pytest.mark.parametrize("content", ["", "   "])
+async def test_call_agent_rejects_an_empty_raw_text_answer(content: str) -> None:
+    agent = ScriptedAgent({"messages": [AIMessage(content=content)]})
+    with pytest.raises(AppStructuredOutputError):
+        await call_agent(_state(), agent=agent)
+
+
+async def test_used_tools_come_from_the_tool_calls_that_ran_not_the_model() -> None:
+    agent = ScriptedAgent(
+        {
+            "messages": [
+                AIMessage(
+                    content="",
+                    tool_calls=[_call("calculator", "c1"), _call("utc_now", "c2")],
+                ),
+                ToolMessage(content="4", tool_call_id="c1"),
+                ToolMessage(content="denied", tool_call_id="c2", status="error"),
+                AIMessage(content="", tool_calls=[_call("calculator", "c3")]),
+                ToolMessage(content="9", tool_call_id="c3"),
+                AIMessage(content="", tool_calls=[_call("AgentAnswer", "c4")]),
+                ToolMessage(content="Returning structured response", tool_call_id="c4"),
+            ],
+            "structured_response": AgentAnswer(
+                answer="4", used_tools=["AgentAnswer", "utc_now"], confidence=1.0
+            ),
+        }
+    )
+    result = await call_agent(_state(), agent=agent)
+    assert result["answer"].used_tools == ["calculator"]
+
+
+async def test_used_tools_ignore_tool_calls_from_earlier_turns() -> None:
+    state = _state()
+    state["messages"] = [
+        HumanMessage(content="first"),
+        AIMessage(content="", tool_calls=[_call("calculator", "old")]),
+        ToolMessage(content="2", tool_call_id="old"),
+        AIMessage(content="2"),
+        HumanMessage(content="thanks"),
+    ]
+    agent = ScriptedAgent({"messages": [AIMessage(content="You're welcome.")]})
+    result = await call_agent(state, agent=agent)
+    assert result["answer"].used_tools == []
 
 
 async def test_call_agent_wraps_rate_limit_error() -> None:
