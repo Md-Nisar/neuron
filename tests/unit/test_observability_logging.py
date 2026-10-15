@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import importlib
+from typing import Any
+
+import pytest
 import structlog
 import structlog.testing
 
+from neuron_agent.config.settings import get_settings
+from neuron_agent.graphs import main_graph
+from neuron_agent.observability import logging as logging_module
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 
@@ -65,3 +72,25 @@ def test_audit_emits_fixed_schema_through_dedicated_logger() -> None:
     assert logs[0]["reason"] == "insufficient_scope"
     assert "timestamp" in logs[0]
     assert "sub" not in logs[0]
+
+
+def test_loading_graph_module_configures_logging_once_alongside_the_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Agent Server loads only the graph module; the API's own call must not reconfigure."""
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(structlog, "configure", lambda **kw: calls.append(kw))
+    monkeypatch.setattr(logging_module, "_configured", False)
+
+    importlib.reload(main_graph)
+    importlib.reload(main_graph)
+    settings = get_settings()
+    logging_module.configure_logging(
+        level=settings.log_level,
+        service=settings.name,
+        version=settings.version,
+        environment=settings.env,
+    )
+
+    assert len(calls) == 1
+    assert isinstance(calls[0]["processors"][-1], structlog.processors.JSONRenderer)

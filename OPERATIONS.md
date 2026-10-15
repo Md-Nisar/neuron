@@ -63,10 +63,14 @@ Related settings: trusted proxies and per-user limits are under Rate Limiting, a
 
 ## Logs and Traces
 
-Logs are JSON and include service metadata. Enable LangSmith tracing by setting:
+Logs are JSON and include service metadata, on the FastAPI server and on Agent Server.
+
+`APP_ENABLE_LANGSMITH` is not read yet: it takes effect in #93 (ADR 0007, section 5), and
+until then it changes nothing. LangSmith tracing is controlled only by the `LANGSMITH_*`
+variables, and `LANGSMITH_TRACING=true` sends prompts and answers to LangSmith in every
+environment:
 
 ```text
-APP_ENABLE_LANGSMITH=true
 LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=...
 LANGSMITH_PROJECT=neuron-agent-production

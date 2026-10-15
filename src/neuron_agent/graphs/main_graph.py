@@ -31,6 +31,7 @@ from neuron_agent.models.factory import (
     reset_retry_attempts,
 )
 from neuron_agent.observability import semconv, telemetry
+from neuron_agent.observability.logging import configure_logging
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.state.main import MainGraphState
@@ -295,5 +296,14 @@ def _run_authorization(
     )
 
 
+# Agent Server loads only this module, so it configures logging itself (ADR 0007).
+_settings = get_settings()
+configure_logging(
+    level=_settings.log_level,
+    service=_settings.name,
+    version=_settings.version,
+    environment=_settings.env,
+)
+
 # Exported to langgraph.json. Compiled without a checkpointer: Agent Server supplies its own.
-graph = build_graph()
+graph = build_graph(_settings)
