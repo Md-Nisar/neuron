@@ -6,7 +6,7 @@ import re
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import AliasChoices, Field, SecretStr, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production", "test"]
@@ -94,6 +94,12 @@ class Settings(BaseSettings):
             "OPENAI_API_KEY",
         ),
     )
+
+    @field_validator("openai_api_key", mode="before")
+    @classmethod
+    def empty_provider_key_is_unset(cls, value: object) -> object:
+        """`OPENAI_API_KEY=` (as copied from `.env.example`) means no key, not an empty one."""
+        return None if value == "" else value
 
     @model_validator(mode="after")
     def require_provider_key_outside_tests(self) -> Settings:

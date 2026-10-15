@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.models.factory import _FakeChatModel, create_chat_model
 
 
 def test_settings_require_openai_key_in_production() -> None:
@@ -143,3 +144,14 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     assert expected - documented == set(), "add these settings to .env.example"
     assert documented - expected == set(), "remove stale settings from .env.example"
     assert re.search(r"^OPENAI_API_KEY=", text, re.MULTILINE)
+
+
+def test_empty_provider_key_from_env_example_means_no_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`cp .env.example .env` leaves `OPENAI_API_KEY=`; development must still use the fake model."""
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    settings = Settings(env="development")
+
+    assert settings.openai_api_key is None
+    assert isinstance(create_chat_model(settings), _FakeChatModel)
