@@ -9,6 +9,7 @@ Fixes found by the first live eval runs:
 - The eval runners score a case whose run fails as a failed case (`run failed: <error code>`) and continue, instead of aborting the whole suite.
 - Request validation failures log only each error's `type` and `loc`; the rejected input (request text) is no longer logged.
 - `retry_count` on `agent_execution_completed`/`agent_execution_failed` logs counts provider retries again; it was always `0` with the real agent, because the count was updated in a child context (found while adding #90's span attribute).
+- A tool's input-validation failure (e.g. invalid calculator input) is returned to the model as a fixed-text tool error instead of aborting the run with `400 validation_error`, so it can correct the call or refuse (found by `adversarial-tool-abuse-002`, #101). It is still logged as `tool_call_failed` and recorded on the `execute_tool` span; authorization denials and timeouts still end the run.
 - The deterministic eval harness tests run in `make test` and CI again; since the NVIDIA provider change only the live quality evals (now also marked `integration`) are excluded by default.
 
 v0.5.0 "Evaluation + Observability" (ADR 0007):
