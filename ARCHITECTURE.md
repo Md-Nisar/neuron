@@ -229,10 +229,11 @@ Streaming and conversation-state telemetry, listed in full in `OPERATIONS.md#str
 
 Logging never includes raw user prompts, tool arguments, exception text, or provider secrets — only stable, pre-classified fields (IDs, names, codes, counts, durations). API keys are read once in `models/factory.py::create_chat_model` and are never passed to a logger. See `SECURITY.md` for the broader logging/secrets policy.
 
-v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). So far the OpenTelemetry foundation is in place:
+v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). So far the OpenTelemetry foundation and agent tracing are in place:
 - `observability/telemetry.py` builds the SDK providers from `Settings` and exports over OTLP/HTTP when `APP_OTEL_ENABLED=true`. Otherwise the global no-op providers stay in place and nothing is exported.
 - `api/main.py` instruments the FastAPI app, excluding `/health/*`, and records `X-Correlation-ID` on the server span.
 - `observability/logging.py::add_trace_context` adds `trace_id` and `span_id` to every log line written inside a valid span context, sampled or not.
+- The graph's `agent` node opens one `invoke_agent neuron` span per run, on both deployment paths. `models/factory.py::tracing_middleware`, the outermost agent middleware, opens a `chat {model}` span per model call (covering its retries) and an `execute_tool {tool}` span per tool call (covering authorization). `AgentService.stream` opens `neuron.stream` and starts the run's producer task inside it, so the run's spans are its children. Spans hold IDs, names, counts and `AppError` codes only, and `telemetry.start_span` never records exceptions.
 - `observability/semconv.py` is the only place span, metric and attribute names are defined, pinned to a semantic-conventions version; a test rejects them anywhere else.
 
 Configuration is in `OPERATIONS.md#opentelemetry`.

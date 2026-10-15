@@ -96,6 +96,21 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
   caller-chosen trace ID can't influence. Use the Collector's tail sampling to keep errors
   and slow traces. `X-Correlation-ID` stays the correlation ID and is recorded on the
   server span as `neuron.correlation_id`.
+- **Agent spans**, under the request span:
+  - `invoke_agent neuron`, one per run, with `gen_ai.conversation.id` (the thread),
+    `neuron.run_id`, `neuron.owner_key_prefix` (12 characters) and `neuron.turn`.
+  - `chat {model}` (CLIENT), one per model call, its retries included, with
+    `gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.response.model`, token usage by
+    kind (`gen_ai.usage.input_tokens`, `.output_tokens`, `.cache_read.input_tokens`,
+    `.reasoning.output_tokens`) and `neuron.retry_count`.
+  - `execute_tool {tool}`, one per tool call, with `gen_ai.tool.name` and `neuron.outcome`
+    (`success`, `error` or `denied`). A tool the agent doesn't have is named `unknown`.
+  - `neuron.stream` around an SSE stream (the parent of its `invoke_agent` span), with
+    `neuron.stream.ttft_ms`, `neuron.stream.events` and `neuron.stream.termination`, which
+    takes the `stream_completed` log's values plus `client_disconnect`.
+  - A failed span has status `ERROR` and `error.type` set to the `AppError` code, such as
+    `authorization_error` for a denied tool. Exceptions are never recorded on spans: their
+    messages can carry content.
 - **Logs:** every log line written inside a valid span context, sampled or not and audit
   records included, carries `trace_id` and `span_id`, so a log line leads to its trace.
 - **Failures:** exports run in the background. An unreachable Collector never fails a
@@ -107,7 +122,8 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
 - **Privacy:** prompts, answers and tool content are never recorded. HTTP spans do carry
   standard request attributes, such as the URL, user agent and peer address; redact them
   in the Collector where your policy requires it.
-- **Agent Server** deployments don't use this exporter yet.
+- **Agent Server** deployments emit the agent spans from the graph node, with the thread,
+  run and owner taken from the run's config, but don't configure this exporter yet.
 
 Security audit records use the separate `neuron_agent.audit` logger (also present as the
 JSON `logger` field). Route that logger to the SIEM independently from application logs;

@@ -15,6 +15,8 @@ import anyio
 import psycopg
 import structlog
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from opentelemetry import trace
+from opentelemetry.trace import Span
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
@@ -31,6 +33,7 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
+from neuron_agent.observability import semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 from neuron_agent.persistence.checkpointer import Persistence, build_persistence
@@ -280,7 +283,11 @@ class AgentService:
         )
         logger.info("stream_started", **stats.ids)
         queue: asyncio.Queue[StreamEvent | None] = asyncio.Queue()
-        producer = asyncio.create_task(self._produce(run, queue))
+        # Not made current here: a generator's context can change between `yield`s. The
+        # producer task copies the context, so the run's spans become the stream span's children.
+        span = telemetry.tracer().start_span(semconv.STREAM_SPAN)
+        with trace.use_span(span):
+            producer = asyncio.create_task(self._produce(run, queue))
         stop_waiter = asyncio.ensure_future(stop.wait()) if stop is not None else None
         try:
             yield stats.record(
@@ -319,6 +326,8 @@ class AgentService:
             finally:
                 run.lease.release()
             stats.log()
+            stats.record_on(span)
+            span.end()
 
     async def _produce(self, run: PreparedRun, queue: asyncio.Queue[StreamEvent | None]) -> None:
         """Run the graph, translating its stream into events; always ends with `None`.
@@ -812,6 +821,18 @@ class _StreamStats:
             return
         log = logger.info if self.termination == "completed" else logger.warning
         log("stream_completed", termination=self.termination, error_code=self.error_code, **fields)
+
+    def record_on(self, span: Span) -> None:
+        """Set the stream span's time to first token, event count and termination."""
+        span.set_attribute(semconv.NEURON_STREAM_EVENTS, self.events)
+        span.set_attribute(
+            semconv.NEURON_STREAM_TERMINATION,
+            (self.termination or "error") if self.finished else "client_disconnect",
+        )
+        if self.first_token_ms is not None:
+            span.set_attribute(semconv.NEURON_STREAM_TTFT_MS, self.first_token_ms)
+        if self.error_code is not None:
+            telemetry.record_error(span, self.error_code)
 
     def _elapsed_ms(self) -> float:
         return round((time.monotonic() - self.started) * 1000, 2)
