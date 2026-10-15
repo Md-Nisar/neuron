@@ -11,7 +11,7 @@ Fixes found by the first live eval runs:
 - The deterministic eval harness tests run in `make test` and CI again; since the NVIDIA provider change only the live quality evals (now also marked `integration`) are excluded by default.
 
 v0.5.0 "Evaluation + Observability" (ADR 0007):
-- OpenTelemetry foundation (#89). With `APP_OTEL_ENABLED=true`, the API exports traces and metrics over OTLP/HTTP (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`) with head sampling (`APP_OTEL_TRACES_SAMPLE_RATIO`). HTTP spans are named by route template, `/health/*` is not traced, an incoming `traceparent` is honoured, and log lines carry `trace_id` and `span_id`. It is off by default, and no content is recorded.
+- OpenTelemetry foundation (#89). With `APP_OTEL_ENABLED=true`, the API exports traces and metrics over OTLP/HTTP (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`) with head sampling (`APP_OTEL_TRACES_SAMPLE_RATIO`). HTTP spans are named by route template, `/health/*` is not traced, an incoming `traceparent` is honoured for its trace ID but not its sampled flag, so callers can't force or suppress tracing, and log lines carry `trace_id` and `span_id`. It is off by default, and no content is recorded.
 
 ## 0.4.0
 

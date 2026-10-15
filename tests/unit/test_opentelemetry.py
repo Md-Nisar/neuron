@@ -119,7 +119,8 @@ def test_enabled_telemetry_sets_resource_sampler_and_exporter_targets(
         assert built.meter_provider._sdk_config.resource is built.tracer_provider.resource
         sampler = built.tracer_provider.sampler
         assert isinstance(sampler, ParentBased)
-        assert "0.25" in sampler.get_description()
+        assert "TraceIdRatioBased{0.25}" in sampler.get_description()
+        assert "CallerIndependentSampler{0.25}" in sampler.get_description()
         assert [e["endpoint"] for e in exporters] == [
             "https://collector.example:4318/v1/traces",
             "https://collector.example:4318/v1/metrics",
@@ -231,3 +232,36 @@ def test_telemetry_names_are_defined_only_in_semconv() -> None:
 
 def test_configured_logging_adds_trace_context() -> None:
     assert add_trace_context in structlog.get_config()["processors"]
+
+
+def _remote_parent(sampled: bool) -> Any:
+    flags = trace.TraceFlags(trace.TraceFlags.SAMPLED if sampled else trace.TraceFlags.DEFAULT)
+    context = trace.SpanContext(int(_TRACE_ID, 16), 0xB7AD6B7169203331, True, flags)
+    return trace.set_span_in_context(trace.NonRecordingSpan(context))
+
+
+@pytest.mark.parametrize(
+    ("ratio", "caller_sampled", "recorded"),
+    [(0.0, True, False), (1.0, False, True)],
+)
+def test_sampling_ignores_the_callers_sampled_flag(
+    ratio: float, caller_sampled: bool, recorded: bool
+) -> None:
+    """A caller can neither force nor suppress tracing; its trace id is still kept."""
+    built = telemetry.build_telemetry(
+        Settings(
+            env="test",
+            otel_enabled=True,
+            otel_traces_sample_ratio=ratio,
+            otel_export_timeout_seconds=0.1,
+        )
+    )
+    assert built is not None
+    try:
+        tracer = built.tracer_provider.get_tracer(__name__)
+        span = tracer.start_span("request", context=_remote_parent(caller_sampled))
+        span.end()
+        assert span.get_span_context().trace_flags.sampled is recorded
+        assert format(span.get_span_context().trace_id, "032x") == _TRACE_ID
+    finally:
+        built.shutdown()

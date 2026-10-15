@@ -90,9 +90,12 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
   `service.version` and `deployment.environment.name`.
 - **Spans:** one HTTP server span per request, named by route template (for example
   `POST /v1/agent/invoke`). `/health/*` is not traced. An incoming W3C `traceparent` is
-  honoured, including its sampled flag, so the sample ratio applies only to traces that
-  start here. `X-Correlation-ID` stays the correlation ID and is recorded on the server
-  span as `neuron.correlation_id`.
+  honoured for its trace ID, so the span joins the caller's trace, but its sampled flag is
+  ignored: callers are untrusted and could otherwise force or suppress tracing. Every
+  request is sampled at `APP_OTEL_TRACES_SAMPLE_RATIO` by a random draw that the
+  caller-chosen trace ID can't influence. Use the Collector's tail sampling to keep errors
+  and slow traces. `X-Correlation-ID` stays the correlation ID and is recorded on the
+  server span as `neuron.correlation_id`.
 - **Logs:** every log line written inside a valid span context, sampled or not and audit
   records included, carries `trace_id` and `span_id`, so a log line leads to its trace.
 - **Failures:** exports run in the background. An unreachable Collector never fails a

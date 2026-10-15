@@ -7,10 +7,13 @@ background threads, so an unreachable Collector never fails a request.
 
 from __future__ import annotations
 
+import random
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from fastapi import FastAPI
 from opentelemetry import metrics, trace
+from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -19,14 +22,56 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
+from opentelemetry.sdk.trace.sampling import (
+    Decision,
+    ParentBased,
+    Sampler,
+    SamplingResult,
+    TraceIdRatioBased,
+)
+from opentelemetry.trace import Link, SpanKind, TraceState
 from opentelemetry.util.re import parse_env_headers
+from opentelemetry.util.types import Attributes
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import semconv
 
 # Platform probes are frequent and uninteresting; their requests are not traced.
 _EXCLUDED_URLS = "/health/"
+_RANDOM = random.SystemRandom()
+
+
+class _CallerIndependentSampler(Sampler):
+    """Sample a request with a remote parent at the configured ratio, by a random draw.
+
+    A caller's `traceparent` is untrusted: its sampled flag would let it force or suppress
+    tracing, and its trace id is chosen by the caller, so `TraceIdRatioBased` could be
+    gamed too. The trace id is still kept, so the trace stays connected to the caller's.
+    """
+
+    def __init__(self, ratio: float) -> None:
+        self._ratio = ratio
+
+    def should_sample(
+        self,
+        parent_context: Context | None,
+        trace_id: int,
+        name: str,
+        kind: SpanKind | None = None,
+        attributes: Attributes = None,
+        links: Sequence[Link] | None = None,
+        trace_state: TraceState | None = None,
+    ) -> SamplingResult:
+        sampled = _RANDOM.random() < self._ratio
+        parent_state = trace.get_current_span(parent_context).get_span_context().trace_state
+        return SamplingResult(
+            Decision.RECORD_AND_SAMPLE if sampled else Decision.DROP,
+            attributes if sampled else None,
+            parent_state,
+        )
+
+    def get_description(self) -> str:
+        return f"CallerIndependentSampler{{{self._ratio}}}"
 
 
 @dataclass(frozen=True)
@@ -62,7 +107,7 @@ def build_telemetry(settings: Settings) -> Telemetry | None:
 
     tracer_provider = TracerProvider(
         resource=resource,
-        sampler=ParentBased(TraceIdRatioBased(settings.otel_traces_sample_ratio)),
+        sampler=_sampler(settings.otel_traces_sample_ratio),
     )
     tracer_provider.add_span_processor(
         BatchSpanProcessor(
@@ -80,6 +125,16 @@ def build_telemetry(settings: Settings) -> Telemetry | None:
         ],
     )
     return Telemetry(tracer_provider=tracer_provider, meter_provider=meter_provider)
+
+
+def _sampler(ratio: float) -> Sampler:
+    """Head-sample new traces at `ratio`; spans with a local parent follow its decision."""
+    remote = _CallerIndependentSampler(ratio)
+    return ParentBased(
+        TraceIdRatioBased(ratio),
+        remote_parent_sampled=remote,
+        remote_parent_not_sampled=remote,
+    )
 
 
 def configure_telemetry(settings: Settings) -> Telemetry | None:
