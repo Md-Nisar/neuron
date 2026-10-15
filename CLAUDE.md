@@ -51,7 +51,7 @@ Module boundaries (enforced, see `AGENTS.md`):
 - `security/` — authentication and authorization, plus input, URL, and tool-allowlist policy (`security/input_policy.py`). `auth.py` owns JWT verification (`TokenVerifier`), the `Principal`, the owner-key HMAC and the single `/v1` route dependency `require_permission`; `authorization.py` owns permissions and the per-run `AuthorizationContext`; `agent_server.py` holds the Agent Server auth handlers. Routes never parse tokens themselves, and the principal reaches graphs and tools only through the runtime `context` (ADR 0006).
 - `config/` — the only place environment variables are read (`config/settings.py`, `APP_*` prefixed, see `Settings`).
 - `prompts/` — versioned prompt assets (`prompts/system/main.md`), loaded via `prompts/loader.py`.
-- `observability/` — structlog JSON logging setup.
+- `observability/` — structlog JSON logging, audit events and OpenTelemetry setup (`telemetry.py`; names only in `semconv.py`).
 - `schemas/` — public API contracts and the `AgentAnswer` structured-output schema.
 
 Do not add retrieval, queues, custom persistence, subgraphs, or multi-agent orchestration without a concrete product requirement **and** a new or updated ADR in `docs/decisions/`. This is a deliberate constraint, not an oversight (see ADR 0001, 0002, 0005).

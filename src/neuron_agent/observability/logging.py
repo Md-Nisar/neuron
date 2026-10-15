@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import MutableMapping
 from typing import Any
 
 import structlog
+from opentelemetry import trace
 
 
 def configure_logging(*, level: str, service: str, version: str, environment: str) -> None:
@@ -15,6 +17,7 @@ def configure_logging(*, level: str, service: str, version: str, environment: st
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
+            add_trace_context,
             structlog.processors.add_log_level,
             structlog.stdlib.add_logger_name,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
@@ -44,6 +47,17 @@ def bind_correlation_context(
 def correlation_context() -> dict[str, Any]:
     """Return only correlation IDs for use by the dedicated audit emitter."""
     return structlog.contextvars.get_contextvars()
+
+
+def add_trace_context(
+    _: Any, __: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
+    """Add the current span's `trace_id` and `span_id`, when a valid span context is current."""
+    context = trace.get_current_span().get_span_context()
+    if context.is_valid:
+        event_dict["trace_id"] = trace.format_trace_id(context.trace_id)
+        event_dict["span_id"] = trace.format_span_id(context.span_id)
+    return event_dict
 
 
 def _add_service_metadata(*, service: str, version: str, environment: str) -> Any:

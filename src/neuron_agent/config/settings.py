@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -46,6 +47,29 @@ class Settings(BaseSettings):
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     trusted_proxies: list[str] = Field(default_factory=list)
     enable_langsmith: bool = False
+    otel_enabled: bool = False
+    # None uses APP_NAME.
+    otel_service_name: str | None = None
+    # Head sampling for new traces; an incoming `traceparent` keeps its sampled flag.
+    otel_traces_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
+    otel_export_timeout_seconds: float = Field(default=10.0, gt=0.0, le=60.0)
+    # Read under the standard OpenTelemetry names; the exporter appends /v1/traces etc.
+    otel_exporter_otlp_endpoint: str = Field(
+        default="http://localhost:4318",
+        pattern=r"^https?://",
+        validation_alias=AliasChoices(
+            "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+    )
+    # `key=value` pairs, comma-separated and URL-encoded, such as an auth header.
+    otel_exporter_otlp_headers: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_OTEL_EXPORTER_OTLP_HEADERS",
+            "OTEL_EXPORTER_OTLP_HEADERS",
+        ),
+    )
     # "auto" resolves to memory in development/test and none in staging/production.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
@@ -191,6 +215,23 @@ class Settings(BaseSettings):
                     f"APP_ALLOWED_HOSTS entry {host!r} must be a lowercase hostname with no "
                     "scheme or port, optionally starting with '*.'"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def validate_telemetry_transport(self) -> Settings:
+        """OTLP credentials must not leave the host in clear text outside development/test."""
+        endpoint = self.otel_exporter_otlp_endpoint
+        if (
+            self.env in {"staging", "production"}
+            and self.otel_exporter_otlp_headers is not None
+            and self.otel_exporter_otlp_headers.get_secret_value()
+            and not endpoint.startswith("https://")
+            and urlsplit(endpoint).hostname not in {"localhost", "127.0.0.1", "::1"}
+        ):
+            raise ValueError(
+                "OTEL_EXPORTER_OTLP_ENDPOINT must use HTTPS when OTEL_EXPORTER_OTLP_HEADERS "
+                "is set in staging/production, unless the Collector is on loopback"
+            )
         return self
 
 

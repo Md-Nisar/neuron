@@ -48,6 +48,8 @@ _LIVE_VARS = (
 _dotenv = dotenv_values(".env") if os.path.isfile(".env") else {}
 _LIVE_ENV = {n: v for n in _LIVE_VARS if (v := os.environ.get(n) or _dotenv.get(n))}
 os.environ["APP_DEFAULT_MODEL"] = "openai:gpt-5.4-mini"
+# A developer `.env` may enable OpenTelemetry; tests must not export to a real Collector.
+os.environ["APP_OTEL_ENABLED"] = "false"
 for _name in _LIVE_VARS[1:]:
     os.environ[_name] = ""
 

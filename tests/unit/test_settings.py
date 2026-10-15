@@ -157,14 +157,21 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     """Every `Settings` field has a (possibly commented-out) line in `.env.example`."""
     text = (Path(__file__).parents[2] / ".env.example").read_text()
     documented = set(re.findall(r"^#?\s*(APP_[A-Z0-9_]+)=", text, re.MULTILINE))
-    # Provider keys are documented under their conventional aliases, such as OPENAI_API_KEY.
-    provider_keys = {"APP_OPENAI_API_KEY", "APP_NVIDIA_API_KEY"}
-    expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - provider_keys
+    # Some settings are documented under their conventional names, such as OPENAI_API_KEY.
+    conventional = {
+        "APP_OPENAI_API_KEY",
+        "APP_NVIDIA_API_KEY",
+        "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
+        "APP_OTEL_EXPORTER_OTLP_HEADERS",
+    }
+    expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - conventional
 
     assert expected - documented == set(), "add these settings to .env.example"
     assert documented - expected == set(), "remove stale settings from .env.example"
     assert re.search(r"^OPENAI_API_KEY=", text, re.MULTILINE)
     assert re.search(r"^NVIDIA_API_KEY=", text, re.MULTILINE)
+    assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_ENDPOINT=", text, re.MULTILINE)
+    assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_HEADERS=", text, re.MULTILINE)
 
 
 def test_empty_provider_key_from_env_example_means_no_key(
@@ -176,3 +183,38 @@ def test_empty_provider_key_from_env_example_means_no_key(
 
     assert settings.openai_api_key is None
     assert isinstance(create_chat_model(settings), _FakeChatModel)
+
+
+def _production(**overrides: object) -> Settings:
+    return Settings(
+        env="production",
+        auth_mode="jwt",
+        auth_issuer="https://issuer.example.test",
+        auth_audience="neuron-api",
+        auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
+        identity_hash_key="x" * 32,
+        openai_api_key="sk-test",
+        **overrides,
+    )
+
+
+def test_otlp_credentials_require_https_off_loopback_in_production() -> None:
+    with pytest.raises(ValidationError, match="must use HTTPS"):
+        _production(
+            OTEL_EXPORTER_OTLP_ENDPOINT="http://collector.internal:4318",
+            OTEL_EXPORTER_OTLP_HEADERS="authorization=Bearer%20t",
+        )
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    ["https://collector.internal:4318", "http://localhost:4318", "http://127.0.0.1:4318"],
+)
+def test_otlp_credentials_allowed_over_https_or_loopback(endpoint: str) -> None:
+    _production(
+        OTEL_EXPORTER_OTLP_ENDPOINT=endpoint, OTEL_EXPORTER_OTLP_HEADERS="authorization=Bearer%20t"
+    )
+
+
+def test_plain_http_otlp_without_credentials_is_allowed_in_production() -> None:
+    _production(OTEL_EXPORTER_OTLP_ENDPOINT="http://collector.internal:4318")
