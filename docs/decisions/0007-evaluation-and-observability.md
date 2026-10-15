@@ -95,9 +95,12 @@ tools, not dependencies.
 - Spans:
   - HTTP server spans from `opentelemetry-instrumentation-fastapi`, excluding
     `/health/*`.
-  - `invoke_agent neuron` (INTERNAL) around each run, opened in `AgentService` and
-    in the graph node on Agent Server, with `gen_ai.conversation.id` (thread id),
-    `neuron.run_id`, `neuron.owner_key_prefix` and `neuron.turn`.
+  - `invoke_agent neuron` (INTERNAL) around each run, opened in the graph's `agent`
+    node so one code path covers `AgentService` and Agent Server, with
+    `gen_ai.conversation.id` (thread id), `neuron.run_id`, `neuron.owner_key_prefix`
+    and `neuron.turn`. These come from graph state only on the `AgentService` path;
+    under Agent Server, where state is client input, they come from the reserved
+    `configurable` keys (ADR 0006).
   - `chat {model}` (CLIENT) per model call and `execute_tool {tool}` per tool call,
     both from the existing agent middleware, with model/provider, token usage by
     kind, `gen_ai.tool.name`, retry count and `error.type` set to our `AppError`

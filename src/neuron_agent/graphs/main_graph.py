@@ -22,6 +22,7 @@ from langgraph.runtime import get_runtime
 
 from neuron_agent.agents.factory import build_agent
 from neuron_agent.config.settings import Settings, get_settings
+from neuron_agent.errors.base import AppError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.models.factory import (
     agent_invocation_config,
@@ -29,6 +30,7 @@ from neuron_agent.models.factory import (
     get_retry_attempts,
     reset_retry_attempts,
 )
+from neuron_agent.observability import semconv, telemetry
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.state.main import MainGraphState
@@ -68,7 +70,7 @@ async def call_agent(
         model=model,
         recursion_limit=resolved_settings.max_agent_iterations,
         # Conversation position: 1-based user turn number and stored history size.
-        turn=sum(isinstance(m, HumanMessage) for m in [*stored, *new_turn]),
+        turn=_turn(state),
         history_messages=len(stored),
     )
     history = bound_model_history(
@@ -128,6 +130,12 @@ async def call_agent(
         "answer": answer,
         "user_message": None,
     }
+
+
+def _turn(state: MainGraphState) -> int:
+    """The run's 1-based user turn number in its thread."""
+    stored = sum(isinstance(m, HumanMessage) for m in state.get("messages", []))
+    return stored + (1 if state.get("user_message") else 0)
 
 
 def _final_answer(result: dict[str, Any], *, run_messages: list[BaseMessage]) -> AgentAnswer:
@@ -206,10 +214,20 @@ def build_graph(
     agent = build_agent(resolved_settings)
 
     async def agent_node(state: MainGraphState, config: RunnableConfig) -> dict[str, Any]:
-        authorization = _run_authorization(get_runtime().context, config, resolved_settings)
-        return await call_agent(
-            state, agent=agent, settings=resolved_settings, authorization=authorization
+        context = get_runtime().context
+        authorization = _run_authorization(context, config, resolved_settings)
+        attributes = _run_span_attributes(
+            state, config, from_service=isinstance(context, AuthorizationContext)
         )
+        name = f"{semconv.OPERATION_INVOKE_AGENT} {semconv.AGENT_NAME}"
+        with telemetry.start_span(name, attributes=attributes) as span:
+            try:
+                return await call_agent(
+                    state, agent=agent, settings=resolved_settings, authorization=authorization
+                )
+            except AppError as exc:
+                telemetry.record_error(span, exc.context.code)
+                raise
 
     # No `context_schema`: LangGraph would build one from the run's `context`, which Agent
     # Server takes from the client's request.
@@ -218,6 +236,39 @@ def build_graph(
     builder.add_edge(START, "agent")
     builder.add_edge("agent", END)
     return builder.compile(checkpointer=checkpointer)
+
+
+def _run_span_attributes(
+    state: MainGraphState, config: RunnableConfig, *, from_service: bool
+) -> dict[str, str | int]:
+    """The `invoke_agent` span's attributes, from trusted sources only.
+
+    `AgentService` (`from_service`) puts the IDs and owner key in state. Under Agent Server
+    the state is the client's input, so the thread, run and owner come from the run's
+    config, where Agent Server records them in keys clients can't set.
+    """
+    configurable = config.get("configurable", {})
+    thread_id: object
+    run_id: object
+    owner: object
+    if from_service:
+        thread_id, run_id = state.get("thread_id"), state.get("run_id")
+        owner = state.get("owner_key") or state.get("user_id_hash")
+    else:
+        thread_id, run_id = configurable.get("thread_id"), configurable.get("run_id")
+        owner = configurable.get("langgraph_auth_user_id")
+    attributes: dict[str, str | int] = {
+        semconv.GEN_AI_OPERATION_NAME: semconv.OPERATION_INVOKE_AGENT,
+        semconv.GEN_AI_AGENT_NAME: semconv.AGENT_NAME,
+        semconv.NEURON_TURN: _turn(state),
+    }
+    if thread_id:
+        attributes[semconv.GEN_AI_CONVERSATION_ID] = str(thread_id)
+    if run_id:
+        attributes[semconv.NEURON_RUN_ID] = str(run_id)
+    if isinstance(owner, str) and owner:
+        attributes[semconv.NEURON_OWNER_KEY_PREFIX] = owner[:12]
+    return attributes
 
 
 def _run_authorization(

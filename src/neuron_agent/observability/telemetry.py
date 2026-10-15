@@ -8,7 +8,8 @@ background threads, so an unreachable Collector never fails a request.
 from __future__ import annotations
 
 import random
-from collections.abc import Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from fastapi import FastAPI
@@ -29,7 +30,7 @@ from opentelemetry.sdk.trace.sampling import (
     SamplingResult,
     TraceIdRatioBased,
 )
-from opentelemetry.trace import Link, SpanKind, TraceState
+from opentelemetry.trace import Link, Span, SpanKind, StatusCode, TraceState
 from opentelemetry.util.re import parse_env_headers
 from opentelemetry.util.types import Attributes
 
@@ -39,6 +40,7 @@ from neuron_agent.observability import semconv
 # Platform probes are frequent and uninteresting; their requests are not traced.
 _EXCLUDED_URLS = "/health/"
 _RANDOM = random.SystemRandom()
+_INSTRUMENTATION_NAME = "neuron_agent"
 
 
 class _CallerIndependentSampler(Sampler):
@@ -169,3 +171,36 @@ def instrument_app(
 def record_correlation_id(correlation_id: str) -> None:
     """Record the request's `X-Correlation-ID` on the current server span."""
     trace.get_current_span().set_attribute(semconv.NEURON_CORRELATION_ID, correlation_id)
+
+
+def tracer() -> trace.Tracer:
+    """The service's tracer, from the global provider (no-op unless telemetry is enabled)."""
+    return trace.get_tracer(_INSTRUMENTATION_NAME)
+
+
+@contextmanager
+def start_span(
+    name: str,
+    *,
+    kind: SpanKind = SpanKind.INTERNAL,
+    attributes: Mapping[str, str | int | float] | None = None,
+) -> Iterator[Span]:
+    """Open a current span that never records an exception.
+
+    Exception messages can carry prompts, tool arguments or provider responses, so a failure
+    is recorded only through `record_error`.
+    """
+    with tracer().start_as_current_span(
+        name,
+        kind=kind,
+        attributes=attributes,
+        record_exception=False,
+        set_status_on_exception=False,
+    ) as span:
+        yield span
+
+
+def record_error(span: Span, error_type: str) -> None:
+    """Mark `span` failed with a stable error code (an `AppError` code), never a message."""
+    span.set_attribute(semconv.ERROR_TYPE, error_type)
+    span.set_status(StatusCode.ERROR)
