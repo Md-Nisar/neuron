@@ -1,0 +1,3 @@
+# Local secrets and development keys never belong in an image.
+.env
+.dev/

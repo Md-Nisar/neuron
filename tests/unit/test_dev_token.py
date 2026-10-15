@@ -136,3 +136,23 @@ def test_token_command_explains_setup_when_the_api_is_not_configured(
 
     assert dev_token.main([], directory=tmp_path) == 2
     assert "dev_token.py setup >> .env" in capsys.readouterr().err
+
+
+def test_unreadable_key_is_reported_without_a_traceback(tmp_path: Path) -> None:
+    (tmp_path / "jwt-private.pem").write_text("not a key")
+
+    with pytest.raises(dev_token.DevTokenError, match="unreadable"):
+        dev_token.ensure_keys(tmp_path)
+
+
+def test_serve_reports_a_busy_port(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    served: str,
+) -> None:
+    monkeypatch.setattr(dev_token, "Settings", lambda: Settings(env="development"))
+    monkeypatch.setattr(dev_token, "DEV_JWKS_PORT", int(served.split(":")[2].split("/")[0]))
+
+    assert dev_token.main(["serve"], directory=tmp_path) == 2
+    assert "is another dev-jwks already running?" in capsys.readouterr().err

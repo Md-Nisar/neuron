@@ -149,7 +149,7 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
 def test_empty_provider_key_from_env_example_means_no_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`cp .env.example .env` leaves `OPENAI_API_KEY=`; development must still use the fake model."""
+    """`cp .env.example .env` leaves `OPENAI_API_KEY=`; development still uses the fake model."""
     monkeypatch.setenv("OPENAI_API_KEY", "")
     settings = Settings(env="development")
 

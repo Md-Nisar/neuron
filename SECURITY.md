@@ -108,6 +108,8 @@ Current ignores: none.
 - **Per-process limits.** Rate limits, concurrent-run caps and token budgets are in memory per worker and reset on restart; they aren't shared across replicas.
 - **`typ` check.** With `APP_AUTH_REQUIRE_TYP=true`, only `at+jwt` is accepted, not the `application/at+jwt` spelling RFC 9068 also allows.
 - **`APP_IDENTITY_HASH_KEY` exposure** lets someone with database access link threads to known identities. It grants no access by itself. Rotation orphans every thread (`OPERATIONS.md`).
+- **Development tokens trust loopback.** In development the API fetches the JWKS over plain HTTP from `127.0.0.1:8765`, so on a shared machine another local user who binds that port first can mint tokens the development API accepts. Use them on single-user machines.
+- **Readiness and the IdP.** `/health/ready` marks an instance not ready after a JWKS fetch failure and recovers only when a later request obtains a key; it doesn't probe the JWKS (`OPERATIONS.md`).
 - **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`.
 
 ## Secrets

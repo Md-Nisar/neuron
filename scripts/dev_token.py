@@ -55,10 +55,17 @@ def ensure_keys(directory: Path) -> tuple[ec.EllipticCurvePrivateKey, str]:
             serialization.PrivateFormat.PKCS8,
             serialization.NoEncryption(),
         )
-        descriptor = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(descriptor, "wb") as key_file:
-            key_file.write(pem)
-    key = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
+        try:
+            descriptor = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            pass  # another run created it first; use that one
+        else:
+            with os.fdopen(descriptor, "wb") as key_file:
+                key_file.write(pem)
+    try:
+        key = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
+    except ValueError as exc:
+        raise DevTokenError(f"{key_path} is unreadable; delete it and rerun setup") from exc
     if not isinstance(key, ec.EllipticCurvePrivateKey):
         raise DevTokenError(f"{key_path} is not an EC private key; delete it and rerun setup")
     public_jwk = json.loads(jwt.algorithms.ECAlgorithm.to_jwk(key.public_key()))
@@ -173,7 +180,13 @@ def main(argv: list[str] | None = None, *, directory: Path = DEV_DIR) -> int:
             print(env_block())
         elif args.command == "serve":
             ensure_keys(directory)
-            server = jwks_server(directory, DEV_JWKS_PORT)
+            try:
+                server = jwks_server(directory, DEV_JWKS_PORT)
+            except OSError as exc:
+                raise DevTokenError(
+                    f"can't listen on 127.0.0.1:{DEV_JWKS_PORT} ({exc.strerror}); "
+                    "is another dev-jwks already running?"
+                ) from exc
             print(
                 f"dev_token: serving http://127.0.0.1:{DEV_JWKS_PORT}/jwks.json (Ctrl+C stops)",
                 file=sys.stderr,
