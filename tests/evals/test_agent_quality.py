@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -20,8 +19,7 @@ pytestmark = [pytest.mark.eval, pytest.mark.anyio]
 _FIXTURE_PATH = Path("tests/fixtures/eval_cases.json")
 
 
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not configured")
-async def test_agent_passes_every_eval_case() -> None:
+async def test_agent_passes_every_eval_case(live_provider: str) -> None:
     results = await run_eval_suite(_FIXTURE_PATH)
 
     assert len(results) == len(load_eval_cases(_FIXTURE_PATH))
@@ -29,8 +27,7 @@ async def test_agent_passes_every_eval_case() -> None:
     assert not failures, _format_failures(failures)
 
 
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not configured")
-async def test_agent_passes_every_multi_turn_eval_case() -> None:
+async def test_agent_passes_every_multi_turn_eval_case(live_provider: str) -> None:
     results = await run_multi_turn_suite(MULTI_TURN_CASES)
 
     assert len(results) == len(load_eval_cases(MULTI_TURN_CASES))
@@ -38,8 +35,7 @@ async def test_agent_passes_every_multi_turn_eval_case() -> None:
     assert not failures, _format_failures(failures)
 
 
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not configured")
-async def test_agent_passes_every_security_eval_case() -> None:
+async def test_agent_passes_every_security_eval_case(live_provider: str) -> None:
     results = await run_security_suite(SECURITY_CASES)
 
     assert len(results) == len(load_eval_cases(SECURITY_CASES))

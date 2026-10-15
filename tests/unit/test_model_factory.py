@@ -5,6 +5,7 @@ import openai
 import pytest
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_core.messages import AIMessage
+from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 from pydantic import SecretStr
 
@@ -20,6 +21,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.models.factory import (
+    _FakeChatModel,
     _is_retryable_provider_error,
     agent_invocation_config,
     classify_agent_error,
@@ -64,6 +66,33 @@ def test_create_chat_model_disables_sdk_level_retries() -> None:
     settings = _production_settings()
     model = create_chat_model(settings)
     assert model.max_retries == 0
+
+
+def test_create_chat_model_targets_the_nvidia_openai_compatible_endpoint() -> None:
+    settings = _production_settings(
+        default_model="nvidia:example/chat-model", nvidia_api_key=SecretStr("nvapi-test")
+    )
+    model = create_chat_model(settings)
+
+    assert isinstance(model, ChatOpenAI)
+    assert model.model_name == "example/chat-model"
+    assert model.openai_api_base == "https://integrate.api.nvidia.com/v1"
+    assert model.openai_api_key is not None
+    assert model.openai_api_key.get_secret_value() == "nvapi-test"
+    # Per-user token budgets need usage on streamed responses too.
+    assert model.stream_usage is True
+    assert model.max_retries == 0
+    assert model.request_timeout == 60
+
+
+def test_create_chat_model_falls_back_without_the_selected_providers_key() -> None:
+    settings = Settings(
+        env="development",
+        default_model="nvidia:example/chat-model",
+        openai_api_key=SecretStr("sk-test"),
+        nvidia_api_key=None,
+    )
+    assert isinstance(create_chat_model(settings), _FakeChatModel)
 
 
 def test_agent_invocation_config_uses_max_agent_iterations_and_run_id() -> None:

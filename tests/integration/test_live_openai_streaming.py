@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from neuron_agent.config.settings import Settings
@@ -11,12 +9,9 @@ from neuron_agent.services.agent_service import AgentService
 pytestmark = [pytest.mark.integration, pytest.mark.anyio]
 
 
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not configured")
-async def test_live_openai_streaming_smoke() -> None:
+async def test_live_openai_streaming_smoke(live_provider: str) -> None:
     settings = Settings(
         env="development",
-        default_model="openai:gpt-5.4-mini",
-        openai_api_key=os.environ["OPENAI_API_KEY"],
         checkpointer="memory",
     )
     service = AgentService(settings)

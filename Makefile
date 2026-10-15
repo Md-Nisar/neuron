@@ -53,7 +53,7 @@ test-resilience:
 	uv run python -m pytest tests/resilience
 
 test-integration:
-	uv run python -m pytest tests/integration
+	uv run python -m pytest tests/integration -m integration
 
 eval:
 	uv run python -m pytest tests/evals -m eval

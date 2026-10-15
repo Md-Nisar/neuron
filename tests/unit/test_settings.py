@@ -20,6 +20,25 @@ def test_settings_require_openai_key_in_staging() -> None:
         Settings(env="staging", default_model="openai:gpt-5.4-mini", openai_api_key=None)
 
 
+def test_settings_require_nvidia_key_for_nvidia_models_in_production() -> None:
+    with pytest.raises(ValidationError, match="NVIDIA_API_KEY"):
+        Settings(
+            env="production",
+            default_model="nvidia:example/chat-model",
+            openai_api_key="sk-test",
+            nvidia_api_key=None,
+        )
+
+
+def test_nvidia_key_is_read_from_its_conventional_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("APP_NVIDIA_API_KEY", raising=False)
+    monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-test")
+    settings = Settings(env="test")
+
+    assert settings.nvidia_api_key is not None
+    assert settings.nvidia_api_key.get_secret_value() == "nvapi-test"
+
+
 def test_settings_allow_test_without_provider_key() -> None:
     settings = Settings(env="test", default_model="openai:gpt-5.4-mini", openai_api_key=None)
     assert settings.env == "test"
@@ -138,12 +157,14 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     """Every `Settings` field has a (possibly commented-out) line in `.env.example`."""
     text = (Path(__file__).parents[2] / ".env.example").read_text()
     documented = set(re.findall(r"^#?\s*(APP_[A-Z0-9_]+)=", text, re.MULTILINE))
-    # The provider key is documented under its conventional OPENAI_API_KEY alias.
-    expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - {"APP_OPENAI_API_KEY"}
+    # Provider keys are documented under their conventional aliases, such as OPENAI_API_KEY.
+    provider_keys = {"APP_OPENAI_API_KEY", "APP_NVIDIA_API_KEY"}
+    expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - provider_keys
 
     assert expected - documented == set(), "add these settings to .env.example"
     assert documented - expected == set(), "remove stale settings from .env.example"
     assert re.search(r"^OPENAI_API_KEY=", text, re.MULTILINE)
+    assert re.search(r"^NVIDIA_API_KEY=", text, re.MULTILINE)
 
 
 def test_empty_provider_key_from_env_example_means_no_key(

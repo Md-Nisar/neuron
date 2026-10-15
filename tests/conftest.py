@@ -15,6 +15,7 @@ import jwt
 import jwt.api_jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from dotenv import dotenv_values
 from fastapi.testclient import TestClient
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models import LanguageModelInput
@@ -33,20 +34,53 @@ from langchain_core.tools import BaseTool
 
 # Must run before importing neuron_agent: settings and the exported graph build at import.
 os.environ.setdefault("APP_ENV", "test")
-os.environ.setdefault("APP_DEFAULT_MODEL", "openai:gpt-5.4-mini")
-# Developer shells may export provider credentials. Unit tests must never turn
-# those credentials into live LLM calls through default Settings construction.
-os.environ.pop("APP_OPENAI_API_KEY", None)
-os.environ.pop("OPENAI_API_KEY", None)
+# Developer shells and `.env` may hold provider credentials. Unit tests must never turn
+# those into live LLM calls, so the model is pinned and every key is blanked: an empty
+# environment variable overrides `.env` and means "no key". Only the live suites get the
+# real values back, through the `live_provider` fixture.
+_LIVE_VARS = (
+    "APP_DEFAULT_MODEL",
+    "APP_OPENAI_API_KEY",
+    "OPENAI_API_KEY",
+    "APP_NVIDIA_API_KEY",
+    "NVIDIA_API_KEY",
+)
+_dotenv = dotenv_values(".env") if os.path.isfile(".env") else {}
+_LIVE_ENV = {n: v for n in _LIVE_VARS if (v := os.environ.get(n) or _dotenv.get(n))}
+os.environ["APP_DEFAULT_MODEL"] = "openai:gpt-5.4-mini"
+for _name in _LIVE_VARS[1:]:
+    os.environ[_name] = ""
 
 from neuron_agent.api import main as api_main  # noqa: E402
-from neuron_agent.config.settings import Settings  # noqa: E402
+from neuron_agent.config.settings import Settings, get_settings  # noqa: E402
 from neuron_agent.graphs import main_graph  # noqa: E402
 from neuron_agent.models import factory  # noqa: E402
 from neuron_agent.schemas.agent import AgentAnswer  # noqa: E402
 from neuron_agent.security.auth import TokenVerifier  # noqa: E402
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter  # noqa: E402
 from neuron_agent.services.agent_service import AgentService  # noqa: E402
+
+
+@pytest.fixture
+def live_provider(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    """Restore the developer's model and provider key for a live test; skip without a key.
+
+    The model comes from `APP_DEFAULT_MODEL` in the shell or `.env` (default OpenAI), and
+    `Settings()` and `get_settings()` see it and its key for the rest of the test.
+    """
+    model = _LIVE_ENV.get("APP_DEFAULT_MODEL", "openai:gpt-5.4-mini")
+    key_name = f"{model.partition(':')[0].upper()}_API_KEY"
+    if not (_LIVE_ENV.get(key_name) or _LIVE_ENV.get(f"APP_{key_name}")):
+        pytest.skip(f"{key_name} is not configured for {model}")
+    for name in _LIVE_VARS:
+        # A blanked `APP_` alias would otherwise shadow a key set under its conventional name.
+        if name in _LIVE_ENV:
+            monkeypatch.setenv(name, _LIVE_ENV[name])
+        else:
+            monkeypatch.delenv(name)
+    get_settings.cache_clear()
+    yield model
+    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
