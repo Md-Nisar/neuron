@@ -52,7 +52,7 @@ def correlation_context() -> dict[str, Any]:
 def add_trace_context(
     _: Any, __: str, event_dict: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
-    """Add the current span's `trace_id` and `span_id`, when one is recording a trace."""
+    """Add the current span's `trace_id` and `span_id`, when a valid span context is current."""
     context = trace.get_current_span().get_span_context()
     if context.is_valid:
         event_dict["trace_id"] = trace.format_trace_id(context.trace_id)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -214,6 +215,23 @@ class Settings(BaseSettings):
                     f"APP_ALLOWED_HOSTS entry {host!r} must be a lowercase hostname with no "
                     "scheme or port, optionally starting with '*.'"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def validate_telemetry_transport(self) -> Settings:
+        """OTLP credentials must not leave the host in clear text outside development/test."""
+        endpoint = self.otel_exporter_otlp_endpoint
+        if (
+            self.env in {"staging", "production"}
+            and self.otel_exporter_otlp_headers is not None
+            and self.otel_exporter_otlp_headers.get_secret_value()
+            and not endpoint.startswith("https://")
+            and urlsplit(endpoint).hostname not in {"localhost", "127.0.0.1", "::1"}
+        ):
+            raise ValueError(
+                "OTEL_EXPORTER_OTLP_ENDPOINT must use HTTPS when OTEL_EXPORTER_OTLP_HEADERS "
+                "is set in staging/production, unless the Collector is on loopback"
+            )
         return self
 
 

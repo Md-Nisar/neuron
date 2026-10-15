@@ -93,11 +93,14 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
   honoured, including its sampled flag, so the sample ratio applies only to traces that
   start here. `X-Correlation-ID` stays the correlation ID and is recorded on the server
   span as `neuron.correlation_id`.
-- **Logs:** every log line written while a span is recording, audit records included,
-  carries `trace_id` and `span_id`, so a log line leads to its trace.
+- **Logs:** every log line written inside a valid span context, sampled or not and audit
+  records included, carries `trace_id` and `span_id`, so a log line leads to its trace.
 - **Failures:** exports run in the background. An unreachable Collector never fails a
-  request; the SDK logs `Failed to export ...` and drops the batch. Shutdown flushes for up
-  to `APP_OTEL_EXPORT_TIMEOUT_SECONDS`.
+  request; the SDK logs `Failed to export ...` and drops the batch. Each export, retries
+  included, gives up after `APP_OTEL_EXPORT_TIMEOUT_SECONDS`.
+- **Transport:** in staging and production, an endpoint that carries
+  `OTEL_EXPORTER_OTLP_HEADERS` must use HTTPS unless it is a loopback sidecar
+  (`localhost`, `127.0.0.1`, `[::1]`), so credentials never cross the network in clear.
 - **Privacy:** prompts, answers and tool content are never recorded. HTTP spans do carry
   standard request attributes, such as the URL, user agent and peer address; redact them
   in the Collector where your policy requires it.

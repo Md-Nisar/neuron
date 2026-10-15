@@ -232,7 +232,7 @@ Logging never includes raw user prompts, tool arguments, exception text, or prov
 v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). So far the OpenTelemetry foundation is in place:
 - `observability/telemetry.py` builds the SDK providers from `Settings` and exports over OTLP/HTTP when `APP_OTEL_ENABLED=true`. Otherwise the global no-op providers stay in place and nothing is exported.
 - `api/main.py` instruments the FastAPI app, excluding `/health/*`, and records `X-Correlation-ID` on the server span.
-- `observability/logging.py::add_trace_context` adds `trace_id` and `span_id` to every log line written inside a recording span.
+- `observability/logging.py::add_trace_context` adds `trace_id` and `span_id` to every log line written inside a valid span context, sampled or not.
 - `observability/semconv.py` is the only place span, metric and attribute names are defined, pinned to a semantic-conventions version; a test rejects them anywhere else.
 
 Configuration is in `OPERATIONS.md#opentelemetry`.

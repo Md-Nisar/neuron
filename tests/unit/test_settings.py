@@ -183,3 +183,38 @@ def test_empty_provider_key_from_env_example_means_no_key(
 
     assert settings.openai_api_key is None
     assert isinstance(create_chat_model(settings), _FakeChatModel)
+
+
+def _production(**overrides: object) -> Settings:
+    return Settings(
+        env="production",
+        auth_mode="jwt",
+        auth_issuer="https://issuer.example.test",
+        auth_audience="neuron-api",
+        auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
+        identity_hash_key="x" * 32,
+        openai_api_key="sk-test",
+        **overrides,
+    )
+
+
+def test_otlp_credentials_require_https_off_loopback_in_production() -> None:
+    with pytest.raises(ValidationError, match="must use HTTPS"):
+        _production(
+            OTEL_EXPORTER_OTLP_ENDPOINT="http://collector.internal:4318",
+            OTEL_EXPORTER_OTLP_HEADERS="authorization=Bearer%20t",
+        )
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    ["https://collector.internal:4318", "http://localhost:4318", "http://127.0.0.1:4318"],
+)
+def test_otlp_credentials_allowed_over_https_or_loopback(endpoint: str) -> None:
+    _production(
+        OTEL_EXPORTER_OTLP_ENDPOINT=endpoint, OTEL_EXPORTER_OTLP_HEADERS="authorization=Bearer%20t"
+    )
+
+
+def test_plain_http_otlp_without_credentials_is_allowed_in_production() -> None:
+    _production(OTEL_EXPORTER_OTLP_ENDPOINT="http://collector.internal:4318")
