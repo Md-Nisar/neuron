@@ -325,9 +325,9 @@ class AgentService:
                 self._finish_usage(run)
             finally:
                 run.lease.release()
-            stats.log()
-            stats.record_on(span)
-            span.end()
+                stats.log()
+                stats.record_on(span)
+                span.end()
 
     async def _produce(self, run: PreparedRun, queue: asyncio.Queue[StreamEvent | None]) -> None:
         """Run the graph, translating its stream into events; always ends with `None`.

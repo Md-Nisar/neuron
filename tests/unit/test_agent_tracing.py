@@ -208,7 +208,7 @@ def test_stream_span_records_ttft_events_and_termination(
 async def test_agent_server_run_records_ids_owner_prefix_and_token_usage(
     spans: InMemorySpanExporter, stream_replies: Callable[..., Any]
 ) -> None:
-    """Agent Server inputs carry only `messages`; IDs, owner and usage come from elsewhere."""
+    """On Agent Server, IDs and owner come from the run's config, never the client's input."""
     usage = {
         "input_tokens": 120,
         "output_tokens": 30,
@@ -224,8 +224,14 @@ async def test_agent_server_run_records_ids_owner_prefix_and_token_usage(
     graph = build_graph(Settings(env="test"))
     owner = "0123456789abcdef" * 4
 
+    # Agent Server input is the client's: state fields must not reach the span.
     await graph.ainvoke(
-        {"messages": [HumanMessage(content="hi")]},
+        {
+            "messages": [HumanMessage(content="hi")],
+            "owner_key": "spoofed-owner-key",
+            "thread_id": "spoofed-thread",
+            "run_id": "00000000-0000-4000-8000-000000000000",
+        },
         config={
             "configurable": {
                 "thread_id": "thread-1",

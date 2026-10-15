@@ -214,9 +214,13 @@ def build_graph(
     agent = build_agent(resolved_settings)
 
     async def agent_node(state: MainGraphState, config: RunnableConfig) -> dict[str, Any]:
-        authorization = _run_authorization(get_runtime().context, config, resolved_settings)
+        context = get_runtime().context
+        authorization = _run_authorization(context, config, resolved_settings)
+        attributes = _run_span_attributes(
+            state, config, from_service=isinstance(context, AuthorizationContext)
+        )
         name = f"{semconv.OPERATION_INVOKE_AGENT} {semconv.AGENT_NAME}"
-        with telemetry.start_span(name, attributes=_run_span_attributes(state, config)) as span:
+        with telemetry.start_span(name, attributes=attributes) as span:
             try:
                 return await call_agent(
                     state, agent=agent, settings=resolved_settings, authorization=authorization
@@ -234,21 +238,25 @@ def build_graph(
     return builder.compile(checkpointer=checkpointer)
 
 
-def _run_span_attributes(state: MainGraphState, config: RunnableConfig) -> dict[str, str | int]:
-    """The `invoke_agent` span's attributes, on both deployment paths.
+def _run_span_attributes(
+    state: MainGraphState, config: RunnableConfig, *, from_service: bool
+) -> dict[str, str | int]:
+    """The `invoke_agent` span's attributes, from trusted sources only.
 
-    `AgentService` puts the IDs and owner key in state. Agent Server inputs carry only
-    `messages`; there the thread and run come from the run's config, and the owner from the
-    authenticated user Agent Server records in it.
+    `AgentService` (`from_service`) puts the IDs and owner key in state. Under Agent Server
+    the state is the client's input, so the thread, run and owner come from the run's
+    config, where Agent Server records them in keys clients can't set.
     """
     configurable = config.get("configurable", {})
-    thread_id = state.get("thread_id") or configurable.get("thread_id")
-    run_id = state.get("run_id") or configurable.get("run_id")
-    owner = (
-        state.get("owner_key")
-        or state.get("user_id_hash")
-        or configurable.get("langgraph_auth_user_id")
-    )
+    thread_id: object
+    run_id: object
+    owner: object
+    if from_service:
+        thread_id, run_id = state.get("thread_id"), state.get("run_id")
+        owner = state.get("owner_key") or state.get("user_id_hash")
+    else:
+        thread_id, run_id = configurable.get("thread_id"), configurable.get("run_id")
+        owner = configurable.get("langgraph_auth_user_id")
     attributes: dict[str, str | int] = {
         semconv.GEN_AI_OPERATION_NAME: semconv.OPERATION_INVOKE_AGENT,
         semconv.GEN_AI_AGENT_NAME: semconv.AGENT_NAME,
