@@ -157,14 +157,21 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     """Every `Settings` field has a (possibly commented-out) line in `.env.example`."""
     text = (Path(__file__).parents[2] / ".env.example").read_text()
     documented = set(re.findall(r"^#?\s*(APP_[A-Z0-9_]+)=", text, re.MULTILINE))
-    # Provider keys are documented under their conventional aliases, such as OPENAI_API_KEY.
-    provider_keys = {"APP_OPENAI_API_KEY", "APP_NVIDIA_API_KEY"}
-    expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - provider_keys
+    # Some settings are documented under their conventional names, such as OPENAI_API_KEY.
+    conventional = {
+        "APP_OPENAI_API_KEY",
+        "APP_NVIDIA_API_KEY",
+        "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
+        "APP_OTEL_EXPORTER_OTLP_HEADERS",
+    }
+    expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - conventional
 
     assert expected - documented == set(), "add these settings to .env.example"
     assert documented - expected == set(), "remove stale settings from .env.example"
     assert re.search(r"^OPENAI_API_KEY=", text, re.MULTILINE)
     assert re.search(r"^NVIDIA_API_KEY=", text, re.MULTILINE)
+    assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_ENDPOINT=", text, re.MULTILINE)
+    assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_HEADERS=", text, re.MULTILINE)
 
 
 def test_empty_provider_key_from_env_example_means_no_key(

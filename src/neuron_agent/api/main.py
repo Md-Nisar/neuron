@@ -31,6 +31,11 @@ from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
+from neuron_agent.observability.telemetry import (
+    configure_telemetry,
+    instrument_app,
+    record_correlation_id,
+)
 from neuron_agent.schemas.agent import (
     AgentRequest,
     AgentResponse,
@@ -55,6 +60,7 @@ configure_logging(
     environment=settings.env,
 )
 logger = structlog.get_logger(__name__)
+telemetry = configure_telemetry(settings)
 service = AgentService(settings)
 auth_verifier = get_shared_token_verifier(settings)
 
@@ -66,9 +72,14 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         await service.shutdown()
+        if telemetry is not None:
+            # Flushing can block until the export timeout when the Collector is down.
+            await anyio.to_thread.run_sync(telemetry.shutdown)
 
 
 app = FastAPI(title=settings.name, version=settings.version, lifespan=lifespan)
+# Uses the global providers, which are no-ops unless APP_OTEL_ENABLED=true.
+instrument_app(app)
 rate_limiter = InMemoryTokenBucketRateLimiter(
     capacity=settings.rate_limit_burst,
     requests_per_window=settings.rate_limit_requests_per_window,
@@ -153,6 +164,7 @@ async def bind_request_correlation(
     ):
         correlation_id = str(uuid.uuid4())
     request.state.correlation_id = correlation_id
+    record_correlation_id(correlation_id)
     structlog.contextvars.clear_contextvars()
     bind_correlation_context(request_id=correlation_id, thread_id=None)
     try:

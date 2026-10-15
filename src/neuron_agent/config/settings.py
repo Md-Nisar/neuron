@@ -46,6 +46,29 @@ class Settings(BaseSettings):
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     trusted_proxies: list[str] = Field(default_factory=list)
     enable_langsmith: bool = False
+    otel_enabled: bool = False
+    # None uses APP_NAME.
+    otel_service_name: str | None = None
+    # Head sampling for new traces; an incoming `traceparent` keeps its sampled flag.
+    otel_traces_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
+    otel_export_timeout_seconds: float = Field(default=10.0, gt=0.0, le=60.0)
+    # Read under the standard OpenTelemetry names; the exporter appends /v1/traces etc.
+    otel_exporter_otlp_endpoint: str = Field(
+        default="http://localhost:4318",
+        pattern=r"^https?://",
+        validation_alias=AliasChoices(
+            "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+    )
+    # `key=value` pairs, comma-separated and URL-encoded, such as an auth header.
+    otel_exporter_otlp_headers: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_OTEL_EXPORTER_OTLP_HEADERS",
+            "OTEL_EXPORTER_OTLP_HEADERS",
+        ),
+    )
     # "auto" resolves to memory in development/test and none in staging/production.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False

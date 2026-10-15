@@ -74,6 +74,35 @@ LANGSMITH_PROJECT=neuron-agent-production
 
 Do not log raw secrets, authorization headers, or sensitive user content.
 
+### OpenTelemetry
+
+The FastAPI server exports OpenTelemetry traces and metrics over OTLP/HTTP to a Collector
+(ADR 0007). It is off by default, and nothing is exported until it is enabled:
+
+```text
+APP_OTEL_ENABLED=true
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otel-collector.internal:4318
+OTEL_EXPORTER_OTLP_HEADERS=authorization=Bearer%20<token>   # optional, URL-encoded
+APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for new traces
+```
+
+- **Resource:** `service.name` (`APP_OTEL_SERVICE_NAME`, default `APP_NAME`),
+  `service.version` and `deployment.environment.name`.
+- **Spans:** one HTTP server span per request, named by route template (for example
+  `POST /v1/agent/invoke`). `/health/*` is not traced. An incoming W3C `traceparent` is
+  honoured, including its sampled flag, so the sample ratio applies only to traces that
+  start here. `X-Correlation-ID` stays the correlation ID and is recorded on the server
+  span as `neuron.correlation_id`.
+- **Logs:** every log line written while a span is recording, audit records included,
+  carries `trace_id` and `span_id`, so a log line leads to its trace.
+- **Failures:** exports run in the background. An unreachable Collector never fails a
+  request; the SDK logs `Failed to export ...` and drops the batch. Shutdown flushes for up
+  to `APP_OTEL_EXPORT_TIMEOUT_SECONDS`.
+- **Privacy:** prompts, answers and tool content are never recorded. HTTP spans do carry
+  standard request attributes, such as the URL, user agent and peer address; redact them
+  in the Collector where your policy requires it.
+- **Agent Server** deployments don't use this exporter yet.
+
 Security audit records use the separate `neuron_agent.audit` logger (also present as the
 JSON `logger` field). Route that logger to the SIEM independently from application logs;
 do not apply application-log sampling or filtering that drops denials. Records use the
@@ -292,6 +321,7 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 | Spike in `stream_cancelled` | clients or a proxy dropping connections | check proxy buffering and timeouts (above) and client network; runs are cancelled, so no cost leak |
 | Stream delivers everything at once | a proxy is buffering the response | disable buffering (above) |
 | LangSmith unavailable | tracing endpoint unreachable | core request handling continues unless tracing is made mandatory by deployment policy |
+| `Failed to export span batch` / `metrics` in logs | OTLP Collector unreachable or rejecting the export | requests are unaffected; check `OTEL_EXPORTER_OTLP_ENDPOINT`, headers and Collector health |
 
 Every row above maps to the `AppError` taxonomy in `ARCHITECTURE.md`'s Failure Handling section; use the logged `error_code`/`error_type`/`retry_count`/`duration_ms` fields (see `ARCHITECTURE.md`'s Observability section) to diagnose which layer failed.
 

@@ -61,7 +61,7 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 - `persistence/`: checkpointer construction and lifecycle (`APP_CHECKPOINTER`), plus the `setup` operator command.
 - `schemas/`: public API and structured output contracts.
 - `security/`: authentication (`auth.py`: `TokenVerifier`, `Principal`, the `/v1` route dependency), permissions and the per-run `AuthorizationContext` (`authorization.py`), Agent Server auth handlers (`agent_server.py`), rate limiting, and input, URL and tool policy checks.
-- `observability/`: structured logging setup.
+- `observability/`: structured logging, audit events and OpenTelemetry setup.
 - `prompts/`: versionable prompt assets.
 - `errors/`: shared `AppError` taxonomy and HTTP/retry/visibility metadata.
 
@@ -229,7 +229,13 @@ Streaming and conversation-state telemetry, listed in full in `OPERATIONS.md#str
 
 Logging never includes raw user prompts, tool arguments, exception text, or provider secrets — only stable, pre-classified fields (IDs, names, codes, counts, durations). API keys are read once in `models/factory.py::create_chat_model` and are never passed to a logger. See `SECURITY.md` for the broader logging/secrets policy.
 
-v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). Until those issues land, the structured logs and optional LangSmith tracing described above are the only telemetry.
+v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). So far the OpenTelemetry foundation is in place:
+- `observability/telemetry.py` builds the SDK providers from `Settings` and exports over OTLP/HTTP when `APP_OTEL_ENABLED=true`. Otherwise the global no-op providers stay in place and nothing is exported.
+- `api/main.py` instruments the FastAPI app, excluding `/health/*`, and records `X-Correlation-ID` on the server span.
+- `observability/logging.py::add_trace_context` adds `trace_id` and `span_id` to every log line written inside a recording span.
+- `observability/semconv.py` is the only place span, metric and attribute names are defined, pinned to a semantic-conventions version; a test rejects them anywhere else.
+
+Configuration is in `OPERATIONS.md#opentelemetry`.
 
 ## Scaling
 
