@@ -64,7 +64,7 @@ Changes:
 - Release gate (#63). It found and fixed one defect present since #58: on Agent Server, the graph built each run's authorization from the run's client-supplied `context`. Runs without one crashed, so every Agent Server and Studio run failed, and a run whose `context` listed `permissions` got those permissions (a function-level authorization bypass for tools). Runs now take permissions and the owner only from the authenticated user Agent Server records; client `context` grants nothing.
 
 Known issues (see `docs/releases/v0.4.0-release-verification.md`):
-- The live OpenAI smoke tests and live evals have still not run (no usable API credentials, as in 0.3.0); model-facing behaviour is verified only with fake models.
+- The live OpenAI smoke tests and live evals have still not run, for two reasons: no usable API credentials (as in 0.3.0), and, since #54, the root test conftest cleared `OPENAI_API_KEY` before collection so live tests skipped even with a key set (fixed in #83, after this release). Model-facing behaviour is verified only with fake models.
 - Agent Server (`langgraph.json`) deployments enforce authentication, scopes, tool permissions and owner isolation, but not the API's per-principal rate limits, run caps, token budgets or message input policy.
 - A newly published IdP signing key can be rejected for up to 30 seconds (PyJWT's forced-refetch cooldown); pre-publish keys.
 - `/health/ready` doesn't probe the JWKS, so an instance marked not ready after an IdP outage recovers only when it serves a request.
