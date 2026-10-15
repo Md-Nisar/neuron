@@ -12,9 +12,54 @@ Production deployments must inject secrets through the platform secret manager.
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded and, with `APP_CHECKPOINTER=postgres`, the database reachable. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation.
+- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no JWKS fetch failure since the last signing key was obtained. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. The JWKS part is passive (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
+
+## Identity Provider
+
+Staging and production require `APP_AUTH_MODE=jwt`: every `/v1/*` request carries an OAuth 2.0 access token that is a signed JWT (RFC 9068), issued by one OIDC-compliant identity provider (IdP). Neuron never issues tokens or stores users (ADR 0006).
+
+### Connecting an IdP
+
+1. **Register the API** as a resource (API, audience or resource server, depending on the IdP), with an identifier such as `neuron-api`. Access tokens must carry it in `aud`, be JWTs (not opaque tokens), be signed with RS256/384/512 or ES256/384/512 with a `kid` header, and contain all of `iss`, `aud`, `sub`, `exp`, `nbf` and `iat`; a token missing any of them is rejected (`auth_failed`, `reason="invalid_claims"`). Check that the IdP includes `nbf`, since some omit it by default. ID tokens carry the client ID in `aud`, so they are rejected.
+2. **Define the scopes** `agent:invoke`, `threads:read`, `threads:delete` and `tools:calculator` (see README "Authentication"), and grant them to the client applications that need them. If the IdP models permissions as roles instead, map roles to scopes with `APP_AUTH_ROLES_CLAIM` and `APP_AUTH_ROLE_PERMISSIONS`; a role grants nothing unless it's mapped.
+3. **Service accounts** use the client-credentials grant and the same scopes. There is no separate API-key path.
+4. **Configure Neuron** from the IdP's discovery document (`<issuer>/.well-known/openid-configuration`): `issuer` becomes `APP_AUTH_ISSUER` (compared exactly, including any trailing slash) and `jwks_uri` becomes `APP_AUTH_JWKS_URL`.
+
+```text
+APP_AUTH_MODE=jwt
+APP_AUTH_ISSUER=https://idp.example.com/
+APP_AUTH_AUDIENCE=neuron-api
+APP_AUTH_JWKS_URL=https://idp.example.com/.well-known/jwks.json
+APP_AUTH_ISSUER_ID=primary
+APP_IDENTITY_HASH_KEY=<at least 32 random characters, from the secret manager>
+# Only if permissions arrive as roles:
+APP_AUTH_ROLES_CLAIM=roles
+APP_AUTH_ROLE_PERMISSIONS={"neuron-user":["agent:invoke","threads:read","threads:delete"]}
+```
+
+5. **Check it:** call `/v1/me/threads` with a token from the IdP; expect `200`. A `401` is audited as `auth_failed` with a `reason` (`wrong_issuer`, `wrong_audience`, `expired`, ...) that names the mismatch.
+
+`.env.example` lists every other `APP_AUTH_*` setting with its bounds. One issuer per deployment is supported.
+
+### Signing keys and JWKS caching
+
+- Fetched keys are cached for `APP_AUTH_JWKS_CACHE_SECONDS` (default `300`) per process; each fetch times out after `APP_AUTH_JWKS_TIMEOUT_SECONDS`.
+- A token with an unknown `kid` triggers an immediate refetch, so a newly published key works at once. When a refetch succeeds but still lacks the `kid`, further unknown-`kid` refetches wait one second per process, so forged `kid`s can't hammer a reachable IdP; a legitimate new key presented in that second gets `401` once and works on retry. While the IdP is unreachable there is no such cooldown: each request that needs a fetch tries one, serialized per process and bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`.
+- **Rotation:** publish the new key in the JWKS before the IdP signs with it, and remove the old key only after every token it signed has expired (plus `APP_AUTH_LEEWAY_SECONDS`). Most IdPs do this automatically.
+- **Compromised key:** remove it from the JWKS, then restart the API replicas; otherwise each process keeps trusting its cached copy for up to `APP_AUTH_JWKS_CACHE_SECONDS`.
+- **IdP outage:** tokens whose key is still cached keep working until the cache expires. After that, requests fail closed with `503 authentication_unavailable`. `/health/ready` returns `503` from the first failed fetch until a later request obtains a signing key again, from a fetch or the cache. Readiness doesn't probe the JWKS itself, so an instance that receives no requests stays not ready: if the orchestrator removes not-ready instances from traffic, restart them after the IdP recovers, or base traffic decisions on `/health/live` plus your own IdP monitoring.
+
+### Rotating `APP_IDENTITY_HASH_KEY`
+
+Thread ownership is HMAC-SHA256(`APP_IDENTITY_HASH_KEY`, issuer + subject). Changing the key changes every owner key: every existing thread then returns `404` to its owner, `/v1/me/*` no longer finds it, and per-principal limits start fresh. There is no dual-key mode.
+
+- Rotate only if the key is exposed. The key alone grants no access (a caller still needs a valid token), but with database access it lets someone link threads to known identities.
+- To rotate, deploy the new key to every replica at once and let retention (`make prune-threads`) remove the orphaned threads, as in the v0.3 upgrade below. Tell users their earlier conversations are no longer available.
+- Keep the key identical across replicas and restarts; a mismatch makes threads appear and disappear depending on the replica.
+
+Related settings: trusted proxies and per-user limits are under Rate Limiting, audit log routing under Logs and Traces, and the HTTP surface (CORS, docs, headers, hosts) under HTTP Surface.
 
 ## Logs and Traces
 
@@ -67,6 +112,15 @@ Suggested alerts:
 
 ### Security incident runbook
 
+| Response | Meaning | Runbook entry |
+| --- | --- | --- |
+| `401 authentication_error` | missing, malformed, expired or untrusted token | 401 spike |
+| `403 authorization_error` | valid token without the route's scope | 403 spike |
+| `503 authentication_unavailable` | the IdP's JWKS can't be fetched | IdP outage |
+| `429 quota_exceeded` | the principal's rolling token budget is spent | Quota exhaustion |
+| `429 too_many_concurrent_runs` | the principal already has `APP_MAX_CONCURRENT_RUNS_PER_USER` runs | Quota exhaustion |
+| `429 rate_limited` | request rate, or failed authentications per IP | Quota exhaustion |
+
 - **401/authentication failure spike:** query `logger="neuron_agent.audit" AND event="auth_failed"`
   and group by `reason`, `issuer_id` and time. `jwks_unavailable` indicates identity-provider
   connectivity trouble; invalid-token reasons indicate caller credentials or abuse. Verify
@@ -75,9 +129,21 @@ Suggested alerts:
 - **403/authorization denial spike:** query `event="authorization_denied"`, group by
   `action` and `reason`, and check for repeated scope mismatch or thread-access attempts.
   Verify role-to-scope configuration; never broaden permissions as a diagnostic shortcut.
-- **Quota exhaustion:** query `event="limit_exceeded"` grouped by `reason` and `actor`.
-  `token_budget` is the per-principal rolling budget; `request_rate`,
-  `authentication_attempts`, and `concurrent_runs` identify other guards. Check legitimate
+- **IdP outage or JWKS fetch failures (`503 authentication_unavailable`):** query
+  `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` also returns `503`.
+  Check the IdP's status and that `APP_AUTH_JWKS_URL` is reachable from the API (DNS,
+  egress rules, TLS). Don't switch to `APP_AUTH_MODE=none` or widen the issuer. Requests
+  recover by themselves once a fetch succeeds; readiness recovers only when a request gets
+  a key, so restart instances that were taken out of rotation (Signing keys and JWKS caching).
+- **Signing-key problems:** a spike of `auth_failed` with `reason="unknown_signing_key"` after an
+  IdP key rotation means tokens are signed with a key the JWKS doesn't (yet) publish; check
+  the IdP's JWKS before Neuron.
+- **Quota exhaustion (`429`):** query `event="limit_exceeded"` grouped by `reason` and `actor`.
+  `token_budget` is `quota_exceeded`, the per-principal rolling budget; `concurrent_runs` is
+  `too_many_concurrent_runs`; `request_rate` and `authentication_attempts` are
+  `rate_limited`; `concurrent_streams` is the process-wide stream cap (`503 too_many_streams`).
+  One `actor` dominating points at a single client looping or retrying without honouring
+  `Retry-After`. Check legitimate
   workload and provider capacity before tuning limits; do not disable guards during an incident.
 
 ## Scaling
@@ -209,7 +275,8 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 | Missing provider key in staging/production | `Settings.require_provider_key_outside_tests` fails fast at startup | process does not start; set `OPENAI_API_KEY` |
 | Missing provider key in development | expected | fake local chat model serves requests; no live calls made |
 | `429 rate_limited` | client exceeded the token bucket | caller retries after `Retry-After` seconds |
-| `400 validation_error` | malformed JSON, unknown fields, oversized/empty/control-character message | reject before any model/tool call |
+| `400 validation_error` | too-long, empty, whitespace-only or control-character message | reject before any model/tool call |
+| `422 validation_error` | malformed JSON, unknown fields, wrong field types | reject before any model/tool call |
 | `413 payload_too_large` | request body exceeds `APP_MAX_REQUEST_BODY_BYTES` | reject before parsing |
 | `504 provider_timeout_error` | model provider did not respond within `APP_REQUEST_TIMEOUT_SECONDS` | retried internally first; surfaces only after retries are exhausted |
 | `502 tool_execution_error` | tool exceeded `APP_TOOL_TIMEOUT_SECONDS` or raised an unclassified exception | tool failure is isolated; it cannot crash the agent loop |

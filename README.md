@@ -42,13 +42,37 @@ Copy-Item .env.example .env
 
 Set `OPENAI_API_KEY` in `.env` before live model execution. Without a key, development and test environments use a fake local chat model so health checks and deterministic tests still run.
 
+## Authentication
+
+Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed JWT) when `APP_AUTH_MODE=jwt`, which staging and production enforce (ADR 0006). The token's verified issuer and subject identify the caller and own their threads; scopes grant permissions:
+
+| Scope | Allows |
+| --- | --- |
+| `agent:invoke` | `POST /v1/agent/invoke`, `POST /v1/agent/stream` |
+| `threads:read` | `GET /v1/threads/{id}/messages`, `GET /v1/me/threads`, `GET /v1/me/export` |
+| `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads` |
+| `tools:calculator` | lets the agent use the `calculator` tool |
+
+`.env.example` starts in `APP_AUTH_MODE=none`, a development-only mode with no authentication in which every caller is the same untrusted local identity. To run locally with real tokens and no identity provider, use the development token tools (development only; they refuse to run unless `APP_ENV=development`):
+
+```bash
+make dev-auth >> .env   # once: creates a signing key in .dev/ and appends the jwt settings
+make dev-jwks           # terminal 1: serves the public key on http://127.0.0.1:8765/jwks.json
+make api                # terminal 2: the API, now in jwt mode
+TOKEN=$(make -s dev-token)   # terminal 3: a 1-hour token for subject dev-user with every scope
+```
+
+`uv run python scripts/dev_token.py --sub alice --scope "agent:invoke threads:read"` mints a token for another subject or with fewer scopes. To connect a real identity provider, see `OPERATIONS.md#identity-provider`.
+
+Errors: a missing, expired or otherwise invalid token gets `401 authentication_error` with `WWW-Authenticate: Bearer error="invalid_token"`; a valid token without the route's scope gets `403 authorization_error`; if the identity provider's keys can't be fetched, `503 authentication_unavailable`.
+
 ## Running
 
 ```bash
 make api
 ```
 
-Health endpoints:
+Health endpoints (never authenticated):
 
 - `GET /health/live`
 - `GET /health/ready`
@@ -57,9 +81,12 @@ Invoke:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/agent/invoke \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message":"What is 19 * 3?"}'
 ```
+
+In `APP_AUTH_MODE=none`, leave out the `Authorization` header.
 
 ### Conversations
 
@@ -67,30 +94,33 @@ Every response returns a `thread_id`. Send it back to continue the same conversa
 
 ```bash
 THREAD=$(curl -s -X POST http://127.0.0.1:8000/v1/agent/invoke \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"message":"My name is Ada.","user_id":"user-123"}' | jq -r .thread_id)
+  -d '{"message":"My name is Ada."}' | jq -r .thread_id)
 
 curl -s -X POST http://127.0.0.1:8000/v1/agent/invoke \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"message\":\"What is my name?\",\"thread_id\":\"$THREAD\",\"user_id\":\"user-123\"}"
+  -d "{\"message\":\"What is my name?\",\"thread_id\":\"$THREAD\"}"
 ```
 
 Thread rules:
 - Thread IDs are server-minted UUIDs. Omit `thread_id` to start a new conversation.
-- A supplied `thread_id` must belong to a thread created with the same `user_id`; otherwise the response is `404 thread_not_found`.
+- A thread belongs to the token subject that created it. Anyone else gets `404 thread_not_found`, exactly as for a thread that doesn't exist.
 - A second request on a thread while a run is still in flight gets `409 thread_busy`.
 
-Read or delete a thread. `user_id` goes in the `X-User-Id` header:
+Read or delete a thread, and list, export or erase all of your threads:
 
 ```bash
-curl -s "http://127.0.0.1:8000/v1/threads/$THREAD/messages?limit=50" -H "X-User-Id: user-123"
-curl -s -X DELETE "http://127.0.0.1:8000/v1/threads/$THREAD" -H "X-User-Id: user-123"   # 204
-curl -s "http://127.0.0.1:8000/v1/me/threads?limit=50&offset=0" -H "X-User-Id: user-123"
-curl -s "http://127.0.0.1:8000/v1/me/export?limit=5&offset=0&message_limit=20&message_offset=0" -H "X-User-Id: user-123"
-curl -s -X DELETE "http://127.0.0.1:8000/v1/me/threads" -H "X-User-Id: user-123"
+AUTH="Authorization: Bearer $TOKEN"
+curl -s "http://127.0.0.1:8000/v1/threads/$THREAD/messages?limit=50" -H "$AUTH"
+curl -s -X DELETE "http://127.0.0.1:8000/v1/threads/$THREAD" -H "$AUTH"   # 204
+curl -s "http://127.0.0.1:8000/v1/me/threads?limit=50&offset=0" -H "$AUTH"
+curl -s "http://127.0.0.1:8000/v1/me/export?limit=5&offset=0&message_limit=20&message_offset=0" -H "$AUTH"
+curl -s -X DELETE "http://127.0.0.1:8000/v1/me/threads" -H "$AUTH"
 ```
 
-The `/v1/me/*` routes require `threads:read` for listing/export and `threads:delete` for bulk erasure in JWT mode. Export returns only user and assistant text and is bounded by `APP_USER_DATA_EXPORT_MAX_BYTES` (default 5 MB); use the returned pagination fields to fetch further threads/messages. Listing returns summaries without conversation content. See `SECURITY.md` for retention and coverage limitations. In local no-auth mode, `X-User-Id` is the development identity.
+Export returns only user and assistant text and is bounded by `APP_USER_DATA_EXPORT_MAX_BYTES` (default 5 MB); use the returned pagination fields to fetch further threads/messages. Listing returns summaries without conversation content. See `SECURITY.md` for retention and coverage limitations.
 
 Persistence is selected with `APP_CHECKPOINTER`:
 - `auto` (the default) keeps threads in memory in development and test. They're lost on restart.
@@ -102,16 +132,18 @@ Persistence is selected with `APP_CHECKPOINTER`:
 
 ```bash
 curl -N -X POST http://127.0.0.1:8000/v1/agent/stream \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message":"What is 19 * 3?"}'
 ```
 
-The browser's `EventSource` only supports `GET`, so read the stream with `fetch`. This minimal reader works in browsers and Node 18+:
+The browser's `EventSource` can't send a body or an `Authorization` header, so read the stream with `fetch`. This minimal reader works in browsers and Node 18+. A browser page on another origin also needs that origin in `APP_CORS_ALLOWED_ORIGINS`:
 
 ```javascript
+const token = process.env.TOKEN; // in a browser, the access token from your OIDC client
 const response = await fetch("http://127.0.0.1:8000/v1/agent/stream", {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   body: JSON.stringify({ message: "What is 19 * 3?" }),
 });
 if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
@@ -137,7 +169,19 @@ for (;;) {
 }
 ```
 
-Treat `token` events as a live preview. The `final` event carries the validated answer. Validation failures, `404`, `409`, `429` and `503` are ordinary HTTP errors returned before the stream starts.
+Treat `token` events as a live preview. The `final` event carries the validated answer. Authentication, validation and authorization failures, `404`, `409`, `429` and `503` are ordinary HTTP errors returned before the stream starts. A token that expires mid-stream doesn't end the stream; it's checked once, at the start.
+
+## Migrating from 0.3.x
+
+0.4.0 replaces caller-chosen identity with verified tokens. Breaking changes:
+
+- **Bearer tokens are required in staging and production.** Settings refuse to start there unless `APP_AUTH_MODE=jwt` with an issuer, audience, HTTPS JWKS URL and `APP_IDENTITY_HASH_KEY` (`OPERATIONS.md#identity-provider`). Send `Authorization: Bearer <token>` on every `/v1/*` request.
+- **`user_id` and `X-User-Id` no longer identify the caller.** In jwt mode they are ignored: identity comes from the token's `(iss, sub)`. Remove them from clients. They still work in `APP_AUTH_MODE=none`, for local development only.
+- **Existing threads aren't carried over.** Ownership is now an HMAC of the verified identity, so threads created under 0.3.x return `404` in jwt mode and expire through retention. `OPERATIONS.md#upgrade-from-v03-identity-to-jwt-ownership` has the rollout.
+- **New error responses:** `401 authentication_error`, `403 authorization_error`, `503 authentication_unavailable`, `429 quota_exceeded` (per-user token budget) and `429 too_many_concurrent_runs` (per-user run cap). Both `429`s carry `Retry-After`.
+- **Rate limits** key on the verified principal instead of the client IP; failed authentication is still limited per IP.
+- **Responses** to `/v1/*` are `Cache-Control: no-store`, and `/docs`, `/redoc` and `/openapi.json` are hidden in staging and production unless `APP_EXPOSE_API_DOCS=true`.
+- **Postgres:** re-run `make db-setup` to create the index behind `/v1/me/*`.
 
 ## Request Limits
 
@@ -145,7 +189,7 @@ The `/v1/agent/invoke` and `/v1/agent/stream` endpoints enforce, before model ex
 
 - request body size, via `APP_MAX_REQUEST_BODY_BYTES` (default 65536 bytes; rejected with `413`)
 - message length, via `APP_MAX_PROMPT_CHARS` (default 12000 characters; rejected with `400`)
-- `thread_id` must be a UUID, and `user_id` is at most 128 chars
+- `thread_id` must be a UUID (and, in `APP_AUTH_MODE=none` only, `user_id` is at most 128 chars)
 - unknown request fields and malformed JSON (rejected with `422`)
 - empty, whitespace-only, or control-character-containing messages (rejected with `400`)
 

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.models.factory import _FakeChatModel, create_chat_model
 
 
 def test_settings_require_openai_key_in_production() -> None:
@@ -128,3 +132,26 @@ def test_settings_reject_postgres_pool_size_out_of_bounds() -> None:
 def test_settings_reject_history_limits_out_of_bounds(overrides: dict[str, int]) -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", **overrides)
+
+
+def test_env_example_documents_every_setting_and_nothing_else() -> None:
+    """Every `Settings` field has a (possibly commented-out) line in `.env.example`."""
+    text = (Path(__file__).parents[2] / ".env.example").read_text()
+    documented = set(re.findall(r"^#?\s*(APP_[A-Z0-9_]+)=", text, re.MULTILINE))
+    # The provider key is documented under its conventional OPENAI_API_KEY alias.
+    expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - {"APP_OPENAI_API_KEY"}
+
+    assert expected - documented == set(), "add these settings to .env.example"
+    assert documented - expected == set(), "remove stale settings from .env.example"
+    assert re.search(r"^OPENAI_API_KEY=", text, re.MULTILINE)
+
+
+def test_empty_provider_key_from_env_example_means_no_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`cp .env.example .env` leaves `OPENAI_API_KEY=`; development still uses the fake model."""
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    settings = Settings(env="development")
+
+    assert settings.openai_api_key is None
+    assert isinstance(create_chat_model(settings), _FakeChatModel)
