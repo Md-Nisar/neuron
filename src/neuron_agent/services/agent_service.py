@@ -9,7 +9,6 @@ import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import anyio
@@ -35,6 +34,7 @@ from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 from neuron_agent.persistence.checkpointer import Persistence, build_persistence
+from neuron_agent.persistence.thread_index import OwnedThreadPage, owned_threads
 from neuron_agent.schemas.agent import (
     AgentAnswer,
     AgentRequest,
@@ -536,23 +536,27 @@ class AgentService:
         offset: int,
         principal: Principal | None = None,
     ) -> UserThreadsResponse:
-        """List only the caller's threads, newest activity first, without content."""
-        records = await self._owned_thread_records(self._owner_key(user_id, principal))
-        summaries = [
-            UserThreadSummary(
-                thread_id=record["thread_id"],
-                created_at=record["created_at"],
-                updated_at=record["updated_at"],
-                message_count=len(record["messages"]),
-            )
-            for record in records
-        ]
-        return UserThreadsResponse(
-            threads=summaries[offset : offset + limit],
-            total=len(summaries),
-            limit=limit,
-            offset=offset,
-        )
+        """List only the caller's threads, newest activity first, without content.
+
+        Only the returned page's latest checkpoints are read, to count their messages.
+        """
+        owner_key = self._owner_key(user_id, principal)
+        summaries: list[UserThreadSummary] = []
+        with self._persistence_errors():
+            page = await self._owned_threads(owner_key, limit=limit, offset=offset)
+            for thread in page.threads:
+                messages = await self._latest_public_messages(thread.thread_id, owner_key)
+                if messages is None:
+                    continue
+                summaries.append(
+                    UserThreadSummary(
+                        thread_id=thread.thread_id,
+                        created_at=thread.created_at,
+                        updated_at=thread.updated_at,
+                        message_count=len(messages),
+                    )
+                )
+        return UserThreadsResponse(threads=summaries, total=page.total, limit=limit, offset=offset)
 
     async def export_user_data(
         self,
@@ -564,35 +568,43 @@ class AgentService:
         message_offset: int,
         principal: Principal | None = None,
     ) -> UserDataExportResponse:
-        """Export owner-scoped public turns with independent thread/message pagination."""
+        """Export owner-scoped public turns with independent thread/message pagination.
+
+        Threads are read one at a time, stopping as soon as the export exceeds its cap.
+        """
         owner_key = self._owner_key(user_id, principal)
-        records = await self._owned_thread_records(owner_key)
-        page = records[offset : offset + limit]
-        exported = [
-            ExportedThread(
-                thread_id=record["thread_id"],
-                created_at=record["created_at"],
-                updated_at=record["updated_at"],
-                message_total=len(record["messages"]),
-                messages=record["messages"][message_offset : message_offset + message_limit],
-            )
-            for record in page
-        ]
+        max_bytes = self._settings.user_data_export_max_bytes
+        exported: list[ExportedThread] = []
+        has_more_messages = False
+        exported_bytes = 0
+        with self._persistence_errors():
+            page = await self._owned_threads(owner_key, limit=limit, offset=offset)
+            for thread in page.threads:
+                messages = await self._latest_public_messages(thread.thread_id, owner_key)
+                if messages is None:
+                    continue
+                item = ExportedThread(
+                    thread_id=thread.thread_id,
+                    created_at=thread.created_at,
+                    updated_at=thread.updated_at,
+                    message_total=len(messages),
+                    messages=messages[message_offset : message_offset + message_limit],
+                )
+                exported_bytes += len(item.model_dump_json().encode("utf-8"))
+                if exported_bytes > max_bytes:
+                    raise ExportTooLargeError("reduce the thread or message page size and retry")
+                exported.append(item)
+                has_more_messages |= message_offset + message_limit < len(messages)
         response = UserDataExportResponse(
             threads=exported,
-            total_threads=len(records),
+            total_threads=page.total,
             limit=limit,
             offset=offset,
             message_limit=message_limit,
             message_offset=message_offset,
-            has_more_messages=any(
-                message_offset + message_limit < len(record["messages"]) for record in page
-            ),
+            has_more_messages=has_more_messages,
         )
-        if (
-            len(response.model_dump_json().encode("utf-8"))
-            > self._settings.user_data_export_max_bytes
-        ):
+        if len(response.model_dump_json().encode("utf-8")) > max_bytes:
             raise ExportTooLargeError("reduce the thread or message page size and retry")
         audit(
             "user_data_exported",
@@ -614,7 +626,6 @@ class AgentService:
     ) -> UserDataErasureResponse:
         """Delete all discoverable owned threads, skipping active runs idempotently."""
         owner_key = self._owner_key(user_id, principal)
-        records = await self._owned_thread_records(owner_key)
         erased = 0
         active_owned = {
             thread_id
@@ -625,8 +636,9 @@ class AgentService:
         checkpointer = self._persistence.checkpointer
         if checkpointer is not None:
             with self._persistence_errors():
-                for record in records:
-                    thread_id = record["thread_id"]
+                page = await self._owned_threads(owner_key, limit=None)
+                for thread in page.threads:
+                    thread_id = thread.thread_id
                     if thread_id in active_owned or thread_id in self._active_threads:
                         continue
                     await checkpointer.adelete_thread(thread_id)
@@ -647,49 +659,28 @@ class AgentService:
         )
         return UserDataErasureResponse(erased_count=erased, skipped_busy_count=skipped_busy)
 
-    async def _owned_thread_records(self, owner_key: str | None) -> list[dict[str, Any]]:
-        """Resolve owner-indexed root checkpoints into current public thread records."""
-        checkpointer = self._persistence.checkpointer
-        if checkpointer is None or owner_key is None:
-            return []
-        latest: dict[str, tuple[datetime, list[ThreadMessage]]] = {}
-        with self._persistence_errors():
-            async for item in checkpointer.alist(None, filter={"owner": owner_key}):
-                configurable = item.config.get("configurable", {})
-                if configurable.get("checkpoint_ns", "") != "":
-                    continue
-                thread_id = configurable.get("thread_id")
-                if not isinstance(thread_id, str):
-                    continue
-                timestamp = _checkpoint_time(item.checkpoint.get("ts"))
-                current = latest.get(thread_id)
-                if current is None or timestamp > current[0]:
-                    channels = item.checkpoint.get("channel_values", {})
-                    raw_messages = (
-                        channels.get("messages", []) if isinstance(channels, dict) else []
-                    )
-                    latest[thread_id] = (timestamp, _public_thread_messages(raw_messages))
+    async def _owned_threads(
+        self, owner_key: str | None, *, limit: int | None, offset: int = 0
+    ) -> OwnedThreadPage:
+        if owner_key is None:
+            return OwnedThreadPage(total=0, threads=[])
+        return await owned_threads(self._persistence, owner_key, limit=limit, offset=offset)
 
-            records: list[dict[str, Any]] = []
-            for thread_id, (updated_at, messages) in latest.items():
-                created_at = updated_at
-                async for item in checkpointer.alist({"configurable": {"thread_id": thread_id}}):
-                    configurable = item.config.get("configurable", {})
-                    if configurable.get("checkpoint_ns", "") != "":
-                        continue
-                    created_at = min(created_at, _checkpoint_time(item.checkpoint.get("ts")))
-                records.append(
-                    {
-                        "thread_id": thread_id,
-                        "created_at": created_at,
-                        "updated_at": updated_at,
-                        "messages": messages,
-                    }
-                )
-        return sorted(
-            records,
-            key=lambda record: (-record["updated_at"].timestamp(), record["thread_id"]),
+    async def _latest_public_messages(
+        self, thread_id: str, owner_key: str | None
+    ) -> list[ThreadMessage] | None:
+        """The public turns of an owned thread's latest checkpoint; None if it's gone."""
+        checkpointer = self._persistence.checkpointer
+        if checkpointer is None:
+            return None
+        item = await checkpointer.aget_tuple(
+            {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
         )
+        if item is None or item.metadata.get("owner") != owner_key:
+            return None
+        channels = item.checkpoint.get("channel_values", {})
+        raw_messages = channels.get("messages", []) if isinstance(channels, dict) else []
+        return _public_thread_messages(raw_messages)
 
     async def delete_thread(
         self, thread_id: str, user_id: str | None, *, principal: Principal | None = None
@@ -842,16 +833,6 @@ async def _cancel(task: asyncio.Task[Any]) -> None:
 
 def _hash_identifier(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
-def _checkpoint_time(value: Any) -> datetime:
-    if not isinstance(value, str):
-        raise PersistenceError("checkpoint timestamp is unavailable")
-    try:
-        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise PersistenceError("checkpoint timestamp is invalid") from exc
-    return timestamp if timestamp.tzinfo is not None else timestamp.replace(tzinfo=UTC)
 
 
 def _public_thread_messages(messages: Any) -> list[ThreadMessage]:

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `/v1/me/threads`, `/v1/me/export` and `DELETE /v1/me/threads` do work in proportion to the page they return, not the caller's whole checkpoint history (#76):
+  - on Postgres, one paginated aggregate query lists the caller's threads, served by a new `neuron_checkpoints_owner_idx` index. Re-run `make db-setup` when upgrading;
+  - messages are loaded only from the latest checkpoint of each returned thread;
+  - export stops reading once `APP_USER_DATA_EXPORT_MAX_BYTES` is exceeded;
+  - bulk erase loads no messages.
 - HTTP surface hardening for browser and multi-user exposure (#60):
   - CORS through an explicit `APP_CORS_ALLOWED_ORIGINS` allow-list (empty by default; `*` and malformed origins are rejected at startup), with preflight support for `/v1/agent/stream`;
   - `/docs`, `/redoc` and `/openapi.json` are hidden in staging and production unless `APP_EXPOSE_API_DOCS=true`, and the schema declares the bearer scheme;

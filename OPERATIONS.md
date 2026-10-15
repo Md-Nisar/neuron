@@ -101,7 +101,7 @@ Two simultaneous requests for the same thread that land on *different* replicas 
    ```
 
    The DSN is a `SecretStr` and is never logged.
-3. **Create or migrate the schema** once per deploy, before the new version serves traffic: `make db-setup` (`python -m neuron_agent.persistence.cli setup`). It's idempotent; it runs LangGraph's `AsyncPostgresSaver.setup()` migrations.
+3. **Create or migrate the schema** once per deploy, before the new version serves traffic: `make db-setup` (`python -m neuron_agent.persistence.cli setup`). It's idempotent; it runs LangGraph's `AsyncPostgresSaver.setup()` migrations, then creates `neuron_checkpoints_owner_idx`, the index behind `/v1/me/*`. The index is built `CONCURRENTLY`, so running it against a live database doesn't block writes. Without the index, `/v1/me/*` still works but scans the `checkpoints` table.
    - `APP_CHECKPOINTER_SETUP_ON_STARTUP=true` does the same at app startup. That's convenient for local use (and `docker compose`), but avoid it with many replicas starting at once.
 4. **Size the pool.** `APP_POSTGRES_POOL_MAX_SIZE` (default `10`) is per process. Each run holds a connection only briefly per checkpoint read or write, so a pool of 10 serves far more than 10 concurrent runs. Keep `replicas × workers × pool size` under the database's `max_connections`, leaving headroom for the prune job and admin access. `APP_POSTGRES_POOL_TIMEOUT_SECONDS` (default `10`) bounds the wait for a connection; exceeding it surfaces as `503 persistence_error`.
 5. **Back up** like any user-data store, with retention aligned to `APP_THREAD_RETENTION_DAYS` (see below). Restoring a backup restores conversations, including ones deleted after it was taken.
