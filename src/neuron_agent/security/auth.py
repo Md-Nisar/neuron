@@ -181,7 +181,7 @@ class TokenVerifier:
                         lambda: self._client.get_signing_keys(refresh=True),  # type: ignore[union-attr]
                         abandon_on_cancel=True,
                     )
-            except (PyJWKClientError, TimeoutError):
+            except (PyJWTError, TimeoutError):  # includes a malformed JWK set
                 return
             self._last_unavailable_at = None
 

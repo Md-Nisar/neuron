@@ -413,3 +413,16 @@ def test_api_requires_authentication_but_health_is_public(monkeypatch: pytest.Mo
     assert protected.json() == {"detail": "authentication_error"}
     assert protected.headers["www-authenticate"] == 'Bearer error="invalid_token"'
     assert client.get("/health/live").status_code == 200
+
+
+@pytest.mark.anyio
+async def test_ready_probe_reports_unready_for_a_malformed_jwks() -> None:
+    from jwt.exceptions import PyJWKSetError
+
+    class MalformedClient:
+        def get_signing_keys(self, refresh: bool = False) -> list[Any]:
+            raise PyJWKSetError("The JWK Set did not contain any keys")
+
+    verifier = _unready_verifier(MalformedClient(), [100.0])
+
+    assert await verifier.ready() is False
