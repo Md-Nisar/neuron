@@ -273,22 +273,33 @@ class _FakeChatModel(FakeListChatModel):
         return self
 
 
+# NVIDIA's API catalog is OpenAI-compatible, so both providers share `ChatOpenAI` and the
+# `openai` error taxonomy that retries and error classification rely on.
+_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+
+
 def create_chat_model(settings: Settings) -> ChatOpenAI | _FakeChatModel:
     """Create the chat model with provider-specific runtime limits."""
-    if settings.env in {"development", "test"} and settings.openai_api_key is None:
-        return _FakeChatModel(responses=["Local test response."])
-
     provider, model_name = _split_model_identifier(settings.default_model)
-    if provider != "openai":
+    if provider not in {"openai", "nvidia"}:
         raise ConfigurationError(f"unsupported model provider: {provider}")
 
-    api_key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else None
+    api_key = settings.provider_api_key(provider)
+    if settings.env in {"development", "test"} and api_key is None:
+        return _FakeChatModel(responses=["Local test response."])
+
+    provider_options: dict[str, Any] = {}
+    if provider == "nvidia":
+        # ChatOpenAI only reports streamed token usage by default for OpenAI's own endpoint;
+        # per-user token budgets need it here too.
+        provider_options = {"base_url": _NVIDIA_BASE_URL, "stream_usage": True}
     return ChatOpenAI(
         model=model_name,
-        api_key=api_key,
+        api_key=api_key.get_secret_value() if api_key else None,
         timeout=settings.request_timeout_seconds,
         max_tokens=settings.max_output_tokens,
         max_retries=0,
+        **provider_options,
     )
 
 

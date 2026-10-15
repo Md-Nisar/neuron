@@ -95,20 +95,38 @@ class Settings(BaseSettings):
         ),
     )
 
-    @field_validator("openai_api_key", mode="before")
+    nvidia_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_NVIDIA_API_KEY",
+            "NVIDIA_API_KEY",
+        ),
+    )
+
+    @field_validator("openai_api_key", "nvidia_api_key", mode="before")
     @classmethod
     def empty_provider_key_is_unset(cls, value: object) -> object:
         """`OPENAI_API_KEY=` (as copied from `.env.example`) means no key, not an empty one."""
         return None if value == "" else value
 
+    def provider_api_key(self, provider: str) -> SecretStr | None:
+        """Return the API key for a `default_model` provider prefix, if one is configured."""
+        key = {"openai": self.openai_api_key, "nvidia": self.nvidia_api_key}.get(provider)
+        return key if key is not None and key.get_secret_value() else None
+
     @model_validator(mode="after")
     def require_provider_key_outside_tests(self) -> Settings:
         """Fail early for live model execution in production-like environments."""
-        if self.env in {"staging", "production"} and self.default_model.startswith("openai:"):
-            if self.openai_api_key is None or not self.openai_api_key.get_secret_value():
-                raise ValueError(
-                    "OPENAI_API_KEY is required for OpenAI models in staging/production"
-                )
+        provider = self.default_model.partition(":")[0]
+        if (
+            self.env in {"staging", "production"}
+            and provider in {"openai", "nvidia"}
+            and self.provider_api_key(provider) is None
+        ):
+            raise ValueError(
+                f"{provider.upper()}_API_KEY is required for {provider} models "
+                "in staging/production"
+            )
         return self
 
     @model_validator(mode="after")

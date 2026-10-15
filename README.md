@@ -22,7 +22,7 @@ Since v0.3.0, conversations are stateful and responses can be streamed (ADR 0005
 
 - Python 3.13
 - `uv` 0.11 or newer
-- Optional: `OPENAI_API_KEY` for live model calls
+- Optional: `OPENAI_API_KEY`, or `NVIDIA_API_KEY` for free-tier development models, for live model calls
 
 ## Setup
 
@@ -41,6 +41,8 @@ Copy-Item .env.example .env
 ```
 
 Set `OPENAI_API_KEY` in `.env` before live model execution. Without a key, development and test environments use a fake local chat model so health checks and deterministic tests still run.
+
+For development you can use a model from NVIDIA's API catalog instead (`build.nvidia.com`, which offers OpenAI-compatible models on a free tier): set `NVIDIA_API_KEY` and `APP_DEFAULT_MODEL=nvidia:<model-id>`, such as a model ID from the catalog's model list. The app calls NVIDIA's OpenAI-compatible endpoint (`https://integrate.api.nvidia.com/v1`) through the same client, retries and error handling. The model must support tool calling. The free tier is for development and evaluation; keep real user data off it.
 
 ## Authentication
 
@@ -232,26 +234,26 @@ make test
 make security
 ```
 
-`make test` never makes live network calls — it only runs `tests/unit`, `tests/graph`, `tests/security`, `tests/resilience`, and the deterministic subset of `tests/evals`. Tests that call a real model provider live in `tests/integration` (`make test-integration`) and the credentialed subset of `tests/evals` (`make eval`); both require `OPENAI_API_KEY` and are skipped automatically without it, so they never run unintentionally in CI or on a fresh clone. See `EVALUATION.md` for the evaluation dataset and live agent-quality checks.
+`make test` never makes live network calls — it only runs `tests/unit`, `tests/graph`, `tests/security`, `tests/resilience`, and the deterministic subset of `tests/evals`. Pytest deselects the `integration` and `eval` markers unless you select them with `-m`, and every other test runs with provider keys blanked, even if `.env` holds one. Tests that call a real model provider live in `tests/integration` (`make test-integration`) and the credentialed subset of `tests/evals` (`make eval`). They use `APP_DEFAULT_MODEL` and its provider key from the shell or `.env`, and are skipped when that key isn't set. See `EVALUATION.md` for the evaluation dataset and live agent-quality checks.
 
-Live OpenAI smoke test (Unix):
+Live smoke test against the configured model (Unix). With the key and model in `.env`, the `export` lines aren't needed:
 
 ```bash
-export OPENAI_API_KEY=your-key
+export OPENAI_API_KEY=your-key  # or NVIDIA_API_KEY plus APP_DEFAULT_MODEL=nvidia:<model-id>
 uv run pytest tests/integration/test_live_openai_smoke.py -m integration -q
 ```
 
-Live OpenAI smoke test (PowerShell):
+Live smoke test (PowerShell):
 
 ```powershell
-$env:OPENAI_API_KEY = "your-key"
+$env:OPENAI_API_KEY = "your-key"  # or NVIDIA_API_KEY plus APP_DEFAULT_MODEL
 uv run pytest tests/integration/test_live_openai_smoke.py -m integration -q
 ```
 
 ## Troubleshooting
 
 - **No `OPENAI_API_KEY` locally**: expected. `development`/`test` fall back to a fake local chat model (`create_chat_model` in `models/factory.py`); health checks and `make test` still pass. Only live calls (`make test-integration`, `make eval` with a key, or `make api` without a key against a real request) need one.
-- **Settings fail to construct with a provider-key error**: `APP_ENV=staging` or `production` require `OPENAI_API_KEY`/`APP_OPENAI_API_KEY` to be set — this is `Settings.require_provider_key_outside_tests` failing fast on purpose.
+- **Settings fail to construct with a provider-key error**: `APP_ENV=staging` or `production` require the selected provider's key (`OPENAI_API_KEY`/`APP_OPENAI_API_KEY`, or `NVIDIA_API_KEY`/`APP_NVIDIA_API_KEY` for `nvidia:` models) to be set — this is `Settings.require_provider_key_outside_tests` failing fast on purpose.
 - **Unexpectedly hitting `429 rate_limited` while testing locally**: the default limiter allows a burst of 20 and 60/min thereafter per client IP; set `APP_RATE_LIMIT_ENABLED=false` or raise the limits in `.env` for local load testing.
 - **`mypy`/`ruff` failures on a fresh clone**: run `uv sync` first so the dev dependency group (ruff, mypy, bandit) is installed; `make format lint typecheck` assume `uv run` resolves against the synced `.venv`.
 - **A test hangs instead of failing**: check whether it's unintentionally exercising the real `ChatOpenAI` client (a credential is set in the shell/`.env` where a test expected the fake model) — `APP_REQUEST_TIMEOUT_SECONDS`/`APP_TOOL_TIMEOUT_SECONDS` only bound the agent's own calls, not an unrelated hang in test setup.

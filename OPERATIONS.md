@@ -272,7 +272,7 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 
 | Symptom | Cause | Response |
 | --- | --- | --- |
-| Missing provider key in staging/production | `Settings.require_provider_key_outside_tests` fails fast at startup | process does not start; set `OPENAI_API_KEY` |
+| Missing provider key in staging/production | `Settings.require_provider_key_outside_tests` fails fast at startup | process does not start; set `OPENAI_API_KEY` (or `NVIDIA_API_KEY` for `nvidia:` models) |
 | Missing provider key in development | expected | fake local chat model serves requests; no live calls made |
 | `429 rate_limited` | client exceeded the token bucket | caller retries after `Retry-After` seconds |
 | `400 validation_error` | too-long, empty, whitespace-only or control-character message | reject before any model/tool call |
@@ -300,6 +300,7 @@ Every row above maps to the `AppError` taxonomy in `ARCHITECTURE.md`'s Failure H
 Before deploying to `staging`/`production`:
 
 - `OPENAI_API_KEY` (or `APP_OPENAI_API_KEY`) must be set via the platform secret manager — startup fails fast otherwise.
+- Use an `openai:` model. `nvidia:` models (NVIDIA API catalog) are meant for development on the free tier; they work in any environment, but the free tier isn't intended for production traffic or user data.
 - `APP_ENV=production` (or `staging`).
 - Leave `APP_RATE_LIMIT_ENABLED=true` and size `APP_RATE_LIMIT_*` for expected traffic; remember limits are per-instance, not cluster-wide.
 - Set `APP_LOG_LEVEL=INFO` (or stricter) — logs never include raw secrets or prompts regardless of level (see `SECURITY.md`).
