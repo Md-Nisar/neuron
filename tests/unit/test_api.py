@@ -223,6 +223,25 @@ def test_ready_endpoint_returns_503_when_checkpointer_unreachable(
     assert response.json() == {"status": "not_ready"}
 
 
+def test_ready_endpoint_consults_the_jwks_probe_without_a_model_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    probes: list[str] = []
+
+    async def verifier_ready() -> bool:
+        probes.append("jwks")
+        return False
+
+    async def no_model(*args: object, **kwargs: object) -> None:
+        raise AssertionError("readiness must not call the model")
+
+    monkeypatch.setattr(api_main.auth_verifier, "ready", verifier_ready)
+    monkeypatch.setattr(api_main.AgentService, "invoke", no_model, raising=False)
+    response = TestClient(app).get("/health/ready")
+    assert response.status_code == 503
+    assert probes == ["jwks"]
+
+
 def test_lifespan_opens_and_closes_service(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 

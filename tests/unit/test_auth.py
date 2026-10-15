@@ -279,11 +279,115 @@ async def test_verify_fails_closed_when_jwks_is_unavailable() -> None:
         def get_signing_key_from_jwt(self, token: str) -> Any:
             raise PyJWKClientConnectionError("identity provider unavailable")
 
+        def get_signing_keys(self, refresh: bool = False) -> list[Any]:
+            raise PyJWKClientConnectionError("identity provider unavailable")
+
     verifier._client = UnavailableClient()  # type: ignore[assignment]
 
     with pytest.raises(AuthenticationUnavailableError):
         await verifier.verify(f"Bearer {_token(private)}")
     assert await verifier.ready() is False
+
+
+class FlakyJWKSClient:
+    """Fails fetches while `down`, counting every forced refresh the probe makes."""
+
+    def __init__(self) -> None:
+        self.down = True
+        self.fetches = 0
+
+    def get_signing_keys(self, refresh: bool = False) -> list[Any]:
+        self.fetches += 1
+        if self.down:
+            raise PyJWKClientConnectionError("identity provider unavailable")
+        return []
+
+
+def _unready_verifier(client: Any, clock: list[float]) -> TokenVerifier:
+    verifier = TokenVerifier(_settings())
+    verifier._client = client
+    verifier._clock = lambda: clock[0]
+    verifier._last_unavailable_at = 1.0
+    return verifier
+
+
+@pytest.mark.anyio
+async def test_ready_stays_unready_during_outage_and_recovers_after_refresh() -> None:
+    client = FlakyJWKSClient()
+    clock = [100.0]
+    verifier = _unready_verifier(client, clock)
+
+    assert await verifier.ready() is False
+    assert client.fetches == 1
+
+    client.down = False
+    clock[0] += 10.0
+    assert await verifier.ready() is True
+    assert await verifier.ready() is True
+    assert client.fetches == 2  # a healthy verifier no longer probes
+
+
+@pytest.mark.anyio
+async def test_ready_probe_is_throttled_to_one_fetch_per_window() -> None:
+    client = FlakyJWKSClient()
+    clock = [100.0]
+    verifier = _unready_verifier(client, clock)
+
+    results = [await verifier.ready() for _ in range(5)]
+    assert results == [False] * 5
+    assert client.fetches == 1
+
+    clock[0] += 5.0
+    assert await verifier.ready() is False
+    assert client.fetches == 2
+
+
+@pytest.mark.anyio
+async def test_concurrent_ready_probes_share_one_fetch() -> None:
+    import anyio
+
+    client = FlakyJWKSClient()
+    verifier = _unready_verifier(client, [100.0])
+    results: list[bool] = []
+
+    async def probe() -> None:
+        results.append(await verifier.ready())
+
+    async with anyio.create_task_group() as group:
+        for _ in range(10):
+            group.start_soon(probe)
+
+    assert results == [False] * 10
+    assert client.fetches == 1
+
+
+@pytest.mark.anyio
+async def test_ready_probe_is_bounded_by_the_jwks_timeout() -> None:
+    import threading
+
+    release = threading.Event()
+
+    class HangingClient:
+        def get_signing_keys(self, refresh: bool = False) -> list[Any]:
+            release.wait(10)
+            return []
+
+    verifier = _unready_verifier(HangingClient(), [100.0])
+    verifier._probe_timeout = 0.05
+    try:
+        assert await verifier.ready() is False
+    finally:
+        release.set()
+
+
+@pytest.mark.anyio
+async def test_ready_probe_does_not_fetch_when_verifier_is_healthy() -> None:
+    client = FlakyJWKSClient()
+    verifier = TokenVerifier(_settings())
+    verifier._client = client  # type: ignore[assignment]
+
+    assert await verifier.ready() is True
+    assert client.fetches == 0
 
 
 def test_jwt_settings_require_identity_provider_configuration() -> None:

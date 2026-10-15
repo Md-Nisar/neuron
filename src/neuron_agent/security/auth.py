@@ -43,6 +43,8 @@ from neuron_agent.security.authorization import (
 )
 
 logger = structlog.get_logger(__name__)
+# Readiness refreshes a failed JWKS at most this often per process, whoever probes.
+_READINESS_PROBE_INTERVAL_SECONDS = 5.0
 _shared_token_verifier: TokenVerifier | None = None
 
 
@@ -83,6 +85,10 @@ class TokenVerifier:
         # A per-kid map would grow without bound and is trivially bypassed.
         self._last_unknown_kid_failure: float | None = None
         self._last_unavailable_at: float | None = None
+        self._clock = time.monotonic
+        self._probe_lock = anyio.Lock()
+        self._last_probe_at: float | None = None
+        self._probe_timeout = float(settings.auth_jwks_timeout_seconds)
 
     async def verify(self, authorization: str | None) -> Principal:
         """Verify an Authorization header and return a typed principal."""
@@ -151,10 +157,33 @@ class TokenVerifier:
             raise self._reject("invalid_token") from exc
 
     async def ready(self) -> bool:
-        """Report whether the verifier has seen a usable JWKS response."""
+        """Report whether the JWKS is usable, refreshing it after a failure (throttled)."""
         if self._settings.auth_mode != "jwt":
             return True
+        if self._last_unavailable_at is None:
+            return True
+        await self._probe_jwks()
         return self._last_unavailable_at is None
+
+    async def _probe_jwks(self) -> None:
+        """Refresh the JWKS once per window, shared by concurrent probes and time-bounded."""
+        if self._client is None:
+            return
+        async with self._probe_lock:
+            now = self._clock()
+            last = self._last_probe_at
+            if last is not None and now - last < _READINESS_PROBE_INTERVAL_SECONDS:
+                return
+            self._last_probe_at = now
+            try:
+                with anyio.fail_after(self._probe_timeout):
+                    await anyio.to_thread.run_sync(
+                        lambda: self._client.get_signing_keys(refresh=True),  # type: ignore[union-attr]
+                        abandon_on_cancel=True,
+                    )
+            except (PyJWKClientError, TimeoutError):
+                return
+            self._last_unavailable_at = None
 
     async def _get_signing_key(self, token: str, kid: str) -> Any:
         if self._client is None:
