@@ -134,16 +134,17 @@ def test_denied_tool_call_is_span_status_not_content(
 
     response = api.client.post("/v1/agent/invoke", json={"message": _PROMPT}, headers=bearer(token))
 
-    assert response.status_code == 403
+    # The denial goes back to the model as a tool error, so the run itself completes (#99).
+    assert response.status_code == 200
     finished = spans.get_finished_spans()
     [tool] = _named(finished, _TOOL)
     [run] = _named(finished, _INVOKE)
     assert _attributes(tool)[semconv.NEURON_OUTCOME] == "denied"
-    for span in (tool, run):
-        assert span.status.status_code is StatusCode.ERROR
-        assert span.status.description is None
-        assert _attributes(span)[semconv.ERROR_TYPE] == "authorization_error"
-        assert not span.events
+    assert tool.status.status_code is StatusCode.ERROR
+    assert tool.status.description is None
+    assert _attributes(tool)[semconv.ERROR_TYPE] == "authorization_error"
+    assert not tool.events
+    assert run.status.status_code is StatusCode.UNSET
 
 
 def test_no_span_carries_content_or_identity(

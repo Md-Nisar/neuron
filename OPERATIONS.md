@@ -328,7 +328,8 @@ Suggested alerts:
   issuer/JWKS health and key rotation before changing auth policy. Never copy bearer tokens
   into tickets or logs.
 - **403/authorization denial spike:** query `event="authorization_denied"`, group by
-  `action` and `reason`, and check for repeated scope mismatch or thread-access attempts.
+  `action` and `reason` (`resource_type="tool"` denials don't fail the run, so they show no
+  `403`), and check for repeated scope mismatch or thread-access attempts.
   Verify role-to-scope configuration; never broaden permissions as a diagnostic shortcut.
 - **IdP outage or JWKS fetch failures (`503 authentication_unavailable`):** query
   `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` also returns `503`.
