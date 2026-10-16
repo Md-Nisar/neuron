@@ -186,6 +186,77 @@ your security/compliance policy; keep it separate from `APP_THREAD_RETENTION_DAY
 audit records contain metadata and are not deleted with conversation data. Protect audit
 sink access and retention against unauthorized modification/deletion.
 
+### Service level objectives
+
+SLIs, targets and alerts for the service (ADR 0007, decision 8). **All targets are provisional until #99**, the release gate, where they are set from live data; the live provider checks have not run yet, so no number below is measured. The PromQL uses the names the Collector's Prometheus exporter produces from the OTLP metrics above: dots become underscores, unit `s` adds `_seconds`, counters add `_total`, histograms add `_bucket`/`_count`, and attributes become labels (`error.type` is `error_type`). Resource attributes are labels too (`service_instance_id` keeps workers apart), so every query aggregates with `sum(...)`.
+
+| SLO | SLI (good events / valid events) | Target (provisional until #99) | Error budget |
+| --- | --- | --- | --- |
+| `availability` | `/v1` requests that did not fail with 5xx, among requests that are not 4xx | 99.5% over 30 days | 0.5% |
+| `ttft` | streams whose time to first token is at most 2 s (p95 under 2 s) | 95% over 30 days | 5% |
+| `run_duration` | runs that finish within 30 s (p95 under 30 s), cancelled runs excluded | 95% over 30 days | 5% |
+| `provider_errors` | model calls that do not fail (provider error rate at most 1%) | 99% over 30 days | 1% |
+
+Definitions (`w` is a window):
+
+```text
+availability error ratio =
+  sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code=~"5.."}[w]))
+  / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[w]))
+
+ttft slow ratio =
+  1 - sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[w])) / sum(rate(neuron_agent_stream_ttft_seconds_count[w]))
+
+run duration slow ratio =
+  1 - sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[w]))
+      / sum(rate(neuron_agent_run_duration_seconds_count{neuron_outcome!="cancelled"}[w]))
+
+provider error ratio =
+  sum(rate(gen_ai_client_operation_duration_seconds_count{error_type!=""}[w]))
+  / sum(rate(gen_ai_client_operation_duration_seconds_count[w]))
+```
+
+Caveats: a stream that fails after its `200` headers is not an availability failure (see the `neuron.agent.errors` counter, `neuron.outcome` on `neuron.agent.stream.ttft`, and the `stream_completed` log); `le="2"` and `le="30"` must stay bucket bounds in `observability/metrics.py`; a model call's duration and error include its retries, so a provider error is one that outlasted them. Time to first token is recorded only for streams that sent a token.
+
+**Alerts.** `deploy/observability/prometheus-alerts.yaml` holds recording rules for each ratio over 5m, 30m, 1h, 6h and 3d, and the multi-window, multi-burn-rate alerts of the Google SRE Workbook for each SLO: 14.4x over 1h and 5m (page; 2% of a 30-day budget in 1 h), 6x over 6h and 30m (page) and 1x over 3d and 6h (ticket). An alert fires only when both windows exceed `burn x budget`. Each `alert=True` error class in `errors/base.py` (`configuration_error`, `provider_error`, `provider_quota_exhausted`, `tool_execution_error`, `structured_output_error`, `persistence_error`, `agent_execution_error`) has the 14.4x and 6x pair against a provisional budget of 0.1% of `/v1` requests, using `neuron_agent_errors_total{error_type="<code>"}`. A test keeps the rules, the SLO list and the error classes in step. The rules are examples: load them with `promtool check rules` and route `severity` in Alertmanager. Nothing alerts on no traffic, since the ratios are undefined without requests.
+
+**Collector.** `deploy/observability/otel-collector.yaml` (pinned to `opentelemetry-collector-contrib` 0.120.0; validate it with `otelcol-contrib validate` before use, which this repository does not run) receives OTLP and runs, in this order, `memory_limiter`, the attribute allow-list, value redaction, tail sampling (traces only) and `batch`, then exports traces, metrics and logs over OTLP and metrics to Prometheus. Endpoints come from `OTEL_BACKEND_ENDPOINT`, `OTEL_BACKEND_AUTH_HEADER`, `OTEL_RECEIVER_HOST` and `PROMETHEUS_EXPORTER_ENDPOINT`.
+
+- The allow-list drops every attribute not emitted by `semconv.py`: resource, span, metric data point and log record attributes each have their own list, and span events lose all attributes. HTTP spans keep only method, route, status code, scheme and protocol version, which drops the URL path, user agent and peer address. A new attribute is blocked until it is added to `semconv.py`, the Collector list and the test.
+- Tail sampling keeps every trace with an error span, every trace slower than 30 s (the provisional `run_duration` target) and 10% of the rest. Run the app with `APP_OTEL_TRACES_SAMPLE_RATIO=1.0` (head sampling would discard the errors first), and put a load-balancing exporter keyed by trace ID in front of several Collector replicas.
+- The service does not export logs over OTLP yet. The logs pipeline filters attributes only; it cannot filter a free-text body.
+- The development-only Compose stack (Grafana, Tempo, Loki, Prometheus) is deferred; it does not block the release.
+
+#### Runbook: availability
+
+`NeuronAvailabilityBurnRate*`. Look at `sum by (http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))` and `neuron_agent_errors_total` by `error_type`. A provider-class error points to the provider runbook; `persistence_error` or a failing `/health/ready` points to Postgres (Thread Persistence); `503 too_many_streams` means scale out or raise `APP_MAX_CONCURRENT_STREAMS`; `service_shutting_down` during a rollout is expected for a short time. Roll back (Rollback) if it began with a deploy.
+
+#### Runbook: ttft
+
+`NeuronTtftBurnRate*`. Slow first tokens come from the provider, from a proxy that buffers (Streaming Behind a Reverse Proxy), or from load. Compare `neuron_agent_stream_ttft_seconds` with `gen_ai_client_operation_duration_seconds` (provider time) and check `neuron.retry_count` on slow `chat` traces: retries add their backoff to time to first token. If only the provider is slow, shed nothing and wait or fail over; if the proxy buffers, fix it.
+
+#### Runbook: run-duration
+
+`NeuronRunDurationBurnRate*`. Open slow traces (tail sampling keeps those over 30 s): `chat` spans dominate when the provider is slow, repeated `execute_tool` spans mean a tool loop (`APP_MAX_AGENT_ITERATIONS`), and a `checkpoint` slowdown (`neuron_checkpoint_duration_seconds`) means the database. Runs that hit `APP_RUN_TIMEOUT_SECONDS` are `run_timeout` errors in the overflow bucket.
+
+#### Runbook: provider-errors
+
+`NeuronProviderErrorsBurnRate*`. Split `gen_ai_client_operation_duration_seconds_count{error_type!=""}` by `error_type`, `gen_ai_provider_name` and `gen_ai_request_model`. `provider_error` and `provider_timeout_error`: check the provider status page and retry settings (Timeouts and Retries). `rate_limit_error`: lower concurrency or raise the provider limit. `provider_quota_exhausted` and `configuration_error`: see below, retrying never helps.
+
+#### Runbook: error classes
+
+`NeuronErrorClass<Code>*`, one pair per `alert=True` class; the label `error_type` names it. Find the failing requests by the `error_code` log field and the `error.type` span attribute, then:
+
+| `error_type` | First response |
+| --- | --- |
+| `configuration_error` | A bad model identifier, provider authentication failure or a model the account cannot use. Check the last configuration or secret change; fix and redeploy. Never retried. |
+| `provider_error` | Upstream 5xx. See the provider-errors runbook. |
+| `provider_quota_exhausted` | The provider account has no credit. Add credit or raise the quota; every request fails until then. |
+| `tool_execution_error` | A tool timed out or raised. Check `neuron_agent_tool_duration_seconds` by `gen_ai_tool_name`, then the tool's dependency. The failure is isolated to the call. |
+| `structured_output_error` | The model returned output that failed the `AgentAnswer` schema or was empty. Check for a model or prompt change; run the evals (`make eval`). |
+| `persistence_error` | The checkpointer failed. Check Postgres and pool saturation (Thread Persistence); the pool reconnects once the database is back. |
+| `agent_execution_error` | An unclassified failure or the iteration cap. Read the server logs' `error_type`, and the trace for a tool loop. |
+
 ### Streaming and conversation-state events
 
 Every event carries `request_id`, `thread_id` and `run_id`. None of them contains prompt text, streamed tokens or tool arguments.
