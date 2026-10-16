@@ -161,6 +161,7 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     conventional = {
         "APP_OPENAI_API_KEY",
         "APP_NVIDIA_API_KEY",
+        "APP_LANGSMITH_API_KEY",
         "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
         "APP_OTEL_EXPORTER_OTLP_HEADERS",
     }

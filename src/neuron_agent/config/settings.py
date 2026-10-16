@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     trusted_proxies: list[str] = Field(default_factory=list)
     enable_langsmith: bool = False
+    # Outside development, LangSmith traces carry no prompts or answers unless this is true.
+    langsmith_content_approved: bool = False
     otel_enabled: bool = False
     # None uses APP_NAME.
     otel_service_name: str | None = None
@@ -127,7 +129,11 @@ class Settings(BaseSettings):
         ),
     )
 
-    @field_validator("openai_api_key", "nvidia_api_key", mode="before")
+    # Only the name LangSmith itself reads: an `APP_`-prefixed copy would pass validation
+    # here and still leave the client without a key.
+    langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
+
+    @field_validator("openai_api_key", "nvidia_api_key", "langsmith_api_key", mode="before")
     @classmethod
     def empty_provider_key_is_unset(cls, value: object) -> object:
         """`OPENAI_API_KEY=` (as copied from `.env.example`) means no key, not an empty one."""
@@ -150,6 +156,19 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"{provider.upper()}_API_KEY is required for {provider} models "
                 "in staging/production"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def require_langsmith_key_when_enabled(self) -> Settings:
+        """Fail early rather than silently dropping traces in production-like environments."""
+        if (
+            self.enable_langsmith
+            and self.env in {"staging", "production"}
+            and (self.langsmith_api_key is None or not self.langsmith_api_key.get_secret_value())
+        ):
+            raise ValueError(
+                "LANGSMITH_API_KEY is required when APP_ENABLE_LANGSMITH=true in staging/production"
             )
         return self
 
