@@ -42,6 +42,7 @@ from neuron_agent.errors.base import (
     ProviderQuotaError,
     ProviderTimeoutError,
     ToolExecutionError,
+    ValidationAppError,
 )
 from neuron_agent.errors.base import RateLimitError as AppRateLimitError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
@@ -54,6 +55,12 @@ from neuron_agent.security.authorization import AuthorizationContext, require_pe
 logger = structlog.get_logger(__name__)
 
 _TOOL_PERMISSIONS = {"calculator": "tools:calculator"}
+
+# Fixed text for a rejected tool input: the tool's own message can carry the model's input.
+_TOOL_INPUT_ERROR = (
+    "Error: the input to this tool was invalid. Correct it, or answer without the tool."
+)
+_ERROR_CODE_KEY = "error_code"
 
 
 def tracing_middleware(settings: Settings) -> AgentMiddleware:
@@ -113,7 +120,8 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
                 raise
             if isinstance(result, ToolMessage) and result.status == "error":
                 span.set_attribute(semconv.NEURON_OUTCOME, "error")
-                telemetry.record_error(span, ToolExecutionError.context.code)
+                code = result.additional_kwargs.get(_ERROR_CODE_KEY)
+                telemetry.record_error(span, code or ToolExecutionError.context.code)
             else:
                 span.set_attribute(semconv.NEURON_OUTCOME, "success")
             return result
@@ -284,6 +292,15 @@ def tool_failure_isolation_middleware() -> AgentMiddleware:
                 error_code=exc.context.code,
                 duration_ms=round((time.monotonic() - started) * 1000, 2),
             )
+            if isinstance(exc, ValidationAppError):
+                # The model chose the input, so let it correct the call or answer without it.
+                return ToolMessage(
+                    content=_TOOL_INPUT_ERROR,
+                    tool_call_id=request.tool_call["id"],
+                    name=tool_name,
+                    status="error",
+                    additional_kwargs={_ERROR_CODE_KEY: exc.context.code},
+                )
             raise
         except Exception as exc:
             logger.warning(
