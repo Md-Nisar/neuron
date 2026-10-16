@@ -63,7 +63,7 @@ Related settings: trusted proxies and per-user limits are under Rate Limiting, a
 
 ## Logs and Traces
 
-Logs are JSON and include service metadata, on the FastAPI server and on Agent Server.
+Logs are JSON and include service metadata, on the FastAPI server and on Agent Server. Known issue (0.5.0): on Agent Server, langgraph-api wraps each of our JSON lines as the string `event` of its own JSON line, so `trace_id`, `span_id` and our other fields are top-level only once a log shipper parses that inner string; langgraph-api's own records also carry our service metadata.
 
 ### LangSmith
 
