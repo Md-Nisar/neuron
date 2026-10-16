@@ -110,6 +110,7 @@ uv run neuron-eval --trials 3           # 3 runs of every case
 uv run neuron-eval --suite security     # single_turn, multi_turn, security (repeatable)
 uv run neuron-eval --category direct_factual --category context_carryover   # repeatable
 uv run neuron-eval --output report.json # also write the report to a file
+uv run neuron-eval --max-requests-per-minute 20   # model-call throttle (default 30; 0 = off)
 uv run python -m neuron_agent.evaluation   # same CLI
 ```
 
@@ -124,6 +125,53 @@ uv run neuron-eval --trials 3 --output before.json > /dev/null
 # make the change
 uv run neuron-eval --trials 3 --output after.json > /dev/null
 ```
+
+### Request throttle
+
+Every model call of a run is throttled, process-wide across suites and trials, to at most `--max-requests-per-minute` calls in any 60 seconds (default **30**, below the NVIDIA free tier's 40 per minute; `0` turns it off; use that for local runs on the fake model, which would otherwise wait too). It is a sliding window. It counts every model call, not one per case: a case that calls a tool makes two or more, each `setup` turn of a multi-turn case makes its own, and each provider retry counts again. The throttle is installed only by `neuron-eval`, around the retry layer of the agent; the API and Agent Server are unchanged. It is a CLI flag, not an environment setting. A run waits when the window is full, so 30 per minute stretches a 3-trial run to about an hour. A 429 (`rate_limit_error`) that survives the provider retries is an infrastructure error, so the run is inconclusive (see below), not a quality failure.
+
+## Comparing reports and the regression gate
+
+```bash
+uv run neuron-eval compare evals/baselines/<model>.json report.json
+```
+
+Both reports are validated against `tests/fixtures/eval_report.schema.json` (so `report_version` must match). Cases are matched by suite and case id. At current dataset sizes a suite-level interval cannot catch real regressions (16 cases x 3 trials at about 0.8 gives roughly 0.67-0.89), so the gate is **per case** (ADR 0007 section 6). Two rules gate:
+
+- **Regression** (suites `single_turn` and `multi_turn`): a case that passed every trial in the baseline fails every trial in the candidate. A one-trial wobble, or a case that was already flaky in the baseline, is not gated.
+- **Security** (suite `security`): any case failing any trial in the candidate (pass^k = 100%). This needs no baseline entry.
+
+Infrastructure errors never gate: a candidate with any makes the run **inconclusive** and the affected cases are listed under `infrastructure_errors` with their error codes. Rerun it. A real gate failure outranks inconclusive. Cases or suites present on only one side are listed (`cases_only_in_baseline`, `cases_only_in_candidate`, `suites_not_in_candidate`) and not gated, other than the security rule.
+
+stdout is a JSON document: `status` (`pass`, `regression`, `inconclusive` or `skipped`), `gate_failures`, `infrastructure_errors`, the missing lists, and per suite and per category the candidate and baseline `pass_rate`, `pass_hat_k` and 95% Wilson interval with deltas. The rates are for information only; suite intervals are not gated until a gated suite has about 50 cases.
+
+| Exit status | Meaning |
+| --- | --- |
+| 0 | Gate passed, or comparison skipped because the baseline file does not exist (a notice on stderr) |
+| 1 | Regression gate failed |
+| 2 | Inconclusive: infrastructure errors, no gate failure |
+| 3 | A report is unreadable or does not match the schema |
+
+## Baselines
+
+The committed baseline for a model lives at `evals/baselines/<name>.json`, where `<name>` is `APP_DEFAULT_MODEL` without its provider prefix and with `/` replaced by `__`. For `nvidia:nvidia/nemotron-3-super-120b-a12b` that is `evals/baselines/nvidia__nemotron-3-super-120b-a12b.json`. A baseline is a full `neuron-eval --trials 3` report from a live run.
+
+**No baseline is committed yet**: producing it needs a live NVIDIA key. Until it exists the nightly workflow skips `compare` with a notice and uploads the candidate report. To create it:
+
+1. Run the `nightly-eval` workflow from the Actions tab (or locally: `NVIDIA_API_KEY=... APP_DEFAULT_MODEL=nvidia:nvidia/nemotron-3-super-120b-a12b uv run neuron-eval --trials 3 --output report.json > /dev/null`).
+2. Check that `infrastructure_errors` is `0`. Otherwise rerun.
+3. Download the `eval-report` artifact, and copy `report.json` to the baseline path above.
+4. Open a PR with only that file; the description lists the commit, the pass rates and any case below pass^k = 1.
+
+**Refreshing a baseline** follows the same steps, after a model, prompt, tool or dataset change that is meant to move results. A maintainer other than the author approves the PR after reviewing the report: no infrastructure errors, no security failure, and every case that regressed explained. Never refresh a baseline to make a failing nightly pass without that review.
+
+## Automated runs and NVIDIA's terms
+
+The nightly workflow (`.github/workflows/nightly-eval.yml`) calls NVIDIA's hosted API with a free-tier key. NVIDIA's [API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf) and the terms shown at [build.nvidia.com](https://build.nvidia.com) apply. **Automated runs must comply with NVIDIA's terms, rate limits and usage restrictions.**
+
+Recorded usage: **one scheduled run a night** plus manual runs (`workflow_dispatch`), 3 trials by default, throttled to 30 requests per minute (limit 40). Anyone who changes the schedule, the trial count or the throttle re-checks the new usage against those terms first. Eval inputs are synthetic; keep real user data off the free tier.
+
+The workflow runs only when the `NVIDIA_API_KEY` repository secret is set and skips otherwise. It has `contents: read` permission only, passes the key through `env:` to the steps that need it, never prints it, and does not run on pull requests, so forks cannot reach the secret. Runs never overlap (`concurrency`), and a job is cut off after 75 minutes. Optional LangSmith experiment upload (`APP_ENABLE_LANGSMITH`) is deferred.
 
 ## Report and metrics
 

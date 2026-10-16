@@ -450,7 +450,7 @@ def test_python_dash_m_runs_the_cli(tmp_path: Path) -> None:
     shutil.copytree(Path("tests/fixtures"), tmp_path / "tests/fixtures")
     completed = subprocess.run(  # noqa: S603 - fixed interpreter and arguments
         [sys.executable, "-m", "neuron_agent.evaluation", "--suite", "security", "--category",
-         "cross_user_thread_access"],
+         "cross_user_thread_access", "--max-requests-per-minute", "0"],
         capture_output=True,
         text=True,
         check=True,

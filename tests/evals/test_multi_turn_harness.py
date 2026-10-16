@@ -62,7 +62,11 @@ def test_cli_report_is_clean_json_with_multi_turn_and_security_sections(tmp_path
     # directory without the developer's `.env`, which could otherwise supply a live key.
     shutil.copytree(SINGLE_TURN_CASES.parent, tmp_path / SINGLE_TURN_CASES.parent)
     completed = subprocess.run(  # noqa: S603 - fixed interpreter and arguments
-        [sys.executable, "-c", "from neuron_agent.evaluation import main; main()"],
+        [
+            sys.executable,
+            "-c",
+            "from neuron_agent.evaluation import main; main(['--max-requests-per-minute', '0'])",
+        ],
         capture_output=True,
         text=True,
         check=True,
