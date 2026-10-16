@@ -74,8 +74,9 @@ def test_cli_report_is_clean_json_with_multi_turn_and_security_sections(tmp_path
         timeout=120,
     )
     report = json.loads(completed.stdout)
-    assert report["total"] == len(load_eval_cases(SINGLE_TURN_CASES))
-    assert report["multi_turn"]["total"] == len(load_eval_cases(MULTI_TURN_CASES))
-    assert report["security"]["total"] == len(load_eval_cases(SECURITY_CASES))
-    assert report["security"]["passed"] == report["security"]["total"]
-    assert {"model", "passed", "results"} <= set(report)
+    suites = report["suites"]
+    assert suites["single_turn"]["cases"] == len(load_eval_cases(SINGLE_TURN_CASES))
+    assert suites["multi_turn"]["cases"] == len(load_eval_cases(MULTI_TURN_CASES))
+    assert suites["security"]["cases"] == len(load_eval_cases(SECURITY_CASES))
+    assert suites["security"]["passes"] == suites["security"]["cases"]
+    assert {"report_version", "model", "git_sha", "dataset_versions"} <= set(report)

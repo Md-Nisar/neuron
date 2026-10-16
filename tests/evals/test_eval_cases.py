@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from neuron_agent.evaluation import (
+    CASE_FLAGS,
     EVAL_CATEGORIES,
     MULTI_TURN_CASES,
     MULTI_TURN_EVAL_CATEGORIES,
     SECURITY_CASES,
     SECURITY_EVAL_CATEGORIES,
     SINGLE_TURN_CASES,
+    TRAJECTORY_MODES,
+    load_dataset_version,
     load_eval_cases,
 )
 
@@ -95,3 +100,22 @@ def test_security_cases_cover_every_required_category() -> None:
         if case["category"] == "cross_user_thread_id":
             assert "{victim_thread_id}" in str(case["input"]), case["id"]
     assert any("setup" in case for case in cases), "dataset v3 needs multi-turn attackers"
+
+
+def test_every_dataset_declares_a_version() -> None:
+    for path in (SINGLE_TURN_CASES, MULTI_TURN_CASES, SECURITY_CASES):
+        assert re.fullmatch(r"\d+\.\d+\.\d+", load_dataset_version(path)), path
+
+
+def test_structured_expectations_are_well_formed_and_explained() -> None:
+    for path in (SINGLE_TURN_CASES, MULTI_TURN_CASES, SECURITY_CASES):
+        for case in load_eval_cases(path):
+            assert case.get("trajectory", "unordered") in TRAJECTORY_MODES, case["id"]
+            flags = cast("list[str]", case.get("expected_flags", []))
+            assert set(flags) <= CASE_FLAGS, case["id"]
+            number = cast("dict[str, float] | None", case.get("expected_number"))
+            if number is not None:
+                assert set(number) <= {"value", "tolerance"}, case["id"]
+                assert isinstance(number["value"], int | float), case["id"]
+            if flags or number is not None or "trajectory" in case:
+                assert case.get("grading_note"), f"{case['id']} must record why it was changed"

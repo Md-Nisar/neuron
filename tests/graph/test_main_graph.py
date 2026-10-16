@@ -102,6 +102,20 @@ async def test_call_agent_falls_back_to_raw_text_when_structured_response_missin
     assert result["answer"].confidence == 0.5
 
 
+async def test_refusal_and_clarification_flags_survive_and_default_to_false() -> None:
+    flagged = AgentAnswer(
+        answer="No.", confidence=0.4, refused=True, clarification_needed=True, used_tools=["x"]
+    )
+    agent = ScriptedAgent({"messages": [AIMessage(content="No.")], "structured_response": flagged})
+    answer = (await call_agent(_state(), agent=agent))["answer"]
+    assert (answer.refused, answer.clarification_needed, answer.used_tools) == (True, True, [])
+
+    # A model that omits the flags, or raw text without structured output, means "not set".
+    assert AgentAnswer.model_validate({"answer": "a", "confidence": 0.5}).refused is False
+    raw = (await call_agent(_state(), agent=RawTextAgent()))["answer"]
+    assert (raw.refused, raw.clarification_needed) == (False, False)
+
+
 @pytest.mark.parametrize("content", ["", "   "])
 async def test_call_agent_rejects_an_empty_raw_text_answer(content: str) -> None:
     agent = ScriptedAgent({"messages": [AIMessage(content=content)]})

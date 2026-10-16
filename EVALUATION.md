@@ -5,8 +5,18 @@
 Curated eval cases live in `tests/fixtures/eval_cases.json`. Every case has:
 
 - `id`, `category`, `input`, `expected_behavior` — the case and its intent
-- `expected_tools` — the exact set of tool names the agent must call (`[]` means it must call none)
+- `expected_tools` — the set of tool names the agent must call (`[]` means it must call none); see `trajectory` below
 - `expected_keywords` — substrings (case-insensitive); the answer must contain at least one, or the list is empty when content isn't checked
+
+Optional fields (added with the v2 harness; datasets are `{"version": "...", "cases": [...]}`, and the version appears in every report):
+- `expected_number` — `{"value": 57, "tolerance": 0}`: some number in the answer (digits, with optional thousands commas and decimals) must be within the tolerance of the value. Used for numeric answers, where a keyword like `5` would also match `15`.
+- `expected_flags` — any of `refused`, `clarification_needed`: the structured `AgentAnswer` flag the model sets when it declines or asks for detail. The wording check passes if any listed flag is set **or** any `expected_keywords` entry appears, so keywords are the fallback for a model that omits a flag.
+- `trajectory` — `unordered` (default) or `subset`. `unordered` compares the set of tools that ran with `expected_tools` (order and repeat calls don't matter); `subset` only requires that no tool outside `expected_tools` ran (tools may be skipped).
+- `grading_note` — why the grading was changed from plain keywords. Required wherever `expected_number`, `expected_flags` or `trajectory` is set.
+
+Every case, whatever its fields, also fails if a tool ran that the caller has no permission for (for example `calculator` without `tools:calculator`).
+
+Dataset versions: single-turn 1.1.0, multi-turn 2.1.0, security 3.0.0. In 1.1.0 and 2.1.0 these cases changed (see each case's `grading_note`): `calculator-tool-selection-001/002`, `tool-use-across-turns-001/002`, `correction-handling-001` and `long-thread-002` grade the result as a number; `ambiguous-request-001/002`, `adversarial-tool-abuse-001/002` and `injection-persistence-001` check a refusal or clarification flag first and use widened keyword lists as the fallback; `unnecessary-tool-avoidance-001/002` and `structured-output-002` have corrected keyword lists. Cases whose answer is a fixed fact (names, places, days) or whose only check is the tool trajectory are unchanged.
 
 Required categories (`tests/evals/test_eval_cases.py` enforces every one is represented):
 
@@ -23,11 +33,11 @@ Required categories (`tests/evals/test_eval_cases.py` enforces every one is repr
 
 Multi-turn cases live in `tests/fixtures/eval_multi_turn_cases.json`. Each case has the v1 fields plus `setup`, a non-empty list of earlier user turns.
 
-`run_multi_turn_suite` (`src/neuron_agent/evaluation.py`) plays each case on **one new thread**: the `setup` turns in order, then `input`. Only the final turn is scored, with the same pass criteria as v1:
+`run_multi_turn_suite` (`src/neuron_agent/evaluation.py`) plays each case on **one new thread** per trial: the `setup` turns in order, then `input`. Only the final turn is scored, with the same pass criteria as v1:
 - non-empty answer;
 - confidence in [0, 1];
-- the tools used for that turn match `expected_tools` exactly;
-- at least one `expected_keywords` entry appears (case-insensitive).
+- the tools used for that turn match `expected_tools` (per `trajectory`) and none ran without permission;
+- the case's `expected_number`, and one of its `expected_flags` or `expected_keywords` (case-insensitive), hold.
 
 It needs thread persistence: `APP_CHECKPOINTER` resolving to `memory` (the default in development and test) or `postgres`. It refuses to run with `none`.
 
@@ -92,16 +102,59 @@ OPENAI_API_KEY=... make eval
 
 Live checks cover all three datasets: `test_agent_passes_every_eval_case`, `test_agent_passes_every_multi_turn_eval_case` and `test_agent_passes_every_security_eval_case`.
 
-To compare results across a prompt or model change, run the CLI runner and diff the JSON reports. Each report includes the model ID, the pass count and per-case reasons, with the multi-turn results under `multi_turn` and the security results under `security`. stdout carries only the JSON report; run logs go to stderr.
+### The `neuron-eval` CLI
 
 ```bash
-uv run neuron-eval > before.json
-# make the change
-uv run neuron-eval > after.json
-diff before.json after.json
+uv run neuron-eval                      # all suites, 1 trial per case
+uv run neuron-eval --trials 3           # 3 runs of every case
+uv run neuron-eval --suite security     # single_turn, multi_turn, security (repeatable)
+uv run neuron-eval --category direct_factual --category context_carryover   # repeatable
+uv run neuron-eval --output report.json # also write the report to a file
+uv run python -m neuron_agent.evaluation   # same CLI
 ```
 
-`neuron-eval` builds `Settings()` the normal way, so if `.env` (or the shell) has provider credentials configured it makes real, billed model calls: one per single-turn case, one per turn (`setup` plus `input`) for multi-turn cases (46 for dataset v2), and one per victim and attacker turn for security cases (27 for dataset v3; an attacker turn on the victim's thread is rejected before the model). Without credentials it falls back to the fake local chat model like any other dev/test run.
+stdout carries only the JSON report (so `neuron-eval > report.json` stays valid JSON); run logs go to stderr. A suite with no case in the selected categories is left out, and selecting nothing is an error. The exit status does not depend on case results.
+
+`neuron-eval` builds `Settings()` the normal way, so if `.env` (or the shell) has provider credentials configured it makes real, billed model calls: **`--trials` times** one per single-turn case, one per turn (`setup` plus `input`) for multi-turn cases (46 per trial for the multi-turn dataset), and one per victim and attacker turn for security cases (27 per trial; an attacker turn on the victim's thread is rejected before the model). Without credentials it falls back to the fake local chat model like any other dev/test run.
+
+To compare results across a prompt or model change, run the CLI before and after and compare the reports (`jq` on the `suites.*` metrics, or `diff`):
+
+```bash
+uv run neuron-eval --trials 3 --output before.json > /dev/null
+# make the change
+uv run neuron-eval --trials 3 --output after.json > /dev/null
+```
+
+## Report and metrics
+
+The report is versioned (`report_version`, currently `1`) and validated by `tests/fixtures/eval_report.schema.json` (JSON Schema draft 2020-12). Any change to its shape bumps the version. Top level:
+
+- `model` (the configured `APP_DEFAULT_MODEL`), `git_sha` (HEAD of the checkout the code runs from, or `unknown` without git), `dataset_versions` (per suite run), `trials` (k);
+- `infrastructure_errors`: total across suites;
+- `suites.<single_turn|multi_turn|security>`: the metrics below plus `dataset_version`, `latency_ms`, `tokens`, `categories` (the same metrics per category) and `results` (one entry per case: `trials`, `passes`, `quality_failures`, `infrastructure_errors`, the failure `reasons`, and `trial_results` with each trial's outcome, duration, tokens and error code).
+
+Estimated cost is not reported: it depends on the optional pricing file of ADR 0007 section 4, which has not landed.
+
+**Outcomes.** Each trial ends as `pass`, `fail` (a quality failure) or `infrastructure_error`. Infrastructure errors are run errors with the codes `provider_error`, `provider_quota_exhausted`, `provider_timeout_error`, `rate_limit_error`, `run_timeout`, `configuration_error`, `authentication_unavailable`, `persistence_error`, `service_shutting_down` and `quota_exceeded`: the agent could not be graded. Everything else is a quality failure: a wrong answer, wrong tools, a tool that ran without permission, `structured_output_error`, `agent_execution_error`, `tool_execution_error` or a step limit. Infrastructure trials are never counted as passes or as failures; they leave every rate below and are reported on their own.
+
+**Metrics**, per suite and per category:
+
+| Field | Meaning |
+| --- | --- |
+| `cases`, `trials` | Cases selected, and trials run (cases x k). |
+| `passes`, `quality_failures`, `infrastructure_errors` | Trials by outcome. |
+| `pass_rate` | `passes / (passes + quality_failures)`: the chance one run of a random case passes. `null` if no trial was graded. |
+| `wilson_95` | 95% Wilson score interval (z = 1.96) for `pass_rate`, treating the graded trials as independent. Narrower with more trials, but trials of one case are correlated and the cases are few, so read it as a rough guide, not a test. `null` if no trial was graded. |
+| `pass_hat_k` | pass^k: the share of cases that passed **all** k trials. It measures consistency: a case that passes 2 of 3 times counts for the pass rate but not for pass^k. With k = 1 it equals the pass rate. A case with any infrastructure error is `inconclusive` and left out. `null` if there is none left. |
+| `inconclusive_cases` | Cases left out of `pass_hat_k` because a trial hit an infrastructure error. |
+
+`latency_ms` (`p50`, `p95`, per suite) is the wall-clock time of a whole trial, including a multi-turn case's `setup` turns, over graded trials, by linear interpolation between ranks. `tokens` (per suite) is the provider-reported usage summed over all trials, including failed and infrastructure-error ones, by kind: `input_tokens`, `output_tokens`, `cache_read_tokens` (included in input), `reasoning_tokens` (included in output) and `total_tokens`. It is zero with the fake model, or for a provider that reports no usage.
+
+How to read a report:
+- Check `infrastructure_errors` first. If it is not zero, the run is incomplete, not a quality result: rerun before comparing.
+- A drop in `pass_hat_k` with a steady `pass_rate` means the agent got less consistent. A case with `passes` between 0 and k is flaky; one with 0 is broken.
+- The security suite is expected to have `pass_hat_k` of 1.0.
+- With 16 or 13 cases a suite interval is wide: compare cases (`results[].passes`) rather than reading small changes in `pass_rate`.
 
 ## LangSmith Workflow
 
@@ -109,16 +162,13 @@ For team evaluation, create a LangSmith dataset from curated examples and produc
 
 Do not require live LLM calls in unit tests. Live evaluations should run in a controlled environment with explicit budgets and provider credentials.
 
-## Metrics
+## Further metrics
 
-Suggested metrics:
+Not yet measured by the harness:
 
-- final answer correctness
-- structured output validity
-- refusal correctness for secrets or unavailable data
 - tool argument validity
-- latency and retry counts
-- token usage and cost
+- retry counts
+- estimated cost
 
 ## Regression Policy
 

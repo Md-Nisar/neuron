@@ -161,6 +161,7 @@ class AgentService:
         *,
         streaming: bool = False,
         principal: Principal | None = None,
+        usage: TokenUsageAccumulator | None = None,
     ) -> PreparedRun:
         """Validate, resolve and claim the request's thread. Raises `AppError` before any output."""
         request_id = str(uuid.uuid4())
@@ -219,7 +220,7 @@ class AgentService:
             authorization=AuthorizationContext(
                 permissions,
                 principal,
-                usage=TokenUsageAccumulator(),
+                usage=usage or TokenUsageAccumulator(),
                 actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
                 issuer_id=self._settings.auth_issuer_id,
             ),
@@ -230,9 +231,14 @@ class AgentService:
         )
 
     async def invoke(
-        self, request: AgentRequest, *, principal: Principal | None = None
+        self,
+        request: AgentRequest,
+        *,
+        principal: Principal | None = None,
+        usage: TokenUsageAccumulator | None = None,
     ) -> AgentResponse:
-        run = await self.prepare(request, principal=principal)
+        """Run one turn. A caller-supplied `usage` accumulator receives the run's token counts."""
+        run = await self.prepare(request, principal=principal, usage=usage)
         try:
             with self._persistence_errors():
                 async with asyncio.timeout(self._settings.run_timeout_seconds):
@@ -763,6 +769,8 @@ def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:
         answer=answer.answer,
         used_tools=answer.used_tools,
         confidence=answer.confidence,
+        refused=answer.refused,
+        clarification_needed=answer.clarification_needed,
     )
 
 

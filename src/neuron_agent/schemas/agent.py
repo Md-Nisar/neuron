@@ -38,6 +38,14 @@ class AgentAnswer(BaseModel):
     answer: str = Field(min_length=1)
     used_tools: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
+    refused: bool = Field(
+        default=False,
+        description="True when the request was declined or the data is not available to you.",
+    )
+    clarification_needed: bool = Field(
+        default=False,
+        description="True when the answer asks the user for missing detail instead of answering.",
+    )
 
 
 class AgentResponse(BaseModel):
@@ -48,6 +56,8 @@ class AgentResponse(BaseModel):
     answer: str
     used_tools: list[str]
     confidence: float
+    refused: bool = False
+    clarification_needed: bool = False
 
 
 class ThreadMessage(BaseModel):
