@@ -13,17 +13,20 @@ import shutil
 import subprocess  # nosec B404
 import sys
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import structlog
+from langchain.agents.middleware import AgentMiddleware
 
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ThreadNotFoundError
+from neuron_agent.models import factory
 from neuron_agent.models.factory import _TOOL_PERMISSIONS
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.auth import Principal
@@ -102,6 +105,78 @@ TRAJECTORY_MODES = frozenset({"unordered", "subset"})
 CASE_FLAGS = frozenset({"refused", "clarification_needed"})
 
 _NUMBER = re.compile(r"-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
+
+
+# Below the NVIDIA free tier's 40 requests per minute, leaving headroom for clock skew.
+DEFAULT_MAX_REQUESTS_PER_MINUTE = 30
+
+
+class RequestThrottle:
+    """Sliding-window limiter: at most `limit` acquisitions in any `window` seconds.
+
+    It is process-wide state for one eval run, shared by every suite. The check and the
+    reservation happen without an `await` in between, so concurrent tasks cannot overbook it.
+    `clock` and `sleep` are injectable for tests.
+    """
+
+    def __init__(
+        self,
+        limit: int,
+        window: float = 60.0,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
+        self._limit = limit
+        self._window = window
+        self._clock = clock
+        self._sleep = sleep
+        self._starts: list[float] = []
+        self.acquired = 0
+
+    async def acquire(self) -> None:
+        while True:
+            now = self._clock()
+            self._starts = [t for t in self._starts if now - t < self._window]
+            if len(self._starts) < self._limit:
+                self._starts.append(now)
+                self.acquired += 1
+                return
+            await self._sleep(self._window - (now - self._starts[0]))
+
+
+class _ThrottledModelCalls(AgentMiddleware[Any, Any]):
+    """Waits for the throttle before each model call, including each provider retry."""
+
+    def __init__(self, inner: AgentMiddleware, throttle: RequestThrottle) -> None:
+        super().__init__()
+        self._inner = inner
+        self._throttle = throttle
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        async def throttled(inner_request: Any) -> Any:
+            await self._throttle.acquire()
+            return await handler(inner_request)
+
+        return await self._inner.awrap_model_call(request, throttled)
+
+
+@contextmanager
+def throttled_model_calls(throttle: RequestThrottle) -> Iterator[None]:
+    """Throttle every model call of agents built inside this block (eval runs only).
+
+    The throttle wraps the retry middleware, the innermost layer around the provider call, so
+    every call counts: each model turn of a run, and each retry of a failed call. Production
+    code paths are unchanged; nothing else sets this.
+    """
+    original = factory.provider_retry_middleware
+    factory.provider_retry_middleware = lambda settings: _ThrottledModelCalls(
+        original(settings), throttle
+    )
+    try:
+        yield
+    finally:
+        factory.provider_retry_middleware = original
 
 
 def _load_dataset(path: Path) -> dict[str, object]:
@@ -571,14 +646,30 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         help="only run cases in this category (repeatable)",
     )
     parser.add_argument("--output", type=Path, help="also write the JSON report to this file")
+    parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=DEFAULT_MAX_REQUESTS_PER_MINUTE,
+        help=(
+            "throttle model calls to this many per minute across the whole run "
+            f"(default {DEFAULT_MAX_REQUESTS_PER_MINUTE}; 0 disables)"
+        ),
+    )
     args = parser.parse_args(argv)
     if args.trials < 1:
         parser.error("--trials must be at least 1")
+    if args.max_requests_per_minute < 0:
+        parser.error("--max-requests-per-minute must be 0 or more")
     return args
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    args = _parse_args(argv)
+    args_list = sys.argv[1:] if argv is None else list(argv)
+    if args_list[:1] == ["compare"]:
+        from neuron_agent.eval_compare import compare_main
+
+        raise SystemExit(compare_main(args_list[1:]))
+    args = _parse_args(args_list)
     # stdout carries only the JSON report (so `neuron-eval > report.json` stays valid JSON);
     # run logs go to stderr. Importing the graph already configured stdlib-backed JSON logging
     # on stdout, so replace the processors and factory together. Compiling the graph also
@@ -598,12 +689,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     }
     categories = frozenset(args.category) if args.category else None
     suites: dict[str, object] = {}
-    for name in args.suite or list(SUITES):
-        path = SUITES[name][0]
-        if not _select(path, categories):
-            continue
-        results = asyncio.run(runners[name](path, trials=args.trials, categories=categories))
-        suites[name] = _suite_report(results, load_dataset_version(path))
+    # One throttle for the whole run: every suite and trial shares the request budget.
+    throttle = RequestThrottle(args.max_requests_per_minute or sys.maxsize)
+    with throttled_model_calls(throttle):
+        for name in args.suite or list(SUITES):
+            path = SUITES[name][0]
+            if not _select(path, categories):
+                continue
+            results = asyncio.run(runners[name](path, trials=args.trials, categories=categories))
+            suites[name] = _suite_report(results, load_dataset_version(path))
     if not suites:
         raise SystemExit("neuron-eval: no cases match --suite/--category")
     report = {
