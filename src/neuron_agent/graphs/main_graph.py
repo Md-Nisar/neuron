@@ -31,6 +31,8 @@ from neuron_agent.models.factory import (
     reset_retry_attempts,
 )
 from neuron_agent.observability import metrics, semconv, telemetry
+from neuron_agent.observability.langsmith_governance import configure_langsmith
+from neuron_agent.observability.logging import configure_logging
 from neuron_agent.observability.telemetry import configure_telemetry
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
@@ -69,7 +71,7 @@ async def call_agent(
         thread_id=thread_id,
         run_id=run_id,
         model=model,
-        recursion_limit=resolved_settings.max_agent_iterations,
+        max_agent_iterations=resolved_settings.max_agent_iterations,
         # Conversation position: 1-based user turn number and stored history size.
         turn=_turn(state),
         history_messages=len(stored),
@@ -320,7 +322,17 @@ def _run_authorization(
     )
 
 
-# Agent Server loads this module without the FastAPI app, so it sets up telemetry too.
-configure_telemetry(get_settings())
+# Agent Server loads only this module, so it configures logging, LangSmith and telemetry itself
+# (ADR 0007).
+_settings = get_settings()
+configure_logging(
+    level=_settings.log_level,
+    service=_settings.name,
+    version=_settings.version,
+    environment=_settings.env,
+)
+configure_langsmith(_settings)
+configure_telemetry(_settings)
+
 # Exported to langgraph.json. Compiled without a checkpointer: Agent Server supplies its own.
-graph = build_graph()
+graph = build_graph(_settings)

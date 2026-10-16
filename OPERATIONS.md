@@ -12,7 +12,7 @@ Production deployments must inject secrets through the platform secret manager.
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no JWKS fetch failure since the last signing key was obtained. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. The JWKS part is passive (see Signing keys and JWKS caching).
+- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
@@ -49,7 +49,7 @@ APP_AUTH_ROLE_PERMISSIONS={"neuron-user":["agent:invoke","threads:read","threads
 - A token with an unknown `kid` triggers a refetch, but not always at once. PyJWT forces a refetch at most once per 30 seconds after any successful fetch (including the first one and cache-expiry fetches), so a key published less than 30 seconds after a fetch is rejected (`401`, `auth_failed` with `reason="unknown_signing_key"`) until that window ends; the release gate measured 30.2 s with default settings. On top of that, when a refetch succeeds but still lacks the `kid`, further unknown-`kid` refetches wait one second per process, so forged `kid`s can't hammer a reachable IdP. While the IdP is unreachable there is no such cooldown: each request that needs a fetch tries one, serialized per process and bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`.
 - **Rotation:** publish the new key in the JWKS at least a minute before the IdP signs with it (covering the 30-second refetch window), and remove the old key only after every token it signed has expired (plus `APP_AUTH_LEEWAY_SECONDS`). Most IdPs pre-publish keys automatically. An IdP that starts signing with a key the moment it publishes it causes up to 30 seconds of `401`s per API process.
 - **Compromised key:** remove it from the JWKS, then restart the API replicas; otherwise each process keeps trusting its cached copy for up to `APP_AUTH_JWKS_CACHE_SECONDS`.
-- **IdP outage:** tokens whose key is still cached keep working until the cache expires. After that, requests fail closed with `503 authentication_unavailable`. `/health/ready` returns `503` from the first failed fetch until a later request obtains a signing key again, from a fetch or the cache. Readiness doesn't probe the JWKS itself, so an instance that receives no requests stays not ready: if the orchestrator removes not-ready instances from traffic, restart them after the IdP recovers, or base traffic decisions on `/health/live` plus your own IdP monitoring.
+- **IdP outage:** tokens whose key is still cached keep working until the cache expires. After that, requests fail closed with `503 authentication_unavailable`. `/health/ready` returns `503` from the first failed fetch until a fetch succeeds again. While not ready, readiness probes retry the JWKS (at most once per 5 seconds per process), so an instance recovers on its own after the IdP does, even with no traffic.
 
 ### Rotating `APP_IDENTITY_HASH_KEY`
 
@@ -63,14 +63,41 @@ Related settings: trusted proxies and per-user limits are under Rate Limiting, a
 
 ## Logs and Traces
 
-Logs are JSON and include service metadata. Enable LangSmith tracing by setting:
+Logs are JSON and include service metadata, on the FastAPI server and on Agent Server.
+
+### LangSmith
+
+`APP_ENABLE_LANGSMITH` is the only switch for LangSmith tracing (ADR 0007, section 5). It is
+off by default, and nothing is sent to LangSmith until it is enabled:
 
 ```text
 APP_ENABLE_LANGSMITH=true
-LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=...
 LANGSMITH_PROJECT=neuron-agent-production
+APP_LANGSMITH_CONTENT_APPROVED=false   # default
 ```
+
+- A `LANGSMITH_TRACING`, `LANGSMITH_TRACING_V2`, `LANGCHAIN_TRACING_V2` or `LANGCHAIN_TRACING`
+  set to a true value without `APP_ENABLE_LANGSMITH=true` is overridden at startup, and the
+  service logs `langsmith_tracing_overridden` naming the variables.
+- Staging and production with LangSmith enabled fail at startup without `LANGSMITH_API_KEY`.
+- What leaves the service:
+
+  | Environment | `APP_LANGSMITH_CONTENT_APPROVED` | Sent to LangSmith |
+  | --- | --- | --- |
+  | any, LangSmith disabled | n/a | nothing |
+  | `development` | any | full traces, including prompts, answers and tool arguments/results |
+  | `test`, `staging`, `production` | `false` (default) | run structure, names, timings, token usage and metadata; inputs and outputs are hidden |
+  | `test`, `staging`, `production` | `true` | full traces, as in development |
+
+  Set `APP_LANGSMITH_CONTENT_APPROVED=true` only after the LangSmith workspace has been
+  approved to hold user content (retention, access and region). Outside development, shell
+  `LANGSMITH_HIDE_INPUTS`/`LANGSMITH_HIDE_OUTPUTS` values are replaced by this setting.
+- Both entry points apply this: the FastAPI app at import and the graph module that Agent
+  Server loads.
+- Agent Server's own platform tracing, when the service runs as a LangSmith deployment, is
+  governed by the platform and its project settings, not by these variables. Configure
+  tracing and content retention there.
 
 Do not log raw secrets, authorization headers, or sensitive user content.
 
@@ -307,8 +334,8 @@ Suggested alerts:
   `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` also returns `503`.
   Check the IdP's status and that `APP_AUTH_JWKS_URL` is reachable from the API (DNS,
   egress rules, TLS). Don't switch to `APP_AUTH_MODE=none` or widen the issuer. Requests
-  recover by themselves once a fetch succeeds; readiness recovers only when a request gets
-  a key, so restart instances that were taken out of rotation (Signing keys and JWKS caching).
+  and readiness recover by themselves once a fetch succeeds; no restart is needed
+  (Signing keys and JWKS caching).
 - **Signing-key problems:** a spike of `auth_failed` with `reason="unknown_signing_key"` after an
   IdP key rotation means tokens are signed with a key the JWKS doesn't (yet) publish; check
   the IdP's JWKS before Neuron.
@@ -438,7 +465,7 @@ Provider token usage from model `usage_metadata` is charged to a rolling per-pri
 - `APP_REQUEST_TIMEOUT_SECONDS` (default 60s): per-attempt timeout on the model provider call (`ChatOpenAI(timeout=...)`).
 - `APP_TOOL_TIMEOUT_SECONDS` (default 20s): per-call timeout on tool execution; exceeding it raises `ToolExecutionError` without leaking tool internals to the caller.
 - `APP_PROVIDER_MAX_RETRIES` (default 2, i.e. 3 attempts total): retries for transient provider failures only (connection errors, provider timeouts, provider rate limits, 5xx), with exponential backoff and jitter. Non-transient failures (auth errors, malformed requests) are never retried.
-- `APP_MAX_AGENT_ITERATIONS` (default 5): recursion budget for the agent's internal tool-call loop; exceeding it surfaces as `agent_execution_error`.
+- `APP_MAX_AGENT_ITERATIONS` (default 8, max 25): the most model calls one run may make, so at most 7 tool rounds plus the final answer. Each model call and each tool call is one LangGraph step, so the app passes `recursion_limit = 2 * APP_MAX_AGENT_ITERATIONS`. Exceeding it returns `422 agent_step_limit_exceeded` (a stream `error` event with the same code); it is logged as `agent_execution_failed` with `error_type=GraphRecursionError`, and the run and model spans carry it as `error.type`. Parallel tool calls in one model reply count once. The bound on a looping model is this count times `APP_REQUEST_TIMEOUT_SECONDS`, within `APP_RUN_TIMEOUT_SECONDS` and the per-user token budget.
 
 Raise provider timeouts/retries cautiously in production — higher values increase worst-case request latency and hold HTTP connections open longer under provider degradation.
 
@@ -455,7 +482,8 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 | `504 provider_timeout_error` | model provider did not respond within `APP_REQUEST_TIMEOUT_SECONDS` | retried internally first; surfaces only after retries are exhausted |
 | `502 tool_execution_error` | tool exceeded `APP_TOOL_TIMEOUT_SECONDS` or raised an unclassified exception | tool failure is isolated; it cannot crash the agent loop |
 | `502 provider_error` / `structured_output_error` | upstream 5xx, or the model returned output that failed the `AgentAnswer` schema or was empty | internal detail is logged, not returned to the caller |
-| `500 agent_execution_error` | agent loop exceeded `APP_MAX_AGENT_ITERATIONS`, or an unclassified internal failure | check server logs' `error_type`/`error_code` fields |
+| `422 agent_step_limit_exceeded` | the agent used all `APP_MAX_AGENT_ITERATIONS` model calls without answering (a very long tool chain, or a model repeating tool calls) | the caller may rephrase or split the request; raise the limit only if legitimate requests hit it |
+| `500 agent_execution_error` | an unclassified internal failure | check server logs' `error_type`/`error_code` fields |
 | `503` with log `error_code=provider_quota_exhausted` | the model provider account has no credit (OpenAI `429 insufficient_quota`) | add credit or raise the quota; never retried, alerts on every request until fixed |
 | `500 configuration_error` | unsupported model provider, malformed `provider:model` identifier, provider auth failure, or a model the provider does not offer this account (`404`) | fix configuration; never retried |
 | `409 thread_busy` | another run on the same thread is still in flight (same process), or `DELETE` during a run | client retries after the current run finishes; normal for double-submits |

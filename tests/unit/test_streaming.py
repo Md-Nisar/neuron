@@ -8,6 +8,7 @@ import pytest
 import structlog.testing
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, AIMessageChunk
+from langgraph.errors import GraphRecursionError
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
@@ -160,6 +161,22 @@ async def test_stream_user_visible_error_keeps_its_code(monkeypatch: pytest.Monk
     monkeypatch.setattr(main_graph, "build_agent", lambda settings: RateLimitedAgent())
     events = await _collect(AgentService(Settings(env="test")), AgentRequest(message="hi"))
     assert events[1] == StreamEvent("error", {"code": "rate_limit_error", "retryable": True})
+
+
+async def test_stream_step_limit_is_a_classified_error_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class LoopingAgent:
+        async def ainvoke(
+            self, inputs: dict[str, Any], *, config: dict[str, Any], context: Any = None
+        ) -> None:
+            raise GraphRecursionError("Recursion limit of 16 reached")
+
+    monkeypatch.setattr(main_graph, "build_agent", lambda settings: LoopingAgent())
+    events = await _collect(AgentService(Settings(env="test")), AgentRequest(message="hi"))
+    assert events[1] == StreamEvent(
+        "error", {"code": "agent_step_limit_exceeded", "retryable": False}
+    )
 
 
 async def test_stream_unexpected_exception_is_not_leaked(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import secrets
 import sys
 from dataclasses import asdict, dataclass, field
@@ -270,8 +271,17 @@ def _summary(results: list[EvalResult]) -> dict[str, object]:
 
 def main() -> None:
     # stdout carries only the JSON report (so `neuron-eval > report.json` stays valid JSON);
-    # run logs go to stderr.
-    structlog.configure(logger_factory=structlog.PrintLoggerFactory(file=sys.stderr))
+    # run logs go to stderr. Importing the graph already configured stdlib-backed JSON logging
+    # on stdout, so replace the processors and factory together. Compiling the graph also
+    # cached the graph module's logger with that configuration (LangGraph inspects the node's
+    # globals), so move the stdlib output to stderr as well.
+    structlog.configure(
+        processors=[structlog.processors.JSONRenderer()],
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+    )
+    logging.basicConfig(
+        format="%(message)s", stream=sys.stderr, level=logging.getLogger().level, force=True
+    )
     single = asyncio.run(run_eval_suite(SINGLE_TURN_CASES))
     multi = asyncio.run(run_multi_turn_suite(MULTI_TURN_CASES))
     security = asyncio.run(run_security_suite(SECURITY_CASES))
