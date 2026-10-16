@@ -6,7 +6,7 @@ import pytest
 import structlog.testing
 from langchain.agents.middleware import ModelRequest, ModelResponse
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.runtime import Runtime
 
 from neuron_agent.config.settings import Settings
@@ -133,4 +133,25 @@ async def test_run_logs_model_token_usage_with_split_and_models(
             "reasoning_tokens": 0,
         },
     }
+    assert "secret prompt text" not in str(event)
+
+
+@pytest.mark.anyio
+async def test_agent_server_run_logs_model_token_usage(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Agent Server runs carry no `AuthorizationContext`, so the graph logs their usage."""
+    monkeypatch.setattr(main_graph, "build_agent", lambda settings: _UsageAgent())
+    graph = main_graph.build_graph(Settings(env="test"))
+    configurable = {"run_id": "run-1", "langgraph_auth_user_id": "a" * 64}
+
+    with structlog.testing.capture_logs() as logs:
+        await graph.ainvoke(
+            {"messages": [HumanMessage(content="secret prompt text")]},
+            config={"configurable": configurable},
+        )
+
+    [event] = [e for e in logs if e["event"] == "model_token_usage"]
+    assert event["provider_tokens"] == 158
+    assert event["run_id"] == "run-1"
+    assert event["owner_key_prefix"] == "a" * 12
+    assert set(event["models"]) == {"model-a", "model-b"}
     assert "secret prompt text" not in str(event)

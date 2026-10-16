@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING
 
 from neuron_agent.errors.base import AuthorizationError
@@ -73,6 +73,18 @@ class TokenUsageAccumulator:
         per_model = self.by_model.setdefault(model or UNKNOWN_MODEL, TokenCounts())
         for name, value in vars(counts).items():
             setattr(per_model, name, getattr(per_model, name) + value)
+
+    def log_fields(self) -> dict[str, object]:
+        """The `model_token_usage` split: summed kinds plus the per-model breakdown."""
+        totals = self.totals()
+        return {
+            "provider_tokens": self.total_tokens,
+            "input_tokens": totals.input_tokens,
+            "output_tokens": totals.output_tokens,
+            "cache_read_tokens": totals.cache_read_tokens,
+            "reasoning_tokens": totals.reasoning_tokens,
+            "models": {model: asdict(counts) for model, counts in self.by_model.items()},
+        }
 
     def totals(self) -> TokenCounts:
         """The counts summed over all models."""

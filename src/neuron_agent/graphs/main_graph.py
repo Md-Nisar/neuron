@@ -32,7 +32,7 @@ from neuron_agent.models.factory import (
 )
 from neuron_agent.observability import semconv, telemetry
 from neuron_agent.schemas.agent import AgentAnswer
-from neuron_agent.security.authorization import AuthorizationContext
+from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
 from neuron_agent.state.main import MainGraphState
 
 logger = structlog.get_logger(__name__)
@@ -228,6 +228,15 @@ def build_graph(
             except AppError as exc:
                 telemetry.record_error(span, exc.context.code)
                 raise
+            finally:
+                # `AgentService` logs its own runs' usage when it charges the budget.
+                if not isinstance(context, AuthorizationContext) and authorization.usage:
+                    logger.info(
+                        "model_token_usage",
+                        run_id=attributes.get(semconv.NEURON_RUN_ID),
+                        owner_key_prefix=attributes.get(semconv.NEURON_OWNER_KEY_PREFIX),
+                        **authorization.usage.log_fields(),
+                    )
 
     # No `context_schema`: LangGraph would build one from the run's `context`, which Agent
     # Server takes from the client's request.
@@ -292,6 +301,8 @@ def _run_authorization(
         else frozenset(),
         actor=owner[:12] if settings.auth_mode == "jwt" and isinstance(owner, str) else None,
         issuer_id=settings.auth_issuer_id,
+        # Counted for the run's `model_token_usage` log; Agent Server enforces no budget.
+        usage=TokenUsageAccumulator(),
     )
 
 

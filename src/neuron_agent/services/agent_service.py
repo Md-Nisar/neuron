@@ -8,7 +8,7 @@ import time
 import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 import anyio
@@ -54,7 +54,6 @@ from neuron_agent.security.auth import Principal, principal_owner_key
 from neuron_agent.security.authorization import (
     DEV_PERMISSIONS,
     AuthorizationContext,
-    TokenCounts,
     TokenUsageAccumulator,
 )
 from neuron_agent.security.input_policy import validate_user_message
@@ -462,24 +461,14 @@ class AgentService:
         return RunLease(release)
 
     def _finish_usage(self, run: PreparedRun) -> None:
-        usage = run.authorization.usage
-        tokens = usage.total_tokens if usage is not None else 0
-        self._token_budget.charge(run.budget_key, tokens)
-        counts = usage.totals() if usage is not None else TokenCounts()
+        usage = run.authorization.usage or TokenUsageAccumulator()
+        self._token_budget.charge(run.budget_key, usage.total_tokens)
         logger.info(
             "model_token_usage",
             request_id=run.request_id,
             run_id=run.run_id,
             owner_key_prefix=run.budget_key[:12],
-            provider_tokens=tokens,
-            input_tokens=counts.input_tokens,
-            output_tokens=counts.output_tokens,
-            cache_read_tokens=counts.cache_read_tokens,
-            reasoning_tokens=counts.reasoning_tokens,
-            models={
-                model: asdict(model_counts)
-                for model, model_counts in (usage.by_model if usage is not None else {}).items()
-            },
+            **usage.log_fields(),
         )
 
     @contextmanager
