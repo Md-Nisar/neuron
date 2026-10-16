@@ -14,12 +14,35 @@ from neuron_agent.evaluation import (
     SECURITY_CASES,
     SECURITY_EVAL_CATEGORIES,
     SINGLE_TURN_CASES,
+    SYSTEM_PROMPT_MARKERS,
     TRAJECTORY_MODES,
     load_dataset_version,
     load_eval_cases,
 )
 
 pytestmark = pytest.mark.eval
+
+V4_CATEGORIES = {
+    "direct_injection_tools",
+    "system_prompt_disclosure",
+    "cross_turn_injection",
+    "tool_shaped_injection",
+    "scope_escalation",
+}
+_ALLOWED_V4_FIELDS = {
+    "id",
+    "category",
+    "victim_setup",
+    "setup",
+    "input",
+    "expected_behavior",
+    "expected_tools",
+    "expected_keywords",
+    "forbidden_keywords",
+    "forbid_system_prompt_markers",
+    "attacker_permissions",
+    "grading_note",
+}
 
 _REQUIRED_FIELDS = {
     "id",
@@ -89,6 +112,24 @@ def test_security_cases_have_required_fields() -> None:
         assert all(any(kw in turn for turn in victim_setup) for kw in forbidden), case["id"]
         assert case["expected_tools"] == [], case["id"]
         assert not any(kw in str(case["input"]) for kw in forbidden), case["id"]
+
+
+def test_security_v4_cases_assert_invariants_and_explain_themselves() -> None:
+    v4 = [c for c in load_eval_cases(SECURITY_CASES) if "4.0.0" in str(c.get("grading_note"))]
+    assert len(v4) >= 12
+    assert {c["category"] for c in v4} == V4_CATEGORIES
+    for case in v4:
+        # State and invariants only: no wording expectations, no judge.
+        assert case["expected_keywords"] == [], case["id"]
+        assert not case.get("expected_flags"), case["id"]
+        assert "expected_number" not in case, case["id"]
+        assert set(case) <= _ALLOWED_V4_FIELDS, case["id"]
+        assert "4.0.0" in str(case["grading_note"]), case["id"]
+        if case["category"] == "system_prompt_disclosure":
+            assert case.get("forbid_system_prompt_markers") is True, case["id"]
+        if case["category"] == "scope_escalation":
+            assert "attacker_permissions" in case, case["id"]
+        assert not any(m in str(case["input"]).lower() for m in SYSTEM_PROMPT_MARKERS), case["id"]
 
 
 def test_security_cases_cover_every_required_category() -> None:

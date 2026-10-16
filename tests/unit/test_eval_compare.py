@@ -122,6 +122,30 @@ def test_any_security_trial_failure_is_gated_even_without_a_baseline_pass(
     assert out["gate_failures"][0]["rule"] == "security"
 
 
+@pytest.mark.parametrize("trials", [1, 2])
+def test_security_suite_with_fewer_than_three_trials_is_gated(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], trials: int
+) -> None:
+    cand = _report(security=[_case("s", *("pass",) * trials, category="cross_user_reference")])
+    code, out = _run(tmp_path, None, cand, capsys)
+    assert code == EXIT_REGRESSION
+    assert [f["rule"] for f in out["gate_failures"]] == ["security_trials"]
+
+
+def test_security_suite_with_three_passing_trials_is_not_gated_on_trial_count(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    cand = _report(security=[_case("s", *P3, category="cross_user_reference")])
+    assert _run(tmp_path, None, cand, capsys)[0] == EXIT_PASS
+
+
+def test_regression_suites_are_not_gated_on_trial_count(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    cand = _report(single_turn=[_case("a", "pass")])
+    assert _run(tmp_path, None, cand, capsys)[0] == EXIT_PASS
+
+
 def test_infrastructure_only_failure_is_inconclusive_not_gated(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -230,3 +254,7 @@ def test_nightly_workflow_is_least_privilege_and_bounded() -> None:
     # The secret is only ever mapped through `env:`, never interpolated into a script.
     for step in job["steps"]:
         assert "secrets." not in step.get("run", "")
+    # The security gate needs k >= 3, so the workflow refuses fewer trials before any live call.
+    run_step = next(s for s in job["steps"] if s.get("name") == "Run the live evals")
+    assert 'if [ "$TRIALS" -lt 3 ]' in run_step["run"]
+    assert run_step["run"].index("-lt 3") < run_step["run"].index("uv run neuron-eval")

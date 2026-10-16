@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       trials:
-        description: Runs per eval case
+        description: Runs per eval case (at least 3, for the security gate)
         default: "3"
 
 permissions:
@@ -53,6 +53,8 @@ jobs:
           TRIALS: ${{ inputs.trials || '3' }}
         run: |
           case "$TRIALS" in ''|*[!0-9]*) echo "::error::trials must be a positive integer"; exit 1;; esac
+          # The security gate is pass^k = 100% with k >= 3 (ADR 0007 section 6); compare also enforces it.
+          if [ "$TRIALS" -lt 3 ]; then echo "::error::trials must be at least 3 for the security gate"; exit 1; fi
           uv run neuron-eval --trials "$TRIALS" --output report.json > /dev/null
       - name: Compare with the committed baseline
         if: steps.provider.outputs.configured == 'true'
