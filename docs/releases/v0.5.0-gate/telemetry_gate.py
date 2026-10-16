@@ -322,7 +322,10 @@ async def agent_server_stream(url: str, transcript: Path) -> dict[str, Any]:
 
 
 def agent_server_run(work: Path, live: bool) -> dict[str, Any]:
-    say("Agent Server path: langgraph dev, gate_graph.py (shipped graph, scripted model)")
+    say(
+        "Agent Server path: langgraph dev, gate_graph.py (shipped graph, scripted model)"
+        + (" [LIVE]" if live else "")
+    )
     log_path = work / "logs" / "agent-server.log"
     # The repository's langgraph.json, with the graph swapped for gate_graph.py. Written to
     # the run directory with absolute paths: `langgraph dev` resolves graph paths from cwd.
