@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -148,3 +149,33 @@ async def test_denied_tool_call_on_the_agent_server_path_lets_the_run_complete(
     assert result["answer"].answer == _ANSWER
     assert result["answer"].used_tools == []
     _assert_denied_and_recovered(recording, logs, policy_blocks, "calculator", "insufficient_scope")
+
+
+def test_a_model_that_keeps_calling_a_denied_tool_hits_the_step_limit(
+    monkeypatch: pytest.MonkeyPatch,
+    policy_blocks: list[str],
+    jwt_api_factory: Callable[..., JwtApi],
+    make_token: Callable[..., str],
+) -> None:
+    calls = (
+        AIMessage(
+            content="",
+            tool_calls=[{"name": "calculator", "args": {"expression": "1+1"}, "id": f"call-{n}"}],
+        )
+        for n in itertools.count()
+    )
+    recording = _RecordingModel(messages=calls)
+    monkeypatch.setattr(factory, "create_chat_model", lambda settings: recording)
+    api = jwt_api_factory(max_agent_iterations=3)
+    headers = bearer(make_token("alice", scopes="agent:invoke"))
+
+    with structlog.testing.capture_logs() as logs:
+        response = api.client.post("/v1/agent/invoke", json={"message": "go"}, headers=headers)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "agent_step_limit_exceeded"}
+    assert not [log for log in logs if log["event"].startswith("tool_call_")]
+    denied = [log for log in logs if log["event"] == "authorization_denied"]
+    # The model asked for the tool on each of its 3 calls, and each was denied without running.
+    assert len(denied) == 3
+    assert policy_blocks == ["insufficient_scope"] * len(denied)
