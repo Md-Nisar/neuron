@@ -10,9 +10,19 @@ from typing import Any
 import structlog
 from opentelemetry import trace
 
+_configured = False
+
 
 def configure_logging(*, level: str, service: str, version: str, environment: str) -> None:
-    """Configure JSON logs with stable service metadata."""
+    """Configure JSON logs with stable service metadata, once per process.
+
+    The API and the graph module (loaded alone by Agent Server) both call this; later calls
+    are no-ops, so whichever loads first wins.
+    """
+    global _configured
+    if _configured:
+        return
+    _configured = True
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level.upper())
     structlog.configure(
         processors=[
