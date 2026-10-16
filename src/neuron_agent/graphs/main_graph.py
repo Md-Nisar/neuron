@@ -71,7 +71,7 @@ async def call_agent(
         thread_id=thread_id,
         run_id=run_id,
         model=model,
-        recursion_limit=resolved_settings.max_agent_iterations,
+        max_agent_iterations=resolved_settings.max_agent_iterations,
         # Conversation position: 1-based user turn number and stored history size.
         turn=_turn(state),
         history_messages=len(stored),
