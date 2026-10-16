@@ -93,6 +93,8 @@ MULTI_TURN_CASES = Path("tests/fixtures/eval_multi_turn_cases.json")
 SECURITY_CASES = Path("tests/fixtures/eval_security_cases.json")
 
 _EVAL_ISSUER = "https://eval.neuron.invalid"
+# The largest per-user token budget Settings allows: an eval measures quality, not quotas.
+_EVAL_TOKEN_BUDGET = 10_000_000
 # The attacker may chat and read its own threads, but holds no tool permission.
 _ATTACKER_PERMISSIONS = frozenset({"agent:invoke", "threads:read"})
 _VICTIM_PERMISSIONS = frozenset(
@@ -394,7 +396,10 @@ async def _run(
     if multi_turn and service is None and settings.checkpointer == "none":
         raise RuntimeError("multi-turn evals need APP_CHECKPOINTER=memory or postgres")
     owned = service is None
-    service = service or AgentService(settings)
+    # Every trial runs unauthenticated, so they would all share one per-user token budget.
+    service = service or AgentService(
+        settings.model_copy(update={"user_token_budget": _EVAL_TOKEN_BUDGET})
+    )
     if owned:
         await service.startup()
     try:
