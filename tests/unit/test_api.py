@@ -11,6 +11,7 @@ from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     AuthorizationError,
     CapacityError,
     ConfigurationError,
@@ -97,6 +98,7 @@ def test_agent_invoke_rejects_oversized_body_via_content_length() -> None:
         (ProviderError("upstream failed"), 502, "internal_server_error"),
         (ToolExecutionError("tool failed"), 502, "internal_server_error"),
         (StructuredOutputError("bad structured output"), 502, "internal_server_error"),
+        (AgentStepLimitError("looped"), 422, "agent_step_limit_exceeded"),
         (AgentExecutionError("agent failed"), 500, "internal_server_error"),
         (PersistenceError("db down"), 503, "internal_server_error"),
         (ThreadNotFoundError("missing"), 404, "thread_not_found"),

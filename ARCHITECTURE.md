@@ -257,6 +257,7 @@ Expected failures are classified through `AppError` subclasses (`src/neuron_agen
 | `ProviderError` | `provider_error` | 502 | yes | no |
 | `ToolExecutionError` | `tool_execution_error` | 502 | yes | no |
 | `StructuredOutputError` | `structured_output_error` | 502 | yes | no |
+| `AgentStepLimitError` | `agent_step_limit_exceeded` | 422 | no | yes |
 | `AgentExecutionError` | `agent_execution_error` | 500 | yes | no |
 | `PersistenceError` | `persistence_error` | 503 | yes | no |
 | `ThreadNotFoundError` | `thread_not_found` | 404 | no | yes |
@@ -267,7 +268,7 @@ Expected failures are classified through `AppError` subclasses (`src/neuron_agen
 
 `api/main.py` centralizes the HTTP mapping: it raises `HTTPException(status_code=exc.context.http_status, detail=...)`, where `detail` is the stable `code` when `user_visible` is `True`, or the generic `internal_server_error` otherwise — so provider/tool/internal failure detail never reaches the client, only the server logs (via `logger.warning`/`logger.exception`). Any exception that isn't an `AppError` also maps to a generic `500 internal_server_error`.
 
-`graphs/main_graph.py::call_agent` classifies failures from the agent loop by underlying exception type: `openai.RateLimitError` → `RateLimitError`, `openai.APITimeoutError` → `ProviderTimeoutError`, `openai.AuthenticationError` → `ConfigurationError`, any other `openai.OpenAIError` → `ProviderError`, `langchain`'s structured-output errors → `StructuredOutputError`, and anything else (including a LangGraph recursion-limit error) falls back to `AgentExecutionError`. `models/factory.py` raises `ConfigurationError` for an unsupported model provider or a malformed `provider:model` identifier. Health endpoints do not perform LLM calls.
+`graphs/main_graph.py::call_agent` classifies failures from the agent loop by underlying exception type: `openai.RateLimitError` → `RateLimitError`, `openai.APITimeoutError` → `ProviderTimeoutError`, `openai.AuthenticationError` → `ConfigurationError`, any other `openai.OpenAIError` → `ProviderError`, `langchain`'s structured-output errors → `StructuredOutputError`, and a LangGraph recursion-limit error → `AgentStepLimitError` (`APP_MAX_AGENT_ITERATIONS` counts model calls; the recursion limit is twice that, because each model and tool call is a step), and anything else falls back to `AgentExecutionError`. `models/factory.py` raises `ConfigurationError` for an unsupported model provider or a malformed `provider:model` identifier. Health endpoints do not perform LLM calls.
 
 Every tool call is bounded by `APP_TOOL_TIMEOUT_SECONDS` via a `wrap_tool_call` agent middleware (`models/factory.py::tool_timeout_middleware`); a tool that exceeds it raises `ToolExecutionError` directly, which `classify_agent_error` now passes through unchanged instead of reclassifying.
 

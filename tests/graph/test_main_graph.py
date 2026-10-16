@@ -14,6 +14,7 @@ from langgraph.errors import GraphRecursionError
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     ConfigurationError,
     ProviderError,
     ProviderTimeoutError,
@@ -33,7 +34,7 @@ class FakeAgent:
     async def ainvoke(
         self, _: dict[str, object], *, config: dict[str, object]
     ) -> dict[str, object]:
-        assert config["recursion_limit"] == 5
+        assert config["recursion_limit"] == 16
         assert str(config["run_id"]) == "12345678-1234-5678-1234-567812345678"
         return {
             "messages": [
@@ -174,7 +175,7 @@ async def test_call_agent_wraps_generic_provider_error() -> None:
 
 async def test_call_agent_wraps_recursion_limit_error() -> None:
     error = GraphRecursionError("Recursion limit of 5 reached")
-    with pytest.raises(AgentExecutionError):
+    with pytest.raises(AgentStepLimitError):
         await call_agent(_state(), agent=FailingAgent(error))
 
 
