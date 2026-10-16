@@ -156,7 +156,7 @@ Event protocol, version 1. Each event is an SSE `event:` name with a JSON `data:
 | `run_started` | `request_id`, `thread_id`, `run_id` | always first |
 | `token` | `text` | answer delta; zero or more |
 | `tool_call` | `name` | a real tool call starts; never arguments or results |
-| `final` | `request_id`, `thread_id`, `answer`, `used_tools`, `confidence` | success; same shape as the `/invoke` response |
+| `final` | `request_id`, `thread_id`, `answer`, `used_tools`, `confidence`, `refused`, `clarification_needed` | success; same shape as the `/invoke` response |
 | `error` | `code`, `retryable` | failure after start; replaces `final` |
 | `done` | `{}` | always last |
 
