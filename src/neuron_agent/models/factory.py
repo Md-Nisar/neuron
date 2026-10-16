@@ -45,7 +45,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.errors.base import RateLimitError as AppRateLimitError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
-from neuron_agent.observability import semconv, telemetry
+from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
@@ -78,20 +78,35 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
             semconv.GEN_AI_REQUEST_MODEL: self._model,
         }
         name = f"{semconv.OPERATION_CHAT} {self._model}"
+        started = time.monotonic()
+        error_type: str | None = None
+        usage: tuple[int, int] | None = None
         with telemetry.start_span(name, kind=SpanKind.CLIENT, attributes=attributes) as span:
             retries_before = get_retry_attempts()
             try:
                 response = await handler(request)
             except Exception as exc:
-                telemetry.record_error(span, classify_agent_error(exc).context.code)
+                error_type = classify_agent_error(exc).context.code
+                telemetry.record_error(span, error_type)
                 raise
+            else:
+                messages = getattr(response, "result", [])
+                usage = _record_model_response(
+                    span, messages if isinstance(messages, list) else [messages]
+                )
+                return response
             finally:
                 span.set_attribute(
                     semconv.NEURON_RETRY_COUNT, get_retry_attempts() - retries_before
                 )
-            messages = getattr(response, "result", [])
-            _record_model_response(span, messages if isinstance(messages, list) else [messages])
-            return response
+                metrics.record_model_call(
+                    time.monotonic() - started,
+                    provider=self._provider,
+                    model=self._model,
+                    error_type=error_type,
+                    input_tokens=usage[0] if usage else None,
+                    output_tokens=usage[1] if usage else None,
+                )
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         # The registered tool's name, not the model's: an unknown name is model output.
@@ -101,26 +116,45 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
             semconv.GEN_AI_TOOL_NAME: tool_name,
         }
         name = f"{semconv.OPERATION_EXECUTE_TOOL} {tool_name}"
+        started = time.monotonic()
+        outcome = "error"
+        error_type: str | None = None
         with telemetry.start_span(name, attributes=attributes) as span:
             try:
                 result = await handler(request)
             except GraphBubbleUp:
+                # Control flow (an interrupt), not a tool call that finished.
+                outcome = "interrupted"
                 raise
             except Exception as exc:
-                denied = isinstance(exc, AuthorizationError)
-                span.set_attribute(semconv.NEURON_OUTCOME, "denied" if denied else "error")
-                telemetry.record_error(span, classify_agent_error(exc).context.code)
+                outcome = "denied" if isinstance(exc, AuthorizationError) else "error"
+                error_type = classify_agent_error(exc).context.code
+                span.set_attribute(semconv.NEURON_OUTCOME, outcome)
+                telemetry.record_error(span, error_type)
                 raise
-            if isinstance(result, ToolMessage) and result.status == "error":
-                span.set_attribute(semconv.NEURON_OUTCOME, "error")
-                telemetry.record_error(span, ToolExecutionError.context.code)
             else:
-                span.set_attribute(semconv.NEURON_OUTCOME, "success")
-            return result
+                if isinstance(result, ToolMessage) and result.status == "error":
+                    error_type = ToolExecutionError.context.code
+                    span.set_attribute(semconv.NEURON_OUTCOME, "error")
+                    telemetry.record_error(span, error_type)
+                else:
+                    outcome = "success"
+                    span.set_attribute(semconv.NEURON_OUTCOME, outcome)
+                return result
+            finally:
+                metrics.record_tool_call(
+                    time.monotonic() - started,
+                    tool=tool_name,
+                    outcome=outcome,
+                    error_type=error_type,
+                )
 
 
-def _record_model_response(span: Span, messages: list[Any]) -> None:
-    """Set the response model and token usage by kind, summed over the response messages."""
+def _record_model_response(span: Span, messages: list[Any]) -> tuple[int, int] | None:
+    """Set the response model and token usage by kind, summed over the response messages.
+
+    Returns the input and output token counts, or None when the provider reported no usage.
+    """
     usage = dict.fromkeys(
         (
             semconv.GEN_AI_USAGE_INPUT_TOKENS,
@@ -148,8 +182,10 @@ def _record_model_response(span: Span, messages: list[Any]) -> None:
         usage[semconv.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS] += metadata.get(
             "output_token_details", {}
         ).get("reasoning", 0)
-    if reported:
-        span.set_attributes(usage)
+    if not reported:
+        return None
+    span.set_attributes(usage)
+    return usage[semconv.GEN_AI_USAGE_INPUT_TOKENS], usage[semconv.GEN_AI_USAGE_OUTPUT_TOKENS]
 
 
 def tool_authorization_middleware() -> AgentMiddleware:
@@ -195,6 +231,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
             try:
                 require_permission(permission, permissions)
             except AuthorizationError:
+                metrics.record_policy_block("insufficient_scope")
                 audit(
                     "authorization_denied",
                     outcome="denied",
@@ -209,6 +246,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                 )
                 raise
         elif tool_name != "utc_now":
+            metrics.record_policy_block("unknown_tool")
             audit(
                 "authorization_denied",
                 outcome="denied",

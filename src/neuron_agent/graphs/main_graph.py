@@ -30,7 +30,8 @@ from neuron_agent.models.factory import (
     get_retry_attempts,
     reset_retry_attempts,
 )
-from neuron_agent.observability import semconv, telemetry
+from neuron_agent.observability import metrics, semconv, telemetry
+from neuron_agent.observability.telemetry import configure_telemetry
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
 from neuron_agent.state.main import MainGraphState
@@ -220,15 +221,28 @@ def build_graph(
             state, config, from_service=isinstance(context, AuthorizationContext)
         )
         name = f"{semconv.OPERATION_INVOKE_AGENT} {semconv.AGENT_NAME}"
+        started = time.monotonic()
+        outcome = "cancelled"
+        error_type: str | None = None
         with telemetry.start_span(name, attributes=attributes) as span:
             try:
-                return await call_agent(
+                result = await call_agent(
                     state, agent=agent, settings=resolved_settings, authorization=authorization
                 )
             except AppError as exc:
-                telemetry.record_error(span, exc.context.code)
+                outcome, error_type = "error", exc.context.code
+                telemetry.record_error(span, error_type)
                 raise
+            else:
+                outcome = "success"
+                return result
             finally:
+                metrics.record_run(
+                    time.monotonic() - started, outcome=outcome, error_type=error_type
+                )
+                # `AgentService` counts its own runs' errors where it reports them.
+                if error_type and not isinstance(context, AuthorizationContext):
+                    metrics.record_error(error_type)
                 # `AgentService` logs its own runs' usage when it charges the budget.
                 if not isinstance(context, AuthorizationContext) and authorization.usage:
                     logger.info(
@@ -306,5 +320,7 @@ def _run_authorization(
     )
 
 
+# Agent Server loads this module without the FastAPI app, so it sets up telemetry too.
+configure_telemetry(get_settings())
 # Exported to langgraph.json. Compiled without a checkpointer: Agent Server supplies its own.
 graph = build_graph()

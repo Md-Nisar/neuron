@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from urllib.parse import urlparse
 
 from neuron_agent.errors.base import AuthorizationError, ValidationAppError
+from neuron_agent.observability import metrics
 
 HIGH_RISK_TOOL_NAMES = frozenset({"send_email", "write_file", "delete_record", "execute_payment"})
 
@@ -17,13 +18,16 @@ def validate_user_message(message: str, *, max_chars: int) -> str:
     """Normalize and bound user-controlled text before it reaches the graph."""
     normalized = message.strip()
     if not normalized:
+        metrics.record_policy_block("empty_message")
         raise ValidationAppError("message must not be empty")
     if len(normalized) > max_chars:
+        metrics.record_policy_block("message_too_long")
         raise ValidationAppError(f"message exceeds {max_chars} characters")
     if any(
         unicodedata.category(char) == "Cc" and char not in _ALLOWED_CONTROL_CHARS
         for char in normalized
     ):
+        metrics.record_policy_block("control_characters")
         raise ValidationAppError("message contains disallowed control characters")
     return normalized
 

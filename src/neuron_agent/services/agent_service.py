@@ -33,7 +33,7 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
-from neuron_agent.observability import semconv, telemetry
+from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 from neuron_agent.persistence.checkpointer import Persistence, build_persistence
@@ -170,6 +170,7 @@ class AgentService:
         budget_key = owner_key or "anonymous"
         budget_decision = self._token_budget.check(budget_key)
         if not budget_decision.allowed:
+            metrics.record_policy_block("token_budget")
             logger.warning(
                 "user_limit_exceeded",
                 limit_type="token_budget",
@@ -406,6 +407,7 @@ class AgentService:
         """
         guard_thread = self._persistence.checkpointer is not None
         if streaming and self._open_streams >= self._settings.max_concurrent_streams:
+            metrics.record_policy_block("concurrent_streams")
             logger.warning(
                 "agent_stream_capacity_exceeded", limit=self._settings.max_concurrent_streams
             )
@@ -421,6 +423,7 @@ class AgentService:
             raise CapacityError("too many concurrent streams")
         active_for_owner = self._active_runs_by_owner.get(owner_key, 0)
         if active_for_owner >= self._settings.max_concurrent_runs_per_user:
+            metrics.record_policy_block("concurrent_runs")
             logger.warning(
                 "user_limit_exceeded",
                 limit_type="concurrent_runs",
@@ -823,15 +826,15 @@ class _StreamStats:
 
     def record_on(self, span: Span) -> None:
         """Set the stream span's time to first token, event count and termination."""
+        termination = (self.termination or "error") if self.finished else "client_disconnect"
         span.set_attribute(semconv.NEURON_STREAM_EVENTS, self.events)
-        span.set_attribute(
-            semconv.NEURON_STREAM_TERMINATION,
-            (self.termination or "error") if self.finished else "client_disconnect",
-        )
+        span.set_attribute(semconv.NEURON_STREAM_TERMINATION, termination)
         if self.first_token_ms is not None:
             span.set_attribute(semconv.NEURON_STREAM_TTFT_MS, self.first_token_ms)
+            metrics.record_stream_ttft(self.first_token_ms / 1000, outcome=termination)
         if self.error_code is not None:
             telemetry.record_error(span, self.error_code)
+            metrics.record_error(self.error_code)
 
     def _elapsed_ms(self) -> float:
         return round((time.monotonic() - self.started) * 1000, 2)

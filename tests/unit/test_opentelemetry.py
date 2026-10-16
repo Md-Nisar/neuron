@@ -81,6 +81,7 @@ def test_disabled_telemetry_creates_no_exporter_and_keeps_no_op_providers(
 
     monkeypatch.setattr(telemetry, "OTLPSpanExporter", no_exporter)
     monkeypatch.setattr(telemetry, "OTLPMetricExporter", no_exporter)
+    monkeypatch.setattr(telemetry, "_configured", [])
 
     assert telemetry.configure_telemetry(Settings(env="test")) is None
     assert not isinstance(trace.get_tracer_provider(), TracerProvider)
