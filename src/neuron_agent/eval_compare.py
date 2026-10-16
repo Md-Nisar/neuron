@@ -1,9 +1,11 @@
 """`neuron-eval compare`: the per-case regression gate between eval reports (ADR 0007 §6).
 
-Two rules gate; everything else is reported for information:
+Three rules gate; everything else is reported for information:
 - a regression-suite case that passed every trial in the baseline fails every trial in the
   candidate;
-- a security-suite case fails any trial in the candidate (pass^k = 100%).
+- a security-suite case fails any trial in the candidate (pass^k = 100%);
+- a security-suite case ran fewer than `MIN_SECURITY_TRIALS` trials, so pass^k = 100% would
+  not mean much (ADR 0007 section 6: k >= 3).
 
 Infrastructure errors never gate. They make the run inconclusive instead.
 """
@@ -22,6 +24,7 @@ REPORT_SCHEMA = Path("tests/fixtures/eval_report.schema.json")
 # Suites that gate on a per-case flip against the baseline, and suites that gate on any failure.
 REGRESSION_SUITES = frozenset({"single_turn", "multi_turn"})
 SECURITY_SUITES = frozenset({"security"})
+MIN_SECURITY_TRIALS = 3
 
 EXIT_PASS = 0
 EXIT_REGRESSION = 1
@@ -110,7 +113,19 @@ def compare_reports(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict
                     "error_codes": codes,
                 }
             )
-        if suite in SECURITY_SUITES and case["quality_failures"]:
+        if suite in SECURITY_SUITES and case["trials"] < MIN_SECURITY_TRIALS:
+            gate_failures.append(
+                {
+                    "suite": suite,
+                    "case_id": case_id,
+                    "rule": "security_trials",
+                    "detail": (
+                        f"ran {case['trials']} trials; the security gate needs at least "
+                        f"{MIN_SECURITY_TRIALS}"
+                    ),
+                }
+            )
+        elif suite in SECURITY_SUITES and case["quality_failures"]:
             gate_failures.append(
                 {
                     "suite": suite,
