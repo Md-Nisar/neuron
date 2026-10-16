@@ -172,7 +172,7 @@ stdout is a JSON document: `status` (`pass`, `regression` or `inconclusive`), `b
 
 The committed baseline for a model lives at `evals/baselines/<name>.json`, where `<name>` is `APP_DEFAULT_MODEL` without its provider prefix and with `/` replaced by `__`. For `nvidia:nvidia/nemotron-3-super-120b-a12b` that is `evals/baselines/nvidia__nemotron-3-super-120b-a12b.json`. A baseline is a full `neuron-eval --trials 3` report from a live run.
 
-**No baseline is committed yet**: producing it needs a live NVIDIA key. Until it exists the nightly workflow still runs `compare`, which applies only the security gate, and uploads the candidate report. To create it:
+**Committed baseline:** `evals/baselines/nvidia__nemotron-3-super-120b-a12b.json`, from a local live run on 2026-10-16 at commit `909bea2` (#95). It departs from the review criteria below in two ways: the security suite has 6 infrastructure errors (4 `rate_limit_error` from provider-side throttling at the end of the run, 2 `run_timeout`; the regression suites have none), and security cases fail (see the v0.5.0 release notes). Neither affects the regression gate, which reads only the regression suites of the baseline; the security gate never reads the baseline. Without a baseline for a model, the nightly workflow still runs `compare`, which then applies only the security gate. To create one:
 
 1. Run the `nightly-eval` workflow from the Actions tab (or locally: `NVIDIA_API_KEY=... APP_DEFAULT_MODEL=nvidia:nvidia/nemotron-3-super-120b-a12b uv run neuron-eval --trials 3 --output report.json > /dev/null`).
 2. Check that `infrastructure_errors` is `0`. Otherwise rerun.
