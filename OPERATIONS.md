@@ -146,6 +146,7 @@ Every event carries `request_id`, `thread_id` and `run_id`. None of them contain
 | `stream_cancelled` | info | `termination=client_disconnect`, plus the same timing and count fields | the client went away before `done`; the run was cancelled |
 | `stream_rejected` | warning | `termination` (the error code, e.g. `thread_busy`, `too_many_streams`, `thread_not_found`) | the stream was refused before the first byte |
 | `agent_execution_started` | info | `turn`, `history_messages`, `model` | `turn` is the 1-based user-turn number in the thread |
+| `model_token_usage` | info | `provider_tokens` (what budgets charge), `input_tokens`, `output_tokens`, `cache_read_tokens`, `reasoning_tokens`, `models` (the same counts and `total_tokens` per model id) | once per `/v1/agent` and `/v1/agent/stream` run, when it ends; a kind the provider doesn't report is 0, and a provider that reports only a total has the kinds at 0. Input includes cache-read and output includes reasoning. Agent Server runs have no per-user budget and don't log it; see the `chat` spans |
 | `history_trimmed` | info | `messages_total`, `messages_sent`, `max_history_tokens` | older turns were left out of the model input |
 | `checkpoint_operation_slow` | warning | `operation`, `backend`, `duration_ms` | a checkpointer read or write took at least 250 ms |
 | `checkpoint_operation_failed` | warning | `operation`, `backend`, `error_type`, `duration_ms` | a checkpointer read or write raised |

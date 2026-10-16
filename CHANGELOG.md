@@ -14,6 +14,7 @@ Fixes found by the first live eval runs:
 v0.5.0 "Evaluation + Observability" (ADR 0007):
 - OpenTelemetry foundation (#89). With `APP_OTEL_ENABLED=true`, the API exports traces and metrics over OTLP/HTTP (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`) with head sampling (`APP_OTEL_TRACES_SAMPLE_RATIO`). HTTP spans are named by route template, `/health/*` is not traced, an incoming `traceparent` is honoured for its trace ID but not its sampled flag, so callers can't force or suppress tracing, and log lines carry `trace_id` and `span_id`. It is off by default, and no content is recorded.
 - Agent tracing (#90): `invoke_agent neuron` per run (on Agent Server too), `chat {model}` per model call with token usage by kind and retry count, `execute_tool {tool}` per tool call with its outcome, and `neuron.stream` per SSE stream with time to first token, event count and termination. Failures carry the `AppError` code as `error.type`; no prompt, answer, tool argument or result, token or raw subject is recorded.
+- Token accounting by kind and model (#91): each run's `model_token_usage` log splits `provider_tokens` into input, output, cache-read and reasoning tokens, in total and per model id. Budgets still charge the total. Estimated cost (the optional part of ADR 0007 section 4) is deferred to v0.6.0, since there is no verifiable, dated price data for the configured models.
 
 ## 0.4.0
 
