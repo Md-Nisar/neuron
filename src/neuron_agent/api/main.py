@@ -31,6 +31,7 @@ from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
+from neuron_agent.observability.langsmith_governance import configure_langsmith
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
 from neuron_agent.observability.telemetry import (
     configure_telemetry,
@@ -61,6 +62,7 @@ configure_logging(
     environment=settings.env,
 )
 logger = structlog.get_logger(__name__)
+configure_langsmith(settings)
 telemetry = configure_telemetry(settings)
 service = AgentService(settings)
 auth_verifier = get_shared_token_verifier(settings)
