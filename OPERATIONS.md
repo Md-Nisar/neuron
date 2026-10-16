@@ -12,7 +12,7 @@ Production deployments must inject secrets through the platform secret manager.
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no JWKS fetch failure since the last signing key was obtained. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. The JWKS part is passive (see Signing keys and JWKS caching).
+- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
@@ -49,7 +49,7 @@ APP_AUTH_ROLE_PERMISSIONS={"neuron-user":["agent:invoke","threads:read","threads
 - A token with an unknown `kid` triggers a refetch, but not always at once. PyJWT forces a refetch at most once per 30 seconds after any successful fetch (including the first one and cache-expiry fetches), so a key published less than 30 seconds after a fetch is rejected (`401`, `auth_failed` with `reason="unknown_signing_key"`) until that window ends; the release gate measured 30.2 s with default settings. On top of that, when a refetch succeeds but still lacks the `kid`, further unknown-`kid` refetches wait one second per process, so forged `kid`s can't hammer a reachable IdP. While the IdP is unreachable there is no such cooldown: each request that needs a fetch tries one, serialized per process and bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`.
 - **Rotation:** publish the new key in the JWKS at least a minute before the IdP signs with it (covering the 30-second refetch window), and remove the old key only after every token it signed has expired (plus `APP_AUTH_LEEWAY_SECONDS`). Most IdPs pre-publish keys automatically. An IdP that starts signing with a key the moment it publishes it causes up to 30 seconds of `401`s per API process.
 - **Compromised key:** remove it from the JWKS, then restart the API replicas; otherwise each process keeps trusting its cached copy for up to `APP_AUTH_JWKS_CACHE_SECONDS`.
-- **IdP outage:** tokens whose key is still cached keep working until the cache expires. After that, requests fail closed with `503 authentication_unavailable`. `/health/ready` returns `503` from the first failed fetch until a later request obtains a signing key again, from a fetch or the cache. Readiness doesn't probe the JWKS itself, so an instance that receives no requests stays not ready: if the orchestrator removes not-ready instances from traffic, restart them after the IdP recovers, or base traffic decisions on `/health/live` plus your own IdP monitoring.
+- **IdP outage:** tokens whose key is still cached keep working until the cache expires. After that, requests fail closed with `503 authentication_unavailable`. `/health/ready` returns `503` from the first failed fetch until a fetch succeeds again. While not ready, readiness probes retry the JWKS (at most once per 5 seconds per process), so an instance recovers on its own after the IdP does, even with no traffic.
 
 ### Rotating `APP_IDENTITY_HASH_KEY`
 
@@ -63,14 +63,41 @@ Related settings: trusted proxies and per-user limits are under Rate Limiting, a
 
 ## Logs and Traces
 
-Logs are JSON and include service metadata. Enable LangSmith tracing by setting:
+Logs are JSON and include service metadata, on the FastAPI server and on Agent Server.
+
+### LangSmith
+
+`APP_ENABLE_LANGSMITH` is the only switch for LangSmith tracing (ADR 0007, section 5). It is
+off by default, and nothing is sent to LangSmith until it is enabled:
 
 ```text
 APP_ENABLE_LANGSMITH=true
-LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=...
 LANGSMITH_PROJECT=neuron-agent-production
+APP_LANGSMITH_CONTENT_APPROVED=false   # default
 ```
+
+- A `LANGSMITH_TRACING`, `LANGSMITH_TRACING_V2`, `LANGCHAIN_TRACING_V2` or `LANGCHAIN_TRACING`
+  set to a true value without `APP_ENABLE_LANGSMITH=true` is overridden at startup, and the
+  service logs `langsmith_tracing_overridden` naming the variables.
+- Staging and production with LangSmith enabled fail at startup without `LANGSMITH_API_KEY`.
+- What leaves the service:
+
+  | Environment | `APP_LANGSMITH_CONTENT_APPROVED` | Sent to LangSmith |
+  | --- | --- | --- |
+  | any, LangSmith disabled | n/a | nothing |
+  | `development` | any | full traces, including prompts, answers and tool arguments/results |
+  | `test`, `staging`, `production` | `false` (default) | run structure, names, timings, token usage and metadata; inputs and outputs are hidden |
+  | `test`, `staging`, `production` | `true` | full traces, as in development |
+
+  Set `APP_LANGSMITH_CONTENT_APPROVED=true` only after the LangSmith workspace has been
+  approved to hold user content (retention, access and region). Outside development, shell
+  `LANGSMITH_HIDE_INPUTS`/`LANGSMITH_HIDE_OUTPUTS` values are replaced by this setting.
+- Both entry points apply this: the FastAPI app at import and the graph module that Agent
+  Server loads.
+- Agent Server's own platform tracing, when the service runs as a LangSmith deployment, is
+  governed by the platform and its project settings, not by these variables. Configure
+  tracing and content retention there.
 
 Do not log raw secrets, authorization headers, or sensitive user content.
 
@@ -87,7 +114,8 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
 ```
 
 - **Resource:** `service.name` (`APP_OTEL_SERVICE_NAME`, default `APP_NAME`),
-  `service.version` and `deployment.environment.name`.
+  `service.version`, `deployment.environment.name` and `service.instance.id`, a random
+  UUID per process.
 - **Spans:** one HTTP server span per request, named by route template (for example
   `POST /v1/agent/invoke`). `/health/*` is not traced. An incoming W3C `traceparent` is
   honoured for its trace ID, so the span joins the caller's trace, but its sampled flag is
@@ -122,8 +150,58 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
 - **Privacy:** prompts, answers and tool content are never recorded. HTTP spans do carry
   standard request attributes, such as the URL, user agent and peer address; redact them
   in the Collector where your policy requires it.
-- **Agent Server** deployments emit the agent spans from the graph node, with the thread,
-  run and owner taken from the run's config, but don't configure this exporter yet.
+- **Agent Server** deployments emit the agent spans and metrics from the graph node, with
+  the thread, run and owner taken from the run's config. The graph module configures the
+  same exporters when it is loaded, once per process, so the FastAPI app and Agent Server
+  never export twice.
+
+#### Metrics
+
+Metrics are pushed over OTLP/HTTP every 60 s (the SDK default) to the same Collector. Durations
+are in seconds. Instruments:
+
+| Instrument | Type | Attributes |
+| --- | --- | --- |
+| `gen_ai.client.operation.duration` | histogram | `gen_ai.operation.name` (`chat`), `gen_ai.provider.name`, `gen_ai.request.model`, `error.type` on failure |
+| `gen_ai.client.token.usage` | histogram, `{token}` | the same, plus `gen_ai.token.type` (`input`, `output`; both include cache-read and reasoning tokens) |
+| `neuron.agent.run.duration` | histogram | `gen_ai.operation.name` (`invoke_agent`), `neuron.outcome` (`success`, `error`, `cancelled`), `error.type` |
+| `neuron.agent.stream.ttft` | histogram | `neuron.outcome` (the stream's termination: `completed`, `error`, `timeout`, `shutdown`, `client_disconnect`); streams that sent no token are not recorded |
+| `neuron.agent.tool.duration` | histogram | `gen_ai.operation.name` (`execute_tool`), `gen_ai.tool.name`, `neuron.outcome` (`success`, `error`, `denied`, `interrupted`), `error.type` |
+| `neuron.agent.errors` | counter | `error.type`, an `AppError` code. Counts each failed request or run once, client errors (such as `validation_error`) included; filter on the code |
+| `neuron.agent.policy.blocks` | counter | `neuron.rule`: `empty_message`, `message_too_long`, `control_characters`, `token_budget`, `concurrent_runs`, `concurrent_streams`, `request_rate`, `insufficient_scope`, `unknown_tool` |
+| `neuron.checkpoint.duration` | histogram | `neuron.outcome`, `error.type` (the exception class) |
+| `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |
+| `http.server.request.body.size`, `http.server.response.body.size` | histogram | `http.route`, `http.response.status_code` |
+| `http.server.active_requests` | up-down counter | none |
+
+`neuron.agent.cost` (estimated USD, ADR 0007 section 2) is not emitted: the estimated cost is
+deferred together with its pricing data.
+
+**Labels.** Only these attribute keys label a metric: `gen_ai.request.model`,
+`gen_ai.provider.name`, `gen_ai.operation.name`, `gen_ai.tool.name`, `gen_ai.token.type`,
+`error.type`, `http.route`, `http.response.status_code`, `neuron.outcome` and `neuron.rule`.
+Users, owner keys, threads, runs and requests never label a metric, because each would
+create a time series per value. HTTP metrics use the stable HTTP conventions, so the FastAPI
+instrumentation's other attributes (method, scheme, protocol version) are dropped by views.
+A test collects metrics from a run and fails on any other key or on any ID as a value.
+
+**Buckets.** Explicit bucket upper bounds, in seconds, set by views in
+`observability/metrics.py`:
+
+- Model call, run, time to first token and HTTP request duration:
+  0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30, 60, 120. Slower than 120 s is in the
+  overflow bucket (`APP_RUN_TIMEOUT_SECONDS` defaults to 120).
+- Tool and checkpoint duration: 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10,
+  30, 60 (`APP_TOOL_TIMEOUT_SECONDS` is at most 60).
+- Tokens per model call: powers of 4 from 1 to 4^13 (67,108,864).
+
+**Several workers.** Run as many uvicorn workers or replicas as needed: each process has its
+own meter provider and pushes its own OTLP stream, with a distinct `service.instance.id`, so
+cumulative series from different processes are never merged. Nothing is shared between
+workers, and there is no `/metrics` endpoint to scrape (a scrape would reach one worker).
+Aggregate across instances in the backend, for example `sum without (service_instance_id)`,
+or have the Collector drop the attribute after export. A worker flushes on graceful shutdown;
+an abrupt kill loses up to one export interval.
 
 Security audit records use the separate `neuron_agent.audit` logger (also present as the
 JSON `logger` field). Route that logger to the SIEM independently from application logs;
@@ -134,6 +212,77 @@ non-secret alias (for example `primary`), not an issuer URL. Choose SIEM retenti
 your security/compliance policy; keep it separate from `APP_THREAD_RETENTION_DAYS`, since
 audit records contain metadata and are not deleted with conversation data. Protect audit
 sink access and retention against unauthorized modification/deletion.
+
+### Service level objectives
+
+SLIs, targets and alerts for the service (ADR 0007, decision 8). **All targets are provisional until #99**, the release gate, where they are set from live data; the live provider checks have not run yet, so no number below is measured. The PromQL uses the names the Collector's Prometheus exporter produces from the OTLP metrics above: dots become underscores, unit `s` adds `_seconds`, counters add `_total`, histograms add `_bucket`/`_count`, and attributes become labels (`error.type` is `error_type`). Resource attributes are labels too (`service_instance_id` keeps workers apart), so every query aggregates with `sum(...)`.
+
+| SLO | SLI (good events / valid events) | Target (provisional until #99) | Error budget |
+| --- | --- | --- | --- |
+| `availability` | `/v1` requests that did not fail with 5xx, among requests that are not 4xx | 99.5% over 30 days | 0.5% |
+| `ttft` | streams whose time to first token is at most 2 s (p95 under 2 s) | 95% over 30 days | 5% |
+| `run_duration` | runs that finish within 30 s (p95 under 30 s), cancelled runs excluded | 95% over 30 days | 5% |
+| `provider_errors` | model calls that do not fail (provider error rate at most 1%) | 99% over 30 days | 1% |
+
+Definitions (`w` is a window):
+
+```text
+availability error ratio =
+  sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code=~"5.."}[w]))
+  / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[w]))
+
+ttft slow ratio =
+  1 - sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[w])) / sum(rate(neuron_agent_stream_ttft_seconds_count[w]))
+
+run duration slow ratio =
+  1 - sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[w]))
+      / sum(rate(neuron_agent_run_duration_seconds_count{neuron_outcome!="cancelled"}[w]))
+
+provider error ratio =
+  sum(rate(gen_ai_client_operation_duration_seconds_count{error_type!=""}[w]))
+  / sum(rate(gen_ai_client_operation_duration_seconds_count[w]))
+```
+
+Caveats: a stream that fails after its `200` headers is not an availability failure (see the `neuron.agent.errors` counter, `neuron.outcome` on `neuron.agent.stream.ttft`, and the `stream_completed` log); `le="2"` and `le="30"` must stay bucket bounds in `observability/metrics.py`; a model call's duration and error include its retries, so a provider error is one that outlasted them. Time to first token is recorded only for streams that sent a token.
+
+**Alerts.** `deploy/observability/prometheus-alerts.yaml` holds recording rules for each ratio over 5m, 30m, 1h, 6h and 3d, and the multi-window, multi-burn-rate alerts of the Google SRE Workbook for each SLO: 14.4x over 1h and 5m (page; 2% of a 30-day budget in 1 h), 6x over 6h and 30m (page) and 1x over 3d and 6h (ticket). An alert fires only when both windows exceed `burn x budget`. Each `alert=True` error class in `errors/base.py` (`configuration_error`, `provider_error`, `provider_quota_exhausted`, `tool_execution_error`, `structured_output_error`, `persistence_error`, `agent_execution_error`) has the 14.4x and 6x pair against a provisional budget of 0.1% of `/v1` requests, using `neuron_agent_errors_total{error_type="<code>"}`. A test keeps the rules, the SLO list and the error classes in step. The rules are examples: load them with `promtool check rules` and route `severity` in Alertmanager. Nothing alerts on no traffic, since the ratios are undefined without requests.
+
+**Collector.** `deploy/observability/otel-collector.yaml` (pinned to `opentelemetry-collector-contrib` 0.120.0; validate it with `otelcol-contrib validate` before use, which this repository does not run) receives OTLP and runs, in this order, `memory_limiter`, the attribute allow-list, value redaction, tail sampling (traces only) and `batch`, then exports traces, metrics and logs over OTLP and metrics to Prometheus. Endpoints come from `OTEL_BACKEND_ENDPOINT`, `OTEL_BACKEND_AUTH_HEADER`, `OTEL_RECEIVER_HOST` and `PROMETHEUS_EXPORTER_ENDPOINT`.
+
+- The allow-list drops every attribute not emitted by `semconv.py`: resource, span, metric data point and log record attributes each have their own list, and span events lose all attributes. HTTP spans keep only method, route, status code, scheme and protocol version, which drops the URL path, user agent and peer address. A new attribute is blocked until it is added to `semconv.py`, the Collector list and the test.
+- Tail sampling keeps every trace with an error span, every trace slower than 30 s (the provisional `run_duration` target) and 10% of the rest. Run the app with `APP_OTEL_TRACES_SAMPLE_RATIO=1.0` (head sampling would discard the errors first), and put a load-balancing exporter keyed by trace ID in front of several Collector replicas.
+- The service does not export logs over OTLP yet. The logs pipeline filters attributes only; it cannot filter a free-text body.
+- The development-only Compose stack (Grafana, Tempo, Loki, Prometheus) is deferred; it does not block the release.
+
+#### Runbook: availability
+
+`NeuronAvailabilityBurnRate*`. Look at `sum by (http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))` and `neuron_agent_errors_total` by `error_type`. A provider-class error points to the provider runbook; `persistence_error` or a failing `/health/ready` points to Postgres (Thread Persistence); `503 too_many_streams` means scale out or raise `APP_MAX_CONCURRENT_STREAMS`; `service_shutting_down` during a rollout is expected for a short time. Roll back (Rollback) if it began with a deploy.
+
+#### Runbook: ttft
+
+`NeuronTtftBurnRate*`. Slow first tokens come from the provider, from a proxy that buffers (Streaming Behind a Reverse Proxy), or from load. Compare `neuron_agent_stream_ttft_seconds` with `gen_ai_client_operation_duration_seconds` (provider time) and check `neuron.retry_count` on slow `chat` traces: retries add their backoff to time to first token. If only the provider is slow, shed nothing and wait or fail over; if the proxy buffers, fix it.
+
+#### Runbook: run-duration
+
+`NeuronRunDurationBurnRate*`. Open slow traces (tail sampling keeps those over 30 s): `chat` spans dominate when the provider is slow, repeated `execute_tool` spans mean a tool loop (`APP_MAX_AGENT_ITERATIONS`), and a `checkpoint` slowdown (`neuron_checkpoint_duration_seconds`) means the database. Runs that hit `APP_RUN_TIMEOUT_SECONDS` are `run_timeout` errors in the overflow bucket.
+
+#### Runbook: provider-errors
+
+`NeuronProviderErrorsBurnRate*`. Split `gen_ai_client_operation_duration_seconds_count{error_type!=""}` by `error_type`, `gen_ai_provider_name` and `gen_ai_request_model`. `provider_error` and `provider_timeout_error`: check the provider status page and retry settings (Timeouts and Retries). `rate_limit_error`: lower concurrency or raise the provider limit. `provider_quota_exhausted` and `configuration_error`: see below, retrying never helps.
+
+#### Runbook: error classes
+
+`NeuronErrorClass<Code>*`, one pair per `alert=True` class; the label `error_type` names it. Find the failing requests by the `error_code` log field and the `error.type` span attribute, then:
+
+| `error_type` | First response |
+| --- | --- |
+| `configuration_error` | A bad model identifier, provider authentication failure or a model the account cannot use. Check the last configuration or secret change; fix and redeploy. Never retried. |
+| `provider_error` | Upstream 5xx. See the provider-errors runbook. |
+| `provider_quota_exhausted` | The provider account has no credit. Add credit or raise the quota; every request fails until then. |
+| `tool_execution_error` | A tool timed out or raised. Check `neuron_agent_tool_duration_seconds` by `gen_ai_tool_name`, then the tool's dependency. The failure is isolated to the call. |
+| `structured_output_error` | The model returned output that failed the `AgentAnswer` schema or was empty. Check for a model or prompt change; run the evals (`make eval`). |
+| `persistence_error` | The checkpointer failed. Check Postgres and pool saturation (Thread Persistence); the pool reconnects once the database is back. |
+| `agent_execution_error` | An unclassified failure or the iteration cap. Read the server logs' `error_type`, and the trace for a tool loop. |
 
 ### Streaming and conversation-state events
 
@@ -185,8 +334,8 @@ Suggested alerts:
   `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` also returns `503`.
   Check the IdP's status and that `APP_AUTH_JWKS_URL` is reachable from the API (DNS,
   egress rules, TLS). Don't switch to `APP_AUTH_MODE=none` or widen the issuer. Requests
-  recover by themselves once a fetch succeeds; readiness recovers only when a request gets
-  a key, so restart instances that were taken out of rotation (Signing keys and JWKS caching).
+  and readiness recover by themselves once a fetch succeeds; no restart is needed
+  (Signing keys and JWKS caching).
 - **Signing-key problems:** a spike of `auth_failed` with `reason="unknown_signing_key"` after an
   IdP key rotation means tokens are signed with a key the JWKS doesn't (yet) publish; check
   the IdP's JWKS before Neuron.
@@ -316,7 +465,7 @@ Provider token usage from model `usage_metadata` is charged to a rolling per-pri
 - `APP_REQUEST_TIMEOUT_SECONDS` (default 60s): per-attempt timeout on the model provider call (`ChatOpenAI(timeout=...)`).
 - `APP_TOOL_TIMEOUT_SECONDS` (default 20s): per-call timeout on tool execution; exceeding it raises `ToolExecutionError` without leaking tool internals to the caller.
 - `APP_PROVIDER_MAX_RETRIES` (default 2, i.e. 3 attempts total): retries for transient provider failures only (connection errors, provider timeouts, provider rate limits, 5xx), with exponential backoff and jitter. Non-transient failures (auth errors, malformed requests) are never retried.
-- `APP_MAX_AGENT_ITERATIONS` (default 5): recursion budget for the agent's internal tool-call loop; exceeding it surfaces as `agent_execution_error`.
+- `APP_MAX_AGENT_ITERATIONS` (default 8, max 25): the most model calls one run may make, so at most 7 tool rounds plus the final answer. Each model call and each tool call is one LangGraph step, so the app passes `recursion_limit = 2 * APP_MAX_AGENT_ITERATIONS`. Exceeding it returns `422 agent_step_limit_exceeded` (a stream `error` event with the same code); it is logged as `agent_execution_failed` with `error_type=GraphRecursionError`, and the run and model spans carry it as `error.type`. Parallel tool calls in one model reply count once. The bound on a looping model is this count times `APP_REQUEST_TIMEOUT_SECONDS`, within `APP_RUN_TIMEOUT_SECONDS` and the per-user token budget.
 
 Raise provider timeouts/retries cautiously in production — higher values increase worst-case request latency and hold HTTP connections open longer under provider degradation.
 
@@ -333,7 +482,8 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 | `504 provider_timeout_error` | model provider did not respond within `APP_REQUEST_TIMEOUT_SECONDS` | retried internally first; surfaces only after retries are exhausted |
 | `502 tool_execution_error` | tool exceeded `APP_TOOL_TIMEOUT_SECONDS` or raised an unclassified exception | tool failure is isolated; it cannot crash the agent loop |
 | `502 provider_error` / `structured_output_error` | upstream 5xx, or the model returned output that failed the `AgentAnswer` schema or was empty | internal detail is logged, not returned to the caller |
-| `500 agent_execution_error` | agent loop exceeded `APP_MAX_AGENT_ITERATIONS`, or an unclassified internal failure | check server logs' `error_type`/`error_code` fields |
+| `422 agent_step_limit_exceeded` | the agent used all `APP_MAX_AGENT_ITERATIONS` model calls without answering (a very long tool chain, or a model repeating tool calls) | the caller may rephrase or split the request; raise the limit only if legitimate requests hit it |
+| `500 agent_execution_error` | an unclassified internal failure | check server logs' `error_type`/`error_code` fields |
 | `503` with log `error_code=provider_quota_exhausted` | the model provider account has no credit (OpenAI `429 insufficient_quota`) | add credit or raise the quota; never retried, alerts on every request until fixed |
 | `500 configuration_error` | unsupported model provider, malformed `provider:model` identifier, provider auth failure, or a model the provider does not offer this account (`404`) | fix configuration; never retried |
 | `409 thread_busy` | another run on the same thread is still in flight (same process), or `DELETE` during a run | client retries after the current run finishes; normal for double-submits |

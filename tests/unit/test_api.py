@@ -11,6 +11,7 @@ from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     AuthorizationError,
     CapacityError,
     ConfigurationError,
@@ -97,6 +98,7 @@ def test_agent_invoke_rejects_oversized_body_via_content_length() -> None:
         (ProviderError("upstream failed"), 502, "internal_server_error"),
         (ToolExecutionError("tool failed"), 502, "internal_server_error"),
         (StructuredOutputError("bad structured output"), 502, "internal_server_error"),
+        (AgentStepLimitError("looped"), 422, "agent_step_limit_exceeded"),
         (AgentExecutionError("agent failed"), 500, "internal_server_error"),
         (PersistenceError("db down"), 503, "internal_server_error"),
         (ThreadNotFoundError("missing"), 404, "thread_not_found"),
@@ -221,6 +223,25 @@ def test_ready_endpoint_returns_503_when_checkpointer_unreachable(
     response = client.get("/health/ready")
     assert response.status_code == 503
     assert response.json() == {"status": "not_ready"}
+
+
+def test_ready_endpoint_consults_the_jwks_probe_without_a_model_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    probes: list[str] = []
+
+    async def verifier_ready() -> bool:
+        probes.append("jwks")
+        return False
+
+    async def no_model(*args: object, **kwargs: object) -> None:
+        raise AssertionError("readiness must not call the model")
+
+    monkeypatch.setattr(api_main.auth_verifier, "ready", verifier_ready)
+    monkeypatch.setattr(api_main.AgentService, "invoke", no_model, raising=False)
+    response = TestClient(app).get("/health/ready")
+    assert response.status_code == 503
+    assert probes == ["jwks"]
 
 
 def test_lifespan_opens_and_closes_service(monkeypatch: pytest.MonkeyPatch) -> None:

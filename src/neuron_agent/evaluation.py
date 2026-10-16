@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import math
 import re
 import secrets
@@ -670,8 +671,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         raise SystemExit(compare_main(args_list[1:]))
     args = _parse_args(args_list)
     # stdout carries only the JSON report (so `neuron-eval > report.json` stays valid JSON);
-    # run logs go to stderr.
-    structlog.configure(logger_factory=structlog.PrintLoggerFactory(file=sys.stderr))
+    # run logs go to stderr. Importing the graph already configured stdlib-backed JSON logging
+    # on stdout, so replace the processors and factory together. Compiling the graph also
+    # cached the graph module's logger with that configuration (LangGraph inspects the node's
+    # globals), so move the stdlib output to stderr as well.
+    structlog.configure(
+        processors=[structlog.processors.JSONRenderer()],
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+    )
+    logging.basicConfig(
+        format="%(message)s", stream=sys.stderr, level=logging.getLogger().level, force=True
+    )
     runners = {
         "single_turn": run_eval_suite,
         "multi_turn": run_multi_turn_suite,

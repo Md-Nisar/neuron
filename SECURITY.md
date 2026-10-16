@@ -46,6 +46,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
   - Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (the docs pages, when served, keep the browser default). `/v1/*` responses are `Cache-Control: no-store`. HSTS is opt-in through `APP_HSTS_MAX_AGE_SECONDS`.
   - `APP_ALLOWED_HOSTS` rejects other `Host` headers with `400`; `/health/*` is exempt for platform probes.
   - A client `X-Correlation-ID` is logged and echoed only if it's 1-128 characters of `[A-Za-z0-9._-]`; anything else is replaced with a UUID. `X-Request-Id` is ignored.
+- LangSmith governance (ADR 0007, section 5): tracing is off unless `APP_ENABLE_LANGSMITH=true`, and a shell `LANGSMITH_TRACING=true` is overridden and logged as `langsmith_tracing_overridden`. Outside `development`, trace inputs and outputs (prompts, answers, tool arguments and results) are hidden unless `APP_LANGSMITH_CONTENT_APPROVED=true`; with LangSmith disabled nothing leaves the service. Staging and production require `LANGSMITH_API_KEY` when it is enabled. This governs the service's own tracing only: Agent Server's platform tracing is governed by the platform (see `OPERATIONS.md`, LangSmith).
 - Bandit security scan in CI.
 - Dependency vulnerability audit: `make security` runs `pip-audit` against every locked dependency (`uv export` of `uv.lock`, all groups) after Bandit. See Dependency Vulnerabilities.
 

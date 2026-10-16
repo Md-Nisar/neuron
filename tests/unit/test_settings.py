@@ -49,7 +49,7 @@ def test_settings_defaults_are_openai_production_safe() -> None:
     assert settings.default_model == "openai:gpt-5.4-mini"
     assert settings.request_timeout_seconds == 60
     assert settings.tool_timeout_seconds == 20
-    assert settings.max_agent_iterations == 5
+    assert settings.max_agent_iterations == 8
     assert settings.max_output_tokens == 2000
     assert settings.provider_max_retries == 2
     assert settings.max_request_body_bytes == 65_536
@@ -161,6 +161,7 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     conventional = {
         "APP_OPENAI_API_KEY",
         "APP_NVIDIA_API_KEY",
+        "APP_LANGSMITH_API_KEY",
         "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
         "APP_OTEL_EXPORTER_OTLP_HEADERS",
     }
