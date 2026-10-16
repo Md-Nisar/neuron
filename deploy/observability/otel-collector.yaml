@@ -1,0 +1,144 @@
+# OpenTelemetry Collector configuration for the Neuron agent service (ADR 0007, decision 8).
+#
+# Distribution: opentelemetry-collector-contrib, pinned to otel/opentelemetry-collector-contrib:0.120.0.
+# The config was written against that release and has NOT been validated with the
+# `otelcol-contrib validate` binary in this repository's CI (only parsed and checked by
+# tests/unit/test_observability_deploy.py). Validate before use:
+#   otelcol-contrib validate --config deploy/observability/otel-collector.yaml
+# Bump the version deliberately and re-validate.
+#
+# Flow: app --OTLP/HTTP--> receiver -> memory_limiter -> allow-list -> [tail_sampling] -> batch -> exporters.
+#
+# Required environment (no secrets in this file):
+#   OTEL_BACKEND_ENDPOINT       OTLP/gRPC backend for traces, metrics and logs, e.g. tempo.internal:4317
+#   OTEL_BACKEND_AUTH_HEADER    optional; value of the `authorization` header sent to the backend
+# Optional: OTEL_RECEIVER_HOST (default localhost; use 0.0.0.0 in a container),
+#   PROMETHEUS_EXPORTER_ENDPOINT (default 0.0.0.0:8889).
+#
+# The app must run with APP_OTEL_TRACES_SAMPLE_RATIO=1.0 so tail sampling sees every trace.
+# Tail sampling needs all spans of a trace in one Collector: with several replicas put a
+# load-balancing exporter (routing_key: traceID) in front of this tier.
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: ${env:OTEL_RECEIVER_HOST:-localhost}:4318
+      grpc:
+        endpoint: ${env:OTEL_RECEIVER_HOST:-localhost}:4317
+
+processors:
+  # First in every pipeline: sheds load before anything allocates.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+  # Allow-list redaction (fail closed). Anything not listed is dropped, so an attribute a future
+  # change starts emitting is blocked here until it is added to semconv.py, this list and a test.
+  # The lists mirror observability/semconv.py; tests/unit/test_observability_deploy.py checks it.
+  transform/allowlist:
+    error_mode: propagate
+    trace_statements:
+      - context: resource
+        statements:
+          - keep_keys(attributes, ["service.name", "service.version", "deployment.environment.name", "service.instance.id"])
+      - context: span
+        statements:
+          - keep_keys(attributes, ["neuron.correlation_id", "gen_ai.operation.name", "gen_ai.agent.name", "gen_ai.conversation.id", "gen_ai.provider.name", "gen_ai.request.model", "gen_ai.response.model", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.usage.cache_read.input_tokens", "gen_ai.usage.reasoning.output_tokens", "gen_ai.tool.name", "error.type", "neuron.run_id", "neuron.owner_key_prefix", "neuron.turn", "neuron.retry_count", "neuron.outcome", "neuron.stream.ttft_ms", "neuron.stream.events", "neuron.stream.termination", "http.request.method", "http.route", "http.response.status_code", "url.scheme", "network.protocol.version"])
+      # The service records no span events (exceptions are never recorded: messages can carry content).
+      - context: spanevent
+        statements:
+          - keep_keys(attributes, [])
+    metric_statements:
+      - context: resource
+        statements:
+          - keep_keys(attributes, ["service.name", "service.version", "deployment.environment.name", "service.instance.id"])
+      - context: datapoint
+        statements:
+          - keep_keys(attributes, ["gen_ai.request.model", "gen_ai.provider.name", "gen_ai.operation.name", "gen_ai.tool.name", "gen_ai.token.type", "error.type", "http.route", "http.response.status_code", "neuron.outcome", "neuron.rule"])
+    log_statements:
+      - context: resource
+        statements:
+          - keep_keys(attributes, ["service.name", "service.version", "deployment.environment.name", "service.instance.id"])
+      # Log record attributes only. The body is free text and is not filtered here: the service
+      # does not export logs over OTLP today, so keep content out of any log it starts exporting.
+      - context: log
+        statements:
+          - keep_keys(attributes, ["neuron.correlation_id", "error.type", "neuron.outcome"])
+
+  # Defense in depth for the values of allowed attributes (bearer tokens, e-mail addresses).
+  redaction/values:
+    allow_all_keys: true
+    blocked_values:
+      - "eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+"
+      - "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+    summary: silent
+
+  # Keeps every trace with an error span, every trace slower than 30 s and 10% of the rest.
+  # 30 s is the provisional p95 run-duration SLO (OPERATIONS.md), so the traces that break the
+  # objective are kept. decision_wait covers APP_RUN_TIMEOUT_SECONDS (default 120) so a long run's
+  # spans are decided together. Memory: about num_traces x trace size; sized with memory_limiter.
+  tail_sampling:
+    decision_wait: 130s
+    num_traces: 50000
+    expected_new_traces_per_sec: 100
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: keep-slow
+        type: latency
+        latency:
+          threshold_ms: 30000
+      - name: sample-the-rest
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+  # Last in every pipeline.
+  batch:
+    send_batch_size: 8192
+    send_batch_max_size: 8192
+    timeout: 5s
+
+exporters:
+  otlp/backend:
+    endpoint: ${env:OTEL_BACKEND_ENDPOINT}
+    headers:
+      authorization: ${env:OTEL_BACKEND_AUTH_HEADER:-}
+    sending_queue:
+      enabled: true
+      queue_size: 1000
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 120s
+
+  # Scraped by Prometheus (deploy/observability/prometheus-alerts.yaml is written for these names:
+  # dots become underscores, unit "s" adds _seconds, counters add _total).
+  # Resource attributes become labels so the series of several workers
+  # (distinct service.instance.id) stay separate; aggregate with `sum without (service_instance_id)`.
+  prometheus:
+    endpoint: ${env:PROMETHEUS_EXPORTER_ENDPOINT:-0.0.0.0:8889}
+    resource_to_telemetry_conversion:
+      enabled: true
+    metric_expiration: 5m
+
+service:
+  telemetry:
+    metrics:
+      level: basic
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/allowlist, redaction/values, tail_sampling, batch]
+      exporters: [otlp/backend]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/allowlist, batch]
+      exporters: [prometheus, otlp/backend]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/allowlist, redaction/values, batch]
+      exporters: [otlp/backend]

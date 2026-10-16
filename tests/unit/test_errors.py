@@ -4,6 +4,7 @@ import pytest
 
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     AppError,
     AuthorizationError,
     ConfigurationError,
@@ -27,6 +28,7 @@ from neuron_agent.errors.base import (
         (ProviderTimeoutError, "provider_timeout_error", 504, True, True),
         (ToolExecutionError, "tool_execution_error", 502, True, False),
         (StructuredOutputError, "structured_output_error", 502, True, False),
+        (AgentStepLimitError, "agent_step_limit_exceeded", 422, False, True),
         (AgentExecutionError, "agent_execution_error", 500, True, False),
     ],
 )
@@ -54,6 +56,7 @@ def test_all_taxonomy_errors_are_app_errors() -> None:
         ProviderTimeoutError,
         ToolExecutionError,
         StructuredOutputError,
+        AgentStepLimitError,
         AgentExecutionError,
     ):
         assert issubclass(error_cls, AppError)

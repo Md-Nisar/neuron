@@ -15,6 +15,7 @@ SEMCONV_VERSION = "1.41.0"
 SERVICE_NAME = "service.name"
 SERVICE_VERSION = "service.version"
 DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name"
+SERVICE_INSTANCE_ID = "service.instance.id"
 
 # Service attributes.
 NEURON_CORRELATION_ID = "neuron.correlation_id"
@@ -38,6 +39,9 @@ GEN_AI_USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 GEN_AI_USAGE_REASONING_OUTPUT_TOKENS = "gen_ai.usage.reasoning.output_tokens"
 GEN_AI_TOOL_NAME = "gen_ai.tool.name"
+GEN_AI_USAGE_TYPE = "gen_ai.token.type"
+USAGE_TYPE_INPUT = "input"
+USAGE_TYPE_OUTPUT = "output"
 ERROR_TYPE = "error.type"
 
 # Run, model-call, tool-call and stream attributes. Never content, never a full owner key.
@@ -49,3 +53,39 @@ NEURON_OUTCOME = "neuron.outcome"
 NEURON_STREAM_TTFT_MS = "neuron.stream.ttft_ms"
 NEURON_STREAM_EVENTS = "neuron.stream.events"
 NEURON_STREAM_TERMINATION = "neuron.stream.termination"
+NEURON_RULE = "neuron.rule"
+
+# HTTP attributes kept on the FastAPI HTTP metrics; every other one is dropped (ADR 0007).
+HTTP_ROUTE = "http.route"
+HTTP_RESPONSE_STATUS_CODE = "http.response.status_code"
+
+# Metric names and units. Durations are seconds. Attributes are the allow-list below.
+METRIC_OPERATION_DURATION = "gen_ai.client.operation.duration"
+METRIC_USAGE = "gen_ai.client.token.usage"
+METRIC_RUN_DURATION = "neuron.agent.run.duration"
+METRIC_STREAM_TTFT = "neuron.agent.stream.ttft"
+METRIC_TOOL_DURATION = "neuron.agent.tool.duration"
+METRIC_ERRORS = "neuron.agent.errors"
+METRIC_POLICY_BLOCKS = "neuron.agent.policy.blocks"
+METRIC_CHECKPOINT_DURATION = "neuron.checkpoint.duration"
+METRIC_HTTP_REQUEST_DURATION = "http.server.request.duration"
+METRIC_HTTP_REQUEST_BODY_SIZE = "http.server.request.body.size"
+METRIC_HTTP_RESPONSE_BODY_SIZE = "http.server.response.body.size"
+METRIC_HTTP_ACTIVE_REQUESTS = "http.server.active_requests"
+
+# The only attribute keys a metric may carry. Users, owner keys, threads, runs and requests
+# never label a metric: each would create one time series per value.
+METRIC_ATTRIBUTE_ALLOW_LIST = frozenset(
+    {
+        GEN_AI_REQUEST_MODEL,
+        GEN_AI_PROVIDER_NAME,
+        GEN_AI_OPERATION_NAME,
+        GEN_AI_TOOL_NAME,
+        GEN_AI_USAGE_TYPE,
+        ERROR_TYPE,
+        HTTP_ROUTE,
+        HTTP_RESPONSE_STATUS_CODE,
+        NEURON_OUTCOME,
+        NEURON_RULE,
+    }
+)

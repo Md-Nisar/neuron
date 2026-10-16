@@ -172,6 +172,12 @@ class PersistenceError(AppError):
     )
 
 
+class AgentStepLimitError(AppError):
+    """The agent used its `APP_MAX_AGENT_ITERATIONS` model calls without finishing."""
+
+    context = ErrorContext(code="agent_step_limit_exceeded", http_status=422)
+
+
 class AgentExecutionError(AppError):
     """Agent execution failed for a reason not otherwise classified."""
 

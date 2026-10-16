@@ -7,7 +7,9 @@ background threads, so an unreachable Collector never fails a request.
 
 from __future__ import annotations
 
+import os
 import random
+import uuid
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -35,6 +37,7 @@ from opentelemetry.util.re import parse_env_headers
 from opentelemetry.util.types import Attributes
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.observability import metrics as app_metrics
 from neuron_agent.observability import semconv
 
 # Platform probes are frequent and uninteresting; their requests are not traced.
@@ -98,6 +101,9 @@ def build_telemetry(settings: Settings) -> Telemetry | None:
             semconv.SERVICE_NAME: settings.otel_service_name or settings.name,
             semconv.SERVICE_VERSION: settings.version,
             semconv.DEPLOYMENT_ENVIRONMENT_NAME: settings.env,
+            # One per process: with several workers, cumulative series from different
+            # processes must not be merged by the Collector.
+            semconv.SERVICE_INSTANCE_ID: str(uuid.uuid4()),
         }
     )
     endpoint = settings.otel_exporter_otlp_endpoint.rstrip("/")
@@ -118,6 +124,7 @@ def build_telemetry(settings: Settings) -> Telemetry | None:
     )
     meter_provider = MeterProvider(
         resource=resource,
+        views=app_metrics.metric_views(),
         metric_readers=[
             PeriodicExportingMetricReader(
                 OTLPMetricExporter(
@@ -139,13 +146,22 @@ def _sampler(ratio: float) -> Sampler:
     )
 
 
+_configured: list[Telemetry | None] = []
+
+
 def configure_telemetry(settings: Settings) -> Telemetry | None:
-    """Install the providers globally when telemetry is enabled; once per process."""
-    telemetry = build_telemetry(settings)
-    if telemetry is not None:
-        trace.set_tracer_provider(telemetry.tracer_provider)
-        metrics.set_meter_provider(telemetry.meter_provider)
-    return telemetry
+    """Install the providers globally when telemetry is enabled; once per process.
+
+    The FastAPI app and the graph module (loaded alone by Agent Server) both call it, so a
+    later call returns the first call's result instead of exporting twice.
+    """
+    if not _configured:
+        telemetry = build_telemetry(settings)
+        if telemetry is not None:
+            trace.set_tracer_provider(telemetry.tracer_provider)
+            metrics.set_meter_provider(telemetry.meter_provider)
+        _configured.append(telemetry)
+    return _configured[0]
 
 
 def instrument_app(
@@ -154,11 +170,16 @@ def instrument_app(
     tracer_provider: trace.TracerProvider | None = None,
     meter_provider: metrics.MeterProvider | None = None,
 ) -> None:
-    """Trace HTTP requests, honouring an incoming W3C `traceparent`.
+    """Trace and measure HTTP requests, honouring an incoming W3C `traceparent`.
 
     Spans are named by route template. The per-message ASGI `send`/`receive` spans are
     skipped; an SSE stream would otherwise produce one per event.
+
+    HTTP metrics follow the stable HTTP conventions (`http.route`, `http.response.status_code`
+    and durations in seconds), not the legacy ones, which label by host and raw target.
     """
+    # Read once, when the first app is instrumented.
+    os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "http")
     FastAPIInstrumentor.instrument_app(
         app,
         tracer_provider=tracer_provider,

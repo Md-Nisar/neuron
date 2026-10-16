@@ -1,0 +1,225 @@
+"""Metric instruments and views (ADR 0007, decision 2).
+
+Instruments come from the global meter provider, which is a no-op unless telemetry is
+enabled. Every recording function takes only allow-listed attribute values
+(`semconv.METRIC_ATTRIBUTE_ALLOW_LIST`); users, owner keys, threads, runs and requests never
+label a metric. Durations are seconds.
+"""
+
+from __future__ import annotations
+
+import functools
+from dataclasses import dataclass
+
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
+from opentelemetry.util.types import AttributeValue
+
+from neuron_agent.observability import semconv
+
+_INSTRUMENTATION_NAME = "neuron_agent"
+
+# Histogram bucket upper bounds, in seconds. LLM latencies run from tens of milliseconds
+# (time to first token) to the run timeout; the last bound covers `APP_RUN_TIMEOUT_SECONDS`
+# up to its 120 s ceiling. Anything slower falls in the overflow bucket.
+LLM_LATENCY_BUCKETS = (
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    15.0,
+    30.0,
+    60.0,
+    120.0,
+)
+# Tool calls (bounded by `APP_TOOL_TIMEOUT_SECONDS`, at most 60 s) and checkpoint reads and
+# writes are mostly far faster than model calls.
+FAST_OPERATION_BUCKETS = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+    30.0,
+    60.0,
+)
+# Token counts per model call, powers of 4 as the GenAI conventions advise.
+TOKEN_BUCKETS = tuple(float(4**n) for n in range(14))
+
+_HTTP_ATTRIBUTES = {semconv.HTTP_ROUTE, semconv.HTTP_RESPONSE_STATUS_CODE}
+
+Attributes = dict[str, AttributeValue]
+
+
+def metric_views() -> list[View]:
+    """Explicit histogram buckets, plus the attributes each HTTP instrument may keep.
+
+    The FastAPI instrumentation would otherwise label HTTP metrics with the method, scheme
+    and protocol version too; only the route template and status code are allow-listed.
+    """
+    latency = ExplicitBucketHistogramAggregation(LLM_LATENCY_BUCKETS)
+    fast = ExplicitBucketHistogramAggregation(FAST_OPERATION_BUCKETS)
+    return [
+        View(instrument_name=semconv.METRIC_OPERATION_DURATION, aggregation=latency),
+        View(instrument_name=semconv.METRIC_RUN_DURATION, aggregation=latency),
+        View(instrument_name=semconv.METRIC_STREAM_TTFT, aggregation=latency),
+        View(instrument_name=semconv.METRIC_TOOL_DURATION, aggregation=fast),
+        View(instrument_name=semconv.METRIC_CHECKPOINT_DURATION, aggregation=fast),
+        View(
+            instrument_name=semconv.METRIC_USAGE,
+            aggregation=ExplicitBucketHistogramAggregation(TOKEN_BUCKETS),
+        ),
+        View(
+            instrument_name=semconv.METRIC_HTTP_REQUEST_DURATION,
+            aggregation=latency,
+            attribute_keys=_HTTP_ATTRIBUTES,
+        ),
+        View(
+            instrument_name=semconv.METRIC_HTTP_REQUEST_BODY_SIZE, attribute_keys=_HTTP_ATTRIBUTES
+        ),
+        View(
+            instrument_name=semconv.METRIC_HTTP_RESPONSE_BODY_SIZE,
+            attribute_keys=_HTTP_ATTRIBUTES,
+        ),
+        View(instrument_name=semconv.METRIC_HTTP_ACTIVE_REQUESTS, attribute_keys=set()),
+    ]
+
+
+@dataclass(frozen=True)
+class _Instruments:
+    operation_duration: metrics.Histogram
+    token_usage: metrics.Histogram
+    run_duration: metrics.Histogram
+    stream_ttft: metrics.Histogram
+    tool_duration: metrics.Histogram
+    errors: metrics.Counter
+    policy_blocks: metrics.Counter
+    checkpoint_duration: metrics.Histogram
+
+
+def _meter() -> metrics.Meter:
+    return metrics.get_meter(_INSTRUMENTATION_NAME)
+
+
+@functools.lru_cache(maxsize=4)
+def _build(meter: metrics.Meter) -> _Instruments:
+    return _Instruments(
+        operation_duration=meter.create_histogram(
+            semconv.METRIC_OPERATION_DURATION, unit="s", description="Model call duration"
+        ),
+        token_usage=meter.create_histogram(
+            semconv.METRIC_USAGE, unit="{token}", description="Tokens per model call"
+        ),
+        run_duration=meter.create_histogram(
+            semconv.METRIC_RUN_DURATION, unit="s", description="Agent run duration"
+        ),
+        stream_ttft=meter.create_histogram(
+            semconv.METRIC_STREAM_TTFT, unit="s", description="Stream time to first token"
+        ),
+        tool_duration=meter.create_histogram(
+            semconv.METRIC_TOOL_DURATION, unit="s", description="Tool call duration"
+        ),
+        errors=meter.create_counter(
+            semconv.METRIC_ERRORS, unit="{error}", description="Failed runs by error code"
+        ),
+        policy_blocks=meter.create_counter(
+            semconv.METRIC_POLICY_BLOCKS, unit="{block}", description="Requests blocked by rule"
+        ),
+        checkpoint_duration=meter.create_histogram(
+            semconv.METRIC_CHECKPOINT_DURATION, unit="s", description="Checkpointer operation"
+        ),
+    )
+
+
+def _instruments() -> _Instruments:
+    return _build(_meter())
+
+
+def _error(error_type: str | None) -> Attributes:
+    return {semconv.ERROR_TYPE: error_type} if error_type else {}
+
+
+def record_model_call(
+    seconds: float,
+    *,
+    provider: str,
+    model: str,
+    error_type: str | None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+) -> None:
+    """One model call's duration and, when the provider reported them, its tokens."""
+    instruments = _instruments()
+    base = {
+        semconv.GEN_AI_OPERATION_NAME: semconv.OPERATION_CHAT,
+        semconv.GEN_AI_PROVIDER_NAME: provider,
+        semconv.GEN_AI_REQUEST_MODEL: model,
+    }
+    instruments.operation_duration.record(seconds, {**base, **_error(error_type)})
+    for token_type, count in (
+        (semconv.USAGE_TYPE_INPUT, input_tokens),
+        (semconv.USAGE_TYPE_OUTPUT, output_tokens),
+    ):
+        if count is not None:
+            instruments.token_usage.record(count, {**base, semconv.GEN_AI_USAGE_TYPE: token_type})
+
+
+def record_run(seconds: float, *, outcome: str, error_type: str | None) -> None:
+    """One agent run's duration."""
+    _instruments().run_duration.record(
+        seconds,
+        {
+            semconv.GEN_AI_OPERATION_NAME: semconv.OPERATION_INVOKE_AGENT,
+            semconv.NEURON_OUTCOME: outcome,
+            **_error(error_type),
+        },
+    )
+
+
+def record_stream_ttft(seconds: float, *, outcome: str) -> None:
+    """A stream's time to its first token, by how the stream ended."""
+    _instruments().stream_ttft.record(seconds, {semconv.NEURON_OUTCOME: outcome})
+
+
+def record_tool_call(seconds: float, *, tool: str, outcome: str, error_type: str | None) -> None:
+    """One tool call's duration; `tool` is a registered tool name, never model output."""
+    _instruments().tool_duration.record(
+        seconds,
+        {
+            semconv.GEN_AI_OPERATION_NAME: semconv.OPERATION_EXECUTE_TOOL,
+            semconv.GEN_AI_TOOL_NAME: tool,
+            semconv.NEURON_OUTCOME: outcome,
+            **_error(error_type),
+        },
+    )
+
+
+def record_error(error_type: str) -> None:
+    """Count one failed run or request by its stable `AppError` code."""
+    _instruments().errors.add(1, {semconv.ERROR_TYPE: error_type})
+
+
+def record_policy_block(rule: str) -> None:
+    """Count one request or tool call refused by `rule`."""
+    _instruments().policy_blocks.add(1, {semconv.NEURON_RULE: rule})
+
+
+def record_checkpoint(seconds: float, *, outcome: str, error_type: str | None) -> None:
+    """One checkpointer operation's duration."""
+    _instruments().checkpoint_duration.record(
+        seconds,
+        {semconv.NEURON_OUTCOME: outcome, **_error(error_type)},
+    )
