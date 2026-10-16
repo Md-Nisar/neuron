@@ -143,12 +143,12 @@ Both reports are validated against `tests/fixtures/eval_report.schema.json` (so 
 
 Infrastructure errors never gate: a candidate with any makes the run **inconclusive** and the affected cases are listed under `infrastructure_errors` with their error codes. Rerun it. A real gate failure outranks inconclusive. Cases or suites present on only one side are listed (`cases_only_in_baseline`, `cases_only_in_candidate`, `suites_not_in_candidate`) and not gated, other than the security rule.
 
-stdout is a JSON document: `status` (`pass`, `regression`, `inconclusive` or `skipped`), `gate_failures`, `infrastructure_errors`, the missing lists, and per suite and per category the candidate and baseline `pass_rate`, `pass_hat_k` and 95% Wilson interval with deltas. The rates are for information only; suite intervals are not gated until a gated suite has about 50 cases.
+stdout is a JSON document: `status` (`pass`, `regression` or `inconclusive`), `baseline_missing`, `gate_failures`, `infrastructure_errors`, the missing lists, and per suite and per category the candidate and baseline `pass_rate`, `pass_hat_k` and 95% Wilson interval with deltas. The rates are for information only; suite intervals are not gated until a gated suite has about 50 cases.
 
 | Exit status | Meaning |
 | --- | --- |
-| 0 | Gate passed, or comparison skipped because the baseline file does not exist (a notice on stderr) |
-| 1 | Regression gate failed |
+| 0 | Gates passed. Without a baseline file only the security gate applies (a notice on stderr, `baseline_missing: true`) |
+| 1 | A gate failed (regression or security) |
 | 2 | Inconclusive: infrastructure errors, no gate failure |
 | 3 | A report is unreadable or does not match the schema |
 
@@ -156,7 +156,7 @@ stdout is a JSON document: `status` (`pass`, `regression`, `inconclusive` or `sk
 
 The committed baseline for a model lives at `evals/baselines/<name>.json`, where `<name>` is `APP_DEFAULT_MODEL` without its provider prefix and with `/` replaced by `__`. For `nvidia:nvidia/nemotron-3-super-120b-a12b` that is `evals/baselines/nvidia__nemotron-3-super-120b-a12b.json`. A baseline is a full `neuron-eval --trials 3` report from a live run.
 
-**No baseline is committed yet**: producing it needs a live NVIDIA key. Until it exists the nightly workflow skips `compare` with a notice and uploads the candidate report. To create it:
+**No baseline is committed yet**: producing it needs a live NVIDIA key. Until it exists the nightly workflow still runs `compare`, which applies only the security gate, and uploads the candidate report. To create it:
 
 1. Run the `nightly-eval` workflow from the Actions tab (or locally: `NVIDIA_API_KEY=... APP_DEFAULT_MODEL=nvidia:nvidia/nemotron-3-super-120b-a12b uv run neuron-eval --trials 3 --output report.json > /dev/null`).
 2. Check that `infrastructure_errors` is `0`. Otherwise rerun.

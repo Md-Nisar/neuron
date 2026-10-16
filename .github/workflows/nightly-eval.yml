@@ -60,15 +60,14 @@ jobs:
           # evals/baselines/<model id without provider, "/" as "__">.json
           model="${APP_DEFAULT_MODEL#*:}"
           baseline="evals/baselines/${model//\//__}.json"
-          if [ -f "$baseline" ]; then
-            # Exit 1: regression gate failed. Exit 2: inconclusive (infrastructure errors).
-            status=0
-            uv run neuron-eval compare "$baseline" report.json > comparison.json || status=$?
-            cat comparison.json
-            exit "$status"
-          else
-            echo "::notice::No baseline at $baseline; comparison skipped. Review the uploaded report and commit it as the first baseline."
+          if [ ! -f "$baseline" ]; then
+            echo "::notice::No baseline at $baseline; only the security gate applies. Review the uploaded report and commit it as the first baseline."
           fi
+          # Exit 1: a gate failed. Exit 2: inconclusive (infrastructure errors).
+          status=0
+          uv run neuron-eval compare "$baseline" report.json > comparison.json || status=$?
+          cat comparison.json
+          exit "$status"
       - name: Upload the report
         if: always() && steps.provider.outputs.configured == 'true'
         uses: actions/upload-artifact@v4

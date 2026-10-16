@@ -155,12 +155,18 @@ def test_cases_missing_on_either_side_are_reported_not_gated(
     assert out["cases_only_in_candidate"] == ["single_turn/new"]
 
 
-def test_missing_baseline_skips_the_comparison(
+def test_missing_baseline_applies_only_the_security_gate(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     code, out = _run(tmp_path, None, _report(single_turn=[_case("a", *F3)]), capsys)
     assert code == EXIT_PASS
-    assert out["status"] == "skipped"
+    assert out["baseline_missing"] is True
+    assert out["gate_failures"] == []
+
+    cand = _report(security=[_case("s", "pass", "pass", "fail", category="cross_user_reference")])
+    code, out = _run(tmp_path, None, cand, capsys)
+    assert code == EXIT_REGRESSION
+    assert [f["rule"] for f in out["gate_failures"]] == ["security"]
 
 
 def test_invalid_reports_are_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

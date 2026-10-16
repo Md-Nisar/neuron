@@ -173,8 +173,8 @@ def compare_main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="neuron-eval compare",
         description=(
-            "Compare a candidate eval report with a baseline. Exit status: 0 pass (or skipped "
-            "for a missing baseline), 1 regression gate failed, 2 inconclusive "
+            "Compare a candidate eval report with a baseline. Without one, only the security gate "
+            "applies. Exit status: 0 pass, 1 gate failed, 2 inconclusive "
             "(infrastructure errors), 3 invalid input."
         ),
     )
@@ -182,19 +182,23 @@ def compare_main(argv: Sequence[str]) -> int:
     parser.add_argument("candidate", type=Path)
     args = parser.parse_args(argv)
 
-    if not args.baseline.exists():
-        print(
-            f"neuron-eval compare: no baseline at {args.baseline}; comparison skipped. "
-            "Review the candidate report and commit it as the first baseline.",
-            file=sys.stderr,
-        )
-        print(json.dumps({"status": "skipped", "reason": "baseline missing"}, indent=2))
-        return EXIT_PASS
     try:
-        comparison = compare_reports(load_report(args.baseline), load_report(args.candidate))
+        candidate = load_report(args.candidate)
+        if args.baseline.exists():
+            baseline = load_report(args.baseline)
+        else:
+            # The security gate needs no baseline, so it still applies to the first runs.
+            print(
+                f"neuron-eval compare: no baseline at {args.baseline}; only the security gate "
+                "applies. Review the candidate report and commit it as the first baseline.",
+                file=sys.stderr,
+            )
+            baseline = {**candidate, "suites": {}}
     except InvalidReportError as exc:
         print(f"neuron-eval compare: {exc}", file=sys.stderr)
         return EXIT_INVALID_INPUT
+    comparison = compare_reports(baseline, candidate)
+    comparison["baseline_missing"] = not args.baseline.exists()
     print(json.dumps(comparison, indent=2))
     return {"pass": EXIT_PASS, "regression": EXIT_REGRESSION}.get(
         comparison["status"], EXIT_INCONCLUSIVE
