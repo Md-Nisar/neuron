@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     default_model: str = "openai:gpt-5.4-mini"
     request_timeout_seconds: int = Field(default=60, ge=1, le=300)
     tool_timeout_seconds: int = Field(default=20, ge=1, le=60)
-    max_agent_iterations: int = Field(default=5, ge=1, le=25)
+    max_agent_iterations: int = Field(default=8, ge=1, le=25)
     provider_max_retries: int = Field(default=2, ge=0, le=5)
     max_output_tokens: int = Field(default=2000, ge=1, le=16_384)
     max_prompt_chars: int = Field(default=12_000, ge=100, le=200_000)

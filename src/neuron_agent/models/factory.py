@@ -28,13 +28,14 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
-from langgraph.errors import GraphBubbleUp
+from langgraph.errors import GraphBubbleUp, GraphRecursionError
 from langgraph.types import Command
 from opentelemetry.trace import Span, SpanKind
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     AppError,
     AuthorizationError,
     ConfigurationError,
@@ -42,10 +43,11 @@ from neuron_agent.errors.base import (
     ProviderQuotaError,
     ProviderTimeoutError,
     ToolExecutionError,
+    ValidationAppError,
 )
 from neuron_agent.errors.base import RateLimitError as AppRateLimitError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
-from neuron_agent.observability import semconv, telemetry
+from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
@@ -54,6 +56,12 @@ from neuron_agent.security.authorization import AuthorizationContext, require_pe
 logger = structlog.get_logger(__name__)
 
 _TOOL_PERMISSIONS = {"calculator": "tools:calculator"}
+
+# Fixed text for a rejected tool input: the tool's own message can carry the model's input.
+_TOOL_INPUT_ERROR = (
+    "Error: the input to this tool was invalid. Correct it, or answer without the tool."
+)
+_ERROR_CODE_KEY = "error_code"
 
 
 def tracing_middleware(settings: Settings) -> AgentMiddleware:
@@ -78,20 +86,35 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
             semconv.GEN_AI_REQUEST_MODEL: self._model,
         }
         name = f"{semconv.OPERATION_CHAT} {self._model}"
+        started = time.monotonic()
+        error_type: str | None = None
+        usage: tuple[int, int] | None = None
         with telemetry.start_span(name, kind=SpanKind.CLIENT, attributes=attributes) as span:
             retries_before = get_retry_attempts()
             try:
                 response = await handler(request)
             except Exception as exc:
-                telemetry.record_error(span, classify_agent_error(exc).context.code)
+                error_type = classify_agent_error(exc).context.code
+                telemetry.record_error(span, error_type)
                 raise
+            else:
+                messages = getattr(response, "result", [])
+                usage = _record_model_response(
+                    span, messages if isinstance(messages, list) else [messages]
+                )
+                return response
             finally:
                 span.set_attribute(
                     semconv.NEURON_RETRY_COUNT, get_retry_attempts() - retries_before
                 )
-            messages = getattr(response, "result", [])
-            _record_model_response(span, messages if isinstance(messages, list) else [messages])
-            return response
+                metrics.record_model_call(
+                    time.monotonic() - started,
+                    provider=self._provider,
+                    model=self._model,
+                    error_type=error_type,
+                    input_tokens=usage[0] if usage else None,
+                    output_tokens=usage[1] if usage else None,
+                )
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         # The registered tool's name, not the model's: an unknown name is model output.
@@ -101,26 +124,46 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
             semconv.GEN_AI_TOOL_NAME: tool_name,
         }
         name = f"{semconv.OPERATION_EXECUTE_TOOL} {tool_name}"
+        started = time.monotonic()
+        outcome = "error"
+        error_type: str | None = None
         with telemetry.start_span(name, attributes=attributes) as span:
             try:
                 result = await handler(request)
             except GraphBubbleUp:
+                # Control flow (an interrupt), not a tool call that finished.
+                outcome = "interrupted"
                 raise
             except Exception as exc:
-                denied = isinstance(exc, AuthorizationError)
-                span.set_attribute(semconv.NEURON_OUTCOME, "denied" if denied else "error")
-                telemetry.record_error(span, classify_agent_error(exc).context.code)
+                outcome = "denied" if isinstance(exc, AuthorizationError) else "error"
+                error_type = classify_agent_error(exc).context.code
+                span.set_attribute(semconv.NEURON_OUTCOME, outcome)
+                telemetry.record_error(span, error_type)
                 raise
-            if isinstance(result, ToolMessage) and result.status == "error":
-                span.set_attribute(semconv.NEURON_OUTCOME, "error")
-                telemetry.record_error(span, ToolExecutionError.context.code)
             else:
-                span.set_attribute(semconv.NEURON_OUTCOME, "success")
-            return result
+                if isinstance(result, ToolMessage) and result.status == "error":
+                    code = result.additional_kwargs.get(_ERROR_CODE_KEY)
+                    error_type = code or ToolExecutionError.context.code
+                    span.set_attribute(semconv.NEURON_OUTCOME, "error")
+                    telemetry.record_error(span, error_type)
+                else:
+                    outcome = "success"
+                    span.set_attribute(semconv.NEURON_OUTCOME, outcome)
+                return result
+            finally:
+                metrics.record_tool_call(
+                    time.monotonic() - started,
+                    tool=tool_name,
+                    outcome=outcome,
+                    error_type=error_type,
+                )
 
 
-def _record_model_response(span: Span, messages: list[Any]) -> None:
-    """Set the response model and token usage by kind, summed over the response messages."""
+def _record_model_response(span: Span, messages: list[Any]) -> tuple[int, int] | None:
+    """Set the response model and token usage by kind, summed over the response messages.
+
+    Returns the input and output token counts, or None when the provider reported no usage.
+    """
     usage = dict.fromkeys(
         (
             semconv.GEN_AI_USAGE_INPUT_TOKENS,
@@ -148,8 +191,10 @@ def _record_model_response(span: Span, messages: list[Any]) -> None:
         usage[semconv.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS] += metadata.get(
             "output_token_details", {}
         ).get("reasoning", 0)
-    if reported:
-        span.set_attributes(usage)
+    if not reported:
+        return None
+    span.set_attributes(usage)
+    return usage[semconv.GEN_AI_USAGE_INPUT_TOKENS], usage[semconv.GEN_AI_USAGE_OUTPUT_TOKENS]
 
 
 def tool_authorization_middleware() -> AgentMiddleware:
@@ -195,6 +240,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
             try:
                 require_permission(permission, permissions)
             except AuthorizationError:
+                metrics.record_policy_block("insufficient_scope")
                 audit(
                     "authorization_denied",
                     outcome="denied",
@@ -209,6 +255,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                 )
                 raise
         elif tool_name != "utc_now":
+            metrics.record_policy_block("unknown_tool")
             audit(
                 "authorization_denied",
                 outcome="denied",
@@ -284,6 +331,15 @@ def tool_failure_isolation_middleware() -> AgentMiddleware:
                 error_code=exc.context.code,
                 duration_ms=round((time.monotonic() - started) * 1000, 2),
             )
+            if isinstance(exc, ValidationAppError):
+                # The model chose the input, so let it correct the call or answer without it.
+                return ToolMessage(
+                    content=_TOOL_INPUT_ERROR,
+                    tool_call_id=request.tool_call["id"],
+                    name=tool_name,
+                    status="error",
+                    additional_kwargs={_ERROR_CODE_KEY: exc.context.code},
+                )
             raise
         except Exception as exc:
             logger.warning(
@@ -424,10 +480,13 @@ def create_chat_model(settings: Settings) -> ChatOpenAI | _FakeChatModel:
 def agent_invocation_config(settings: Settings, *, run_id: str | None) -> dict[str, Any]:
     """Return the runtime recursion budget and, when known, the run ID for the agent loop.
 
+    `APP_MAX_AGENT_ITERATIONS` counts model calls. LangGraph's `recursion_limit` counts steps,
+    and every model call and every tool call is one, so N model calls need 2N steps.
+
     `AgentService` always supplies a run ID. Agent Server and LangGraph Studio inputs carry
     only `messages`, so LangGraph generates the run ID for those.
     """
-    config: dict[str, Any] = {"recursion_limit": settings.max_agent_iterations}
+    config: dict[str, Any] = {"recursion_limit": 2 * settings.max_agent_iterations}
     if run_id:
         config["run_id"] = uuid.UUID(run_id)
     return config
@@ -450,6 +509,8 @@ def classify_agent_error(exc: Exception) -> AppError:
         return ConfigurationError("model provider has no such model for this account")
     if isinstance(exc, openai.OpenAIError):
         return ProviderError("model provider request failed")
+    if isinstance(exc, GraphRecursionError):
+        return AgentStepLimitError("agent did not finish within the iteration limit")
     if isinstance(exc, LangChainStructuredOutputError):
         return AppStructuredOutputError("agent produced invalid structured output")
     return AgentExecutionError("agent execution failed")

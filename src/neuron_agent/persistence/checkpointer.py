@@ -19,6 +19,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.observability import metrics
 
 logger = structlog.get_logger(__name__)
 
@@ -62,6 +63,9 @@ def _timed(
         try:
             result = await func(*args, **kwargs)
         except Exception as exc:
+            metrics.record_checkpoint(
+                time.monotonic() - started, outcome="error", error_type=type(exc).__name__
+            )
             logger.warning(
                 "checkpoint_operation_failed",
                 operation=operation,
@@ -70,6 +74,7 @@ def _timed(
                 duration_ms=round((time.monotonic() - started) * 1000, 2),
             )
             raise
+        metrics.record_checkpoint(time.monotonic() - started, outcome="success", error_type=None)
         duration_ms = round((time.monotonic() - started) * 1000, 2)
         if duration_ms >= SLOW_CHECKPOINT_MS:
             logger.warning(

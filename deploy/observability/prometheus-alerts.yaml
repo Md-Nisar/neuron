@@ -1,0 +1,412 @@
+# Example Prometheus rules for the Neuron SLOs (OPERATIONS.md, "Service level objectives").
+# Written for the metric names the Collector's prometheus exporter produces from
+# deploy/observability/otel-collector.yaml. Targets are provisional until the release gate (#99).
+# Multi-window, multi-burn-rate alerts (Google SRE Workbook): 14.4x over 1h/5m and 6x over 6h/30m
+# page; 1x over 3d/6h opens a ticket. Both windows must exceed the threshold.
+# Load: `promtool check rules deploy/observability/prometheus-alerts.yaml` (not run in this repository).
+groups:
+  - name: neuron-slo-ratios
+    interval: 30s
+    rules:
+      - record: neuron:availability:error_ratio_rate5m
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code=~"5.."}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[5m]))
+      - record: neuron:availability:error_ratio_rate30m
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code=~"5.."}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[30m]))
+      - record: neuron:availability:error_ratio_rate1h
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code=~"5.."}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[1h]))
+      - record: neuron:availability:error_ratio_rate6h
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code=~"5.."}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[6h]))
+      - record: neuron:availability:error_ratio_rate3d
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code=~"5.."}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[3d]))
+      - record: neuron:ttft:slow_ratio_rate5m
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[5m]))
+            /
+            sum(rate(neuron_agent_stream_ttft_seconds_count[5m]))
+          )
+      - record: neuron:ttft:slow_ratio_rate30m
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[30m]))
+            /
+            sum(rate(neuron_agent_stream_ttft_seconds_count[30m]))
+          )
+      - record: neuron:ttft:slow_ratio_rate1h
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[1h]))
+            /
+            sum(rate(neuron_agent_stream_ttft_seconds_count[1h]))
+          )
+      - record: neuron:ttft:slow_ratio_rate6h
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[6h]))
+            /
+            sum(rate(neuron_agent_stream_ttft_seconds_count[6h]))
+          )
+      - record: neuron:ttft:slow_ratio_rate3d
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[3d]))
+            /
+            sum(rate(neuron_agent_stream_ttft_seconds_count[3d]))
+          )
+      - record: neuron:run_duration:slow_ratio_rate5m
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[5m]))
+            /
+            sum(rate(neuron_agent_run_duration_seconds_count{neuron_outcome!="cancelled"}[5m]))
+          )
+      - record: neuron:run_duration:slow_ratio_rate30m
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[30m]))
+            /
+            sum(rate(neuron_agent_run_duration_seconds_count{neuron_outcome!="cancelled"}[30m]))
+          )
+      - record: neuron:run_duration:slow_ratio_rate1h
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[1h]))
+            /
+            sum(rate(neuron_agent_run_duration_seconds_count{neuron_outcome!="cancelled"}[1h]))
+          )
+      - record: neuron:run_duration:slow_ratio_rate6h
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[6h]))
+            /
+            sum(rate(neuron_agent_run_duration_seconds_count{neuron_outcome!="cancelled"}[6h]))
+          )
+      - record: neuron:run_duration:slow_ratio_rate3d
+        expr: |
+          1 - (
+            sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[3d]))
+            /
+            sum(rate(neuron_agent_run_duration_seconds_count{neuron_outcome!="cancelled"}[3d]))
+          )
+      - record: neuron:provider_errors:error_ratio_rate5m
+        expr: |
+          sum(rate(gen_ai_client_operation_duration_seconds_count{error_type!=""}[5m]))
+          /
+          sum(rate(gen_ai_client_operation_duration_seconds_count[5m]))
+      - record: neuron:provider_errors:error_ratio_rate30m
+        expr: |
+          sum(rate(gen_ai_client_operation_duration_seconds_count{error_type!=""}[30m]))
+          /
+          sum(rate(gen_ai_client_operation_duration_seconds_count[30m]))
+      - record: neuron:provider_errors:error_ratio_rate1h
+        expr: |
+          sum(rate(gen_ai_client_operation_duration_seconds_count{error_type!=""}[1h]))
+          /
+          sum(rate(gen_ai_client_operation_duration_seconds_count[1h]))
+      - record: neuron:provider_errors:error_ratio_rate6h
+        expr: |
+          sum(rate(gen_ai_client_operation_duration_seconds_count{error_type!=""}[6h]))
+          /
+          sum(rate(gen_ai_client_operation_duration_seconds_count[6h]))
+      - record: neuron:provider_errors:error_ratio_rate3d
+        expr: |
+          sum(rate(gen_ai_client_operation_duration_seconds_count{error_type!=""}[3d]))
+          /
+          sum(rate(gen_ai_client_operation_duration_seconds_count[3d]))
+
+  - name: neuron-slo-burn-rate
+    rules:
+      - alert: NeuronAvailabilityBurnRate1H
+        expr: neuron:availability:error_ratio_rate1h > 0.072 and neuron:availability:error_ratio_rate5m > 0.072
+        for: 2m
+        labels:
+          severity: page
+          slo: availability
+          burn_rate: "14.4"
+        annotations:
+          summary: "availability SLO burning its error budget at 14.4x or more (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-availability
+      - alert: NeuronAvailabilityBurnRate6H
+        expr: neuron:availability:error_ratio_rate6h > 0.03 and neuron:availability:error_ratio_rate30m > 0.03
+        for: 15m
+        labels:
+          severity: page
+          slo: availability
+          burn_rate: "6"
+        annotations:
+          summary: "availability SLO burning its error budget at 6x or more (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-availability
+      - alert: NeuronAvailabilityBurnRate3D
+        expr: neuron:availability:error_ratio_rate3d > 0.005 and neuron:availability:error_ratio_rate6h > 0.005
+        for: 1h
+        labels:
+          severity: ticket
+          slo: availability
+          burn_rate: "1"
+        annotations:
+          summary: "availability SLO burning its error budget at 1x or more (3d and 6h windows)"
+          runbook_url: OPERATIONS.md#runbook-availability
+      - alert: NeuronTtftBurnRate1H
+        expr: neuron:ttft:slow_ratio_rate1h > 0.72 and neuron:ttft:slow_ratio_rate5m > 0.72
+        for: 2m
+        labels:
+          severity: page
+          slo: ttft
+          burn_rate: "14.4"
+        annotations:
+          summary: "ttft SLO burning its error budget at 14.4x or more (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-ttft
+      - alert: NeuronTtftBurnRate6H
+        expr: neuron:ttft:slow_ratio_rate6h > 0.3 and neuron:ttft:slow_ratio_rate30m > 0.3
+        for: 15m
+        labels:
+          severity: page
+          slo: ttft
+          burn_rate: "6"
+        annotations:
+          summary: "ttft SLO burning its error budget at 6x or more (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-ttft
+      - alert: NeuronTtftBurnRate3D
+        expr: neuron:ttft:slow_ratio_rate3d > 0.05 and neuron:ttft:slow_ratio_rate6h > 0.05
+        for: 1h
+        labels:
+          severity: ticket
+          slo: ttft
+          burn_rate: "1"
+        annotations:
+          summary: "ttft SLO burning its error budget at 1x or more (3d and 6h windows)"
+          runbook_url: OPERATIONS.md#runbook-ttft
+      - alert: NeuronRunDurationBurnRate1H
+        expr: neuron:run_duration:slow_ratio_rate1h > 0.72 and neuron:run_duration:slow_ratio_rate5m > 0.72
+        for: 2m
+        labels:
+          severity: page
+          slo: run_duration
+          burn_rate: "14.4"
+        annotations:
+          summary: "run_duration SLO burning its error budget at 14.4x or more (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-run-duration
+      - alert: NeuronRunDurationBurnRate6H
+        expr: neuron:run_duration:slow_ratio_rate6h > 0.3 and neuron:run_duration:slow_ratio_rate30m > 0.3
+        for: 15m
+        labels:
+          severity: page
+          slo: run_duration
+          burn_rate: "6"
+        annotations:
+          summary: "run_duration SLO burning its error budget at 6x or more (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-run-duration
+      - alert: NeuronRunDurationBurnRate3D
+        expr: neuron:run_duration:slow_ratio_rate3d > 0.05 and neuron:run_duration:slow_ratio_rate6h > 0.05
+        for: 1h
+        labels:
+          severity: ticket
+          slo: run_duration
+          burn_rate: "1"
+        annotations:
+          summary: "run_duration SLO burning its error budget at 1x or more (3d and 6h windows)"
+          runbook_url: OPERATIONS.md#runbook-run-duration
+      - alert: NeuronProviderErrorsBurnRate1H
+        expr: neuron:provider_errors:error_ratio_rate1h > 0.144 and neuron:provider_errors:error_ratio_rate5m > 0.144
+        for: 2m
+        labels:
+          severity: page
+          slo: provider_errors
+          burn_rate: "14.4"
+        annotations:
+          summary: "provider_errors SLO burning its error budget at 14.4x or more (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-provider-errors
+      - alert: NeuronProviderErrorsBurnRate6H
+        expr: neuron:provider_errors:error_ratio_rate6h > 0.06 and neuron:provider_errors:error_ratio_rate30m > 0.06
+        for: 15m
+        labels:
+          severity: page
+          slo: provider_errors
+          burn_rate: "6"
+        annotations:
+          summary: "provider_errors SLO burning its error budget at 6x or more (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-provider-errors
+      - alert: NeuronProviderErrorsBurnRate3D
+        expr: neuron:provider_errors:error_ratio_rate3d > 0.01 and neuron:provider_errors:error_ratio_rate6h > 0.01
+        for: 1h
+        labels:
+          severity: ticket
+          slo: provider_errors
+          burn_rate: "1"
+        annotations:
+          summary: "provider_errors SLO burning its error budget at 1x or more (3d and 6h windows)"
+          runbook_url: OPERATIONS.md#runbook-provider-errors
+
+  # One alert pair per error class with alert=True in errors/base.py. Provisional budget:
+  # 0.1% of /v1 requests per class, so 14.4x is 1.44% (1h and 5m) and 6x is 0.6% (6h and 30m).
+  - name: neuron-error-classes
+    rules:
+      - alert: NeuronErrorClassAgentExecutionError1H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="agent_execution_error"}[1h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[1h]))) > 0.0144 and (sum(rate(neuron_agent_errors_total{error_type="agent_execution_error"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[5m]))) > 0.0144
+        for: 2m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: agent_execution_error
+          burn_rate: "14.4"
+        annotations:
+          summary: "agent_execution_error above 1.44% of /v1 requests (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassAgentExecutionError6H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="agent_execution_error"}[6h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[6h]))) > 0.006 and (sum(rate(neuron_agent_errors_total{error_type="agent_execution_error"}[30m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[30m]))) > 0.006
+        for: 15m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: agent_execution_error
+          burn_rate: "6"
+        annotations:
+          summary: "agent_execution_error above 0.6% of /v1 requests (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassConfigurationError1H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="configuration_error"}[1h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[1h]))) > 0.0144 and (sum(rate(neuron_agent_errors_total{error_type="configuration_error"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[5m]))) > 0.0144
+        for: 2m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: configuration_error
+          burn_rate: "14.4"
+        annotations:
+          summary: "configuration_error above 1.44% of /v1 requests (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassConfigurationError6H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="configuration_error"}[6h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[6h]))) > 0.006 and (sum(rate(neuron_agent_errors_total{error_type="configuration_error"}[30m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[30m]))) > 0.006
+        for: 15m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: configuration_error
+          burn_rate: "6"
+        annotations:
+          summary: "configuration_error above 0.6% of /v1 requests (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassPersistenceError1H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="persistence_error"}[1h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[1h]))) > 0.0144 and (sum(rate(neuron_agent_errors_total{error_type="persistence_error"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[5m]))) > 0.0144
+        for: 2m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: persistence_error
+          burn_rate: "14.4"
+        annotations:
+          summary: "persistence_error above 1.44% of /v1 requests (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassPersistenceError6H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="persistence_error"}[6h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[6h]))) > 0.006 and (sum(rate(neuron_agent_errors_total{error_type="persistence_error"}[30m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[30m]))) > 0.006
+        for: 15m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: persistence_error
+          burn_rate: "6"
+        annotations:
+          summary: "persistence_error above 0.6% of /v1 requests (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassProviderError1H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="provider_error"}[1h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[1h]))) > 0.0144 and (sum(rate(neuron_agent_errors_total{error_type="provider_error"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[5m]))) > 0.0144
+        for: 2m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: provider_error
+          burn_rate: "14.4"
+        annotations:
+          summary: "provider_error above 1.44% of /v1 requests (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassProviderError6H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="provider_error"}[6h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[6h]))) > 0.006 and (sum(rate(neuron_agent_errors_total{error_type="provider_error"}[30m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[30m]))) > 0.006
+        for: 15m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: provider_error
+          burn_rate: "6"
+        annotations:
+          summary: "provider_error above 0.6% of /v1 requests (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassProviderQuotaExhausted1H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="provider_quota_exhausted"}[1h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[1h]))) > 0.0144 and (sum(rate(neuron_agent_errors_total{error_type="provider_quota_exhausted"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[5m]))) > 0.0144
+        for: 2m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: provider_quota_exhausted
+          burn_rate: "14.4"
+        annotations:
+          summary: "provider_quota_exhausted above 1.44% of /v1 requests (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassProviderQuotaExhausted6H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="provider_quota_exhausted"}[6h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[6h]))) > 0.006 and (sum(rate(neuron_agent_errors_total{error_type="provider_quota_exhausted"}[30m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[30m]))) > 0.006
+        for: 15m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: provider_quota_exhausted
+          burn_rate: "6"
+        annotations:
+          summary: "provider_quota_exhausted above 0.6% of /v1 requests (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassStructuredOutputError1H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="structured_output_error"}[1h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[1h]))) > 0.0144 and (sum(rate(neuron_agent_errors_total{error_type="structured_output_error"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[5m]))) > 0.0144
+        for: 2m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: structured_output_error
+          burn_rate: "14.4"
+        annotations:
+          summary: "structured_output_error above 1.44% of /v1 requests (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassStructuredOutputError6H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="structured_output_error"}[6h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[6h]))) > 0.006 and (sum(rate(neuron_agent_errors_total{error_type="structured_output_error"}[30m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[30m]))) > 0.006
+        for: 15m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: structured_output_error
+          burn_rate: "6"
+        annotations:
+          summary: "structured_output_error above 0.6% of /v1 requests (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassToolExecutionError1H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="tool_execution_error"}[1h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[1h]))) > 0.0144 and (sum(rate(neuron_agent_errors_total{error_type="tool_execution_error"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[5m]))) > 0.0144
+        for: 2m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: tool_execution_error
+          burn_rate: "14.4"
+        annotations:
+          summary: "tool_execution_error above 1.44% of /v1 requests (1h and 5m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes
+      - alert: NeuronErrorClassToolExecutionError6H
+        expr: (sum(rate(neuron_agent_errors_total{error_type="tool_execution_error"}[6h])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[6h]))) > 0.006 and (sum(rate(neuron_agent_errors_total{error_type="tool_execution_error"}[30m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[30m]))) > 0.006
+        for: 15m
+        labels:
+          severity: page
+          slo: error_class
+          error_type: tool_execution_error
+          burn_rate: "6"
+        annotations:
+          summary: "tool_execution_error above 0.6% of /v1 requests (6h and 30m windows)"
+          runbook_url: OPERATIONS.md#runbook-error-classes

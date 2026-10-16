@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from langchain_core.messages import ToolMessage
 
-from neuron_agent.errors.base import ToolExecutionError, ValidationAppError
+from neuron_agent.errors.base import ToolExecutionError
 from neuron_agent.models.factory import tool_failure_isolation_middleware
 
 pytestmark = pytest.mark.anyio
@@ -27,11 +27,11 @@ async def test_tool_failure_isolation_middleware_allows_success() -> None:
 async def test_tool_failure_isolation_middleware_passes_through_app_errors() -> None:
     middleware = tool_failure_isolation_middleware()
 
-    async def invalid_input_handler(request: object) -> ToolMessage:
-        raise ValidationAppError("invalid arithmetic expression")
+    async def denied_handler(request: object) -> ToolMessage:
+        raise ToolExecutionError("tool 'calculator' exceeded 1s timeout")
 
-    with pytest.raises(ValidationAppError):
-        await middleware.awrap_tool_call(_FakeRequest("calculator"), invalid_input_handler)
+    with pytest.raises(ToolExecutionError):
+        await middleware.awrap_tool_call(_FakeRequest("calculator"), denied_handler)
 
 
 async def test_tool_failure_isolation_middleware_wraps_unexpected_exceptions() -> None:
