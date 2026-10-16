@@ -9,12 +9,16 @@ Fixes found by the first live eval runs:
 - The eval runners score a case whose run fails as a failed case (`run failed: <error code>`) and continue, instead of aborting the whole suite.
 - Request validation failures log only each error's `type` and `loc`; the rejected input (request text) is no longer logged.
 - `retry_count` on `agent_execution_completed`/`agent_execution_failed` logs counts provider retries again; it was always `0` with the real agent, because the count was updated in a child context (found while adding #90's span attribute).
+- `/health/ready` in jwt mode now refreshes the JWKS when the last fetch failed, at most once per 5 seconds per process (concurrent probes share one fetch, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`), so an instance marked not ready after an IdP outage recovers without serving a request and a probe can't hammer the IdP; it never calls the model (#98).
 - A tool's input-validation failure (e.g. invalid calculator input) is returned to the model as a fixed-text tool error instead of aborting the run with `400 validation_error`, so it can correct the call or refuse (found by `adversarial-tool-abuse-002`, #101). It is still logged as `tool_call_failed` and recorded on the `execute_tool` span; authorization denials and timeouts still end the run.
 - The deterministic eval harness tests run in `make test` and CI again; since the NVIDIA provider change only the live quality evals (now also marked `integration`) are excluded by default.
+- **Breaking: LangSmith tracing is governed by `APP_ENABLE_LANGSMITH` (#93).** A shell `LANGSMITH_TRACING=true` (or `LANGCHAIN_TRACING_V2`) no longer enables tracing on its own: it is overridden at startup and logged as `langsmith_tracing_overridden`. Set `APP_ENABLE_LANGSMITH=true` to trace. Outside `development`, trace inputs and outputs are now hidden unless `APP_LANGSMITH_CONTENT_APPROVED=true`, and staging/production with LangSmith enabled fail at startup without `LANGSMITH_API_KEY`. Agent Server's own platform tracing is governed by the platform. Defaults (LangSmith off) change nothing.
+- Agent Server logs are JSON with service metadata: the graph module configures logging when loaded, once per process alongside the API (#88). `APP_ENABLE_LANGSMITH` took effect in #93.
 
 v0.5.0 "Evaluation + Observability" (ADR 0007):
 - OpenTelemetry foundation (#89). With `APP_OTEL_ENABLED=true`, the API exports traces and metrics over OTLP/HTTP (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`) with head sampling (`APP_OTEL_TRACES_SAMPLE_RATIO`). HTTP spans are named by route template, `/health/*` is not traced, an incoming `traceparent` is honoured for its trace ID but not its sampled flag, so callers can't force or suppress tracing, and log lines carry `trace_id` and `span_id`. It is off by default, and no content is recorded.
 - Agent tracing (#90): `invoke_agent neuron` per run (on Agent Server too), `chat {model}` per model call with token usage by kind and retry count, `execute_tool {tool}` per tool call with its outcome, and `neuron.stream` per SSE stream with time to first token, event count and termination. Failures carry the `AppError` code as `error.type`; no prompt, answer, tool argument or result, token or raw subject is recorded.
+- Token accounting by kind and model (#91): each run's `model_token_usage` log splits `provider_tokens` into input, output, cache-read and reasoning tokens, in total and per model id. Budgets still charge the total. Estimated cost (the optional part of ADR 0007 section 4) is deferred to v0.6.0, since there is no verifiable, dated price data for the configured models.
 
 ## 0.4.0
 
@@ -65,10 +69,9 @@ Changes:
 - Release gate (#63). It found and fixed one defect present since #58: on Agent Server, the graph built each run's authorization from the run's client-supplied `context`. Runs without one crashed, so every Agent Server and Studio run failed, and a run whose `context` listed `permissions` got those permissions (a function-level authorization bypass for tools). Runs now take permissions and the owner only from the authenticated user Agent Server records; client `context` grants nothing.
 
 Known issues (see `docs/releases/v0.4.0-release-verification.md`):
-- The live OpenAI smoke tests and live evals have still not run (no usable API credentials, as in 0.3.0); model-facing behaviour is verified only with fake models.
+- The live OpenAI smoke tests and live evals have still not run, for two reasons: no usable API credentials (as in 0.3.0), and, since #54, the root test conftest cleared `OPENAI_API_KEY` before collection so live tests skipped even with a key set (fixed in #83, after this release). Model-facing behaviour is verified only with fake models.
 - Agent Server (`langgraph.json`) deployments enforce authentication, scopes, tool permissions and owner isolation, but not the API's per-principal rate limits, run caps, token budgets or message input policy.
 - A newly published IdP signing key can be rejected for up to 30 seconds (PyJWT's forced-refetch cooldown); pre-publish keys.
-- `/health/ready` doesn't probe the JWKS, so an instance marked not ready after an IdP outage recovers only when it serves a request.
 
 ## 0.3.0
 

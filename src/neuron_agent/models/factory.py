@@ -185,7 +185,11 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
             if not isinstance(messages, list):
                 messages = [messages]
             for message in messages:
-                context.usage.record(getattr(message, "usage_metadata", None))
+                metadata = getattr(message, "response_metadata", None)
+                model = metadata.get("model_name") if isinstance(metadata, dict) else None
+                context.usage.record(
+                    getattr(message, "usage_metadata", None), str(model) if model else None
+                )
         return response
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:

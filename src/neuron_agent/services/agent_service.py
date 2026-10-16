@@ -461,15 +461,14 @@ class AgentService:
         return RunLease(release)
 
     def _finish_usage(self, run: PreparedRun) -> None:
-        usage = run.authorization.usage
-        tokens = usage.total_tokens if usage is not None else 0
-        self._token_budget.charge(run.budget_key, tokens)
+        usage = run.authorization.usage or TokenUsageAccumulator()
+        self._token_budget.charge(run.budget_key, usage.total_tokens)
         logger.info(
             "model_token_usage",
             request_id=run.request_id,
             run_id=run.run_id,
             owner_key_prefix=run.budget_key[:12],
-            provider_tokens=tokens,
+            **usage.log_fields(),
         )
 
     @contextmanager
