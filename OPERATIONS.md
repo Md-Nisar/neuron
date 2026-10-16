@@ -65,16 +65,39 @@ Related settings: trusted proxies and per-user limits are under Rate Limiting, a
 
 Logs are JSON and include service metadata, on the FastAPI server and on Agent Server.
 
-`APP_ENABLE_LANGSMITH` is not read yet: it takes effect in #93 (ADR 0007, section 5), and
-until then it changes nothing. LangSmith tracing is controlled only by the `LANGSMITH_*`
-variables, and `LANGSMITH_TRACING=true` sends prompts and answers to LangSmith in every
-environment:
+### LangSmith
+
+`APP_ENABLE_LANGSMITH` is the only switch for LangSmith tracing (ADR 0007, section 5). It is
+off by default, and nothing is sent to LangSmith until it is enabled:
 
 ```text
-LANGSMITH_TRACING=true
+APP_ENABLE_LANGSMITH=true
 LANGSMITH_API_KEY=...
 LANGSMITH_PROJECT=neuron-agent-production
+APP_LANGSMITH_CONTENT_APPROVED=false   # default
 ```
+
+- A `LANGSMITH_TRACING`, `LANGSMITH_TRACING_V2`, `LANGCHAIN_TRACING_V2` or `LANGCHAIN_TRACING`
+  set to a true value without `APP_ENABLE_LANGSMITH=true` is overridden at startup, and the
+  service logs `langsmith_tracing_overridden` naming the variables.
+- Staging and production with LangSmith enabled fail at startup without `LANGSMITH_API_KEY`.
+- What leaves the service:
+
+  | Environment | `APP_LANGSMITH_CONTENT_APPROVED` | Sent to LangSmith |
+  | --- | --- | --- |
+  | any, LangSmith disabled | n/a | nothing |
+  | `development` | any | full traces, including prompts, answers and tool arguments/results |
+  | `test`, `staging`, `production` | `false` (default) | run structure, names, timings, token usage and metadata; inputs and outputs are hidden |
+  | `test`, `staging`, `production` | `true` | full traces, as in development |
+
+  Set `APP_LANGSMITH_CONTENT_APPROVED=true` only after the LangSmith workspace has been
+  approved to hold user content (retention, access and region). Outside development, shell
+  `LANGSMITH_HIDE_INPUTS`/`LANGSMITH_HIDE_OUTPUTS` values are replaced by this setting.
+- Both entry points apply this: the FastAPI app at import and the graph module that Agent
+  Server loads.
+- Agent Server's own platform tracing, when the service runs as a LangSmith deployment, is
+  governed by the platform and its project settings, not by these variables. Configure
+  tracing and content retention there.
 
 Do not log raw secrets, authorization headers, or sensitive user content.
 
