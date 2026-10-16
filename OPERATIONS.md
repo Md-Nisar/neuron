@@ -114,7 +114,8 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
 ```
 
 - **Resource:** `service.name` (`APP_OTEL_SERVICE_NAME`, default `APP_NAME`),
-  `service.version` and `deployment.environment.name`.
+  `service.version`, `deployment.environment.name` and `service.instance.id`, a random
+  UUID per process.
 - **Spans:** one HTTP server span per request, named by route template (for example
   `POST /v1/agent/invoke`). `/health/*` is not traced. An incoming W3C `traceparent` is
   honoured for its trace ID, so the span joins the caller's trace, but its sampled flag is
@@ -149,8 +150,58 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
 - **Privacy:** prompts, answers and tool content are never recorded. HTTP spans do carry
   standard request attributes, such as the URL, user agent and peer address; redact them
   in the Collector where your policy requires it.
-- **Agent Server** deployments emit the agent spans from the graph node, with the thread,
-  run and owner taken from the run's config, but don't configure this exporter yet.
+- **Agent Server** deployments emit the agent spans and metrics from the graph node, with
+  the thread, run and owner taken from the run's config. The graph module configures the
+  same exporters when it is loaded, once per process, so the FastAPI app and Agent Server
+  never export twice.
+
+#### Metrics
+
+Metrics are pushed over OTLP/HTTP every 60 s (the SDK default) to the same Collector. Durations
+are in seconds. Instruments:
+
+| Instrument | Type | Attributes |
+| --- | --- | --- |
+| `gen_ai.client.operation.duration` | histogram | `gen_ai.operation.name` (`chat`), `gen_ai.provider.name`, `gen_ai.request.model`, `error.type` on failure |
+| `gen_ai.client.token.usage` | histogram, `{token}` | the same, plus `gen_ai.token.type` (`input`, `output`; both include cache-read and reasoning tokens) |
+| `neuron.agent.run.duration` | histogram | `gen_ai.operation.name` (`invoke_agent`), `neuron.outcome` (`success`, `error`, `cancelled`), `error.type` |
+| `neuron.agent.stream.ttft` | histogram | `neuron.outcome` (the stream's termination: `completed`, `error`, `timeout`, `shutdown`, `client_disconnect`); streams that sent no token are not recorded |
+| `neuron.agent.tool.duration` | histogram | `gen_ai.operation.name` (`execute_tool`), `gen_ai.tool.name`, `neuron.outcome` (`success`, `error`, `denied`, `interrupted`), `error.type` |
+| `neuron.agent.errors` | counter | `error.type`, an `AppError` code. Counts each failed request or run once, client errors (such as `validation_error`) included; filter on the code |
+| `neuron.agent.policy.blocks` | counter | `neuron.rule`: `empty_message`, `message_too_long`, `control_characters`, `token_budget`, `concurrent_runs`, `concurrent_streams`, `request_rate`, `insufficient_scope`, `unknown_tool` |
+| `neuron.checkpoint.duration` | histogram | `neuron.outcome`, `error.type` (the exception class) |
+| `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |
+| `http.server.request.body.size`, `http.server.response.body.size` | histogram | `http.route`, `http.response.status_code` |
+| `http.server.active_requests` | up-down counter | none |
+
+`neuron.agent.cost` (estimated USD, ADR 0007 section 2) is not emitted: the estimated cost is
+deferred together with its pricing data.
+
+**Labels.** Only these attribute keys label a metric: `gen_ai.request.model`,
+`gen_ai.provider.name`, `gen_ai.operation.name`, `gen_ai.tool.name`, `gen_ai.token.type`,
+`error.type`, `http.route`, `http.response.status_code`, `neuron.outcome` and `neuron.rule`.
+Users, owner keys, threads, runs and requests never label a metric, because each would
+create a time series per value. HTTP metrics use the stable HTTP conventions, so the FastAPI
+instrumentation's other attributes (method, scheme, protocol version) are dropped by views.
+A test collects metrics from a run and fails on any other key or on any ID as a value.
+
+**Buckets.** Explicit bucket upper bounds, in seconds, set by views in
+`observability/metrics.py`:
+
+- Model call, run, time to first token and HTTP request duration:
+  0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30, 60, 120. Slower than 120 s is in the
+  overflow bucket (`APP_RUN_TIMEOUT_SECONDS` defaults to 120).
+- Tool and checkpoint duration: 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10,
+  30, 60 (`APP_TOOL_TIMEOUT_SECONDS` is at most 60).
+- Tokens per model call: powers of 4 from 1 to 4^13 (67,108,864).
+
+**Several workers.** Run as many uvicorn workers or replicas as needed: each process has its
+own meter provider and pushes its own OTLP stream, with a distinct `service.instance.id`, so
+cumulative series from different processes are never merged. Nothing is shared between
+workers, and there is no `/metrics` endpoint to scrape (a scrape would reach one worker).
+Aggregate across instances in the backend, for example `sum without (service_instance_id)`,
+or have the Collector drop the attribute after export. A worker flushes on graceful shutdown;
+an abrupt kill loses up to one export interval.
 
 Security audit records use the separate `neuron_agent.audit` logger (also present as the
 JSON `logger` field). Route that logger to the SIEM independently from application logs;

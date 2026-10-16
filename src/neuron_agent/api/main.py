@@ -29,6 +29,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
+from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.langsmith_governance import configure_langsmith
 from neuron_agent.observability.logging import bind_correlation_context, configure_logging
@@ -309,6 +310,7 @@ def _trusted_proxy(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bo
 
 def _rate_limited_response(retry_after_seconds: float, key: str) -> JSONResponse:
     retry_after = max(1, math.ceil(retry_after_seconds))
+    metrics.record_policy_block("request_rate")
     logger.warning(
         "user_limit_exceeded",
         limit_type="request_rate",
@@ -388,6 +390,7 @@ async def invoke_agent(
         )
         return response
     except AppError as exc:
+        metrics.record_error(exc.context.code)
         logger.warning(
             "agent_request_failed",
             request_id=request_id,
@@ -432,6 +435,7 @@ async def stream_agent(
             else await service.prepare(request, streaming=True, principal=principal)
         )
     except AppError as exc:
+        metrics.record_error(exc.context.code)
         logger.warning(
             "stream_rejected",
             termination=exc.context.code,
@@ -565,7 +569,8 @@ async def erase_my_threads(
 
 
 def _http_error(event: str, exc: AppError) -> HTTPException:
-    """Log an `AppError` and map it to an HTTP error, hiding non-user-visible detail."""
+    """Log and count an `AppError`, and map it to an HTTP error, hiding non-user-visible detail."""
+    metrics.record_error(exc.context.code)
     logger.warning(
         event,
         error_code=exc.context.code,
