@@ -33,6 +33,44 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - name: Verify NVIDIA model IDs
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import urllib.request
+
+          api_key = os.environ.get("NVIDIA_API_KEY", "").strip()
+          if not api_key:
+              print("::notice::NVIDIA_API_KEY is not set; skipping model verification.")
+              exit(0)
+
+          url = "https://integrate.api.nvidia.com/v1/models"
+          req = urllib.request.Request(
+              url,
+              headers={"Authorization": f"Bearer {api_key}"}
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  models = json.load(response)["data"]
+          except Exception as exc:
+              print(f"::warning::Could not query NVIDIA models endpoint: {exc}")
+              exit(0)
+
+          available = {m["id"] for m in models}
+          targets = [
+              "nvidia/nemotron-3-ultra-550b-a55b",
+              "deepseek-ai/deepseek-v4.1-flash",
+              "z-ai/glm-5.3",
+          ]
+
+          for model in targets:
+              print(f"{'FOUND' if model in available else 'NOT FOUND'}: {model}")
+          PY
       - name: Review the pull request
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
@@ -41,4 +79,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          NVIDIA_TIMEOUT_SECONDS: "180"
+          NVIDIA_READ_TIMEOUT: "180"
+          NVIDIA_CONNECT_TIMEOUT: "30"
+          AI_REVIEW_FAIL_ON_PARTIAL: ${{ vars.AI_REVIEW_FAIL_ON_PARTIAL || 'false' }}
         run: python scripts/ai_review.py
