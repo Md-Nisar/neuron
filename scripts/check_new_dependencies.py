@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Verify dependencies a pull request adds to `pyproject.toml` (AI code verification gate).
 
 AI assistants recommend packages that do not exist about 5-20% of the time, and attackers

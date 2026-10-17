@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Per-owner thread index for the `/v1/me/*` endpoints.
 
 Lists the thread IDs and activity times an owner key has, newest activity first, without

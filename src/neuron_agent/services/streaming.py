@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Streaming event contract and answer-token extraction (ADR 0005, decision 4)."""
 
 from __future__ import annotations

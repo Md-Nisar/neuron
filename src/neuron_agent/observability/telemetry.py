@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """OpenTelemetry SDK setup (ADR 0007, decisions 1 and 3).
 
 Telemetry is off by default: the global no-op providers stay in place, and no exporter is

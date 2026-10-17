@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """LangChain model and agent construction boundaries."""
 
 from __future__ import annotations

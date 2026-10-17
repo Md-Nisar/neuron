@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Metric instruments and views (ADR 0007, decision 2).
 
 Instruments come from the global meter provider, which is a no-op unless telemetry is

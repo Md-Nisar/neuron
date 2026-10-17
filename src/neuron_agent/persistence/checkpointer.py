@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Checkpointer construction and lifecycle, selected by `APP_CHECKPOINTER` (ADR 0005)."""
 
 from __future__ import annotations
