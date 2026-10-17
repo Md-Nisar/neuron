@@ -1,4 +1,4 @@
-telemetry gate run 2ed351b81b (scripted model)
+telemetry gate run d10c2459d3 (scripted model)
 collector: otelcol-contrib version 0.120.1
 collector: shipped config validated on its own
 collector: shipped config + gate overlay validated
@@ -6,28 +6,28 @@ FastAPI path: gate_server.py (real app, scripted model)
 [PASS] FastAPI: streamed run with a tool call completes: HTTP 200, events {'run_started': 1, 'tool_call': 1, 'token': 5, 'final': 1, 'done': 1}, tool_call=['calculator']
   API stopped, exit code 143
 Agent Server path: langgraph dev, gate_graph.py (shipped graph, scripted model)
-[PASS] Agent Server: streamed run with a tool call completes: events {'metadata': 1, 'values': 2, 'values|agent:c10df5b8-ea72-3709-7578-84e82911436e': 4, 'messages|agent:c10df5b8-ea72-3709-7578-84e82911436e': 11, 'messages': 1}, tool calls streamed=['calculator'], answer present=True
+[PASS] Agent Server: streamed run with a tool call completes: events {'metadata': 1, 'values': 2, 'values|agent:11e36d03-3cc9-8647-9a7c-5c9ca263b4e3': 4, 'messages|agent:11e36d03-3cc9-8647-9a7c-5c9ca263b4e3': 11, 'messages': 1}, tool calls streamed=['calculator'], answer present=True
   langgraph dev stopped, exit code 143
   collector stopped, exit code 0
 collector output: 10 spans, 13 metric streams, 61 log records
 -- criterion 1: FastAPI path --
-[PASS] FastAPI: one trace with correct parent links: trace 6ceca51a8973e2d91dae8f7bff791fb9, 6 spans: POST /v1/agent/stream <- <root>; neuron.stream <- POST /v1/agent/stream; invoke_agent neuron <- neuron.stream; chat gate-scripted-model <- invoke_agent neuron; execute_tool calculator <- invoke_agent neuron; chat gate-scripted-model <- invoke_agent neuron; links {'chat <- invoke_agent': True, 'execute_tool <- invoke_agent': True, 'invoke_agent <- neuron.stream': True, 'neuron.stream <- POST /v1/agent/stream': True, 'POST /v1/agent/stream is the root': True}
+[PASS] FastAPI: one trace with correct parent links: trace 102c7035e9bfd3298026b407505a1d74, 6 spans: POST /v1/agent/stream <- <root>; neuron.stream <- POST /v1/agent/stream; invoke_agent neuron <- neuron.stream; chat gate-scripted-model <- invoke_agent neuron; execute_tool calculator <- invoke_agent neuron; chat gate-scripted-model <- invoke_agent neuron; links {'chat <- invoke_agent': True, 'execute_tool <- invoke_agent': True, 'invoke_agent <- neuron.stream': True, 'neuron.stream <- POST /v1/agent/stream': True, 'POST /v1/agent/stream is the root': True}
 [PASS] FastAPI: span attributes after the Collector: invoke_agent attrs ['gen_ai.agent.name', 'gen_ai.conversation.id', 'gen_ai.operation.name', 'neuron.owner_key_prefix', 'neuron.run_id', 'neuron.turn']; chat usage [('321', '45'), ('321', '45')]; tool outcome ['success']
 [PASS] FastAPI: app log lines for the run carry its trace_id and a span_id of the trace: 8 lines {'auth_succeeded': 1, 'stream_started': 1, 'agent_execution_started': 1, 'tool_call_succeeded': 1, 'agent_execution_completed': 1, 'thread_created': 1, 'model_token_usage': 1, 'stream_completed': 1}; unlinked []; 0 wrapped in a langgraph-api line
-[PASS] FastAPI: those log records came out of the Collector's logs pipeline linked: 8 records with traceId 6ceca51a8973e2d91dae8f7bff791fb9
+[PASS] FastAPI: those log records came out of the Collector's logs pipeline linked: 8 records with traceId 102c7035e9bfd3298026b407505a1d74
 [PASS] FastAPI: metrics arrived through the Collector: present ['gen_ai.client.operation.duration', 'gen_ai.client.token.usage', 'http.server.request.duration', 'neuron.agent.run.duration', 'neuron.agent.stream.ttft', 'neuron.agent.tool.duration']; missing []
 [PASS] FastAPI: metric attributes are within the allow-list: none
 [PASS] Prometheus exporter serves the names the alert rules use: all 6 present
 -- criterion 1: Agent Server path --
-[PASS] Agent Server: one trace with correct parent links: trace d0aa55411aa667c12ecc127571398c71, 4 spans: invoke_agent neuron <- <root>; chat gate-scripted-model <- invoke_agent neuron; execute_tool calculator <- invoke_agent neuron; chat gate-scripted-model <- invoke_agent neuron; links {'chat <- invoke_agent': True, 'execute_tool <- invoke_agent': True}
+[PASS] Agent Server: one trace with correct parent links: trace dd420ed27c8a7a310f038086787a0c75, 4 spans: invoke_agent neuron <- <root>; chat gate-scripted-model <- invoke_agent neuron; execute_tool calculator <- invoke_agent neuron; chat gate-scripted-model <- invoke_agent neuron; links {'chat <- invoke_agent': True, 'execute_tool <- invoke_agent': True}
 [PASS] Agent Server: span attributes after the Collector: invoke_agent attrs ['gen_ai.agent.name', 'gen_ai.conversation.id', 'gen_ai.operation.name', 'neuron.owner_key_prefix', 'neuron.run_id', 'neuron.turn']; chat usage [('321', '45'), ('321', '45')]; tool outcome ['success']
 [PASS] Agent Server: app log lines for the run carry its trace_id and a span_id of the trace: 4 lines {'agent_execution_started': 1, 'tool_call_succeeded': 1, 'agent_execution_completed': 1, 'model_token_usage': 1}; unlinked []; 4 wrapped in a langgraph-api line
-[PASS] Agent Server: those log records came out of the Collector's logs pipeline linked: 4 records with traceId d0aa55411aa667c12ecc127571398c71
+[PASS] Agent Server: those log records came out of the Collector's logs pipeline linked: 4 records with traceId dd420ed27c8a7a310f038086787a0c75
 [PASS] Agent Server: metrics arrived through the Collector: present ['gen_ai.client.operation.duration', 'gen_ai.client.token.usage', 'neuron.agent.run.duration', 'neuron.agent.tool.duration']; missing []
 [PASS] Agent Server: metric attributes are within the allow-list: none
 -- criterion 2: no content, tokens or raw sub in telemetry --
 [PASS] leak scan positive control: content is found in the client-side stream transcripts: found ['Agent Server answer', 'FastAPI answer', 'answer marker', 'prompt', 'prompt marker', 'tool arguments (JSON)', 'tool expression', 'tool result']
-[PASS] leak scan: 15 forbidden strings in 98 lines of 6 files: no matches
+[PASS] leak scan: 15 forbidden strings in 99 lines of 6 files: no matches
   forbidden kinds: ['Agent Server answer', 'FastAPI answer', 'answer marker', 'bearer token 1', 'bearer token 2', 'prompt', 'prompt marker', 'raw sub', 'token 1 payload', 'token 1 signature', 'token 2 payload', 'token 2 signature', 'tool arguments (JSON)', 'tool expression', 'tool result']
   files: ['collector/logs.jsonl', 'collector/metrics.jsonl', 'collector/traces.jsonl', 'collector.log', 'logs/agent-server.log', 'logs/fastapi.log']
 17/17 checks passed
