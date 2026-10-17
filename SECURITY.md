@@ -15,7 +15,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Legacy v0.3 SHA-256 owner values are not accepted in JWT mode. Operators must follow ADR 0006's retention or separately reviewed re-key procedure; no dual-hash fallback is permitted.
 - Tool output is untrusted.
 - Retrieved or external content is untrusted.
-- The system prompt is guidance, not an enforcement mechanism.
+- The system prompt is guidance, not an enforcement mechanism. It can be disclosed (system-prompt-disclosure cases fail in the live security eval), so it must never contain secrets.
 - Enforcement must happen in code and infrastructure.
 
 ## Current Controls
@@ -113,6 +113,9 @@ Current ignores: none.
 - **Agent Server runs skip the API-layer guards.** Authentication, scopes, tool permissions and owner isolation apply on both deployment paths, but the per-principal rate limits, concurrent-run caps, token budgets and the message input policy (length, control characters) live in the FastAPI app and `AgentService`, so `langgraph.json` deployments don't get them. Use the platform's own limits there.
 - **Signing-key rotation window.** A newly published key can be rejected for up to 30 seconds (PyJWT's forced-refetch cooldown); IdPs should pre-publish keys (`OPERATIONS.md`).
 - **Readiness and the IdP.** `/health/ready` marks an instance not ready after a JWKS fetch failure and recovers only when a later request obtains a key; it doesn't probe the JWKS (`OPERATIONS.md`).
+- **Injected tool calls the security eval can't see.** A prompt-injected call to a tool the caller is permitted to use, or a denied tool attempt, doesn't fail a security eval case; denied calls are absent from `used_tools` (`EVALUATION.md`).
+- **Unbounded audit `resource_id`.** For a denied tool call it is the model-chosen tool name, of any length, which contradicts the logging rule above (IDs, names, stable codes) until it is bounded.
+- **Denied tool calls are not `403`s.** The `authorization_denied` audit event (`resource_type=tool`) and the `insufficient_scope`/`unknown_tool` policy-block metric are the only signals of an injected tool attempt; no example alert covers them.
 - **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`.
 
 ## Secrets

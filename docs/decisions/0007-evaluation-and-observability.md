@@ -267,3 +267,14 @@ metric, and forwarded to LangSmith feedback when enabled.
 - https://github.com/open-telemetry/semantic-conventions-genai
 - https://docs.langchain.com/langsmith/trajectory-evals
 - https://docs.langchain.com/langsmith/mask-inputs-outputs
+
+## Addendum: SLO targets set at the release gate (#99)
+
+The decision-8 SLIs are threshold ratios (good events / valid events). `ttft` is now
+"streams with time to first token within 15 s, 90% over 30 days": the provisional "p95
+under 2 s" was unreachable, because the structured answer streams only after the model has
+reasoned (16 live streams: p50 6.4 s, none within 2 s). The other three targets were
+confirmed. Numbers and evidence are in `OPERATIONS.md`. The v0.5.0 release gate's live
+results (the baseline at `909bea2`, and a release candidate that fails only the security
+gate) are in `docs/releases/v0.5.0-release-verification.md`, so the baseline described in
+decision 6 (`da1492e`, security 12/12) is historical.

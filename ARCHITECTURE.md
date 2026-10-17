@@ -215,7 +215,7 @@ Audit events never contain bearer tokens, raw claims/subjects, email addresses, 
 prompts, answers or tool arguments. `observability/audit.py::audit` is the only emitter;
 it accepts only explicit schema fields and emits through the dedicated logger.
 
-Logs are JSON-formatted through `structlog` and include service, version, environment, request ID, and thread ID where available. LangSmith tracing can be enabled through environment variables.
+Logs are JSON-formatted through `structlog` and include service, version, environment, request ID, and thread ID where available. LangSmith tracing can be enabled through `APP_ENABLE_LANGSMITH`.
 
 `AgentService.invoke` generates a `run_id` per graph invocation alongside `request_id` (per HTTP call) and `thread_id` (per conversation), binds all three to `structlog`'s contextvars (`observability/logging.py::bind_correlation_context`), and passes `run_id` into the LangChain/LangGraph `RunnableConfig` so the same ID also tags the LangSmith trace when tracing is enabled. Because contextvars are merged into every log line for the duration of the request, correlation IDs appear on tool-call and provider-retry logs without those call sites needing to pass them explicitly.
 
@@ -229,7 +229,7 @@ Streaming and conversation-state telemetry, listed in full in `OPERATIONS.md#str
 
 Logging never includes raw user prompts, tool arguments, exception text, or provider secrets — only stable, pre-classified fields (IDs, names, codes, counts, durations). API keys are read once in `models/factory.py::create_chat_model` and are never passed to a logger. See `SECURITY.md` for the broader logging/secrets policy.
 
-v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). So far the OpenTelemetry foundation and agent tracing are in place:
+v0.5.0 adds OpenTelemetry traces and metrics, token accounting, LangSmith governance and live evaluation, under [ADR 0007](docs/decisions/0007-evaluation-and-observability.md). Its OpenTelemetry tracing and metrics:
 - `observability/telemetry.py` builds the SDK providers from `Settings` and exports over OTLP/HTTP when `APP_OTEL_ENABLED=true`. Otherwise the global no-op providers stay in place and nothing is exported.
 - `api/main.py` instruments the FastAPI app, excluding `/health/*`, and records `X-Correlation-ID` on the server span.
 - `observability/logging.py::add_trace_context` adds `trace_id` and `span_id` to every log line written inside a valid span context, sampled or not.

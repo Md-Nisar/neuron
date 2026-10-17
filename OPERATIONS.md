@@ -226,9 +226,9 @@ SLIs, targets and alerts for the service (ADR 0007, decision 8). **Targets were 
 
 Evidence from the release gate:
 
-- `availability`: the regression suites had no failed run in the clean live runs; in the release-candidate run 5 of 368 runs across all suites failed with a 5xx-class code (2 `structured_output_error`, 3 `run_timeout`), all on adversarial security-eval inputs.
+- `availability`: the regression suites had no failed run in the clean live runs; in the release-candidate run 5 of 368 runs across all suites failed with a 5xx-class code (from the run's per-run log events, not committed) (2 `structured_output_error`, 3 `run_timeout`), all on adversarial security-eval inputs.
 - `ttft`: 16 streamed single-turn eval prompts had p50 6.4 s and max 20.2 s; none within 2 s, 9 within 8 s, 15 within 15 s. The answer is structured output, so its first token streams only after the model has finished reasoning, and time to first token is close to the run's duration.
-- `run_duration`: three live `--trials 3` runs had 95.9%, 97.4% and 93.4% of runs within 30 s (p95 28.4 s, 24.5 s, 33.6 s): met in 2 of 3, so tight on the eval workload, which includes adversarial and multi-turn cases.
+- `run_duration`: three live `--trials 3` runs had 95.9%, 97.4% and 93.4% of runs within 30 s (from each run's `agent_execution_completed`/`agent_execution_failed` log events, which are not committed) (p95 28.4 s, 24.5 s, 33.6 s): met in 2 of 3, so tight on the eval workload, which includes adversarial and multi-turn cases.
 - `provider_errors`: in the two unthrottled live runs no model call failed after retries; during free-tier throttling 4 of about 440 calls failed after retries (`rate_limit_error`), so throttling alone can burn this budget. Production needs a paid tier or a provider with a higher limit.
 
 Definitions (`w` is a window):
@@ -336,7 +336,10 @@ Suggested alerts:
   into tickets or logs.
 - **403/authorization denial spike:** query `event="authorization_denied"`, group by
   `action` and `reason` (`resource_type="tool"` denials don't fail the run, so they show no
-  `403`), and check for repeated scope mismatch or thread-access attempts.
+  `403`), and check for repeated scope mismatch or thread-access attempts. Injected tool
+  attempts show only as `authorization_denied` with `resource_type="tool"` and in
+  `neuron_agent_policy_blocks_total{neuron_rule=~"insufficient_scope|unknown_tool"}`; no
+  example alert rule is shipped for them.
   Verify role-to-scope configuration; never broaden permissions as a diagnostic shortcut.
 - **IdP outage or JWKS fetch failures (`503 authentication_unavailable`):** query
   `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` also returns `503`.

@@ -53,6 +53,7 @@ JWKS_PORT, API_PORT, AGENT_SERVER_PORT = 8792, 8791, 2031
 PROMETHEUS = "127.0.0.1:8889"
 SCOPES = "agent:invoke threads:read tools:calculator"
 FASTAPI_SERVICE, AGENT_SERVER_SERVICE = "neuron-gate-fastapi", "neuron-gate-agent-server"
+MARKER = ".telemetry-gate"  # written into --workdir; only a marked directory is ever deleted
 
 RUN = uuid.uuid4().hex[:10]
 FACTORS = (100_000 + secrets.randbelow(900_000), 100_000 + secrets.randbelow(900_000))
@@ -134,15 +135,27 @@ def token() -> str:
 # --- processes ------------------------------------------------------------------------
 
 
+PROVIDER_KEYS = ("NVIDIA_API_KEY", "APP_NVIDIA_API_KEY", "OPENAI_API_KEY", "APP_OPENAI_API_KEY")
+SECRET_MARKERS = ("API_KEY", "TOKEN", "SECRET", "PASSWORD", "DSN")
+
+
 def server_env(live: bool, service: str) -> dict[str, str]:
-    """The servers' environment: the gate's settings, no provider keys unless live."""
+    """The servers' environment: the gate's settings, no secrets but the provider key if live."""
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.startswith(("APP_", "LANGSMITH", "LANGCHAIN")) and (live or "API_KEY" not in k)
+        if not k.startswith(("APP_", "LANGSMITH", "LANGCHAIN"))
+        and not any(marker in k for marker in SECRET_MARKERS)
     }
     if live:
-        env.update({k: v for k, v in os.environ.items() if k.startswith("APP_")})
+        env.update(
+            {
+                k: v
+                for k, v in os.environ.items()
+                if (k.startswith("APP_") and not any(m in k for m in SECRET_MARKERS))
+                or k in PROVIDER_KEYS
+            }
+        )
     env.update(
         {
             "APP_ENV": "development",
@@ -199,7 +212,7 @@ def stop(process: subprocess.Popen[bytes], name: str) -> None:
 
 def start_collector(otelcol: str, work: Path) -> subprocess.Popen[bytes]:
     env = {
-        **os.environ,
+        **{k: v for k, v in os.environ.items() if k in ("PATH", "HOME")},
         "GATE_OUT": str(work / "collector"),
         "GATE_APP_LOG_GLOB": str(work / "logs" / "*.log"),
         "OTEL_RECEIVER_HOST": "127.0.0.1",
@@ -233,7 +246,7 @@ def start_collector(otelcol: str, work: Path) -> subprocess.Popen[bytes]:
 
 
 def fastapi_run(work: Path, live: bool) -> dict[str, Any]:
-    say("FastAPI path: gate_server.py (real app, scripted model)" + (" [LIVE]" if live else ""))
+    say(f"FastAPI path: gate_server.py (real app, {'live' if live else 'scripted'} model)")
     process = subprocess.Popen(
         ["uv", "run", "--project", str(REPO), "python", str(GATE_DIR / "gate_server.py")],
         cwd=work / "run",
@@ -323,8 +336,8 @@ async def agent_server_stream(url: str, transcript: Path) -> dict[str, Any]:
 
 def agent_server_run(work: Path, live: bool) -> dict[str, Any]:
     say(
-        "Agent Server path: langgraph dev, gate_graph.py (shipped graph, scripted model)"
-        + (" [LIVE]" if live else "")
+        "Agent Server path: langgraph dev, gate_graph.py "
+        f"(shipped graph, {'live' if live else 'scripted'} model)"
     )
     log_path = work / "logs" / "agent-server.log"
     # The repository's langgraph.json, with the graph swapped for gate_graph.py. Written to
@@ -627,13 +640,25 @@ def main() -> int:
         "--workdir", type=Path, default=Path(tempfile.gettempdir()) / "neuron-v050-telemetry-gate"
     )
     parser.add_argument("--out", type=Path, help="default: telemetry_gate[.live].out here")
+    parser.add_argument("--keep", action="store_true", help="keep the workdir after the run")
     args = parser.parse_args()
     out = args.out or GATE_DIR / ("telemetry_gate.live.out" if args.live else "telemetry_gate.out")
     work: Path = args.workdir
+    if work.exists() and any(work.iterdir()) and not (work / MARKER).exists():
+        parser.error(f"refusing to delete {work}: not empty and no {MARKER} marker")
     shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(mode=0o700, parents=True)
+    (work / MARKER).touch()
     for sub in ("collector", "logs", "run", "control"):
-        (work / sub).mkdir(parents=True)
+        (work / sub).mkdir()
+    try:
+        return gate(args, out, work)
+    finally:
+        if not args.keep:
+            shutil.rmtree(work, ignore_errors=True)
 
+
+def gate(args: argparse.Namespace, out: Path, work: Path) -> int:
     forbidden.update(
         {
             "prompt": PROMPT,
@@ -645,6 +670,9 @@ def main() -> int:
             "raw sub": SUB,
         }
     )
+    if args.live:
+        keys = [os.environ[k] for k in PROVIDER_KEYS if os.environ.get(k)]
+        forbidden.update({f"provider API key {n}": key for n, key in enumerate(keys, 1)})
     say(f"telemetry gate run {RUN} ({'LIVE provider' if args.live else 'scripted model'})")
     jwks = ThreadingHTTPServer(("127.0.0.1", JWKS_PORT), Jwks)
     threading.Thread(target=jwks.serve_forever, daemon=True).start()

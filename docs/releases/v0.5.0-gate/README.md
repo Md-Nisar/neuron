@@ -20,25 +20,34 @@ Reproducible check of two #99 exit criteria through a real OpenTelemetry Collect
 ```bash
 # otelcol-contrib from the release the shipped config pins (v0.120.0, linux amd64):
 curl -sSLfO https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.120.0/otelcol-contrib_0.120.0_linux_amd64.tar.gz
-# sha256 81bf885bc9a86705feb3c113c5a356571390e3601eb651ffcf2b3428f6571adb (from the release's checksums file)
+# sha256 from that release's checksums file:
+echo "81bf885bc9a86705feb3c113c5a356571390e3601eb651ffcf2b3428f6571adb  otelcol-contrib_0.120.0_linux_amd64.tar.gz" | sha256sum -c
 tar -xzf otelcol-contrib_0.120.0_linux_amd64.tar.gz otelcol-contrib
+./otelcol-contrib --version  # this v0.120.0 release binary reports 0.120.1, as the recorded runs show
 
 env -u OPENAI_API_KEY -u NVIDIA_API_KEY \
   uv run python docs/releases/v0.5.0-gate/telemetry_gate.py --otelcol ./otelcol-contrib
 ```
 
 Runtime data goes to `--workdir` (default: `neuron-v050-telemetry-gate` in the system temp
-directory, wiped at start): `collector/{traces,metrics,logs}.jsonl` (the Collector's file exporters),
+directory). The harness creates it with mode 0700 and a `.telemetry-gate` marker, wipes it at
+start (it refuses a non-empty directory without the marker) and removes it at the end, since
+it holds prompts and answers, unless `--keep` is given. It holds:
+`collector/{traces,metrics,logs}.jsonl` (the Collector's file exporters),
 `logs/{fastapi,agent-server}.log` (server stdout), `collector.log` and `control/` (the
 client-side stream transcripts, the leak scan's positive control). Ports: 4317/4318 (OTLP),
 8889 (Prometheus exporter), 8888 (Collector self-metrics), 8791 (API), 2031 (Agent Server),
 8792 (JWKS).
 
 `--live` keeps the configured provider instead of the scripted model. Export the provider
-settings first (for example `APP_DEFAULT_MODEL` and the provider's API key); `APP_*`
-variables are passed through, then the gate's settings are applied over them. Without
-`--live`, every `*API_KEY*` variable is removed from the servers' environment and
-`APP_DEFAULT_MODEL=openai:gate-scripted-model` names the scripted model in spans and metrics.
+settings first (for example `APP_DEFAULT_MODEL` and the provider's API key); `APP_*` variables
+are passed through, then the gate's settings are applied over them. Variables whose names
+contain `API_KEY`, `TOKEN`, `SECRET`, `PASSWORD` or `DSN` are removed from the servers'
+environment, except that `--live` passes the provider key (`NVIDIA_API_KEY`,
+`APP_NVIDIA_API_KEY`, `OPENAI_API_KEY` or `APP_OPENAI_API_KEY`) through and adds its value to
+the leak scan. The Collector gets only `PATH`, `HOME` and the variables its configs expand.
+Without `--live`, `APP_DEFAULT_MODEL=openai:gate-scripted-model` names the scripted model in
+spans and metrics.
 
 ## What the harness does
 
@@ -53,5 +62,5 @@ variables are passed through, then the gate's settings are applied over them. Wi
   shipped allow-list, value redaction, tail sampling and batch processors are in the path.
 - Leak scan: the prompt, its marker, the answer as received and its marker, the tool
   expression, its JSON arguments and the tool result, every bearer token, its payload and
-  signature segments, and the raw `sub`, over every Collector output file and every server
-  log line.
+  signature segments, the raw `sub` and, with `--live`, the provider key, over every Collector
+  output file and every server log line.
