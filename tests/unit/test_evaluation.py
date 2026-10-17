@@ -13,6 +13,7 @@ import jsonschema
 import pytest
 import structlog
 
+from neuron_agent import evaluation
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors import base as errors_base
 from neuron_agent.errors.base import AppError, ProviderTimeoutError
@@ -349,6 +350,28 @@ async def test_repeated_trials_are_aggregated(tmp_path: Path) -> None:
     assert suite["tokens"]["total_tokens"] == 12 * 15  # type: ignore[index]
     assert suite["latency_ms"]["p50"] is not None  # type: ignore[index]
     assert list(suite["categories"]) == ["c"]  # type: ignore[call-overload]
+
+
+@pytest.mark.anyio
+async def test_runner_owned_service_ignores_the_per_user_token_budget(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class UsageAgent:
+        async def ainvoke(self, *_: Any, context: Any, **__: Any) -> dict[str, Any]:
+            context.usage.record({"total_tokens": 5})
+            return {
+                "messages": [],
+                "structured_response": AgentAnswer(answer="57", used_tools=[], confidence=0.9),
+            }
+
+    monkeypatch.setattr(main_graph, "build_agent", lambda _: UsageAgent())
+    # One run would use up this budget; every unauthenticated trial shares it.
+    monkeypatch.setattr(
+        evaluation, "get_settings", lambda: Settings(env="test", user_token_budget=5)
+    )
+    results = await run_eval_suite(_cases(tmp_path, "a", "b"), trials=3)
+
+    assert [(r.passes, r.infrastructure_errors) for r in results] == [(3, 0), (3, 0)]
 
 
 def test_a_suite_of_only_infrastructure_errors_has_no_rates() -> None:

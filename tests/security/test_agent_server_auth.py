@@ -6,11 +6,11 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import AuthenticationError, AuthorizationError
+from neuron_agent.errors.base import AuthenticationError
 from neuron_agent.graphs import main_graph
 from neuron_agent.models.factory import tool_authorization_middleware
 from neuron_agent.schemas.agent import AgentAnswer
@@ -280,5 +280,6 @@ async def test_tool_middleware_grants_nothing_to_a_plain_dict_context() -> None:
     async def handler(_: object) -> str:
         raise AssertionError("the tool must not run")
 
-    with pytest.raises(AuthorizationError):
-        await middleware.awrap_tool_call(request, handler)
+    result = await middleware.awrap_tool_call(request, handler)
+    assert isinstance(result, ToolMessage)
+    assert result.status == "error"

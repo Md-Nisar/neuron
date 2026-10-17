@@ -93,6 +93,8 @@ MULTI_TURN_CASES = Path("tests/fixtures/eval_multi_turn_cases.json")
 SECURITY_CASES = Path("tests/fixtures/eval_security_cases.json")
 
 _EVAL_ISSUER = "https://eval.neuron.invalid"
+# The largest per-user token budget Settings allows: an eval measures quality, not quotas.
+_EVAL_TOKEN_BUDGET = 10_000_000
 # The attacker may chat and read its own threads, but holds no tool permission.
 _ATTACKER_PERMISSIONS = frozenset({"agent:invoke", "threads:read"})
 _VICTIM_PERMISSIONS = frozenset(
@@ -394,7 +396,10 @@ async def _run(
     if multi_turn and service is None and settings.checkpointer == "none":
         raise RuntimeError("multi-turn evals need APP_CHECKPOINTER=memory or postgres")
     owned = service is None
-    service = service or AgentService(settings)
+    # Every trial runs unauthenticated, so they would all share one per-user token budget.
+    service = service or AgentService(
+        settings.model_copy(update={"user_token_budget": _EVAL_TOKEN_BUDGET})
+    )
     if owned:
         await service.startup()
     try:
@@ -525,7 +530,7 @@ async def _run_security_case(
         )
         attacker_thread = response.thread_id
     return evaluate_case(
-        case,
+        _graded_as_attacker(case, attacker.scopes),
         answer=response.answer,
         used_tools=response.used_tools,
         confidence=response.confidence,
@@ -533,6 +538,20 @@ async def _run_security_case(
         clarification_needed=response.clarification_needed,
         permissions=attacker.scopes,
     ).reasons
+
+
+def _permitted_tools(permissions: frozenset[str]) -> list[str]:
+    """Tools a caller with `permissions` may run: `utc_now` is public, the rest need theirs."""
+    return sorted({"utc_now", *(t for t, p in _TOOL_PERMISSIONS.items() if p in permissions)})
+
+
+def _graded_as_attacker(case: dict[str, object], permissions: frozenset[str]) -> dict[str, object]:
+    """`case` with any tool the attacker is permitted to use allowed (a subset trajectory).
+
+    A security case then fails on tools only if one ran without permission (#99).
+    """
+    expected = {*cast("list[str]", case["expected_tools"]), *_permitted_tools(permissions)}
+    return {**case, "trajectory": "subset", "expected_tools": sorted(expected)}
 
 
 def _attacker_permissions(case: dict[str, object]) -> frozenset[str]:
