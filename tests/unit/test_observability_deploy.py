@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -10,10 +11,13 @@ import yaml
 
 from neuron_agent.errors import base
 from neuron_agent.observability import semconv
+from neuron_agent.observability.metrics import LLM_LATENCY_BUCKETS
 
 _ROOT = Path(__file__).resolve().parents[2]
 _DEPLOY = _ROOT / "deploy" / "observability"
-_SLOS = {"availability", "ttft", "run_duration", "provider_errors"}
+# Error budget of each SLO (OPERATIONS.md, set at the release gate #99).
+_BUDGETS = {"availability": 0.005, "ttft": 0.10, "run_duration": 0.05, "provider_errors": 0.01}
+_SLOS = set(_BUDGETS)
 # Attributes only metrics carry, and the resource attributes that have their own list.
 _METRIC_ONLY = {semconv.GEN_AI_USAGE_TYPE, semconv.NEURON_RULE}
 _RESOURCE = {
@@ -135,13 +139,19 @@ def test_every_alert_error_class_has_burn_rate_alerts() -> None:
 @pytest.mark.parametrize("slo", sorted(_SLOS))
 def test_every_slo_has_multi_window_burn_rate_alerts(slo: str) -> None:
     mine = [a for a in _alerts() if a["labels"].get("slo") == slo]
+    # A 10% budget caps the burn rate at 10x, so ttft's fast page uses that instead of 14.4x.
+    fast = "10" if slo == "ttft" else "14.4"
     assert {(a["labels"]["burn_rate"], a["labels"]["severity"]) for a in mine} == {
-        ("14.4", "page"),
+        (fast, "page"),
         ("6", "page"),
         ("1", "ticket"),
     }
     for alert in mine:
         assert " and " in alert["expr"]  # long and short window
+        (threshold,) = {float(x) for x in re.findall(r">=? ([0-9.]+)", alert["expr"])}
+        expected = float(alert["labels"]["burn_rate"]) * _BUDGETS[slo]
+        assert threshold == pytest.approx(expected), alert["alert"]
+        assert threshold <= 1  # a ratio above 1 can never fire
         assert alert["annotations"]["runbook_url"].endswith(f"#runbook-{slo.replace('_', '-')}")
     recorded = {r["record"] for r in _rules() if "record" in r}
     for alert in mine:
@@ -151,9 +161,22 @@ def test_every_slo_has_multi_window_burn_rate_alerts(slo: str) -> None:
 
 def test_operations_documents_every_slo_and_alert_class() -> None:
     text = (_ROOT / "OPERATIONS.md").read_text(encoding="utf-8")
-    assert "provisional until #99" in text
+    assert "provisional until #99" not in text
+    assert "**Targets were set at the v0.5.0 release gate (#99)**" in text
+    assert "| `ttft` | streams whose time to first token is at most 15 s" in text
     for slo in _SLOS:
         assert f"#### Runbook: {slo.replace('_', '-')}" in text
     for alert in _alerts():
         if "error_type" in alert["labels"]:
             assert f"`{alert['labels']['error_type']}`" in text
+
+
+def test_slo_bounds_are_latency_bucket_bounds() -> None:
+    texts = [
+        (_DEPLOY / "prometheus-alerts.yaml").read_text(encoding="utf-8"),
+        (_ROOT / "OPERATIONS.md").read_text(encoding="utf-8"),
+    ]
+    for text in texts:
+        bounds = {float(b) for b in re.findall(r'le="([0-9.]+)"', text)}
+        assert bounds == {15.0, 30.0}
+        assert bounds <= set(LLM_LATENCY_BUCKETS)
