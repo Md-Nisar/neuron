@@ -76,3 +76,7 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 The latest release is v0.4.0 ("Secure Multi-User") per `docs/ROADMAP.md`: JWT authentication (ADR 0006), principal-owned threads, scopes, per-user limits, audit logs, user data rights, HTTP hardening and local dev tokens (see `CHANGELOG.md`). v0.3.0 added multi-turn conversations with Postgres or in-memory persistence, SSE streaming, run guards, a thread history and deletion API with retention, and eval dataset v2.
 
 Release verification is recorded in `docs/releases/v0.4.0-release-verification.md` (and the v0.3.0 one before it). Both releases ship with the live OpenAI checks not run (no usable API credit), so model-facing behaviour is verified only with fake models; v0.4.0's other known issues are listed in `CHANGELOG.md`. v0.5.0 ("Evaluation + Observability") is next. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
+
+## AI code verification
+
+Every PR passes the gates in `docs/AI_CODE_VERIFICATION.md` (`ci`, `ai-code-verification`, `codeql`, advisory `ai-review` on NVIDIA's free API catalog). Before opening a PR: keep it under 400 changed lines, add tests that fail without the change, justify any new dependency (the `new-dependencies` job rejects packages missing from PyPI or under 90 days old), and fill in `.github/pull_request_template.md`. Run the `security-reviewer` agent for critical-tier paths. Never claim the work is verified unless `make format lint typecheck test security` passed.

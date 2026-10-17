@@ -1,0 +1,44 @@
+name: ai-review
+
+# AI review layer (docs/AI_CODE_VERIFICATION.md): a frontier model from NVIDIA's free API
+# catalog reviews every non-draft PR against this repository's own checklists
+# (.claude/agents/*.md, AGENTS.md, SECURITY.md), a second call verifies each finding, and the
+# survivors are posted as one review. It only comments: it never approves, and it never
+# fails the build. Uses the same NVIDIA_API_KEY secret as nightly-eval; set the optional
+# AI_REVIEW_MODELS repository variable (comma-separated ids from build.nvidia.com) to choose
+# models. Fork PRs get no secrets, so they are skipped.
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Review the pull request
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          AI_REVIEW_MODELS: ${{ vars.AI_REVIEW_MODELS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python scripts/ai_review.py

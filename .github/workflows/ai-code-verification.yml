@@ -1,0 +1,97 @@
+name: ai-code-verification
+
+# Deterministic gates for every pull request, whoever (or whatever) wrote the code.
+# See docs/AI_CODE_VERIFICATION.md. The existing `ci` workflow still runs format, lint,
+# typecheck, tests, bandit and pip-audit; these jobs add what it does not cover.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-code-verification-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+  dependency-review:
+    # Known-vulnerable or disallowed-license dependencies introduced by the PR.
+    # Needs the dependency graph (on by default for public repos; GitHub Advanced Security
+    # for private ones).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: AGPL-3.0, GPL-3.0
+
+  new-dependencies:
+    # Hallucinated or brand-new packages ("slopsquatting").
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Check packages added to pyproject.toml
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          ALLOW_YOUNG_PACKAGES: ${{ contains(github.event.pull_request.labels.*.name, 'new-dependency-approved') }}
+        run: |
+          git show "origin/${BASE_REF}:pyproject.toml" > "$RUNNER_TEMP/base-pyproject.toml"
+          python scripts/check_new_dependencies.py "$RUNNER_TEMP/base-pyproject.toml" pyproject.toml
+
+  pr-hygiene:
+    # Small batches and an honest PR description keep human review meaningful.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Limit the size of the change
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          LARGE_OK: ${{ contains(github.event.pull_request.labels.*.name, 'large-pr-approved') }}
+        run: |
+          # Lockfiles and recorded eval baselines are generated, so they do not count.
+          changed=$(git diff --numstat "origin/${BASE_REF}...HEAD" -- . ':(exclude)uv.lock' ':(exclude)evals/baselines/**' \
+            | awk '{ added += ($1 == "-" ? 0 : $1); removed += ($2 == "-" ? 0 : $2) } END { print added + removed + 0 }')
+          echo "Changed lines (excluding generated files): $changed"
+          echo "Changed lines (excluding generated files): $changed" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$changed" -gt 1000 ] && [ "$LARGE_OK" != "true" ]; then
+            echo "::error::$changed changed lines. Split the PR, or a maintainer adds the 'large-pr-approved' label."
+            exit 1
+          elif [ "$changed" -gt 400 ]; then
+            echo "::warning::$changed changed lines. Changes over 400 lines get noticeably weaker human review."
+          fi
+      - name: Require the AI assistance and verification sections
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          missing=0
+          for heading in "## AI assistance" "## Risk tier" "## Verification"; do
+            if ! printf '%s' "$BODY" | grep -qF "$heading"; then
+              echo "::error::PR description is missing '$heading' (see .github/pull_request_template.md)."
+              missing=1
+            fi
+          done
+          if ! printf '%s' "$BODY" | grep -qiE '^- \[x\] I have read every changed line and can explain it'; then
+            echo "::error::Tick the author attestation in the Verification section."
+            missing=1
+          fi
+          exit "$missing"

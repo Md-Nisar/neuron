@@ -91,3 +91,9 @@ markers = [
     "integration: tests that require external services or credentials",
     "eval: deterministic agent quality regression checks",
 ]
+
+[tool.mutmut]
+# Mutation testing of the security-critical code (.github/workflows/mutation-testing.yml).
+paths_to_mutate = ["src/neuron_agent/security/", "src/neuron_agent/tools/"]
+tests_dir = ["tests/security/", "tests/unit/"]
+also_copy = ["scripts/", "tests/conftest.py", "tests/fixtures/"]
