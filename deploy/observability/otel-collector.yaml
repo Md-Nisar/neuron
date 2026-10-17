@@ -76,7 +76,7 @@ processors:
     summary: silent
 
   # Keeps every trace with an error span, every trace slower than 30 s and 10% of the rest.
-  # 30 s is the provisional p95 run-duration SLO (OPERATIONS.md), so the traces that break the
+  # 30 s is the p95 run-duration SLO (OPERATIONS.md), so the traces that break the
   # objective are kept. decision_wait covers APP_RUN_TIMEOUT_SECONDS (default 120) so a long run's
   # spans are decided together. Memory: about num_traces x trace size; sized with memory_limiter.
   tail_sampling:

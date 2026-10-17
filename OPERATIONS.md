@@ -215,14 +215,21 @@ sink access and retention against unauthorized modification/deletion.
 
 ### Service level objectives
 
-SLIs, targets and alerts for the service (ADR 0007, decision 8). **All targets are provisional until #99**, the release gate, where they are set from live data; the live provider checks have not run yet, so no number below is measured. The PromQL uses the names the Collector's Prometheus exporter produces from the OTLP metrics above: dots become underscores, unit `s` adds `_seconds`, counters add `_total`, histograms add `_bucket`/`_count`, and attributes become labels (`error.type` is `error_type`). Resource attributes are labels too (`service_instance_id` keeps workers apart), so every query aggregates with `sum(...)`.
+SLIs, targets and alerts for the service (ADR 0007, decision 8). **Targets were set at the v0.5.0 release gate (#99)** from live runs on the development model (`nvidia/nemotron-3-super-120b-a12b`, NVIDIA free tier, 2026-10-16/17); re-check them on the production model, which has not been measured (no OpenAI run). The PromQL uses the names the Collector's Prometheus exporter produces from the OTLP metrics above: dots become underscores, unit `s` adds `_seconds`, counters add `_total`, histograms add `_bucket`/`_count`, and attributes become labels (`error.type` is `error_type`). Resource attributes are labels too (`service_instance_id` keeps workers apart), so every query aggregates with `sum(...)`.
 
-| SLO | SLI (good events / valid events) | Target (provisional until #99) | Error budget |
+| SLO | SLI (good events / valid events) | Target | Error budget |
 | --- | --- | --- | --- |
 | `availability` | `/v1` requests that did not fail with 5xx, among requests that are not 4xx | 99.5% over 30 days | 0.5% |
-| `ttft` | streams whose time to first token is at most 2 s (p95 under 2 s) | 95% over 30 days | 5% |
+| `ttft` | streams whose time to first token is at most 15 s (p90 under 15 s) | 90% over 30 days | 10% |
 | `run_duration` | runs that finish within 30 s (p95 under 30 s), cancelled runs excluded | 95% over 30 days | 5% |
 | `provider_errors` | model calls that do not fail (provider error rate at most 1%) | 99% over 30 days | 1% |
+
+Evidence from the release gate:
+
+- `availability`: the regression suites had no failed run in the clean live runs; in the release-candidate run 5 of 368 runs across all suites failed with a 5xx-class code (2 `structured_output_error`, 3 `run_timeout`), all on adversarial security-eval inputs.
+- `ttft`: 16 streamed single-turn eval prompts had p50 6.4 s and max 20.2 s; none within 2 s, 9 within 8 s, 15 within 15 s. The answer is structured output, so its first token streams only after the model has finished reasoning, and time to first token is close to the run's duration.
+- `run_duration`: three live `--trials 3` runs had 95.9%, 97.4% and 93.4% of runs within 30 s (p95 28.4 s, 24.5 s, 33.6 s): met in 2 of 3, so tight on the eval workload, which includes adversarial and multi-turn cases.
+- `provider_errors`: in the two unthrottled live runs no model call failed after retries; during free-tier throttling 4 of about 440 calls failed after retries (`rate_limit_error`), so throttling alone can burn this budget. Production needs a paid tier or a provider with a higher limit.
 
 Definitions (`w` is a window):
 
@@ -232,7 +239,7 @@ availability error ratio =
   / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*",http_response_status_code!~"4.."}[w]))
 
 ttft slow ratio =
-  1 - sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[w])) / sum(rate(neuron_agent_stream_ttft_seconds_count[w]))
+  1 - sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="15"}[w])) / sum(rate(neuron_agent_stream_ttft_seconds_count[w]))
 
 run duration slow ratio =
   1 - sum(rate(neuron_agent_run_duration_seconds_bucket{le="30",neuron_outcome!="cancelled"}[w]))
@@ -243,14 +250,14 @@ provider error ratio =
   / sum(rate(gen_ai_client_operation_duration_seconds_count[w]))
 ```
 
-Caveats: a stream that fails after its `200` headers is not an availability failure (see the `neuron.agent.errors` counter, `neuron.outcome` on `neuron.agent.stream.ttft`, and the `stream_completed` log); `le="2"` and `le="30"` must stay bucket bounds in `observability/metrics.py`; a model call's duration and error include its retries, so a provider error is one that outlasted them. Time to first token is recorded only for streams that sent a token.
+Caveats: a stream that fails after its `200` headers is not an availability failure (see the `neuron.agent.errors` counter, `neuron.outcome` on `neuron.agent.stream.ttft`, and the `stream_completed` log); `le="15"` and `le="30"` must stay bucket bounds in `observability/metrics.py`; a model call's duration and error include its retries, so a provider error is one that outlasted them. Time to first token is recorded only for streams that sent a token.
 
-**Alerts.** `deploy/observability/prometheus-alerts.yaml` holds recording rules for each ratio over 5m, 30m, 1h, 6h and 3d, and the multi-window, multi-burn-rate alerts of the Google SRE Workbook for each SLO: 14.4x over 1h and 5m (page; 2% of a 30-day budget in 1 h), 6x over 6h and 30m (page) and 1x over 3d and 6h (ticket). An alert fires only when both windows exceed `burn x budget`. Each `alert=True` error class in `errors/base.py` (`configuration_error`, `provider_error`, `provider_quota_exhausted`, `tool_execution_error`, `structured_output_error`, `persistence_error`, `agent_execution_error`) has the 14.4x and 6x pair against a provisional budget of 0.1% of `/v1` requests, using `neuron_agent_errors_total{error_type="<code>"}`. A test keeps the rules, the SLO list and the error classes in step. The rules are examples: load them with `promtool check rules` and route `severity` in Alertmanager. Nothing alerts on no traffic, since the ratios are undefined without requests.
+**Alerts.** `deploy/observability/prometheus-alerts.yaml` holds recording rules for each ratio over 5m, 30m, 1h, 6h and 3d, and the multi-window, multi-burn-rate alerts of the Google SRE Workbook for each SLO: 14.4x over 1h and 5m (page; 2% of a 30-day budget in 1 h), 6x over 6h and 30m (page) and 1x over 3d and 6h (ticket). An alert fires only when both windows exceed `burn x budget`. For `ttft`, whose 10% budget makes 14.4x unreachable (a ratio of 1.44), the 1h and 5m page fires at 10x, when every stream is slow. Each `alert=True` error class in `errors/base.py` (`configuration_error`, `provider_error`, `provider_quota_exhausted`, `tool_execution_error`, `structured_output_error`, `persistence_error`, `agent_execution_error`) has the 14.4x and 6x pair against a provisional budget of 0.1% of `/v1` requests, using `neuron_agent_errors_total{error_type="<code>"}`. A test keeps the rules, the SLO list and the error classes in step. The rules are examples: load them with `promtool check rules` and route `severity` in Alertmanager. Nothing alerts on no traffic, since the ratios are undefined without requests.
 
 **Collector.** `deploy/observability/otel-collector.yaml` (pinned to `opentelemetry-collector-contrib` 0.120.0; validate it with `otelcol-contrib validate` before use, which this repository does not run) receives OTLP and runs, in this order, `memory_limiter`, the attribute allow-list, value redaction, tail sampling (traces only) and `batch`, then exports traces, metrics and logs over OTLP and metrics to Prometheus. Endpoints come from `OTEL_BACKEND_ENDPOINT`, `OTEL_BACKEND_AUTH_HEADER`, `OTEL_RECEIVER_HOST` and `PROMETHEUS_EXPORTER_ENDPOINT`.
 
 - The allow-list drops every attribute not emitted by `semconv.py`: resource, span, metric data point and log record attributes each have their own list, and span events lose all attributes. HTTP spans keep only method, route, status code, scheme and protocol version, which drops the URL path, user agent and peer address. A new attribute is blocked until it is added to `semconv.py`, the Collector list and the test.
-- Tail sampling keeps every trace with an error span, every trace slower than 30 s (the provisional `run_duration` target) and 10% of the rest. Run the app with `APP_OTEL_TRACES_SAMPLE_RATIO=1.0` (head sampling would discard the errors first), and put a load-balancing exporter keyed by trace ID in front of several Collector replicas.
+- Tail sampling keeps every trace with an error span, every trace slower than 30 s (the `run_duration` target) and 10% of the rest. Run the app with `APP_OTEL_TRACES_SAMPLE_RATIO=1.0` (head sampling would discard the errors first), and put a load-balancing exporter keyed by trace ID in front of several Collector replicas.
 - The service does not export logs over OTLP yet. The logs pipeline filters attributes only; it cannot filter a free-text body.
 - The development-only Compose stack (Grafana, Tempo, Loki, Prometheus) is deferred; it does not block the release.
 
