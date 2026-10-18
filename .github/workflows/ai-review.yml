@@ -3,9 +3,10 @@ name: ai-review
 # AI review layer (docs/AI_CODE_VERIFICATION.md): a frontier model from NVIDIA's free API
 # catalog reviews every non-draft PR against this repository's own checklists
 # (.claude/agents/*.md, AGENTS.md, SECURITY.md), a second call verifies each finding, and the
-# survivors are posted as one review. It only comments: it never approves, and it never
-# fails the build. Uses the same NVIDIA_API_KEY secret as nightly-eval; set the optional
-# AI_REVIEW_MODELS repository variable (comma-separated ids from build.nvidia.com) to choose
+# survivors are posted as one review. It only comments: it never approves, and it is
+# advisory: a provider outage or timeout logs a warning and exits 0 (set the repository
+# variable AI_REVIEW_FAIL_ON_ERROR=true to make that fail the job). Uses the same NVIDIA_API_KEY secret as nightly-eval; set the
+# optional AI_REVIEW_MODELS repository variable (comma-separated ids from build.nvidia.com) to choose
 # models. Fork PRs get no secrets, so they are skipped.
 on:
   pull_request:
@@ -30,47 +31,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Verify NVIDIA model IDs
-        env:
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-        shell: bash
-        run: |
-          python - <<'PY'
-          import os
-          import json
-          import urllib.request
-
-          api_key = os.environ.get("NVIDIA_API_KEY", "").strip()
-          if not api_key:
-              print("::notice::NVIDIA_API_KEY is not set; skipping model verification.")
-              exit(0)
-
-          url = "https://integrate.api.nvidia.com/v1/models"
-          req = urllib.request.Request(
-              url,
-              headers={"Authorization": f"Bearer {api_key}"}
-          )
-
-          try:
-              with urllib.request.urlopen(req, timeout=30) as response:
-                  models = json.load(response)["data"]
-          except Exception as exc:
-              print(f"::warning::Could not query NVIDIA models endpoint: {exc}")
-              exit(0)
-
-          available = {m["id"] for m in models}
-          targets = [
-              "nvidia/nemotron-3-ultra-550b-a55b",
-              "deepseek-ai/deepseek-v4.1-flash",
-              "z-ai/glm-5.3",
-          ]
-
-          for model in targets:
-              print(f"{'FOUND' if model in available else 'NOT FOUND'}: {model}")
-          PY
       - name: Review the pull request
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
@@ -83,4 +47,6 @@ jobs:
           NVIDIA_READ_TIMEOUT: "180"
           NVIDIA_CONNECT_TIMEOUT: "30"
           AI_REVIEW_FAIL_ON_PARTIAL: ${{ vars.AI_REVIEW_FAIL_ON_PARTIAL || 'false' }}
+          AI_REVIEW_FAIL_ON_ERROR: ${{ vars.AI_REVIEW_FAIL_ON_ERROR || 'false' }}
+          AI_REVIEW_DEADLINE_SECONDS: "1200"
         run: python scripts/ai_review.py

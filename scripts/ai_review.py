@@ -30,8 +30,13 @@ Environment:
   AI_REVIEW_FALLBACK          "true" to use model fallback (default: true)
   AI_REVIEW_SKIP_UNAVAILABLE  "true" to skip models not in catalog (default: true)
   AI_REVIEW_STRICT_CATALOG    "true" to abort if catalog query fails (default: false)
-  AI_REVIEW_FAIL_ON_PARTIAL   "true" to return exit code 1 on partial review (default: true)
-  AI_REVIEW_PARTIAL_EXIT_CODE explicit exit code for partial runs (0 or 1, default: 1)
+  AI_REVIEW_FAIL_ON_ERROR     "true" to exit 1 when no model produced a review, the diff cannot
+                              be computed or the script crashes (default: false, the review is
+                              advisory so a provider outage only logs a warning and exits 0)
+  AI_REVIEW_FAIL_ON_PARTIAL   "true" to return exit code 1 on partial review (default: false)
+  AI_REVIEW_PARTIAL_EXIT_CODE explicit exit code for partial runs (0 or 1, overrides the above)
+  AI_REVIEW_DEADLINE_SECONDS  total time budget for all model calls (default: 1200); no new
+                              attempt or retry sleep starts past it
 """
 
 from __future__ import annotations
@@ -83,6 +88,9 @@ DEFAULT_MAX_ATTEMPTS = 4
 DEFAULT_BACKOFF_DELAYS = (2.0, 4.0, 8.0)
 DEFAULT_MAX_RETRY_AFTER = 60.0
 DEFAULT_TIMEOUT_SECONDS = 180.0
+DEFAULT_DEADLINE_SECONDS = 1200.0
+POST_BUDGET_SECONDS = 120.0
+BUDGET_EXHAUSTED = "time budget exhausted"
 
 REVIEW_PROMPT = """You review pull requests for the Neuron agent service (Python, FastAPI,
 LangGraph). Apply the project checklists below, and also look for logic errors, unhandled
@@ -275,11 +283,14 @@ def request_with_retry(
     backoff_delays: tuple[float, ...] = DEFAULT_BACKOFF_DELAYS,
     sleep_fn: Callable[[float], None] = time.sleep,
     secret_to_redact: str | None = None,
+    deadline: float | None = None,
 ) -> tuple[Any, list[RetryRecord]]:
     """Execute an HTTP request with exponential backoff on transient errors.
 
     Retries: 429, 500, 502, 503, 504, socket timeouts, connection drops.
     Permanent failures (401, 403, 400, 404) are not retried.
+    `deadline` is a `time.monotonic()` instant: no attempt or retry sleep starts past it and
+    each request timeout is clamped to the time left.
     """
     data_bytes = json.dumps(payload).encode("utf-8") if payload is not None else None
     all_headers = {**headers}
@@ -290,6 +301,12 @@ def request_with_retry(
     secrets = [secret_to_redact] if secret_to_redact else []
 
     for attempt in range(1, max_attempts + 1):
+        attempt_timeout = timeout
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TransientHTTPError(None, BUDGET_EXHAUSTED)
+            attempt_timeout = min(timeout, remaining)
         req = urllib.request.Request(  # noqa: S310
             url,
             data=data_bytes,
@@ -297,7 +314,7 @@ def request_with_retry(
             method=method,
         )
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 # nosec B310
+            with urllib.request.urlopen(req, timeout=attempt_timeout) as resp:  # noqa: S310 # nosec B310
                 raw = resp.read()
                 return json.loads(raw.decode("utf-8")), retries
         except Exception as exc:
@@ -319,6 +336,11 @@ def request_with_retry(
             else:
                 delay_index = min(attempt - 1, len(backoff_delays) - 1)
                 delay = backoff_delays[delay_index]
+
+            if deadline is not None and time.monotonic() + delay >= deadline:
+                raise TransientHTTPError(
+                    code, f"{BUDGET_EXHAUSTED}; last error: {sanitized_msg}"
+                ) from exc
 
             model_tag = f"[Model: {model_id}] " if model_id else ""
             print(
@@ -401,7 +423,9 @@ def split_inline(
     return inline, general
 
 
-def review_body(summary: str, model: str, general: list[Finding], inline_count: int) -> str:
+def review_body(
+    summary: str, model: str, general: list[Finding], inline_count: int, *, verified: bool = False
+) -> str:
     """Format GitHub PR review body."""
     lines = [
         "### AI review (advisory)",
@@ -409,8 +433,12 @@ def review_body(summary: str, model: str, general: list[Finding], inline_count: 
         sanitize(summary),
         "",
         f"{inline_count} inline finding(s). Model: `{model}` via NVIDIA API catalog. "
-        "Findings were verified by a second pass; still treat them as suggestions. "
-        "Reply to each with a fix or a reason. This review never approves.",
+        + (
+            "Findings were verified by a second pass; still treat them as suggestions. "
+            if verified
+            else "Findings were not verified by a second pass; treat them as suggestions. "
+        )
+        + "Reply to each with a fix or a reason. This review never approves.",
     ]
     for finding in general:
         lines += ["", f"- `{finding.file}:{finding.line}` {finding.body()}"]
@@ -444,6 +472,7 @@ def verify_catalog(
     skip_unavailable: bool = True,
     strict_catalog: bool = False,
     sleep_fn: Callable[[float], None] = time.sleep,
+    deadline: float | None = None,
 ) -> tuple[set[str] | None, list[str], dict[str, str]]:
     """Verify configured models against the NVIDIA API catalog.
 
@@ -463,6 +492,7 @@ def verify_catalog(
             timeout=timeout,
             sleep_fn=sleep_fn,
             secret_to_redact=api_key,
+            deadline=deadline,
         )
         catalog_items = data.get("data", [])
         available = {str(m["id"]) for m in catalog_items if isinstance(m, dict) and "id" in m}
@@ -506,6 +536,7 @@ def chat_completion(
     api_key: str,
     timeout: float,
     sleep_fn: Callable[[float], None] = time.sleep,
+    deadline: float | None = None,
 ) -> tuple[str, list[RetryRecord]]:
     """Execute a chat completion with exponential backoff retries."""
     payload = {
@@ -526,6 +557,7 @@ def chat_completion(
         model_id=model,
         sleep_fn=sleep_fn,
         secret_to_redact=api_key,
+        deadline=deadline,
     )
     content = data.get("choices", [{}])[0].get("message", {}).get("content") or ""
     if not content.strip():
@@ -540,6 +572,7 @@ def review_with_model(
     api_key: str,
     timeout: float,
     sleep_fn: Callable[[float], None] = time.sleep,
+    deadline: float | None = None,
 ) -> tuple[dict[str, Any], list[Finding], int, int, int]:
     """Execute initial review and verification pass with a single model.
 
@@ -556,6 +589,7 @@ def review_with_model(
         api_key,
         timeout,
         sleep_fn=sleep_fn,
+        deadline=deadline,
     )
     total_retries += len(r1)
     review_data = extract_json(reply)
@@ -576,6 +610,7 @@ def review_with_model(
                 api_key,
                 timeout,
                 sleep_fn=sleep_fn,
+                deadline=deadline,
             )
             total_retries += len(r2)
             confirmed = {int(i) for i in extract_json(verify_reply).get("confirmed", [])}
@@ -729,18 +764,43 @@ def print_terminal_summary(summary: ReviewExecutionSummary, exit_code: int) -> N
 
 
 def get_partial_exit_code(env: Mapping[str, str] = os.environ) -> int:
-    """Configurable policy for exit code on partial completion. Defaults to 1 (nonzero)."""
+    """Configurable policy for exit code on partial completion. Defaults to 0 (advisory)."""
     if "AI_REVIEW_PARTIAL_EXIT_CODE" in env:
         try:
             return int(env["AI_REVIEW_PARTIAL_EXIT_CODE"])
         except ValueError:
             pass
-    fail_on_partial = env.get("AI_REVIEW_FAIL_ON_PARTIAL", "true").strip().lower()
+    fail_on_partial = env.get("AI_REVIEW_FAIL_ON_PARTIAL", "false").strip().lower()
     return 1 if fail_on_partial in ("true", "1", "yes") else 0
+
+
+def env_flag(env: Mapping[str, str], key: str, default: bool = False) -> bool:
+    raw = env.get(key)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in ("true", "1", "yes")
+
+
+def failure_exit_code(env: Mapping[str, str], message: str) -> int:
+    """Advisory by default: report an operational failure as a warning and exit 0."""
+    if env_flag(env, "AI_REVIEW_FAIL_ON_ERROR"):
+        print(f"::error::{message}")
+        return 1
+    print(f"::warning::{message} The AI review is advisory, so the check still passes.")
+    return 0
+
+
+def write_step_summary(env: Mapping[str, str], text: str) -> None:
+    try:
+        with open(env.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
+            out.write(text + "\n")
+    except Exception as exc:
+        print(f"::warning::Could not write GITHUB_STEP_SUMMARY: {exc}")
 
 
 def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
     """Main entrypoint for AI pull request review."""
+    started = time.monotonic()
     env = os.environ
     api_key = env.get("NVIDIA_API_KEY", "").strip()
     if not api_key:
@@ -748,6 +808,11 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
         return 0
 
     timeout = get_request_timeout(env)
+    try:
+        budget = float(env.get("AI_REVIEW_DEADLINE_SECONDS", "") or DEFAULT_DEADLINE_SECONDS)
+    except ValueError:
+        budget = DEFAULT_DEADLINE_SECONDS
+    deadline = started + (budget if budget > 0 else DEFAULT_DEADLINE_SECONDS)
     fallback_mode = env.get("AI_REVIEW_FALLBACK", "true").strip().lower() in ("true", "1", "yes")
     skip_unavailable = env.get("AI_REVIEW_SKIP_UNAVAILABLE", "true").strip().lower() in (
         "true",
@@ -767,14 +832,16 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
     base_sha = env.get("BASE_SHA", "")
     head_sha = env.get("HEAD_SHA", "")
     if not base_sha or not head_sha:
-        print("::error::BASE_SHA and HEAD_SHA must be provided.")
-        return 1
+        message = "BASE_SHA and HEAD_SHA must be provided."
+        write_step_summary(env, f"## AI Code Review: SKIPPED\n\n{message}")
+        return failure_exit_code(env, message)
 
     try:
         diff = git_diff(base_sha, head_sha)
     except Exception as exc:
-        print(f"::error::Failed to compute git diff: {exc}")
-        return 1
+        message = f"Failed to compute git diff: {exc}"
+        write_step_summary(env, f"## AI Code Review: SKIPPED\n\n{message}")
+        return failure_exit_code(env, message)
 
     if not diff.strip():
         print("Empty diff; nothing to review.")
@@ -792,6 +859,7 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
         skip_unavailable=skip_unavailable,
         strict_catalog=strict_catalog,
         sleep_fn=sleep_fn,
+        deadline=deadline,
     )
 
     summary = ReviewExecutionSummary(
@@ -803,6 +871,10 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
 
     # Step 2: Model review execution with fallback
     for model in models_to_attempt:
+        if time.monotonic() >= deadline:
+            summary.skipped_models[model] = BUDGET_EXHAUSTED
+            print(f"::warning::Model '{model}' skipped: {BUDGET_EXHAUSTED}.")
+            continue
         print(f"--- Attempting review with model: {model} ---")
         try:
             review_data, findings, verified_cnt, unverified_cnt, retries = review_with_model(
@@ -812,6 +884,7 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
                 api_key,
                 timeout,
                 sleep_fn=sleep_fn,
+                deadline=deadline,
             )
             result = ModelReviewResult(
                 model=model,
@@ -843,7 +916,10 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
 
     # Determine exit code policy
     if summary.status == "FAILED":
-        exit_code = 1
+        reasons = "; ".join(
+            f"{m}: {e}" for m, e in {**skipped_models, **summary.failed_models}.items()
+        )
+        exit_code = failure_exit_code(env, f"No model produced a review ({reasons or 'none ran'}).")
     elif summary.status == "PARTIAL":
         exit_code = get_partial_exit_code(env)
     else:
@@ -861,21 +937,22 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
         if truncated:
             review_summary_text += " The diff was too large to review in full; split the PR."
         review_output_text = review_body(
-            review_summary_text, chosen_review.model, general, len(inline)
+            review_summary_text,
+            chosen_review.model,
+            general,
+            len(inline),
+            verified=chosen_review.verified_count > 0,
         )
         comments = [
             {"path": f.file, "line": f.line, "side": "RIGHT", "body": f.body()} for f in inline
         ]
 
     # Write GITHUB_STEP_SUMMARY
-    summary_path = env.get("GITHUB_STEP_SUMMARY", os.devnull)
-    try:
-        with open(summary_path, "a", encoding="utf-8") as out:
-            if review_output_text:
-                out.write(review_output_text + "\n\n")
-            out.write(format_summary_markdown(summary) + "\n")
-    except Exception as exc:
-        print(f"::warning::Could not write GITHUB_STEP_SUMMARY: {exc}")
+    write_step_summary(
+        env,
+        (review_output_text + "\n\n" if review_output_text else "")
+        + format_summary_markdown(summary),
+    )
 
     # Post or dry-run review
     if env.get("AI_REVIEW_DRY_RUN", "").lower() == "true":
@@ -916,6 +993,7 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
                     "body": review_output_text,
                     "comments": filtered_comments,
                 }
+                post_deadline = time.monotonic() + POST_BUDGET_SECONDS
                 try:
                     request_with_retry(
                         review_url,
@@ -925,13 +1003,14 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
                         timeout=60.0,
                         sleep_fn=sleep_fn,
                         secret_to_redact=github_token,
+                        deadline=post_deadline,
                     )
                     general_cnt = len(chosen_review.findings) - len(filtered_comments)
                     print(
                         f"Posted AI review with {len(filtered_comments)} inline and "
                         f"{general_cnt} general finding(s)."
                     )
-                except urllib.error.HTTPError as error:
+                except PermanentHTTPError as error:
                     if error.code == 422:
                         # Cannot anchor inline comments, post everything in the body
                         print(
@@ -939,7 +1018,11 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
                             "posting all findings in review summary."
                         )
                         everything = review_body(
-                            review_summary_text, chosen_review.model, chosen_review.findings, 0
+                            review_summary_text,
+                            chosen_review.model,
+                            chosen_review.findings,
+                            0,
+                            verified=chosen_review.verified_count > 0,
                         )
                         fallback_payload = {
                             "commit_id": head_sha,
@@ -956,6 +1039,7 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
                                 timeout=60.0,
                                 sleep_fn=sleep_fn,
                                 secret_to_redact=github_token,
+                                deadline=post_deadline,
                             )
                         except Exception as post_err:
                             print(f"::warning::Failed to post fallback summary review: {post_err}")
@@ -973,5 +1057,4 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except Exception as fatal_error:
-        print(f"::error::AI review failed with unhandled exception: {fatal_error}")
-        sys.exit(1)
+        sys.exit(failure_exit_code(os.environ, f"AI review crashed: {fatal_error}"))

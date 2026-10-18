@@ -372,10 +372,9 @@ def test_model_fallback_tries_next_model_when_first_fails() -> None:
 
 
 def test_partial_completion_exit_code_policy() -> None:
-    # Default is nonzero (1)
-    assert ai_review.get_partial_exit_code({}) == 1
-    # Explicit false -> 0
-    assert ai_review.get_partial_exit_code({"AI_REVIEW_FAIL_ON_PARTIAL": "false"}) == 0
+    # Advisory by default (0)
+    assert ai_review.get_partial_exit_code({}) == 0
+    assert ai_review.get_partial_exit_code({"AI_REVIEW_FAIL_ON_PARTIAL": "true"}) == 1
     # Explicit partial code 0
     assert ai_review.get_partial_exit_code({"AI_REVIEW_PARTIAL_EXIT_CODE": "0"}) == 0
 
@@ -445,3 +444,167 @@ def test_check_duplicate_review_filters_existing_comments() -> None:
     # Only line 2 should remain; line 3 was filtered as duplicate
     assert len(filtered) == 1
     assert filtered[0]["line"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Advisory exit codes, time budget, 422 fallback, verified claim
+# ---------------------------------------------------------------------------
+
+MODELS = "model-a,model-b"
+
+
+def _main_env(monkeypatch: pytest.MonkeyPatch, **extra: str) -> None:
+    for key in ("AI_REVIEW_FAIL_ON_ERROR", "AI_REVIEW_DEADLINE_SECONDS", "GITHUB_REPOSITORY"):
+        monkeypatch.delenv(key, raising=False)
+    env = {
+        "NVIDIA_API_KEY": "nvapi-secret",
+        "AI_REVIEW_MODELS": MODELS,
+        "AI_REVIEW_SKIP_UNAVAILABLE": "false",
+        "BASE_SHA": "a" * 40,
+        "HEAD_SHA": "b" * 40,
+        **extra,
+    }
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr(ai_review, "git_diff", lambda base, head: DIFF)
+
+
+def test_main_all_models_fail_is_advisory_by_default(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _main_env(monkeypatch)
+    with patch("urllib.request.urlopen", side_effect=_mock_http_error(503)):
+        assert ai_review.main(sleep_fn=lambda _: None) == 0
+    assert "::warning::No model produced a review" in capsys.readouterr().out
+
+
+def test_main_all_models_fail_exits_1_when_fail_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    _main_env(monkeypatch, AI_REVIEW_FAIL_ON_ERROR="true")
+    with patch("urllib.request.urlopen", side_effect=_mock_http_error(503)):
+        assert ai_review.main(sleep_fn=lambda _: None) == 1
+
+
+def test_main_diff_failure_and_missing_shas_are_advisory(monkeypatch: pytest.MonkeyPatch) -> None:
+    _main_env(monkeypatch)
+
+    def boom(base: str, head: str) -> str:
+        raise RuntimeError("git failed")
+
+    monkeypatch.setattr(ai_review, "git_diff", boom)
+    assert ai_review.main(sleep_fn=lambda _: None) == 0
+    monkeypatch.setenv("AI_REVIEW_FAIL_ON_ERROR", "true")
+    assert ai_review.main(sleep_fn=lambda _: None) == 1
+
+    monkeypatch.delenv("AI_REVIEW_FAIL_ON_ERROR")
+    monkeypatch.setenv("BASE_SHA", "")
+    assert ai_review.main(sleep_fn=lambda _: None) == 0
+
+
+def test_request_with_retry_stops_when_deadline_passes_during_backoff() -> None:
+    sleeps: list[float] = []
+    with (
+        patch("urllib.request.urlopen", side_effect=_mock_http_error(503)) as mock_open,
+        patch("scripts.ai_review.time.monotonic", return_value=100.0),
+        pytest.raises(ai_review.TransientHTTPError, match="time budget exhausted"),
+    ):
+        ai_review.request_with_retry(
+            "https://example.com",
+            headers={},
+            sleep_fn=sleeps.append,
+            deadline=101.0,  # first backoff (2s) would pass it
+        )
+    assert mock_open.call_count == 1
+    assert sleeps == []
+
+
+def test_request_with_retry_clamps_timeout_to_time_left() -> None:
+    with (
+        patch("urllib.request.urlopen", return_value=_mock_response({"ok": 1})) as mock_open,
+        patch("scripts.ai_review.time.monotonic", return_value=100.0),
+    ):
+        ai_review.request_with_retry(
+            "https://example.com", headers={}, timeout=180.0, deadline=107.0
+        )
+    assert mock_open.call_args.kwargs["timeout"] == 7.0
+
+
+def test_main_deadline_exhausted_makes_no_further_attempts(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _main_env(monkeypatch, AI_REVIEW_DEADLINE_SECONDS="50")
+    clock = iter([0.0] + [1000.0] * 50)  # main() starts at 0, then the budget is long gone
+    monkeypatch.setattr(ai_review.time, "monotonic", lambda: next(clock))
+    with patch("urllib.request.urlopen") as mock_open:
+        assert ai_review.main(sleep_fn=lambda _: None) == 0
+    out = capsys.readouterr().out
+    mock_open.assert_not_called()
+    assert "time budget exhausted" in out
+    assert "Model 'model-a' skipped" in out
+    assert "Model 'model-b' skipped" in out
+
+
+def _success_review() -> tuple[dict[str, Any], list[Any], int, int, int]:
+    finding = ai_review.Finding("src/app.py", 3, "high", "eval", "bad", "good")
+    return {"summary": "Risky."}, [finding], 0, 1, 0
+
+
+def test_main_422_on_inline_comments_reposts_everything_in_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _main_env(
+        monkeypatch,
+        GITHUB_REPOSITORY="o/r",
+        PR_NUMBER="7",
+        GITHUB_TOKEN="x" * 8,
+        AI_REVIEW_MODELS="model-a",
+    )
+    posts: list[dict[str, Any]] = []
+
+    def fake_request(url: str, **kwargs: Any) -> tuple[Any, list[Any]]:
+        if url.endswith("/models"):
+            return {"data": []}, []
+        posts.append(kwargs["payload"])
+        if len(posts) == 1:
+            raise ai_review.PermanentHTTPError(422, "Unprocessable")
+        return {}, []
+
+    monkeypatch.setattr(ai_review, "request_with_retry", fake_request)
+    monkeypatch.setattr(ai_review, "review_with_model", lambda *a, **k: _success_review())
+    monkeypatch.setattr(ai_review, "check_duplicate_review", lambda *a, **k: (False, a[5]))
+    assert ai_review.main(sleep_fn=lambda _: None) == 0
+    assert len(posts) == 2
+    assert posts[0]["comments"]
+    assert posts[1]["comments"] == []
+    assert "eval" in posts[1]["body"]
+    assert "src/app.py:3" in posts[1]["body"]
+
+
+def test_review_body_claims_verification_only_when_verified() -> None:
+    assert "verified by a second pass" in ai_review.review_body("s", "m", [], 1, verified=True)
+    unverified = ai_review.review_body("s", "m", [], 1)
+    assert "were verified by a second pass" not in unverified
+    assert "not verified" in unverified
+
+
+def test_review_with_model_reports_unverified_when_verify_pass_fails() -> None:
+    review = json.dumps(
+        {
+            "summary": "s",
+            "findings": [
+                {"file": "src/app.py", "line": 3, "severity": "high", "title": "t"},
+            ],
+        }
+    )
+    calls = iter([(review, []), ai_review.TransientHTTPError(503, "down")])
+
+    def fake_chat(*args: Any, **kwargs: Any) -> tuple[str, list[Any]]:
+        value = next(calls)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    with patch("scripts.ai_review.chat_completion", side_effect=fake_chat):
+        _, findings, verified, unverified, _ = ai_review.review_with_model(
+            "m", "diff", "ctx", "key", 30.0
+        )
+    assert (len(findings), verified, unverified) == (1, 0, 1)
