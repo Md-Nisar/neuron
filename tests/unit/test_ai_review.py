@@ -528,6 +528,18 @@ def test_request_with_retry_clamps_timeout_to_time_left() -> None:
     assert mock_open.call_args.kwargs["timeout"] == 7.0
 
 
+def test_request_with_retry_does_not_start_an_attempt_that_cannot_finish() -> None:
+    with (
+        patch("urllib.request.urlopen") as mock_open,
+        patch("scripts.ai_review.time.monotonic", return_value=100.0),
+        pytest.raises(ai_review.TransientHTTPError, match="time budget exhausted"),
+    ):
+        ai_review.request_with_retry(
+            "https://example.com", headers={}, timeout=180.0, deadline=102.0
+        )
+    mock_open.assert_not_called()
+
+
 def test_main_deadline_exhausted_makes_no_further_attempts(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

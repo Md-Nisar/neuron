@@ -90,6 +90,8 @@ DEFAULT_MAX_RETRY_AFTER = 60.0
 DEFAULT_TIMEOUT_SECONDS = 180.0
 DEFAULT_DEADLINE_SECONDS = 1200.0
 POST_BUDGET_SECONDS = 120.0
+# An attempt with less time left than this would only time out, so it is not started.
+MIN_ATTEMPT_SECONDS = 5.0
 BUDGET_EXHAUSTED = "time budget exhausted"
 
 REVIEW_PROMPT = """You review pull requests for the Neuron agent service (Python, FastAPI,
@@ -304,7 +306,7 @@ def request_with_retry(
         attempt_timeout = timeout
         if deadline is not None:
             remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            if remaining < MIN_ATTEMPT_SECONDS:
                 raise TransientHTTPError(None, BUDGET_EXHAUSTED)
             attempt_timeout = min(timeout, remaining)
         req = urllib.request.Request(  # noqa: S310
