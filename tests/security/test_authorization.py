@@ -243,17 +243,21 @@ async def test_model_only_sees_tools_granted_to_the_run() -> None:
 
 @pytest.mark.anyio
 async def test_forced_tool_call_is_rechecked_at_execution() -> None:
-    from neuron_agent.errors.base import AuthorizationError
+    from langchain_core.messages import ToolMessage
+
     from neuron_agent.models.factory import tool_authorization_middleware
 
     middleware = tool_authorization_middleware()
     request = SimpleNamespace(
-        tool_call={"name": "calculator", "args": {"expression": "1+1"}},
+        tool_call={"name": "calculator", "args": {"expression": "1+1"}, "id": "call-1"},
         runtime=SimpleNamespace(context=AuthorizationContext(frozenset())),
     )
 
     async def handler(_: object) -> str:
         return "executed"
 
-    with pytest.raises(AuthorizationError):
-        await middleware.awrap_tool_call(request, handler)
+    # Denied: the tool never runs, and the model gets a tool error instead (#99).
+    result = await middleware.awrap_tool_call(request, handler)
+    assert isinstance(result, ToolMessage)
+    assert result.status == "error"
+    assert result.additional_kwargs["error_code"] == "authorization_error"

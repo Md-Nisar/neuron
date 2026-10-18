@@ -177,6 +177,8 @@ The initial application permission vocabulary is:
 Permission checks happen outside the model loop and before service work. Tool
 authorization is applied twice: unauthorized tools are removed from the model's
 per-run tool list, then checked again at execution using trusted runtime context.
+A call denied at execution never runs; the model gets a fixed-text tool error, and
+the run continues (ADR 0003, "Denied tool calls are tool errors").
 `utc_now` is public and `calculator` requires `tools:calculator`. Runtime context
 contains the verified principal and its effective permissions; neither is placed
 in prompt text or checkpoint state. `AUTH_MODE=none` grants the local development
