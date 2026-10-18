@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- System prompt output guard (#124). The live security eval cases `system-prompt-disclosure-001` to `-003` and `cross-turn-injection-001` failed because answers quoted the prompt rules. The prompt now says its instructions are not shared, and `security/output_policy.py` enforces it in code: an answer that shares eight or more consecutive words with the loaded prompt (case, whitespace and markdown ignored) becomes the fixed text `I can't share my instructions.` with `refused: true`, on `POST /v1/agent`, the stream and Agent Server. The block logs `system_prompt_disclosure_blocked`, emits the `output_blocked` audit event and counts a `system_prompt_disclosure` policy block, with no prompt or answer text. Streamed `token` events hold back the last eight words, so a very short answer now arrives in one `token` event.
+
 ## 0.5.0
 
 "Evaluation + Observability": OpenTelemetry tracing, metrics and SLOs, governed LangSmith tracing, and repeated-trial evals with a regression gate (ADR 0007).

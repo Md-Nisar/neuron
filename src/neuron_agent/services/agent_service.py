@@ -57,6 +57,7 @@ from neuron_agent.security.authorization import (
     TokenUsageAccumulator,
 )
 from neuron_agent.security.input_policy import validate_user_message
+from neuron_agent.security.output_policy import SYSTEM_PROMPT_REFUSAL, StreamLeakGuard
 from neuron_agent.security.usage_budget import InMemoryRollingTokenBudget, TokenBudget
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
 
@@ -343,6 +344,8 @@ class AgentService:
         the client stops reading and the generator is parked at a `yield`.
         """
         extractor = AnswerTokenExtractor()
+        # Withholds text that could be a system prompt quote; the graph guards the final answer.
+        guard = StreamLeakGuard()
         answer: AgentAnswer | None = None
         try:
             async with asyncio.timeout(self._settings.run_timeout_seconds):
@@ -368,7 +371,7 @@ class AgentService:
                             continue
                         for name in tool_call_names(message):
                             queue.put_nowait(StreamEvent("tool_call", {"name": name}))
-                        if delta := extractor.feed(message):
+                        if delta := guard.feed(extractor.feed(message)):
                             queue.put_nowait(StreamEvent("token", {"text": delta}))
         except TimeoutError:
             logger.warning("agent_run_timed_out")
@@ -387,6 +390,8 @@ class AgentService:
                     StreamEvent("error", {"code": "internal_server_error", "retryable": False})
                 )
             else:
+                if (tail := guard.flush()) and answer.answer != SYSTEM_PROMPT_REFUSAL:
+                    queue.put_nowait(StreamEvent("token", {"text": tail}))
                 if run.created_thread:
                     audit(
                         "thread_created",
