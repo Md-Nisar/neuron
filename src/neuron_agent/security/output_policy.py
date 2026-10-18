@@ -68,6 +68,9 @@ class StreamLeakGuard:
         self._prompt = prompt
         self._text = ""
         self._released = 0
+        # The last `LEAK_NGRAM_WORDS - 1` normalised words already released, so a run that
+        # straddles the release point is still found whatever separates the words.
+        self._tail: list[str] = []
         self.blocked = False
 
     def feed(self, delta: str) -> str:
@@ -75,10 +78,10 @@ class StreamLeakGuard:
         if self.blocked:
             return ""
         self._text += delta
-        # Text before `_released` was already checked and ends 7+ words back, so any new run
-        # lies in the held-back tail plus the delta. This keeps the work per delta bounded.
+        # Released text was already checked, so a new run lies in the last released words plus
+        # the held-back tail and the delta. This keeps the work per delta bounded.
         window = self._text[self._released :]
-        if leaks_system_prompt(window, prompt=self._prompt):
+        if leaks_system_prompt(" ".join(self._tail) + " " + window, prompt=self._prompt):
             self.blocked = True
             return ""
         starts = [m.start() for m in re.finditer(r"\S+", window)]
@@ -88,6 +91,7 @@ class StreamLeakGuard:
         cut = starts[-keep] if len(starts) >= keep else 0
         out = window[:cut]
         self._released += cut
+        self._tail = (self._tail + _words(out))[-(LEAK_NGRAM_WORDS - 1) :]
         return out
 
     def flush(self) -> str:

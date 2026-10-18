@@ -128,6 +128,14 @@ def test_stream_guard_catches_a_quote_split_across_deltas_after_long_text() -> N
     assert not leaks_system_prompt(sent)
 
 
+def test_stream_guard_catches_a_quote_with_filler_tokens_between_words() -> None:
+    quoted = " ".join(f"{w} *" for w in RULE.split())
+    guard = StreamLeakGuard()
+    sent = _stream_text(guard, f"Sure: {quoted} done")
+    assert guard.blocked
+    assert not leaks_system_prompt(sent)
+
+
 # --- invoke and stream paths --------------------------------------------------------
 
 
