@@ -64,6 +64,8 @@ _TOOL_PERMISSIONS = {"calculator": "tools:calculator"}
 _TOOL_INPUT_ERROR = (
     "Error: the input to this tool was invalid. Correct it, or answer without the tool."
 )
+# Fixed text for a denied tool call: it names nothing the model or the user chose.
+_TOOL_DENIED = "Error: this tool call was denied. Answer without the tool."
 _ERROR_CODE_KEY = "error_code"
 
 
@@ -147,7 +149,9 @@ class _TracingMiddleware(AgentMiddleware[Any, Any]):
                 if isinstance(result, ToolMessage) and result.status == "error":
                     code = result.additional_kwargs.get(_ERROR_CODE_KEY)
                     error_type = code or ToolExecutionError.context.code
-                    span.set_attribute(semconv.NEURON_OUTCOME, "error")
+                    if error_type == AuthorizationError.context.code:
+                        outcome = "denied"
+                    span.set_attribute(semconv.NEURON_OUTCOME, outcome)
                     telemetry.record_error(span, error_type)
                 else:
                     outcome = "success"
@@ -256,7 +260,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                     resource_id=tool_name,
                     reason="insufficient_scope",
                 )
-                raise
+                return _denied_tool_call(request, tool_name)
         elif tool_name != "utc_now":
             metrics.record_policy_block("unknown_tool")
             audit(
@@ -269,8 +273,19 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                 resource_id=tool_name,
                 reason="unknown_tool",
             )
-            raise AuthorizationError("tool is not authorized")
+            return _denied_tool_call(request, tool_name)
         return await handler(request)
+
+
+def _denied_tool_call(request: Any, tool_name: str) -> ToolMessage:
+    """The tool never runs; the model gets fixed text, so it can answer without the tool."""
+    return ToolMessage(
+        content=_TOOL_DENIED,
+        tool_call_id=request.tool_call["id"],
+        name=tool_name,
+        status="error",
+        additional_kwargs={_ERROR_CODE_KEY: AuthorizationError.context.code},
+    )
 
 
 _RETRYABLE_PROVIDER_ERRORS: tuple[type[Exception], ...] = (

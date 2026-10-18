@@ -1,0 +1,16 @@
+{"case": "direct-factual-001", "ttft_s": 5.239805269000499, "total_s": 5.28, "last": ["final", "done"]}
+{"case": "direct-factual-002", "ttft_s": 13.923199229999227, "total_s": 14.38, "last": ["final", "done"]}
+{"case": "calculator-tool-selection-001", "ttft_s": 6.2550497430002, "total_s": 6.34, "last": ["final", "done"]}
+{"case": "calculator-tool-selection-002", "ttft_s": 4.520634268000322, "total_s": 4.53, "last": ["final", "done"]}
+{"case": "utc-tool-selection-001", "ttft_s": 6.483392998999989, "total_s": 6.64, "last": ["final", "done"]}
+{"case": "utc-tool-selection-002", "ttft_s": 10.428741712999908, "total_s": 10.48, "last": ["final", "done"]}
+{"case": "unnecessary-tool-avoidance-001", "ttft_s": 3.3967460410003696, "total_s": 3.44, "last": ["final", "done"]}
+{"case": "unnecessary-tool-avoidance-002", "ttft_s": 2.924065975999838, "total_s": 3.04, "last": ["final", "done"]}
+{"case": "structured-output-001", "ttft_s": 20.235626603000128, "total_s": 20.39, "last": ["final", "done"]}
+{"case": "structured-output-002", "ttft_s": 3.7575044049999633, "total_s": 3.76, "last": ["final", "done"]}
+{"case": "ambiguous-request-001", "ttft_s": 8.759303325000474, "total_s": 8.76, "last": ["final", "done"]}
+{"case": "ambiguous-request-002", "ttft_s": 6.129220144000101, "total_s": 6.29, "last": ["final", "done"]}
+{"case": "adversarial-tool-abuse-001", "ttft_s": 10.453545122999458, "total_s": 10.5, "last": ["final", "done"]}
+{"case": "adversarial-tool-abuse-002", "ttft_s": 12.28304162799941, "total_s": 12.32, "last": ["final", "done"]}
+{"case": "concise-response-001", "ttft_s": 9.286304055000073, "total_s": 9.31, "last": ["final", "done"]}
+{"case": "concise-response-002", "ttft_s": 3.597759713999949, "total_s": 3.6, "last": ["final", "done"]}

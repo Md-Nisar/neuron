@@ -73,9 +73,9 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-The latest release is v0.4.0 ("Secure Multi-User") per `docs/ROADMAP.md`: JWT authentication (ADR 0006), principal-owned threads, scopes, per-user limits, audit logs, user data rights, HTTP hardening and local dev tokens (see `CHANGELOG.md`). v0.3.0 added multi-turn conversations with Postgres or in-memory persistence, SSE streaming, run guards, a thread history and deletion API with retention, and eval dataset v2.
+The latest release is v0.5.0 ("Evaluation + Observability") per `docs/ROADMAP.md`: OpenTelemetry traces, metrics and log correlation, token accounting, SLOs and a Collector config, LangSmith governance, eval harness v2 with repeated trials, baselines and a `compare` gate, and security eval dataset v4 (ADR 0007, see `CHANGELOG.md`). v0.4.0 added JWT authentication (ADR 0006), principal-owned threads, scopes, per-user limits, audit logs, user data rights and HTTP hardening.
 
-Release verification is recorded in `docs/releases/v0.4.0-release-verification.md` (and the v0.3.0 one before it). Both releases ship with the live OpenAI checks not run (no usable API credit), so model-facing behaviour is verified only with fake models; v0.4.0's other known issues are listed in `CHANGELOG.md`. v0.5.0 ("Evaluation + Observability") is next. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
+Release verification is recorded in `docs/releases/v0.5.0-release-verification.md` (and the earlier ones beside it). v0.5.0's live checks ran on the NVIDIA development model, where the security gate does not pass; the OpenAI production model was not run (no key). Both are known issues in `CHANGELOG.md`; v0.3.0 and v0.4.0 were verified with fake models only. v0.6.0 ("Production Deployment") is next. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
 
 ## AI code verification
 

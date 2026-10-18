@@ -1,0 +1,80 @@
+# Telemetry gate overlay, merged over the shipped config:
+#   otelcol-contrib --config deploy/observability/otel-collector.yaml \
+#                   --config docs/releases/v0.5.0-gate/otel-collector.gate.yaml
+# Maps merge and lists are replaced, so the shipped receivers and processors (memory_limiter,
+# transform/allowlist, redaction/values, tail_sampling, batch) run unchanged except as noted.
+#
+# Deviations from the shipped config, all for the gate only:
+# 1. Exporters: each pipeline writes to a `file` exporter that the harness reads; the
+#    Prometheus exporter stays on metrics. `otlp/backend` is still defined (validated) but
+#    is in no pipeline.
+# 2. Logs: the service writes JSON logs to stdout and exports no OTLP logs. A `filelog`
+#    receiver stands in for a log shipper: it tails the app logs, sets each record's trace
+#    context from its `trace_id`/`span_id` (unwrapping the Agent Server's nested lines), and
+#    feeds the shipped logs pipeline, whose allow-list then drops the parsed attributes.
+# 3. Tail sampling: `decision_wait` 130s -> 10s and `sample-the-rest` 10% -> 100%, so the
+#    gate's one fast, successful trace per path is always kept and arrives in seconds.
+#    The policy types and their order are unchanged.
+
+receivers:
+  filelog/applogs:
+    include: ["${env:GATE_APP_LOG_GLOB}"]
+    start_at: beginning
+    operators:
+      - type: json_parser
+        if: 'body matches "^\\{"'
+      # Agent Server: langgraph-api wraps each app record, whose JSON line becomes the
+      # string `event` of langgraph-api's own JSON line (LOG_JSON=true).
+      - type: json_parser
+        id: unwrap_agent_server
+        if: 'attributes.event != nil and attributes.event matches "^\\{"'
+        parse_from: attributes.event
+        parse_to: attributes.app
+      - type: trace_parser
+        if: 'attributes.trace_id != nil'
+        trace_id:
+          parse_from: attributes.trace_id
+        span_id:
+          parse_from: attributes.span_id
+      - type: trace_parser
+        id: trace_from_wrapped
+        if: 'attributes.app != nil and attributes.app.trace_id != nil'
+        trace_id:
+          parse_from: attributes.app.trace_id
+        span_id:
+          parse_from: attributes.app.span_id
+
+processors:
+  tail_sampling:
+    decision_wait: 10s
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: keep-slow
+        type: latency
+        latency:
+          threshold_ms: 30000
+      - name: sample-the-rest
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 100
+
+exporters:
+  file/traces:
+    path: ${env:GATE_OUT}/traces.jsonl
+  file/metrics:
+    path: ${env:GATE_OUT}/metrics.jsonl
+  file/logs:
+    path: ${env:GATE_OUT}/logs.jsonl
+
+service:
+  pipelines:
+    traces:
+      exporters: [file/traces]
+    metrics:
+      exporters: [prometheus, file/metrics]
+    logs:
+      receivers: [otlp, filelog/applogs]
+      exporters: [file/logs]

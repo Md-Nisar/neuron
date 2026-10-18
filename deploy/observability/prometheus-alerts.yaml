@@ -1,6 +1,6 @@
 # Example Prometheus rules for the Neuron SLOs (OPERATIONS.md, "Service level objectives").
 # Written for the metric names the Collector's prometheus exporter produces from
-# deploy/observability/otel-collector.yaml. Targets are provisional until the release gate (#99).
+# deploy/observability/otel-collector.yaml. Targets were set at the release gate (#99).
 # Multi-window, multi-burn-rate alerts (Google SRE Workbook): 14.4x over 1h/5m and 6x over 6h/30m
 # page; 1x over 3d/6h opens a ticket. Both windows must exceed the threshold.
 # Load: `promtool check rules deploy/observability/prometheus-alerts.yaml` (not run in this repository).
@@ -36,35 +36,35 @@ groups:
       - record: neuron:ttft:slow_ratio_rate5m
         expr: |
           1 - (
-            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[5m]))
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="15"}[5m]))
             /
             sum(rate(neuron_agent_stream_ttft_seconds_count[5m]))
           )
       - record: neuron:ttft:slow_ratio_rate30m
         expr: |
           1 - (
-            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[30m]))
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="15"}[30m]))
             /
             sum(rate(neuron_agent_stream_ttft_seconds_count[30m]))
           )
       - record: neuron:ttft:slow_ratio_rate1h
         expr: |
           1 - (
-            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[1h]))
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="15"}[1h]))
             /
             sum(rate(neuron_agent_stream_ttft_seconds_count[1h]))
           )
       - record: neuron:ttft:slow_ratio_rate6h
         expr: |
           1 - (
-            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[6h]))
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="15"}[6h]))
             /
             sum(rate(neuron_agent_stream_ttft_seconds_count[6h]))
           )
       - record: neuron:ttft:slow_ratio_rate3d
         expr: |
           1 - (
-            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="2"}[3d]))
+            sum(rate(neuron_agent_stream_ttft_seconds_bucket{le="15"}[3d]))
             /
             sum(rate(neuron_agent_stream_ttft_seconds_count[3d]))
           )
@@ -162,17 +162,18 @@ groups:
           summary: "availability SLO burning its error budget at 1x or more (3d and 6h windows)"
           runbook_url: OPERATIONS.md#runbook-availability
       - alert: NeuronTtftBurnRate1H
-        expr: neuron:ttft:slow_ratio_rate1h > 0.72 and neuron:ttft:slow_ratio_rate5m > 0.72
+        # With a 10% budget, 14.4x (a ratio of 1.44) is unreachable; 10x (every stream slow) is the most.
+        expr: neuron:ttft:slow_ratio_rate1h >= 1 and neuron:ttft:slow_ratio_rate5m >= 1
         for: 2m
         labels:
           severity: page
           slo: ttft
-          burn_rate: "14.4"
+          burn_rate: "10"
         annotations:
-          summary: "ttft SLO burning its error budget at 14.4x or more (1h and 5m windows)"
+          summary: "ttft SLO burning its error budget at 10x, every stream slow (1h and 5m windows)"
           runbook_url: OPERATIONS.md#runbook-ttft
       - alert: NeuronTtftBurnRate6H
-        expr: neuron:ttft:slow_ratio_rate6h > 0.3 and neuron:ttft:slow_ratio_rate30m > 0.3
+        expr: neuron:ttft:slow_ratio_rate6h > 0.6 and neuron:ttft:slow_ratio_rate30m > 0.6
         for: 15m
         labels:
           severity: page
@@ -182,7 +183,7 @@ groups:
           summary: "ttft SLO burning its error budget at 6x or more (6h and 30m windows)"
           runbook_url: OPERATIONS.md#runbook-ttft
       - alert: NeuronTtftBurnRate3D
-        expr: neuron:ttft:slow_ratio_rate3d > 0.05 and neuron:ttft:slow_ratio_rate6h > 0.05
+        expr: neuron:ttft:slow_ratio_rate3d > 0.1 and neuron:ttft:slow_ratio_rate6h > 0.1
         for: 1h
         labels:
           severity: ticket
