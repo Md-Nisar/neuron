@@ -511,7 +511,8 @@ def test_request_with_retry_stops_when_deadline_passes_during_backoff() -> None:
             "https://example.com",
             headers={},
             sleep_fn=sleeps.append,
-            deadline=101.0,  # first backoff (2s) would pass it
+            backoff_delays=(10.0,),
+            deadline=106.0,  # the first backoff (10s) would pass it
         )
     assert mock_open.call_count == 1
     assert sleeps == []
