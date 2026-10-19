@@ -31,11 +31,17 @@ from neuron_agent.models.factory import (
     reset_retry_attempts,
 )
 from neuron_agent.observability import metrics, semconv, telemetry
+from neuron_agent.observability.audit import audit
 from neuron_agent.observability.langsmith_governance import configure_langsmith
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.observability.telemetry import configure_telemetry
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
+from neuron_agent.security.output_policy import (
+    POLICY_RULE,
+    SYSTEM_PROMPT_REFUSAL,
+    leaks_system_prompt,
+)
 from neuron_agent.state.main import MainGraphState
 
 logger = structlog.get_logger(__name__)
@@ -113,6 +119,7 @@ async def call_agent(
         )
         raise error from exc
 
+    answer = _guard_answer(answer, state, authorization)
     logger.info(
         "agent_execution_completed",
         request_id=request_id,
@@ -133,6 +140,46 @@ async def call_agent(
         "answer": answer,
         "user_message": None,
     }
+
+
+def _guard_answer(
+    answer: AgentAnswer, state: MainGraphState, authorization: AuthorizationContext | None
+) -> AgentAnswer:
+    """Replace an answer that reproduces the system prompt with a fixed refusal.
+
+    Runs for every path that produces an answer (`AgentService.invoke`, streaming and Agent
+    Server), before the answer is stored; live Agent Server message streams are not covered.
+    Logs and audits the block without any text.
+    """
+    if not leaks_system_prompt(answer.answer):
+        return answer
+    metrics.record_policy_block(POLICY_RULE)
+    logger.warning(
+        "system_prompt_disclosure_blocked",
+        request_id=state.get("request_id"),
+        thread_id=state.get("thread_id"),
+        run_id=state.get("run_id"),
+        answer_chars=len(answer.answer),
+    )
+    audit(
+        "output_blocked",
+        outcome="denied",
+        actor=authorization.actor if authorization else None,
+        issuer_id=authorization.issuer_id if authorization else None,
+        action="agent:invoke",
+        resource_type="agent_output",
+        request_id=state.get("request_id"),
+        run_id=state.get("run_id"),
+        reason=POLICY_RULE,
+    )
+    return answer.model_copy(
+        update={
+            "answer": SYSTEM_PROMPT_REFUSAL,
+            "refused": True,
+            "clarification_needed": False,
+            "confidence": min(answer.confidence, 0.5),
+        }
+    )
 
 
 def _turn(state: MainGraphState) -> int:

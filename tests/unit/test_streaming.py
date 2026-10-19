@@ -98,7 +98,9 @@ def test_tool_call_names_exclude_structured_output_and_continuations() -> None:
 
 
 async def test_stream_emits_run_started_tokens_final_done(stream_replies: Any) -> None:
-    stream_replies(AIMessage(content="plain streamed answer"))
+    stream_replies(
+        AIMessage(content="a plain streamed answer that is long enough to stream before the end")
+    )
     service = AgentService(Settings(env="test"))
     events = await _collect(service, AgentRequest(message="hi"))
 
@@ -108,7 +110,11 @@ async def test_stream_emits_run_started_tokens_final_done(stream_replies: Any) -
     assert set(names[1:-2]) == {"token"}
     assert len(names) > 4  # streamed incrementally, not as one block
     final = events[-2].data
-    assert _text(events) == final["answer"] == "plain streamed answer"
+    assert (
+        _text(events)
+        == final["answer"]
+        == "a plain streamed answer that is long enough to stream before the end"
+    )
     assert final["thread_id"] == events[0].data["thread_id"]
     assert final["request_id"] == events[0].data["request_id"]
 
