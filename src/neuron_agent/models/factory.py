@@ -419,6 +419,52 @@ def provider_retry_middleware(settings: Settings) -> AgentMiddleware:
     )
 
 
+_MAX_EMPTY_REPLY_RETRIES = 2
+
+
+def empty_reply_retry_middleware() -> AgentMiddleware:
+    """Call the model again, up to twice, when it replies with nothing usable.
+
+    A reasoning model can spend all of `APP_MAX_OUTPUT_TOKENS` thinking (finish reason
+    `length`) and end the reply with no text and no tool call, so it never emits the
+    `AgentAnswer` output tool. That would otherwise end the run as `structured_output_error`.
+    Sampling is not deterministic, so a fresh call usually completes. The retry is bounded and
+    only repeats the model call: tools, authorization and the step limit are untouched.
+    """
+    return _EmptyReplyRetryMiddleware()
+
+
+class _EmptyReplyRetryMiddleware(AgentMiddleware[Any, Any]):
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        for retry in range(_MAX_EMPTY_REPLY_RETRIES + 1):
+            try:
+                response = await handler(request)
+            except LangChainStructuredOutputError as exc:
+                # Under ProviderStrategy an empty reply fails to parse inside the model call.
+                if retry == _MAX_EMPTY_REPLY_RETRIES or not _is_empty_message(exc.ai_message):
+                    raise
+            else:
+                if retry == _MAX_EMPTY_REPLY_RETRIES or not _is_empty_reply(response):
+                    return response
+            logger.warning("model_empty_reply_retry", retry_attempt=retry + 1)
+        raise AssertionError("unreachable")  # pragma: no cover
+
+
+def _is_empty_reply(response: Any) -> bool:
+    """Whether the model's reply has no text and no tool call, valid or truncated."""
+    messages = getattr(response, "result", None)
+    return isinstance(messages, list) and len(messages) == 1 and _is_empty_message(messages[0])
+
+
+def _is_empty_message(reply: Any) -> bool:
+    return (
+        isinstance(reply, AIMessage)
+        and not reply.tool_calls
+        and not reply.invalid_tool_calls
+        and not reply.text.strip()
+    )
+
+
 def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
     """Create the configurable LangChain agent harness."""
     model = create_chat_model(settings)
@@ -428,6 +474,8 @@ def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
         system_prompt=load_prompt("system/main.md"),
         response_format=AgentAnswer,
         middleware=[
+            # Outside the tracing layer: each attempt is its own `chat` span.
+            empty_reply_retry_middleware(),
             tracing_middleware(settings),
             tool_authorization_middleware(),
             tool_failure_isolation_middleware(),
@@ -496,7 +544,8 @@ def agent_invocation_config(settings: Settings, *, run_id: str | None) -> dict[s
     """Return the runtime recursion budget and, when known, the run ID for the agent loop.
 
     `APP_MAX_AGENT_ITERATIONS` counts model calls. LangGraph's `recursion_limit` counts steps,
-    and every model call and every tool call is one, so N model calls need 2N steps.
+    and every model call and every tool call is one, so N model calls need 2N steps. The
+    empty-reply retry runs inside one model step, so a step can make up to three provider calls.
 
     `AgentService` always supplies a run ID. Agent Server and LangGraph Studio inputs carry
     only `messages`, so LangGraph generates the run ID for those.

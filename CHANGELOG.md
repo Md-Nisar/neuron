@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+Fixes:
+- A model reply with no text and no tool call is retried, at most twice, instead of ending the run as `502 structured_output_error` (#125). On the development reasoning model the reply was cut off at `APP_MAX_OUTPUT_TOKENS` (finish reason `length`) before the `AgentAnswer` tool call, which a debug script saw in 3 of 16 trials on two adversarial cases. The retry only repeats the model call, on both the tool-call and the provider structured-output paths; tool authorization is unchanged and retried calls count towards token budgets. `APP_MAX_AGENT_ITERATIONS` counts graph model steps, so one step can now make up to three model calls; the run timeout and token budget still bound the run. If the model keeps running out of tokens, the run still fails as before; raising `APP_MAX_OUTPUT_TOKENS` is the other lever. Not addressed: runs where the model repeatedly sends an invalid `AgentAnswer` (for example without `confidence`) can still retry until `run_timeout`.
+
 ## 0.5.0
 
 "Evaluation + Observability": OpenTelemetry tracing, metrics and SLOs, governed LangSmith tracing, and repeated-trial evals with a regression gate (ADR 0007).
