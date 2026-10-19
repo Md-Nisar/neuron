@@ -105,6 +105,11 @@ markers = [
 
 [tool.mutmut]
 # Mutation testing of the security-critical code (.github/workflows/mutation-testing.yml).
-paths_to_mutate = ["src/neuron_agent/security/", "src/neuron_agent/tools/"]
-tests_dir = ["tests/security/", "tests/unit/"]
-also_copy = ["scripts/", "tests/conftest.py", "tests/fixtures/"]
+# mutmut copies only source_paths into mutants/ and puts that copy first on sys.path, so the whole
+# package must be a source path or the tests cannot import neuron_agent.api; only_mutate limits mutation.
+source_paths = ["src"]
+only_mutate = ["src/neuron_agent/security/*", "src/neuron_agent/tools/*"]
+pytest_add_cli_args_test_selection = ["tests/security/", "tests/unit/"]
+# mutmut already copies tests/, pyproject.toml and uv.lock into mutants/; listing tests/conftest.py
+# or tests/fixtures/ here crashes, because they are copied before mutants/tests/ exists.
+also_copy = ["scripts/", "deploy/", ".github/", ".env.example", "langgraph.json", "OPERATIONS.md"]

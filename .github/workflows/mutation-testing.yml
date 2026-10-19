@@ -21,19 +21,32 @@ jobs:
       - run: |
           uv python install 3.13
           uv sync
+      # No continue-on-error: a mutmut crash (nonzero exit) must fail the job. Surviving mutants
+      # do not change the exit code (mutmut exits 0), so they stay report-only.
       - name: Run mutation testing on security/ and tools/
-        continue-on-error: true
-        run: uv run --with "mutmut>=3.3" mutmut run
-      - name: Summarize surviving mutants
+        run: uv run --with "mutmut==3.8.0" mutmut run
+      - name: Summarize mutants
         if: always()
         run: |
-          uv run --with "mutmut>=3.3" mutmut results > mutmut-results.txt || true
-          {
-            echo "## Mutation testing"
-            echo '```'
-            tail -n 60 mutmut-results.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          uv run --with "mutmut==3.8.0" mutmut results --all true > mutmut-results.txt || true
+          if uv run --with "mutmut==3.8.0" mutmut export-cicd-stats && test -f mutants/mutmut-cicd-stats.json; then
+            python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          s = json.load(open("mutants/mutmut-cicd-stats.json"))
+          print("## Mutation testing")
+          print(f"- total mutants: {s['total']}")
+          print(f"- killed: {s['killed']}")
+          print(f"- survived: {s['survived']} (report only)")
+          print(f"- other (timeout, suspicious, no tests, skipped, not checked): {s['total'] - s['killed'] - s['survived']}")
+          PY
+            # Zero generated or zero tested mutants means the job tested nothing: fail it.
+            python3 -c "import json,sys; s=json.load(open('mutants/mutmut-cicd-stats.json')); sys.exit(0 if s['killed'] + s['survived'] > 0 else 1)" \
+              || { echo "::error::mutmut generated or tested no mutants"; exit 1; }
+          else
+            echo "::error::mutmut produced no results"
+            echo "## Mutation testing: no results (mutmut crashed)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
