@@ -104,9 +104,17 @@ async def test_an_empty_reply_that_fails_to_parse_is_retried_too() -> None:
     from langchain.agents.structured_output import StructuredOutputValidationError
 
     from neuron_agent.models.factory import empty_reply_retry_middleware
+    from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
 
     middleware = empty_reply_retry_middleware()
-    empty = AIMessage(content=[{"type": "reasoning", "reasoning": "thinking"}])
+    empty = AIMessage(
+        content=[{"type": "reasoning", "reasoning": "thinking"}],
+        usage_metadata={"input_tokens": 100, "output_tokens": 2000, "total_tokens": 2100},
+    )
+    usage = TokenUsageAccumulator()
+    request = SimpleNamespace(
+        runtime=SimpleNamespace(context=AuthorizationContext(permissions=frozenset(), usage=usage))
+    )
     outcomes: list[Any] = [
         StructuredOutputValidationError("AgentAnswer", ValueError("empty"), empty),
         SimpleNamespace(result=[_answer("Paris.")]),
@@ -118,9 +126,11 @@ async def test_an_empty_reply_that_fails_to_parse_is_retried_too() -> None:
             raise outcome
         return outcome
 
-    response = await middleware.awrap_model_call(object(), handler)
+    response = await middleware.awrap_model_call(request, handler)
     assert response.result[0].tool_calls[0]["args"]["answer"] == "Paris."
     assert outcomes == []
+    # The discarded, unparsable attempt is charged even though no response came back.
+    assert usage.total_tokens == 2100
 
 
 async def test_a_parse_error_on_a_reply_with_content_is_not_retried() -> None:
@@ -155,5 +165,7 @@ async def test_parse_errors_on_empty_replies_stop_after_the_retry_limit() -> Non
         raise StructuredOutputValidationError("AgentAnswer", ValueError("empty"), empty)
 
     with pytest.raises(StructuredOutputValidationError):
-        await empty_reply_retry_middleware().awrap_model_call(object(), handler)
+        await empty_reply_retry_middleware().awrap_model_call(
+            SimpleNamespace(runtime=SimpleNamespace(context=None)), handler
+        )
     assert calls == 3  # the first call and two retries

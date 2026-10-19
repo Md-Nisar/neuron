@@ -443,11 +443,20 @@ class _EmptyReplyRetryMiddleware(AgentMiddleware[Any, Any]):
                 # Under ProviderStrategy an empty reply fails to parse inside the model call.
                 if retry == _MAX_EMPTY_REPLY_RETRIES or not _is_empty_message(exc.ai_message):
                     raise
+                # The discarded attempt still spent tokens; the inner layer never saw a response.
+                _charge_discarded_attempt(request, exc.ai_message)
             else:
                 if retry == _MAX_EMPTY_REPLY_RETRIES or not _is_empty_reply(response):
                     return response
             logger.warning("model_empty_reply_retry", retry_attempt=retry + 1)
         raise AssertionError("unreachable")  # pragma: no cover
+
+
+def _charge_discarded_attempt(request: Any, message: AIMessage) -> None:
+    context = request.runtime.context
+    if isinstance(context, AuthorizationContext) and context.usage is not None:
+        model = message.response_metadata.get("model_name")
+        context.usage.record(message.usage_metadata, str(model) if model else None)
 
 
 def _is_empty_reply(response: Any) -> bool:
