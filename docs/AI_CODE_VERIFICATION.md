@@ -28,7 +28,7 @@ See also [ai-code-verification/research.md](ai-code-verification/research.md) (t
 | 2. Deterministic gates | ruff (incl. bandit `S` rules), mypy strict, unit/graph/security/resilience/eval tests on Linux and Windows, bandit, pip-audit | `ci.yml` | Yes |
 | 2. Deterministic gates | Secret scanning (gitleaks), dependency review (vulnerabilities, licenses), new-package check against PyPI (hallucinated or brand-new packages), PR size limit, PR description check | `ai-code-verification.yml` | Yes |
 | 2. Deterministic gates | CodeQL `security-extended` for Python and workflows | `codeql.yml` | Yes |
-| 3. Test strength | Mutation testing of `security/` and `tools/` (mutmut), weekly | `mutation-testing.yml` | Report only, for now |
+| 3. Test strength | Mutation testing of `security/` and `tools/` (mutmut), weekly | `mutation-testing.yml` | Survivors are report only; a mutmut crash or zero mutants fails the job |
 | 3. Test strength | Live agent evals with a pass^k = 100% security gate, nightly | `nightly-eval.yml` | Yes (nightly) |
 | 4. AI review | A frontier model from NVIDIA's free API catalog reviews the diff against `.claude/agents/*`, `AGENTS.md` and `SECURITY.md`; a second call verifies each finding; survivors are posted as one comment-only review | `ai-review.yml`, `scripts/ai_review.py` | No, advisory |
 | 5. Human review | Code owner review for critical paths, one reviewer otherwise | `CODEOWNERS`, branch protection | Yes |
