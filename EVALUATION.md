@@ -187,7 +187,7 @@ The nightly workflow (`.github/workflows/nightly-eval.yml`) calls NVIDIA's hoste
 
 Recorded usage: **one scheduled run a night** plus manual runs (`workflow_dispatch`), 3 trials by default, throttled to 30 requests per minute (limit 40). Anyone who changes the schedule, the trial count or the throttle re-checks the new usage against those terms first. Eval inputs are synthetic; keep real user data off the free tier.
 
-The workflow runs only when the `NVIDIA_API_KEY` repository secret is set and skips otherwise. It has `contents: read` permission only, passes the key through `env:` to the steps that need it, never prints it, and does not run on pull requests, so forks cannot reach the secret. Runs never overlap (`concurrency`), and a job is cut off after 75 minutes. Optional LangSmith experiment upload (`APP_ENABLE_LANGSMITH`) is deferred.
+The workflow runs only when the `NVIDIA_API_KEY` repository secret is set and skips otherwise. It has `contents: read` permission only, passes the key through `env:` to the steps that need it, never prints it, and does not run on pull requests, so forks cannot reach the secret. Runs never overlap (`concurrency`), and a job is cut off after 90 minutes (a full 3-trial run takes 70 to 80 minutes). Optional LangSmith experiment upload (`APP_ENABLE_LANGSMITH`) is deferred.
 
 ## Report and metrics
 
