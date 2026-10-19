@@ -554,7 +554,8 @@ def audit_review() -> None:
         f"logs: none of {len(secrets_seen)} tokens, token signatures, subjects or prompts appear "
         f"in {len(lines)} log lines",
         not leaked,
-        leaked[:3] or "none found",
+        # Only a count: a leaked token must not be printed by the check that found it.
+        f"{len(leaked)} found" if leaked else "none found",
     )
     ip_in_audit = [r["event"] for r in audits if "127.0.0.1" in json.dumps(r)]
     check(
