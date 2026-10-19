@@ -25,8 +25,9 @@ env:
 jobs:
   live-eval:
     runs-on: ubuntu-latest
-    # 3 trials of every suite take about an hour.
-    timeout-minutes: 75
+    # 3 trials of every suite take 70 to 80 minutes at the default 30 model calls per minute
+    # (EVALUATION.md); a 75 minute cap cut a run off before the compare step.
+    timeout-minutes: 90
     steps:
       - name: Check the provider secret
         id: provider
