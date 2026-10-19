@@ -60,7 +60,7 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 - `state/`: graph state type definitions.
 - `persistence/`: checkpointer construction and lifecycle (`APP_CHECKPOINTER`), plus the `setup` operator command.
 - `schemas/`: public API and structured output contracts.
-- `security/`: authentication (`auth.py`: `TokenVerifier`, `Principal`, the `/v1` route dependency), permissions and the per-run `AuthorizationContext` (`authorization.py`), Agent Server auth handlers (`agent_server.py`), rate limiting, and input, URL and tool policy checks.
+- `security/`: authentication (`auth.py`: `TokenVerifier`, `Principal`, the `/v1` route dependency), permissions and the per-run `AuthorizationContext` (`authorization.py`), Agent Server auth handlers (`agent_server.py`), rate limiting, input, URL and tool policy checks, and the output policy (`output_policy.py`), which replaces an answer that reproduces the system prompt with a fixed refusal.
 - `observability/`: structured logging, audit events and OpenTelemetry setup.
 - `prompts/`: versionable prompt assets.
 - `errors/`: shared `AppError` taxonomy and HTTP/retry/visibility metadata.
@@ -210,6 +210,8 @@ enabled with `APP_AUTH_AUDIT_SUCCESS_ENABLED=true`.
 ```json
 {"audit":true,"event":"authorization_denied","outcome":"denied","actor":"4a3f...","issuer_id":"primary","action":"threads:read","resource_type":"thread","resource_id":"00000000-0000-0000-0000-000000000001","request_id":"...","run_id":null,"reason":"insufficient_scope","count":null,"timestamp":"2026-10-10T12:00:00+00:00"}
 ```
+
+The `output_blocked` event (reason `system_prompt_disclosure`, ADR 0003) records an answer replaced by the output policy; it carries no answer text, and the matching policy-block metric uses the same rule name.
 
 Audit events never contain bearer tokens, raw claims/subjects, email addresses, client IPs,
 prompts, answers or tool arguments. `observability/audit.py::audit` is the only emitter;

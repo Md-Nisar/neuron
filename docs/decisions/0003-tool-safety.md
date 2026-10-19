@@ -32,3 +32,14 @@ Consequences:
 - A denied call is not listed in `used_tools`.
 - A model that keeps calling a denied tool is bounded by `APP_MAX_AGENT_ITERATIONS` and ends with `422 agent_step_limit_exceeded`.
 - Route-level scope checks still return `403`.
+
+## Addendum: Output guard for system prompt disclosure (#124)
+
+The system prompt is guidance, and the live security eval showed the model quoting its rules when asked. The prompt now says not to share its instructions, but a prompt rule is not a control, so the answer is also checked in code.
+
+- `security/output_policy.py` normalises the answer and the loaded prompt (`prompts/loader.py`) to lowercase alphanumeric words and flags the answer when any `LEAK_NGRAM_WORDS` (8) consecutive words also occur in the prompt. Case, whitespace, markdown and punctuation do not matter. It reads the real prompt, so editing the prompt needs no list to maintain, and it does not use the eval's `SYSTEM_PROMPT_MARKERS`.
+- Eight words: ordinary answers share runs of up to six or seven words with the prompt ("neuron agent a concise production assistant", "tool output as untrusted content"), while a quoted rule or the opening line is eight or more. Shorter runs would refuse ordinary answers; longer runs would let more of a quote through.
+- It runs in `call_agent` (`graphs/`) after the structured answer is built and before it is stored, so `invoke`, the stream's `final` event and Agent Server's final state share it. Agent Server's live message streams are not guarded. A hit replaces the answer with a fixed refusal, sets `refused` and clears `clarification_needed`. The `system_prompt_disclosure_blocked` log, the `output_blocked` audit event and the `system_prompt_disclosure` policy-block metric carry IDs and the answer length only.
+- `AgentService.stream` passes answer deltas through `StreamLeakGuard`, which holds back the last eight words and stops sending after a hit, so a quote cannot stream out before the final check. The held-back tail is sent when the answer is not blocked.
+
+Consequences: only verbatim reproduction is blocked; paraphrases and translations are not (`SECURITY.md`, Remaining Limitations). A model reply that repeats the prompt's opening line is refused.

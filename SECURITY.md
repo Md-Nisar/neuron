@@ -15,7 +15,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Legacy v0.3 SHA-256 owner values are not accepted in JWT mode. Operators must follow ADR 0006's retention or separately reviewed re-key procedure; no dual-hash fallback is permitted.
 - Tool output is untrusted.
 - Retrieved or external content is untrusted.
-- The system prompt is guidance, not an enforcement mechanism. It can be disclosed (system-prompt-disclosure cases fail in the live security eval), so it must never contain secrets.
+- The system prompt is guidance, not an enforcement mechanism. It can be disclosed, so it must never contain secrets. An output guard (`security/output_policy.py`) is a defence in depth: it replaces an answer that reproduces eight or more consecutive words of the loaded prompt with a fixed refusal (#124, ADR 0003 addendum). It does not stop a paraphrase, a translation or a few words at a time.
 - Enforcement must happen in code and infrastructure.
 
 ## Current Controls
@@ -67,6 +67,7 @@ Mutating or high-impact tools require:
 
 - **Tool calls:** `tool_call` events carry the tool's **name only**. Tool arguments and tool results are never streamed; both are untrusted.
 - **Tokens:** `token` events carry only the growth of the `answer` field of the structured output. Raw JSON and other fields aren't streamed.
+- **System prompt disclosure:** the graph replaces a final answer that reproduces the system prompt with a fixed refusal (`refused: true`) before it is stored or sent, and logs `system_prompt_disclosure_blocked`, emits the `output_blocked` audit event and counts a `system_prompt_disclosure` policy block, none with any prompt or answer text. While streaming, the last eight words (tokens) are held back until they can no longer start a prompt quote, and nothing more is sent after a hit; short answers therefore arrive in one `token` event at the end.
 - **Errors:** `error` events use the same visibility rule as HTTP errors: internal failures appear only as `internal_server_error`, never with exception text or stack traces.
 - **Resource exhaustion:** runs are bounded by `APP_RUN_TIMEOUT_SECONDS`, `APP_MAX_CONCURRENT_STREAMS` and a send timeout. Disconnected clients' runs are cancelled.
 
@@ -109,6 +110,7 @@ Current ignores: none.
 - **Per-process limits.** Rate limits, concurrent-run caps and token budgets are in memory per worker and reset on restart; they aren't shared across replicas.
 - **`typ` check.** With `APP_AUTH_REQUIRE_TYP=true`, only `at+jwt` is accepted, not the `application/at+jwt` spelling RFC 9068 also allows.
 - **`APP_IDENTITY_HASH_KEY` exposure** lets someone with database access link threads to known identities. It grants no access by itself. Rotation orphans every thread (`OPERATIONS.md`).
+- **Output guard is verbatim only.** It matches runs of eight words after case, markdown and punctuation are normalised. A paraphrase, translation, encoding or answer spread over several turns passes, as does character-level obfuscation (homoglyphs, or punctuation or spaces between letters); zero-width and other format characters are ignored. A quote in a streamed preamble that the stream guard stops, while the final answer is clean, leaves no log or audit record. On Agent Server the guard covers the stored and final state only: a client reading `stream_mode=messages` receives the model's live chunks unguarded. A normal answer that repeats the prompt's opening line is refused. Tokens already streamed before a hit (up to seven consecutive prompt words) cannot be recalled.
 - **Development tokens trust loopback.** In development the API fetches the JWKS over plain HTTP from `127.0.0.1:8765`, so on a shared machine another local user who binds that port first can mint tokens the development API accepts. Use them on single-user machines.
 - **Agent Server runs skip the API-layer guards.** Authentication, scopes, tool permissions and owner isolation apply on both deployment paths, but the per-principal rate limits, concurrent-run caps, token budgets and the message input policy (length, control characters) live in the FastAPI app and `AgentService`, so `langgraph.json` deployments don't get them. Use the platform's own limits there.
 - **Signing-key rotation window.** A newly published key can be rejected for up to 30 seconds (PyJWT's forced-refetch cooldown); IdPs should pre-publish keys (`OPERATIONS.md`).
