@@ -274,3 +274,7 @@ The repository includes `langgraph.json` for LangGraph Agent Server/LangSmith de
 
 - **Self-hosted (FastAPI):** set `APP_CHECKPOINTER=postgres` with `APP_POSTGRES_DSN`, and run `make db-setup` once per schema version. Staging and production default to stateless (`none`) unless configured.
 - **Agent Server:** the exported graph has no checkpointer of its own. Agent Server provides persistence, threads and streaming through its own API, and the `/v1/threads/*` endpoints and `APP_CHECKPOINTER` don't apply there. See `OPERATIONS.md`.
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) and [NOTICE](NOTICE) files for details.

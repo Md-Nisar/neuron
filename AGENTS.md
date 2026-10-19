@@ -33,3 +33,7 @@ make security
 ## Framework Upgrades
 
 Before changing LangChain or LangGraph versions, re-check official docs, update `uv.lock`, run all quality gates, and add regression tests for graph state and structured output behavior.
+
+## Verifying AI-Generated Code
+
+Follow `docs/AI_CODE_VERIFICATION.md`. In short: keep changes small (under 400 lines where possible), write tests that fail without the change, never add a dependency without stating why and confirming it is the intended PyPI project, fill in the PR template's AI assistance, risk tier and verification sections, and keep the `Co-Authored-By:` commit trailer. AI review comments are advisory; a human approves every merge.

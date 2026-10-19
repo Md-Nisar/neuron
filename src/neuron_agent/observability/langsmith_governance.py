@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """LangSmith governance (ADR 0007, decision 5).
 
 `APP_ENABLE_LANGSMITH` is the only switch for LangSmith tracing, and outside development

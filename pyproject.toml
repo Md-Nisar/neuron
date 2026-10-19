@@ -3,6 +3,17 @@ name = "neuron-agent"
 version = "0.5.0"
 description = "Production-oriented LangChain/LangGraph agent service baseline"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+    { name = "Md Nisar Ahmed", email = "nisar.a@entomo.co" },
+]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 requires-python = ">=3.13,<3.15"
 dependencies = [
     "fastapi>=0.125.0",
@@ -91,3 +102,9 @@ markers = [
     "integration: tests that require external services or credentials",
     "eval: deterministic agent quality regression checks",
 ]
+
+[tool.mutmut]
+# Mutation testing of the security-critical code (.github/workflows/mutation-testing.yml).
+paths_to_mutate = ["src/neuron_agent/security/", "src/neuron_agent/tools/"]
+tests_dir = ["tests/security/", "tests/unit/"]
+also_copy = ["scripts/", "tests/conftest.py", "tests/fixtures/"]

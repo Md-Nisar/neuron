@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """In-process rate limiting for the API boundary (ADR 0004)."""
 
 from __future__ import annotations

@@ -12,3 +12,4 @@ build/
 *.pyc
 .langgraph_api/
 .dev/
+mutants/

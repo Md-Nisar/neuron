@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Every span, metric and attribute name the service emits (ADR 0007, decision 1).
 
 Names follow the OpenTelemetry semantic conventions v1.41.0 and the GenAI conventions, which

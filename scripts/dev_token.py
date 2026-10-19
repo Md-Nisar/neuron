@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Mint local development access tokens without an identity provider (#62).
 
 Development only: every command refuses to run unless `APP_ENV=development`. The key

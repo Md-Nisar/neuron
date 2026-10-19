@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Agent evaluation dataset loading, scoring, and the live eval runner."""
 
 from __future__ import annotations

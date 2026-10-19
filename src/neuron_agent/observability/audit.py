@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Privacy-safe security audit events on a separately routable logger."""
 
 from __future__ import annotations

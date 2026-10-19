@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """`neuron-eval compare`: the per-case regression gate between eval reports (ADR 0007 §6).
 
 Three rules gate; everything else is reported for information:

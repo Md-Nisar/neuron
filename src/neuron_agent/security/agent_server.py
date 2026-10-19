@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """LangGraph Agent Server authentication and owner-scoped authorization."""
 
 from __future__ import annotations

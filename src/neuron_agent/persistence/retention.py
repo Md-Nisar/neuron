@@ -1,3 +1,6 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Thread retention: delete threads inactive for longer than a cutoff (ADR 0005, decision 7)."""
 
 from __future__ import annotations

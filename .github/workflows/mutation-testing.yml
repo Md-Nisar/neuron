@@ -1,0 +1,42 @@
+name: mutation-testing
+
+# Do the tests catch bugs, or only pass? Mutation testing plants small faults in the
+# security-critical code and reports the ones no test notices (surviving mutants).
+# Report-only for now: review survivors and add tests; make it blocking once the score is stable.
+on:
+  schedule:
+    - cron: "23 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+      - run: |
+          uv python install 3.13
+          uv sync
+      - name: Run mutation testing on security/ and tools/
+        continue-on-error: true
+        run: uv run --with "mutmut>=3.3" mutmut run
+      - name: Summarize surviving mutants
+        if: always()
+        run: |
+          uv run --with "mutmut>=3.3" mutmut results > mutmut-results.txt || true
+          {
+            echo "## Mutation testing"
+            echo '```'
+            tail -n 60 mutmut-results.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutmut-results
+          path: mutmut-results.txt
+          retention-days: 30
