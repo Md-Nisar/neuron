@@ -426,3 +426,96 @@ async def test_ready_probe_reports_unready_for_a_malformed_jwks() -> None:
     verifier = _unready_verifier(MalformedClient(), [100.0])
 
     assert await verifier.ready() is False
+
+
+class SwitchableJWKSClient(jwt.PyJWKClient):
+    """A real PyJWKClient (real cache) whose network fetch can be switched off."""
+
+    def __init__(self, public: Any) -> None:
+        super().__init__("https://issuer.example.test/.well-known/jwks.json", lifespan=300)
+        jwk = json.loads(jwt.get_algorithm_by_name("RS256").to_jwk(public))
+        self._data = {"keys": [{**jwk, "kid": "key-1", "use": "sig", "alg": "RS256"}]}
+        self.down = False
+
+    def fetch_data(self) -> Any:
+        if self.down:
+            raise PyJWKClientConnectionError("identity provider unavailable")
+        return self._data
+
+
+@pytest.mark.anyio
+async def test_health_ready_alone_recovers_after_a_jwks_outage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private, public = _key_pair()
+    client = SwitchableJWKSClient(public)
+    client.down = True
+    verifier = TokenVerifier(_settings())
+    verifier._client = client
+    clock = [100.0]
+    verifier._clock = lambda: clock[0]
+    monkeypatch.setattr(api_main, "settings", _settings())
+    monkeypatch.setattr(api_main, "auth_verifier", verifier)
+
+    async def persistence_ready(self: object) -> bool:
+        return True
+
+    monkeypatch.setattr(api_main.AgentService, "is_ready", persistence_ready)
+    http = TestClient(api_main.app)
+
+    with pytest.raises(AuthenticationUnavailableError):  # the outage is noticed once
+        await verifier.verify(f"Bearer {_token(private)}")
+    assert http.get("/health/ready").status_code == 503
+
+    clock[0] += 5.0  # still down: probes keep failing
+    assert http.get("/health/ready").status_code == 503
+
+    client.down = False  # the IdP answers again; no /v1 traffic from here on
+    clock[0] += 5.0
+    assert http.get("/health/ready").status_code == 200
+    assert http.get("/health/ready").json()["status"] == "ready"
+
+
+@pytest.mark.anyio
+async def test_cached_keys_keep_instance_ready_and_verifying_during_a_jwks_outage() -> None:
+    private, public = _key_pair()
+    client = SwitchableJWKSClient(public)
+    verifier = TokenVerifier(_settings())
+    verifier._client = client
+    await verifier.verify(f"Bearer {_token(private)}")  # fills the key cache
+    client.down = True
+
+    principal = await verifier.verify(f"Bearer {_token(private)}")  # signed with a cached key
+
+    assert principal.subject == "user-123"
+    assert await verifier.ready() is True
+
+
+@pytest.mark.anyio
+async def test_uncached_kid_during_an_outage_keeps_an_instance_with_cached_keys_ready() -> None:
+    private, public = _key_pair()
+    client = SwitchableJWKSClient(public)
+    verifier = TokenVerifier(_settings())
+    verifier._client = client
+    await verifier.verify(f"Bearer {_token(private)}")
+    client.down = True
+
+    with pytest.raises(AuthenticationUnavailableError):  # still not accepted
+        await verifier.verify(f"Bearer {_token(private, kid='not-published')}")
+
+    assert await verifier.ready() is True
+    assert (await verifier.verify(f"Bearer {_token(private)}")).subject == "user-123"
+
+
+@pytest.mark.anyio
+async def test_instance_with_no_cached_keys_goes_unready_when_the_jwks_is_down() -> None:
+    private, public = _key_pair()
+    client = SwitchableJWKSClient(public)
+    client.down = True
+    verifier = TokenVerifier(_settings())
+    verifier._client = client
+
+    with pytest.raises(AuthenticationUnavailableError):
+        await verifier.verify(f"Bearer {_token(private)}")
+
+    assert await verifier.ready() is False

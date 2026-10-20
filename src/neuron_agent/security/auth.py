@@ -48,6 +48,12 @@ from neuron_agent.security.authorization import (
 logger = structlog.get_logger(__name__)
 # Readiness refreshes a failed JWKS at most this often per process, whoever probes.
 _READINESS_PROBE_INTERVAL_SECONDS = 5.0
+
+
+class _FetchFailedWithCachedKeys(PyJWKClientConnectionError):
+    """A refetch for an uncached `kid` failed while valid cached keys remain usable."""
+
+
 _shared_token_verifier: TokenVerifier | None = None
 
 
@@ -130,7 +136,8 @@ class TokenVerifier:
         except AuthenticationError:
             raise
         except PyJWKClientConnectionError as exc:
-            self._last_unavailable_at = time.monotonic()
+            if not isinstance(exc, _FetchFailedWithCachedKeys):
+                self._last_unavailable_at = time.monotonic()
             audit(
                 "auth_failed",
                 outcome="error",
@@ -196,6 +203,7 @@ class TokenVerifier:
             # Preserve valid tokens from the local JWKS cache during the
             # unknown-kid cooldown. PyJWKClient's public method uses its cache.
             get_signing_keys = getattr(self._client, "get_signing_keys", None)
+            cached_keys: list[Any] = []
             if get_signing_keys is not None:
                 cached_keys = await anyio.to_thread.run_sync(get_signing_keys)
                 for cached_key in cached_keys:
@@ -208,7 +216,9 @@ class TokenVerifier:
                 raise PyJWKClientError("signing-key refresh rate limited")
             try:
                 key = await anyio.to_thread.run_sync(self._client.get_signing_key_from_jwt, token)
-            except PyJWKClientConnectionError:
+            except PyJWKClientConnectionError as exc:
+                if cached_keys:
+                    raise _FetchFailedWithCachedKeys(str(exc)) from exc
                 raise
             except PyJWKClientError:
                 self._last_unknown_kid_failure = time.monotonic()

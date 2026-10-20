@@ -12,7 +12,7 @@ Production deployments must inject secrets through the platform secret manager.
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
+- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
@@ -49,7 +49,7 @@ APP_AUTH_ROLE_PERMISSIONS={"neuron-user":["agent:invoke","threads:read","threads
 - A token with an unknown `kid` triggers a refetch, but not always at once. PyJWT forces a refetch at most once per 30 seconds after any successful fetch (including the first one and cache-expiry fetches), so a key published less than 30 seconds after a fetch is rejected (`401`, `auth_failed` with `reason="unknown_signing_key"`) until that window ends; the release gate measured 30.2 s with default settings. On top of that, when a refetch succeeds but still lacks the `kid`, further unknown-`kid` refetches wait one second per process, so forged `kid`s can't hammer a reachable IdP. While the IdP is unreachable there is no such cooldown: each request that needs a fetch tries one, serialized per process and bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`.
 - **Rotation:** publish the new key in the JWKS at least a minute before the IdP signs with it (covering the 30-second refetch window), and remove the old key only after every token it signed has expired (plus `APP_AUTH_LEEWAY_SECONDS`). Most IdPs pre-publish keys automatically. An IdP that starts signing with a key the moment it publishes it causes up to 30 seconds of `401`s per API process.
 - **Compromised key:** remove it from the JWKS, then restart the API replicas; otherwise each process keeps trusting its cached copy for up to `APP_AUTH_JWKS_CACHE_SECONDS`.
-- **IdP outage:** tokens whose key is still cached keep working until the cache expires. After that, requests fail closed with `503 authentication_unavailable`. `/health/ready` returns `503` from the first failed fetch until a fetch succeeds again. While not ready, readiness probes retry the JWKS (at most once per 5 seconds per process), so an instance recovers on its own after the IdP does, even with no traffic.
+- **IdP outage:** tokens whose key is still cached keep working until the cache expires. After that, requests fail closed with `503 authentication_unavailable`. A verified token whose key is cached needs no fetch, so an instance with cached keys stays ready and keeps verifying such tokens during an outage. A token whose `kid` isn't cached (including a forged one) is still refused with `503 authentication_unavailable` while the fetch fails, but does not make an instance with valid cached keys not ready. `/health/ready` turns `503` only when a fetch fails and no cached keys are usable (for example after the cache expires), and stays so until a fetch succeeds. While not ready, readiness probes retry the JWKS (at most once per 5 seconds per process), so an instance recovers on its own after the IdP does, even with no traffic.
 
 ### Rotating `APP_IDENTITY_HASH_KEY`
 
@@ -342,7 +342,7 @@ Suggested alerts:
   example alert rule is shipped for them.
   Verify role-to-scope configuration; never broaden permissions as a diagnostic shortcut.
 - **IdP outage or JWKS fetch failures (`503 authentication_unavailable`):** query
-  `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` also returns `503`.
+  `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` usually also returns `503`, once the cached keys have expired.
   Check the IdP's status and that `APP_AUTH_JWKS_URL` is reachable from the API (DNS,
   egress rules, TLS). Don't switch to `APP_AUTH_MODE=none` or widen the issuer. Requests
   and readiness recover by themselves once a fetch succeeds; no restart is needed
