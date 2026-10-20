@@ -249,7 +249,9 @@ def test_nightly_workflow_is_least_privilege_and_bounded() -> None:
     assert len(triggers["schedule"]) == 1  # one scheduled run a night (EVALUATION.md)
     assert workflow["permissions"] == {"contents": "read"}
     job = workflow["jobs"]["live-eval"]
-    assert 60 < job["timeout-minutes"] <= 90
+    # Measured run: about 74 minutes; the cap leaves at least 30 over it (issue #157). The upper
+    # bound was 90 and is now 120: ai-review's skip window has to cover start plus the cap.
+    assert 74 + 30 <= job["timeout-minutes"] <= 120
     assert workflow["concurrency"]["cancel-in-progress"] is False
     # The secret is only ever mapped through `env:`, never interpolated into a script.
     for step in job["steps"]:
