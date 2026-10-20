@@ -91,15 +91,16 @@ def live_provider(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
 def fresh_rate_limiter(monkeypatch: pytest.MonkeyPatch) -> None:
     """Give each test its own API rate limiter so request counts don't leak across tests."""
     settings = api_main.settings
-    monkeypatch.setattr(
-        api_main,
-        "rate_limiter",
-        InMemoryTokenBucketRateLimiter(
-            capacity=settings.rate_limit_burst,
-            requests_per_window=settings.rate_limit_requests_per_window,
-            window_seconds=settings.rate_limit_window_seconds,
-        ),
-    )
+    for name in ("ip_rate_limiter", "principal_rate_limiter"):
+        monkeypatch.setattr(
+            api_main,
+            name,
+            InMemoryTokenBucketRateLimiter(
+                capacity=settings.rate_limit_burst,
+                requests_per_window=settings.rate_limit_requests_per_window,
+                window_seconds=settings.rate_limit_window_seconds,
+            ),
+        )
 
 
 class HistoryEchoAgent:

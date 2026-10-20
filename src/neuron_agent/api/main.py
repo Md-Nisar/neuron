@@ -86,7 +86,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title=settings.name, version=settings.version, lifespan=lifespan)
 # Uses the global providers, which are no-ops unless APP_OTEL_ENABLED=true.
 instrument_app(app)
-rate_limiter = InMemoryTokenBucketRateLimiter(
+# Separate instances, so a flood of junk `ip:` keys cannot evict a principal's bucket.
+ip_rate_limiter = InMemoryTokenBucketRateLimiter(
+    capacity=settings.rate_limit_burst,
+    requests_per_window=settings.rate_limit_requests_per_window,
+    window_seconds=settings.rate_limit_window_seconds,
+)
+principal_rate_limiter = InMemoryTokenBucketRateLimiter(
     capacity=settings.rate_limit_burst,
     requests_per_window=settings.rate_limit_requests_per_window,
     window_seconds=settings.rate_limit_window_seconds,
@@ -203,7 +209,7 @@ async def enforce_rate_limit(
         _RATE_LIMITED_PREFIXES
     ):
         if settings.auth_mode == "none":
-            decision = rate_limiter.check(f"ip:{_client_ip(request)}")
+            decision = ip_rate_limiter.check(f"ip:{_client_ip(request)}")
             if not decision.allowed:
                 return _rate_limited_response(
                     decision.retry_after_seconds, f"ip:{_client_ip(request)}"
@@ -337,23 +343,28 @@ app.openapi = _openapi  # type: ignore[method-assign]
 
 
 def _client_ip(request: Request) -> str:
-    """Use X-Forwarded-For only when the immediate peer is a configured trusted proxy."""
+    """Rate-limit key for the client: X-Forwarded-For counts only behind a trusted proxy.
+
+    IPv4-mapped IPv6 is unmapped and IPv6 is aggregated by /64, so one subscriber cannot
+    mint a fresh bucket per address. Walking the header from the right stops at the first
+    unparseable entry, because nothing to its left can be trusted.
+    """
     peer = request.client.host if request.client else "unknown"
     try:
         address = ipaddress.ip_address(peer)
     except ValueError:
         return peer
-    trusted = _trusted_proxy(address)
-    if not trusted:
-        return str(address)
-    chain: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
-    for candidate in request.headers.get("X-Forwarded-For", "").split(","):
-        try:
-            chain.append(ipaddress.ip_address(candidate.strip()))
-        except (TypeError, ValueError):
-            continue
-    while chain and _trusted_proxy(address):
-        address = chain.pop()
+    if _trusted_proxy(address):
+        entries = ",".join(request.headers.getlist("X-Forwarded-For")).split(",")
+        while entries and _trusted_proxy(address):
+            try:
+                address = ipaddress.ip_address(entries.pop().strip())
+            except ValueError:
+                break
+    if isinstance(address, ipaddress.IPv6Address):
+        if address.ipv4_mapped is not None:
+            return str(address.ipv4_mapped)
+        return str(ipaddress.IPv6Network((int(address), 64), strict=False))
     return str(address)
 
 
