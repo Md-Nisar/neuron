@@ -17,6 +17,12 @@ def _job() -> dict[str, Any]:
     return job
 
 
+def test_push_is_limited_to_main() -> None:
+    workflow = yaml.safe_load(_FILE.read_text("utf-8"))
+    assert workflow[True]["push"] == {"branches": ["main"]}  # PRs run via pull_request only
+    assert "pull_request" in workflow[True]
+
+
 def test_postgres_job_guards() -> None:
     job = _job()
     assert job["runs-on"] == "ubuntu-latest"
@@ -29,7 +35,7 @@ def test_postgres_job_guards() -> None:
     assert "OPENAI_API_KEY" in runs  # fails when a provider key is present
     assert "pytest -m postgres" in runs  # live-model tests carry no postgres marker
     assert "--junitxml" in runs
-    assert "total == 0 or skipped" in runs  # zero selected or any skipped fails the job
+    assert "scripts/require_postgres_tests.py" in runs
 
 
 def test_postgres_job_actions_are_sha_pinned() -> None:
@@ -43,3 +49,29 @@ def test_postgres_marker_is_registered_and_applied() -> None:
     assert '"postgres:' in Path("pyproject.toml").read_text("utf-8")
     source = Path("tests/integration/test_postgres_checkpointer.py").read_text("utf-8")
     assert "pytest.mark.postgres" in source
+
+
+def _report(tmp_path: Path, xml: str) -> Path:
+    path = tmp_path / "junit.xml"
+    path.write_text(xml, "utf-8")
+    return path
+
+
+def test_junit_check_requires_executed_tests(tmp_path: Path) -> None:
+    from scripts.require_postgres_tests import check
+
+    suite = '<testsuite tests="{t}" skipped="{s}" failures="0"/>'
+    for wrap in ("{}", "<testsuites>{}</testsuites>"):
+        ran = _report(tmp_path, wrap.format(suite.format(t=5, s=0)))
+        assert check(ran) is None
+        assert check(_report(tmp_path, wrap.format(suite.format(t=0, s=0)))) is not None
+        assert check(_report(tmp_path, wrap.format(suite.format(t=5, s=1)))) is not None
+
+
+def test_junit_check_main_exit_codes(tmp_path: Path) -> None:
+    from scripts.require_postgres_tests import main
+
+    ok = _report(tmp_path, '<testsuites><testsuite tests="5" skipped="0"/></testsuites>')
+    assert main(["x", str(ok)]) == 0
+    bad = _report(tmp_path, '<testsuite tests="5" skipped="5"/>')
+    assert main(["x", str(bad)]) == 1

@@ -2,6 +2,7 @@ name: postgres-integration
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -49,15 +50,4 @@ jobs:
         run: uv run python -m pytest -m postgres -rs --junitxml=postgres-junit.xml
       # A skipped test exits 0, and an unset DSN skips every test, so count outcomes.
       - name: Require executed Postgres tests
-        run: |
-          uv run python -I - <<'PY'
-          import sys
-          import xml.etree.ElementTree as ET
-
-          suite = ET.parse("postgres-junit.xml").getroot()
-          suite = suite if suite.tag == "testsuite" else suite[0]
-          total, skipped = int(suite.get("tests", 0)), int(suite.get("skipped", 0))
-          print(f"postgres tests: selected={total} skipped={skipped}")
-          if total == 0 or skipped:
-              sys.exit("No Postgres tests ran, or some were skipped.")
-          PY
+        run: uv run python scripts/require_postgres_tests.py postgres-junit.xml
