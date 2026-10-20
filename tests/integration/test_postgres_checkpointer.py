@@ -16,7 +16,7 @@ from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.services.agent_service import AgentService
 
-pytestmark = [pytest.mark.integration, pytest.mark.anyio]
+pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
 _DSN = os.environ.get("APP_TEST_POSTGRES_DSN")
 
