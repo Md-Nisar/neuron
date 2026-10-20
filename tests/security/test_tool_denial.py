@@ -179,3 +179,45 @@ def test_a_model_that_keeps_calling_a_denied_tool_hits_the_step_limit(
     # The model asked for the tool on each of its 3 calls, and each was denied without running.
     assert len(denied) == 3
     assert policy_blocks == ["insufficient_scope"] * len(denied)
+
+
+@pytest.mark.parametrize(
+    "name", ["x" * 5000, "shell\x1b[31m\nexec\x00\u202e", "sp ace/../../etc;rm"]
+)
+def test_unknown_tool_name_in_the_audit_event_is_bounded_and_printable(
+    model: Callable[[str], _RecordingModel],
+    policy_blocks: list[str],
+    jwt_api_factory: Callable[..., JwtApi],
+    make_token: Callable[..., str],
+    name: str,
+) -> None:
+    model(name)
+    api = jwt_api_factory()
+    headers = bearer(make_token("alice", scopes="agent:invoke tools:calculator"))
+
+    with structlog.testing.capture_logs() as logs:
+        response = api.client.post("/v1/agent/invoke", json={"message": "go"}, headers=headers)
+
+    assert response.status_code == 200, response.text
+    [denied] = [log for log in logs if log["event"] == "authorization_denied"]
+    resource_id = denied["resource_id"]
+    assert denied["reason"] == "unknown_tool"
+    assert 0 < len(resource_id) <= 64
+    assert all(c.isascii() and (c.isalnum() or c in "_.-?") for c in resource_id)
+
+
+def test_known_tool_name_in_the_audit_event_is_unchanged(
+    model: Callable[[str], _RecordingModel],
+    policy_blocks: list[str],
+    jwt_api_factory: Callable[..., JwtApi],
+    make_token: Callable[..., str],
+) -> None:
+    model("calculator")
+    api = jwt_api_factory()
+    headers = bearer(make_token("alice", scopes="agent:invoke"))
+
+    with structlog.testing.capture_logs() as logs:
+        api.client.post("/v1/agent/invoke", json={"message": "go"}, headers=headers)
+
+    [denied] = [log for log in logs if log["event"] == "authorization_denied"]
+    assert denied["resource_id"] == "calculator"
