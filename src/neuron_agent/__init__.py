@@ -3,6 +3,12 @@
 
 """Neuron Agent application package."""
 
+from importlib.metadata import PackageNotFoundError, version
+
 __all__ = ["__version__"]
 
-__version__ = "0.5.0"
+try:
+    # `pyproject.toml` is the only hand-edited version.
+    __version__ = version("neuron-agent")
+except PackageNotFoundError:  # pragma: no cover - source tree that was never installed
+    __version__ = "0+unknown"
