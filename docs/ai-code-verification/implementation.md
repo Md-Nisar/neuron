@@ -47,7 +47,7 @@ Six workflows run on GitHub Actions: ci, ai-code-verification and codeql block m
 | `ai-code-verification.yml` → `secrets-scan` | PR | Leaked keys and tokens across the PR history (gitleaks) | Yes |
 | `ai-code-verification.yml` → `dependency-review` | PR | New dependencies with moderate+ vulnerabilities or AGPL/GPL-3.0 licenses | Yes |
 | `ai-code-verification.yml` → `new-dependencies` | PR | Each package added to `pyproject.toml` must exist on PyPI and be at least 90 days old (`scripts/check_new_dependencies.py`) | Yes; `new-dependency-approved` label overrides the age rule |
-| `ai-code-verification.yml` → `pr-hygiene` | PR, incl. label and description edits | Size: warn over 400 changed lines, fail over 1,000 (excluding `uv.lock` and eval baselines). Description must contain the AI assistance, risk tier and verification sections and a ticked author attestation | Yes; `large-pr-approved` label overrides size |
+| `ai-code-verification.yml` → `pr-hygiene` | PR, incl. label and description edits | Size: warn over 400 changed lines, fail over 5,000 (excluding `uv.lock` and eval baselines). Description must contain the AI assistance, risk tier and verification sections and a ticked author attestation | Yes; `large-pr-approved` label overrides size |
 | `codeql.yml` | PR, push to main, weekly | CodeQL `security-extended` queries for Python and GitHub Actions workflows | Yes |
 | `ai-review.yml` | Non-draft PR | Frontier model on NVIDIA's free API reviews the diff against repo checklists; verified findings posted as a comment-only review | No, advisory |
 | `mutation-testing.yml` | Weekly (Sunday) and manual | mutmut plants faults in `security/` and `tools/`; surviving mutants reveal missing tests | No, report only |
