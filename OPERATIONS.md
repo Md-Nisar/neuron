@@ -489,7 +489,7 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 | `429 rate_limited` | client exceeded the token bucket | caller retries after `Retry-After` seconds |
 | `400 validation_error` | too-long, empty, whitespace-only or control-character message | reject before any model/tool call |
 | `422 validation_error` | malformed JSON, unknown fields, wrong field types | reject before any model/tool call |
-| `413 payload_too_large` | request body exceeds `APP_MAX_REQUEST_BODY_BYTES` | reject before parsing |
+| `413 payload_too_large` | request body exceeds `APP_MAX_REQUEST_BODY_BYTES`. The limit counts the bytes received, so it applies with or without `Content-Length` (chunked bodies, and a declared length that understates the body, are cut off at the limit) and before authentication | reject before parsing. Uvicorn serves HTTP/1.1 only, so HTTP/2 framing is out of scope. A proxy-level body limit is defence in depth where the platform offers one |
 | `504 provider_timeout_error` | model provider did not respond within `APP_REQUEST_TIMEOUT_SECONDS` | retried internally first; surfaces only after retries are exhausted |
 | `502 tool_execution_error` | tool exceeded `APP_TOOL_TIMEOUT_SECONDS` or raised an unclassified exception | tool failure is isolated; it cannot crash the agent loop |
 | `502 provider_error` / `structured_output_error` | upstream 5xx, or the model returned output that failed the `AgentAnswer` schema or was empty | internal detail is logged, not returned to the caller |
