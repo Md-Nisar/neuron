@@ -28,7 +28,7 @@ from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
@@ -123,20 +123,76 @@ class _CleanupEventSourceResponse(EventSourceResponse):
             await self._on_close()
 
 
-@app.middleware("http")
-async def limit_request_body_size(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    content_length = request.headers.get("content-length")
-    if content_length is not None:
-        try:
-            declared_size = int(content_length)
-        except ValueError:
-            return JSONResponse(status_code=400, content={"detail": "validation_error"})
-        if declared_size > settings.max_request_body_bytes:
+class _RequestBodyLimitMiddleware:
+    """Enforce `APP_MAX_REQUEST_BODY_BYTES` on the bytes received, not on `Content-Length`.
+
+    A chunked body has no `Content-Length`, and a declared length can understate the body,
+    so the ASGI `receive` channel is read here, before routing and authentication, and
+    stops at `limit + 1` bytes (one chunk past the limit at most). The buffered body, at
+    most `limit` bytes, is replayed to the app; later `receive` calls (disconnect
+    detection on streams) go straight to the server. ADR 0008 decision 5.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        limit = settings.max_request_body_bytes
+        declared_size: int | None = None
+        for name, value in scope["headers"]:
+            if name == b"content-length":
+                try:
+                    if not (value.isascii() and value.isdigit()):
+                        raise ValueError
+                    declared_size = int(value)
+                except ValueError:
+                    await self._reject(scope, receive, send, 400, "validation_error")
+                    return
+        if declared_size is not None and declared_size > limit:
             logger.warning("agent_request_body_too_large", content_length=declared_size)
-            return JSONResponse(status_code=413, content={"detail": "payload_too_large"})
-    return await call_next(request)
+            await self._reject(scope, receive, send, 413, "payload_too_large")
+            return
+        body = bytearray()
+        first: Message | None = None
+        disconnected: Message | None = None
+        while True:
+            message = await receive()
+            if "body" not in message:  # a disconnect, not body data
+                disconnected = message
+                break
+            first = first or message
+            body += message.get("body", b"")
+            if len(body) > limit:
+                logger.warning(
+                    "agent_request_body_too_large", content_length=declared_size, received=len(body)
+                )
+                await self._reject(scope, receive, send, 413, "payload_too_large")
+                return
+            if not message.get("more_body", False):
+                break
+        replay: list[Message] = [disconnected] if disconnected else []
+        if first is not None:
+            replay.insert(0, {**first, "body": bytes(body), "more_body": False})
+        replay_iter = iter(replay)
+
+        async def replayed_receive() -> Message:
+            return next(replay_iter, None) or await receive()
+
+        await self.app(scope, replayed_receive, send)
+
+    @staticmethod
+    async def _reject(
+        scope: Scope, receive: Receive, send: Send, status_code: int, detail: str
+    ) -> None:
+        await JSONResponse(status_code=status_code, content={"detail": detail})(
+            scope, receive, send
+        )
+
+
+app.add_middleware(_RequestBodyLimitMiddleware)
 
 
 @app.middleware("http")

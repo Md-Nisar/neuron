@@ -463,7 +463,7 @@ values or rewrite checkpoint ownership in place without an auditable plan.
 
 ## Rate Limiting
 
-`/v1/agent/*`, `/v1/threads/*` and `/v1/me/*` enforce token-bucket limits (`APP_RATE_LIMIT_ENABLED=true` by default). Authenticated requests are keyed by the verified principal's opaque owner HMAC; in local `AUTH_MODE=none`, and after failed JWT authentication, the key is the client IP. Defaults: burst capacity `APP_RATE_LIMIT_BURST=20`, refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW=60` per `APP_RATE_LIMIT_WINDOW_SECONDS=60`. Exceeding it returns `429 {"detail": "rate_limited"}` with `Retry-After`; health endpoints are exempt.
+`/v1/agent/*`, `/v1/threads/*` and `/v1/me/*` enforce token-bucket limits (`APP_RATE_LIMIT_ENABLED=true` by default). Authenticated requests are keyed by the verified principal's opaque owner HMAC; in local `AUTH_MODE=none`, and after failed JWT authentication, the key is the client IP. Defaults: burst capacity `APP_RATE_LIMIT_BURST=20`, refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW=60` per `APP_RATE_LIMIT_WINDOW_SECONDS=60`. Exceeding it returns `429 {"detail": "rate_limited"}` with `Retry-After`; health endpoints are exempt. The limiter's memory is bounded: a bucket idle long enough to have refilled completely (`burst / refill rate`, 20 s by default) is dropped, and at most 10,000 keys are tracked per worker, least recently used dropped first. A dropped key restarts with one full bucket, never more, so a flood of distinct client IPs cannot grow memory without bound and cannot gain extra allowance.
 
 By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON list of trusted proxy IP addresses/CIDRs only when the app is reachable exclusively through those proxies. Configure Uvicorn's `--forwarded-allow-ips` to the same trusted hops; never use `*` on an internet-reachable deployment. The app uses forwarded addresses only when its immediate peer is in `APP_TRUSTED_PROXIES`, preventing clients from choosing their own IP bucket.
 
@@ -489,7 +489,7 @@ Raise provider timeouts/retries cautiously in production — higher values incre
 | `429 rate_limited` | client exceeded the token bucket | caller retries after `Retry-After` seconds |
 | `400 validation_error` | too-long, empty, whitespace-only or control-character message | reject before any model/tool call |
 | `422 validation_error` | malformed JSON, unknown fields, wrong field types | reject before any model/tool call |
-| `413 payload_too_large` | request body exceeds `APP_MAX_REQUEST_BODY_BYTES` | reject before parsing |
+| `413 payload_too_large` | request body exceeds `APP_MAX_REQUEST_BODY_BYTES`. The limit counts the bytes received, so it applies with or without `Content-Length` (chunked bodies, and a declared length that understates the body, are cut off at the limit) and before authentication | reject before parsing. Uvicorn serves HTTP/1.1 only, so HTTP/2 framing is out of scope. A proxy-level body limit is defence in depth where the platform offers one |
 | `504 provider_timeout_error` | model provider did not respond within `APP_REQUEST_TIMEOUT_SECONDS` | retried internally first; surfaces only after retries are exhausted |
 | `502 tool_execution_error` | tool exceeded `APP_TOOL_TIMEOUT_SECONDS` or raised an unclassified exception | tool failure is isolated; it cannot crash the agent loop |
 | `502 provider_error` / `structured_output_error` | upstream 5xx, or the model returned output that failed the `AgentAnswer` schema or was empty | internal detail is logged, not returned to the caller |

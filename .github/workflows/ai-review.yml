@@ -5,7 +5,8 @@ name: ai-review
 # (.claude/agents/*.md, AGENTS.md, SECURITY.md), a second call verifies each finding, and the
 # survivors are posted as one review. It only comments: it never approves, and it is
 # advisory: a provider outage or timeout logs a warning and exits 0 (set the repository
-# variable AI_REVIEW_FAIL_ON_ERROR=true to make that fail the job). Uses the same NVIDIA_API_KEY secret as nightly-eval; set the
+# variable AI_REVIEW_FAIL_ON_ERROR=true to make that fail the job). Uses the same NVIDIA_API_KEY secret as nightly-eval, so it skips itself during the nightly
+# eval window (EVALUATION.md, "Automated runs"); set the
 # optional AI_REVIEW_MODELS repository variable (comma-separated ids from build.nvidia.com) to choose
 # models. Fork PRs get no secrets, so they are skipped.
 on:
@@ -28,14 +29,31 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v5
+      # nightly-eval shares this key's rate limit. A shared concurrency group is not used: it
+      # holds one pending run and replaces it, so it could drop a review or the nightly.
+      # Instead, a review started inside the nightly window exits advisory-success.
+      - name: Skip during the nightly eval window
+        id: window
+        env:
+          NIGHTLY_WINDOW_START_UTC: "03:00"
+          NIGHTLY_WINDOW_END_UTC: "05:30"
+        run: |
+          now=$(date -u +%H:%M)
+          if [[ ! "$now" < "$NIGHTLY_WINDOW_START_UTC" && "$now" < "$NIGHTLY_WINDOW_END_UTC" ]]; then
+            echo "::notice::Skipped: the nightly eval uses the shared NVIDIA key from $NIGHTLY_WINDOW_START_UTC to $NIGHTLY_WINDOW_END_UTC UTC. Push a commit or re-run this job after the window for a review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.window.outputs.skip != 'true'
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - if: steps.window.outputs.skip != 'true'
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - name: Review the pull request
+        if: steps.window.outputs.skip != 'true'
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           AI_REVIEW_MODELS: ${{ vars.AI_REVIEW_MODELS }}

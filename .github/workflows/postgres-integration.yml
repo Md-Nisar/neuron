@@ -1,0 +1,53 @@
+name: postgres-integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postgres-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        # Pinned by digest of the multi-arch index for the `16` tag. To refresh, read the
+        # `docker-content-digest` header of the index manifest (see docs/AI_CODE_VERIFICATION.md).
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_PASSWORD: ci-only-throwaway # service container, discarded with the job
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_TEST_POSTGRES_DSN: postgresql://postgres:ci-only-throwaway@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+      - run: uv python install 3.13
+      - run: uv sync
+      # No provider key is mapped into this job; refuse to run if one appears in the environment.
+      - name: Refuse to run with a provider key
+        run: |
+          if [ -n "${OPENAI_API_KEY:-}" ] || [ -n "${APP_OPENAI_API_KEY:-}" ]; then
+            echo "A provider key is set; this job must not hold one." >&2
+            exit 1
+          fi
+      # `-m postgres` replaces the default `-m 'not integration'`, so only Postgres tests are
+      # selected; the live-model tests carry no `postgres` marker and cannot run here.
+      - name: Run the Postgres tests
+        run: uv run python -m pytest -m postgres -rs --junitxml=postgres-junit.xml
+      # A skipped test exits 0, and an unset DSN skips every test, so count outcomes.
+      - name: Require executed Postgres tests
+        run: uv run python scripts/require_postgres_tests.py postgres-junit.xml

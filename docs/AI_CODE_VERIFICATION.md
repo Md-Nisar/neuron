@@ -28,10 +28,35 @@ See also [ai-code-verification/research.md](ai-code-verification/research.md) (t
 | 2. Deterministic gates | ruff (incl. bandit `S` rules), mypy strict, unit/graph/security/resilience/eval tests on Linux and Windows, bandit, pip-audit | `ci.yml` | Yes |
 | 2. Deterministic gates | Secret scanning (gitleaks), dependency review (vulnerabilities, licenses), new-package check against PyPI (hallucinated or brand-new packages), PR size limit, PR description check | `ai-code-verification.yml` | Yes |
 | 2. Deterministic gates | CodeQL `security-extended` for Python and workflows | `codeql.yml` | Yes |
+| 2. Deterministic gates | The `-m postgres` tests against a Postgres 16 service container (image pinned by digest), no provider key; fails if no Postgres test ran | `postgres-integration.yml` | Yes, once the owner adds `postgres-integration` to the required checks |
 | 3. Test strength | Mutation testing of `security/` and `tools/` (mutmut), weekly | `mutation-testing.yml` | Survivors are report only; a mutmut crash or zero mutants fails the job |
 | 3. Test strength | Live agent evals with a pass^k = 100% security gate, nightly | `nightly-eval.yml` | Yes (nightly) |
 | 4. AI review | A frontier model from NVIDIA's free API catalog reviews the diff against `.claude/agents/*`, `AGENTS.md` and `SECURITY.md`; a second call verifies each finding; survivors are posted as one comment-only review | `ai-review.yml`, `scripts/ai_review.py` | No, advisory |
 | 5. Human review | Code owner review for critical paths, one reviewer otherwise | `CODEOWNERS`, branch protection | Yes |
+
+## The Postgres job
+
+`postgres-integration.yml` runs on Linux with a `postgres:16` service container and sets
+`APP_TEST_POSTGRES_DSN` (a throwaway password that exists only for the job). It maps no secrets, fails
+if `OPENAI_API_KEY` is present, and runs `pytest -m postgres`, which replaces the default
+`-m 'not integration'`. Live-model tests carry no `postgres` marker, so they cannot be selected. A skipped
+test exits 0, so a second step reads the JUnit report and fails when zero tests were selected or any
+was skipped (for example, because the DSN was unset). Mark new Postgres tests `postgres`.
+
+The image is pinned to the digest of the multi-arch index for the `16` tag. To refresh it, request the
+index manifest from Docker Hub and read the `docker-content-digest` header:
+
+```bash
+T=$(curl -sS "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/postgres:pull" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+curl -sSI -H "Authorization: Bearer $T" \
+  -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+  https://registry-1.docker.io/v2/library/postgres/manifests/16 | grep -i docker-content-digest
+```
+
+(`docker buildx imagetools inspect postgres:16` shows the same digest.) Run the tests locally with
+`APP_TEST_POSTGRES_DSN=... uv run pytest -m postgres`. The owner adds `postgres-integration` to the
+required checks.
 
 ## Risk tiers
 
@@ -80,6 +105,12 @@ Approving means you would have been comfortable writing this code yourself.
    `curl -s -H "Authorization: Bearer $NVIDIA_API_KEY" https://integrate.api.nvidia.com/v1/models`.
    The free tier is rate limited (about 40 requests a minute) and is not meant for
    production; each review uses two requests. Without the key the review skips itself.
+   `nightly-eval` shares this key, so `ai-review` skips itself (advisory success, with a
+   notice) between 03:00 and 05:30 UTC, which covers the 03:17 nightly start plus its
+   110 minute timeout; a PR changed in that window is reviewed on the next push or
+   job re-run. No second key is needed (ADR 0008, question 17). Both workflows stay
+   within NVIDIA's API terms and rate limits (see "Automated runs and NVIDIA's terms"
+   in `EVALUATION.md`).
 2. Create the labels `large-pr-approved` and `new-dependency-approved`.
 3. Enable the dependency graph and, for a private repository, GitHub Advanced Security
    (needed by `dependency-review` and CodeQL).

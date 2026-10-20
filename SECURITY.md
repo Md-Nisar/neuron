@@ -20,7 +20,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 
 ## Current Controls
 
-- Typed request validation with Pydantic, including a request body size limit, a rejected-unknown-fields policy, and control-character rejection in user messages.
+- Typed request validation with Pydantic, including a request body size limit counted on the bytes received (chunked bodies included, before authentication; #137), a rejected-unknown-fields policy, and control-character rejection in user messages.
 - Centralized settings and `.env.example`.
 - Read-only initial tools.
 - Scope-based function authorization: `/v1/agent/*` requires `agent:invoke`, thread history requires `threads:read`, and thread deletion requires `threads:delete`. JWT permissions come from the configured `APP_AUTH_SCOPE_CLAIM` (space-delimited string or list, with `scp` fallback) and optionally explicit `APP_AUTH_ROLE_PERMISSIONS` mappings. Missing/unknown claims grant nothing; denied requests return `403 authorization_error` with `insufficient_scope`.
@@ -39,7 +39,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Token-bucket rate limiting on `/v1/agent/*`, `/v1/threads/*` and `/v1/me/*`, keyed by the verified principal (by client IP for failed authentication and in `AUTH_MODE=none`), returning `429` with `Retry-After` (ADR 0004). Per-principal concurrent-run caps and rolling token budgets return `429 too_many_concurrent_runs` and `429 quota_exceeded`.
 - Local development tokens (`scripts/dev_token.py`, not part of the package) refuse to run unless `APP_ENV=development`; their key stays in the git-ignored `.dev/`, and their JWKS is served on loopback only.
 - Bounded provider/tool timeouts and capped provider retries (`APP_REQUEST_TIMEOUT_SECONDS`, `APP_TOOL_TIMEOUT_SECONDS`, `APP_PROVIDER_MAX_RETRIES`) and an agent-loop recursion limit (`APP_MAX_AGENT_ITERATIONS`) as resource-exhaustion controls, alongside rate limiting (see `OPERATIONS.md`'s Timeouts and Retries section).
-- Structured logging with no deliberate raw secret logging: log fields are limited to IDs, names, stable error codes/types, durations, and retry counts — never raw user prompts, tool arguments, exception text, or provider API keys (see `ARCHITECTURE.md#observability`).
+- Structured logging with no deliberate raw secret logging: log fields are limited to IDs, names, stable error codes/types, durations, and retry counts — never raw user prompts, tool arguments, exception text, or provider API keys (see `ARCHITECTURE.md#observability`). A model-chosen tool name that is not a registered tool is audited with unsafe characters replaced and cut to 64 characters (`audit_tool_name`).
 - HTTP surface hardening (`OPERATIONS.md`'s HTTP Surface section):
   - CORS is off unless `APP_CORS_ALLOWED_ORIGINS` lists exact origins. `*` is rejected, because requests carry credentials in `Authorization`; credentialed (cookie) CORS is never enabled.
   - `/docs`, `/redoc` and `/openapi.json` return `404` in staging and production unless `APP_EXPOSE_API_DOCS=true`.
@@ -116,7 +116,6 @@ Current ignores: none.
 - **Signing-key rotation window.** A newly published key can be rejected for up to 30 seconds (PyJWT's forced-refetch cooldown); IdPs should pre-publish keys (`OPERATIONS.md`).
 - **Readiness and the IdP.** `/health/ready` marks an instance not ready after a JWKS fetch failure and recovers only when a later request obtains a key; it doesn't probe the JWKS (`OPERATIONS.md`).
 - **Injected tool calls the security eval can't see.** A prompt-injected call to a tool the caller is permitted to use, or a denied tool attempt, doesn't fail a security eval case; denied calls are absent from `used_tools` (`EVALUATION.md`).
-- **Unbounded audit `resource_id`.** For a denied tool call it is the model-chosen tool name, of any length, which contradicts the logging rule above (IDs, names, stable codes) until it is bounded.
 - **Denied tool calls are not `403`s.** The `authorization_denied` audit event (`resource_type=tool`) and the `insufficient_scope`/`unknown_tool` policy-block metric are the only signals of an injected tool attempt; no example alert covers them.
 - **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`.
 
