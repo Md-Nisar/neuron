@@ -20,7 +20,7 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 
 ## Current Controls
 
-- Typed request validation with Pydantic, including a request body size limit, a rejected-unknown-fields policy, and control-character rejection in user messages.
+- Typed request validation with Pydantic, including a request body size limit counted on the bytes received (chunked bodies included, before authentication; #137), a rejected-unknown-fields policy, and control-character rejection in user messages.
 - Centralized settings and `.env.example`.
 - Read-only initial tools.
 - Scope-based function authorization: `/v1/agent/*` requires `agent:invoke`, thread history requires `threads:read`, and thread deletion requires `threads:delete`. JWT permissions come from the configured `APP_AUTH_SCOPE_CLAIM` (space-delimited string or list, with `scp` fallback) and optionally explicit `APP_AUTH_ROLE_PERMISSIONS` mappings. Missing/unknown claims grant nothing; denied requests return `403 authorization_error` with `insufficient_scope`.
