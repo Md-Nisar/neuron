@@ -60,6 +60,9 @@ _NUMERIC_LABEL = re.compile(r"0[xX][0-9a-fA-F]*|[0-9]+")
 _EMBEDDED_IPV4 = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("2002::/16"))
 
 
+_DENIED_IPV6 = (ipaddress.ip_network("3fff::/20"),)  # documentation range; not in older tables
+
+
 def _parse_ipv4_label_form(host: str) -> ipaddress.IPv4Address | None:
     """Read inet_aton-style IPv4 (1-4 parts; decimal, 0x hex, 0 octal).
 
@@ -94,6 +97,8 @@ def _reject_non_public(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -
             address = address.ipv4_mapped
         elif any(address in network for network in _EMBEDDED_IPV4):
             raise AuthorizationError("embedded IPv4 addresses are not allowed")
+    if isinstance(address, ipaddress.IPv6Address) and any(address in n for n in _DENIED_IPV6):
+        raise AuthorizationError("non-public network URLs are not allowed")
     if (
         address.is_loopback
         or address.is_private
@@ -110,11 +115,17 @@ def validate_safe_url(url: str) -> str:
     """Reject URLs whose literal host is local, private or otherwise non-public.
 
     Checks the text of the URL only: scheme http or https, no userinfo, no
+    non-ASCII or percent-escaped host (IDN hosts must be passed as ``xn--``
+    A-labels; nothing is normalised), no
     whitespace, control characters or backslashes, and a host that is not
     ``localhost``, ``*.local`` or a loopback, private, link-local, multicast,
     reserved, unspecified or shared-space IP address. IPv4 is read the way
     ``inet_aton`` reads it (decimal, hex, octal, short forms), IPv6 may be
     IPv4-mapped, and a trailing dot is ignored. Returns ``url`` unchanged.
+
+    Only ASCII literal hosts are understood. Names such as ``.internal``,
+    ``.lan`` or ``metadata.google.internal`` are not classified: that is the
+    fetching tool's DNS re-check job.
 
     This helper does no DNS resolution, so it cannot see where a *name* leads.
     A tool that fetches a URL must therefore, after calling it: resolve once,
@@ -136,6 +147,8 @@ def validate_safe_url(url: str) -> str:
         raise ValidationAppError("URL must not include userinfo")
     if not hostname:
         raise ValidationAppError("URL must include a hostname")
+    if not hostname.isascii() or "%" in hostname:
+        raise ValidationAppError("URL host must be ASCII without percent-escapes")
     host = hostname.lower().rstrip(".")
     if not host:
         raise ValidationAppError("URL must include a hostname")
@@ -143,8 +156,6 @@ def validate_safe_url(url: str) -> str:
         raise AuthorizationError("local network URLs are not allowed")
     address: ipaddress.IPv4Address | ipaddress.IPv6Address | None
     if ":" in host:
-        if "%" in host:
-            raise ValidationAppError("URL host is not a valid address")
         try:
             address = ipaddress.IPv6Address(host)
         except ValueError:

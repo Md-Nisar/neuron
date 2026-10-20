@@ -33,6 +33,8 @@ _BLOCKED_ADDRESSES = [
     "http://240.0.0.1/",
     "http://255.255.255.255/",
     "http://[fc00::1]/",
+    "http://[3fff::1]/",  # documentation range added in 2024
+    "http://[3fff:fff:ffff::1]/",
     "http://[::ffff:127.0.0.1]/",
     "http://[::ffff:7f00:1]/",
     "http://[::ffff:169.254.169.254]/",
@@ -63,6 +65,25 @@ _MALFORMED = [
     "http://[fe80::1%25eth0]/",
     "http://[::1/",
     "http://0xg.1/",
+    "http://127\u30020\u30020\u30021/",  # ideographic full stop
+    "http://127\uff0e0\uff0e0\uff0e1/",  # fullwidth full stop
+    "http://127\uff610\uff610\uff611/",  # halfwidth ideographic full stop
+    "http://127.0.0.1\u3002/",
+    "http://localhost\u3002/",
+    "http://foo.local\u3002/",
+    "http://\uff4c\uff4f\uff43\uff41\uff4c\uff48\uff4f\uff53\uff54/",  # fullwidth localhost
+    "http://\uff11\uff12\uff17.0.0.1/",  # fullwidth digits
+    "http://\uff11\uff12\uff17\uff0e\uff10\uff0e\uff10\uff0e\uff11/",
+    "http://ex\u0430mple.com/",  # Cyrillic a
+    "http://b\u00fccher.example/",  # must be passed as punycode
+    "http://local\u200bhost/",  # zero-width space
+    "http://127.0.0.1\u200b/",
+    "http://local\u00adhost/",  # soft hyphen
+    "http://127.0.0.1\u00ad/",
+    "http://127.0.0.1%2e/",
+    "http://127.0.0.1%2E/",
+    "http://localhost%2e/",
+    "http://exa%6dple.com/",
     "http://1.2.3.4.5/",
     "http://999.1.1.1/",
     "http://0x/",
