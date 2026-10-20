@@ -100,6 +100,7 @@ addopts = "-q --strict-markers --strict-config -m 'not integration'"
 testpaths = ["tests"]
 markers = [
     "integration: tests that require external services or credentials",
+    "postgres: tests that need a live Postgres (APP_TEST_POSTGRES_DSN); run by the postgres-integration CI job",
     "eval: deterministic agent quality regression checks",
 ]
 
