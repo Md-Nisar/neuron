@@ -154,3 +154,202 @@ source of the spec; treat pricing and licence details as perishable.
   in traces.
 - Correlation: a structlog processor adds `trace_id`/`span_id` from the current span;
   W3C `traceparent` is the default propagator.
+
+## v0.6.0 Research: Production Deployment (2026-10)
+
+Input to ADR 0008. Collected 2026-10-19. Primary pages were fetched from
+docs.github.com, render.com/docs, docs.fly.io, docs.cloud.google.com,
+learn.microsoft.com, docs.aws.amazon.com, docs.langchain.com, langchain.com/pricing,
+postgresql.org, pgbouncer.org, psycopg.org, neon.com/docs, docs.docker.com,
+kubernetes.io, fastapi.tiangolo.com, sre.google and redis.io, plus the
+`langgraph-checkpoint-postgres` 3.1.2 (locked) and 3.2.0 wheels. These rest on search
+excerpts or secondary sources only, so treat them as unverified:
+
+- Render's 100-minute HTTP request limit (staff forum posts, not the docs) and the
+  third-party summary of Render's July 2026 price list.
+- Cloud Run, Railway, Neon and managed-Kubernetes pricing; ECS `stopTimeout` and the
+  ALB idle timeout.
+- Plan availability of GitHub artifact attestations and the SLSA level claims,
+  immutable releases, the 2025 SHA-pinning policy, and how Dependabot updates SHA pins.
+- The details of the 2026-03 Trivy compromise (Aqua and Snyk write-ups).
+- Whether LangChain's free "Self-Hosted Lite" tier still exists.
+
+www.uvicorn.org could not be fetched at all (DNS failure); its settings were read from
+`encode/uvicorn` `docs/*.md` on GitHub. Prices are list prices seen on 2026-10-19 and
+are perishable.
+
+### Deployment targets (what it means for neuron)
+
+Limits that matter for `/v1/agent/stream`, `APP_RUN_TIMEOUT_SECONDS=120` and
+`APP_STREAM_HEARTBEAT_SECONDS=15`:
+
+| Platform | Request / stream limit | SIGTERM to SIGKILL | Migration hook | Source |
+| --- | --- | --- | --- | --- |
+| Render | 100 min (forum only) | 30 s default `maxShutdownDelaySeconds`, max 300 s | pre-deploy command (paid instances, 30 min timeout) | https://render.com/docs/deploys |
+| Fly.io | none documented; 60 s proxy idle (forum) | `kill_timeout` 5 s default, max 300 s; default signal SIGINT | `release_command` | https://docs.fly.io/reference/configuration |
+| Cloud Run | 300 s default, up to 3600 s | **10 s, fixed** | Cloud Run Job | https://docs.cloud.google.com/run/docs/container-contract |
+| Azure Container Apps | **240 s** ingress request timeout | n/a | n/a | https://learn.microsoft.com/en-us/azure/container-apps/ingress-overview |
+| Kubernetes | set by the ingress | `terminationGracePeriodSeconds` 30 s default | Job / Helm hook | https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/ |
+
+- **Render.** Zero-downtime deploys replace one instance at a time and cancel the
+  deploy if a new instance fails its health check; a persistent disk disables them.
+  The pre-deploy command runs on the new version before it takes traffic, which suits
+  migrations. All paid Render Postgres plans get point-in-time recovery: 3 days on
+  Hobby workspaces, 7 days on Pro and above (https://render.com/docs/postgresql-refresh).
+  Prices (secondary): Starter web service $7/month (512 MB, 0.5 CPU); Postgres from $6
+  (Basic-256mb) or $19 (Basic-1gb), plus $0.30/GB. Two small replicas plus Postgres
+  come to about $35/month.
+- **Fly.io** has the same shape (bluegreen or rolling deploys, `release_command`,
+  managed Postgres with HA from $38/month; PITR window not stated:
+  https://docs.fly.io/mpg).
+- **Cloud Run** is cheapest at near-zero traffic, but its fixed 10 s shutdown window is
+  shorter than a run, so every deploy or scale-in kills in-flight `invoke` runs.
+- **Azure Container Apps** (240 s cap) and **AWS App Runner** (closed to new customers:
+  https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)
+  are ruled out.
+- **Kubernetes** adds preStop hooks, PDBs and CronJobs, and the most operational load
+  (upgrades, ingress, cert-manager, secrets). It only makes sense if the target
+  organisation already runs a cluster. Control planes cost about $73/month on EKS
+  (secondary).
+- **Grace must cover the longest run.** Set the platform grace above
+  `APP_RUN_TIMEOUT_SECONDS` plus a margin (Render `maxShutdownDelaySeconds: 150`),
+  otherwise in-flight `invoke` calls die at SIGKILL. Streams already end within 2 s.
+
+**LangGraph Agent Server / LangSmith Deployment**
+(https://docs.langchain.com/langsmith/agent-server,
+https://docs.langchain.com/langsmith/deploy-standalone-server,
+https://www.langchain.com/pricing):
+
+- It runs runs from a Postgres-backed queue that allows at most one run per thread,
+  re-queues runs from crashed workers, and offers `checkpointer.ttl` retention in
+  `langgraph.json`. Redis carries cancellation and stream pub/sub.
+- `langgraph-api` is Elastic-2.0 (PyPI metadata); the libraries neuron uses
+  (`langgraph`, `langgraph-checkpoint-postgres`) are MIT. A standalone server needs a
+  licence key and egress to `beacon.langchain.com`. Self-hosting is Enterprise-only;
+  LangSmith Plus ($39/seat/month) includes one small Serverless deployment.
+- `langgraph dev` / `langgraph up` are not for production (staff answer:
+  https://forum.langchain.com/t/best-practices-for-self-hosting-langgraph-server-oss-without-langgraph-keys/3779).
+- For a cost-sensitive single maintainer the self-hosted FastAPI path stays primary;
+  Agent Server stays a supported second path.
+
+### CI/CD for the container
+
+- **GHCR.** Publishing with `GITHUB_TOKEN` links the package to the repository; a new
+  package is private by default. Add the `org.opencontainers.image.source` label.
+  https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry
+- **Provenance and SBOM.** `docker/build-push-action` adds `mode=max` provenance by
+  default on public repositories; `sbom: true` adds an SBOM attestation. Attestations
+  need a push (`load: true` drops them), and max provenance can expose build
+  arguments, so secrets go in secret mounts.
+  https://docs.docker.com/build/ci/github-actions/attestations/
+- **Artifact attestations** (`actions/attest`) need `id-token: write`,
+  `attestations: write` and `packages: write`; verify with
+  `gh attestation verify oci://IMAGE -R OWNER/REPO`. Public repositories sign with the
+  public Sigstore instance. Inline attestations meet SLSA Build L2; a reusable build
+  workflow reaches L3 (search excerpts).
+  https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations
+- **Scanning.** Trivy and Grype are both standard. On 2026-03-19 the
+  `aquasecurity/trivy-action` and `setup-trivy` tags were force-pushed to
+  credential-stealing commits (all but one tag), and Trivy images 0.69.4-0.69.6 were
+  affected (search excerpts:
+  https://www.aquasec.com/blog/trivy-supply-chain-attack-what-you-need-to-know). It was
+  the second large tag-moving incident after `tj-actions/changed-files` (2025-03): pin
+  every action, scanners included, by full commit SHA.
+- **Pinning policy.** Since 2025-08-15 the allowed-actions policy can require full SHA
+  pins (https://github.blog/changelog/2025-08-15-github-actions-policy-now-supports-blocking-and-sha-pinning-actions/);
+  immutable releases lock tags and assets
+  (https://github.blog/changelog/2025-10-28-immutable-releases-are-now-generally-available/).
+- **Environments.** Up to 6 required reviewers, an option to prevent self-review, tag
+  and branch deployment rules, and environment secrets released only after approval.
+  On Free/Pro/Team plans required reviewers work only in public repositories; neuron
+  is public. https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments
+- **Promotion and rollback.** Deploy by digest, promote the same digest from staging to
+  production, and keep the previous digest for rollback. Schema changes must be
+  expand/contract so the previous image still runs.
+- **Migrations.** LangGraph recommends "running migrations as a dedicated deployment
+  step" (https://docs.langchain.com/oss/python/langgraph/add-memory).
+  `CREATE INDEX CONCURRENTLY` cannot run in a transaction block, and a failed build
+  leaves an `INVALID` index that must be dropped and rebuilt
+  (https://www.postgresql.org/docs/current/sql-createindex.html); `IF NOT EXISTS`
+  then skips it silently.
+- **Dependency automation.** Dependabot supports `uv` (GA 2025-03-13) and
+  `github-actions`, with `groups` and a `cooldown`
+  (https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference).
+  It updates SHA-pinned actions that carry a `# vX.Y.Z` comment (secondary sources).
+
+Current state: GitHub-owned actions (`actions/checkout@v5`, `setup-python@v6`,
+`upload-artifact@v4`, `codeql-action/*@v3`, `dependency-review-action@v4`) are
+tag-pinned, there is no `.github/dependabot.yml`, and no workflow builds the image.
+The `Dockerfile` falls back to an unlocked resolve (`uv sync --no-dev --frozen || uv
+sync --no-dev`), pins neither base image by digest, and `.dockerignore` excludes only
+`.env` and `.dev/`.
+
+### Horizontal scaling
+
+- **One Uvicorn process per container**, replicated by the platform; `--workers` only
+  on a single host, exec-form `CMD` for signals and lifespan
+  (https://fastapi.tiangolo.com/deployment/docker/).
+- **Shutdown knobs** (`encode/uvicorn` `docs/settings.md`): without
+  `--timeout-graceful-shutdown` Uvicorn waits for every response;
+  `--timeout-keep-alive` (5 s default) must stay below the load balancer's idle
+  timeout. The installed `sse-starlette` 3.3.4 detects Uvicorn's exit flag, so streams
+  end with `service_shutting_down` within 2 s.
+- **Probes.** Backend checks belong in readiness, not liveness ("incorrect
+  implementation of liveness probes can lead to cascading failures":
+  https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/),
+  which matches `/health/live` and `/health/ready`.
+- **Shared limits.** Options are Redis (one atomic Lua script per check:
+  https://redis.io/learn/howtos/ratelimiting; a second stateful service with its own
+  fail-open/fail-closed decision) or Postgres, which neuron already requires for
+  durability:
+  - A token bucket is one atomic `UPDATE … RETURNING` per request on a per-key row.
+    `UNLOGGED` tables skip WAL but are "automatically truncated after a crash or unclean
+    shutdown" and "not replicated to standby servers"
+    (https://www.postgresql.org/docs/current/sql-createtable.html). Truncation is
+    acceptable for request rates (a crash grants a burst) but not for a token budget,
+    which stays logged.
+  - It puts a database write in front of every request; a Postgres rate-limit library
+    reports about 6.7k requests/s on one node (secondary), far above neuron's needs.
+- **Run leases.** Session-level advisory locks are held until unlock or session end
+  (https://www.postgresql.org/docs/current/explicit-locking.html), so one held for a
+  run pins a pooled connection for the whole run, and PgBouncer-style transaction
+  pooling does not support them (https://www.pgbouncer.org/features.html,
+  https://neon.com/docs/connect/connection-pooling). Transaction-level advisory locks
+  release at commit and are pooler-safe. The pooler-safe lease is a **row with an
+  expiry**, claimed with a conditional insert and deleted on release; expiry handles a
+  crashed replica. For neuron the lease is a UX and cost guard (turns commit only on
+  success), not a correctness lock, so expiry without fencing tokens is acceptable
+  (Redis's own page warns failover breaks lock mutual exclusion:
+  https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/).
+- **JWKS per replica.** Each replica caches keys independently; N replicas cause about
+  N fetches per `APP_AUTH_JWKS_CACHE_SECONDS`, which is negligible.
+
+### Operations
+
+- **Secrets.** Platform stores first (Render env groups); GitHub environment secrets
+  only for the deploy job; SOPS and Vault/OpenBao are too heavy for one maintainer.
+- **Point-in-time recovery** (2026-10): Render 3 days (Hobby workspace) or 7 days (Pro
+  and above) on paid plans; Neon 6 h free, up to 7 d on Launch
+  (https://neon.com/docs/postgres/backup-restore/history-window); AWS RDS up to 35 d.
+- **Restores, not backups.** "No one really wants to make backups; what people really
+  want are restores"; test recovery continuously
+  (https://sre.google/sre-book/data-integrity/). Every alert needs a playbook entry
+  (https://sre.google/workbook/on-call/).
+
+### LangGraph specifics in production
+
+- `setup()` applies `MIGRATIONS` in order and records them in `checkpoint_migrations`;
+  three steps are `CREATE INDEX CONCURRENTLY`, as is neuron's own
+  `neuron_checkpoints_owner_idx`. Setup therefore needs an autocommit connection and
+  should run on a direct (non-pooled) connection, once per deploy, not from every
+  replica at start-up.
+- **Pooling** (https://www.psycopg.org/psycopg3/docs/advanced/pool.html): keep pools
+  small and monitor `get_stats()`. neuron passes `prepare_threshold=0`; behind
+  PgBouncer that needs version 1.22+ with `max_prepared_statements` > 0
+  (https://www.psycopg.org/psycopg3/docs/advanced/prepare.html). Budget connections as
+  replicas × `APP_POSTGRES_POOL_MAX_SIZE`, plus the migration and prune jobs.
+- `checkpoint_blobs` grows fastest, and every super-step writes a checkpoint.
+  `langgraph-checkpoint-postgres` 3.2.0 (published 2026-10-14) adds
+  `aprune(thread_ids, strategy="keep_latest"|"delete")` with no schema change; neuron
+  locks 3.1.2. Today's retention deletes whole stale threads, which is enough for
+  v0.6.0.
