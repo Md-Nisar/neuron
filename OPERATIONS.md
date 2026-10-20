@@ -12,7 +12,7 @@ Production deployments must inject secrets through the platform secret manager.
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
+- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
@@ -342,7 +342,7 @@ Suggested alerts:
   example alert rule is shipped for them.
   Verify role-to-scope configuration; never broaden permissions as a diagnostic shortcut.
 - **IdP outage or JWKS fetch failures (`503 authentication_unavailable`):** query
-  `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` also returns `503`.
+  `event="auth_failed" AND reason="jwks_unavailable"`; `/health/ready` usually also returns `503`, once the cached keys have expired.
   Check the IdP's status and that `APP_AUTH_JWKS_URL` is reachable from the API (DNS,
   egress rules, TLS). Don't switch to `APP_AUTH_MODE=none` or widen the issuer. Requests
   and readiness recover by themselves once a fetch succeeds; no restart is needed
