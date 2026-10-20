@@ -145,6 +145,8 @@ class _RequestBodyLimitMiddleware:
         for name, value in scope["headers"]:
             if name == b"content-length":
                 try:
+                    if not (value.isascii() and value.isdigit()):
+                        raise ValueError
                     declared_size = int(value)
                 except ValueError:
                     await self._reject(scope, receive, send, 400, "validation_error")
@@ -153,26 +155,31 @@ class _RequestBodyLimitMiddleware:
             logger.warning("agent_request_body_too_large", content_length=declared_size)
             await self._reject(scope, receive, send, 413, "payload_too_large")
             return
-        messages: list[Message] = []
-        received = 0
+        body = bytearray()
+        first: Message | None = None
+        disconnected: Message | None = None
         while True:
             message = await receive()
-            messages.append(message)
             if "body" not in message:  # a disconnect, not body data
+                disconnected = message
                 break
-            received += len(message.get("body", b""))
-            if received > limit:
+            first = first or message
+            body += message.get("body", b"")
+            if len(body) > limit:
                 logger.warning(
-                    "agent_request_body_too_large", content_length=declared_size, received=received
+                    "agent_request_body_too_large", content_length=declared_size, received=len(body)
                 )
                 await self._reject(scope, receive, send, 413, "payload_too_large")
                 return
             if not message.get("more_body", False):
                 break
-        replay = iter(messages)
+        replay: list[Message] = [disconnected] if disconnected else []
+        if first is not None:
+            replay.insert(0, {**first, "body": bytes(body), "more_body": False})
+        replay_iter = iter(replay)
 
         async def replayed_receive() -> Message:
-            return next(replay, None) or await receive()
+            return next(replay_iter, None) or await receive()
 
         await self.app(scope, replayed_receive, send)
 

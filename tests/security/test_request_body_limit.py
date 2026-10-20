@@ -152,3 +152,45 @@ async def test_expect_continue_with_oversized_declared_length_reads_no_body(api:
 
     assert status == 413
     assert consumed == 0
+
+
+@pytest.mark.anyio
+async def test_many_small_chunks_are_replayed_as_one_message(api: JwtApi) -> None:
+    seen: list[dict[str, Any]] = []
+
+    async def inner(scope: Any, receive: Any, send: Any) -> None:
+        seen.append(await receive())
+        seen.append(await receive())
+
+    pending = [b"ab"] * 50 + [b""]
+    served = 0
+
+    async def receive() -> dict[str, Any]:
+        nonlocal served
+        if served >= len(pending):
+            return {"type": "http.disconnect"}
+        served += 1
+        return {
+            "type": "http.request",
+            "body": pending[served - 1],
+            "more_body": served < len(pending),
+        }
+
+    async def send(message: dict[str, Any]) -> None:
+        raise AssertionError("the app must be reached")
+
+    middleware = api_main._RequestBodyLimitMiddleware(inner)
+    await middleware({"type": "http", "headers": []}, receive, send)
+
+    assert seen[0]["body"] == b"ab" * 50
+    assert seen[0]["more_body"] is False
+    assert seen[1] == {"type": "http.disconnect"}  # later reads go to the server
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("value", [b"+5", b"1_0", b"-1", b"5.0"])
+async def test_non_numeric_content_length_is_a_400(api: JwtApi, value: bytes) -> None:
+    status, consumed = await _run_asgi([(b"content-length", value)], [b"x"])
+
+    assert status == 400
+    assert consumed == 0
