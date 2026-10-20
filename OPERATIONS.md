@@ -526,6 +526,15 @@ Before deploying to `staging`/`production`:
 - **Schedule `make prune-threads`** and align `APP_THREAD_RETENTION_DAYS` with your data-retention policy.
 - **Size the run guards.** Set `APP_RUN_TIMEOUT_SECONDS` and `APP_MAX_CONCURRENT_STREAMS` per instance, consistent with proxy timeouts and capacity.
 
+## Smoke Test
+
+After each deploy run `SMOKE_TEST_TOKEN=<token> uv run python scripts/smoke_test.py <base-url>` (ADR 0008 decision 12). It checks `/health/ready`, then makes one `POST /v1/agent/invoke` with a one-word prompt, and exits `0` if both pass, `1` if a check fails (non-ready, `401`/`403`, `5xx`, timeout, a non-JSON or wrong body, or a redirect) and `2` for misuse. `SMOKE_TEST_TIMEOUT_SECONDS` (default `60`) bounds each request. Output names the step and HTTP status only: neither the token nor the URL is printed or written to disk, and plain `http://` is refused except for loopback.
+
+- **Smoke principal.** A dedicated IdP client (`sub` such as `smoke-test`), separate from every human and service user, with the single scope `agent:invoke`. Give it its own small `APP_TOKEN_BUDGET_*` allowance so a leaked token can spend little; the reply is capped by `APP_MAX_OUTPUT_TOKENS`.
+- **Token lifetime.** Mint the token per run with a lifetime of 10 minutes or less, and mask it in the job log. Never commit it or store it in a long-lived variable.
+- **Prefer workload identity federation.** Where the IdP supports it, exchange the CI job's GitHub OIDC token for the access token at run time, so no client secret is stored (ADR 0008, open question 2). Otherwise store the client secret as an Environment secret and add its rotation to the secret rotation runbook.
+- **Retention of its requests.** With `APP_CHECKPOINTER=none` (the staging and production default) nothing is stored. With persistence on, the run creates one thread owned by the smoke principal; the script then calls `DELETE /v1/threads/{id}`, which needs `threads:delete`. Without that scope the script warns and the thread stays until `make prune-threads` removes it after `APP_THREAD_RETENTION_DAYS`. Grant `threads:delete` to the smoke principal only on deployments that persist threads; it can delete only its own threads.
+
 ## Rollback
 
 Rollback by redeploying the previous container image or reverting the LangSmith deployment to the previous repository revision. Before removing graph nodes or state fields, verify no active threads depend on them.
