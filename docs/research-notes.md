@@ -215,6 +215,28 @@ Limits that matter for `/v1/agent/stream`, `APP_RUN_TIMEOUT_SECONDS=120` and
   `APP_RUN_TIMEOUT_SECONDS` plus a margin (Render `maxShutdownDelaySeconds: 150`),
   otherwise in-flight `invoke` calls die at SIGKILL. Streams already end within 2 s.
 
+**Render addendum (2026-10-20, ADR 0008 review).** Fetched from render.com/docs:
+
+- **Deploy hooks** take an `imgURL` query parameter "to deploy a specific tag or
+  digest"; the rest of the URL must match the service's default image. "Your deploy
+  hook URL is a secret!" (one per service, regenerable).
+  https://render.com/docs/deploy-hooks
+- Not stated anywhere fetched: whether a hook deploy of a prebuilt image runs the
+  pre-deploy command, and whether a rollback re-runs it. The deploys page says only
+  that pre-deploy "is available for paid web services, private services, and
+  background workers" (https://render.com/docs/deploys). ADR 0008 open question 4.
+- **Cron jobs** are billed per second of runtime with "a minimum monthly charge of $1
+  per cron job service" (https://render.com/docs/cronjobs).
+- **Private services** are "just like web services" except unreachable from the
+  internet; no separate price was found (assumed web-service instance prices)
+  (https://render.com/docs/private-services). render.com/pricing did not render its
+  price tables when fetched, so the Starter and Postgres prices above remain the
+  secondary source.
+- Full topology from these figures (perishable): production 2 × $7 web + $19
+  Basic-1gb + about $1 cron + $7 Collector ≈ $42; staging $7 + $6 Basic-256mb + about
+  $1 cron (+ $7 if it has its own Collector) ≈ $14-21; storage at $0.30/GB, the
+  workspace plan and the telemetry backend are extra.
+
 **LangGraph Agent Server / LangSmith Deployment**
 (https://docs.langchain.com/langsmith/agent-server,
 https://docs.langchain.com/langsmith/deploy-standalone-server,
