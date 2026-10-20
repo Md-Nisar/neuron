@@ -13,6 +13,8 @@ from urllib.parse import urlsplit
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from neuron_agent import __version__
+
 Environment = Literal["development", "staging", "production", "test"]
 CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
 AuthMode = Literal["none", "jwt"]
@@ -33,7 +35,7 @@ class Settings(BaseSettings):
     )
 
     name: str = "neuron-agent"
-    version: str = "0.5.0"
+    version: str = __version__
     env: Environment = "development"
     log_level: str = "INFO"
     default_model: str = "openai:gpt-5.4-mini"
