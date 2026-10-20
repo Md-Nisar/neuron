@@ -521,7 +521,7 @@ def test_thread_endpoints_are_rate_limited(
 ) -> None:
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     path = f"/v1/threads/{uuid.uuid4()}/messages"

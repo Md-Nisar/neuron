@@ -143,7 +143,7 @@ def test_agent_invoke_returns_429_when_rate_limited(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     client = TestClient(app)
@@ -196,7 +196,7 @@ def test_agent_invoke_logs_error_type_and_duration_on_failure(
 def test_health_endpoints_are_not_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     client = TestClient(app)

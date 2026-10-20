@@ -62,7 +62,7 @@ def test_request_buckets_follow_principal_across_ips(
     monkeypatch.setattr(api_main.settings, "identity_hash_key", SecretStr("i" * 32))
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "principal_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     current = _principal("alice")
@@ -96,7 +96,7 @@ def test_invalid_jwt_attempts_are_limited_before_verification(
     monkeypatch.setattr(api_main.settings, "auth_mode", "jwt")
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
 
