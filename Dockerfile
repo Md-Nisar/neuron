@@ -5,7 +5,7 @@ RUN uv sync --no-dev --frozen || uv sync --no-dev
 COPY . .
 RUN uv sync --no-dev
 
-FROM python:3.13-slim
+FROM python:3.14-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
