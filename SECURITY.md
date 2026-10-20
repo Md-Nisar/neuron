@@ -101,6 +101,12 @@ When it fails:
 1. **Upgrade.** If a fixed version exists, raise the lower bound in `pyproject.toml` for direct dependencies, or run `uv lock --upgrade-package <name>` for transitive ones. Then run all quality gates. Treat auth, crypto and HTTP-client libraries (`pyjwt`, `cryptography`, `urllib3`, `httpx`) as urgent.
 2. **Ignore only with a reason.** If no fix exists, or the vulnerable code path isn't reachable from this project, add the ID to `AUDIT_IGNORES` in the `Makefile` and list it below with the package, why it doesn't apply, and a review date no more than 90 days out. On or after that date, re-check upstream and either upgrade or renew the entry with fresh reasoning.
 
+Dependabot (`.github/dependabot.yml`) opens weekly, grouped update PRs for `uv`, `github-actions` and `docker` (base images), each after a 7-day cooldown. Nothing auto-merges, in Dependabot or any workflow (a test checks the workflows). Every `uses:` in `.github/workflows/` is pinned to a full commit SHA with a `# vX.Y.Z` comment, so a Dependabot PR is the only way a locked action version changes. Review these PRs like any other:
+
+- **All gates apply.** `ci`, `ai-code-verification` and `codeql` must pass, and a person reads the diff and the upstream release notes. For an action, check that the new SHA belongs to the tagged release.
+- **The 90-day rule applies to new packages only.** The `new-dependencies` job still rejects a package missing from PyPI or under 90 days old when a PR adds one; a version bump of a package already locked is not held to it.
+- **`langgraph-checkpoint-postgres` bumps** also need the rollback test from draft #143 (ADR 0008, decision 7) before merging.
+
 Current ignores: none.
 
 ## Remaining Limitations
