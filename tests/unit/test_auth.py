@@ -489,3 +489,33 @@ async def test_cached_keys_keep_instance_ready_and_verifying_during_a_jwks_outag
 
     assert principal.subject == "user-123"
     assert await verifier.ready() is True
+
+
+@pytest.mark.anyio
+async def test_uncached_kid_during_an_outage_keeps_an_instance_with_cached_keys_ready() -> None:
+    private, public = _key_pair()
+    client = SwitchableJWKSClient(public)
+    verifier = TokenVerifier(_settings())
+    verifier._client = client
+    await verifier.verify(f"Bearer {_token(private)}")
+    client.down = True
+
+    with pytest.raises(AuthenticationUnavailableError):  # still not accepted
+        await verifier.verify(f"Bearer {_token(private, kid='not-published')}")
+
+    assert await verifier.ready() is True
+    assert (await verifier.verify(f"Bearer {_token(private)}")).subject == "user-123"
+
+
+@pytest.mark.anyio
+async def test_instance_with_no_cached_keys_goes_unready_when_the_jwks_is_down() -> None:
+    private, public = _key_pair()
+    client = SwitchableJWKSClient(public)
+    client.down = True
+    verifier = TokenVerifier(_settings())
+    verifier._client = client
+
+    with pytest.raises(AuthenticationUnavailableError):
+        await verifier.verify(f"Bearer {_token(private)}")
+
+    assert await verifier.ready() is False
