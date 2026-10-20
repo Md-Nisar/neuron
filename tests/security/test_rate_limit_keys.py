@@ -69,6 +69,7 @@ def test_unparseable_forwarded_entry_stops_the_walk_at_the_last_good_address(
 
     # Nothing left of the bad entry is believed, including the spoofable 198.51.100.77.
     assert api_main._client_ip(_request("10.2.3.4", b"198.51.100.77, " + bad)) == "10.2.3.4"
+    # Pins "the last good address is the key": here that is the trusted hop 10.9.9.9 itself.
     assert api_main._client_ip(_request("10.2.3.4", b"198.51.100.77", bad + b", 10.9.9.9")) == (
         "10.9.9.9"
     )
@@ -136,3 +137,27 @@ def test_junk_ip_keys_cannot_evict_a_principal_bucket(monkeypatch: pytest.Monkey
         again = alice.post("/v1/agent/invoke", json=body, headers=headers)
 
     assert again.status_code == 429
+
+
+def test_mapped_ipv4_trusted_proxy_peer_is_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
+
+    assert api_main._client_ip(_request("::ffff:10.2.3.4", b"203.0.113.8")) == "203.0.113.8"
+
+
+def test_mapped_ipv4_trusted_hop_in_forwarded_for_is_trusted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
+
+    request = _request("10.2.3.4", b"198.51.100.77, 203.0.113.8, ::ffff:10.1.1.1")
+    assert api_main._client_ip(request) == "203.0.113.8"
+
+
+def test_empty_forwarded_entry_keeps_the_last_good_address(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
+
+    assert api_main._client_ip(_request("10.2.3.4", b"203.0.113.8,")) == "10.2.3.4"
+    assert api_main._client_ip(_request("10.2.3.4", b"203.0.113.8, ,10.9.9.9")) == "10.9.9.9"
