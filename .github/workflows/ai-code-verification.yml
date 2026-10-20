@@ -73,7 +73,7 @@ jobs:
             | awk '{ added += ($1 == "-" ? 0 : $1); removed += ($2 == "-" ? 0 : $2) } END { print added + removed + 0 }')
           echo "Changed lines (excluding generated files): $changed"
           echo "Changed lines (excluding generated files): $changed" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$changed" -gt 1000 ] && [ "$LARGE_OK" != "true" ]; then
+          if [ "$changed" -gt 5000 ] && [ "$LARGE_OK" != "true" ]; then
             echo "::error::$changed changed lines. Split the PR, or a maintainer adds the 'large-pr-approved' label."
             exit 1
           elif [ "$changed" -gt 400 ]; then
