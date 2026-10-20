@@ -7,9 +7,11 @@ deployment would see.
 
 from __future__ import annotations
 
+import importlib
 import socket
 import threading
 import time
+import urllib.request
 from collections.abc import Callable, Iterator
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +25,7 @@ from tests.conftest import HistoryEchoAgent, JwtApi
 from neuron_agent.api import main as api_main
 
 ENV_NAME = smoke_test.TOKEN_ENV
+_REAL_BUILD_OPENER = urllib.request.build_opener  # the jwks_server fixture replaces it
 
 
 @pytest.fixture
@@ -31,7 +34,7 @@ def live_url(jwt_api_factory: Callable[..., JwtApi], echo_agent: HistoryEchoAgen
     servers: list[tuple[uvicorn.Server, threading.Thread]] = []
 
     def start(**overrides: Any) -> str:
-        jwt_api_factory(checkpointer="none", **overrides)
+        jwt_api_factory(**{"checkpointer": "none", **overrides})
         server = uvicorn.Server(
             uvicorn.Config(api_main.app, host="127.0.0.1", port=0, log_level="critical")
         )
@@ -50,27 +53,43 @@ def live_url(jwt_api_factory: Callable[..., JwtApi], echo_agent: HistoryEchoAgen
         thread.join(timeout=10)
 
 
-def _stub(status: int, body: bytes) -> tuple[str, ThreadingHTTPServer]:
+def _stub(
+    respond: Callable[[str, str], tuple[int, dict[str, str], bytes]],
+) -> tuple[str, ThreadingHTTPServer, list[tuple[str, str]]]:
+    """Serve `respond(method, path) -> (status, headers, body)`; record each request."""
+    seen: list[tuple[str, str]] = []
+
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802
+        def _serve(self) -> None:
+            seen.append((self.command, self.path))
+            status, headers, body = respond(self.command, self.path)
             self.send_response(status)
-            self.send_header("Content-Length", str(len(body)))
+            for name, value in {**headers, "Content-Length": str(len(body))}.items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(body)
+
+        do_GET = do_POST = do_DELETE = _serve  # noqa: N815
 
         def log_message(self, *args: Any) -> None:
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    return f"http://127.0.0.1:{server.server_address[1]}", server
+    return f"http://127.0.0.1:{server.server_address[1]}", server, seen
+
+
+def _stop(*servers: ThreadingHTTPServer) -> None:
+    for server in servers:
+        server.shutdown()
+        server.server_close()
 
 
 def _smoke(url: str, token: str, **env: str) -> int:
     return smoke_test.main([url], {ENV_NAME: token, **env})
 
 
-def test_success_exits_zero_and_leaves_no_thread(
+def test_stateless_run_passes_and_warns_it_cannot_delete(
     live_url: Callable[..., str], make_token: Callable[..., str], capfd: pytest.CaptureFixture[str]
 ) -> None:
     url = live_url()
@@ -78,15 +97,15 @@ def test_success_exits_zero_and_leaves_no_thread(
     assert _smoke(url, token) == 0
     out, err = capfd.readouterr()
     assert "passed" in out
+    assert "no permission to delete" in err
     assert token not in out + err
     assert url not in out + err
 
 
 def test_persisted_thread_is_deleted(
-    live_url: Callable[..., str], make_token: Callable[..., str], jwt_api_factory: Any
+    live_url: Callable[..., str], make_token: Callable[..., str]
 ) -> None:
-    url = live_url()
-    jwt_api_factory(checkpointer="memory")  # the running app now persists threads
+    url = live_url(checkpointer="memory")
     smoke = make_token("smoke", scopes="agent:invoke threads:delete")
     assert _smoke(url, smoke) == 0
     reader = make_token("smoke", scopes="threads:read")
@@ -97,11 +116,9 @@ def test_persisted_thread_is_deleted(
 def test_principal_without_delete_scope_warns(
     live_url: Callable[..., str],
     make_token: Callable[..., str],
-    jwt_api_factory: Any,
     capfd: pytest.CaptureFixture[str],
 ) -> None:
-    url = live_url()
-    jwt_api_factory(checkpointer="memory")
+    url = live_url(checkpointer="memory")
     assert _smoke(url, make_token("smoke", scopes="agent:invoke")) == 0
     assert "no permission to delete" in capfd.readouterr().err
 
@@ -184,11 +201,11 @@ def test_connection_refused_fails_without_the_url(capfd: pytest.CaptureFixture[s
 
 @pytest.mark.parametrize("body", [b'{"status": "starting"}', b"not json", b"[]"])
 def test_wrong_ready_body_fails(body: bytes, capfd: pytest.CaptureFixture[str]) -> None:
-    url, server = _stub(200, body)
+    url, server, _ = _stub(lambda method, path: (200, {}, body))
     try:
         assert _smoke(url, "secret-token-value") == 1
     finally:
-        server.shutdown()
+        _stop(server)
     out, err = capfd.readouterr()
     assert "FAILED" in err
     assert "secret-token-value" not in out + err
@@ -209,13 +226,41 @@ def test_wrong_invoke_body_fails(
     assert _smoke(url, make_token("smoke", scopes="agent:invoke")) == 1
 
 
-def test_redirect_is_not_followed(capfd: pytest.CaptureFixture[str]) -> None:
-    url, server = _stub(302, b"")
+def test_redirect_is_not_followed() -> None:
+    url_b, server_b, seen_b = _stub(lambda method, path: (200, {}, b"{}"))
+
+    def respond(method: str, path: str) -> tuple[int, dict[str, str], bytes]:
+        if method == "GET":
+            return 200, {}, b'{"status": "ready"}'
+        return 302, {"Location": f"{url_b}/stolen"}, b""
+
+    url_a, server_a, _ = _stub(respond)
     try:
-        assert _smoke(url, "secret-token-value") == 1
+        assert _smoke(url_a, "secret-token-value") == 1
     finally:
-        server.shutdown()
-    assert "HTTP 302" in capfd.readouterr().err
+        _stop(server_a, server_b)
+    assert seen_b == []
+
+
+def test_token_never_goes_through_an_environment_proxy(
+    live_url: Callable[..., str], make_token: Callable[..., str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = live_url()
+    proxy, server, seen = _stub(lambda method, path: (502, {}, b""))
+    try:
+        monkeypatch.setenv("http_proxy", proxy)
+        monkeypatch.delenv("no_proxy", raising=False)
+        monkeypatch.delenv("NO_PROXY", raising=False)
+        patched = urllib.request.build_opener
+        monkeypatch.setattr(urllib.request, "build_opener", _REAL_BUILD_OPENER)
+        importlib.reload(smoke_test)
+        monkeypatch.setattr(
+            urllib.request, "build_opener", patched
+        )  # JWKS fetch needs it  # the opener is built at import
+        assert _smoke(url, make_token("smoke", scopes="agent:invoke")) == 0
+    finally:
+        _stop(server)
+    assert seen == []
 
 
 def test_misuse_exits_two(capfd: pytest.CaptureFixture[str]) -> None:
@@ -227,3 +272,8 @@ def test_misuse_exits_two(capfd: pytest.CaptureFixture[str]) -> None:
     assert smoke_test.main(["http://api.example.com"], {ENV_NAME: "t"}) == 2
     err = capfd.readouterr().err
     assert ENV_NAME in err
+
+
+def test_malformed_url_exits_two_without_echoing_it(capfd: pytest.CaptureFixture[str]) -> None:
+    assert smoke_test.main(["http://[bad-host"], {ENV_NAME: "t"}) == 2
+    assert "bad-host" not in capfd.readouterr().err

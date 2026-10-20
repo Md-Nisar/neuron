@@ -45,7 +45,8 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-_opener = urllib.request.build_opener(_NoRedirect)
+# `ProxyHandler({})`: never route the bearer token through an HTTP(S)_PROXY.
+_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect)
 
 
 def _request(
@@ -152,11 +153,15 @@ def main(argv: list[str] | None = None, env: Mapping[str, str] = os.environ) -> 
     except ValueError:
         print(f"smoke_test: {TIMEOUT_ENV} must be a positive number", file=sys.stderr)
         return 2
-    parts = urlsplit(args.base_url)
-    if parts.scheme not in {"http", "https"} or not parts.hostname:
+    try:
+        parts = urlsplit(args.base_url)
+        host = parts.hostname
+    except ValueError:  # malformed URL; its text is not echoed
+        host = None
+    if host is None or parts.scheme not in {"http", "https"}:
         print("smoke_test: the base URL must be http(s)://host", file=sys.stderr)
         return 2
-    if parts.scheme == "http" and parts.hostname not in _LOOPBACK:
+    if parts.scheme == "http" and host not in _LOOPBACK:
         print("smoke_test: refusing to send a token over plain http", file=sys.stderr)
         return 2
     try:
