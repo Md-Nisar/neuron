@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -62,3 +63,54 @@ def test_ai_review_skips_during_the_nightly_window() -> None:
 def test_nightly_timeout_leaves_headroom_over_the_measured_run() -> None:
     cap = _load("nightly-eval.yml")["jobs"]["live-eval"]["timeout-minutes"]
     assert cap >= 74 + 30
+
+
+def _uses_lines() -> list[tuple[str, str]]:
+    found = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        for line in path.read_text("utf-8").splitlines():
+            stripped = line.strip().removeprefix("- ")
+            if stripped.startswith("uses:"):
+                found.append((path.name, stripped))
+    return found
+
+
+_PINNED = re.compile(r"^uses: [\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$")
+
+
+def test_every_action_is_pinned_to_a_commit_sha_with_a_version_comment() -> None:
+    uses = _uses_lines()
+    assert uses
+    for name, line in uses:
+        if line.startswith(("uses: ./", "uses: docker://")):
+            continue  # local and docker:// actions are out of scope
+        assert _PINNED.match(line), f"{name}: {line}"
+
+
+def test_the_pin_check_rejects_tag_and_branch_references() -> None:
+    sha = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09"
+    assert _PINNED.match(f"uses: actions/checkout@{sha} # v5.1.0")
+    assert not _PINNED.match("uses: actions/checkout@v5")
+    assert not _PINNED.match("uses: actions/checkout@main")
+    assert not _PINNED.match(f"uses: actions/checkout@{sha}")
+
+
+def test_dependabot_covers_three_ecosystems_weekly_grouped_with_cooldown() -> None:
+    config = yaml.safe_load(Path(".github/dependabot.yml").read_text("utf-8"))
+    assert config["version"] == 2
+    updates = {u["package-ecosystem"]: u for u in config["updates"]}
+    assert set(updates) == {"uv", "github-actions", "docker"}
+    for update in updates.values():
+        assert update["schedule"]["interval"] == "weekly"
+        assert update["cooldown"]["default-days"] == 7
+        assert update["groups"]
+
+
+def test_nothing_auto_merges() -> None:
+    forbidden = ("--auto", "auto-merge", "automerge", "gh pr merge")
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        text = path.read_text("utf-8").lower()
+        for token in forbidden:
+            assert token not in text, f"{path.name} contains {token}"
+    dependabot = Path(".github/dependabot.yml").read_text("utf-8").lower()
+    assert "auto-merge" not in dependabot and "automerge" not in dependabot
