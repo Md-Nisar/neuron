@@ -728,6 +728,10 @@ each change, not by this ADR:
 Questions 4-8, 19 and 20 are security-relevant and **block** the drafts they gate
 (listed in draft 1). Questions 15-18 are owner sign-offs that this ADR does not decide.
 
+On 2026-10-20 the owner decided questions 5, 7, 8 and 19 and signed off 15-18, each
+as recommended below (marked **Decided**). Questions 4, 6 and 20 still block: they
+need facts from the Render account.
+
 1. **Render workspace and Postgres plan.** Hobby (3-day PITR) or Pro (7-day PITR), and
    which Postgres plan (its `max_connections` sets the pool budget). The Pro price is
    not in the research; the owner confirms the priced topology is acceptable.
@@ -751,6 +755,9 @@ Questions 4-8, 19 and 20 are security-relevant and **block** the drafts they gat
 5. **Proxy headers (blocking).** Render's proxy addresses for `APP_TRUSTED_PROXIES`,
    and whether the app or Uvicorn parses `X-Forwarded-For` (proposed: the app only,
    rightmost untrusted hop).
+   **Decided (owner, 2026-10-20):** the app only, rightmost untrusted hop; Uvicorn
+   does not parse proxy headers. Render's proxy addresses are still to be confirmed
+   on the deployment.
 6. **Database TLS and pooling on Render (blocking).** Whether Render's internal
    connection string supports `sslmode=verify-full` with a published CA (or only
    `require`, and whether the internal network counts as a private link), and whether
@@ -759,8 +766,11 @@ Questions 4-8, 19 and 20 are security-relevant and **block** the drafts they gat
    8). Still open: whether the per-request rate-limit write is acceptable or the rate
    limiter stays a bounded per-process one with "divide by instances" documented (the
    owner decision allows either). Recommendation: the Postgres limiter.
+   **Decided (owner, 2026-10-20):** the Postgres limiter.
 8. **Lease expiry (blocking).** Run timeout plus 15 s, no heartbeat and no fencing
    (proposed, with the boundary test), or a shorter expiry with a heartbeat.
+   **Decided (owner, 2026-10-20):** run timeout plus 15 s, no heartbeat and no
+   fencing, with the boundary test.
 9. **Scanner.** Grype (proposed) or Trivy.
 10. **Telemetry backend.** Where the Collector exports and the alert rules are
     evaluated for the reference deployment, and its cost; one Collector per
@@ -778,23 +788,27 @@ Questions 4-8, 19 and 20 are security-relevant and **block** the drafts they gat
 15. **Restore rehearsal scope (owner sign-off).** One restore rehearsal with RTO/RPO in
     v0.6.0 (proposed, decision 12), or all restore work in v0.9.0 with DR.
     Recommendation: keep the one rehearsal; a backup that was never restored is not a
-    backup.
+    backup. **Decided (owner, 2026-10-20):** one rehearsal in v0.6.0.
 16. **SLO re-check (owner sign-off).** Confirm that re-checking SLOs with a few
     synthetic requests on the deployed instance is enough for v0.6.0, knowing it is not
     load testing (v0.9.0). Recommendation: yes, with the sample size recorded.
+    **Decided (owner, 2026-10-20):** yes, with the sample size recorded.
 17. **Nightly eval and `ai-review` keys (owner sign-off).** Default: a schedule gap and
     concurrency rule so `ai-review` does not run during the nightly window, no new key.
     A second NVIDIA key only after checking NVIDIA's terms (ADR 0007 section 6).
-    Recommendation: the default.
+    Recommendation: the default. **Decided (owner, 2026-10-20):** the default; no
+    new key.
 18. **Inconclusive or failing `compare` at the gate (owner sign-off).** Whether v0.6.0
     may ship with an inconclusive or failing live `compare`, recorded as a known issue
     as in v0.5.0. Recommendation: allow it only for infrastructure errors, with the
-    owner's sign-off recorded in the release verification.
+    owner's sign-off recorded in the release verification. **Decided (owner,
+    2026-10-20):** allowed only for infrastructure errors, with the sign-off recorded.
 19. **Advisory locks (blocking, owner to confirm).** That transaction-level advisory
     locks (`pg_advisory_xact_lock`) for lease claims, and one session-level advisory
     lock on the direct, never-pooled migration connection, are within the "no session
     advisory locks" decision. Recommendation: yes; the alternative for migrations is
     `LOCK TABLE neuron_migrations`, which cannot cover the concurrent index builds.
+    **Decided (owner, 2026-10-20):** yes; both are within the decision.
 20. **Database roles on Render (blocking).** Whether Render Postgres lets the owner
     create `neuron_migrator` and `neuron_app` roles with the needed grants, and how the
     migration DSN is kept from the web process when pre-deploy shares its environment
