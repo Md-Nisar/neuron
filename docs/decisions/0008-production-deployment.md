@@ -662,6 +662,43 @@ each change, not by this ADR:
 | `ARCHITECTURE.md:189`, `:284`; `SECURITY.md:110`, `:112` | per-process guards and limiter; key exposure links threads only | Decision 8 (IP keys are pseudonymous personal data) |
 | AGENTS.md env-read rule | one exception, `observability/langsmith_governance.py` | Decision 3: `observability/telemetry.py:185` added as a second exception |
 
+### 17. Free-tier profile (staging and demo only)
+
+**Decided (owner, 2026-10-20):** only Render's free plans are available for now. They
+are a staging and demo target, **not** a production reference; decisions 1-16 stay the
+production design and need paid services. Facts below are from Render's documentation
+(`render.com/docs/free`, `/docs/deploys`) as read on 2026-10-20 and are not yet proven
+on a deployed service.
+
+| Area | Free plan | Consequence |
+| --- | --- | --- |
+| Pre-deploy command | Paid web services, private services and workers only | Decision 7's pre-deploy step does not exist; migrations run as an operator step (below) |
+| Instances | One; no scaling | Run `APP_LIMITS_BACKEND=memory` with one instance, as decision 1 already allows for staging |
+| Spin-down | After 15 min idle; about 1 min to wake; suspended after 750 instance hours a month | Not a place for SLO or latency evidence; the smoke test must tolerate a cold start |
+| Disk | None | Nothing is written locally |
+| Postgres | Expires 30 days after creation (14-day grace, then deleted); 1 GB; no backups or PITR; no managed pooler; one free database per workspace | Staging data is disposable; no restore rehearsal here; the database is recreated before expiry |
+| Database TLS | Internal connections do not support `verify-ca` or `verify-full`; external connections need `sslmode=require` | Decision 9's verified-TLS rule cannot be met; see below |
+
+Rules for the profile:
+
+- **Migrations.** Run `python -m neuron_agent.persistence.cli setup` from a manual
+  GitHub Actions job (or `make db-setup`) against the database's connection string,
+  before promoting a digest. Start-up setup stays refused. The job needs the database's
+  external connection, which Render only allows if the database's allow-list admits the
+  runner; not yet proven, and decision 1's empty allow-list does not hold here.
+- **Roles.** Whether `neuron_migrator` and `neuron_app` can be created is unknown
+  (open question 20). Until proven, one role is used and the "runtime role must not own
+  the schema" check is skipped only when `APP_ENV=staging`; it stays enforced in
+  production.
+- **Database TLS.** `require` is accepted in staging only, as a documented exception to
+  decision 9; production still needs verified TLS.
+- **Promotion.** There is no production on the free plan. The pipeline stops at staging,
+  and the release gate cannot claim a production deployment, a restore rehearsal or SLO
+  evidence from it. Release notes must say so.
+- **Deploy hooks** and rollback to the last two deploys are available. Whether an
+  image-backed (prebuilt image) service is allowed on the free plan is not stated in
+  the documentation and must be proven first.
+
 ## Migration and rollout
 
 1. Image, entrypoint and pipeline first (decisions 2, 3, 6), deploying to staging with
@@ -714,7 +751,8 @@ each change, not by this ADR:
   these tables only.
 - The web process no longer owns its schema; operators create two roles per
   environment by hand once.
-- Deploys need a paid Render plan (pre-deploy commands) and Postgres even for a
+- Deploys need a paid Render plan (pre-deploy commands); the free plan is a
+  staging and demo profile only (decision 17) and Postgres even for a
   stateless deployment that uses the shared guards; the full topology costs about
   $56-63/month plus storage, workspace plan and telemetry backend (perishable).
 - Operators get stricter start-up validation and must update existing staging and
@@ -730,7 +768,10 @@ Questions 4-8, 19 and 20 are security-relevant and **block** the drafts they gat
 
 On 2026-10-20 the owner decided questions 5, 7, 8 and 19 and signed off 15-18, each
 as recommended below (marked **Decided**). Questions 4, 6 and 20 still block: they
-need facts from the Render account.
+need facts from the Render account. Also on 2026-10-20 the owner said only free Render
+plans are available for now: decision 17 records the free-tier profile and what it
+answers for 4, 6 and 20 (pre-deploy is paid-only; internal connections lack verified
+TLS; roles unknown).
 
 1. **Render workspace and Postgres plan.** Hobby (3-day PITR) or Pro (7-day PITR), and
    which Postgres plan (its `max_connections` sets the pool budget). The Pro price is
