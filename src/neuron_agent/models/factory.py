@@ -55,6 +55,7 @@ from neuron_agent.observability.audit import audit
 from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext, require_permission
+from neuron_agent.security.input_policy import audit_tool_name
 
 logger = structlog.get_logger(__name__)
 
@@ -239,6 +240,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         tool_name = request.tool_call.get("name", "unknown")
         permission = _TOOL_PERMISSIONS.get(tool_name)
+        audit_name = audit_tool_name(tool_name, (*_TOOL_PERMISSIONS, "utc_now"))
         context = request.runtime.context
         permissions = (
             context.permissions if isinstance(context, AuthorizationContext) else frozenset()
@@ -257,7 +259,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                     else None,
                     action=permission,
                     resource_type="tool",
-                    resource_id=tool_name,
+                    resource_id=audit_name,
                     reason="insufficient_scope",
                 )
                 return _denied_tool_call(request, tool_name)
@@ -270,7 +272,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                 issuer_id=context.issuer_id if isinstance(context, AuthorizationContext) else None,
                 action="none",
                 resource_type="tool",
-                resource_id=tool_name,
+                resource_id=audit_name,
                 reason="unknown_tool",
             )
             return _denied_tool_call(request, tool_name)

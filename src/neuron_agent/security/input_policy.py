@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections.abc import Iterable
 from urllib.parse import urlparse
@@ -15,6 +16,17 @@ from neuron_agent.observability import metrics
 HIGH_RISK_TOOL_NAMES = frozenset({"send_email", "write_file", "delete_record", "execute_payment"})
 
 _ALLOWED_CONTROL_CHARS = frozenset({"\t", "\n", "\r"})
+
+
+_UNSAFE_NAME_CHARS = re.compile(r"[^A-Za-z0-9_.-]")
+MAX_AUDITED_TOOL_NAME_CHARS = 64
+
+
+def audit_tool_name(tool_name: str, known_tools: Iterable[str]) -> str:
+    """Return a tool name safe to log: known names as is, a model-chosen one bounded."""
+    if tool_name in set(known_tools):
+        return tool_name
+    return _UNSAFE_NAME_CHARS.sub("?", tool_name)[:MAX_AUDITED_TOOL_NAME_CHARS] or "?"
 
 
 def validate_user_message(message: str, *, max_chars: int) -> str:
