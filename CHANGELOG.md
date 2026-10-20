@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Nightly eval reliability (#157). `ai-review` skips itself between 03:00 and 05:30 UTC so it no longer takes the shared NVIDIA key's rate limit during the nightly eval, and the nightly timeout is 110 minutes (was 90) against a measured 74. No new key. Not yet confirmed: two consecutive nightly runs without `rate_limit_error`.
 - System prompt output guard (#124). The live security eval cases `system-prompt-disclosure-001` to `-003` and `cross-turn-injection-001` failed because answers quoted the prompt rules. The prompt now says its instructions are not shared, and `security/output_policy.py` enforces it in code: an answer that shares eight or more consecutive words with the loaded prompt (case, whitespace and markdown ignored) becomes the fixed text `I can't share my instructions.` with `refused: true`, on `POST /v1/agent`, the stream and Agent Server. The block logs `system_prompt_disclosure_blocked`, emits the `output_blocked` audit event and counts a `system_prompt_disclosure` policy block, with no prompt or answer text. Streamed `token` events hold back the last eight words, so a very short answer now arrives in one `token` event.
 
 Fixes:

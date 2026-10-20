@@ -25,9 +25,11 @@ env:
 jobs:
   live-eval:
     runs-on: ubuntu-latest
-    # 3 trials of every suite take 70 to 80 minutes at the default 30 model calls per minute
-    # (EVALUATION.md); a 75 minute cap cut a run off before the compare step.
-    timeout-minutes: 90
+    # 3 trials of every suite take about 74 minutes (run 39225629460) at the default 30 model
+    # calls per minute (EVALUATION.md). The cap leaves 36 minutes over that; a 75 minute cap
+    # cut a run off before the compare step. ai-review skips 03:00 to 05:30 UTC, which covers
+    # the 03:17 start plus this cap, so keep the two in step (tests/unit/test_workflows.py).
+    timeout-minutes: 110
     steps:
       - name: Check the provider secret
         id: provider

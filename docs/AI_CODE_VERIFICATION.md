@@ -80,6 +80,12 @@ Approving means you would have been comfortable writing this code yourself.
    `curl -s -H "Authorization: Bearer $NVIDIA_API_KEY" https://integrate.api.nvidia.com/v1/models`.
    The free tier is rate limited (about 40 requests a minute) and is not meant for
    production; each review uses two requests. Without the key the review skips itself.
+   `nightly-eval` shares this key, so `ai-review` skips itself (advisory success, with a
+   notice) between 03:00 and 05:30 UTC, which covers the 03:17 nightly start plus its
+   110 minute timeout; a PR changed in that window is reviewed on the next push or
+   job re-run. No second key is needed (ADR 0008, question 17). Both workflows stay
+   within NVIDIA's API terms and rate limits (see "Automated runs and NVIDIA's terms"
+   in `EVALUATION.md`).
 2. Create the labels `large-pr-approved` and `new-dependency-approved`.
 3. Enable the dependency graph and, for a private repository, GitHub Advanced Security
    (needed by `dependency-review` and CodeQL).
