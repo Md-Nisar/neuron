@@ -351,21 +351,27 @@ def _client_ip(request: Request) -> str:
     """
     peer = request.client.host if request.client else "unknown"
     try:
-        address = ipaddress.ip_address(peer)
+        address = _unmapped(ipaddress.ip_address(peer))
     except ValueError:
         return peer
     if _trusted_proxy(address):
         entries = ",".join(request.headers.getlist("X-Forwarded-For")).split(",")
         while entries and _trusted_proxy(address):
             try:
-                address = ipaddress.ip_address(entries.pop().strip())
+                address = _unmapped(ipaddress.ip_address(entries.pop().strip()))
             except ValueError:
                 break
     if isinstance(address, ipaddress.IPv6Address):
-        if address.ipv4_mapped is not None:
-            return str(address.ipv4_mapped)
         return str(ipaddress.IPv6Network((int(address), 64), strict=False))
     return str(address)
+
+
+def _unmapped(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        return address.ipv4_mapped
+    return address
 
 
 def _trusted_proxy(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:

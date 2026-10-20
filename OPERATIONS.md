@@ -472,7 +472,7 @@ Key scheme: two limiters per worker, each with the same limits and the same 10,0
 | principal | `principal:<owner HMAC>` | requests with a verified token |
 | IP | `ip:<address>` | `AUTH_MODE=none` requests and failed JWT authentication |
 
-The address is the client's IPv4 address, or its IPv6 `/64` network (`ip:2001:db8:1:2::/64`), so one IPv6 subscriber shares one bucket however many addresses it uses. An IPv4-mapped IPv6 address (`::ffff:192.0.2.5`) is keyed as the plain IPv4 address. A peer address that does not parse as an IP is used as given.
+The address is the client's IPv4 address, or its IPv6 `/64` network (`ip:2001:db8:1:2::/64`), so one IPv6 subscriber shares one bucket however many addresses it uses. The /64 grouping is a coarse pre-auth guard: an attacker holding a /48 can rotate through 65,536 /64s. An IPv4-mapped IPv6 address (`::ffff:192.0.2.5`) is keyed as the plain IPv4 address. A peer address that does not parse as an IP is used as given.
 
 Behind a trusted proxy, all `X-Forwarded-For` lines are joined and read right to left, skipping trusted hops. The first entry that does not parse as a bare IP address (`203.0.113.8:4444` and `[2001:db8::1]` both fail) ends the walk, and the last address read is the key; nothing to the left of it is believed. A proxy that adds ports or brackets therefore rate-limits all clients as one address, the proxy's, until it is fixed.
 
