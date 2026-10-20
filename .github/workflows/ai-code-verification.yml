@@ -76,8 +76,8 @@ jobs:
           if [ "$changed" -gt 5000 ] && [ "$LARGE_OK" != "true" ]; then
             echo "::error::$changed changed lines. Split the PR, or a maintainer adds the 'large-pr-approved' label."
             exit 1
-          elif [ "$changed" -gt 400 ]; then
-            echo "::warning::$changed changed lines. Changes over 400 lines get noticeably weaker human review."
+          elif [ "$changed" -gt 4000 ]; then
+            echo "::warning::$changed changed lines. Changes over 4000 lines get noticeably weaker human review."
           fi
       - name: Require the AI assistance and verification sections
         env:

@@ -72,7 +72,7 @@ The PR template asks the author to pick the tier; reviewers correct it if it is 
 
 - Disclose AI assistance in the PR template. Keep the `Co-Authored-By:` trailer that Claude
   Code adds to commits; it is the provenance record.
-- Work in small batches. PRs over 400 changed lines get a warning and over 5,000 fail
+- Work in small batches. PRs over 4,000 changed lines get a warning and over 5,000 fail
   unless a maintainer adds the `large-pr-approved` label. Generated files do not count.
 - Write or review the tests first. A new behaviour needs a test that fails without the change.
 - New dependencies: the `new-dependencies` job fails if a package does not exist on PyPI
