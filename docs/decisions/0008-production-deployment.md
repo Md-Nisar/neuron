@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed (v0.6.0). Amends ADR 0004, ADR 0005 (decisions 1 and 5) and ADR 0006 where
+Accepted (v0.6.0), with three Render facts assumed, not proven (open questions 4, 6
+and 20; decision 17). Amends ADR 0004, ADR 0005 (decisions 1 and 5) and ADR 0006 where
 they put shared, cross-replica limits out of scope or make checkpointer selection and
 schema setup lenient in staging and production (see "Amendments to earlier ADRs").
 
@@ -793,6 +794,15 @@ TLS; roles unknown).
    rollback re-runs the pre-deploy command. Recommendation: per-service hooks, and draft
    1 records a throwaway-service proof; if pre-deploy does not run, choose decision 6's
    fallback before draft 14.
+   **Assumed (owner, 2026-10-21), not proven:** the free plan can run an image-backed
+   service and a deploy hook can deploy a specific digest; there is no pre-deploy
+   command, so migrations run as the operator step in decision 17 (a documented
+   exception to decision 6's fallback, for free-plan staging only); the pipeline
+   learns a deploy is live by polling `/health/ready` for the running revision (a
+   revision field is added with the pipeline work). Render already builds this
+   repository's `Dockerfile` from a public repository URL, which is the fallback if
+   image-backed services are not available on the free plan. If an assumption is
+   wrong, it is fixed on the first staging deploy and this entry is updated.
 5. **Proxy headers (blocking).** Render's proxy addresses for `APP_TRUSTED_PROXIES`,
    and whether the app or Uvicorn parses `X-Forwarded-For` (proposed: the app only,
    rightmost untrusted hop).
@@ -803,6 +813,11 @@ TLS; roles unknown).
    connection string supports `sslmode=verify-full` with a published CA (or only
    `require`, and whether the internal network counts as a private link), and whether
    any pooler sits in front (affects `prepare_threshold=0` and the migration DSN).
+   **Assumed (owner, 2026-10-21), not proven:** the internal connection string supports
+   `sslmode=require` only (Render's documentation says `verify-ca` and `verify-full`
+   are not supported internally) and no pooler sits in front on the free plan. The
+   `require` exception applies to free-plan staging only (decision 17); production
+   still needs verified TLS and is not deployed on the free plan.
 7. **Guard failure mode (blocking).** Fail closed for every guard is decided (decision
    8). Still open: whether the per-request rate-limit write is acceptable or the rate
    limiter stays a bounded per-process one with "divide by instances" documented (the
@@ -872,3 +887,8 @@ TLS; roles unknown).
 - https://fastapi.tiangolo.com/deployment/docker/
 - https://sre.google/sre-book/data-integrity/
 - ADR 0001, ADR 0004, ADR 0005, ADR 0006, ADR 0007.
+
+   **Assumed (owner, 2026-10-21), not proven:** the owner can create `neuron_migrator`
+   and `neuron_app` and grant to them. If Render denies `CREATE ROLE`, free-plan
+   staging runs with one role and skips the "runtime role must not own the schema"
+   check under `APP_ENV=staging` only (decision 17); production keeps the split.
