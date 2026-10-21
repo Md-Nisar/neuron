@@ -245,6 +245,8 @@ Configuration is in `OPERATIONS.md#opentelemetry`.
 
 The service is stateless except for provider clients and graph construction. Horizontal scaling is supported for the HTTP layer. Durable thread state requires Agent Server managed persistence or a configured production checkpointer.
 
+Multi-instance deployment, shared Postgres-backed limits and leases, migrations, the container image and the Render reference platform are designed in [ADR 0008](docs/decisions/0008-production-deployment.md) (v0.6.0); they are being implemented issue by issue, so this document describes the code that exists today.
+
 ## Failure Handling
 
 Expected failures are classified through `AppError` subclasses (`src/neuron_agent/errors/base.py`), each carrying an `ErrorContext(code, http_status, retryable, user_visible, alert)`:
