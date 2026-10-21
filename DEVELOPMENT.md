@@ -41,6 +41,16 @@ make run
 
 Run a single test directly, e.g. `uv run pytest tests/unit/test_calculator.py::test_name -q` (PowerShell: same command, no shell-specific syntax needed).
 
+## Token Usage Report
+
+Session transcripts exist only in the session container. Before a session ends, and again at release time, run the report and commit it (counts only, no prompt or response text):
+
+```bash
+uv run python scripts/token_report.py <transcript-dir> -o docs/releases/<version>-token-usage.md
+```
+
+It sums input, output, cache-read and cache-write tokens per agent, grouped by issue number (the most frequent `#<number>` in the agent prompt; otherwise "unattributed") and by role (implement, review, CI fix, other, from prompt keywords). It reports tokens, not money. Record each merged issue's tokens, review rounds and CI re-pushes in the tracker row (#161).
+
 ## Adding a Tool
 
 1. Add the tool under `src/neuron_agent/tools/`.

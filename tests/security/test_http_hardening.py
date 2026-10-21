@@ -294,11 +294,12 @@ def test_rate_limits_apply_to_every_v1_prefix_and_behind_a_root_path(
 ) -> None:
     """Per-principal limits, and per-IP limits on failed authentication."""
     jwt_api_factory(rate_limit_enabled=True)
-    monkeypatch.setattr(
-        api_main,
-        "rate_limiter",
-        InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=3600),
-    )
+    for name in ("ip_rate_limiter", "principal_rate_limiter"):
+        monkeypatch.setattr(
+            api_main,
+            name,
+            InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=3600),
+        )
     client = TestClient(api_main.app, root_path=root_path)
     headers = {**(token if authenticated else {}), "X-Correlation-ID": "limited-1"}
 

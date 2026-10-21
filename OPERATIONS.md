@@ -465,6 +465,17 @@ values or rewrite checkpoint ownership in place without an auditable plan.
 
 `/v1/agent/*`, `/v1/threads/*` and `/v1/me/*` enforce token-bucket limits (`APP_RATE_LIMIT_ENABLED=true` by default). Authenticated requests are keyed by the verified principal's opaque owner HMAC; in local `AUTH_MODE=none`, and after failed JWT authentication, the key is the client IP. Defaults: burst capacity `APP_RATE_LIMIT_BURST=20`, refilling at `APP_RATE_LIMIT_REQUESTS_PER_WINDOW=60` per `APP_RATE_LIMIT_WINDOW_SECONDS=60`. Exceeding it returns `429 {"detail": "rate_limited"}` with `Retry-After`; health endpoints are exempt. The limiter's memory is bounded: a bucket idle long enough to have refilled completely (`burst / refill rate`, 20 s by default) is dropped, and at most 10,000 keys are tracked per worker, least recently used dropped first. A dropped key restarts with one full bucket, never more, so a flood of distinct client IPs cannot grow memory without bound and cannot gain extra allowance.
 
+Key scheme: two limiters per worker, each with the same limits and the same 10,000-key cap, so junk client IPs can never evict a principal's bucket.
+
+| Limiter | Key | Used for |
+| --- | --- | --- |
+| principal | `principal:<owner HMAC>` | requests with a verified token |
+| IP | `ip:<address>` | `AUTH_MODE=none` requests and failed JWT authentication |
+
+The address is the client's IPv4 address, or its IPv6 `/64` network (`ip:2001:db8:1:2::/64`), so one IPv6 subscriber shares one bucket however many addresses it uses. The /64 grouping is a coarse pre-auth guard: an attacker holding a /48 can rotate through 65,536 /64s. An IPv4-mapped IPv6 address (`::ffff:192.0.2.5`) is keyed as the plain IPv4 address. A peer address that does not parse as an IP is used as given.
+
+Behind a trusted proxy, all `X-Forwarded-For` lines are joined and read right to left, skipping trusted hops. The first entry that does not parse as a bare IP address (`203.0.113.8:4444` and `[2001:db8::1]` both fail) ends the walk, and the last address read is the key; nothing to the left of it is believed. A proxy that adds ports or brackets therefore rate-limits all clients as one address, the proxy's, until it is fixed.
+
 By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON list of trusted proxy IP addresses/CIDRs only when the app is reachable exclusively through those proxies. Configure Uvicorn's `--forwarded-allow-ips` to the same trusted hops; never use `*` on an internet-reachable deployment. The app uses forwarded addresses only when its immediate peer is in `APP_TRUSTED_PROXIES`, preventing clients from choosing their own IP bucket.
 
 `APP_MAX_CONCURRENT_RUNS_PER_USER=2` caps active invoke and stream runs together per principal; the existing `APP_MAX_CONCURRENT_STREAMS=100` remains a per-process global stream cap. Exceeding the principal cap returns `429 too_many_concurrent_runs` and `Retry-After`.

@@ -35,7 +35,7 @@ lint:
 	uv run python -m ruff check src tests scripts
 
 typecheck:
-	uv run python -m mypy src scripts/dev_token.py scripts/smoke_test.py
+	uv run python -m mypy src scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py
 
 test:
 	uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/evals
@@ -64,7 +64,7 @@ eval:
 AUDIT_IGNORES :=
 
 security:
-	uv run python -m bandit -q -r src scripts/dev_token.py scripts/smoke_test.py
+	uv run python -m bandit -q -r src scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py
 	@# Two steps, not a pipe: /bin/sh has no pipefail, so a failed export would audit nothing.
 	@reqs=$$(mktemp) \
 		&& uv export --frozen --format requirements-txt --no-emit-project --all-groups -q -o "$$reqs" \

@@ -264,7 +264,7 @@ def test_stream_endpoint_rejects_before_streaming(
 def test_stream_endpoint_is_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     client = TestClient(app)
