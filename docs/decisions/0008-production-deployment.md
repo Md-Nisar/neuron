@@ -231,7 +231,8 @@ question 4 asks for; (c) rejected because it breaks "promote the same digest".
 
 ### 2. Image
 
-- `uv sync --frozen --no-dev --no-editable` only: a stale or missing lock fails the
+- `uv sync --locked --no-dev --no-editable` only (`--frozen` does not check the lock against
+  `pyproject.toml`, so it cannot meet this): a stale or missing lock fails the
   build. The runtime stage copies only the virtual environment, which holds the
   installed package (prompts are package data, loaded with `importlib.resources`);
   no source tree, tests, evals or `.git` in the image.
