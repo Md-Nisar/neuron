@@ -28,3 +28,5 @@ jobs:
           persist-credentials: false
       # Build only: nothing is pushed, and there is no registry login.
       - run: docker build -t neuron-test .
+      # The venv's interpreter must resolve in the runtime stage; the defaults need no env.
+      - run: docker run --rm --entrypoint python neuron-test -c "import neuron_agent, neuron_agent.api.main; from neuron_agent.prompts.loader import load_prompt; assert load_prompt('system/main.md'); print(neuron_agent.__version__)"
