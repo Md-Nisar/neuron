@@ -114,3 +114,18 @@ def test_nothing_auto_merges() -> None:
             assert token not in text, f"{path.name} contains {token}"
     dependabot = Path(".github/dependabot.yml").read_text("utf-8").lower()
     assert "auto-merge" not in dependabot and "automerge" not in dependabot
+
+
+def test_docker_build_workflow_only_builds() -> None:
+    workflow = _load("docker-build.yml")
+    text = (WORKFLOWS / "docker-build.yml").read_text("utf-8")
+    assert workflow["permissions"] == {"contents": "read"}
+    assert workflow[True]["push"]["branches"] == ["main"]
+    paths = workflow[True]["pull_request"]["paths"]
+    assert {"Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock"} <= set(paths)
+    job = workflow["jobs"]["docker-build"]
+    assert job["timeout-minutes"] <= 20
+    assert "secrets." not in text and "docker login" not in text and "login-action" not in text
+    runs = [s["run"] for s in job["steps"] if "run" in s]
+    assert runs == ["docker build -t neuron-test ."]
+    assert "push" not in runs[0] and "--push" not in text
