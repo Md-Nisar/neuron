@@ -1,9 +1,9 @@
 FROM ghcr.io/astral-sh/uv:0.11.29-python3.13-trixie-slim AS builder
 WORKDIR /app
 COPY pyproject.toml uv.lock* ./
-RUN uv sync --no-dev --frozen || uv sync --no-dev
+RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
-RUN uv sync --no-dev
+RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.13-slim-trixie
 ENV PYTHONDONTWRITEBYTECODE=1 \

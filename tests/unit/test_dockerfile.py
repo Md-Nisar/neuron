@@ -51,3 +51,15 @@ def test_the_check_rejects_a_python_or_debian_mismatch() -> None:
     assert _check(uv + "FROM python:3.14-slim-trixie\n")
     assert _check(uv + "FROM python:3.13-slim-bookworm\n")
     assert _check(uv + "FROM python:3.13-slim\n")
+
+
+def test_dependency_layer_precedes_source_and_syncs_use_the_lockfile_only() -> None:
+    syncs = [
+        line.removeprefix("RUN ")
+        for line in DOCKERFILE.read_text("utf-8").splitlines()
+        if line.startswith("RUN uv sync")
+    ]
+    assert syncs == [
+        "uv sync --frozen --no-dev --no-install-project",
+        "uv sync --frozen --no-dev --no-editable",
+    ]
