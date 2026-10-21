@@ -1,11 +1,11 @@
-FROM ghcr.io/astral-sh/uv:0.11.29-python3.13-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:0.11.29-python3.13-trixie-slim AS builder
 WORKDIR /app
 COPY pyproject.toml uv.lock* ./
 RUN uv sync --no-dev --frozen || uv sync --no-dev
 COPY . .
 RUN uv sync --no-dev
 
-FROM python:3.14-slim
+FROM python:3.13-slim-trixie
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
