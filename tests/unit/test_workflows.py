@@ -127,5 +127,8 @@ def test_docker_build_workflow_only_builds() -> None:
     assert job["timeout-minutes"] <= 20
     assert "secrets." not in text and "docker login" not in text and "login-action" not in text
     runs = [s["run"] for s in job["steps"] if "run" in s]
-    assert runs == ["docker build -t neuron-test ."]
-    assert "push" not in runs[0] and "--push" not in text
+    assert runs[0] == "docker build -t neuron-test ."
+    assert len(runs) == 2
+    assert runs[1].startswith("docker run --rm --entrypoint python neuron-test -c ")
+    assert "-e " not in runs[1] and "--env" not in runs[1] and "-v " not in runs[1]
+    assert "docker push" not in text and "--push" not in text
