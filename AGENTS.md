@@ -7,7 +7,7 @@
 - Keep graph construction and node routing in `graphs/`.
 - Keep provider and LangChain harness construction in `models/`.
 - Keep prompts under `prompts/`.
-- Do not scatter environment reads outside `config/`. The one exception is `observability/langsmith_governance.py`, which overwrites LangSmith's own `LANGSMITH_*`/`LANGCHAIN_*` variables because the library reads them itself (ADR 0007, section 5).
+- Do not scatter environment reads outside `config/`. There are two exceptions. `observability/langsmith_governance.py` overwrites LangSmith's own `LANGSMITH_*`/`LANGCHAIN_*` variables because the library reads them itself (ADR 0007, section 5). `observability/telemetry.py` sets `OTEL_SEMCONV_STABILITY_OPT_IN` for the same reason (ADR 0008, decision 3). `tests/unit/test_entrypoint.py` fails on any other `os.environ`/`os.getenv` use under `src/`.
 - Do not add retrieval, queues, custom persistence, or subgraphs without a concrete requirement and ADR update.
 
 ## Commands
