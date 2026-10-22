@@ -227,6 +227,7 @@ def test_image_scan_fails_on_fixable_high_and_critical_and_on_a_database_failure
     # A cached database could stand in for one that failed to update.
     assert scan["cache"] is False
     assert "skip-setup-trivy" not in scan
+    assert not [key for key in scan if key.startswith("skip")]
     text = (WORKFLOWS / "image-publish.yml").read_text("utf-8").lower()
     assert "skip-db-update" not in text and "skip_db_update" not in text
     assert "continue-on-error" not in text and "|| true" not in text
@@ -254,6 +255,8 @@ def _ignore_problems(entries: list[dict[str, Any]], today: datetime.date) -> lis
         if not str(entry.get("statement", "")).strip():
             problems.append(f"{name}: statement (the reason) is missing")
         expires = entry.get("expired_at")
+        if isinstance(expires, datetime.datetime):  # a YAML timestamp; a subclass of date
+            expires = expires.date()
         if not isinstance(expires, datetime.date):
             problems.append(f"{name}: expired_at is missing or not a date")
         elif expires > today + datetime.timedelta(days=_MAX_IGNORE_DAYS):
@@ -278,6 +281,10 @@ def test_the_ignore_rule_rejects_missing_reasons_and_dates_that_are_too_far_out(
     assert _ignore_problems([{**good, "statement": " "}], today)
     assert _ignore_problems([{k: v for k, v in good.items() if k != "expired_at"}], today)
     assert _ignore_problems([{**good, "expired_at": "2027-01-20"}], today)
+    # A YAML timestamp loads as a datetime: compared by date, not a TypeError.
+    late = datetime.datetime(2027, 1, 21, 9, 30)
+    assert _ignore_problems([{**good, "expired_at": late}], today)
+    assert _ignore_problems([{**good, "expired_at": late.replace(day=20)}], today) == []
     assert _ignore_problems([{**good, "id": ""}], today)
 
 

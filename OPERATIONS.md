@@ -55,6 +55,8 @@ gh attestation verify oci://ghcr.io/md-nisar/neuron@<digest> -R Md-Nisar/neuron 
 
 It must succeed for a digest built from `main`. The same command with another `--signer-workflow` (for example `.../docker-build.yml`) must fail; if it passes, stop and treat the pin as broken. A digest without a passing verification never deploys.
 
+An attestation proves where and how the image was built, not that tests passed: `image-publish` does not run the `ci` gates, so check for a green `ci` on the commit before promoting a digest. `sha-<sha>` is a mutable tag (a re-run of the workflow re-points it to a new digest), so deploy by digest only. The workflow never cancels a run in progress and keeps only the newest pending run per concurrency group, so an intermediate commit on `main` may have no published image.
+
 ## Health Checks
 
 - `/health/live`: process is serving requests.
