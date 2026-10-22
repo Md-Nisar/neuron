@@ -50,8 +50,9 @@ jobs:
           scratch="$RUNNER_TEMP/stale-lock"
           mkdir "$scratch"
           git archive HEAD | tar -x -C "$scratch"
-          sed -i 's/"structlog>=[0-9.]*"/"structlog>=99.0.0"/' "$scratch/pyproject.toml"
-          grep -q 'structlog>=99.0.0' "$scratch/pyproject.toml"
+          # A real, satisfiable dependency that uv.lock does not contain.
+          sed -i 's/^    "uvicorn\[standard\]>=0.38.0",$/    "uvicorn[standard]>=0.38.0",\n    "cowsay>=6.0",/' "$scratch/pyproject.toml"
+          grep -q '"cowsay>=6.0"' "$scratch/pyproject.toml"
           if docker build --progress=plain -t neuron-stale "$scratch" > "$RUNNER_TEMP/stale.log" 2>&1; then
             echo "docker build succeeded with a stale uv.lock" >&2
             exit 1
