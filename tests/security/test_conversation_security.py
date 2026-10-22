@@ -222,7 +222,7 @@ async def test_jwt_ownership_matrix_covers_all_thread_operations(echo_agent: Any
         streaming=True,
         principal=owner,
     )
-    own_run.lease.release()
+    await own_run.lease.release()
     for identity in identities:
         with pytest.raises(ThreadNotFoundError):
             await service.prepare(

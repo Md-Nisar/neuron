@@ -219,3 +219,19 @@ def test_otlp_credentials_allowed_over_https_or_loopback(endpoint: str) -> None:
 
 def test_plain_http_otlp_without_credentials_is_allowed_in_production() -> None:
     _production(OTEL_EXPORTER_OTLP_ENDPOINT="http://collector.internal:4318")
+
+
+def test_limits_backend_auto_resolves_to_memory() -> None:
+    assert Settings(env="test").limits_backend == "memory"
+
+
+def test_settings_require_dsn_for_postgres_limits_backend_even_without_checkpointer() -> None:
+    with pytest.raises(ValidationError, match="APP_LIMITS_BACKEND=postgres"):
+        Settings(env="test", checkpointer="none", limits_backend="postgres")
+    with pytest.raises(ValidationError, match="APP_POSTGRES_DSN"):
+        Settings(env="test", checkpointer="none", limits_backend="postgres", postgres_dsn="")
+
+
+def test_settings_reject_unknown_limits_backend() -> None:
+    with pytest.raises(ValidationError):
+        Settings(env="test", limits_backend="redis")

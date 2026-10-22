@@ -22,8 +22,13 @@ from neuron_agent.schemas.agent import (
 )
 from neuron_agent.security.auth import Principal, require_principal
 from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
+from neuron_agent.security.run_guard import RunLease
 from neuron_agent.services.streaming import StreamEvent
 from neuron_agent.tools import calculator, utc_now
+
+
+async def _noop_release() -> None:
+    return None
 
 
 def test_every_v1_route_declares_exactly_one_permission() -> None:
@@ -115,7 +120,7 @@ def test_each_route_succeeds_with_its_required_permission(
             request_id="request",
             thread_id="00000000-0000-0000-0000-000000000001",
             run_id="run",
-            lease=SimpleNamespace(release=lambda: None),
+            lease=RunLease(_noop_release),
         )
 
     async def stream(*_: object, **__: object):

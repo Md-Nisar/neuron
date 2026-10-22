@@ -195,7 +195,7 @@ async def test_busy_thread_of_another_user_is_still_not_found(
             assert foreign.status_code == 404, path
             assert foreign.json() == {"detail": "thread_not_found"}
     finally:
-        run.lease.release()
+        await run.lease.release()
 
 
 async def _principal(token: str) -> Principal:

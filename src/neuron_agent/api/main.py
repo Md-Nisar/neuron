@@ -41,6 +41,7 @@ from neuron_agent.observability.telemetry import (
     instrument_app,
     record_correlation_id,
 )
+from neuron_agent.persistence.guards import build_rate_limiter
 from neuron_agent.schemas.agent import (
     AgentRequest,
     AgentResponse,
@@ -54,7 +55,6 @@ from neuron_agent.security.auth import (
     get_shared_token_verifier,
     require_permission,
 )
-from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
 settings = get_settings()
@@ -87,16 +87,8 @@ app = FastAPI(title=settings.name, version=settings.version, lifespan=lifespan)
 # Uses the global providers, which are no-ops unless APP_OTEL_ENABLED=true.
 instrument_app(app)
 # Separate instances, so a flood of junk `ip:` keys cannot evict a principal's bucket.
-ip_rate_limiter = InMemoryTokenBucketRateLimiter(
-    capacity=settings.rate_limit_burst,
-    requests_per_window=settings.rate_limit_requests_per_window,
-    window_seconds=settings.rate_limit_window_seconds,
-)
-principal_rate_limiter = InMemoryTokenBucketRateLimiter(
-    capacity=settings.rate_limit_burst,
-    requests_per_window=settings.rate_limit_requests_per_window,
-    window_seconds=settings.rate_limit_window_seconds,
-)
+ip_rate_limiter = build_rate_limiter(settings)
+principal_rate_limiter = build_rate_limiter(settings)
 
 
 _RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/", "/v1/me/")
@@ -209,7 +201,7 @@ async def enforce_rate_limit(
         _RATE_LIMITED_PREFIXES
     ):
         if settings.auth_mode == "none":
-            decision = ip_rate_limiter.check(f"ip:{_client_ip(request)}")
+            decision = await ip_rate_limiter.check(f"ip:{_client_ip(request)}")
             if not decision.allowed:
                 return _rate_limited_response(
                     decision.retry_after_seconds, f"ip:{_client_ip(request)}"
@@ -537,7 +529,7 @@ async def stream_agent(
         try:
             await stream.aclose()
         finally:
-            run.lease.release()
+            await run.lease.release()
 
     return _CleanupEventSourceResponse(
         events(),

@@ -135,7 +135,7 @@ def test_rejected_stream_logs_termination(monkeypatch: pytest.MonkeyPatch, echo_
     monkeypatch.setattr(api_main, "service", service)
     client = TestClient(app)
     thread_id = client.post("/v1/agent/invoke", json={"message": "hi"}).json()["thread_id"]
-    service._active_threads.add(thread_id)
+    service._run_guard._active_threads.add(thread_id)
     with structlog.testing.capture_logs() as logs:
         response = client.post("/v1/agent/stream", json={"message": "hi", "thread_id": thread_id})
     assert response.status_code == 409

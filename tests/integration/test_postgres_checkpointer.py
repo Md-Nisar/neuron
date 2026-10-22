@@ -223,3 +223,19 @@ async def test_postgres_thread_index_pages_without_scanning_checkpoints() -> Non
         assert (await service.list_user_threads(user, limit=2, offset=0)).total == 0
     finally:
         await service.shutdown()
+
+
+async def test_limits_backend_postgres_opens_pool_without_a_checkpointer() -> None:
+    if not _DSN:
+        pytest.skip("APP_TEST_POSTGRES_DSN is not set; see OPERATIONS.md for a local Postgres.")
+    persistence = build_persistence(
+        Settings(
+            env="test", checkpointer="none", limits_backend="postgres", postgres_dsn=SecretStr(_DSN)
+        )
+    )
+    await persistence.open()
+    try:
+        assert persistence.checkpointer is None
+        assert await persistence.is_ready() is True
+    finally:
+        await persistence.close()

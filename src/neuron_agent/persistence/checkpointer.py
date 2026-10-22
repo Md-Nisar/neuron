@@ -97,6 +97,10 @@ class Persistence:
 
     The Postgres saver binds to the running event loop, so it is created in `open()`
     (called from the FastAPI lifespan) rather than at import time.
+
+    With `APP_LIMITS_BACKEND=postgres` the pool also serves the guards (ADR 0008 decision 8),
+    including when the checkpointer is `memory` or `none`; then `backend` stays that of the
+    checkpointer and no Postgres saver is created.
     """
 
     backend: str
@@ -104,22 +108,25 @@ class Persistence:
     pool: AsyncConnectionPool[Any] | None = None
     ping_timeout_seconds: float = 2.0
     serde: JsonPlusSerializer | None = field(default=None, repr=False)
+    _opened: bool = field(default=False, init=False, repr=False)
 
     @property
     def is_open(self) -> bool:
-        """Whether the checkpointer is usable (always true without a database)."""
-        return self.pool is None or self.checkpointer is not None
+        """Whether the pool is open and the checkpointer usable (true without a database)."""
+        return self.pool is None or self._opened
 
     async def open(self, *, run_setup: bool = False) -> None:
         """Open the connection pool, create the saver, and optionally create the schema."""
         if self.pool is None:
             return
         await self.pool.open(wait=False)
-        self.checkpointer = instrument_checkpointer(
-            AsyncPostgresSaver(self.pool, serde=self.serde), self.backend
-        )
-        if run_setup:
-            await setup_schema(self)
+        if self.backend == "postgres":
+            self.checkpointer = instrument_checkpointer(
+                AsyncPostgresSaver(self.pool, serde=self.serde), self.backend
+            )
+            if run_setup:
+                await setup_schema(self)
+        self._opened = True
         logger.info("checkpointer_opened", backend=self.backend)
 
     async def close(self) -> None:
@@ -127,7 +134,9 @@ class Persistence:
         if self.pool is None:
             return
         await self.pool.close()
-        self.checkpointer = None
+        self._opened = False
+        if self.backend == "postgres":
+            self.checkpointer = None
         logger.info("checkpointer_closed", backend=self.backend)
 
     async def is_ready(self) -> bool:
@@ -151,13 +160,16 @@ class Persistence:
 def build_persistence(settings: Settings) -> Persistence:
     """Build (but do not open) the checkpointer selected by settings."""
     serde = JsonPlusSerializer(allowed_msgpack_modules=_ALLOWED_MSGPACK_MODULES)
-    if settings.checkpointer == "memory":
-        saver = InMemorySaver(serde=serde)
-        return Persistence(backend="memory", checkpointer=instrument_checkpointer(saver, "memory"))
-    if settings.checkpointer != "postgres":
-        return Persistence(backend="none", checkpointer=None)
+    backend = settings.checkpointer
+    saver: BaseCheckpointSaver[Any] | None = None
+    if backend == "memory":
+        saver = instrument_checkpointer(InMemorySaver(serde=serde), "memory")
+    elif backend != "postgres":
+        backend = "none"
+    if backend != "postgres" and settings.limits_backend != "postgres":
+        return Persistence(backend=backend, checkpointer=saver)
 
-    # Settings validation guarantees a DSN when the backend is postgres.
+    # Settings validation guarantees a DSN when either backend is postgres.
     assert settings.postgres_dsn is not None  # nosec B101
     pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
         conninfo=settings.postgres_dsn.get_secret_value(),
@@ -169,8 +181,8 @@ def build_persistence(settings: Settings) -> Persistence:
         open=False,
     )
     return Persistence(
-        backend="postgres",
-        checkpointer=None,
+        backend=backend,
+        checkpointer=saver,
         pool=pool,
         ping_timeout_seconds=min(2.0, settings.postgres_pool_timeout_seconds),
         serde=serde,

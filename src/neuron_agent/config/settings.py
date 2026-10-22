@@ -17,6 +17,7 @@ from neuron_agent import __version__
 
 Environment = Literal["development", "staging", "production", "test"]
 CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
+LimitsBackend = Literal["auto", "memory", "postgres"]
 AuthMode = Literal["none", "jwt"]
 # Browsers send origins as lowercase `scheme://host[:port]`; CORS matching is exact.
 # Starlette compares hostnames without the port, so entries can't carry ports or schemes.
@@ -80,6 +81,8 @@ class Settings(BaseSettings):
     # "auto" resolves to memory in development/test and none in staging/production.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
+    # Where the rate limit, token budget and run guards live. "auto" resolves to memory.
+    limits_backend: LimitsBackend = "auto"
     postgres_dsn: SecretStr | None = None
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
@@ -190,6 +193,17 @@ class Settings(BaseSettings):
             self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
         ):
             raise ValueError("APP_POSTGRES_DSN is required when APP_CHECKPOINTER=postgres")
+        return self
+
+    @model_validator(mode="after")
+    def validate_limits_backend(self) -> Settings:
+        """Resolve `auto`; a Postgres guard store needs a DSN whatever the checkpointer is."""
+        if self.limits_backend == "auto":
+            self.limits_backend = "memory"
+        if self.limits_backend == "postgres" and (
+            self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
+        ):
+            raise ValueError("APP_POSTGRES_DSN is required when APP_LIMITS_BACKEND=postgres")
         return self
 
     @model_validator(mode="after")

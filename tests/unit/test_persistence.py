@@ -108,3 +108,67 @@ async def test_service_maps_checkpointer_failure_to_persistence_error(
             await service.invoke(AgentRequest(message="hello"))
     failed = next(log for log in logs if log["event"] == "checkpointer_operation_failed")
     assert failed["error_type"] == "OperationalError"
+
+
+def _guards_settings(checkpointer: str = "none") -> Settings:
+    return Settings(
+        env="test",
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        limits_backend="postgres",
+        postgres_dsn=SecretStr(_UNREACHABLE_DSN),
+        postgres_pool_timeout_seconds=1,
+        openai_api_key=None,
+    )
+
+
+async def test_limits_postgres_opens_a_pool_without_a_checkpointer() -> None:
+    persistence = build_persistence(_guards_settings())
+    assert persistence.pool is not None and persistence.backend == "none"
+    assert persistence.is_open is False
+    await persistence.open()
+    try:
+        assert persistence.is_open is True
+        assert persistence.pool.closed is False
+        assert persistence.checkpointer is None  # no saver: the pool serves the guards only
+        assert await persistence.is_ready() is False  # readiness reflects the database
+    finally:
+        await persistence.close()
+    assert persistence.pool.closed is True and persistence.is_open is False
+
+
+async def test_limits_postgres_readiness_is_true_when_the_database_answers() -> None:
+    class _Conn:
+        async def execute(self, _: str) -> None:
+            return None
+
+    class _Connection:
+        async def __aenter__(self) -> _Conn:
+            return _Conn()
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+    class _Pool:
+        def connection(self) -> _Connection:
+            return _Connection()
+
+    persistence = build_persistence(_guards_settings())
+    persistence.pool = _Pool()  # type: ignore[assignment]
+    persistence._opened = True
+    assert await persistence.is_ready() is True
+
+
+def test_memory_limits_with_memory_checkpointer_open_no_pool() -> None:
+    persistence = build_persistence(Settings(env="test", checkpointer="memory"))
+    assert persistence.pool is None and persistence.is_open is True
+
+
+def test_limits_postgres_keeps_the_memory_checkpointer() -> None:
+    persistence = build_persistence(_guards_settings("memory"))
+    assert isinstance(persistence.checkpointer, InMemorySaver)
+    assert persistence.pool is not None and persistence.is_open is False
+
+
+def test_postgres_guards_fail_fast_until_they_exist() -> None:
+    with pytest.raises(NotImplementedError, match="APP_LIMITS_BACKEND=postgres"):
+        AgentService(_guards_settings())
