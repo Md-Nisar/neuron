@@ -111,6 +111,14 @@ Dependabot (`.github/dependabot.yml`) opens weekly, grouped update PRs for `uv`,
 
 Current ignores: none.
 
+### Image vulnerabilities
+
+The `image-publish` workflow scans every image pushed from `main` (ADR 0008 decision 6) with Trivy, pinned by commit SHA, before it attests the digest. The scan fails on any fixable HIGH or CRITICAL finding in OS packages and the locked libraries (`ignore-unfixed`, severity `HIGH,CRITICAL`). Trivy's vulnerability database is downloaded at run time, on every run: caching is off, and a database update that fails fails the scan, so a stale or cached database never gives a pass. A new CVE can therefore fail a build that did not change.
+
+When it fails, follow the same two steps as above: upgrade (a newer base image digest through Dependabot, or `uv lock --upgrade-package <name>`), or ignore with a reason. Image ignores live in one reviewed file, `.trivyignore.yaml`, as `vulnerabilities` entries with `id`, `statement` (why it does not apply, naming the package) and `expired_at`, a date no more than 90 days out. A test fails if an entry lacks any of them or the date is further out, and Trivy stops honouring an entry after its date. `AUDIT_IGNORES` and `.trivyignore.yaml` are separate: one audits locked Python packages, the other the built image.
+
+Image ignores: none.
+
 ## Remaining Limitations
 
 - **No token revocation.** Tokens are verified locally (no introspection), so a stolen access token works until it expires. Keep access-token lifetimes short at the IdP. A stream's token is checked once, when it starts.

@@ -1,0 +1,12 @@
+# Image-scan ignores for the image-publish workflow (SECURITY.md, "Image vulnerabilities").
+# This is the only ignore file. Each entry needs `id`, a `statement` (why it does not apply or
+# why no fix can be taken) and `expired_at` no more than 90 days after the entry is written;
+# tests/unit/test_workflows.py checks the rule against the date of the check. Example:
+#
+#   vulnerabilities:
+#     - id: CVE-2000-0000
+#       statement: Reason, with the package and why the code path is not reachable.
+#       expired_at: 2027-01-31
+#
+# Current ignores: none.
+vulnerabilities: []
