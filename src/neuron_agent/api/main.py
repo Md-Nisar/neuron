@@ -10,7 +10,6 @@ import hmac
 import ipaddress
 import json
 import math
-import os
 import secrets
 import time
 import uuid
@@ -659,13 +658,38 @@ def _retry_headers(exc: AppError) -> dict[str, str] | None:
     return None
 
 
+def _is_loopback(host: str) -> bool:
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def uvicorn_options(config: Settings) -> dict[str, Any]:
+    """Uvicorn's configuration, built from `Settings` (ADR 0008, decision 3).
+
+    One process, no `workers`. Uvicorn's own proxy-header rewriting is off so `_client_ip`
+    stays the only place `X-Forwarded-For` is parsed, driven by `APP_TRUSTED_PROXIES`.
+    """
+    return {
+        "app": "neuron_agent.api.main:app",
+        "host": config.host,
+        "port": config.port,
+        "timeout_graceful_shutdown": config.run_timeout_seconds + 10,
+        "proxy_headers": False,
+        "reload": config.env == "development" and _is_loopback(config.host),
+    }
+
+
 def main() -> None:
-    uvicorn.run(
-        "neuron_agent.api.main:app",
-        host=os.getenv("HOST", "127.0.0.1"),
-        port=int(os.getenv("PORT", "8000")),
-        reload=settings.env == "development",
-    )
+    if not _is_loopback(settings.host) and "env" not in settings.model_fields_set:
+        # Unset, APP_ENV means development with no authentication.
+        raise SystemExit(
+            f"Refusing to bind {settings.host}: set APP_ENV explicitly for a non-loopback host."
+        )
+    uvicorn.run(**uvicorn_options(settings))
 
 
 if __name__ == "__main__":

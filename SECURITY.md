@@ -135,7 +135,7 @@ What the pipeline does not prove: an attestation shows where and how the image w
 - **Readiness and the IdP.** `/health/ready` marks an instance not ready after a request's JWKS fetch fails, and re-probes the JWKS (at most once per 5 seconds per process) while not ready, so health checks alone bring it back once the IdP answers. Tokens signed with a cached key keep verifying and the instance stays ready during an outage; a token with an uncached `kid` (including a forged one) is refused with `503` but doesn't change readiness while cached keys are usable (`OPERATIONS.md`).
 - **Injected tool calls the security eval can't see.** A prompt-injected call to a tool the caller is permitted to use, or a denied tool attempt, doesn't fail a security eval case; denied calls are absent from `used_tools` (`EVALUATION.md`).
 - **Denied tool calls are not `403`s.** The `authorization_denied` audit event (`resource_type=tool`) and the `insufficient_scope`/`unknown_tool` policy-block metric are the only signals of an injected tool attempt; no example alert covers them.
-- **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`.
+- **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`, and `neuron-api` refuses a non-loopback bind unless `APP_ENV` is set explicitly. Accepted residual risk: an explicit `APP_ENV=development` on a public host still serves unauthenticated.
 
 ## Secrets
 

@@ -55,8 +55,9 @@ In JWT mode, request buckets are keyed by the principal's keyed-HMAC owner key
 from ADR 0006. IP buckets are used only in local `AUTH_MODE=none` and after
 failed bearer authentication (to slow token guessing). Forwarded client IPs are
 accepted only when the immediate peer matches `APP_TRUSTED_PROXIES`; otherwise
-proxy headers are ignored. Uvicorn `--forwarded-allow-ips` must be configured to
-the same trusted proxy set.
+proxy headers are ignored. `_client_ip` is the only place proxy headers are
+parsed: `neuron-api` turns Uvicorn's proxy-header rewriting off (ADR 0008,
+decision 3), so there is no second trusted set to configure.
 
 `APP_MAX_CONCURRENT_RUNS_PER_USER` caps invoke and stream runs together per
 principal, while `APP_MAX_CONCURRENT_STREAMS` remains the process-wide stream
