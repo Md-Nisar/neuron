@@ -192,5 +192,13 @@ async def setup_schema(persistence: Persistence) -> None:
         assert persistence.pool is not None  # nosec B101
         conninfo = persistence.pool.conninfo
         assert isinstance(conninfo, str)  # nosec B101
-        await migrations.run_setup(conninfo)
+        failure: str | None = None
+        try:
+            await migrations.run_setup(conninfo)
+        except Exception as exc:
+            # Driver messages can echo DSN fragments; keep only the class name. Raised
+            # outside the handler so the original is not left in `__context__` either.
+            failure = type(exc).__name__
+        if failure is not None:
+            raise RuntimeError(f"schema setup failed: {failure}")
         logger.info("checkpointer_schema_ready", backend=persistence.backend)

@@ -31,6 +31,12 @@ logger = structlog.get_logger(__name__)
 # DDL waits at most this long for a lock, so a migration behind live traffic fails the
 # deploy instead of queueing every request behind it.
 DEFAULT_LOCK_TIMEOUT_MS = 5000
+# `CREATE INDEX CONCURRENTLY` also waits for every older transaction to finish, and
+# `lock_timeout` covers those waits, so the 5 s above would fail the deploy (and leave an
+# INVALID index) whenever a session sits idle in a transaction. Concurrent migrations run
+# under this longer bound instead: 10 minutes, long enough for a slow transaction to end,
+# short enough that a stuck one still fails the deploy rather than hanging it.
+CONCURRENT_LOCK_TIMEOUT_MS = 600_000
 # How long a second `setup` waits for the first to finish before giving up.
 LOCK_WAIT_SECONDS = 300.0
 # Session-level advisory lock on the direct (never pooled) migration connection: "neuron".
@@ -43,6 +49,10 @@ CREATE TABLE IF NOT EXISTS neuron_migrations (
     applied_at timestamptz NOT NULL DEFAULT now()
 )
 """
+
+
+class LockWaitTimeout(TimeoutError):
+    """Another `setup` held the advisory lock for the whole wait. The text is fixed."""
 
 
 @dataclass(frozen=True)
@@ -83,8 +93,9 @@ WHERE checkpoint_ns = ''
 async def run_setup(
     dsn: str,
     *,
-    migrations: Sequence[Migration] = MIGRATIONS,
+    migrations: Sequence[Migration] | None = None,
     lock_timeout_ms: int | None = None,
+    concurrent_lock_timeout_ms: int | None = None,
     lock_wait_seconds: float = LOCK_WAIT_SECONDS,
 ) -> list[int]:
     """Run LangGraph's `setup()`, then every unapplied migration. Returns the versions applied.
@@ -94,15 +105,22 @@ async def run_setup(
     failure; callers must not print the exception text, which can echo connection details.
     """
     timeout_ms = DEFAULT_LOCK_TIMEOUT_MS if lock_timeout_ms is None else lock_timeout_ms
+    concurrent_ms = (
+        CONCURRENT_LOCK_TIMEOUT_MS
+        if concurrent_lock_timeout_ms is None
+        else concurrent_lock_timeout_ms
+    )
     conn = await psycopg.AsyncConnection.connect(
         dsn, autocommit=True, row_factory=dict_row, prepare_threshold=None
     )
     try:
         await _acquire_lock(conn, lock_wait_seconds)
-        await conn.execute("SELECT set_config('lock_timeout', %s, false)", (f"{timeout_ms}ms",))
+        await _set_lock_timeout(conn, timeout_ms)
         await AsyncPostgresSaver(conn).setup()
         await conn.execute(_CREATE_TABLE_SQL)
-        return await _apply(conn, migrations)
+        return await _apply(
+            conn, MIGRATIONS if migrations is None else migrations, timeout_ms, concurrent_ms
+        )
     finally:
         await conn.close()  # also releases the session advisory lock
 
@@ -115,12 +133,19 @@ async def _acquire_lock(conn: psycopg.AsyncConnection[dict[str, object]], wait: 
         if row is not None and row["ok"]:
             return
         if time.monotonic() >= deadline:
-            raise TimeoutError("another setup held the migration lock for too long")
+            raise LockWaitTimeout("another setup held the migration lock for too long")
         await asyncio.sleep(0.2)
 
 
+async def _set_lock_timeout(conn: psycopg.AsyncConnection[dict[str, object]], ms: int) -> None:
+    await conn.execute("SELECT set_config('lock_timeout', %s, false)", (f"{ms}ms",))
+
+
 async def _apply(
-    conn: psycopg.AsyncConnection[dict[str, object]], migrations: Sequence[Migration]
+    conn: psycopg.AsyncConnection[dict[str, object]],
+    migrations: Sequence[Migration],
+    timeout_ms: int,
+    concurrent_ms: int,
 ) -> list[int]:
     cursor = await conn.execute("SELECT version FROM neuron_migrations")
     done = {row["version"] for row in await cursor.fetchall()}
@@ -130,16 +155,25 @@ async def _apply(
         if migration.index and await _index_is_invalid(conn, migration.index):
             # `IF NOT EXISTS` would skip a leftover from a failed concurrent build.
             logger.warning("invalid_index_rebuilt", index=migration.index)
-            await conn.execute(
-                sql.SQL("DROP INDEX CONCURRENTLY IF EXISTS {}").format(
-                    sql.Identifier(migration.index)
+            # DROP INDEX CONCURRENTLY waits on older transactions too.
+            await _set_lock_timeout(conn, concurrent_ms)
+            try:
+                await conn.execute(
+                    sql.SQL("DROP INDEX CONCURRENTLY IF EXISTS {}").format(
+                        sql.Identifier(migration.index)
+                    )
                 )
-            )
+            finally:
+                await _set_lock_timeout(conn, timeout_ms)
             recorded = False
         if recorded:
             continue
         if migration.concurrent:
-            await conn.execute(migration.sql)
+            await _set_lock_timeout(conn, concurrent_ms)
+            try:
+                await conn.execute(migration.sql)
+            finally:
+                await _set_lock_timeout(conn, timeout_ms)
             await _record(conn, migration)
         else:
             async with conn.transaction():

@@ -11,20 +11,32 @@ from neuron_agent.persistence import cli
 from neuron_agent.persistence.migrations import MIGRATIONS, Migration
 
 _RELEASE = re.compile(r"\d+\.\d+\.\d+")
+_IDENT = r'(?:"[^"]+"|\w+)'
 _UNSAFE = [
     ("DROP", r"\bDROP\b"),
+    ("TRUNCATE", r"\bTRUNCATE\b"),
     ("RENAME", r"\bRENAME\b"),
-    ("ALTER ... TYPE", r"\bALTER\s+COLUMN\s+\w+\s+(SET\s+DATA\s+)?TYPE\b"),
+    ("ALTER ... TYPE", rf"\bALTER\s+(?:COLUMN\s+)?{_IDENT}\s+(?:SET\s+DATA\s+)?TYPE\b"),
     ("SET NOT NULL", r"\bSET\s+NOT\s+NULL\b"),
+    ("SET LOGGED/UNLOGGED", r"\bSET\s+(?:UN)?LOGGED\b"),
     ("ADD CONSTRAINT without NOT VALID", r"\bADD\s+CONSTRAINT\b(?![^;]*\bNOT\s+VALID\b)"),
     ("CREATE INDEX without CONCURRENTLY", r"\bCREATE\s+(UNIQUE\s+)?INDEX\b(?!\s+CONCURRENTLY\b)"),
 ]
+_ADD = r"\bADD\s+(?:COLUMN\s+)?(?!CONSTRAINT\b|PRIMARY\b|UNIQUE\b|CHECK\b|FOREIGN\b)[^,;]*"
+
+
+def normalize(sql: str) -> str:
+    """Drop comments and collapse whitespace, so they cannot hide a construct."""
+    sql = re.sub(r"/\*.*?\*/", " ", sql, flags=re.S)
+    sql = re.sub(r"--[^\n]*", " ", sql)
+    return re.sub(r"\s+", " ", sql).strip()
 
 
 def violations(sql: str) -> list[str]:
     """Expand/contract rule (ADR 0008 decision 7): names each unsafe construct in `sql`."""
+    sql = normalize(sql)
     found = [name for name, pattern in _UNSAFE if re.search(pattern, sql, re.I)]
-    for column in re.finditer(r"\bADD\s+COLUMN\b[^,;]*", sql, re.I):
+    for column in re.finditer(_ADD, sql, re.I):
         text = column.group(0)
         if re.search(r"\bNOT\s+NULL\b", text, re.I) and not re.search(r"\bDEFAULT\b", text, re.I):
             found.append("ADD COLUMN ... NOT NULL without a default")
@@ -49,6 +61,24 @@ def check(migration: Migration) -> list[str]:
         ("ALTER TABLE t ADD CONSTRAINT c CHECK (a > 0)", "ADD CONSTRAINT without NOT VALID"),
         ("CREATE INDEX i ON t (a)", "CREATE INDEX without CONCURRENTLY"),
         ("CREATE UNIQUE INDEX i ON t (a)", "CREATE INDEX without CONCURRENTLY"),
+        ("TRUNCATE t", "TRUNCATE"),
+        ("ALTER TABLE t SET LOGGED", "SET LOGGED/UNLOGGED"),
+        ("ALTER TABLE t SET UNLOGGED", "SET LOGGED/UNLOGGED"),
+        # Bypass attempts: comments, odd whitespace, optional COLUMN, quoted identifiers.
+        ("DROP/* x */TABLE t", "DROP"),
+        ("ALTER TABLE t ALTER a TYPE bigint", "ALTER ... TYPE"),
+        ("ALTER TABLE t ALTER COLUMN a SET DATA TYPE bigint", "ALTER ... TYPE"),
+        ('ALTER TABLE t ALTER COLUMN "a b" TYPE bigint', "ALTER ... TYPE"),
+        ("ALTER TABLE t ADD a int NOT NULL", "ADD COLUMN ... NOT NULL without a default"),
+        (
+            'ALTER TABLE "t" ADD COLUMN "a" int NOT NULL',
+            "ADD COLUMN ... NOT NULL without a default",
+        ),
+        (
+            "ALTER TABLE t\n  ADD\n  COLUMN a int\n NOT\tNULL",
+            "ADD COLUMN ... NOT NULL without a default",
+        ),
+        ("ALTER TABLE t -- harmless\n RENAME TO u", "RENAME"),
     ],
 )
 def test_unsafe_sql_is_detected_and_needs_a_contract_marker(sql: str, expected: str) -> None:
@@ -66,6 +96,8 @@ def test_unsafe_sql_is_detected_and_needs_a_contract_marker(sql: str, expected: 
         "ALTER TABLE t ADD COLUMN a int NOT NULL DEFAULT 0",
         "ALTER TABLE t ADD CONSTRAINT c CHECK (a > 0) NOT VALID",
         "CREATE INDEX CONCURRENTLY IF NOT EXISTS i ON t (a)",
+        "ALTER TABLE t ADD CONSTRAINT c CHECK (a IS NOT NULL) NOT VALID",
+        "-- DROP the old way later\nCREATE TABLE t (a int) /* TRUNCATE */",
     ],
 )
 def test_expand_steps_pass(sql: str) -> None:
@@ -78,6 +110,18 @@ def test_shipped_migrations_follow_the_compatibility_rule() -> None:
         assert check(migration) == [], migration.name
         if migration.concurrent:
             assert migration.sql.count(";") == 0, "a concurrent migration is one statement"
+
+
+def test_migration_flags_are_consistent() -> None:
+    for migration in MIGRATIONS:
+        assert migration.concurrent == bool(re.search(r"\bCONCURRENTLY\b", migration.sql, re.I))
+        if migration.concurrent and re.search(
+            r"\bCREATE\s+(UNIQUE\s+)?INDEX\b", migration.sql, re.I
+        ):
+            assert migration.index, migration.name
+        if migration.index:
+            # `to_regclass` and DROP INDEX use it as given: lowercase, no schema prefix.
+            assert re.fullmatch(r"[a-z_][a-z0-9_]*", migration.index), migration.name
 
 
 def test_only_the_cli_reads_the_migration_dsn() -> None:

@@ -44,7 +44,7 @@ def _migration_dsn(settings: Settings) -> str:
 
 def _describe(exc: Exception) -> str:
     """Name a failure without its text: driver messages can echo hosts and credentials."""
-    if isinstance(exc, SetupError):
+    if isinstance(exc, SetupError | migrations.LockWaitTimeout):
         return str(exc)
     sqlstate = getattr(exc, "sqlstate", None) if isinstance(exc, psycopg.Error) else None
     return type(exc).__name__ + (f" (SQLSTATE {sqlstate})" if sqlstate else "")

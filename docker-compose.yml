@@ -24,6 +24,7 @@ services:
     environment:
       APP_CHECKPOINTER: postgres
       APP_POSTGRES_DSN: postgresql://neuron:${POSTGRES_PASSWORD:-neuron-local-only}@postgres:5432/neuron
+      # Development only: refused when APP_ENV is staging or production.
       APP_CHECKPOINTER_SETUP_ON_STARTUP: "true"
     ports:
       - "8000:8000"

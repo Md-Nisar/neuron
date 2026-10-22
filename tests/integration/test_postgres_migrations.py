@@ -12,7 +12,6 @@ import psycopg
 import pytest
 from psycopg.conninfo import make_conninfo
 
-from neuron_agent.persistence import migrations
 from neuron_agent.persistence.migrations import MIGRATIONS, Migration, run_setup
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
@@ -95,23 +94,32 @@ async def _unapply_owner_index(dsn: str) -> None:
         await conn.execute("DELETE FROM neuron_migrations WHERE version = 1")
 
 
-async def test_blocked_migration_fails_after_lock_timeout(
-    dsn: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
+_PROBE = Migration(
+    version=2, name="probe", sql="ALTER TABLE checkpoints ADD COLUMN neuron_probe integer"
+)
+_CLI_WITH_SHORT_TIMEOUT = (
+    "from neuron_agent.persistence import cli, migrations as m;"
+    "m.DEFAULT_LOCK_TIMEOUT_MS = 500;"
+    "m.MIGRATIONS = (*m.MIGRATIONS, m.Migration(version=2, name='probe',"
+    " sql='ALTER TABLE checkpoints ADD COLUMN neuron_probe integer'));"
+    "cli.main(['setup'])"
+)
+
+
+async def test_blocked_migration_fails_after_lock_timeout(dsn: str) -> None:
     await run_setup(dsn)
-    await _unapply_owner_index(dsn)
+    with_probe = [*MIGRATIONS, _PROBE]
     blocker = await _hold_exclusive_lock(dsn)
     try:
         started = time.monotonic()
         with pytest.raises(psycopg.errors.LockNotAvailable):
-            await run_setup(dsn, lock_timeout_ms=500)
+            await run_setup(dsn, migrations=with_probe, lock_timeout_ms=500)
         assert 0.4 <= time.monotonic() - started < 10
 
         # The CLI exits non-zero (so a pre-deploy command cancels the deploy).
-        monkeypatch.setattr(migrations, "DEFAULT_LOCK_TIMEOUT_MS", 500)
         env = {**os.environ, "APP_ENV": "test", "APP_POSTGRES_MIGRATION_DSN": dsn}
         proc = subprocess.run(  # noqa: S603  # nosec B603
-            [sys.executable, "-m", "neuron_agent.persistence.cli", "setup"],
+            [sys.executable, "-c", _CLI_WITH_SHORT_TIMEOUT],
             env=env,
             capture_output=True,
             timeout=60,
@@ -122,7 +130,40 @@ async def test_blocked_migration_fails_after_lock_timeout(
     finally:
         await blocker.rollback()
         await blocker.close()
-    assert await run_setup(dsn) == [1]  # nothing was recorded by the failed runs
+    assert await run_setup(dsn, migrations=with_probe) == [2]  # the failed runs recorded nothing
+
+
+async def test_concurrent_index_waits_for_an_open_transaction(dsn: str) -> None:
+    """`CREATE INDEX CONCURRENTLY` waits on older transactions; it has its own, longer bound."""
+    await run_setup(dsn)
+    await _unapply_owner_index(dsn)
+    reader = await psycopg.AsyncConnection.connect(dsn)
+    # A read committed transaction drops its snapshot between statements and blocks nothing;
+    # a repeatable read one keeps it, which is what the build has to wait out.
+    await reader.set_isolation_level(psycopg.IsolationLevel.REPEATABLE_READ)
+    await reader.execute("SELECT count(*) FROM checkpoints")  # idle in transaction from here
+    try:
+        # Bounded by the concurrent timeout: fails, and leaves an INVALID index behind.
+        with pytest.raises(psycopg.errors.LockNotAvailable):
+            await run_setup(dsn, lock_timeout_ms=500, concurrent_lock_timeout_ms=500)
+
+        async def release() -> None:
+            await asyncio.sleep(1.5)
+            await reader.rollback()
+
+        releasing = asyncio.create_task(release())
+        started = time.monotonic()
+        # The transactional timeout (0.5 s) does not apply; the build waits for the reader.
+        assert await run_setup(dsn, lock_timeout_ms=500, concurrent_lock_timeout_ms=30_000) == [1]
+        assert time.monotonic() - started >= 1.0
+        await releasing
+    finally:
+        await reader.close()
+    valid = (
+        "SELECT indisvalid FROM pg_index"
+        " WHERE indexrelid = 'neuron_checkpoints_owner_idx'::regclass"
+    )
+    assert await _scalar(dsn, valid) is True
 
 
 async def test_invalid_owner_index_is_detected_and_rebuilt(dsn: str) -> None:
