@@ -10,7 +10,7 @@ run:
 	uv run langgraph dev
 
 api:
-	uv run uvicorn neuron_agent.api.main:app --host 127.0.0.1 --port 8000
+	uv run uvicorn neuron_agent.api.main:app --host 127.0.0.1 --port 8000 --no-proxy-headers
 
 db-setup:
 	uv run python -m neuron_agent.persistence.cli setup

@@ -23,6 +23,7 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from pydantic import ValidationError
 
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
@@ -76,9 +77,22 @@ def test_port_is_read_from_app_port_or_render_port(clean_env: pytest.MonkeyPatch
     assert _settings().port == 10000
 
 
+@pytest.mark.parametrize("value", ["abc", "0", "70000"])
+def test_invalid_port_is_rejected_without_leaking_other_settings(
+    clean_env: pytest.MonkeyPatch, value: str
+) -> None:
+    clean_env.setenv("APP_OPENAI_API_KEY", "sk-unrelated-secret")
+    clean_env.setenv("PORT", value)
+    with pytest.raises(ValidationError) as exc_info:
+        _settings()
+    message = str(exc_info.value)
+    assert "PORT" in message
+    assert "sk-unrelated-secret" not in message
+
+
 def test_uvicorn_options_come_from_settings() -> None:
     options = api_main.uvicorn_options(
-        Settings(env="test", host=PUBLIC, port=9100, run_timeout_seconds=45)
+        _settings(env="test", host=PUBLIC, port=9100, run_timeout_seconds=45)
     )
     assert options == {
         "app": "neuron_agent.api.main:app",
@@ -92,8 +106,8 @@ def test_uvicorn_options_come_from_settings() -> None:
 
 
 def test_reload_is_for_loopback_development_only() -> None:
-    assert api_main.uvicorn_options(Settings(env="development"))["reload"] is True
-    assert api_main.uvicorn_options(Settings(env="development", host=PUBLIC))["reload"] is False
+    assert api_main.uvicorn_options(_settings(env="development"))["reload"] is True
+    assert api_main.uvicorn_options(_settings(env="development", host=PUBLIC))["reload"] is False
 
 
 def test_main_refuses_a_public_bind_without_an_explicit_app_env(
@@ -149,7 +163,7 @@ class _Capture(logging.Handler):
 @contextmanager
 def _serve(app: FastAPI) -> Iterator[str]:
     """Serve `app` with the options `main()` builds, on an ephemeral loopback port."""
-    options = {**api_main.uvicorn_options(Settings(env="test")), "app": app, "port": 0}
+    options = {**api_main.uvicorn_options(_settings(env="test")), "app": app, "port": 0}
     server = uvicorn.Server(uvicorn.Config(**{**options, "reload": False}))
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
