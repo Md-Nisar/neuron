@@ -201,7 +201,8 @@ def test_unreachable_collector_never_fails_a_request(caplog: pytest.LogCaptureFi
         started = time.monotonic()
         built.shutdown()
     assert time.monotonic() - started < 5
-    assert "Failed to export span batch" in caplog.text
+    # The exporter's wording changed between releases ("span batch" -> "spans batch").
+    assert "Failed to export" in caplog.text
 
 
 def test_log_lines_outside_a_span_carry_no_trace_ids() -> None:
