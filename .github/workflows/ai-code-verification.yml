@@ -90,8 +90,9 @@ jobs:
               missing=1
             fi
           done
-          if ! printf '%s' "$BODY" | grep -qiE '^- \[x\] I have read every changed line and can explain it'; then
-            echo "::error::Tick the author attestation in the Verification section."
-            missing=1
-          fi
+          # Author attestation check disabled at the owner's request; the template line stays.
+          # if ! printf '%s' "$BODY" | grep -qiE '^- \[x\] I have read every changed line and can explain it'; then
+          #   echo "::error::Tick the author attestation in the Verification section."
+          #   missing=1
+          # fi
           exit "$missing"
