@@ -25,7 +25,12 @@ The `Dockerfile` builds a two-stage image (ADR 0008 decision 2):
   configured port, `CMD ["neuron-api"]`. It reads `APP_HOST`/`APP_PORT` (image defaults
   `0.0.0.0`/`8000`; `PORT`, which Render sets, also works and wins), runs one process with
   `timeout_graceful_shutdown = APP_RUN_TIMEOUT_SECONDS + 10`, and refuses to start on a
-  non-loopback host unless `APP_ENV` is set explicitly. Compose sets `APP_ENV=development`.
+  non-loopback host unless `APP_ENV` is set explicitly. Compose sets `APP_ENV=development` and publishes only on `127.0.0.1`.
+  Accepted residual risk: an explicit `APP_ENV=development` on a public host still serves
+  unauthenticated. A bare `PORT` wins over `APP_PORT`; an invalid port fails start-up.
+  The `HEALTHCHECK` probes `127.0.0.1`, so `APP_HOST` must stay `0.0.0.0` or be reachable on
+  loopback for the image. `neuron-api` and `make api` leave proxy-header parsing to
+  `_client_ip`; a custom `uvicorn` `CMD` must pass `--no-proxy-headers`.
 - **Labels.** `org.opencontainers.image.source`, `.revision` (build argument `GIT_SHA`) and
   `.version` (build argument `VERSION`; default is the release in `pyproject.toml`). Build
   arguments are recorded by provenance, so never pass a secret as one.
