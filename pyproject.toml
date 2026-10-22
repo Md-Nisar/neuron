@@ -68,6 +68,12 @@ dev = [
     "types-requests>=2.32.0",
 ]
 
+[tool.uv]
+# langgraph-api (dev group) caps opentelemetry-exporter-prometheus below 0.64, which pins
+# opentelemetry-sdk 1.42 and so holds opentelemetry-api at the vulnerable 1.42.1 for the whole
+# lock, including the runtime image. The cap only matters to `langgraph dev`; override it.
+override-dependencies = ["opentelemetry-exporter-prometheus>=0.66b1"]
+
 [tool.uv.build-backend]
 module-name = "neuron_agent"
 source-include = [
