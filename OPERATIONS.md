@@ -9,6 +9,38 @@ Two deployment paths are supported:
 
 Production deployments must inject secrets through the platform secret manager.
 
+### Container image
+
+The `Dockerfile` builds a two-stage image (ADR 0008 decision 2):
+
+- **Contents.** `/app/.venv` only: the locked dependencies and the non-editable installed
+  `neuron_agent` package, whose prompts are package data. There is no source tree, `tests/`,
+  `evals/`, `.git`, `.env*` or key file in the image, and the build context is an allowlist
+  (`.dockerignore`: `pyproject.toml`, `uv.lock`, `README.md`, `LICENSE`, `NOTICE`, `src/`).
+- **Reproducible.** `uv sync --locked --no-dev --no-editable` has no fallback: a `uv.lock`
+  that is out of date with `pyproject.toml` fails the build. Both bases
+  (`ghcr.io/astral-sh/uv:0.11.29-python3.13-trixie-slim` and `python:3.13-slim-trixie`) are
+  pinned by index digest; the tag stays beside the digest so Dependabot can bump both.
+- **Runtime.** User and group `10001:10001` (non-root), port 8000, `HEALTHCHECK` on
+  `/health/live`, `CMD` runs `uvicorn neuron_agent.api.main:app` on `0.0.0.0:8000`.
+- **Labels.** `org.opencontainers.image.source`, `.revision` (build argument `GIT_SHA`) and
+  `.version` (build argument `VERSION`; default is the release in `pyproject.toml`). Build
+  arguments are recorded by provenance, so never pass a secret as one.
+
+Build it from the repository root; settings and secrets arrive as environment at run time:
+
+```bash
+docker build \
+  --build-arg GIT_SHA="$(git rev-parse HEAD)" \
+  --build-arg VERSION="$(uv version --short)" \
+  -t neuron-agent .
+```
+
+The `docker-build` workflow builds the image on every change that can affect it, checks its
+layout with `tests/integration/test_image_layout.py` (run it locally with
+`NEURON_TEST_IMAGE=neuron-agent uv run pytest tests/integration/test_image_layout.py -m docker`)
+and checks that a stale `uv.lock` fails the build. It pushes nothing.
+
 ## Health Checks
 
 - `/health/live`: process is serving requests.
