@@ -107,7 +107,7 @@ Dependabot (`.github/dependabot.yml`) opens weekly, grouped update PRs for `uv`,
 
 - **All gates apply.** `ci`, `ai-code-verification` and `codeql` must pass, and a person reads the diff and the upstream release notes. For an action, check that the new SHA belongs to the tagged release.
 - **The 90-day rule applies to new packages only.** The `new-dependencies` job still rejects a package missing from PyPI or under 90 days old when a PR adds one; a version bump of a package already locked is not held to it.
-- **`langgraph-checkpoint-postgres` bumps** also need the rollback test from draft #143 (ADR 0008, decision 7) before merging.
+- **`langgraph-checkpoint-postgres` bumps** also need the rollback test in `docs/rollback-test-checkpoint-postgres.md` (#143, ADR 0008 decision 7) before merging.
 
 Current ignores: none.
 

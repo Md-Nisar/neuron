@@ -23,6 +23,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import metrics
+from neuron_agent.persistence import migrations
 
 logger = structlog.get_logger(__name__)
 
@@ -32,14 +33,6 @@ _ALLOWED_MSGPACK_MODULES = [("neuron_agent.schemas.agent", "AgentAnswer")]
 # Checkpointer operations that are timed, and the latency above which one is logged.
 _INSTRUMENTED_OPERATIONS = ("aget_tuple", "aput", "aput_writes", "adelete_thread")
 SLOW_CHECKPOINT_MS = 250.0
-
-# Serves the per-owner thread listing (`persistence/thread_index.py`). It is created after
-# LangGraph's own migrations, on the table they own.
-_OWNER_INDEX_SQL = """
-CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_checkpoints_owner_idx
-ON checkpoints ((metadata->>'owner'), thread_id)
-WHERE checkpoint_ns = ''
-"""
 
 
 def instrument_checkpointer(
@@ -190,10 +183,14 @@ def build_persistence(settings: Settings) -> Persistence:
 
 
 async def setup_schema(persistence: Persistence) -> None:
-    """Create or migrate the checkpoint tables. Idempotent."""
+    """Create or migrate the schema on a direct connection (development start-up only).
+
+    Staging and production run `persistence.cli setup` as a deploy step instead (ADR 0008
+    decision 7); settings refuse start-up setup there.
+    """
     if isinstance(persistence.checkpointer, AsyncPostgresSaver):
-        await persistence.checkpointer.setup()
         assert persistence.pool is not None  # nosec B101
-        async with persistence.pool.connection() as conn:
-            await conn.execute(_OWNER_INDEX_SQL)
+        conninfo = persistence.pool.conninfo
+        assert isinstance(conninfo, str)  # nosec B101
+        await migrations.run_setup(conninfo)
         logger.info("checkpointer_schema_ready", backend=persistence.backend)

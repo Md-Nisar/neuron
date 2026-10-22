@@ -84,6 +84,8 @@ class Settings(BaseSettings):
     # Where the rate limit, token budget and run guards live. "auto" resolves to memory.
     limits_backend: LimitsBackend = "auto"
     postgres_dsn: SecretStr | None = None
+    # Direct, non-pooled DSN of the migrator role; read only by `persistence.cli` (ADR 0008).
+    postgres_migration_dsn: SecretStr | None = None
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
@@ -193,6 +195,11 @@ class Settings(BaseSettings):
             self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
         ):
             raise ValueError("APP_POSTGRES_DSN is required when APP_CHECKPOINTER=postgres")
+        if self.checkpointer_setup_on_startup and self.env in {"staging", "production"}:
+            raise ValueError(
+                "APP_CHECKPOINTER_SETUP_ON_STARTUP is refused in staging/production; "
+                "run `python -m neuron_agent.persistence.cli setup` as a deploy step"
+            )
         return self
 
     @model_validator(mode="after")
