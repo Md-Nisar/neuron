@@ -150,7 +150,7 @@ async def test_delete_by_non_owner_is_not_found_and_keeps_thread() -> None:
 async def test_delete_is_rejected_while_a_run_is_in_flight() -> None:
     service = _service()
     thread_id = await _thread(service, "hi")
-    service._active_threads.add(thread_id)
+    service._run_guard._active_threads.add(thread_id)
     with pytest.raises(ThreadBusyError):
         await service.delete_thread(thread_id, None)
     assert await _checkpoint_count(service, thread_id) > 0
@@ -214,8 +214,8 @@ async def test_erase_all_is_owner_scoped_busy_aware_and_idempotent() -> None:
     alice_busy = await _thread(service, "busy", user_id="alice")
     alice_delete = await _thread(service, "delete", user_id="alice")
     bob_thread = await _thread(service, "keep", user_id="bob")
-    service._active_threads.add(alice_busy)
-    service._active_thread_owners[alice_busy] = hashlib.sha256(b"alice").hexdigest()
+    service._run_guard._active_threads.add(alice_busy)
+    service._run_guard._active_thread_owners[alice_busy] = hashlib.sha256(b"alice").hexdigest()
 
     first = await service.erase_user_data("alice")
     second = await service.erase_user_data("alice")

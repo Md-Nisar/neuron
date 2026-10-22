@@ -9,7 +9,7 @@ import asyncio
 import hashlib
 import time
 import uuid
-from collections.abc import AsyncGenerator, Callable, Iterator
+from collections.abc import AsyncGenerator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -40,6 +40,7 @@ from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 from neuron_agent.persistence.checkpointer import Persistence, build_persistence
+from neuron_agent.persistence.guards import build_run_guard, build_token_budget
 from neuron_agent.persistence.thread_index import OwnedThreadPage, owned_threads
 from neuron_agent.schemas.agent import (
     AgentAnswer,
@@ -61,7 +62,8 @@ from neuron_agent.security.authorization import (
 )
 from neuron_agent.security.input_policy import validate_user_message
 from neuron_agent.security.output_policy import SYSTEM_PROMPT_REFUSAL, StreamLeakGuard
-from neuron_agent.security.usage_budget import InMemoryRollingTokenBudget, TokenBudget
+from neuron_agent.security.run_guard import RunClaimDenied, RunDenialReason, RunGuard, RunLease
+from neuron_agent.security.usage_budget import TokenBudget
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
 
 logger = structlog.get_logger(__name__)
@@ -71,18 +73,6 @@ class StopSignal(Protocol):
     """Anything with an awaitable `wait()`, e.g. `anyio.Event` or `asyncio.Event`."""
 
     async def wait(self) -> Any: ...
-
-
-class RunLease:
-    """A run's claim on its thread and (for streams) a concurrency slot. Idempotent release."""
-
-    def __init__(self, release: Callable[[], None]) -> None:
-        self._release: Callable[[], None] | None = release
-
-    def release(self) -> None:
-        if self._release is not None:
-            release, self._release = self._release, None
-            release()
 
 
 @dataclass(frozen=True)
@@ -119,19 +109,13 @@ class AgentService:
         settings: Settings,
         persistence: Persistence | None = None,
         token_budget: TokenBudget | None = None,
+        run_guard: RunGuard | None = None,
     ) -> None:
         self._settings = settings
-        self._token_budget = token_budget or InMemoryRollingTokenBudget(
-            token_limit=settings.user_token_budget,
-            window_seconds=settings.user_token_budget_window_seconds,
-        )
+        self._token_budget = token_budget or build_token_budget(settings)
+        self._run_guard = run_guard or build_run_guard(settings)
         self._persistence = persistence or build_persistence(settings)
         self._graph: Any | None = None
-        # Process-local run guards (ADR 0005 decisions 5 and 6); not shared across replicas.
-        self._active_threads: set[str] = set()
-        self._active_thread_owners: dict[str, str] = {}
-        self._active_runs_by_owner: dict[str, int] = {}
-        self._open_streams = 0
         if self._persistence.is_open:
             self._graph = build_graph(settings, checkpointer=self._persistence.checkpointer)
 
@@ -173,7 +157,7 @@ class AgentService:
         owner_key = self._owner_key(request.user_id, principal)
         message = validate_user_message(request.message, max_chars=self._settings.max_prompt_chars)
         budget_key = owner_key or "anonymous"
-        budget_decision = self._token_budget.check(budget_key)
+        budget_decision = await self._token_budget.check(budget_key)
         if not budget_decision.allowed:
             metrics.record_policy_block("token_budget")
             logger.warning(
@@ -196,7 +180,7 @@ class AgentService:
         with self._persistence_errors():
             thread_id = await self._resolve_thread(request.thread_id, owner_key)
         bind_correlation_context(request_id=None, thread_id=thread_id)
-        lease = self._claim(thread_id, streaming=streaming, owner_key=budget_key)
+        lease = await self._claim(thread_id, streaming=streaming, owner_key=budget_key)
         owner_state = (
             {"owner_key": owner_key}
             if self._settings.auth_mode == "jwt"
@@ -254,9 +238,9 @@ class AgentService:
             raise RunTimeoutError("agent run exceeded its time budget") from exc
         finally:
             try:
-                self._finish_usage(run)
+                await self._finish_usage(run)
             finally:
-                run.lease.release()
+                await run.lease.release()
         response = _response(run, result["answer"])
         if run.created_thread:
             audit(
@@ -333,12 +317,14 @@ class AgentService:
             if stop_waiter is not None:
                 stop_waiter.cancel()
             try:
-                self._finish_usage(run)
+                await self._finish_usage(run)
             finally:
-                run.lease.release()
-                stats.log()
-                stats.record_on(span)
-                span.end()
+                try:
+                    await run.lease.release()
+                finally:
+                    stats.log()
+                    stats.record_on(span)
+                    span.end()
 
     async def _produce(self, run: PreparedRun, queue: asyncio.Queue[StreamEvent | None]) -> None:
         """Run the graph, translating its stream into events; always ends with `None`.
@@ -413,73 +399,50 @@ class AgentService:
             # (APP_MAX_OUTPUT_TOKENS per model call, APP_MAX_AGENT_ITERATIONS calls).
             queue.put_nowait(None)
 
-    def _claim(self, thread_id: str, *, streaming: bool, owner_key: str) -> RunLease:
-        """Claim the thread (reject-on-busy) and, for streams, a concurrency slot.
+    async def _claim(self, thread_id: str, *, streaming: bool, owner_key: str) -> RunLease:
+        """Claim the thread (reject-on-busy) and, for streams, a concurrency slot."""
+        try:
+            return await self._run_guard.claim(
+                thread_id=thread_id,
+                owner_key=owner_key,
+                streaming=streaming,
+                guard_thread=self._persistence.checkpointer is not None,
+            )
+        except RunClaimDenied as denied:
+            raise self._denial(denied.reason, owner_key) from None
 
-        The busy guard applies only with persistence: without it, `thread_id` is just a
-        correlation ID and concurrent runs share no state.
-        """
-        guard_thread = self._persistence.checkpointer is not None
-        if streaming and self._open_streams >= self._settings.max_concurrent_streams:
-            metrics.record_policy_block("concurrent_streams")
+    def _denial(self, reason: RunDenialReason, owner_key: str) -> AppError:
+        """Record a refused claim and return the error to raise for it."""
+        if reason == "thread_busy":
+            logger.info("agent_thread_busy")
+            return ThreadBusyError("a run is already in progress on this thread")
+        metrics.record_policy_block(reason)
+        if reason == "concurrent_streams":
             logger.warning(
                 "agent_stream_capacity_exceeded", limit=self._settings.max_concurrent_streams
             )
-            audit(
-                "limit_exceeded",
-                outcome="denied",
-                actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
-                issuer_id=self._settings.auth_issuer_id,
-                action="agent:invoke",
-                resource_type="agent",
-                reason="concurrent_streams",
-            )
-            raise CapacityError("too many concurrent streams")
-        active_for_owner = self._active_runs_by_owner.get(owner_key, 0)
-        if active_for_owner >= self._settings.max_concurrent_runs_per_user:
-            metrics.record_policy_block("concurrent_runs")
+        else:
             logger.warning(
                 "user_limit_exceeded",
                 limit_type="concurrent_runs",
                 owner_key_prefix=owner_key[:12],
             )
-            audit(
-                "limit_exceeded",
-                outcome="denied",
-                actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
-                issuer_id=self._settings.auth_issuer_id,
-                action="agent:invoke",
-                resource_type="agent",
-                reason="concurrent_runs",
-            )
-            raise ConcurrentRunsExceededError("too many concurrent runs")
-        if guard_thread and thread_id in self._active_threads:
-            logger.info("agent_thread_busy")
-            raise ThreadBusyError("a run is already in progress on this thread")
-        if streaming:
-            self._open_streams += 1
-        self._active_runs_by_owner[owner_key] = active_for_owner + 1
-        if guard_thread:
-            self._active_threads.add(thread_id)
-            self._active_thread_owners[thread_id] = owner_key
+        audit(
+            "limit_exceeded",
+            outcome="denied",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="agent:invoke",
+            resource_type="agent",
+            reason=reason,
+        )
+        if reason == "concurrent_streams":
+            return CapacityError("too many concurrent streams")
+        return ConcurrentRunsExceededError("too many concurrent runs")
 
-        def release() -> None:
-            if streaming:
-                self._open_streams -= 1
-            if guard_thread:
-                self._active_threads.discard(thread_id)
-                self._active_thread_owners.pop(thread_id, None)
-            remaining = self._active_runs_by_owner[owner_key] - 1
-            if remaining:
-                self._active_runs_by_owner[owner_key] = remaining
-            else:
-                self._active_runs_by_owner.pop(owner_key, None)
-
-        return RunLease(release)
-
-    def _finish_usage(self, run: PreparedRun) -> None:
+    async def _finish_usage(self, run: PreparedRun) -> None:
         usage = run.authorization.usage or TokenUsageAccumulator()
-        self._token_budget.charge(run.budget_key, usage.total_tokens)
+        await self._token_budget.charge(run.budget_key, usage.total_tokens)
         logger.info(
             "model_token_usage",
             request_id=run.request_id,
@@ -652,11 +615,11 @@ class AgentService:
         """Delete all discoverable owned threads, skipping active runs idempotently."""
         owner_key = self._owner_key(user_id, principal)
         erased = 0
-        active_owned = {
-            thread_id
-            for thread_id, active_owner in self._active_thread_owners.items()
-            if active_owner == owner_key
-        }
+        active_owned = (
+            await self._run_guard.active_threads_of(owner_key)
+            if owner_key is not None
+            else frozenset[str]()
+        )
         skipped_busy = len(active_owned)
         checkpointer = self._persistence.checkpointer
         if checkpointer is not None:
@@ -664,7 +627,9 @@ class AgentService:
                 page = await self._owned_threads(owner_key, limit=None)
                 for thread in page.threads:
                     thread_id = thread.thread_id
-                    if thread_id in active_owned or thread_id in self._active_threads:
+                    if thread_id in active_owned or await self._run_guard.is_thread_active(
+                        thread_id
+                    ):
                         continue
                     await checkpointer.adelete_thread(thread_id)
                     erased += 1
@@ -715,7 +680,7 @@ class AgentService:
         bind_correlation_context(request_id=None, thread_id=thread_id)
         with self._persistence_errors():
             await self._owned_thread_state(thread_id, owner_key)
-            if thread_id in self._active_threads:
+            if await self._run_guard.is_thread_active(thread_id):
                 # The in-flight run would re-create the thread with its final write.
                 logger.info("agent_thread_busy")
                 raise ThreadBusyError("a run is already in progress on this thread")

@@ -21,9 +21,12 @@ class RateLimitDecision:
 
 
 class RateLimiter(Protocol):
-    """Decides whether a request identified by `key` may proceed."""
+    """Decides whether a request identified by `key` may proceed.
 
-    def check(self, key: str) -> RateLimitDecision: ...
+    Async so a shared backend (ADR 0008 decision 8) can do I/O; the in-memory one never awaits.
+    """
+
+    async def check(self, key: str) -> RateLimitDecision: ...
 
 
 # Hard cap on tracked keys. Each bucket is about 200 bytes, so this holds memory to a
@@ -74,7 +77,7 @@ class InMemoryTokenBucketRateLimiter:
         # Ordered by last use, oldest first.
         self._buckets: OrderedDict[str, _Bucket] = OrderedDict()
 
-    def check(self, key: str) -> RateLimitDecision:
+    async def check(self, key: str) -> RateLimitDecision:
         now = self._clock()
         self._evict(now)
         bucket = self._buckets.get(key)

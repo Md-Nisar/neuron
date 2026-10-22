@@ -19,9 +19,9 @@ class BudgetDecision:
 
 
 class TokenBudget(Protocol):
-    def check(self, key: str) -> BudgetDecision: ...
+    async def check(self, key: str) -> BudgetDecision: ...
 
-    def charge(self, key: str, tokens: int) -> None: ...
+    async def charge(self, key: str, tokens: int) -> None: ...
 
 
 class InMemoryRollingTokenBudget:
@@ -41,7 +41,7 @@ class InMemoryRollingTokenBudget:
         self._clock = clock
         self._events: dict[str, deque[tuple[float, int]]] = {}
 
-    def check(self, key: str) -> BudgetDecision:
+    async def check(self, key: str) -> BudgetDecision:
         now = self._clock()
         events = self._events.get(key)
         if events is None:
@@ -59,7 +59,7 @@ class InMemoryRollingTokenBudget:
             retry_after_seconds=max(1, int(oldest + self._window_seconds - now + 0.999)),
         )
 
-    def charge(self, key: str, tokens: int) -> None:
+    async def charge(self, key: str, tokens: int) -> None:
         if tokens <= 0:
             return
         now = self._clock()

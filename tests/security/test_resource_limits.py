@@ -181,11 +181,11 @@ async def test_per_user_run_cap_applies_across_invoke_and_stream(
         await service.prepare(AgentRequest(message="invoke"), principal=_principal("alice"))
 
     other = await service.prepare(AgentRequest(message="other"), principal=_principal("bob"))
-    first.lease.release()
-    other.lease.release()
+    await first.lease.release()
+    await other.lease.release()
     # A principal can start again after its prior run releases its lease.
     next_run = await service.prepare(AgentRequest(message="again"), principal=_principal("alice"))
-    next_run.lease.release()
+    await next_run.lease.release()
 
 
 @pytest.mark.anyio

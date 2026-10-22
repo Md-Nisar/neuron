@@ -335,7 +335,7 @@ async def require_principal(
         principal = await api_main.auth_verifier.verify(authorization)
     except (AuthenticationError, AuthenticationUnavailableError) as exc:
         if ip_key is not None and isinstance(exc, AuthenticationError):
-            decision = api_main.ip_rate_limiter.check(ip_key)
+            decision = await api_main.ip_rate_limiter.check(ip_key)
             if not decision.allowed:
                 retry_after = max(1, int(decision.retry_after_seconds + 0.999))
                 logger.warning(
@@ -399,7 +399,7 @@ def require_permission(permission: str) -> Any:
                     "APP_IDENTITY_HASH_KEY is required for authenticated rate limits"
                 )
             owner_key = principal_owner_key(principal, identity_hash_key.get_secret_value())
-            decision = api_main.principal_rate_limiter.check(f"principal:{owner_key}")
+            decision = await api_main.principal_rate_limiter.check(f"principal:{owner_key}")
             if not decision.allowed:
                 retry_after = max(1, int(decision.retry_after_seconds + 0.999))
                 logger.warning(
