@@ -49,10 +49,22 @@ layout with `tests/integration/test_image_layout.py` (run it locally with
 `NEURON_TEST_IMAGE=neuron-agent uv run pytest tests/integration/test_image_layout.py -m docker`)
 and checks that a stale `uv.lock` fails the build. It pushes nothing.
 
+### Shutdown
+
+On SIGTERM `neuron-api` (a `uvicorn.Server` subclass overriding `handle_exit`, the handler Uvicorn 0.53 installs for SIGINT and SIGTERM; ADR 0008 decision 4) does this, in order:
+
+1. `/health/ready` returns `503 {"status": "not_ready"}` at once, and `service_draining` is logged once with `in_flight_runs`. Take the instance out of rotation on that probe.
+2. For `APP_SHUTDOWN_DRAIN_SECONDS` (default `5`, `0`-`60`) Uvicorn keeps accepting connections and new runs are still served, while the load balancer converges. Open streams already end with `service_shutting_down` within 2 s (below).
+3. After that delay Uvicorn stops accepting, and any `POST /v1/agent/*` on a connection still open gets `503 {"detail": "service_shutting_down"}` with `Retry-After: 1`.
+4. In-flight `invoke` runs finish, for up to `APP_RUN_TIMEOUT_SECONDS + 10` s (Uvicorn's graceful timeout, counted from step 3). A run still going then is cancelled: its partial token usage is charged and its thread and per-user slot are released. A SIGKILL skips this; lease expiry (ADR 0008 decision 8) covers it once the Postgres guards exist.
+5. The process exits `0`. A second SIGTERM, or SIGINT, skips the delay and stops at once.
+
+The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10` (defaults: 5 + 120 + 10 = 135 s; Render `maxShutdownDelaySeconds: 150`). The app cannot read the platform value; the blueprint test in #150 enforces it. Raising either setting means raising the grace.
+
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
+- `/health/ready`: application configuration loaded; not draining for shutdown (see Shutdown); with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 

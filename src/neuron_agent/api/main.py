@@ -5,16 +5,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import ipaddress
 import json
 import math
 import secrets
+import signal
+import sys
+import threading
 import time
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import asynccontextmanager, contextmanager
+from types import FrameType
 from typing import Annotated, Any
 
 import anyio
@@ -28,9 +33,15 @@ from sse_starlette.sse import EventSourceResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from uvicorn.supervisors import ChangeReload
 
 from neuron_agent.config.settings import Settings, get_settings
-from neuron_agent.errors.base import AppError, ConcurrentRunsExceededError, QuotaExceededError
+from neuron_agent.errors.base import (
+    AppError,
+    ConcurrentRunsExceededError,
+    QuotaExceededError,
+    ShuttingDownError,
+)
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.langsmith_governance import configure_langsmith
@@ -653,7 +664,8 @@ def _http_error(event: str, exc: AppError) -> HTTPException:
 def _retry_headers(exc: AppError) -> dict[str, str] | None:
     if isinstance(exc, QuotaExceededError):
         return {"Retry-After": str(exc.retry_after_seconds)}
-    if isinstance(exc, ConcurrentRunsExceededError):
+    if isinstance(exc, ConcurrentRunsExceededError | ShuttingDownError):
+        # Shutting down: a retry goes to another instance once the platform routes there.
         return {"Retry-After": "1"}
     return None
 
@@ -683,13 +695,84 @@ def uvicorn_options(config: Settings) -> dict[str, Any]:
     }
 
 
+class _DrainingServer(uvicorn.Server):
+    """A Uvicorn server that starts draining the service when it is told to stop.
+
+    Overrides `Server.handle_exit(sig, frame)`, the handler Uvicorn 0.53 installs for
+    SIGINT and SIGTERM (`capture_signals`). It calls `AgentService.begin_drain()` first, so
+    `/health/ready` turns 503 before Uvicorn stops accepting connections. On SIGTERM the
+    real stop is then delayed by `APP_SHUTDOWN_DRAIN_SECONDS`, so the platform keeps
+    routing to a listening socket while it converges; Uvicorn's graceful timeout
+    (`APP_RUN_TIMEOUT_SECONDS + 10`) starts after that delay. A second signal, SIGINT or
+    a zero delay stops at once.
+    """
+
+    def __init__(self, config: uvicorn.Config, *, drain_seconds: float) -> None:
+        super().__init__(config)
+        self._drain_seconds = drain_seconds
+        self._exit_scheduled = False
+
+    @contextmanager
+    def capture_signals(self) -> Iterator[None]:
+        """Uvicorn re-raises a captured SIGTERM once it has shut down, which would end the
+        process by that signal (status 143). SIGTERM is ignored while Uvicorn captures it,
+        so Uvicorn restores "ignore" and its re-raise is a no-op: a clean shutdown exits 0.
+        """
+        if threading.current_thread() is not threading.main_thread():
+            with super().capture_signals():
+                yield
+            return
+        previous = signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        try:
+            with super().capture_signals():
+                yield
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+
+    def handle_exit(self, sig: int, frame: FrameType | None) -> None:
+        service.begin_drain()
+        if sig == signal.SIGTERM and self._drain_seconds > 0 and not self._exit_scheduled:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                pass
+            else:
+                self._exit_scheduled = True
+                # From a signal handler only call_soon_threadsafe is safe on a running loop.
+                loop.call_soon_threadsafe(
+                    loop.call_later, self._drain_seconds, super().handle_exit, sig, frame
+                )
+                return
+        super().handle_exit(sig, frame)
+
+
+def build_server(config: Settings, **overrides: Any) -> uvicorn.Server:
+    """The server `main()` runs; `overrides` replace Uvicorn options (tests bind port 0)."""
+    options = {**uvicorn_options(config), **overrides}
+    return _DrainingServer(uvicorn.Config(**options), drain_seconds=config.shutdown_drain_seconds)
+
+
+def _run(server: uvicorn.Server) -> None:
+    """Run `server` as `uvicorn.run` would for one process, with or without reload."""
+    config = server.config
+    try:
+        if config.should_reload:
+            ChangeReload(config, target=server.run, sockets=[config.bind_socket()]).run()
+        else:
+            server.run()
+    except KeyboardInterrupt:
+        pass
+    if not server.started and not config.should_reload:
+        sys.exit(3)  # Uvicorn's STARTUP_FAILURE
+
+
 def main() -> None:
     if not _is_loopback(settings.host) and "env" not in settings.model_fields_set:
         # Unset, APP_ENV means development with no authentication.
         raise SystemExit(
             f"Refusing to bind {settings.host}: set APP_ENV explicitly for a non-loopback host."
         )
-    uvicorn.run(**uvicorn_options(settings))
+    _run(build_server(settings))
 
 
 if __name__ == "__main__":

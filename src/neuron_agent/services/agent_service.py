@@ -10,7 +10,7 @@ import hashlib
 import time
 import uuid
 from collections.abc import AsyncGenerator, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -116,6 +116,8 @@ class AgentService:
         self._run_guard = run_guard or build_run_guard(settings)
         self._persistence = persistence or build_persistence(settings)
         self._graph: Any | None = None
+        self._drain_started: float | None = None
+        self._in_flight = 0
         if self._persistence.is_open:
             self._graph = build_graph(settings, checkpointer=self._persistence.checkpointer)
 
@@ -140,8 +142,40 @@ class AgentService:
         return self._graph
 
     async def is_ready(self) -> bool:
-        """Return whether the service's dependencies are reachable."""
-        return await self._persistence.is_ready()
+        """Return whether the service takes traffic: not draining, dependencies reachable."""
+        return self._drain_started is None and await self._persistence.is_ready()
+
+    def begin_drain(self) -> None:
+        """Start refusing traffic for shutdown (ADR 0008 decision 4). Idempotent; never raises.
+
+        Readiness turns false at once; new runs are refused once `APP_SHUTDOWN_DRAIN_SECONDS`
+        have passed; runs already in flight are untouched. Safe in a signal handler: it only
+        sets a flag, and the log line is emitted from the event loop when one is running.
+        """
+        with suppress(Exception):  # shutdown must proceed whatever happens here
+            if self._drain_started is not None:
+                return
+            self._drain_started = time.monotonic()
+            in_flight = self._in_flight
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                self._log_draining(in_flight)
+            else:
+                loop.call_soon_threadsafe(self._log_draining, in_flight)
+
+    def _log_draining(self, in_flight: int) -> None:
+        logger.info(
+            "service_draining",
+            in_flight_runs=in_flight,
+            drain_seconds=self._settings.shutdown_drain_seconds,
+        )
+
+    def _refusing_new_runs(self) -> bool:
+        return (
+            self._drain_started is not None
+            and time.monotonic() - self._drain_started >= self._settings.shutdown_drain_seconds
+        )
 
     async def prepare(
         self,
@@ -152,6 +186,8 @@ class AgentService:
         usage: TokenUsageAccumulator | None = None,
     ) -> PreparedRun:
         """Validate, resolve and claim the request's thread. Raises `AppError` before any output."""
+        if self._refusing_new_runs():
+            raise ShuttingDownError("server is shutting down")
         request_id = str(uuid.uuid4())
         run_id = str(uuid.uuid4())
         owner_key = self._owner_key(request.user_id, principal)
@@ -180,7 +216,9 @@ class AgentService:
         with self._persistence_errors():
             thread_id = await self._resolve_thread(request.thread_id, owner_key)
         bind_correlation_context(request_id=None, thread_id=thread_id)
-        lease = await self._claim(thread_id, streaming=streaming, owner_key=budget_key)
+        lease = self._count_in_flight(
+            await self._claim(thread_id, streaming=streaming, owner_key=budget_key)
+        )
         owner_state = (
             {"owner_key": owner_key}
             if self._settings.auth_mode == "jwt"
@@ -410,6 +448,18 @@ class AgentService:
             )
         except RunClaimDenied as denied:
             raise self._denial(denied.reason, owner_key) from None
+
+    def _count_in_flight(self, lease: RunLease) -> RunLease:
+        """Count the run until its lease is released, for the `service_draining` log."""
+        self._in_flight += 1
+
+        async def release() -> None:
+            try:
+                await lease.release()
+            finally:
+                self._in_flight -= 1
+
+        return RunLease(release)
 
     def _denial(self, reason: RunDenialReason, owner_key: str) -> AppError:
         """Record a refused claim and return the error to raise for it."""

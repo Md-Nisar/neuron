@@ -96,6 +96,7 @@ class Settings(BaseSettings):
     max_thread_messages: int = Field(default=200, ge=2, le=10_000)
     stream_heartbeat_seconds: int = Field(default=15, ge=1, le=120)
     run_timeout_seconds: int = Field(default=120, ge=1, le=900)
+    shutdown_drain_seconds: float = Field(default=5.0, ge=0, le=60)
     max_concurrent_streams: int = Field(default=100, ge=1, le=10_000)
     max_concurrent_runs_per_user: int = Field(default=2, ge=1, le=1000)
     user_token_budget: int = Field(default=100_000, ge=1, le=10_000_000)
