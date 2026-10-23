@@ -113,8 +113,8 @@ def test_reload_is_for_loopback_development_only() -> None:
 def test_main_refuses_a_public_bind_without_an_explicit_app_env(
     clean_env: pytest.MonkeyPatch,
 ) -> None:
-    ran: list[dict[str, Any]] = []
-    clean_env.setattr(uvicorn, "run", lambda **kwargs: ran.append(kwargs))
+    ran: list[uvicorn.Config] = []
+    clean_env.setattr(api_main, "_run", lambda server: ran.append(server.config))
     clean_env.setattr(api_main, "settings", _settings(host=PUBLIC))
 
     with pytest.raises(SystemExit) as exit_info:
@@ -128,22 +128,42 @@ def test_main_refuses_a_public_bind_without_an_explicit_app_env(
 def test_main_starts_on_a_public_bind_with_an_explicit_app_env(
     clean_env: pytest.MonkeyPatch,
 ) -> None:
-    ran: list[dict[str, Any]] = []
-    clean_env.setattr(uvicorn, "run", lambda **kwargs: ran.append(kwargs))
+    ran: list[uvicorn.Config] = []
+    clean_env.setattr(api_main, "_run", lambda server: ran.append(server.config))
     clean_env.setenv("APP_ENV", "test")
     clean_env.setenv("APP_HOST", PUBLIC)
     clean_env.setattr(api_main, "settings", _settings())
 
     api_main.main()
 
-    assert [(run["host"], run["port"]) for run in ran] == [(PUBLIC, 8000)]
+    assert [(run.host, run.port) for run in ran] == [(PUBLIC, 8000)]
+
+
+def test_main_runs_the_draining_server_with_the_configured_options(
+    clean_env: pytest.MonkeyPatch,
+) -> None:
+    servers: list[uvicorn.Server] = []
+    clean_env.setattr(api_main, "_run", servers.append)
+    clean_env.setattr(
+        api_main,
+        "settings",
+        _settings(env="test", run_timeout_seconds=45, shutdown_drain_seconds=2),
+    )
+
+    api_main.main()
+
+    (server,) = servers
+    assert isinstance(server, api_main._DrainingServer)
+    assert server.config.timeout_graceful_shutdown == 55
+    assert server.config.proxy_headers is False
+    assert server._drain_seconds == 2
 
 
 def test_main_starts_on_loopback_without_an_explicit_app_env(
     clean_env: pytest.MonkeyPatch,
 ) -> None:
-    ran: list[dict[str, Any]] = []
-    clean_env.setattr(uvicorn, "run", lambda **kwargs: ran.append(kwargs))
+    ran: list[uvicorn.Config] = []
+    clean_env.setattr(api_main, "_run", lambda server: ran.append(server.config))
     clean_env.setattr(api_main, "settings", _settings())
 
     api_main.main()

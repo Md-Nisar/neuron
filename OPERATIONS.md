@@ -49,6 +49,25 @@ layout with `tests/integration/test_image_layout.py` (run it locally with
 `NEURON_TEST_IMAGE=neuron-agent uv run pytest tests/integration/test_image_layout.py -m docker`)
 and checks that a stale `uv.lock` fails the build. It pushes nothing.
 
+### Shutdown
+
+On SIGTERM `neuron-api` (a `uvicorn.Server` subclass overriding `handle_exit`, the handler Uvicorn 0.53 installs for SIGINT and SIGTERM; ADR 0008 decision 4) does this, in order:
+
+1. `/health/ready` returns `503 {"status": "not_ready"}` at once, and `service_draining` is logged once with `in_flight_runs`. Take the instance out of rotation on that probe.
+2. For `APP_SHUTDOWN_DRAIN_SECONDS` (default `5`, `0`-`60`) Uvicorn keeps accepting connections and new runs are still served, while the load balancer converges. Open streams keep running for the whole delay (readiness is already 503); when the delay ends sse-starlette ends them with `service_shutting_down` within 2 s. A stream opened during the delay is cut shortly after the delay ends.
+3. After that delay Uvicorn stops accepting, and any `POST /v1/agent/*` on a connection still open gets `503 {"detail": "service_shutting_down"}` with `Retry-After: 1`.
+4. In-flight `invoke` runs finish, for up to `APP_RUN_TIMEOUT_SECONDS + 10` s (Uvicorn's graceful timeout, counted from step 3). A run still going then is cancelled: its partial token usage is charged and its thread and per-user slot are released. A SIGKILL skips this; lease expiry (ADR 0008 decision 8) covers it once the Postgres guards exist.
+5. The process exits `0`. A second SIGTERM, or a SIGINT, skips the remaining delay and starts Uvicorn's graceful shutdown at once (no force); only a SIGINT while shutdown has already started forces the exit. With `--reload` (development) the delay is 0.
+
+Signal-driven drain is POSIX only: Windows cannot deliver SIGTERM to a process, so the real-signal tests are skipped there (the target platform is Linux).
+
+The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10`, plus the work after the last request ends: the lifespan closes the database pool, and with `APP_OTEL_ENABLED=true` the telemetry flush can take up to `2 * APP_OTEL_EXPORT_TIMEOUT_SECONDS` (default 10 s each) when the Collector is down. Defaults: 5 + 120 + 10 = 135 s, or 155 s with OpenTelemetry on and the Collector down, plus the pool close. Render's `maxShutdownDelaySeconds: 150` therefore has no margin with OpenTelemetry on and the Collector down (and is exceeded by 5 s at the defaults if a run lasts the full timeout); lower `APP_RUN_TIMEOUT_SECONDS`, `APP_SHUTDOWN_DRAIN_SECONDS` or `APP_OTEL_EXPORT_TIMEOUT_SECONDS`, or raise the grace. The app cannot read the platform value; the blueprint test in #150 enforces it. Raising any of these settings means raising the grace.
+
+Known gaps, to revisit when the Postgres guards land (#136):
+
+- The test that cancels a run at the graceful timeout cancels at service level, not through Uvicorn's request task and its middleware layers. `_finish_usage` is not shielded from a second cancellation, and lifespan shutdown closes the pool while cancelled tasks' `finally` blocks may still run. All harmless with the in-memory guards.
+- `503 service_shutting_down` responses count as 5xx in the availability SLO burn on every deploy.
+
 ### Published image and attestation
 
 Every push to `main` runs `image-publish` (ADR 0008 decision 6): it builds with buildx (`provenance: mode=max`, SBOM), pushes `ghcr.io/md-nisar/neuron:sha-<commit>`, scans the pushed digest (SECURITY.md, "Image vulnerabilities"), and only then attests that digest with `actions/attest` (SLSA build provenance, stored in the registry). The run summary and the `attest` job's `digest` output give the digest. Deploy by digest, never by the mutable `sha-` tag. Pull requests build without pushing. The package follows GHCR's default visibility (private for a new package); nothing in the workflow changes it (ADR 0008 open question 14 is undecided).
@@ -68,7 +87,7 @@ An attestation proves where and how the image was built, not that tests passed: 
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded; with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
+- `/health/ready`: application configuration loaded; not draining for shutdown (see Shutdown); with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
@@ -472,7 +491,7 @@ location /v1/agent/stream {
 }
 ```
 
-Clients that disconnect stop their run: model and tool calls are cancelled. A client that stops reading for 30 s is disconnected. On shutdown, open streams receive `error {"code": "service_shutting_down", "retryable": true}` within 2 s, then `done`.
+Clients that disconnect stop their run: model and tool calls are cancelled. A client that stops reading for 30 s is disconnected. On shutdown, open streams keep running for `APP_SHUTDOWN_DRAIN_SECONDS`, then receive `error {"code": "service_shutting_down", "retryable": true}` within 2 s, then `done` (see Shutdown).
 
 ## HTTP Surface
 
