@@ -229,6 +229,14 @@ class Settings(BaseSettings):
             self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
         ):
             raise ValueError("APP_POSTGRES_DSN is required when APP_LIMITS_BACKEND=postgres")
+        if (
+            self.limits_backend == "postgres"
+            and self.user_token_budget_window_seconds < self.run_timeout_seconds + 15
+        ):
+            raise ValueError(
+                "APP_USER_TOKEN_BUDGET_WINDOW_SECONDS must be at least "
+                "APP_RUN_TIMEOUT_SECONDS + 15 when APP_LIMITS_BACKEND=postgres"
+            )
         return self
 
     @model_validator(mode="after")

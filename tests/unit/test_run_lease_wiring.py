@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess  # nosec B404 - runs this repository's own app
+import sys
 from typing import Any
 
 import psycopg
@@ -20,6 +23,7 @@ from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.guards import build_rate_limiter, build_run_guard, build_token_budget
 from neuron_agent.persistence.migrations import MIGRATIONS
 from neuron_agent.persistence.run_guard import LEASE_GRACE_SECONDS, PostgresRunGuard
+from neuron_agent.persistence.token_budget import PostgresTokenBudget
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.run_guard import InMemoryRunGuard, RunClaimDenied
 from neuron_agent.services.agent_service import AgentService
@@ -46,14 +50,36 @@ def test_postgres_run_guard_needs_the_pool() -> None:
     assert isinstance(build_run_guard(memory, build_persistence(memory)), InMemoryRunGuard)
 
 
-def test_the_other_guards_still_refuse_postgres_until_they_exist() -> None:
+def test_the_token_budget_is_postgres_but_the_rate_limiter_still_refuses_it() -> None:
     settings = _postgres_settings()
-    with pytest.raises(NotImplementedError, match="APP_LIMITS_BACKEND=postgres"):
-        build_rate_limiter(settings)
-    with pytest.raises(NotImplementedError, match="APP_LIMITS_BACKEND=postgres"):
+    budget = build_token_budget(settings, build_persistence(settings))
+    assert isinstance(budget, PostgresTokenBudget)
+    with pytest.raises(ValueError, match="connection pool"):
         build_token_budget(settings)
-    with pytest.raises(NotImplementedError):  # so the service still does not start
-        AgentService(settings)
+    with pytest.raises(NotImplementedError, match="request rate limiter.*#148"):
+        build_rate_limiter(settings)
+
+
+def test_the_real_app_still_stops_at_start_up_with_the_postgres_backend() -> None:
+    # `api.main` builds its rate limiters at import, so the app does not start without #148.
+    env = {
+        **{k: v for k, v in os.environ.items() if not k.startswith("APP_")},
+        "APP_ENV": "test",
+        "APP_LIMITS_BACKEND": "postgres",
+        "APP_POSTGRES_DSN": _DSN.get_secret_value(),
+    }
+    result = subprocess.run(  # noqa: S603  # nosec B603
+        [sys.executable, "-I", "-c", "import neuron_agent.api.main"],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "NotImplementedError" in result.stderr
+    assert "request rate limiter" in result.stderr
+    assert "unused" not in result.stderr  # the DSN's password never shows
 
 
 def test_auto_never_selects_postgres() -> None:

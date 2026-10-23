@@ -89,6 +89,11 @@ async def _prune(older_than_days: int) -> None:
             persistence,
             older_than=timedelta(days=older_than_days),
             delete_leases=settings.limits_backend == "postgres",
+            ledger_window_seconds=(
+                settings.user_token_budget_window_seconds
+                if settings.limits_backend == "postgres"
+                else None
+            ),
         )
     finally:
         await persistence.close()

@@ -71,6 +71,9 @@ _APP_PRIVILEGES: dict[str, frozenset[str]] = {
     "checkpoint_blobs": _DML,
     "checkpoint_writes": _DML,
     "neuron_run_leases": frozenset({"SELECT", "INSERT", "DELETE"}),
+    "neuron_token_ledger": _DML,
+    # Settled reservation ids are only inserted (idempotent settle) and swept by retention.
+    "neuron_token_settlements": frozenset({"SELECT", "INSERT", "DELETE"}),
     "neuron_meta": frozenset(),
     "neuron_migrations": frozenset(),
     "checkpoint_migrations": frozenset(),
@@ -173,6 +176,55 @@ CREATE TABLE IF NOT EXISTS neuron_meta (
     updated_at timestamptz NOT NULL DEFAULT now()
 )
 """,
+    ),
+    Migration(
+        version=6,
+        name="token_ledger",
+        # Shared token budget (`persistence/token_budget.py`, ADR 0008 decision 8): tokens
+        # charged per owner per database-clock minute. Logged (not UNLOGGED): a budget must
+        # survive a crash. The primary key is what the atomic upsert conflicts on.
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_token_ledger (
+    owner_key text NOT NULL,
+    minute timestamptz NOT NULL,
+    tokens bigint NOT NULL DEFAULT 0 CHECK (tokens >= 0),
+    PRIMARY KEY (owner_key, minute)
+)
+""",
+    ),
+    # Serves the retention job's delete of minutes outside the window.
+    Migration(
+        version=7,
+        name="token_ledger_minute_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_token_ledger_minute_idx
+ON neuron_token_ledger (minute)
+""",
+        concurrent=True,
+        index="neuron_token_ledger_minute_idx",
+    ),
+    Migration(
+        version=8,
+        name="token_settlements",
+        # One row per settled reservation, written in the same transaction as the ledger
+        # change, so a settlement replayed after an ambiguous COMMIT changes nothing.
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_token_settlements (
+    reservation_id uuid PRIMARY KEY,
+    settled_at timestamptz NOT NULL DEFAULT clock_timestamp()
+)
+""",
+    ),
+    # Serves the retention job's delete of old settlement rows.
+    Migration(
+        version=9,
+        name="token_settlements_settled_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_token_settlements_settled_idx
+ON neuron_token_settlements (settled_at)
+""",
+        concurrent=True,
+        index="neuron_token_settlements_settled_idx",
     ),
 )
 
@@ -311,7 +363,8 @@ def table_grant_statements(
 
     role = sql.Identifier(app)
     dml = names("checkpoints", "checkpoint_blobs", "checkpoint_writes")
-    leases = names("neuron_run_leases")
+    leases = names("neuron_run_leases", "neuron_token_settlements")
+    ledger = names("neuron_token_ledger")
     bookkeeping = names("neuron_migrations", "checkpoint_migrations", "neuron_meta")
     statements: list[sql.Composed] = []
     if dml is not None:
@@ -321,6 +374,10 @@ def table_grant_statements(
     if leases is not None:
         statements.append(sql.SQL("GRANT SELECT, INSERT, DELETE ON {} TO {}").format(leases, role))
         statements.append(sql.SQL("REVOKE UPDATE ON {} FROM {}").format(leases, role))
+    if ledger is not None:
+        statements.append(
+            sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(ledger, role)
+        )
     if bookkeeping is not None:
         statements.append(sql.SQL("REVOKE ALL ON {} FROM {}").format(bookkeeping, role))
     return statements

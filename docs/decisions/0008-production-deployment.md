@@ -444,6 +444,32 @@ task still deletes its lease.
   after the answer exists, the answer is delivered, a metric counts the failure, and
   the next admission for that owner fails closed until the store answers. The
   retention job deletes minutes outside the window.
+  *Implemented in #147 (`persistence/token_budget.py`).* Details the design left open:
+  admission is one `READ COMMITTED` transaction under a per-owner
+  `pg_advisory_xact_lock` (so concurrent admissions never exceed the budget, not even by
+  one reservation); the reservation is capped at the budget so a budget smaller than
+  one reservation still admits a run from an empty window; the prompt estimate is the
+  message's UTF-8 bytes / 3; a minute counts until its end plus the window has passed
+  (usage is never forgotten early and is held up to 60 s longer); settling writes only
+  the difference (an upsert when the run used more, a clamped decrement of the
+  reservation's minute when less); a run that never started gives its reservation back;
+  a failed settlement is kept in the process and retried at that owner's next admission,
+  which fails closed until it succeeds. A crash loses that retry, and the reservation
+  stays counted, so the ledger errs high. The application role needs `SELECT`, `INSERT`,
+  `UPDATE` and `DELETE` on `neuron_token_ledger` and `neuron_token_settlements`
+  (decision 15 / #144); the #144 grant phase covers the token tables (migrations 6 to 9).
+  The budget is enforced **at admission and settled afterwards**: nothing stops a run
+  mid-way, so a run can overshoot by its real cost (iterations, history, tool output;
+  `APP_MAX_HISTORY_TOKENS` bounds each model call, not the number of calls), and the
+  excess is charged at settlement. A run that reports no usage (cancelled, timed out, or
+  a provider that omits usage) keeps its whole reservation; only a run that never reached
+  the model gives it back. Each reservation has an id recorded with its settlement in
+  one transaction (`neuron_token_settlements`), so a settlement retried after an
+  ambiguous `COMMIT` is applied once. A reserve cancelled after its commit leaves its
+  reservation counted until the window passes (conservative). A per-owner in-process gate
+  bounds the pool connections one owner's admissions can hold. Settings validation
+  requires `APP_USER_TOKEN_BUDGET_WINDOW_SECONDS` of at least `APP_RUN_TIMEOUT_SECONDS`
+  + 15 with the Postgres backend.
 - **Request rate limiting.** An `UNLOGGED` token-bucket table, one atomic
   `INSERT … ON CONFLICT DO UPDATE … RETURNING` per rate-limited request (or the
   bounded per-process limiter, if open question 7 chooses it). Accepted trade-offs: one

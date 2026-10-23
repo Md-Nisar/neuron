@@ -64,10 +64,15 @@ from neuron_agent.security.authorization import (
 from neuron_agent.security.input_policy import validate_user_message
 from neuron_agent.security.output_policy import SYSTEM_PROMPT_REFUSAL, StreamLeakGuard
 from neuron_agent.security.run_guard import RunClaimDenied, RunDenialReason, RunGuard, RunLease
-from neuron_agent.security.usage_budget import TokenBudget
+from neuron_agent.security.usage_budget import BudgetReservation, TokenBudget
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
 
 logger = structlog.get_logger(__name__)
+
+
+def estimate_prompt_tokens(message: str) -> int:
+    """A deliberately high token estimate of the user message (UTF-8 bytes / 3, at least 1)."""
+    return max(1, -(-len(message.encode()) // 3))
 
 
 class StopSignal(Protocol):
@@ -90,6 +95,7 @@ class PreparedRun:
     graph_input: dict[str, Any]
     authorization: AuthorizationContext
     budget_key: str
+    budget_reservation: BudgetReservation
     checkpoint_owner: str | None
     created_thread: bool
     lease: RunLease
@@ -113,8 +119,8 @@ class AgentService:
         run_guard: RunGuard | None = None,
     ) -> None:
         self._settings = settings
-        self._token_budget = token_budget or build_token_budget(settings)
         self._persistence = persistence or build_persistence(settings)
+        self._token_budget = token_budget or build_token_budget(settings, self._persistence)
         self._run_guard = run_guard or build_run_guard(settings, self._persistence)
         self._graph: Any | None = None
         self._drain_started: float | None = None
@@ -203,8 +209,12 @@ class AgentService:
         owner_key = self._owner_key(request.user_id, principal)
         message = validate_user_message(request.message, max_chars=self._settings.max_prompt_chars)
         budget_key = owner_key or "anonymous"
-        budget_decision = await self._token_budget.check(budget_key)
-        if not budget_decision.allowed:
+        prompt_estimate = estimate_prompt_tokens(message)
+        budget_decision = await self._token_budget.reserve(
+            budget_key, self._settings.max_output_tokens + prompt_estimate
+        )
+        reservation = budget_decision.reservation
+        if not budget_decision.allowed or reservation is None:
             metrics.record_policy_block("token_budget")
             logger.warning(
                 "user_limit_exceeded",
@@ -222,13 +232,21 @@ class AgentService:
                 reason="token_budget",
             )
             raise QuotaExceededError(budget_decision.retry_after_seconds)
-        bind_correlation_context(request_id=request_id, thread_id=request.thread_id, run_id=run_id)
-        with self._persistence_errors():
-            thread_id = await self._resolve_thread(request.thread_id, owner_key)
-        bind_correlation_context(request_id=None, thread_id=thread_id)
-        lease = self._count_in_flight(
-            await self._claim(thread_id, streaming=streaming, owner_key=budget_key)
-        )
+        try:
+            bind_correlation_context(
+                request_id=request_id, thread_id=request.thread_id, run_id=run_id
+            )
+            with self._persistence_errors():
+                thread_id = await self._resolve_thread(request.thread_id, owner_key)
+            bind_correlation_context(request_id=None, thread_id=thread_id)
+            lease = self._count_in_flight(
+                await self._claim(thread_id, streaming=streaming, owner_key=budget_key),
+                reservation,
+            )
+        except BaseException:
+            # No run will happen: give the reservation back (shielded, never raises).
+            await self._token_budget.settle(reservation, 0)
+            raise
         owner_state = (
             {"owner_key": owner_key}
             if self._settings.auth_mode == "jwt"
@@ -261,6 +279,7 @@ class AgentService:
                 issuer_id=self._settings.auth_issuer_id,
             ),
             budget_key=budget_key,
+            budget_reservation=reservation,
             checkpoint_owner=owner_key,
             created_thread=request.thread_id is None,
             lease=lease,
@@ -459,8 +478,12 @@ class AgentService:
         except RunClaimDenied as denied:
             raise self._denial(denied.reason, owner_key) from None
 
-    def _count_in_flight(self, lease: RunLease) -> RunLease:
-        """Count the run until its lease is released, for the `service_draining` log."""
+    def _count_in_flight(self, lease: RunLease, reservation: BudgetReservation) -> RunLease:
+        """Count the run until its lease is released, for the `service_draining` log.
+
+        Releasing the lease also gives back a token reservation nothing settled (a stream that
+        never started); once `_finish_usage` has settled it, that is a no-op.
+        """
         self._in_flight += 1
 
         async def release() -> None:
@@ -468,6 +491,7 @@ class AgentService:
                 await lease.release()
             finally:
                 self._in_flight -= 1
+                await self._token_budget.settle(reservation, 0)
 
         return RunLease(release)
 
@@ -502,7 +526,11 @@ class AgentService:
 
     async def _finish_usage(self, run: PreparedRun) -> None:
         usage = run.authorization.usage or TokenUsageAccumulator()
-        await self._token_budget.charge(run.budget_key, usage.total_tokens)
+        # A run that reported no usage may still have spent tokens (cancelled, timed out, or a
+        # provider that omits usage): keep the whole reservation rather than guess low.
+        await self._token_budget.settle(
+            run.budget_reservation, usage.total_tokens or run.budget_reservation.tokens
+        )
         logger.info(
             "model_token_usage",
             request_id=run.request_id,
