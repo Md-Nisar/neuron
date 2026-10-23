@@ -99,9 +99,8 @@ class AppProcess:
         self._process.send_signal(signal.SIGKILL)
         self._process.wait(timeout=10)
 
-    async def close(self) -> None:
-        """Stop the process and release its resources; safe to call again."""
-        await self._client.aclose()
+    def stop_now(self) -> None:
+        """Stop the process and close its log without an event loop; safe to call again."""
         if self._process.poll() is None:
             self._process.send_signal(signal.SIGTERM)
             try:
@@ -110,3 +109,8 @@ class AppProcess:
                 self._process.kill()
                 self._process.wait(timeout=10)
         self._log.close()
+
+    async def close(self) -> None:
+        """Stop the process and release its resources; safe to call again."""
+        await self._client.aclose()
+        self.stop_now()

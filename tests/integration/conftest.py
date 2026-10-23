@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 
 import pg_harness
 import psycopg
@@ -15,7 +15,7 @@ _DSN = os.environ.get("APP_TEST_POSTGRES_DSN")
 
 
 @pytest.fixture
-async def database() -> AsyncIterator[str]:
+async def database(reap_app_processes: None) -> AsyncIterator[str]:
     """A fresh, fully migrated database per test; yields its DSN."""
     if not _DSN:
         pytest.skip("APP_TEST_POSTGRES_DSN is not set; see OPERATIONS.md for a local Postgres.")
@@ -30,9 +30,13 @@ async def database() -> AsyncIterator[str]:
             await admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')  # nosec B608
 
 
-@pytest.fixture(autouse=True)
-async def reap_app_processes() -> AsyncIterator[None]:
-    """Stop every app process a test started, however the test ended."""
+@pytest.fixture
+def reap_app_processes() -> Iterator[None]:
+    """Stop every app process a test started, however the test ended.
+
+    Synchronous and not autouse: the `database` fixture requests it, so it applies to the
+    harness tests only, and the sync Docker layout tests never see it.
+    """
     yield
     while pg_harness.LIVE:
-        await pg_harness.LIVE.pop().close()
+        pg_harness.LIVE.pop().stop_now()
