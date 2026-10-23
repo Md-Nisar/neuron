@@ -2,24 +2,30 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import structlog.testing
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.metrics.export import Metric as SdkMetric
+from pydantic import SecretStr
 from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
+from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.graphs import main_graph
 from neuron_agent.models.factory import tracing_middleware
 from neuron_agent.observability import metrics, semconv, telemetry
+from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.services.agent_service import AgentService, PreparedRun
 
 _SUB = "raw-subject-7f3a"
@@ -236,6 +242,137 @@ def test_http_metrics_keep_only_route_and_status(collected: Collector) -> None:
         semconv.HTTP_RESPONSE_STATUS_CODE: 200,
     }
     assert tuple(point.explicit_bounds) == metrics.LLM_LATENCY_BUCKETS
+
+
+def _reported(collected: Collector, name: str) -> bool:
+    """Whether the metric has a data point now (the reader has no data at all if none does)."""
+    return collected.reader.get_metrics_data() is not None and name in collected.metrics()
+
+
+@pytest.fixture
+def readiness(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[float]]:
+    """A clean readiness state and a clock the test moves (the list holds the current time)."""
+    clock = [1000.0]
+    monkeypatch.setattr(metrics, "_last_ready", None)
+    monkeypatch.setattr(metrics, "_quiet_when", None)
+    monkeypatch.setattr(metrics, "_monotonic", lambda: clock[0])
+    metrics.observe_pool_waiting(None)  # builds the instruments
+    yield clock
+
+
+def test_readiness_gauge_reports_one_then_zero_with_no_labels(
+    collected: Collector, readiness: list[float]
+) -> None:
+    assert not _reported(collected, semconv.METRIC_SERVICE_READY)  # nothing evaluated yet
+    metrics.record_readiness(True)
+    [point] = collected.points(semconv.METRIC_SERVICE_READY)
+    assert point.value == 1 and dict(point.attributes) == {}
+    readiness[0] += 15
+    metrics.record_readiness(False)
+    [point] = collected.points(semconv.METRIC_SERVICE_READY)
+    assert point.value == 0 and dict(point.attributes) == {}
+
+
+def test_readiness_gauge_goes_quiet_when_the_last_evaluation_is_stale(
+    collected: Collector, readiness: list[float]
+) -> None:
+    metrics.record_readiness(True)
+    readiness[0] += metrics.READINESS_STALE_SECONDS
+    assert _reported(collected, semconv.METRIC_SERVICE_READY)
+    readiness[0] += 0.1  # a hung loop: the frozen 1 must not be exported any longer
+    assert not _reported(collected, semconv.METRIC_SERVICE_READY)
+    metrics.record_readiness(True)
+    assert _reported(collected, semconv.METRIC_SERVICE_READY)
+
+
+def test_readiness_gauge_reports_nothing_while_draining(
+    collected: Collector, readiness: list[float]
+) -> None:
+    draining = [False]
+    metrics.quiet_readiness_when(lambda: draining[0])
+    metrics.record_readiness(False)
+    assert _reported(collected, semconv.METRIC_SERVICE_READY)
+    draining[0] = True  # begin_drain: no 0 while terminating
+    assert not _reported(collected, semconv.METRIC_SERVICE_READY)
+
+
+def test_the_probe_endpoint_records_no_readiness(
+    collected: Collector, readiness: list[float]
+) -> None:
+    client = TestClient(app)
+    assert client.get("/health/ready").status_code == 200
+    assert not _reported(collected, semconv.METRIC_SERVICE_READY)
+
+
+@pytest.mark.anyio
+async def test_the_readiness_watcher_records_survives_errors_and_cancels_cleanly(
+    collected: Collector, readiness: list[float], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    results: list[bool | Exception] = [RuntimeError("down"), RuntimeError("down"), False, True]
+
+    async def is_ready(self: object) -> bool:
+        result = results.pop(0) if len(results) > 1 else results[0]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(AgentService, "is_ready", is_ready)
+    monkeypatch.setattr(api_main, "_READINESS_INTERVAL_SECONDS", 0.01)
+    with structlog.testing.capture_logs() as logs:
+        watcher = asyncio.create_task(api_main._watch_readiness())
+        while len(results) > 1:
+            await asyncio.sleep(0.01)
+        await asyncio.sleep(0.02)
+        assert not watcher.done()  # it survived two failures
+        watcher.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await watcher
+    failures = [log for log in logs if log["event"] == "readiness_watch_failed"]
+    assert [log["error_type"] for log in failures] == ["RuntimeError"]  # once per error type
+    assert "down" not in str(failures)
+    assert metrics._last_ready is not None and metrics._last_ready[0] is True
+
+
+def test_the_lifespan_starts_the_watcher_and_stops_it_at_shutdown(
+    collected: Collector, readiness: list[float], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with TestClient(app):
+        for _ in range(200):
+            if metrics._last_ready is not None:
+                break
+            time.sleep(0.01)
+        assert metrics._last_ready is not None and metrics._last_ready[0] is True
+        assert metrics._quiet_when is not None
+    assert metrics._quiet_when is None  # cleared at shutdown
+
+
+@pytest.mark.anyio
+async def test_pool_waiting_gauge_follows_the_pool_and_stops_when_it_closes(
+    collected: Collector, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(metrics, "_pool_waiting_source", None)
+    settings = Settings(
+        env="test",
+        checkpointer="postgres",
+        postgres_dsn=SecretStr("postgresql://neuron:pw@127.0.0.1:1/neuron"),
+        postgres_pool_timeout_seconds=1,
+        openai_api_key=None,
+    )
+    persistence = build_persistence(settings)
+    assert persistence.pool is not None
+    assert not _reported(collected, semconv.METRIC_DB_POOL_WAITING)  # not opened yet
+
+    await persistence.open()
+    try:
+        [point] = collected.points(semconv.METRIC_DB_POOL_WAITING)
+        assert point.value == persistence.pool.get_stats()["requests_waiting"] == 0
+        assert dict(point.attributes) == {}
+        metrics.observe_pool_waiting(lambda: 4)  # the pool's own statistic, as the pool reports it
+        [point] = collected.points(semconv.METRIC_DB_POOL_WAITING)
+        assert point.value == 4
+    finally:
+        await persistence.close()
+    assert not _reported(collected, semconv.METRIC_DB_POOL_WAITING)
 
 
 def test_configure_telemetry_runs_once_per_process(monkeypatch: pytest.MonkeyPatch) -> None:

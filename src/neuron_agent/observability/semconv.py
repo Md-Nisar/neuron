@@ -71,6 +71,8 @@ METRIC_TOOL_DURATION = "neuron.agent.tool.duration"
 METRIC_ERRORS = "neuron.agent.errors"
 METRIC_POLICY_BLOCKS = "neuron.agent.policy.blocks"
 METRIC_CHECKPOINT_DURATION = "neuron.checkpoint.duration"
+METRIC_SERVICE_READY = "neuron.service.ready"
+METRIC_DB_POOL_WAITING = "neuron.db.pool.waiting"
 # Run leases past `expires_at` and not yet deleted: a replica died mid-run or a release failed.
 # Alert-ready (the rule itself is #155); every replica reports the same table-wide value.
 METRIC_RUN_LEASES_EXPIRED = "neuron.run_leases.expired"

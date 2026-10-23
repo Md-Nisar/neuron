@@ -153,6 +153,11 @@ class AgentService:
             raise PersistenceError("thread persistence is not started")
         return self._graph
 
+    @property
+    def draining(self) -> bool:
+        """Whether shutdown has begun (`begin_drain` was called)."""
+        return self._drain_started is not None
+
     async def is_ready(self) -> bool:
         """Return whether the service takes traffic: not draining, dependencies reachable."""
         return self._drain_started is None and await self._persistence.is_ready()

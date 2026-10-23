@@ -297,3 +297,27 @@ def test_docs_describe_the_scan_database_the_workflow_and_the_verify_command() -
     assert "gh attestation verify oci://ghcr.io/md-nisar/neuron@" in operations
     assert "--signer-workflow Md-Nisar/neuron/.github/workflows/image-publish.yml" in operations
     assert "--predicate-type https://slsa.dev/provenance/v1" in operations
+
+
+# --- ci.yml observability-config (issue #155) -------------------------------------------------
+
+
+def test_ci_validates_alert_rules_and_collector_config_with_the_pinned_script() -> None:
+    workflow = _load("ci.yml")
+    text = (WORKFLOWS / "ci.yml").read_text("utf-8")
+    job = workflow["jobs"]["observability-config"]
+    assert workflow["permissions"] == {"contents": "read"}
+    assert job["permissions"] == {"contents": "read"}
+    assert job["runs-on"] == "ubuntu-latest" and job["timeout-minutes"] <= 10
+    assert "secrets." not in text
+    runs = [step["run"] for step in job["steps"] if "run" in step]
+    assert any("validate_observability.py check" in run for run in runs)
+    assert any("validate_observability.py reject-broken" in run for run in runs)
+    # The binaries come from the script's pins, never from a package manager or `latest`.
+    assert not any(token in " ".join(runs) for token in ("apt", "brew", "curl", "latest"))
+    checkout = next(s for s in job["steps"] if s.get("uses", "").startswith("actions/checkout@"))
+    assert checkout["with"] == {"persist-credentials": False}
+    typecheck = [
+        s["run"] for s in workflow["jobs"]["checks"]["steps"] if "mypy" in s.get("run", "")
+    ]
+    assert len(typecheck) == 1 and "scripts/validate_observability.py" in typecheck[0]
