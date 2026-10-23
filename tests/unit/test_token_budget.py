@@ -318,3 +318,29 @@ def test_the_ledger_is_a_logged_table_added_by_expand_only_migrations() -> None:
     assert (index.version, index.name, index.concurrent) == (6, "token_ledger_minute_idx", True)
     assert "UNLOGGED" not in table.sql.upper()
     assert "PRIMARY KEY (owner_key, minute)" in table.sql
+
+
+async def test_concurrent_retries_for_one_owner_lose_and_repeat_nothing() -> None:
+    budget = _down_budget()
+    first = BudgetReservation("o", 10, _Handle(datetime.now(UTC), uuid.uuid4()))
+    second = BudgetReservation("o", 10, _Handle(datetime.now(UTC), uuid.uuid4()))
+    budget._unsettled["o"] = [(first, 50), (second, 60)]
+    written: list[BudgetReservation] = []
+    attempts = 0
+
+    async def write(reservation: BudgetReservation, actual: int) -> None:
+        nonlocal attempts
+        attempts += 1
+        await asyncio.sleep(0)
+        if attempts == 1:
+            raise PersistenceError("down")  # the first write fails; the retry must go on
+        written.append(reservation)
+
+    budget._write = write  # type: ignore[method-assign]
+    results = await asyncio.gather(
+        budget._retry_unsettled("o"), budget._retry_unsettled("o"), return_exceptions=True
+    )
+    assert sum(isinstance(r, PersistenceError) for r in results) == 1
+    assert written == [first, second]  # each entry written once, in order, none dropped
+    assert "o" not in budget._unsettled
+    assert budget._retry_locks == {}

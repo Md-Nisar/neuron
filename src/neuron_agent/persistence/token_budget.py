@@ -134,7 +134,7 @@ class PostgresTokenBudget:
         self._timeouts = (f"{lock_timeout_ms}ms", f"{statement_timeout_ms}ms")
         # Settlements the ledger refused, by owner, retried at that owner's next admission.
         self._unsettled: dict[str, list[tuple[BudgetReservation, int]]] = {}
-        self._retry_locks: dict[str, asyncio.Lock] = {}
+        self._retry_locks: dict[str, _Gate] = {}
         self._gates: dict[str, _Gate] = {}  # only owners with a reserve in flight
         self._per_owner = max(1, max_concurrent_reserves_per_owner)
 
@@ -191,17 +191,20 @@ class PostgresTokenBudget:
 
     async def _retry_unsettled(self, key: str) -> None:
         """Write the owner's refused settlements, or fail closed (raises `PersistenceError`)."""
-        lock = self._retry_locks.setdefault(key, asyncio.Lock())  # one owner never blocks another
+        lock = self._retry_locks.setdefault(key, _Gate(1))  # one owner never blocks another
+        lock.users += 1  # the lock is dropped only when its last user is done with it
         try:
-            async with lock:
+            async with lock.semaphore:
                 pending = self._unsettled.get(key, [])
                 while pending:
-                    reservation, actual = pending[0]
-                    await self._write(reservation, actual)
-                    pending.pop(0)
-                self._unsettled.pop(key, None)
+                    entry = pending[0]
+                    await self._write(*entry)
+                    pending.remove(entry)  # that exact entry, not whatever is first now
+                if not pending:  # a settlement that failed meanwhile is appended, never lost
+                    self._unsettled.pop(key, None)
         finally:
-            if not lock.locked():
+            lock.users -= 1
+            if lock.users == 0:
                 self._retry_locks.pop(key, None)
 
     @asynccontextmanager
