@@ -308,11 +308,15 @@ def test_trusted_proxies_set_through_the_environment_count_as_set(
 
 
 @_BOTH
-@pytest.mark.parametrize("catch_all", ["0.0.0.0/0", "::/0"])
-def test_catch_all_trusted_proxy_ranges_are_refused(env: str, catch_all: str) -> None:
-    with pytest.raises(ValidationError, match="catch-all"):
-        _hardened(env, trusted_proxies=["10.0.0.0/8", catch_all])
-    assert _hardened(env, trusted_proxies=["10.0.0.0/8", "fd00::/8"])
+@pytest.mark.parametrize(
+    "broad", ["0.0.0.0/0", "::/0", "0.0.0.0/1", "128.0.0.0/1", "::/1", "8000::/1", "10.0.0.0/7"]
+)
+def test_overly_broad_trusted_proxy_ranges_are_refused(env: str, broad: str) -> None:
+    with pytest.raises(ValidationError, match="broader than"):
+        _hardened(env, trusted_proxies=["10.0.0.0/8", broad])
+    with pytest.raises(ValidationError, match="broader than"):
+        _hardened(env, trusted_proxies=["0.0.0.0/1", "128.0.0.0/1"])
+    assert _hardened(env, trusted_proxies=["10.0.0.0/8", "fd00::/16"])
 
 
 @_BOTH
@@ -417,10 +421,24 @@ def test_production_refuses_exposed_api_docs() -> None:
         "192.168.1.1",
         "[fd00::1]",
         "[::ffff:10.0.0.1]",
+        # inet_aton-style spellings of loopback
+        "2130706433",
+        "0x7f.1",
+        "127.1",
+        "0x7f000001",
+        "0177.0.0.1",
+        # embedded IPv4: NAT64 and 6to4 around 127.0.0.1
+        "[64:ff9b::7f00:1]",
+        "[2002:7f00:1::]",
+        "100.64.0.1",
+        "224.0.0.1",
+        "240.0.0.1",
+        "0.0.0.0",  # noqa: S104
+        "[::]",
     ],
 )
 def test_jwks_url_with_an_internal_host_is_refused(env: str, host: str) -> None:
-    with pytest.raises(ValidationError, match="loopback, link-local or private"):
+    with pytest.raises(ValidationError, match="non-public"):
         _hardened(env, auth_jwks_url=f"https://{host}:8443/jwks.json")
 
 
@@ -455,3 +473,43 @@ def test_validation_errors_never_echo_the_input() -> None:
         _hardened("production", postgres_dsn=_DSN, allowed_hosts=[])
     assert "input_value" not in str(caught.value)
     assert "pw-secret-1" not in str(caught.value)
+
+
+@_BOTH
+@pytest.mark.parametrize("pattern", ["*", "*.com", "*.io"])
+def test_wildcard_allowed_hosts_over_everything_or_a_tld_are_refused(
+    env: str, pattern: str
+) -> None:
+    with pytest.raises(ValidationError, match="top-level domain"):
+        _hardened(env, allowed_hosts=["api.example.test", pattern])
+    assert _hardened(env, allowed_hosts=["*.example.test"])
+
+
+def test_dev_keeps_wildcard_allowed_hosts() -> None:
+    assert Settings(env="development", allowed_hosts=["*"]).allowed_hosts == ["*"]
+
+
+@pytest.mark.parametrize("mode", ["VERIFY-FULL", "Verify-Full", "verify-full ", " verify-full"])
+def test_uppercase_or_padded_sslmode_is_refused(mode: str) -> None:
+    with pytest.raises(ValidationError, match="sslmode"):
+        _hardened("production", postgres_dsn=_DSN + "?sslmode=" + mode.replace(" ", "%20"))
+    with pytest.raises(ValidationError, match="sslmode"):
+        _hardened("production", postgres_dsn=f"host=h user=svc dbname=n sslmode='{mode}'")
+
+
+@_BOTH
+def test_pgsslmode_in_the_environment_does_not_satisfy_the_rule(
+    monkeypatch: pytest.MonkeyPatch, env: str
+) -> None:
+    monkeypatch.setenv("PGSSLMODE", "verify-full")
+    with pytest.raises(ValidationError, match="sslmode"):
+        _hardened(env, postgres_dsn=_DSN)
+
+
+def test_an_empty_trusted_proxies_variable_is_rejected_by_settings_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Operators must write APP_TRUSTED_PROXIES=[]; an empty value is not an empty list."""
+    monkeypatch.setenv("APP_TRUSTED_PROXIES", "")
+    with pytest.raises(Exception, match="trusted_proxies|TRUSTED_PROXIES"):
+        Settings(env="test")

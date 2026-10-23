@@ -368,3 +368,30 @@ def test_stateless_checkpointer_is_logged_as_a_warning_in_deployed_environments(
     stateless = [line for line in logs if line["event"] == "stateless_deployment"]
 
     assert [line["log_level"] for line in stateless] == (["warning"] if warned else [])
+
+
+def test_approved_langsmith_content_capture_is_logged_with_its_record_only() -> None:
+    settings = Settings.model_construct(
+        env="production",
+        checkpointer="postgres",
+        limits_backend="postgres",
+        langsmith_content_approved=True,
+        langsmith_content_approval_record="ticket-42",
+        langsmith_api_key="lsv2-secret-key",
+        postgres_dsn="postgresql://svc:pw-secret-1@h/n",
+    )
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(settings)
+    lines = [line for line in logs if line["event"] == "langsmith_content_capture_approved"]
+
+    assert lines == [
+        {
+            "event": "langsmith_content_capture_approved",
+            "log_level": "warning",
+            "approval_record": "ticket-42",
+        }
+    ]
+    assert "lsv2-secret-key" not in str(logs) and "pw-secret-1" not in str(logs)
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(Settings(env="test"))
+    assert not [x for x in logs if x["event"] == "langsmith_content_capture_approved"]

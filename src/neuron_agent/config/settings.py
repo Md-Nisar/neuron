@@ -16,6 +16,8 @@ from pydantic import AliasChoices, Field, SecretStr, field_validator, model_vali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from neuron_agent import __version__
+from neuron_agent.errors.base import AuthorizationError, ValidationAppError
+from neuron_agent.security.input_policy import validate_safe_url
 
 Environment = Literal["development", "staging", "production", "test"]
 CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
@@ -38,23 +40,16 @@ _SSLMODE_RANK = {
 
 
 def _is_internal_host(url: str) -> bool:
-    """True for `localhost` and for loopback, link-local or private IP literals.
+    """True unless `validate_safe_url` accepts the URL's literal host as public.
 
-    Names are not resolved: a public name that resolves to a private address is not caught.
+    Names are not resolved and redirects are not followed, so a public name that resolves to a
+    private address passes (an accepted gap, see SECURITY.md).
     """
     try:
-        host = (urlsplit(url).hostname or "").rstrip(".").lower()
-    except ValueError:
+        validate_safe_url(url)
+    except (AuthorizationError, ValidationAppError):
         return True
-    if host == "localhost" or host.endswith(".localhost"):
-        return True
-    try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
-        address = address.ipv4_mapped
-    return address.is_loopback or address.is_link_local or address.is_private
+    return False
 
 
 class Settings(BaseSettings):
@@ -333,8 +328,8 @@ class Settings(BaseSettings):
             raise ValueError("APP_AUTH_JWKS_URL must use HTTPS outside development")
         if self.env in {"staging", "production"} and _is_internal_host(self.auth_jwks_url):
             raise ValueError(
-                "APP_AUTH_JWKS_URL must not point at a loopback, link-local or private host "
-                "in staging/production"
+                "APP_AUTH_JWKS_URL must not point at a local, private or otherwise "
+                "non-public host in staging/production"
             )
         if not self.auth_algorithms or any(
             algorithm not in {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
@@ -389,12 +384,19 @@ class Settings(BaseSettings):
             )
         for proxy in self.trusted_proxies:
             try:
-                catch_all = ipaddress.ip_network(proxy.strip(), strict=False).prefixlen == 0
+                network = ipaddress.ip_network(proxy.strip(), strict=False)
             except ValueError:
                 continue  # the request path skips an unparsable entry the same way
-            if catch_all:
+            if network.prefixlen < (8 if network.version == 4 else 16):
                 raise ValueError(
-                    "APP_TRUSTED_PROXIES must not contain a catch-all range (0.0.0.0/0, ::/0)"
+                    "APP_TRUSTED_PROXIES must not contain a range broader than "
+                    "/8 (IPv4) or /16 (IPv6)"
+                )
+        for host in self.allowed_hosts:
+            if host == "*" or (host.startswith("*.") and host.count(".") < 2):
+                raise ValueError(
+                    "APP_ALLOWED_HOSTS must not contain '*' or a wildcard over a whole "
+                    "top-level domain in staging/production"
                 )
         if not self.rate_limit_enabled:
             raise ValueError("APP_RATE_LIMIT_ENABLED=false is refused in staging/production")

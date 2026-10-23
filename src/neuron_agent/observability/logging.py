@@ -106,3 +106,9 @@ def log_startup_configuration(settings: Any) -> None:
         logger.warning(
             "stateless_deployment", detail="APP_CHECKPOINTER=none: threads are not stored"
         )
+    if settings.langsmith_content_approved:
+        # The record names an approval (not a secret); this line is the trail for content capture.
+        logger.warning(
+            "langsmith_content_capture_approved",
+            approval_record=settings.langsmith_content_approval_record,
+        )
