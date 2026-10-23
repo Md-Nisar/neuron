@@ -24,6 +24,11 @@ _STARTUP_SECONDS = 60.0
 _FOREIGN = ("APP_", "OPENAI", "NVIDIA")
 
 
+# Every process started, so a test that fails between two starts cannot orphan one (the
+# `reap_app_processes` fixture closes whatever is left).
+LIVE: list[AppProcess] = []
+
+
 def _free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -68,6 +73,7 @@ class AppProcess:
             stderr=subprocess.STDOUT,
         )
         self._client = httpx.AsyncClient(base_url=f"http://127.0.0.1:{self.port}", timeout=120)
+        LIVE.append(self)
 
     async def wait_ready(self) -> AppProcess:
         deadline = time.monotonic() + _STARTUP_SECONDS
@@ -94,6 +100,7 @@ class AppProcess:
         self._process.wait(timeout=10)
 
     async def close(self) -> None:
+        """Stop the process and release its resources; safe to call again."""
         await self._client.aclose()
         if self._process.poll() is None:
             self._process.send_signal(signal.SIGTERM)

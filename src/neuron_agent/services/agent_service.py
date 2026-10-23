@@ -620,47 +620,57 @@ class AgentService:
         """Delete all discoverable owned threads, skipping active runs idempotently."""
         owner_key = self._owner_key(user_id, principal)
         erased = 0
-        active_owned = (
-            await self._run_guard.active_threads_of(owner_key)
-            if owner_key is not None
-            else frozenset[str]()
-        )
-        skipped_busy = len(active_owned)
-        checkpointer = self._persistence.checkpointer
-        if checkpointer is not None:
-            with self._persistence_errors():
-                page = await self._owned_threads(owner_key, limit=None)
-                for thread in page.threads:
-                    thread_id = thread.thread_id
-                    if thread_id in active_owned:
-                        continue
-                    # Held while it is deleted, so no run can start on it meanwhile.
-                    try:
-                        lease = await self._run_guard.hold_thread(
-                            thread_id=thread_id, owner_key=owner_key or "anonymous"
-                        )
-                    except RunClaimDenied:
-                        skipped_busy += 1  # a run started after the listing
-                        continue
-                    try:
-                        await checkpointer.adelete_thread(thread_id)
-                    finally:
-                        await lease.release()
-                    erased += 1
-        audit(
-            "user_data_erased",
-            outcome="allowed",
-            actor=(
-                owner_key[:12]
-                if self._settings.auth_mode == "jwt" and owner_key is not None
-                else None
-            ),
-            issuer_id=self._settings.auth_issuer_id,
-            action="threads:erase_all",
-            resource_type="user_data",
-            count=erased,
-            reason="busy_threads_skipped" if skipped_busy else None,
-        )
+        skipped_busy = 0
+        failed = True
+        try:
+            active_owned = (
+                await self._run_guard.active_threads_of(owner_key)
+                if owner_key is not None
+                else frozenset[str]()
+            )
+            checkpointer = self._persistence.checkpointer
+            if checkpointer is not None:
+                with self._persistence_errors():
+                    page = await self._owned_threads(owner_key, limit=None)
+                    for thread in page.threads:
+                        thread_id = thread.thread_id
+                        if thread_id in active_owned:
+                            skipped_busy += 1
+                            continue
+                        # Held while it is deleted, so no run can start on it meanwhile.
+                        try:
+                            lease = await self._run_guard.hold_thread(
+                                thread_id=thread_id, owner_key=owner_key or "anonymous"
+                            )
+                        except RunClaimDenied:
+                            skipped_busy += 1  # a run started after the listing
+                            continue
+                        try:
+                            await checkpointer.adelete_thread(thread_id)
+                        finally:
+                            await lease.release()
+                        erased += 1
+            failed = False
+        finally:
+            # Also when it stops part-way: the count so far, never thread IDs.
+            audit(
+                "user_data_erased",
+                outcome="error" if failed else "allowed",
+                actor=(
+                    owner_key[:12]
+                    if self._settings.auth_mode == "jwt" and owner_key is not None
+                    else None
+                ),
+                issuer_id=self._settings.auth_issuer_id,
+                action="threads:erase_all",
+                resource_type="user_data",
+                count=erased,
+                reason="erasure_failed"
+                if failed
+                else "busy_threads_skipped"
+                if skipped_busy
+                else None,
+            )
         return UserDataErasureResponse(erased_count=erased, skipped_busy_count=skipped_busy)
 
     async def _owned_threads(

@@ -4,6 +4,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator
 
+import pg_harness
 import psycopg
 import pytest
 from psycopg.conninfo import make_conninfo
@@ -27,3 +28,11 @@ async def database() -> AsyncIterator[str]:
             yield dsn
         finally:
             await admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')  # nosec B608
+
+
+@pytest.fixture(autouse=True)
+async def reap_app_processes() -> AsyncIterator[None]:
+    """Stop every app process a test started, however the test ended."""
+    yield
+    while pg_harness.LIVE:
+        await pg_harness.LIVE.pop().close()

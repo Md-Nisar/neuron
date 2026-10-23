@@ -99,10 +99,31 @@ CREATE TABLE IF NOT EXISTS neuron_run_leases (
     lease_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_key text NOT NULL,
     thread_id text UNIQUE,
-    kind text NOT NULL DEFAULT 'run',
+    kind text NOT NULL DEFAULT 'run' CHECK (kind IN ('run', 'delete')),
     expires_at timestamptz NOT NULL
 )
 """,
+    ),
+    # Serve the per-owner count and listing, and the expiry sweep, on the table above.
+    Migration(
+        version=3,
+        name="run_leases_owner_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_run_leases_owner_idx
+ON neuron_run_leases (owner_key)
+""",
+        concurrent=True,
+        index="neuron_run_leases_owner_idx",
+    ),
+    Migration(
+        version=4,
+        name="run_leases_expires_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_run_leases_expires_idx
+ON neuron_run_leases (expires_at)
+""",
+        concurrent=True,
+        index="neuron_run_leases_expires_idx",
     ),
 )
 

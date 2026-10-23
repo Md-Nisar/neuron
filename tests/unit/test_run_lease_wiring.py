@@ -167,3 +167,60 @@ def test_expired_lease_gauge_reports_the_sampled_value(monkeypatch: pytest.Monke
     sampled[0] = 0
     assert value() == 0
     assert semconv.METRIC_RUN_LEASES_EXPIRED == "neuron.run_leases.expired"
+
+
+async def _two_threads(monkeypatch: pytest.MonkeyPatch) -> tuple[AgentService, list[str], str]:
+    from tests.unit.test_run_guards import GatedAgent  # noqa: PLC0415
+
+    agent = GatedAgent()
+    agent.gate.set()
+    monkeypatch.setattr(main_graph, "build_agent", lambda settings: agent)
+    service = AgentService(Settings(env="test"))
+    threads = [
+        (await service.invoke(AgentRequest(message="hi", user_id="u"))).thread_id for _ in range(2)
+    ]
+    return service, threads, service._owner_key("u", None) or ""
+
+
+async def test_erase_counts_only_owned_threads_it_actually_skipped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, threads, owner = await _two_threads(monkeypatch)
+    # A run on one owned thread, and a lease on a thread that has no checkpoint (a first run
+    # still in flight): only the first is an owned thread that erasure skips.
+    busy = await service._run_guard.claim(
+        thread_id=threads[0], owner_key=owner, streaming=False, guard_thread=True
+    )
+    ghost = await service._run_guard.claim(
+        thread_id="ghost", owner_key=owner, streaming=False, guard_thread=True
+    )
+    result = await service.erase_user_data("u")
+    assert (result.erased_count, result.skipped_busy_count) == (1, 1)
+    await busy.release()
+    await ghost.release()
+
+
+async def test_erase_audits_how_far_it_got_when_it_fails_part_way(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import structlog.testing  # noqa: PLC0415
+
+    service, threads, _ = await _two_threads(monkeypatch)
+    checkpointer: Any = service._persistence.checkpointer
+    real = checkpointer.adelete_thread
+    calls: list[str] = []
+
+    async def flaky(thread_id: str) -> None:
+        calls.append(thread_id)
+        if len(calls) == 2:
+            raise psycopg.OperationalError("connection lost")
+        await real(thread_id)
+
+    checkpointer.adelete_thread = flaky
+    with structlog.testing.capture_logs() as logs:
+        with pytest.raises(PersistenceError):
+            await service.erase_user_data("u")
+    [event] = [log for log in logs if log["event"] == "user_data_erased"]
+    assert (event["outcome"], event["count"], event["reason"]) == ("error", 1, "erasure_failed")
+    assert all(thread not in str(event) for thread in threads)  # counts only, no thread IDs
+    assert await service._run_guard.active_threads_of(service._owner_key("u", None) or "") == set()

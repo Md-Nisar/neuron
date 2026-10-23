@@ -26,19 +26,34 @@ HAVING max((checkpoint->>'ts')::timestamptz) < %s
 """
 
 
+async def _prune_leases(persistence: Persistence) -> int:
+    """Delete expired run leases. A failure (a missing table before migration 2, a missing
+    privilege, a lock wait) is logged and never stops the rest of the job."""
+    if persistence.pool is None:
+        return 0
+    try:
+        return await delete_expired_leases(persistence.pool)
+    except Exception as exc:  # noqa: BLE001 - leases are best effort; expiry already covers them
+        logger.warning("run_lease_cleanup_failed", error_type=type(exc).__name__)
+        return 0
+
+
 async def prune_threads(
-    persistence: Persistence, *, older_than: timedelta, now: datetime | None = None
+    persistence: Persistence,
+    *,
+    older_than: timedelta,
+    now: datetime | None = None,
+    delete_leases: bool = False,
 ) -> int:
     """Delete every thread whose last activity is older than `older_than`. Idempotent.
 
-    Also deletes run leases past `expires_at` (ADR 0008 decision 8), which a crashed replica
-    leaves behind. Returns the number of threads deleted.
+    With `delete_leases` (the limits backend is Postgres), run leases past `expires_at` are
+    deleted afterwards (ADR 0008 decision 8); a crashed replica leaves them behind. Returns
+    the number of threads deleted.
     """
-    expired_leases = 0
-    if persistence.pool is not None:
-        expired_leases = await delete_expired_leases(persistence.pool)
     checkpointer = persistence.checkpointer
     if checkpointer is None:
+        expired_leases = await _prune_leases(persistence) if delete_leases else 0
         logger.info("thread_prune_job_completed", count=0, expired_leases=expired_leases)
         audit(
             "threads_pruned",
@@ -64,6 +79,7 @@ async def prune_threads(
         stale = [thread_id for thread_id, ts in last_activity.items() if ts < cutoff]
     for thread_id in stale:
         await checkpointer.adelete_thread(thread_id)
+    expired_leases = await _prune_leases(persistence) if delete_leases else 0
     logger.info(
         "thread_prune_job_completed",
         count=len(stale),

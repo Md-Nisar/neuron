@@ -490,7 +490,7 @@ async def test_retention_deletes_expired_leases_and_the_gauge_counts_them(
         persistence = build_persistence(_settings(database))
         await persistence.open()
         try:
-            await prune_threads(persistence, older_than=timedelta(days=365))
+            await prune_threads(persistence, older_than=timedelta(days=365), delete_leases=True)
         finally:
             await persistence.close()
         assert await guard.count_expired() == 0
@@ -845,3 +845,87 @@ async def test_a_run_at_the_timeout_is_cancelled_before_its_lease_could_expire(
         assert (await app.invoke(thread_id=thread, user_id="u")).status_code == 200
     finally:
         await app.close()
+
+
+# --- review follow-ups ------------------------------------------------------------------
+
+
+async def test_a_wait_for_the_owner_lock_does_not_shorten_the_lease(database: str) -> None:
+    async with guard_on(database, run_timeout_seconds=1) as guard:
+        lock = "SELECT pg_advisory_xact_lock(hashtextextended('neuron.run_lease:owner', 0))"
+        async with await psycopg.AsyncConnection.connect(database) as holder:
+            await holder.execute(lock)
+            claiming = asyncio.create_task(_claim(guard, "waited"))
+            await asyncio.sleep(1.5)  # the claim's transaction started 1.5 s ago
+            await holder.rollback()
+            lease = await claiming
+        remaining = await scalar(
+            database,
+            "SELECT extract(epoch FROM expires_at - clock_timestamp())"
+            " FROM neuron_run_leases WHERE thread_id = 'waited'",
+        )
+        # 1 s run timeout + 15 s, counted from the insert and not from the transaction start.
+        assert 15.7 < remaining <= 16.0
+        await lease.release()
+
+
+async def test_a_claim_cancelled_after_its_commit_leaves_no_lease(
+    database: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async with guard_on(database) as guard:
+        real = guard._insert_run
+
+        async def committed_then_stuck(*args: Any) -> None:
+            await real(*args)  # the row is committed ...
+            await asyncio.sleep(30)  # ... and the caller is cancelled before it learns the id
+
+        monkeypatch.setattr(guard, "_insert_run", committed_then_stuck)
+        claiming = asyncio.create_task(_claim(guard, "cancelled"))
+
+        async def committed() -> bool:
+            return await lease_count(database) == 1
+
+        await eventually(committed)
+        claiming.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await claiming
+
+        async def gone() -> bool:
+            return await lease_count(database) == 0
+
+        await eventually(gone)
+        assert guard._open_streams == 0 and not guard._sent
+
+
+async def test_thread_pruning_survives_a_missing_lease_table(database: str) -> None:
+    agent = ScriptedAgent()
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        async with replica(database, monkeypatch, agent) as service:
+            await service.invoke(AgentRequest(message="old", user_id="u"))
+    finally:
+        monkeypatch.undo()
+    await rows(database, "DROP TABLE neuron_run_leases")  # e.g. a job that ran before migration 2
+    persistence = build_persistence(_settings(database))
+    await persistence.open()
+    try:
+        with structlog.testing.capture_logs() as logs:
+            pruned = await prune_threads(
+                persistence, older_than=timedelta(days=-1), delete_leases=True
+            )
+    finally:
+        await persistence.close()
+    assert pruned == 1
+    assert await scalar(database, "SELECT count(*) FROM checkpoints") == 0
+    assert any(log["event"] == "run_lease_cleanup_failed" for log in logs)
+
+
+async def test_lease_table_has_its_indexes_and_kind_check(database: str) -> None:
+    for index in ("neuron_run_leases_owner_idx", "neuron_run_leases_expires_idx"):
+        assert await scalar(database, "SELECT to_regclass(%s) IS NOT NULL", index) is True
+    with pytest.raises(psycopg.errors.CheckViolation):
+        await rows(
+            database,
+            "INSERT INTO neuron_run_leases (owner_key, kind, expires_at)"
+            " VALUES ('o', 'bogus', clock_timestamp())",
+        )
