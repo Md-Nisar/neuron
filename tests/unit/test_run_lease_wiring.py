@@ -22,6 +22,7 @@ from neuron_agent.observability import metrics, semconv
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.guards import build_rate_limiter, build_run_guard, build_token_budget
 from neuron_agent.persistence.migrations import MIGRATIONS
+from neuron_agent.persistence.rate_limiter import PostgresRateLimiter
 from neuron_agent.persistence.run_guard import LEASE_GRACE_SECONDS, PostgresRunGuard
 from neuron_agent.persistence.token_budget import PostgresTokenBudget
 from neuron_agent.schemas.agent import AgentRequest
@@ -31,6 +32,7 @@ from neuron_agent.services.agent_service import AgentService
 pytestmark = pytest.mark.anyio
 
 _DSN = SecretStr("postgresql://neuron:unused@127.0.0.1:1/neuron?connect_timeout=1")
+_KEY = SecretStr("k" * 32)
 
 
 def _postgres_settings() -> Settings:
@@ -50,25 +52,38 @@ def test_postgres_run_guard_needs_the_pool() -> None:
     assert isinstance(build_run_guard(memory, build_persistence(memory)), InMemoryRunGuard)
 
 
-def test_the_token_budget_is_postgres_but_the_rate_limiter_still_refuses_it() -> None:
+def test_every_guard_is_postgres_with_the_postgres_backend() -> None:
+    settings = Settings(
+        env="test", limits_backend="postgres", postgres_dsn=_DSN, identity_hash_key=_KEY
+    )
+    persistence = build_persistence(settings)
+    assert isinstance(build_token_budget(settings, persistence), PostgresTokenBudget)
+    assert isinstance(build_run_guard(settings, persistence), PostgresRunGuard)
+    assert isinstance(build_rate_limiter(settings, persistence), PostgresRateLimiter)
+    for build in (build_token_budget, build_rate_limiter):
+        with pytest.raises(ValueError, match="connection pool"):
+            build(settings)  # type: ignore[operator]
+
+
+def test_the_postgres_rate_limiter_needs_the_identity_key_for_its_ip_keys() -> None:
     settings = _postgres_settings()
-    budget = build_token_budget(settings, build_persistence(settings))
-    assert isinstance(budget, PostgresTokenBudget)
-    with pytest.raises(ValueError, match="connection pool"):
-        build_token_budget(settings)
-    with pytest.raises(NotImplementedError, match="request rate limiter.*#148"):
-        build_rate_limiter(settings)
+    with pytest.raises(ValueError, match="APP_IDENTITY_HASH_KEY"):
+        build_rate_limiter(settings, build_persistence(settings))
+    off = Settings(
+        env="test", limits_backend="postgres", postgres_dsn=_DSN, rate_limit_enabled=False
+    )
+    assert isinstance(build_rate_limiter(off, build_persistence(off)), PostgresRateLimiter)
 
 
-def test_the_real_app_still_stops_at_start_up_with_the_postgres_backend() -> None:
-    # `api.main` builds its rate limiters at import, so the app does not start without #148.
+def _import_app(**extra: str) -> subprocess.CompletedProcess[str]:
     env = {
         **{k: v for k, v in os.environ.items() if not k.startswith("APP_")},
         "APP_ENV": "test",
         "APP_LIMITS_BACKEND": "postgres",
         "APP_POSTGRES_DSN": _DSN.get_secret_value(),
+        **extra,
     }
-    result = subprocess.run(  # noqa: S603  # nosec B603
+    return subprocess.run(  # noqa: S603  # nosec B603
         [sys.executable, "-I", "-c", "import neuron_agent.api.main"],
         env=env,
         capture_output=True,
@@ -76,9 +91,17 @@ def test_the_real_app_still_stops_at_start_up_with_the_postgres_backend() -> Non
         timeout=120,
         check=False,
     )
+
+
+def test_the_real_app_starts_with_the_postgres_backend() -> None:
+    result = _import_app(APP_IDENTITY_HASH_KEY=_KEY.get_secret_value())
+    assert result.returncode == 0, result.stderr
+
+
+def test_the_real_app_without_the_identity_key_stops_without_leaking_the_dsn() -> None:
+    result = _import_app()
     assert result.returncode != 0
-    assert "NotImplementedError" in result.stderr
-    assert "request rate limiter" in result.stderr
+    assert "APP_IDENTITY_HASH_KEY is required for shared rate limits" in result.stderr
     assert "unused" not in result.stderr  # the DSN's password never shows
 
 

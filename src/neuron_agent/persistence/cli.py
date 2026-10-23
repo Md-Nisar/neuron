@@ -94,6 +94,13 @@ async def _prune(older_than_days: int) -> None:
                 if settings.limits_backend == "postgres"
                 else None
             ),
+            rate_bucket_idle_seconds=(
+                settings.rate_limit_burst
+                * settings.rate_limit_window_seconds
+                / settings.rate_limit_requests_per_window
+                if settings.limits_backend == "postgres"
+                else None
+            ),
         )
     finally:
         await persistence.close()

@@ -72,6 +72,7 @@ _APP_PRIVILEGES: dict[str, frozenset[str]] = {
     "checkpoint_writes": _DML,
     "neuron_run_leases": frozenset({"SELECT", "INSERT", "DELETE"}),
     "neuron_token_ledger": _DML,
+    "neuron_rate_buckets": _DML,
     # Settled reservation ids are only inserted (idempotent settle) and swept by retention.
     "neuron_token_settlements": frozenset({"SELECT", "INSERT", "DELETE"}),
     "neuron_meta": frozenset(),
@@ -226,6 +227,33 @@ ON neuron_token_settlements (settled_at)
         concurrent=True,
         index="neuron_token_settlements_settled_idx",
     ),
+    Migration(
+        version=10,
+        name="rate_buckets",
+        # Shared request rate limiter (`persistence/rate_limiter.py`, ADR 0008 decision 8):
+        # one token bucket per key. UNLOGGED on purpose: no WAL for a write per request, and
+        # empty after a crash, failover or restore, which grants a burst (ADR 0004). Keys are
+        # `principal:<owner key>` or `ip:<HMAC>`, never a raw address.
+        sql="""
+CREATE UNLOGGED TABLE IF NOT EXISTS neuron_rate_buckets (
+    key text PRIMARY KEY,
+    tokens double precision NOT NULL,
+    refilled_at timestamptz NOT NULL,
+    allowed boolean NOT NULL
+)
+""",
+    ),
+    # Serves the delete of idle buckets (opportunistic and the retention job).
+    Migration(
+        version=11,
+        name="rate_buckets_refilled_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_rate_buckets_refilled_idx
+ON neuron_rate_buckets (refilled_at)
+""",
+        concurrent=True,
+        index="neuron_rate_buckets_refilled_idx",
+    ),
 )
 
 
@@ -364,7 +392,7 @@ def table_grant_statements(
     role = sql.Identifier(app)
     dml = names("checkpoints", "checkpoint_blobs", "checkpoint_writes")
     leases = names("neuron_run_leases", "neuron_token_settlements")
-    ledger = names("neuron_token_ledger")
+    ledger = names("neuron_token_ledger", "neuron_rate_buckets")
     bookkeeping = names("neuron_migrations", "checkpoint_migrations", "neuron_meta")
     statements: list[sql.Composed] = []
     if dml is not None:

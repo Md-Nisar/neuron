@@ -12,6 +12,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.checkpointer import Persistence
+from neuron_agent.persistence.rate_limiter import delete_idle_buckets
 from neuron_agent.persistence.run_guard import delete_expired_leases
 from neuron_agent.persistence.token_budget import delete_ledger_outside_window
 
@@ -51,6 +52,22 @@ async def _prune_ledger(persistence: Persistence, window_seconds: int) -> int:
         return 0
 
 
+async def _prune_buckets(persistence: Persistence, idle_seconds: float) -> int:
+    """Delete fully refilled rate-limit buckets; a failure is logged only, since an idle bucket
+    is indistinguishable from a missing one."""
+    if persistence.pool is None:
+        return 0
+    try:
+        return await delete_idle_buckets(persistence.pool, idle_seconds)
+    except Exception as exc:  # noqa: BLE001 - the limiter also deletes idle rows as it writes
+        logger.warning("rate_bucket_cleanup_failed", error_type=type(exc).__name__)
+        return 0
+
+
+async def _buckets(persistence: Persistence, idle_seconds: float | None) -> int:
+    return 0 if idle_seconds is None else await _prune_buckets(persistence, idle_seconds)
+
+
 async def _ledger(persistence: Persistence, window_seconds: int | None) -> int:
     return 0 if window_seconds is None else await _prune_ledger(persistence, window_seconds)
 
@@ -62,23 +79,28 @@ async def prune_threads(
     now: datetime | None = None,
     delete_leases: bool = False,
     ledger_window_seconds: int | None = None,
+    rate_bucket_idle_seconds: float | None = None,
 ) -> int:
     """Delete every thread whose last activity is older than `older_than`. Idempotent.
 
     With `delete_leases` (the limits backend is Postgres), run leases past `expires_at` are
     deleted afterwards (ADR 0008 decision 8); a crashed replica leaves them behind. With
     `ledger_window_seconds` (the Postgres budget's window), so are the token-ledger minutes
-    outside that window. Returns the number of threads deleted.
+    outside that window; with `rate_bucket_idle_seconds` (the limiter's `capacity / refill
+    rate`), so are the rate-limit buckets idle longer than that. Returns the number of threads
+    deleted.
     """
     checkpointer = persistence.checkpointer
     if checkpointer is None:
         expired_leases = await _prune_leases(persistence) if delete_leases else 0
         ledger_minutes = await _ledger(persistence, ledger_window_seconds)
+        idle_buckets = await _buckets(persistence, rate_bucket_idle_seconds)
         logger.info(
             "thread_prune_job_completed",
             count=0,
             expired_leases=expired_leases,
             expired_ledger_minutes=ledger_minutes,
+            idle_rate_buckets=idle_buckets,
         )
         audit(
             "threads_pruned",
@@ -106,12 +128,14 @@ async def prune_threads(
         await checkpointer.adelete_thread(thread_id)
     expired_leases = await _prune_leases(persistence) if delete_leases else 0
     ledger_minutes = await _ledger(persistence, ledger_window_seconds)
+    idle_buckets = await _buckets(persistence, rate_bucket_idle_seconds)
     logger.info(
         "thread_prune_job_completed",
         count=len(stale),
         retention_days=older_than.days,
         expired_leases=expired_leases,
         expired_ledger_minutes=ledger_minutes,
+        idle_rate_buckets=idle_buckets,
     )
     audit(
         "threads_pruned",

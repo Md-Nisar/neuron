@@ -40,6 +40,7 @@ from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import (
     AppError,
     ConcurrentRunsExceededError,
+    PersistenceError,
     QuotaExceededError,
     ShuttingDownError,
 )
@@ -52,7 +53,8 @@ from neuron_agent.observability.telemetry import (
     instrument_app,
     record_correlation_id,
 )
-from neuron_agent.persistence.guards import build_rate_limiter
+from neuron_agent.persistence.checkpointer import build_persistence
+from neuron_agent.persistence.guards import build_ip_pre_limiter, build_rate_limiter
 from neuron_agent.schemas.agent import (
     AgentRequest,
     AgentResponse,
@@ -63,7 +65,11 @@ from neuron_agent.schemas.agent import (
 )
 from neuron_agent.security.auth import (
     Principal,
+    RequestSecurity,
+    check_ip_limits,
     get_shared_token_verifier,
+    ip_rate_key,
+    persistence_unavailable,
     require_permission,
 )
 from neuron_agent.services.agent_service import AgentService
@@ -78,7 +84,8 @@ configure_logging(
 logger = structlog.get_logger(__name__)
 configure_langsmith(settings)
 telemetry = configure_telemetry(settings)
-service = AgentService(settings)
+persistence = build_persistence(settings)
+service = AgentService(settings, persistence=persistence)
 auth_verifier = get_shared_token_verifier(settings)
 
 
@@ -126,8 +133,11 @@ app = FastAPI(title=settings.name, version=settings.version, lifespan=lifespan)
 # Uses the global providers, which are no-ops unless APP_OTEL_ENABLED=true.
 instrument_app(app)
 # Separate instances, so a flood of junk `ip:` keys cannot evict a principal's bucket.
-ip_rate_limiter = build_rate_limiter(settings)
-principal_rate_limiter = build_rate_limiter(settings)
+ip_rate_limiter = build_rate_limiter(settings, persistence)
+principal_rate_limiter = build_rate_limiter(settings, persistence)
+# In front of a shared `ip_rate_limiter`, so an unauthenticated flood is shed without a
+# database write per request (None when the limiter is itself in memory).
+ip_pre_limiter = build_ip_pre_limiter(settings)
 
 
 _RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/", "/v1/me/")
@@ -240,11 +250,17 @@ async def enforce_rate_limit(
         _RATE_LIMITED_PREFIXES
     ):
         if settings.auth_mode == "none":
-            decision = await ip_rate_limiter.check(f"ip:{_client_ip(request)}")
-            if not decision.allowed:
-                return _rate_limited_response(
-                    decision.retry_after_seconds, f"ip:{_client_ip(request)}"
+            key = settings.identity_hash_key
+            ip_key = ip_rate_key(_client_ip(request), key.get_secret_value() if key else None)
+            try:
+                decision = await check_ip_limits(_request_security(), ip_key)
+            except PersistenceError as exc:
+                failure = persistence_unavailable(exc)
+                return JSONResponse(
+                    status_code=failure.status_code, content={"detail": failure.detail}
                 )
+            if not decision.allowed:
+                return _rate_limited_response(decision.retry_after_seconds, ip_key)
     return await call_next(request)
 
 
@@ -441,6 +457,26 @@ def _rate_limited_response(retry_after_seconds: float, key: str) -> JSONResponse
 
 def _opaque_identity_prefix(key: str) -> str:
     return hmac.new(_LOG_IDENTITY_KEY, key.encode(), hashlib.sha256).hexdigest()[:12]
+
+
+def _request_security() -> RequestSecurity:
+    """The request dependencies' view of this module, read at call time (tests swap them)."""
+    return RequestSecurity(
+        settings=settings,
+        verifier=auth_verifier,
+        ip_limiter=ip_rate_limiter,
+        principal_limiter=principal_rate_limiter,
+        ip_pre_limiter=ip_pre_limiter,
+        is_rate_limited=lambda request: (
+            settings.rate_limit_enabled
+            and _route_path(request.scope).startswith(_RATE_LIMITED_PREFIXES)
+        ),
+        client_ip=_client_ip,
+        log_prefix=_opaque_identity_prefix,
+    )
+
+
+app.state.request_security = _request_security
 
 
 @app.exception_handler(RequestValidationError)

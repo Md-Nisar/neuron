@@ -487,6 +487,16 @@ task still deletes its lease.
   - **Order.** A cheap bounded in-memory IP pre-limit (draft 13a) runs first, in front
     of pre-authentication and failed-authentication traffic, so an unauthenticated
     flood is shed before it writes to the database; the shared limiter runs after it.
+  *Implemented in #148 (`persistence/rate_limiter.py`).* Details the design left open: the
+  table holds `(key, tokens, refilled_at, allowed)`; the upsert takes its time from the
+  statement's own `clock_timestamp()` and never moves `refilled_at` backwards, so a
+  statement that waited on a row lock can withhold tokens but never grant extra; about one
+  write in 64 deletes up to 200 idle rows, and the retention job deletes the rest (with a
+  one-hour floor); the pre-limit exists only with the Postgres backend (the memory limiter
+  is itself bounded) and runs for `AUTH_MODE=none` requests and failed authentication, not
+  for verified callers; the app does not start with the Postgres backend and rate limiting
+  enabled unless `APP_IDENTITY_HASH_KEY` is set; `security/auth.py` receives the limiters
+  through `app.state.request_security` instead of importing `api/main.py`.
   - **Proxy.** IP keys are only as good as `APP_TRUSTED_PROXIES` on Render
     (open question 5): a request through Render's real proxy is keyed by the real client
     IP.

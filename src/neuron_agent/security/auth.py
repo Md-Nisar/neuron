@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import hmac
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -15,6 +17,8 @@ from typing import Any, cast
 import anyio
 import jwt
 import structlog
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from fastapi import Depends, Header, HTTPException, Request
 from jwt import PyJWKClient
 from jwt.exceptions import (
@@ -36,7 +40,9 @@ from neuron_agent.errors.base import (
     AuthenticationError,
     AuthenticationUnavailableError,
     AuthorizationError,
+    PersistenceError,
 )
+from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
 from neuron_agent.security.authorization import (
     DEV_PERMISSIONS,
@@ -44,6 +50,7 @@ from neuron_agent.security.authorization import (
 from neuron_agent.security.authorization import (
     require_permission as check_permission,
 )
+from neuron_agent.security.rate_limiter import RateLimitDecision, RateLimiter
 
 logger = structlog.get_logger(__name__)
 # Readiness refreshes a failed JWKS at most this often per process, whoever probes.
@@ -72,6 +79,71 @@ def principal_owner_key(principal: Principal, identity_hash_key: str) -> str:
     """Derive the non-reversible thread owner key for a verified principal."""
     identity = f"{principal.issuer}\x1f{principal.subject}".encode()
     return hmac.new(identity_hash_key.encode("utf-8"), identity, hashlib.sha256).hexdigest()
+
+
+# HKDF `info` label of the IP-key derivation. The owner key is the identity key itself used as
+# an HMAC key; this one is derived from it, so no owner key can equal an IP key (ADR 0008).
+_IP_KEY_LABEL = b"neuron.rate-limit.ip-key.v1"
+
+
+@functools.cache
+def _ip_hmac_key(identity_hash_key: str) -> bytes:
+    return HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=_IP_KEY_LABEL).derive(
+        identity_hash_key.encode("utf-8")
+    )
+
+
+def ip_rate_key(client_ip: str, identity_hash_key: str | None) -> str:
+    """The `ip:` rate-limit key: an HMAC of the client address, so no raw IP is ever stored.
+
+    `client_ip` is already normalised (IPv6 as its /64). The result is pseudonymous, not
+    anonymous: whoever holds the key can reverse it by trying the IPv4 space. Without a key
+    (local development) the address itself is the key, in process memory only.
+    """
+    if identity_hash_key is None:
+        return f"ip:{client_ip}"
+    digest = hmac.new(_ip_hmac_key(identity_hash_key), client_ip.encode(), hashlib.sha256)
+    return f"ip:{digest.hexdigest()}"
+
+
+@dataclass(frozen=True)
+class RequestSecurity:
+    """What the `/v1` dependencies need from the app, supplied by `api/main.py`.
+
+    The app hands over a provider through `app.state.request_security`, so `security/` never
+    imports `api/`. The provider is called per request and reads the app's current objects.
+    `ip_pre_limiter` is the bounded in-memory limiter in front of a shared `ip_limiter`.
+    """
+
+    settings: Settings
+    verifier: TokenVerifier
+    ip_limiter: RateLimiter
+    principal_limiter: RateLimiter
+    ip_pre_limiter: RateLimiter | None
+    is_rate_limited: Callable[[Request], bool]
+    client_ip: Callable[[Request], str]
+    log_prefix: Callable[[str], str]
+
+
+async def check_ip_limits(security: RequestSecurity, ip_key: str) -> RateLimitDecision:
+    """Pre-limit first, so a flood is shed in memory; only then the shared limiter."""
+    if security.ip_pre_limiter is not None:
+        decision = await security.ip_pre_limiter.check(ip_key)
+        if not decision.allowed:
+            return decision
+    return await security.ip_limiter.check(ip_key)
+
+
+def persistence_unavailable(exc: PersistenceError) -> HTTPException:
+    """A guard store failure fails the request closed: 503, with no detail to the caller."""
+    metrics.record_error(exc.context.code)
+    logger.warning("rate_limiter_unavailable", error_code=exc.context.code)
+    return HTTPException(status_code=exc.context.http_status, detail="internal_server_error")
+
+
+def _request_security(request: Request) -> RequestSecurity:
+    provider: Callable[[], RequestSecurity] = request.app.state.request_security
+    return provider()
 
 
 class TokenVerifier:
@@ -322,32 +394,34 @@ async def require_principal(
     authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> Principal | None:
     """FastAPI dependency used on every protected `/v1/*` route."""
-    from neuron_agent.api import main as api_main
-
-    if api_main.settings.auth_mode == "none":
+    security = _request_security(request)
+    settings = security.settings
+    if settings.auth_mode == "none":
         return None
     ip_key: str | None = None
-    if api_main.settings.rate_limit_enabled and api_main._route_path(request.scope).startswith(
-        api_main._RATE_LIMITED_PREFIXES
-    ):
-        ip_key = f"ip:{api_main._client_ip(request)}"
+    if security.is_rate_limited(request):
+        key = settings.identity_hash_key
+        ip_key = ip_rate_key(security.client_ip(request), key.get_secret_value() if key else None)
     try:
-        principal = await api_main.auth_verifier.verify(authorization)
+        principal = await security.verifier.verify(authorization)
     except (AuthenticationError, AuthenticationUnavailableError) as exc:
         if ip_key is not None and isinstance(exc, AuthenticationError):
-            decision = await api_main.ip_rate_limiter.check(ip_key)
+            try:
+                decision = await check_ip_limits(security, ip_key)
+            except PersistenceError as failure:
+                raise persistence_unavailable(failure) from failure
             if not decision.allowed:
                 retry_after = max(1, int(decision.retry_after_seconds + 0.999))
                 logger.warning(
                     "user_limit_exceeded",
                     limit_type="authentication_attempts",
-                    owner_key_prefix=api_main._opaque_identity_prefix(ip_key),
+                    owner_key_prefix=security.log_prefix(ip_key),
                     retry_after=retry_after,
                 )
                 audit(
                     "limit_exceeded",
                     outcome="denied",
-                    issuer_id=api_main.settings.auth_issuer_id,
+                    issuer_id=settings.auth_issuer_id,
                     action="authentication",
                     resource_type="api",
                     reason="authentication_attempts",
@@ -358,8 +432,8 @@ async def require_principal(
                     headers={"Retry-After": str(retry_after)},
                 ) from exc
         raise authentication_http_error(exc) from exc
-    if api_main.settings.auth_audit_success_enabled:
-        identity_key = api_main.settings.identity_hash_key
+    if settings.auth_audit_success_enabled:
+        identity_key = settings.identity_hash_key
         actor = (
             principal_owner_key(principal, identity_key.get_secret_value())[:12]
             if principal is not None and identity_key is not None
@@ -369,7 +443,7 @@ async def require_principal(
             "auth_succeeded",
             outcome="allowed",
             actor=actor,
-            issuer_id=api_main.settings.auth_issuer_id,
+            issuer_id=settings.auth_issuer_id,
         )
     return principal
 
@@ -381,25 +455,24 @@ def require_permission(permission: str) -> Any:
         request: Request,
         principal: Principal | None = Depends(require_principal),  # noqa: B008
     ) -> Principal | None:
-        from neuron_agent.api import main as api_main
-
+        security = _request_security(request)
+        settings = security.settings
         permissions = (
             DEV_PERMISSIONS
-            if api_main.settings.auth_mode == "none"
+            if settings.auth_mode == "none"
             else (principal.scopes if principal is not None else frozenset())
         )
-        if (
-            api_main.settings.rate_limit_enabled
-            and principal is not None
-            and api_main._route_path(request.scope).startswith(api_main._RATE_LIMITED_PREFIXES)
-        ):
-            identity_hash_key = api_main.settings.identity_hash_key
+        if principal is not None and security.is_rate_limited(request):
+            identity_hash_key = settings.identity_hash_key
             if identity_hash_key is None:
                 raise RuntimeError(
                     "APP_IDENTITY_HASH_KEY is required for authenticated rate limits"
                 )
             owner_key = principal_owner_key(principal, identity_hash_key.get_secret_value())
-            decision = await api_main.principal_rate_limiter.check(f"principal:{owner_key}")
+            try:
+                decision = await security.principal_limiter.check(f"principal:{owner_key}")
+            except PersistenceError as failure:
+                raise persistence_unavailable(failure) from failure
             if not decision.allowed:
                 retry_after = max(1, int(decision.retry_after_seconds + 0.999))
                 logger.warning(
@@ -412,7 +485,7 @@ def require_permission(permission: str) -> Any:
                     "limit_exceeded",
                     outcome="denied",
                     actor=owner_key[:12],
-                    issuer_id=api_main.settings.auth_issuer_id,
+                    issuer_id=settings.auth_issuer_id,
                     action=permission,
                     resource_type="api",
                     reason="request_rate",
@@ -426,7 +499,7 @@ def require_permission(permission: str) -> Any:
             check_permission(permission, permissions)
         except AuthorizationError as exc:
             thread_id = request.path_params.get("thread_id")
-            identity_key = api_main.settings.identity_hash_key
+            identity_key = settings.identity_hash_key
             actor = (
                 principal_owner_key(principal, identity_key.get_secret_value())[:12]
                 if principal is not None and identity_key is not None
@@ -436,7 +509,7 @@ def require_permission(permission: str) -> Any:
                 "authorization_denied",
                 outcome="denied",
                 actor=actor,
-                issuer_id=api_main.settings.auth_issuer_id,
+                issuer_id=settings.auth_issuer_id,
                 action=permission,
                 resource_type="thread" if thread_id else "agent",
                 resource_id=str(thread_id) if thread_id else None,

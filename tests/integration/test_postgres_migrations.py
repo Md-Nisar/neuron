@@ -18,9 +18,11 @@ pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
 _DSN = os.environ.get("APP_TEST_POSTGRES_DSN")
 _INDEX = "neuron_checkpoints_owner_idx"
-_SCRATCH = Migration(version=10, name="scratch", sql="CREATE TABLE neuron_scratch (a int)")
+# The version after the last real migration, derived so a new migration never collides.
+NEXT = max(m.version for m in MIGRATIONS) + 1
+_SCRATCH = Migration(version=NEXT, name="scratch", sql="CREATE TABLE neuron_scratch (a int)")
 _COUNTED = Migration(
-    version=10,
+    version=NEXT,
     name="counted",
     # Not idempotent: a second application would add a second row.
     sql="CREATE TABLE IF NOT EXISTS neuron_counted (a int); INSERT INTO neuron_counted VALUES (1)",
@@ -56,9 +58,9 @@ async def test_setup_applies_all_then_none_then_only_later_ones(dsn: str) -> Non
     assert await _scalar(dsn, f"SELECT to_regclass('{_INDEX}') IS NOT NULL") is True
 
     # A database at migration N gets only the later ones.
-    assert await run_setup(dsn, migrations=[*MIGRATIONS, _SCRATCH]) == [10]
+    assert await run_setup(dsn, migrations=[*MIGRATIONS, _SCRATCH]) == [NEXT]
     assert await run_setup(dsn, migrations=[*MIGRATIONS, _SCRATCH]) == []
-    assert await _scalar(dsn, "SELECT max(version) FROM neuron_migrations") == 10
+    assert await _scalar(dsn, "SELECT max(version) FROM neuron_migrations") == NEXT
 
 
 async def test_concurrent_setups_apply_each_migration_once(dsn: str) -> None:
@@ -95,13 +97,13 @@ async def _unapply_owner_index(dsn: str) -> None:
 
 
 _PROBE = Migration(
-    version=10, name="probe", sql="ALTER TABLE checkpoints ADD COLUMN neuron_probe integer"
+    version=NEXT, name="probe", sql="ALTER TABLE checkpoints ADD COLUMN neuron_probe integer"
 )
 _CLI_WITH_SHORT_TIMEOUT = (
     "from neuron_agent.persistence import cli, migrations as m;"
     "m.DEFAULT_LOCK_TIMEOUT_MS = 500;"
-    "m.MIGRATIONS = (*m.MIGRATIONS, m.Migration(version=10, name='probe',"
-    " sql='ALTER TABLE checkpoints ADD COLUMN neuron_probe integer'));"
+    "m.MIGRATIONS = (*m.MIGRATIONS, m.Migration(version=max(x.version for x in m.MIGRATIONS) + 1,"
+    " name='probe', sql='ALTER TABLE checkpoints ADD COLUMN neuron_probe integer'));"
     "cli.main(['setup'])"
 )
 
@@ -130,7 +132,7 @@ async def test_blocked_migration_fails_after_lock_timeout(dsn: str) -> None:
     finally:
         await blocker.rollback()
         await blocker.close()
-    assert await run_setup(dsn, migrations=with_probe) == [10]  # the failed runs recorded nothing
+    assert await run_setup(dsn, migrations=with_probe) == [NEXT]  # the failed runs recorded nothing
 
 
 async def test_concurrent_index_waits_for_an_open_transaction(dsn: str) -> None:
