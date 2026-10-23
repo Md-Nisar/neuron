@@ -128,6 +128,10 @@ class Persistence:
                 raise AppRoleError(
                     f"the runtime database role could not be checked: {type(exc).__name__}"
                 ) from None
+            except BaseException:
+                # Cancellation or an unexpected error must not leave a half-open pool behind.
+                await self.pool.close()
+                raise
         if self.backend == "postgres":
             self.checkpointer = instrument_checkpointer(
                 AsyncPostgresSaver(self.pool, serde=self.serde), self.backend
