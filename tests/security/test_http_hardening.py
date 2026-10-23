@@ -204,8 +204,8 @@ def test_api_docs_gate_holds_behind_a_root_path(
     assert response.status_code == 404
 
 
-def test_api_docs_can_be_enabled_in_production(jwt_api_factory: Callable[..., JwtApi]) -> None:
-    api = jwt_api_factory(env="production", openai_api_key="sk-test", expose_api_docs=True)
+def test_api_docs_can_be_enabled_in_staging(jwt_api_factory: Callable[..., JwtApi]) -> None:
+    api = jwt_api_factory(env="staging", openai_api_key="sk-test", expose_api_docs=True)
 
     assert api.client.get("/openapi.json").status_code == 200
 

@@ -30,12 +30,12 @@ A new `persistence/` module owns checkpointer construction, selected by `APP_CHE
 
 | Value | Saver | Allowed in |
 | --- | --- | --- |
-| `auto` (default) | resolves to `memory` in `development`/`test` and `none` in `staging`/`production` | any |
+| `auto` (default) | resolves to `memory` in `development`/`test`; refused in `staging`/`production` (ADR 0008 decision 9) | `development`, `test` |
 | `memory` | `langgraph.checkpoint.memory.InMemorySaver` | `development`, `test` |
 | `postgres` | `langgraph.checkpoint.postgres.aio.AsyncPostgresSaver` over a `psycopg_pool.AsyncConnectionPool` (`autocommit=True`, `row_factory=dict_row`, `prepare_threshold=0`) | any |
 | `none` | no checkpointer: stateless, v0.2.0 behaviour | any |
 
-- `auto` keeps upgrades safe. An existing staging or production deployment that doesn't set `APP_CHECKPOINTER` keeps v0.2.0's stateless behaviour instead of failing at startup, while local development gets conversations with no setup.
+- `auto` gives local development conversations with no setup. Originally it resolved to `none` in staging and production so that an upgrade kept v0.2.0's stateless behaviour; since v0.6.0 (ADR 0008 decision 9) it is refused there, so a deployment must choose `postgres`, or `none` for a deliberately stateless deployment (logged at warning level).
 - `memory` is rejected at startup in `staging` and `production`. Process memory isn't durable and isn't shared across replicas (the same reasoning ADR 0002 used).
 - The Postgres DSN is a `SecretStr` read only through `Settings`, and it's never logged.
 - The pool is opened and closed in the FastAPI `lifespan`. Schema creation (`AsyncPostgresSaver.setup()`) is an explicit, idempotent operator step, `python -m neuron_agent.persistence.cli setup` (`make db-setup`), with an opt-in `APP_CHECKPOINTER_SETUP_ON_STARTUP` for local use. It never runs implicitly per request. Since v0.6.0 (ADR 0008 decision 7) `setup` is the pre-deploy step, it records neuron's own migrations in `neuron_migrations`, and start-up setup is refused in staging and production. The first of those migrations is the index v0.4.0 added to LangGraph's `checkpoints` table: `neuron_checkpoints_owner_idx`, on root checkpoints' `owner` metadata, for the `/v1/me/*` thread listing (#76). It is additive: LangGraph's migrations and queries don't depend on it.

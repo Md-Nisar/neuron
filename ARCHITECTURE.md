@@ -119,7 +119,7 @@ A turn is committed atomically (ADR 0005). `AgentService` passes the new user te
 Thread persistence and streaming are governed by ADR 0005 (`docs/decisions/0005-conversation-state-and-streaming.md`): checkpointer selection per environment (`memory`, `postgres`, `none`), thread ID and ownership rules, atomic turn commits, history trimming, the SSE event protocol, and the reject-on-busy concurrency policy. The graph exported to `langgraph.json` is compiled without a checkpointer, because Agent Server supplies its own persistence.
 
 `persistence/checkpointer.py::build_persistence` selects the backend from `APP_CHECKPOINTER`:
-- `auto` is the default. It resolves to `memory` in development and test and to `none` in staging and production, so an upgrade never breaks an unconfigured deployment.
+- `auto` is the default. It resolves to `memory` in development and test and is refused in staging and production (ADR 0008 decision 9): choose `postgres`, or `none` for a deliberately stateless deployment.
 - `none` keeps v0.2.0's stateless behaviour.
 - `memory` (`InMemorySaver`) is rejected in staging and production.
 - `postgres` uses `AsyncPostgresSaver` over a `psycopg_pool.AsyncConnectionPool` sized by `APP_POSTGRES_POOL_MAX_SIZE` and `APP_POSTGRES_POOL_TIMEOUT_SECONDS`.

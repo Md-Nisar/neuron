@@ -81,3 +81,28 @@ def _add_service_metadata(*, service: str, version: str, environment: str) -> An
         return event_dict
 
     return processor
+
+
+def log_startup_configuration(settings: Any) -> None:
+    """Log the effective limits once at start-up; values only, never a secret or DSN."""
+    logger = structlog.get_logger("neuron_agent.config")
+    logger.info(
+        "effective_limits",
+        limits_backend=settings.limits_backend,
+        rate_limit_enabled=settings.rate_limit_enabled,
+        rate_limit_requests_per_window=settings.rate_limit_requests_per_window,
+        rate_limit_window_seconds=settings.rate_limit_window_seconds,
+        rate_limit_burst=settings.rate_limit_burst,
+        max_concurrent_streams=settings.max_concurrent_streams,
+        max_concurrent_runs_per_user=settings.max_concurrent_runs_per_user,
+        user_token_budget=settings.user_token_budget,
+        user_token_budget_window_seconds=settings.user_token_budget_window_seconds,
+        request_timeout_seconds=settings.request_timeout_seconds,
+        tool_timeout_seconds=settings.tool_timeout_seconds,
+        run_timeout_seconds=settings.run_timeout_seconds,
+        shutdown_drain_seconds=settings.shutdown_drain_seconds,
+    )
+    if settings.env in {"staging", "production"} and settings.checkpointer == "none":
+        logger.warning(
+            "stateless_deployment", detail="APP_CHECKPOINTER=none: threads are not stored"
+        )

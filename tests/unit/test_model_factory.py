@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 from pydantic import SecretStr
+from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
@@ -46,7 +47,7 @@ def _production_settings(**overrides: object) -> Settings:
         auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
         identity_hash_key="x" * 32,
         openai_api_key=SecretStr("test-key"),
-        **overrides,
+        **{**PRODUCTION_PROFILE, **overrides},
     )
 
 

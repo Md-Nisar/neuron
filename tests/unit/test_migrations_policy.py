@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import SecretStr
+from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.persistence import cli, migrations
@@ -335,29 +336,28 @@ def _production(**overrides: object) -> Settings:
         auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
         identity_hash_key=SecretStr("x" * 32),
         openai_api_key=SecretStr("sk-test"),
-        checkpointer="postgres",
-        **overrides,  # type: ignore[arg-type]
+        **{**PRODUCTION_PROFILE, "checkpointer": "postgres", **overrides},
     )
 
 
 def test_production_refuses_one_database_user_for_runtime_and_migrations() -> None:
     same = {
-        "postgres_dsn": SecretStr("postgresql://neuron:runtime-pw-1@h/db"),
-        "postgres_migration_dsn": SecretStr("postgresql://neuron:migrate-pw-2@h2/db"),
+        "postgres_dsn": SecretStr("postgresql://neuron:runtime-pw-1@h/db?sslmode=verify-full"),
+        "postgres_migration_dsn": SecretStr(
+            "postgresql://neuron:migrate-pw-2@h2/db?sslmode=verify-full"
+        ),
     }
     with pytest.raises(ValueError, match="different database users") as caught:
         _production(**same)
     for text in ("runtime-pw-1", "migrate-pw-2", "neuron:", "h2"):
         assert text not in str(caught.value)
     _production(
-        postgres_dsn=SecretStr("postgresql://neuron_app:a@h/db"),
-        postgres_migration_dsn=SecretStr("postgresql://neuron_migrator:b@h/db"),
+        postgres_dsn=SecretStr("postgresql://neuron_app:a@h/db?sslmode=verify-full"),
+        postgres_migration_dsn=SecretStr("postgresql://neuron_migrator:b@h/db?sslmode=verify-full"),
     )
     # Staging may run one role (ADR 0008 decision 17).
     Settings(
-        env="staging",
-        checkpointer="postgres",
-        **same,
+        **{**PRODUCTION_PROFILE, "env": "staging", "checkpointer": "postgres", **same},
         openai_api_key=SecretStr("k"),
         auth_mode="jwt",
         auth_issuer="https://i.example.test",
@@ -371,7 +371,7 @@ def test_production_dsn_errors_do_not_echo_a_malformed_dsn() -> None:
     with pytest.raises(ValueError, match="is not valid") as caught:
         _production(
             postgres_dsn=SecretStr("postgresql://u:leaky-pw@[bad/db"),
-            postgres_migration_dsn=SecretStr("postgresql://m:p@h/db"),
+            postgres_migration_dsn=SecretStr("postgresql://m:p@h/db?sslmode=verify-full"),
         )
     assert "leaky-pw" not in str(caught.value)
 

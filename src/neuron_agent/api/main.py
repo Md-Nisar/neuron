@@ -47,7 +47,11 @@ from neuron_agent.errors.base import (
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.langsmith_governance import configure_langsmith
-from neuron_agent.observability.logging import bind_correlation_context, configure_logging
+from neuron_agent.observability.logging import (
+    bind_correlation_context,
+    configure_logging,
+    log_startup_configuration,
+)
 from neuron_agent.observability.telemetry import (
     configure_telemetry,
     instrument_app,
@@ -113,6 +117,7 @@ async def _watch_readiness() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    log_startup_configuration(settings)
     await service.startup()
     metrics.quiet_readiness_when(lambda: service.draining)
     watcher = asyncio.create_task(_watch_readiness())
