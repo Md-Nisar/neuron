@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     name: str = "neuron-agent"
     version: str = __version__
     env: Environment = "development"
+    # Loopback unless set; `neuron-api` refuses a public bind without an explicit APP_ENV.
+    host: str = "127.0.0.1"
+    # Render sets a bare PORT, which must beat the image's APP_PORT default, so it is first.
+    port: int = Field(
+        default=8000, ge=1, le=65_535, validation_alias=AliasChoices("PORT", "APP_PORT")
+    )
     log_level: str = "INFO"
     default_model: str = "openai:gpt-5.4-mini"
     request_timeout_seconds: int = Field(default=60, ge=1, le=300)

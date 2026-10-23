@@ -16,6 +16,7 @@
 /.claude/                       @Md-Nisar
 /.github/                       @Md-Nisar
 /Dockerfile                     @Md-Nisar
+/.trivyignore.yaml              @Md-Nisar
 /deploy/                        @Md-Nisar
 /pyproject.toml                 @Md-Nisar
 /uv.lock                        @Md-Nisar

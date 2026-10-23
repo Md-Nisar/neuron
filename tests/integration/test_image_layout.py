@@ -22,10 +22,11 @@ import pytest
 pytestmark = [pytest.mark.integration, pytest.mark.docker]
 
 IMAGE = os.environ.get("NEURON_TEST_IMAGE", "neuron-test")
-EXPECTED_CMD = ["uvicorn", "neuron_agent.api.main:app", "--host", "0.0.0.0", "--port", "8000"]  # noqa: S104
+EXPECTED_CMD = ["neuron-api"]
 EXPECTED_HEALTHCHECK_COMMAND = (
-    'python -c "import urllib.request; '
-    "urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2).read()\""
+    'python -c "from neuron_agent.config.settings import Settings; import urllib.request; '
+    "urllib.request.urlopen('http://127.0.0.1:%d/health/live' % Settings().port, "
+    'timeout=2).read()"'
 )
 SECOND = 1_000_000_000  # Docker reports healthcheck durations in nanoseconds.
 
@@ -109,6 +110,16 @@ def test_cmd_and_healthcheck_are_exactly_the_expected_ones() -> None:
         "StartPeriod": 10 * SECOND,
         "Retries": 3,
     }
+
+
+def test_image_binds_publicly_but_refuses_to_start_without_an_explicit_app_env() -> None:
+    env = _config()["Env"]
+    assert isinstance(env, list)
+    assert {"APP_HOST=0.0.0.0", "APP_PORT=8000"} <= set(env)
+    # No APP_ENV: it would default to development without authentication on 0.0.0.0.
+    result = _docker("run", "--rm", IMAGE, timeout=120)
+    assert result.returncode != 0
+    assert "APP_ENV" in result.stderr
 
 
 def test_oci_labels_are_present() -> None:

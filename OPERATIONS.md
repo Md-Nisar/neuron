@@ -21,8 +21,16 @@ The `Dockerfile` builds a two-stage image (ADR 0008 decision 2):
   that is out of date with `pyproject.toml` fails the build. Both bases
   (`ghcr.io/astral-sh/uv:0.11.29-python3.13-trixie-slim` and `python:3.13-slim-trixie`) are
   pinned by index digest; the tag stays beside the digest so Dependabot can bump both.
-- **Runtime.** User and group `10001:10001` (non-root), port 8000, `HEALTHCHECK` on
-  `/health/live`, `CMD` runs `uvicorn neuron_agent.api.main:app` on `0.0.0.0:8000`.
+- **Runtime.** User and group `10001:10001` (non-root), `HEALTHCHECK` on `/health/live` at the
+  configured port, `CMD ["neuron-api"]`. It reads `APP_HOST`/`APP_PORT` (image defaults
+  `0.0.0.0`/`8000`; `PORT`, which Render sets, also works and wins), runs one process with
+  `timeout_graceful_shutdown = APP_RUN_TIMEOUT_SECONDS + 10`, and refuses to start on a
+  non-loopback host unless `APP_ENV` is set explicitly. Compose sets `APP_ENV=development` and publishes only on `127.0.0.1`.
+  Accepted residual risk: an explicit `APP_ENV=development` on a public host still serves
+  unauthenticated. A bare `PORT` wins over `APP_PORT`; an invalid port fails start-up.
+  The `HEALTHCHECK` probes `127.0.0.1`, so `APP_HOST` must stay `0.0.0.0` or be reachable on
+  loopback for the image. `neuron-api` and `make api` leave proxy-header parsing to
+  `_client_ip`; a custom `uvicorn` `CMD` must pass `--no-proxy-headers`.
 - **Labels.** `org.opencontainers.image.source`, `.revision` (build argument `GIT_SHA`) and
   `.version` (build argument `VERSION`; default is the release in `pyproject.toml`). Build
   arguments are recorded by provenance, so never pass a secret as one.
@@ -40,6 +48,22 @@ The `docker-build` workflow builds the image on every change that can affect it,
 layout with `tests/integration/test_image_layout.py` (run it locally with
 `NEURON_TEST_IMAGE=neuron-agent uv run pytest tests/integration/test_image_layout.py -m docker`)
 and checks that a stale `uv.lock` fails the build. It pushes nothing.
+
+### Published image and attestation
+
+Every push to `main` runs `image-publish` (ADR 0008 decision 6): it builds with buildx (`provenance: mode=max`, SBOM), pushes `ghcr.io/md-nisar/neuron:sha-<commit>`, scans the pushed digest (SECURITY.md, "Image vulnerabilities"), and only then attests that digest with `actions/attest` (SLSA build provenance, stored in the registry). The run summary and the `attest` job's `digest` output give the digest. Deploy by digest, never by the mutable `sha-` tag. Pull requests build without pushing. The package follows GHCR's default visibility (private for a new package); nothing in the workflow changes it (ADR 0008 open question 14 is undecided).
+
+Verify an image before using it (needs the `gh` CLI and read access to the package):
+
+```bash
+gh attestation verify oci://ghcr.io/md-nisar/neuron@<digest> -R Md-Nisar/neuron \
+  --signer-workflow Md-Nisar/neuron/.github/workflows/image-publish.yml \
+  --source-ref refs/heads/main --predicate-type https://slsa.dev/provenance/v1
+```
+
+It must succeed for a digest built from `main`. The same command with another `--signer-workflow` (for example `.../docker-build.yml`) must fail; if it passes, stop and treat the pin as broken. A digest without a passing verification never deploys.
+
+An attestation proves where and how the image was built, not that tests passed: `image-publish` does not run the `ci` gates, so check for a green `ci` on the commit before promoting a digest. `sha-<sha>` is a mutable tag (a re-run of the workflow re-points it to a new digest), so deploy by digest only. The workflow never cancels a run in progress and keeps only the newest pending run per concurrency group, so an intermediate commit on `main` may have no published image.
 
 ## Health Checks
 
@@ -515,7 +539,7 @@ The address is the client's IPv4 address, or its IPv6 `/64` network (`ip:2001:db
 
 Behind a trusted proxy, all `X-Forwarded-For` lines are joined and read right to left, skipping trusted hops. The first entry that does not parse as a bare IP address (`203.0.113.8:4444` and `[2001:db8::1]` both fail) ends the walk, and the last address read is the key; nothing to the left of it is believed. A proxy that adds ports or brackets therefore rate-limits all clients as one address, the proxy's, until it is fixed.
 
-By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON list of trusted proxy IP addresses/CIDRs only when the app is reachable exclusively through those proxies. Configure Uvicorn's `--forwarded-allow-ips` to the same trusted hops; never use `*` on an internet-reachable deployment. The app uses forwarded addresses only when its immediate peer is in `APP_TRUSTED_PROXIES`, preventing clients from choosing their own IP bucket.
+By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON list of trusted proxy IP addresses/CIDRs only when the app is reachable exclusively through those proxies. Do not configure Uvicorn's `--forwarded-allow-ips`: `neuron-api` turns Uvicorn's proxy-header rewriting off, so the app's `_client_ip` is the only place proxy headers are parsed. The app uses forwarded addresses only when its immediate peer is in `APP_TRUSTED_PROXIES`, preventing clients from choosing their own IP bucket.
 
 `APP_MAX_CONCURRENT_RUNS_PER_USER=2` caps active invoke and stream runs together per principal; the existing `APP_MAX_CONCURRENT_STREAMS=100` remains a per-process global stream cap. Exceeding the principal cap returns `429 too_many_concurrent_runs` and `Retry-After`.
 

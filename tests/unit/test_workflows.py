@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 from pathlib import Path
 from typing import Any
@@ -143,3 +144,156 @@ def test_docker_build_workflow_only_builds() -> None:
     stale = named["Build fails on a stale uv.lock"]["run"]
     assert "docker build" in stale and "exit 1" in stale and "needs to be updated" in stale
     assert "docker push" not in text and "--push" not in text
+
+
+# --- image-publish.yml (issue #140, ADR 0008 decision 6) -------------------------------------
+
+_MAX_IGNORE_DAYS = 90
+
+
+def _publish_jobs() -> dict[str, Any]:
+    jobs = _load("image-publish.yml")["jobs"]
+    assert isinstance(jobs, dict)
+    return jobs
+
+
+def _step_with(job: dict[str, Any], uses_prefix: str) -> dict[str, Any]:
+    matches = [s for s in job["steps"] if str(s.get("uses", "")).startswith(uses_prefix)]
+    assert len(matches) == 1, uses_prefix
+    with_ = matches[0]["with"]
+    assert isinstance(with_, dict)
+    return with_
+
+
+def test_image_publish_runs_only_on_pushes_to_main() -> None:
+    workflow = _load("image-publish.yml")
+    assert workflow[True] == {"push": {"branches": ["main"]}}
+    assert workflow["permissions"] == {}
+    for job in _publish_jobs().values():
+        assert "permissions" in job  # every job states its own permissions
+    assert _publish_jobs()["build-push"]["if"] == "github.ref == 'refs/heads/main'"
+    # Pull requests are built, without a push, by docker-build.yml, which has no registry access.
+    docker_build = (WORKFLOWS / "docker-build.yml").read_text("utf-8")
+    assert "pull_request" in docker_build and "packages:" not in docker_build
+
+
+def test_image_publish_permissions_are_per_job_and_minimal() -> None:
+    jobs = _publish_jobs()
+    assert jobs["build-push"]["permissions"] == {"contents": "read", "packages": "write"}
+    assert jobs["scan"]["permissions"] == {"contents": "read", "packages": "read"}
+    assert jobs["attest"]["permissions"] == {
+        "contents": "read",
+        "packages": "write",
+        "id-token": "write",
+        "attestations": "write",
+    }
+
+
+def test_only_image_publish_holds_id_token_or_attestations_write() -> None:
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        if path.name == "image-publish.yml":
+            continue
+        text = path.read_text("utf-8")
+        assert "id-token" not in text, path.name
+        assert "attestations" not in text, path.name
+        assert "packages: write" not in text, path.name
+
+
+def test_image_publish_builds_with_provenance_and_sbom_and_no_secret_argument() -> None:
+    build = _step_with(_publish_jobs()["build-push"], "docker/build-push-action@")
+    assert build["push"] is True
+    assert build["provenance"] == "mode=max"
+    assert build["sbom"] is True
+    assert build["tags"] == "${{ env.IMAGE }}:sha-${{ github.sha }}"
+    args = dict(line.split("=", 1) for line in build["build-args"].splitlines())
+    assert args == {
+        "GIT_SHA": "${{ github.sha }}",
+        "VERSION": "${{ steps.version.outputs.value }}",
+    }
+    assert "secret-files" not in build and "secrets" not in build
+    text = (WORKFLOWS / "image-publish.yml").read_text("utf-8")
+    assert set(re.findall(r"secrets\.(\w+)", text)) == {"GITHUB_TOKEN"}
+    assert _load("image-publish.yml")["env"] == {"IMAGE": "ghcr.io/md-nisar/neuron"}
+
+
+def test_image_scan_fails_on_fixable_high_and_critical_and_on_a_database_failure() -> None:
+    jobs = _publish_jobs()
+    scan = _step_with(jobs["scan"], "aquasecurity/trivy-action@")
+    assert scan["image-ref"] == "${{ env.IMAGE }}@${{ needs.build-push.outputs.digest }}"
+    assert scan["severity"] == "HIGH,CRITICAL"
+    assert scan["ignore-unfixed"] is True
+    assert scan["exit-code"] == "1"
+    assert scan["trivyignores"] == ".trivyignore.yaml"
+    # A cached database could stand in for one that failed to update.
+    assert scan["cache"] is False
+    assert "skip-setup-trivy" not in scan
+    assert not [key for key in scan if key.startswith("skip")]
+    text = (WORKFLOWS / "image-publish.yml").read_text("utf-8").lower()
+    assert "skip-db-update" not in text and "skip_db_update" not in text
+    assert "continue-on-error" not in text and "|| true" not in text
+    assert jobs["scan"]["needs"] == "build-push"
+
+
+def test_attestation_needs_the_scan_and_attests_the_pushed_digest_to_the_registry() -> None:
+    attest = _publish_jobs()["attest"]
+    assert set(attest["needs"]) == {"build-push", "scan"}
+    step = _step_with(attest, "actions/attest@")
+    assert step["subject-name"] == "${{ env.IMAGE }}"
+    assert step["subject-digest"] == "${{ needs.build-push.outputs.digest }}"
+    assert step["push-to-registry"] is True
+    # No predicate input: the default is SLSA build provenance (the verify command's type).
+    assert not {"predicate", "predicate-type", "predicate-path", "sbom-path"} & set(step)
+    assert attest["outputs"] == {"digest": "${{ needs.build-push.outputs.digest }}"}
+
+
+def _ignore_problems(entries: list[dict[str, Any]], today: datetime.date) -> list[str]:
+    problems = []
+    for entry in entries:
+        name = str(entry.get("id", "<no id>"))
+        if not entry.get("id"):
+            problems.append(f"{name}: id is missing")
+        if not str(entry.get("statement", "")).strip():
+            problems.append(f"{name}: statement (the reason) is missing")
+        expires = entry.get("expired_at")
+        if isinstance(expires, datetime.datetime):  # a YAML timestamp; a subclass of date
+            expires = expires.date()
+        if not isinstance(expires, datetime.date):
+            problems.append(f"{name}: expired_at is missing or not a date")
+        elif expires > today + datetime.timedelta(days=_MAX_IGNORE_DAYS):
+            problems.append(f"{name}: expired_at is more than {_MAX_IGNORE_DAYS} days out")
+    return problems
+
+
+def test_image_scan_ignores_have_a_reason_and_a_review_date_within_90_days() -> None:
+    loaded = yaml.safe_load(Path(".trivyignore.yaml").read_text("utf-8"))
+    assert set(loaded) == {"vulnerabilities"}
+    assert isinstance(loaded["vulnerabilities"], list)
+    assert _ignore_problems(loaded["vulnerabilities"], datetime.date.today()) == []
+    # The only ignore file: no other one is passed to the scanner.
+    assert sorted(p.name for p in Path(".").glob(".trivyignore*")) == [".trivyignore.yaml"]
+
+
+def test_the_ignore_rule_rejects_missing_reasons_and_dates_that_are_too_far_out() -> None:
+    today = datetime.date(2026, 10, 22)
+    good = {"id": "CVE-1", "statement": "not reachable", "expired_at": datetime.date(2027, 1, 20)}
+    assert _ignore_problems([good], today) == []
+    assert _ignore_problems([{**good, "expired_at": datetime.date(2027, 1, 21)}], today)
+    assert _ignore_problems([{**good, "statement": " "}], today)
+    assert _ignore_problems([{k: v for k, v in good.items() if k != "expired_at"}], today)
+    assert _ignore_problems([{**good, "expired_at": "2027-01-20"}], today)
+    # A YAML timestamp loads as a datetime: compared by date, not a TypeError.
+    late = datetime.datetime(2027, 1, 21, 9, 30)
+    assert _ignore_problems([{**good, "expired_at": late}], today)
+    assert _ignore_problems([{**good, "expired_at": late.replace(day=20)}], today) == []
+    assert _ignore_problems([{**good, "id": ""}], today)
+
+
+def test_docs_describe_the_scan_database_the_workflow_and_the_verify_command() -> None:
+    security = Path("SECURITY.md").read_text("utf-8")
+    assert "downloaded at run time" in security
+    assert ".trivyignore.yaml" in security
+    assert "image-publish.yml" in Path("docs/AI_CODE_VERIFICATION.md").read_text("utf-8")
+    operations = Path("OPERATIONS.md").read_text("utf-8")
+    assert "gh attestation verify oci://ghcr.io/md-nisar/neuron@" in operations
+    assert "--signer-workflow Md-Nisar/neuron/.github/workflows/image-publish.yml" in operations
+    assert "--predicate-type https://slsa.dev/provenance/v1" in operations
