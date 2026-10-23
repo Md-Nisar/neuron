@@ -291,6 +291,12 @@ def test_empty_allowed_hosts_are_refused(env: str) -> None:
 
 
 @_BOTH
+def test_an_unparsable_trusted_proxy_is_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_TRUSTED_PROXIES"):
+        _hardened(env, trusted_proxies=["10.0.0.0/8", "not-a-cidr"])
+
+
+@_BOTH
 def test_unset_trusted_proxies_are_refused_but_an_explicit_empty_list_is_not(env: str) -> None:
     with pytest.raises(ValidationError, match="APP_TRUSTED_PROXIES must be set"):
         _hardened(env, trusted_proxies=_UNSET)

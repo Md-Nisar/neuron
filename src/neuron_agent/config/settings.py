@@ -386,7 +386,9 @@ class Settings(BaseSettings):
             try:
                 network = ipaddress.ip_network(proxy.strip(), strict=False)
             except ValueError:
-                continue  # the request path skips an unparsable entry the same way
+                raise ValueError(
+                    "APP_TRUSTED_PROXIES contains an entry that is not an IP address or CIDR range"
+                ) from None
             if network.prefixlen < (8 if network.version == 4 else 16):
                 raise ValueError(
                     "APP_TRUSTED_PROXIES must not contain a range broader than "
