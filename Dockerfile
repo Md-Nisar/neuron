@@ -30,6 +30,13 @@ WORKDIR /app
 RUN groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin appuser
 COPY --from=builder /app/.venv /app/.venv
+# The app runs from /app/.venv, which has no pip. The base image's own pip and setuptools
+# (and the packages pip vendors) only add scanner findings and an install tool to a runtime
+# image, so they are removed from the base interpreter, not the venv's (PATH starts with
+# /app/.venv/bin, so the base one is addressed by path). #140: the first scan on main flagged them.
+RUN /usr/local/bin/python -m pip uninstall --yes pip setuptools wheel \
+    && rm -rf /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.13 \
+    && ! /usr/local/bin/python -c "import pip" 2>/dev/null
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD python -c "from neuron_agent.config.settings import Settings; import urllib.request; urllib.request.urlopen('http://127.0.0.1:%d/health/live' % Settings().port, timeout=2).read()"

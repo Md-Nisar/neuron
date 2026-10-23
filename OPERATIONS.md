@@ -66,6 +66,22 @@ Known gaps, to revisit when the Postgres guards land (#136):
 - The test that cancels a run at the graceful timeout cancels at service level, not through Uvicorn's request task and its middleware layers. `_finish_usage` is not shielded from a second cancellation, and lifespan shutdown closes the pool while cancelled tasks' `finally` blocks may still run. All harmless with the in-memory guards.
 - `503 service_shutting_down` responses count as 5xx in the availability SLO burn on every deploy.
 
+### Published image and attestation
+
+Every push to `main` runs `image-publish` (ADR 0008 decision 6): it builds with buildx (`provenance: mode=max`, SBOM), pushes `ghcr.io/md-nisar/neuron:sha-<commit>`, scans the pushed digest (SECURITY.md, "Image vulnerabilities"), and only then attests that digest with `actions/attest` (SLSA build provenance, stored in the registry). The run summary and the `attest` job's `digest` output give the digest. Deploy by digest, never by the mutable `sha-` tag. Pull requests build without pushing. The package follows GHCR's default visibility (private for a new package); nothing in the workflow changes it (ADR 0008 open question 14 is undecided).
+
+Verify an image before using it (needs the `gh` CLI and read access to the package):
+
+```bash
+gh attestation verify oci://ghcr.io/md-nisar/neuron@<digest> -R Md-Nisar/neuron \
+  --signer-workflow Md-Nisar/neuron/.github/workflows/image-publish.yml \
+  --source-ref refs/heads/main --predicate-type https://slsa.dev/provenance/v1
+```
+
+It must succeed for a digest built from `main`. The same command with another `--signer-workflow` (for example `.../docker-build.yml`) must fail; if it passes, stop and treat the pin as broken. A digest without a passing verification never deploys.
+
+An attestation proves where and how the image was built, not that tests passed: `image-publish` does not run the `ci` gates, so check for a green `ci` on the commit before promoting a digest. `sha-<sha>` is a mutable tag (a re-run of the workflow re-points it to a new digest), so deploy by digest only. The workflow never cancels a run in progress and keeps only the newest pending run per concurrency group, so an intermediate commit on `main` may have no published image.
+
 ## Health Checks
 
 - `/health/live`: process is serving requests.
@@ -436,8 +452,14 @@ Two simultaneous requests for the same thread that land on *different* replicas 
    ```
 
    The DSN is a `SecretStr` and is never logged.
-3. **Create or migrate the schema** once per deploy, before the new version serves traffic: `make db-setup` (`python -m neuron_agent.persistence.cli setup`). It's idempotent; it runs LangGraph's `AsyncPostgresSaver.setup()` migrations, then creates `neuron_checkpoints_owner_idx`, the index behind `/v1/me/*`. The index is built `CONCURRENTLY`, so running it against a live database doesn't block writes. Without the index, `/v1/me/*` still works but scans the `checkpoints` table.
-   - `APP_CHECKPOINTER_SETUP_ON_STARTUP=true` does the same at app startup. That's convenient for local use (and `docker compose`), but avoid it with many replicas starting at once.
+3. **Create or migrate the schema** as a deploy step, before the new version serves traffic: `python -m neuron_agent.persistence.cli setup` (`make db-setup` in a checkout; the runtime image has no `make`). It runs LangGraph's `AsyncPostgresSaver.setup()`, then neuron's own ordered migrations (`persistence/migrations.py`), each recorded in the `neuron_migrations` table; migration 1 is `neuron_checkpoints_owner_idx`, the index behind `/v1/me/*`. It exits non-zero on any failure, so a Render pre-deploy command cancels the deploy. Without the index, `/v1/me/*` still works but scans the `checkpoints` table.
+   - **Migration DSN.** `APP_POSTGRES_MIGRATION_DSN` (a `SecretStr`, never logged or printed) is a direct, non-pooled connection as the migrator role. In staging and production `setup` requires it and never falls back to `APP_POSTGRES_DSN`; development and test fall back to the runtime DSN. Only `persistence.cli` reads it. Keep it out of the web process where the platform allows; the pre-deploy command shares the service environment on Render, so a test pins that only the CLI reads it (ADR 0008 open question 20).
+   - **One at a time, and bounded.** `setup` holds a session-level advisory lock on that connection for its whole run, so concurrent runs (a pre-deploy and an operator) serialise; a second run waits up to five minutes. Transactional DDL runs with a `lock_timeout` of five seconds, so a migration blocked behind live traffic fails instead of queueing requests behind it; run `setup` again when it clears. Concurrent index builds run outside a transaction under a separate `lock_timeout` of ten minutes, because `CREATE INDEX CONCURRENTLY` also waits for older transactions to finish (a session idle in a repeatable-read or write transaction holds it up), and five seconds would fail the deploy and leave an `INVALID` index; a transaction that outlasts ten minutes still fails the deploy. An `INVALID` index left by a failed concurrent build is dropped and rebuilt on the next run, but only for a migration that names its `index`; an index that was recorded as applied and later dropped by hand is not repaired, and LangGraph's own indexes are out of scope.
+   - **Lock wait vs. build time.** A second `setup` waits at most 300 seconds for the advisory lock, which can be shorter than a large index build by the first; it then fails with "another setup held the migration lock for too long". Re-run it after the first finishes.
+   - **Free plans have no pre-deploy command** (ADR 0008 decision 17): run `python -m neuron_agent.persistence.cli setup` by hand, or from a GitHub Actions step, before promoting the deploy.
+   - **Errors** print the exception class and SQLSTATE only, never the DSN, host, password or driver message.
+   - **Compatibility rule (expand/contract).** A release's migrations must leave the previous release working: add tables, nullable columns and concurrent indexes; remove or rename only in a later release, after no running image uses the old shape. A test refuses `DROP`, `RENAME`, `ALTER ... TYPE`, `ADD COLUMN ... NOT NULL` without a default, `SET NOT NULL`, `ADD CONSTRAINT` without `NOT VALID` and `CREATE [UNIQUE] INDEX` without `CONCURRENTLY`, unless the migration sets `contract_release` to the release whose image stopped using the old shape. There are no down-migrations; rollback is redeploying the previous image. A `langgraph-checkpoint-postgres` bump follows `docs/rollback-test-checkpoint-postgres.md`.
+   - `APP_CHECKPOINTER_SETUP_ON_STARTUP=true` runs the same steps at app startup for local use (and `docker compose`). It is refused in staging and production.
    `APP_LIMITS_BACKEND` (`auto`, `memory`, `postgres`; `auto` is `memory`) selects where the rate limit, token budget and run guards live. `postgres` requires `APP_POSTGRES_DSN` even with `APP_CHECKPOINTER=none`; the pool then opens for the guards and `/health/ready` checks it. The Postgres guards are not implemented yet (ADR 0008 decision 8), so with `postgres` the process stops at start-up with `NotImplementedError`. Staging and production rules for this setting are still to come (#138).
 4. **Size the pool.** `APP_POSTGRES_POOL_MAX_SIZE` (default `10`) is per process. Each run holds a connection only briefly per checkpoint read or write, so a pool of 10 serves far more than 10 concurrent runs. Keep `replicas × workers × pool size` under the database's `max_connections`, leaving headroom for the prune job and admin access. `APP_POSTGRES_POOL_TIMEOUT_SECONDS` (default `10`) bounds the wait for a connection; exceeding it surfaces as `503 persistence_error`.
 5. **Back up** like any user-data store, with retention aligned to `APP_THREAD_RETENTION_DAYS` (see below). Restoring a backup restores conversations, including ones deleted after it was taken.

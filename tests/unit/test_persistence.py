@@ -172,3 +172,19 @@ def test_limits_postgres_keeps_the_memory_checkpointer() -> None:
 def test_postgres_guards_fail_fast_until_they_exist() -> None:
     with pytest.raises(NotImplementedError, match="APP_LIMITS_BACKEND=postgres"):
         AgentService(_guards_settings())
+
+
+async def test_startup_setup_failure_never_leaks_the_dsn() -> None:
+    dsn = "postgresql://neuron:fake-pw-9f3@[bad/db"
+    persistence = build_persistence(
+        Settings(env="test", checkpointer="postgres", postgres_dsn=SecretStr(dsn))
+    )
+    with pytest.raises(RuntimeError) as caught:
+        await persistence.open(run_setup=True)
+    exc: BaseException | None = caught.value
+    while exc is not None:  # the whole chain, not just the top
+        assert "fake-pw-9f3" not in str(exc) and "bad/db" not in str(exc)
+        exc = exc.__cause__ or exc.__context__
+    assert str(caught.value).startswith("schema setup failed: ")
+    assert persistence.pool is not None
+    await persistence.pool.close()
