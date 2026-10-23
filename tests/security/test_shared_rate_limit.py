@@ -243,3 +243,23 @@ def test_every_v1_route_with_a_permission_is_under_a_rate_limited_prefix() -> No
         assert route.path.startswith(api_main._RATE_LIMITED_PREFIXES), (
             f"{route.path} would be served without a rate limit"
         )
+
+
+def test_limiters_on_one_pool_share_one_slot_budget() -> None:
+    """The API builds one limiter per key namespace; together they may use half the pool."""
+    from neuron_agent.persistence.rate_limiter import PostgresRateLimiter
+
+    class _Pool:
+        max_size = 6
+
+    pool = _Pool()
+    first = PostgresRateLimiter(pool, capacity=5, requests_per_window=5, window_seconds=1)  # type: ignore[arg-type]
+    second = PostgresRateLimiter(pool, capacity=5, requests_per_window=5, window_seconds=1)  # type: ignore[arg-type]
+    assert first._slots is second._slots
+    other = PostgresRateLimiter(
+        _Pool(),  # type: ignore[arg-type]
+        capacity=5,
+        requests_per_window=5,
+        window_seconds=1,
+    )
+    assert other._slots is not first._slots

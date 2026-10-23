@@ -30,6 +30,7 @@ ADR 0008 decision 8, ADR 0004. The table `neuron_rate_buckets` is `UNLOGGED` and
 from __future__ import annotations
 
 import asyncio
+import weakref
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -86,6 +87,20 @@ _DELETE_IDLE = (
 )
 
 
+# One slot budget per pool, shared by every limiter built on it (the API keeps one limiter per
+# key namespace): separate semaphores would each take half the pool and together all of it.
+_POOL_SLOTS: weakref.WeakKeyDictionary[Any, asyncio.Semaphore] = weakref.WeakKeyDictionary()
+
+
+def _slots_for(pool: Any) -> asyncio.Semaphore:
+    slots = _POOL_SLOTS.get(pool)
+    if slots is None:
+        max_size = getattr(pool, "max_size", None)
+        slots = asyncio.Semaphore(max(1, max_size // 2) if isinstance(max_size, int) else 4)
+        _POOL_SLOTS[pool] = slots
+    return slots
+
+
 class PostgresRateLimiter:
     """Token buckets in Postgres; see the module docstring."""
 
@@ -115,9 +130,7 @@ class PostgresRateLimiter:
         self._checks = 0
         # Slots well below the pool, so a hot key's queue on one row lock cannot drain the
         # pool the checkpointer and the other guards share.
-        max_size = getattr(pool, "max_size", None)
-        slots = max(1, max_size // 2) if isinstance(max_size, int) else 4
-        self._slots = asyncio.Semaphore(slots)
+        self._slots = _slots_for(pool)
 
     async def check(self, key: str) -> RateLimitDecision:
         async with self._transaction() as conn:
