@@ -37,7 +37,11 @@ class BudgetDecision:
 
 class TokenBudget(Protocol):
     async def reserve(self, key: str, tokens: int) -> BudgetDecision:
-        """Hold `tokens` (capped at the budget) for a run, or refuse with a `Retry-After`."""
+        """Admit a run against the window's usage plus a reservation of `tokens`.
+
+        The reservation is capped at the budget. This is an admission check, not a cap on the
+        run: nothing stops it mid-way, and `settle` charges whatever it really used.
+        """
         ...
 
     async def settle(self, reservation: BudgetReservation, actual_tokens: int) -> None:
@@ -103,6 +107,8 @@ class InMemoryRollingTokenBudget:
             event.tokens = actual
         elif actual:  # the reservation aged out of the window; the real usage counts now
             events.append(_Event(now, actual))
+        if not events:
+            self._events.pop(reservation.key, None)
 
     def _expire(self, events: deque[_Event], now: float) -> None:
         while events and now - events[0].time >= self._window_seconds:

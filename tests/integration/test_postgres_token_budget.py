@@ -346,13 +346,92 @@ async def test_usage_is_charged_on_success_failure_timeout_cancellation_and_disc
         await _settled(database, 28)
 
 
-async def test_the_estimate_is_charged_when_the_provider_reports_no_usage(
+async def test_a_run_without_usage_keeps_its_whole_reservation(
     database: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     agent = UsageAgent()
     async with replica(database, monkeypatch, agent) as service:
-        await service.invoke(AgentRequest(message="x" * 30))  # no usage: 30 bytes / 3
-        await _settled(database, 10)
+        await service.invoke(AgentRequest(message="x" * 30))  # 100 + the estimate 10
+        await _settled(database, 110)
+
+
+async def test_a_cancelled_run_without_usage_keeps_its_whole_reservation(
+    database: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agent = UsageAgent()
+    agent.mode = "hang"
+    async with replica(database, monkeypatch, agent) as service:
+        run = asyncio.create_task(service.invoke(AgentRequest(message="x" * 30)))
+        await agent.started.wait()
+        run.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await run
+        await _settled(database, 110)
+
+
+async def test_a_settlement_replayed_after_an_ambiguous_commit_applies_once(
+    database: str,
+) -> None:
+    async with budget_on(database, limit=1_000) as budget:
+        held = await _admit(budget, "a", 100)
+        real = budget._write
+
+        async def commit_then_lose_the_reply(reservation: BudgetReservation, actual: int) -> None:
+            await real(reservation, actual)  # committed ...
+            raise psycopg.OperationalError("connection lost")  # ... but the caller never learns
+
+        budget._write = commit_then_lose_the_reply  # type: ignore[method-assign]
+        await budget.settle(held, 30)  # fails as far as the budget can tell: kept for retry
+        assert await total(database) == 30
+        assert budget._unsettled["a"]
+
+        budget._write = real  # type: ignore[method-assign]
+        decision = await budget.reserve("a", 10)  # retries the settlement first
+        assert decision.allowed
+        assert await total(database) == 40  # 30 + the new 10; the 70 was not subtracted twice
+        assert "a" not in budget._unsettled
+        assert await total(database, "a") == 40
+
+
+async def test_one_owner_cannot_hold_more_pool_connections_than_its_gate(database: str) -> None:
+    class CountingPool:
+        def __init__(self, pool: Any) -> None:
+            self.pool, self.now, self.peak = pool, 0, 0
+
+        @asynccontextmanager
+        async def connection(self) -> AsyncIterator[Any]:
+            self.now += 1
+            self.peak = max(self.peak, self.now)
+            try:
+                async with self.pool.connection() as conn:
+                    yield conn
+            finally:
+                self.now -= 1
+
+    persistence = build_persistence(_settings(database))
+    await persistence.open()
+    assert persistence.pool is not None
+    counting = CountingPool(persistence.pool)
+    budget = PostgresTokenBudget(
+        counting,  # type: ignore[arg-type]
+        token_limit=1_000_000,
+        window_seconds=3600,
+        lock_timeout_ms=2_000,
+        max_concurrent_reserves_per_owner=2,
+    )
+    try:
+        lock = "SELECT pg_advisory_xact_lock(hashtextextended('neuron.token_budget:burst', 0))"
+        async with await psycopg.AsyncConnection.connect(database) as holder:
+            await holder.execute(lock)  # every reserve of this owner parks on the owner lock
+            results = await asyncio.gather(
+                *(budget.reserve("burst", 1) for _ in range(12)), return_exceptions=True
+            )
+            assert all(isinstance(r, PersistenceError) for r in results)
+        assert counting.peak <= 2
+        assert budget._gates == {}  # nothing is kept for an owner with no reserve in flight
+        assert (await budget.reserve("burst", 1)).allowed
+    finally:
+        await persistence.close()
 
 
 async def test_a_run_that_never_started_gives_its_reservation_back(

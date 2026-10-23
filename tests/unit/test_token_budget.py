@@ -6,6 +6,7 @@ The Postgres behaviour itself is in `tests/integration/test_postgres_token_budge
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -13,13 +14,19 @@ import psycopg
 import pytest
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import PersistenceError, QuotaExceededError, ThreadBusyError
+from neuron_agent.errors.base import (
+    PersistenceError,
+    QuotaExceededError,
+    RunTimeoutError,
+    ThreadBusyError,
+)
 from neuron_agent.graphs import main_graph
 from neuron_agent.observability import metrics, semconv
 from neuron_agent.persistence.migrations import MIGRATIONS
-from neuron_agent.persistence.token_budget import PostgresTokenBudget
+from neuron_agent.persistence.token_budget import PostgresTokenBudget, _Handle
 from neuron_agent.schemas.agent import AgentAnswer, AgentRequest
 from neuron_agent.security.usage_budget import BudgetReservation, InMemoryRollingTokenBudget
 from neuron_agent.services.agent_service import AgentService, estimate_prompt_tokens
@@ -117,16 +124,40 @@ def test_the_prompt_estimate_is_high_and_never_zero() -> None:
     assert estimate_prompt_tokens("é" * 30) == 20  # bytes, not characters
 
 
-async def test_the_estimate_is_charged_when_the_provider_omits_usage(
+async def test_a_run_without_usage_keeps_its_whole_reservation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    message = "x" * 30  # an estimate of 10 tokens
+    message = "x" * 30  # an estimate of 10 tokens, so each run reserves 15
     service, agent = _service(monkeypatch, None, user_token_budget=25, max_output_tokens=5)
-    await service.invoke(AgentRequest(message=message))  # reserves 15, settles to 10
-    await service.invoke(AgentRequest(message=message))  # 10 + 15 = 25 fits, settles to 20
+    await service.invoke(AgentRequest(message=message))  # no usage: settles at 15, not 10
     with pytest.raises(QuotaExceededError):
-        await service.prepare(AgentRequest(message=message))  # 20 + 15 > 25
-    assert agent.calls == 2
+        await service.prepare(AgentRequest(message=message))  # 15 + 15 > 25
+    assert agent.calls == 1
+
+
+async def test_a_timed_out_run_without_usage_keeps_its_whole_reservation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Hang:
+        async def ainvoke(self, *_: Any, **__: Any) -> dict[str, Any]:
+            await asyncio.Event().wait()
+            return {}
+
+    monkeypatch.setattr(main_graph, "build_agent", lambda _: Hang())
+    service = AgentService(
+        Settings(
+            env="test",
+            openai_api_key=None,
+            user_token_budget=100,
+            max_output_tokens=40,
+            run_timeout_seconds=1,
+        )
+    )
+    with pytest.raises(RunTimeoutError):
+        await service.invoke(AgentRequest(message="x"))  # reserves 41, settles at 41
+    budget = service._token_budget
+    assert (await budget.reserve("anonymous", 41)).allowed is True  # 41 + 41 <= 100
+    assert (await budget.reserve("anonymous", 41)).allowed is False  # 82 + 41 > 100
 
 
 async def test_real_usage_replaces_the_reservation(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -207,7 +238,7 @@ async def test_a_failed_settlement_is_counted_never_raised_and_blocks_the_next_a
     provider = MeterProvider(metric_readers=[reader])
     monkeypatch.setattr(metrics, "_meter", lambda: provider.get_meter("test"))
     budget = _down_budget()
-    reservation = BudgetReservation("owner", 10, datetime.now(UTC))
+    reservation = BudgetReservation("owner", 10, _Handle(datetime.now(UTC), uuid.uuid4()))
 
     await budget.settle(reservation, 50)  # the answer is delivered: no exception
     await budget.settle(reservation, 50)  # and a second settle is a no-op
@@ -228,8 +259,61 @@ async def test_a_failed_settlement_is_counted_never_raised_and_blocks_the_next_a
     assert budget._unsettled["owner"] == [(reservation, 50)]  # kept for the next attempt
 
 
+async def test_an_empty_owner_entry_is_dropped_after_expiry() -> None:
+    clock = Clock()
+    budget = InMemoryRollingTokenBudget(token_limit=10, window_seconds=10, clock=clock)
+    held = await _reserve(budget, "a", 3)
+    clock.now += 10
+    await budget.settle(held, 0)  # aged out and nothing to charge
+    assert "a" not in budget._events
+
+
+class _BrokenPool:
+    """A pool failing with something that is not a psycopg error."""
+
+    def connection(self) -> _BrokenPool:
+        return self
+
+    async def __aenter__(self) -> None:
+        raise OSError("network is gone")
+
+    async def __aexit__(self, *_: object) -> None:
+        return None
+
+
+async def test_a_non_psycopg_failure_is_a_persistence_error_not_a_500() -> None:
+    budget = PostgresTokenBudget(_BrokenPool(), token_limit=100, window_seconds=60)  # type: ignore[arg-type]
+    with pytest.raises(PersistenceError):
+        await budget.reserve("owner", 10)
+
+
+def test_postgres_needs_a_window_longer_than_a_run() -> None:
+    dsn = SecretStr("postgresql://neuron:unused@127.0.0.1:1/neuron")
+    with pytest.raises(ValueError, match="at least APP_RUN_TIMEOUT_SECONDS \\+ 15"):
+        Settings(
+            env="test",
+            limits_backend="postgres",
+            postgres_dsn=dsn,
+            run_timeout_seconds=120,
+            user_token_budget_window_seconds=134,
+        )
+    Settings(
+        env="test",
+        limits_backend="postgres",
+        postgres_dsn=dsn,
+        run_timeout_seconds=120,
+        user_token_budget_window_seconds=135,
+    )
+    Settings(env="test", run_timeout_seconds=120, user_token_budget_window_seconds=1)  # memory
+
+
 def test_the_ledger_is_a_logged_table_added_by_expand_only_migrations() -> None:
     table, index = MIGRATIONS[4], MIGRATIONS[5]
+    assert [m.name for m in MIGRATIONS[6:]] == [
+        "token_settlements",
+        "token_settlements_settled_idx",
+    ]
+    assert "reservation_id uuid PRIMARY KEY" in MIGRATIONS[6].sql
     assert (table.version, table.name) == (5, "token_ledger")
     assert (index.version, index.name, index.concurrent) == (6, "token_ledger_minute_idx", True)
     assert "UNLOGGED" not in table.sql.upper()

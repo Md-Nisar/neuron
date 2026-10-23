@@ -151,6 +151,29 @@ ON neuron_token_ledger (minute)
         concurrent=True,
         index="neuron_token_ledger_minute_idx",
     ),
+    Migration(
+        version=7,
+        name="token_settlements",
+        # One row per settled reservation, written in the same transaction as the ledger
+        # change, so a settlement replayed after an ambiguous COMMIT changes nothing.
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_token_settlements (
+    reservation_id uuid PRIMARY KEY,
+    settled_at timestamptz NOT NULL DEFAULT clock_timestamp()
+)
+""",
+    ),
+    # Serves the retention job's delete of old settlement rows.
+    Migration(
+        version=8,
+        name="token_settlements_settled_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_token_settlements_settled_idx
+ON neuron_token_settlements (settled_at)
+""",
+        concurrent=True,
+        index="neuron_token_settlements_settled_idx",
+    ),
 )
 
 

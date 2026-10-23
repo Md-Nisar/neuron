@@ -96,7 +96,6 @@ class PreparedRun:
     authorization: AuthorizationContext
     budget_key: str
     budget_reservation: BudgetReservation
-    prompt_estimate: int
     checkpoint_owner: str | None
     created_thread: bool
     lease: RunLease
@@ -281,7 +280,6 @@ class AgentService:
             ),
             budget_key=budget_key,
             budget_reservation=reservation,
-            prompt_estimate=prompt_estimate,
             checkpoint_owner=owner_key,
             created_thread=request.thread_id is None,
             lease=lease,
@@ -528,9 +526,10 @@ class AgentService:
 
     async def _finish_usage(self, run: PreparedRun) -> None:
         usage = run.authorization.usage or TokenUsageAccumulator()
-        # A provider that reports no usage is charged the prompt estimate, not nothing.
+        # A run that reported no usage may still have spent tokens (cancelled, timed out, or a
+        # provider that omits usage): keep the whole reservation rather than guess low.
         await self._token_budget.settle(
-            run.budget_reservation, usage.total_tokens or run.prompt_estimate
+            run.budget_reservation, usage.total_tokens or run.budget_reservation.tokens
         )
         logger.info(
             "model_token_usage",

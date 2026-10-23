@@ -49,6 +49,7 @@ def build_token_budget(settings: Settings, persistence: Persistence | None = Non
             persistence.pool,
             token_limit=settings.user_token_budget,
             window_seconds=settings.user_token_budget_window_seconds,
+            max_concurrent_reserves_per_owner=max(2, 2 * settings.max_concurrent_runs_per_user),
         )
     return InMemoryRollingTokenBudget(
         token_limit=settings.user_token_budget,

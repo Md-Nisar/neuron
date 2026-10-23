@@ -456,7 +456,20 @@ task still deletes its lease.
   a failed settlement is kept in the process and retried at that owner's next admission,
   which fails closed until it succeeds. A crash loses that retry, and the reservation
   stays counted, so the ledger errs high. The application role needs `SELECT`, `INSERT`,
-  `UPDATE` and `DELETE` on `neuron_token_ledger` (decision 15 / #144).
+  `UPDATE` and `DELETE` on `neuron_token_ledger` and `neuron_token_settlements`
+  (decision 15 / #144); under a split role, migrations 5 to 8 need #144's grant phase.
+  The budget is enforced **at admission and settled afterwards**: nothing stops a run
+  mid-way, so a run can overshoot by its real cost (iterations, history, tool output;
+  `APP_MAX_HISTORY_TOKENS` bounds each model call, not the number of calls), and the
+  excess is charged at settlement. A run that reports no usage (cancelled, timed out, or
+  a provider that omits usage) keeps its whole reservation; only a run that never reached
+  the model gives it back. Each reservation has an id recorded with its settlement in
+  one transaction (`neuron_token_settlements`), so a settlement retried after an
+  ambiguous `COMMIT` is applied once. A reserve cancelled after its commit leaves its
+  reservation counted until the window passes (conservative). A per-owner in-process gate
+  bounds the pool connections one owner's admissions can hold. Settings validation
+  requires `APP_USER_TOKEN_BUDGET_WINDOW_SECONDS` of at least `APP_RUN_TIMEOUT_SECONDS`
+  + 15 with the Postgres backend.
 - **Request rate limiting.** An `UNLOGGED` token-bucket table, one atomic
   `INSERT … ON CONFLICT DO UPDATE … RETURNING` per rate-limited request (or the
   bounded per-process limiter, if open question 7 chooses it). Accepted trade-offs: one
