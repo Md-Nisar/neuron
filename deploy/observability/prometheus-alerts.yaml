@@ -456,6 +456,19 @@ groups:
         annotations:
           summary: "requests have waited for a Postgres pool connection for 5 minutes"
           runbook_url: OPERATIONS.md#runbook-postgres-pool
+      # Every replica reports the same table-wide count of expired run leases (30 s sampling), so
+      # the alert takes the maximum across replicas; a sum would multiply it by the replica count.
+      # A ticket, not a page: an expired lease no longer blocks anyone (the next claim by its owner
+      # or thread deletes it), so a value that stays above zero means cleanup is failing.
+      - alert: NeuronRunLeasesExpired
+        expr: max(neuron_run_leases_expired) > 0
+        for: 5m
+        labels:
+          severity: ticket
+          signal: run_leases
+        annotations:
+          summary: "expired run leases have not been cleaned up for 5 minutes"
+          runbook_url: OPERATIONS.md#runbook-run-leases
 
   # Rejections that a client causes, so they open a ticket and page nobody: above 5% of /v1
   # requests and above 0.05 requests/s (3 a minute) for 15m, they point at a retry storm, a client

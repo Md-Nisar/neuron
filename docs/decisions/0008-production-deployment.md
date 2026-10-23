@@ -424,8 +424,9 @@ task still deletes its lease.
   transaction-mode pooler; open question 19): delete the owner's expired leases, count
   live ones against `APP_MAX_CONCURRENT_RUNS_PER_USER`, insert the lease. A unique
   violation on `thread_id` is `409 thread_busy`, never `500`. Release deletes the row;
-  it is best effort, and expiry covers a failed release. `expires_at = now() +
-  APP_RUN_TIMEOUT_SECONDS + 15 s`. There is no heartbeat and no fencing: the run is
+  it is best effort, and expiry covers a failed release. `expires_at =
+  clock_timestamp() + APP_RUN_TIMEOUT_SECONDS + 15 s` (`clock_timestamp()`, not `now()`: `now()`
+  is the transaction start, so a wait for the owner lock would shorten the lease). There is no heartbeat and no fencing: the run is
   cancelled at `APP_RUN_TIMEOUT_SECONDS`, 15 s before its lease can expire, and the
   checkpoint write cannot share the lease's transaction (LangGraph's saver owns it);
   a test pins cancellation at the timeout boundary (open question 8). After a replica

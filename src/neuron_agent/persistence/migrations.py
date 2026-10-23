@@ -87,6 +87,44 @@ WHERE checkpoint_ns = ''
         concurrent=True,
         index="neuron_checkpoints_owner_idx",
     ),
+    Migration(
+        version=2,
+        name="run_leases",
+        # Shared run guard (`persistence/run_guard.py`, ADR 0008 decision 8). The unique
+        # constraint on `thread_id` is what makes a second run on a thread fail; a NULL
+        # `thread_id` (no persistence) never conflicts. `kind` separates runs, which count
+        # against the per-owner cap, from a thread held for deletion, which does not.
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_run_leases (
+    lease_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_key text NOT NULL,
+    thread_id text UNIQUE,
+    kind text NOT NULL DEFAULT 'run' CHECK (kind IN ('run', 'delete')),
+    expires_at timestamptz NOT NULL
+)
+""",
+    ),
+    # Serve the per-owner count and listing, and the expiry sweep, on the table above.
+    Migration(
+        version=3,
+        name="run_leases_owner_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_run_leases_owner_idx
+ON neuron_run_leases (owner_key)
+""",
+        concurrent=True,
+        index="neuron_run_leases_owner_idx",
+    ),
+    Migration(
+        version=4,
+        name="run_leases_expires_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_run_leases_expires_idx
+ON neuron_run_leases (expires_at)
+""",
+        concurrent=True,
+        index="neuron_run_leases_expires_idx",
+    ),
 )
 
 

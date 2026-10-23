@@ -223,8 +223,10 @@ authentication or ownership model; that integration is implemented in issue #58.
 - Arbitrary issuer discovery or multi-tenant policy in one v0.4.0 deployment.
 - Fine-grained thread sharing between principals.
 - Mutating tools or human approval workflows; ADR 0003 still governs those.
-- Distributed rate limiting or concurrency coordination; issue #56 retains that
-  deployment decision.
+- Distributed rate limiting or concurrency coordination in v0.4.0. ADR 0008 decision 8
+  adds the shared guards behind `APP_LIMITS_BACKEND=postgres`: the thread-busy check and
+  `APP_MAX_CONCURRENT_RUNS_PER_USER` are shared through Postgres run leases (the principal
+  is still only the HMAC owner key); the rate limiter and token budget follow.
 
 ## Consequences
 

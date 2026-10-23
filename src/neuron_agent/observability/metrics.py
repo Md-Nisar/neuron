@@ -197,7 +197,7 @@ def _build(meter: metrics.Meter) -> _Instruments:
         service_ready=meter.create_observable_gauge(
             semconv.METRIC_SERVICE_READY,
             callbacks=[_observe_ready],
-            description="1 if the latest readiness probe passed, 0 if it failed",
+            description="1 if the latest readiness evaluation passed, 0 if it failed",
         ),
         db_pool_waiting=meter.create_observable_gauge(
             semconv.METRIC_DB_POOL_WAITING,
@@ -286,4 +286,18 @@ def record_checkpoint(seconds: float, *, outcome: str, error_type: str | None) -
     _instruments().checkpoint_duration.record(
         seconds,
         {semconv.NEURON_OUTCOME: outcome, **_error(error_type)},
+    )
+
+
+def observe_expired_leases(read: Callable[[], int]) -> None:
+    """Report `read()` as the gauge of run leases past `expires_at` (see `semconv`)."""
+
+    def observe(_: CallbackOptions) -> list[Observation]:
+        return [Observation(read())]
+
+    _meter().create_observable_gauge(
+        semconv.METRIC_RUN_LEASES_EXPIRED,
+        callbacks=[observe],
+        unit="{lease}",
+        description="Run leases past expires_at that are not yet deleted",
     )

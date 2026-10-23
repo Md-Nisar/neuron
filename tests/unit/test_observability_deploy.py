@@ -188,6 +188,7 @@ _SIGNALS = {
     "no_metrics": "NeuronNoMetrics",
     "not_ready": "NeuronInstanceNotReady",
     "db_pool": "NeuronPostgresPoolSaturated",
+    "run_leases": "NeuronRunLeasesExpired",
     "thread_busy": "NeuronThreadBusyAnomaly",
     "too_many_concurrent_runs": "NeuronTooManyConcurrentRunsAnomaly",
     "denied_tools": "NeuronDeniedToolCallsSpike",
@@ -235,6 +236,7 @@ def test_service_health_and_rejection_alerts_exist_with_the_documented_severity(
         "no_metrics": "page",
         "not_ready": "page",
         "db_pool": "page",
+        "run_leases": "ticket",
         "thread_busy": "ticket",
         "too_many_concurrent_runs": "ticket",
         "denied_tools": "ticket",
@@ -261,6 +263,13 @@ def test_not_ready_and_pool_alerts_read_the_new_gauges_for_five_minutes() -> Non
     assert found["not_ready"]["expr"] == f"{ready} == 0"
     assert found["db_pool"]["expr"] == f"{pool} > 0"
     assert found["not_ready"]["for"] == found["db_pool"]["for"] == "5m"
+
+
+def test_expired_leases_alert_takes_the_maximum_across_replicas() -> None:
+    alert = _signal_alerts()["run_leases"]
+    name = _prometheus_name(semconv.METRIC_RUN_LEASES_EXPIRED)
+    assert alert["expr"] == f"max({name}) > 0" and alert["for"] == "5m"
+    assert "sum" not in alert["expr"]  # every replica reports the table-wide count
 
 
 def test_rejection_alerts_use_the_error_class_metric_and_real_error_codes() -> None:

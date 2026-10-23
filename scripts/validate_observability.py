@@ -179,7 +179,7 @@ def _extract(archive: Path, member: str, target: Path) -> Path:
         temporary = target.with_name(f".{target.name}.{os.urandom(6).hex()}.tmp")
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
         try:
-            fd = os.open(temporary, flags, 0o755)
+            fd = os.open(temporary, flags, 0o700)  # owner only
             with source, os.fdopen(fd, "wb") as out:
                 shutil.copyfileobj(source, out)
             os.replace(temporary, target)

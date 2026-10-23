@@ -130,6 +130,19 @@ def test_extract_refuses_an_oversized_member(
     assert not (tmp_path / "out").exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+def test_the_extracted_binary_is_owner_only_whatever_the_umask(tmp_path: Path) -> None:
+    archive = tmp_path / "a.tar.gz"
+    archive.write_bytes(_archive("tool-1/promtool", b"binary"))
+    previous = os.umask(0)  # the mode must come from the open call, not from a restrictive umask
+    try:
+        vo._extract(archive, "tool-1/promtool", tmp_path / "promtool")
+    finally:
+        os.umask(previous)
+    mode = (tmp_path / "promtool").stat().st_mode
+    assert mode & 0o077 == 0 and mode & 0o100  # no group or other bits; owner can execute
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
 def test_extract_replaces_a_planted_symlink_instead_of_writing_through_it(tmp_path: Path) -> None:
     victim = tmp_path / "victim"
