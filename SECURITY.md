@@ -111,6 +111,16 @@ Dependabot (`.github/dependabot.yml`) opens weekly, grouped update PRs for `uv`,
 
 Current ignores: none.
 
+### Image vulnerabilities
+
+The `image-publish` workflow scans every image pushed from `main` (ADR 0008 decision 6) with Trivy, pinned by commit SHA, before it attests the digest. The scan fails on any fixable HIGH or CRITICAL finding in OS packages and the locked libraries (`ignore-unfixed`, severity `HIGH,CRITICAL`). Trivy's vulnerability database is downloaded at run time, on every run: caching is off, and a database update that fails fails the scan, so a stale or cached database never gives a pass. A new CVE can therefore fail a build that did not change.
+
+When it fails, follow the same two steps as above: upgrade (a newer base image digest through Dependabot, or `uv lock --upgrade-package <name>`), or ignore with a reason. Image ignores live in one reviewed file, `.trivyignore.yaml`, as `vulnerabilities` entries with `id`, `statement` (why it does not apply, naming the package) and `expired_at`, a date no more than 90 days out. A test fails if an entry lacks any of them or the date is further out, and Trivy stops honouring an entry after its date. `AUDIT_IGNORES` and `.trivyignore.yaml` are separate: one audits locked Python packages, the other the built image.
+
+Image ignores: none.
+
+What the pipeline does not prove: an attestation shows where and how the image was built, not that tests passed. ADR 0008 decision 6 step 1 (the `ci` gates) is not wired into `image-publish.yml`, so promotion (a later issue) must require a green `ci` for the digest. Deploy by digest only: `sha-<sha>` is a mutable tag, and a re-run of the workflow re-points it to a new digest. The Trivy binary (v0.70.0) is downloaded by tag at run time by the pinned `setup-trivy` and is not hash-pinned (accepted risk), and the SHA-pin test does not cover actions nested inside pinned composite actions. `provenance: mode=max` records build arguments and context metadata, which is fine while the repository is public; revisit it if the repository becomes private.
+
 ## Remaining Limitations
 
 - **No token revocation.** Tokens are verified locally (no introspection), so a stolen access token works until it expires. Keep access-token lifetimes short at the IdP. A stream's token is checked once, when it starts.

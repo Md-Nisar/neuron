@@ -49,6 +49,22 @@ layout with `tests/integration/test_image_layout.py` (run it locally with
 `NEURON_TEST_IMAGE=neuron-agent uv run pytest tests/integration/test_image_layout.py -m docker`)
 and checks that a stale `uv.lock` fails the build. It pushes nothing.
 
+### Published image and attestation
+
+Every push to `main` runs `image-publish` (ADR 0008 decision 6): it builds with buildx (`provenance: mode=max`, SBOM), pushes `ghcr.io/md-nisar/neuron:sha-<commit>`, scans the pushed digest (SECURITY.md, "Image vulnerabilities"), and only then attests that digest with `actions/attest` (SLSA build provenance, stored in the registry). The run summary and the `attest` job's `digest` output give the digest. Deploy by digest, never by the mutable `sha-` tag. Pull requests build without pushing. The package follows GHCR's default visibility (private for a new package); nothing in the workflow changes it (ADR 0008 open question 14 is undecided).
+
+Verify an image before using it (needs the `gh` CLI and read access to the package):
+
+```bash
+gh attestation verify oci://ghcr.io/md-nisar/neuron@<digest> -R Md-Nisar/neuron \
+  --signer-workflow Md-Nisar/neuron/.github/workflows/image-publish.yml \
+  --source-ref refs/heads/main --predicate-type https://slsa.dev/provenance/v1
+```
+
+It must succeed for a digest built from `main`. The same command with another `--signer-workflow` (for example `.../docker-build.yml`) must fail; if it passes, stop and treat the pin as broken. A digest without a passing verification never deploys.
+
+An attestation proves where and how the image was built, not that tests passed: `image-publish` does not run the `ci` gates, so check for a green `ci` on the commit before promoting a digest. `sha-<sha>` is a mutable tag (a re-run of the workflow re-points it to a new digest), so deploy by digest only. The workflow never cancels a run in progress and keeps only the newest pending run per concurrency group, so an intermediate commit on `main` may have no published image.
+
 ## Health Checks
 
 - `/health/live`: process is serving requests.
