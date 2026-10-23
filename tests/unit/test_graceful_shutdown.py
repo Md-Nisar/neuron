@@ -256,6 +256,14 @@ def _poll(condition: Callable[[], Any], what: str, timeout: float) -> None:
         time.sleep(0.02)
 
 
+_POSIX_SIGNALS_ONLY = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX signal semantics: on Windows Popen.send_signal(SIGTERM) is TerminateProcess, "
+    "so the process never runs its SIGTERM handler; the platform target is Linux (Render)",
+)
+
+
+@_POSIX_SIGNALS_ONLY
 def test_sigterm_ends_streams_finishes_invokes_and_exits_zero(tmp_path: Path) -> None:
     port = _free_port()
     markers = tmp_path / "markers"
@@ -323,6 +331,7 @@ def test_sigterm_ends_streams_finishes_invokes_and_exits_zero(tmp_path: Path) ->
     assert body.index("service_shutting_down") < body.index("event: done")
 
 
+@_POSIX_SIGNALS_ONLY
 def test_readiness_turns_503_on_sigterm_under_python_dash_m(tmp_path: Path) -> None:
     """`python -m` runs this module as `__main__`; Uvicorn serves the imported copy."""
     port = _free_port()
