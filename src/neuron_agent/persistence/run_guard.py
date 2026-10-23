@@ -255,13 +255,14 @@ class PostgresRunGuard:
 
 
 async def delete_expired_leases(
-    pool: AsyncConnectionPool[Any], *, lock_timeout_ms: int = DEFAULT_LOCK_TIMEOUT_MS
+    pool: AsyncConnectionPool[Any],
+    *,
+    lock_timeout_ms: int = DEFAULT_LOCK_TIMEOUT_MS,
+    statement_timeout_ms: int = DEFAULT_STATEMENT_TIMEOUT_MS,
 ) -> int:
     """Delete every lease past `expires_at` (the retention job). Returns how many."""
     async with pool.connection() as conn:
         async with conn.transaction():
-            await conn.execute(
-                "SELECT set_config('lock_timeout', %s, true)", (f"{lock_timeout_ms}ms",)
-            )
+            await conn.execute(_TIMEOUTS, (f"{lock_timeout_ms}ms", f"{statement_timeout_ms}ms"))
             cursor = await conn.execute(_DELETE_ALL_EXPIRED)
             return int(cursor.rowcount)

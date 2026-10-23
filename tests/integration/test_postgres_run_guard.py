@@ -74,10 +74,10 @@ async def eventually(check: Callable[[], Awaitable[bool]], *, timeout: float = 1
 
 async def wait_for_lease(dsn: str, *, thread_id: str | None = None) -> float:
     """Wait until a run lease exists (for `thread_id`); returns seconds until it expires."""
-    where, params = ("thread_id = %s", (thread_id,)) if thread_id else ("true", ())
-    query = (
-        f"SELECT extract(epoch FROM max(expires_at) - now()) FROM neuron_run_leases WHERE {where}"  # noqa: S608  # nosec B608
-    )
+    # `clock_timestamp()`, like the guard's insert: `now()` is the statement's start and can
+    # be earlier than the insert, which would overstate the time left.
+    select = "SELECT extract(epoch FROM max(expires_at) - clock_timestamp()) FROM neuron_run_leases"
+    query, params = (select + " WHERE thread_id = %s", (thread_id,)) if thread_id else (select, ())
     remaining: list[float] = []
 
     async def present() -> bool:
@@ -296,7 +296,7 @@ async def test_expiry_is_run_timeout_plus_15_seconds_by_the_database_clock(
 ) -> None:
     async with guard_on(database, run_timeout_seconds=1) as guard:
         remaining = (
-            "SELECT extract(epoch FROM expires_at - now())"
+            "SELECT extract(epoch FROM expires_at - clock_timestamp())"
             " FROM neuron_run_leases WHERE thread_id=%s"
         )
         real_time = time.time
@@ -367,7 +367,8 @@ async def test_release_failure_never_raises_and_expiry_covers_it(database: str) 
         assert any(log["event"] == "run_lease_release_failed" for log in logs)
         assert await lease_count(database) == 1  # still there; only expiry removes it
         await rows(
-            database, "UPDATE neuron_run_leases SET expires_at = now() - interval '1 second'"
+            database,
+            "UPDATE neuron_run_leases SET expires_at = clock_timestamp() - interval '1 second'",
         )
         await (await _claim(guard, "t1")).release()  # an expired lease no longer blocks
 
@@ -472,7 +473,7 @@ async def test_retention_deletes_expired_leases_and_the_gauge_counts_them(
         await _claim(guard, "dead-2")
         await rows(
             database,
-            "UPDATE neuron_run_leases SET expires_at = now() - interval '1 minute'"
+            "UPDATE neuron_run_leases SET expires_at = clock_timestamp() - interval '1 minute'"
             " WHERE starts_with(thread_id, 'dead-')",
         )
         assert await guard.count_expired() == 2
@@ -839,7 +840,9 @@ async def test_a_run_at_the_timeout_is_cancelled_before_its_lease_could_expire(
         # The run ended at its 2 s timeout; its lease was good for 17 s, so the 15 s of
         # grace were still ahead, and the cancelled run committed nothing.
         assert 16.0 < remaining <= 17.0
-        assert await scalar(database, "SELECT now() < %s - interval '10 seconds'", expires_at)
+        assert await scalar(
+            database, "SELECT clock_timestamp() < %s - interval '10 seconds'", expires_at
+        )
         assert (await app.get(history, user_id="u")).json() == before
         assert await lease_count(database) == 0
         assert (await app.invoke(thread_id=thread, user_id="u")).status_code == 200
@@ -929,3 +932,22 @@ async def test_lease_table_has_its_indexes_and_kind_check(database: str) -> None
             "INSERT INTO neuron_run_leases (owner_key, kind, expires_at)"
             " VALUES ('o', 'bogus', clock_timestamp())",
         )
+
+
+async def test_the_retention_delete_is_bounded_by_both_timeouts(database: str) -> None:
+    async with guard_on(database) as guard:
+        await _claim(guard, "stale")
+        await rows(database, "UPDATE neuron_run_leases SET expires_at = clock_timestamp()")
+        async with await psycopg.AsyncConnection.connect(database) as blocker:
+            await blocker.execute("LOCK TABLE neuron_run_leases IN ACCESS EXCLUSIVE MODE")
+            started = time.monotonic()
+            with pytest.raises(psycopg.errors.LockNotAvailable):
+                await run_guard.delete_expired_leases(guard._pool, lock_timeout_ms=300)
+            assert 0.25 <= time.monotonic() - started < 5
+        async with await psycopg.AsyncConnection.connect(database) as row_holder:
+            await row_holder.execute("UPDATE neuron_run_leases SET owner_key = owner_key")
+            with pytest.raises(psycopg.errors.QueryCanceled):  # the row lock outlasts 300 ms
+                await run_guard.delete_expired_leases(
+                    guard._pool, lock_timeout_ms=10_000, statement_timeout_ms=300
+                )
+        assert await run_guard.delete_expired_leases(guard._pool) == 1
