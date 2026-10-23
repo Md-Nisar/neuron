@@ -21,8 +21,24 @@ jobs:
       - run: uv sync
       - run: uv run python -m ruff format --check src tests
       - run: uv run python -m ruff check src tests
-      - run: uv run python -m mypy src scripts/dev_token.py
+      - run: uv run python -m mypy src scripts/dev_token.py scripts/validate_observability.py
       - run: uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/evals
       # The dependency audit is platform-independent and `make` isn't on Windows runners.
       - if: runner.os == 'Linux'
         run: make security
+
+  # Runs the real `promtool` and `otelcol-contrib` (pinned by version and SHA-256 in the script)
+  # on the alert rules and the Collector config. Standard library Python only; no secret.
+  observability-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate alert rules and Collector config
+        run: python3 scripts/validate_observability.py check --bin-dir "$RUNNER_TEMP/validators"
+      - name: Both validators reject a broken file
+        run: python3 scripts/validate_observability.py reject-broken --bin-dir "$RUNNER_TEMP/validators"

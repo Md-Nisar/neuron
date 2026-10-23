@@ -135,6 +135,7 @@ class Persistence:
             if run_setup:
                 await setup_schema(self)
         self._opened = True
+        metrics.observe_pool_waiting(self._pool_waiting)
         logger.info("checkpointer_opened", backend=self.backend)
 
     async def close(self) -> None:
@@ -143,9 +144,14 @@ class Persistence:
             return
         await self.pool.close()
         self._opened = False
+        metrics.observe_pool_waiting(None)
         if self.backend == "postgres":
             self.checkpointer = None
         logger.info("checkpointer_closed", backend=self.backend)
+
+    def _pool_waiting(self) -> int:
+        assert self.pool is not None  # nosec B101
+        return self.pool.get_stats()["requests_waiting"]
 
     async def is_ready(self) -> bool:
         """Return whether the backing store is reachable (always true without a database)."""

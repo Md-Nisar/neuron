@@ -3,7 +3,7 @@
 # deploy/observability/otel-collector.yaml. Targets were set at the release gate (#99).
 # Multi-window, multi-burn-rate alerts (Google SRE Workbook): 14.4x over 1h/5m and 6x over 6h/30m
 # page; 1x over 3d/6h opens a ticket. Both windows must exceed the threshold.
-# Load: `promtool check rules deploy/observability/prometheus-alerts.yaml` (not run in this repository).
+# Check: `promtool check rules deploy/observability/prometheus-alerts.yaml`; CI runs it (scripts/validate_observability.py).
 groups:
   - name: neuron-slo-ratios
     interval: 30s
@@ -411,3 +411,96 @@ groups:
         annotations:
           summary: "tool_execution_error above 0.6% of /v1 requests (6h and 30m windows)"
           runbook_url: OPERATIONS.md#runbook-error-classes
+
+  # Service health and abuse signals (#155). They carry no `slo` or `error_type` label: they are not
+  # budget burns, and the burn-rate and error-class tests key on those labels. Instances push their
+  # metrics (OTLP), so there is no `up` series per instance; these rules read the readiness and
+  # pool gauges instead. Add `{deployment_environment_name="production"}` to a selector when one
+  # Prometheus serves several environments.
+  - name: neuron-service-health
+    rules:
+      # The Collector's prometheus exporter drops a series 5m after its last update
+      # (`metric_expiration: 5m`), so absent() turns true at least 5m after the last push from the
+      # last instance (plus up to a scrape and an evaluation interval), and `for: 5m` adds 5m:
+      # it fires no sooner than 10m after the last push, in practice a little later. A test
+      # checks expiry + `for` >= 10m. absent() also fires when Prometheus cannot scrape the
+      # Collector, which is the same blindness. An `up{job="..."} == 0` rule would only watch the
+      # Collector, which stays up while every application instance is dead. Each instance
+      # evaluates its own readiness every 15s, so no external prober is needed; a draining
+      # instance, or one whose evaluation loop has hung for a minute, reports nothing.
+      - alert: NeuronNoMetrics
+        expr: absent(neuron_service_ready)
+        for: 5m
+        labels:
+          severity: page
+          signal: no_metrics
+        annotations:
+          summary: "no metrics from any instance for at least 10 minutes"
+          runbook_url: OPERATIONS.md#runbook-no-metrics
+      - alert: NeuronInstanceNotReady
+        expr: neuron_service_ready == 0
+        for: 5m
+        labels:
+          severity: page
+          signal: not_ready
+        annotations:
+          summary: "an instance has been not ready for 5 minutes"
+          runbook_url: OPERATIONS.md#runbook-not-ready
+      # The gauge is sampled once per 60 s export, so 5m is five samples in a row.
+      - alert: NeuronPostgresPoolSaturated
+        expr: neuron_db_pool_waiting > 0
+        for: 5m
+        labels:
+          severity: page
+          signal: db_pool
+        annotations:
+          summary: "requests have waited for a Postgres pool connection for 5 minutes"
+          runbook_url: OPERATIONS.md#runbook-postgres-pool
+      # Every replica reports the same table-wide count of expired run leases (30 s sampling), so
+      # the alert takes the maximum across replicas; a sum would multiply it by the replica count.
+      # A ticket, not a page: an expired lease no longer blocks anyone (the next claim by its owner
+      # or thread deletes it), so a value that stays above zero means cleanup is failing.
+      - alert: NeuronRunLeasesExpired
+        expr: max(neuron_run_leases_expired) > 0
+        for: 5m
+        labels:
+          severity: ticket
+          signal: run_leases
+        annotations:
+          summary: "expired run leases have not been cleaned up for 5 minutes"
+          runbook_url: OPERATIONS.md#runbook-run-leases
+
+  # Rejections that a client causes, so they open a ticket and page nobody: above 5% of /v1
+  # requests and above 0.05 requests/s (3 a minute) for 15m, they point at a retry storm, a client
+  # bug or abuse. The absolute floor keeps a handful of requests at low traffic from firing.
+  - name: neuron-rejections
+    rules:
+      - alert: NeuronThreadBusyAnomaly
+        expr: (sum(rate(neuron_agent_errors_total{error_type="thread_busy"}[15m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[15m]))) > 0.05 and sum(rate(neuron_agent_errors_total{error_type="thread_busy"}[15m])) > 0.05
+        for: 15m
+        labels:
+          severity: ticket
+          signal: thread_busy
+        annotations:
+          summary: "thread_busy above 5% of /v1 requests for 15 minutes"
+          runbook_url: OPERATIONS.md#runbook-rejections
+      - alert: NeuronTooManyConcurrentRunsAnomaly
+        expr: (sum(rate(neuron_agent_errors_total{error_type="too_many_concurrent_runs"}[15m])) / sum(rate(http_server_request_duration_seconds_count{http_route=~"/v1/.*"}[15m]))) > 0.05 and sum(rate(neuron_agent_errors_total{error_type="too_many_concurrent_runs"}[15m])) > 0.05
+        for: 15m
+        labels:
+          severity: ticket
+          signal: too_many_concurrent_runs
+        annotations:
+          summary: "too_many_concurrent_runs above 5% of /v1 requests for 15 minutes"
+          runbook_url: OPERATIONS.md#runbook-rejections
+      # Denied and unknown tool calls: the model asked for a tool the caller may not use, or one
+      # that does not exist. Normally zero, so more than ten in 10 minutes is a spike (prompt
+      # injection, a model change or a scope misconfiguration). No `for`: the window smooths it.
+      - alert: NeuronDeniedToolCallsSpike
+        expr: sum(increase(neuron_agent_policy_blocks_total{neuron_rule=~"insufficient_scope|unknown_tool"}[10m])) > 10
+        labels:
+          severity: ticket
+          signal: denied_tools
+        annotations:
+          summary: "more than 10 denied or unknown tool calls in 10 minutes"
+          runbook_url: OPERATIONS.md#runbook-denied-tools
