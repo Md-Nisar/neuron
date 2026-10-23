@@ -92,6 +92,8 @@ class Settings(BaseSettings):
     postgres_dsn: SecretStr | None = None
     # Direct, non-pooled DSN of the migrator role; read only by `persistence.cli` (ADR 0008).
     postgres_migration_dsn: SecretStr | None = None
+    # The runtime role `setup` grants DML to (ADR 0008 decision 15); a plain role name.
+    postgres_app_role: str = Field(default="neuron_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)

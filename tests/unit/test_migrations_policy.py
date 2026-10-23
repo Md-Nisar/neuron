@@ -7,7 +7,7 @@ import pytest
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.persistence import cli
+from neuron_agent.persistence import cli, migrations
 from neuron_agent.persistence.migrations import MIGRATIONS, Migration
 
 _RELEASE = re.compile(r"\d+\.\d+\.\d+")
@@ -207,3 +207,120 @@ def test_startup_setup_is_refused_in_staging_and_production(env: str) -> None:
             checkpointer_setup_on_startup=True,
             openai_api_key=SecretStr("k"),
         )
+
+
+# --- least-privilege roles (#144) ----------------------------------------------------------
+
+
+def _grant_sql() -> list[str]:
+    statements = [
+        *migrations.default_privilege_statements("migrator_x", "public", "app_x"),
+        *migrations.table_grant_statements("public", "app_x"),
+    ]
+    return [statement.as_string(None) for statement in statements]
+
+
+def test_grants_are_expand_only_and_dml_only() -> None:
+    rendered = _grant_sql()
+    assert rendered
+    for statement in rendered:
+        assert violations(statement) == [], statement
+        if statement.startswith(("GRANT", "ALTER DEFAULT")):
+            assert not re.search(
+                r"\b(CREATE|DROP|TRUNCATE|REFERENCES|TRIGGER|ALL|OWNER|TEMP|TEMPORARY)\b",
+                statement,
+                re.I,
+            ), statement
+    assert "app_x" in " ".join(rendered)
+
+
+def test_identity_check_value_is_an_hmac_of_a_fixed_label() -> None:
+    key = "k" * 40
+    value = migrations.identity_check_value(key)
+    assert value == migrations.identity_check_value(key)
+    assert value != migrations.identity_check_value("j" * 40)
+    assert key not in value and len(value) == 64
+
+
+@pytest.mark.parametrize("name", ["Neuron", "neuron app", "1app", 'app"x', "", "a" * 64])
+def test_app_role_setting_rejects_unsafe_names(name: str) -> None:
+    with pytest.raises(ValueError, match="postgres_app_role"):
+        Settings(env="test", postgres_app_role=name)
+
+
+@pytest.mark.parametrize(("env", "required"), [("staging", False), ("production", True)])
+def test_setup_passes_the_role_and_key_and_requires_the_split_in_production(
+    env: str, required: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, object] = {}
+
+    async def fake_run_setup(dsn: str, **kwargs: object) -> list[int]:
+        seen.update(kwargs)
+        return []
+
+    monkeypatch.setattr(migrations, "run_setup", fake_run_setup)
+    _use(
+        monkeypatch,
+        Settings.model_construct(
+            env=env,
+            postgres_dsn=None,
+            postgres_migration_dsn=SecretStr("postgresql://m:p@h/d"),
+            postgres_app_role="neuron_app",
+            identity_hash_key=SecretStr("k" * 40),
+        ),
+    )
+    cli.main(["setup", "--rotate-identity-key"])
+    assert seen == {
+        "app_role": "neuron_app",
+        "require_app_role": required,
+        "identity_hash_key": "k" * 40,
+        "rotate_identity_key": True,
+    }
+
+
+def test_rotation_needs_a_key_and_applies_to_setup_only(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _use(
+        monkeypatch,
+        Settings.model_construct(
+            env="development",
+            postgres_dsn=SecretStr("postgresql://u:p@h/d"),
+            postgres_migration_dsn=None,
+            identity_hash_key=None,
+        ),
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["setup", "--rotate-identity-key"])
+    assert exit_info.value.code == 1
+    assert "needs APP_IDENTITY_HASH_KEY" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["prune", "--rotate-identity-key"])
+    assert exit_info.value.code == 2
+
+
+def test_identity_mismatch_message_has_no_key_or_check_value(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    key = "secret-identity-key-" + "k" * 30
+
+    async def refuse(dsn: str, **kwargs: object) -> list[int]:
+        raise migrations.IdentityKeyMismatch("differs; pass --rotate-identity-key")
+
+    monkeypatch.setattr(migrations, "run_setup", refuse)
+    _use(
+        monkeypatch,
+        Settings.model_construct(
+            env="staging",
+            postgres_dsn=None,
+            postgres_migration_dsn=SecretStr("postgresql://m:p@h/d"),
+            postgres_app_role="neuron_app",
+            identity_hash_key=SecretStr(key),
+        ),
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["setup"])
+    assert exit_info.value.code == 1
+    err = capsys.readouterr().err
+    assert "--rotate-identity-key" in err
+    assert key not in err and migrations.identity_check_value(key) not in err

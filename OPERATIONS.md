@@ -133,6 +133,7 @@ Thread ownership is HMAC-SHA256(`APP_IDENTITY_HASH_KEY`, issuer + subject). Chan
 - Rotate only if the key is exposed. The key alone grants no access (a caller still needs a valid token), but with database access it lets someone link threads to known identities.
 - To rotate, deploy the new key to every replica at once and let retention (`make prune-threads`) remove the orphaned threads, as in the v0.3 upgrade below. Tell users their earlier conversations are no longer available.
 - Keep the key identical across replicas and restarts; a mismatch makes threads appear and disappear depending on the replica.
+- `setup` stores a check value of the key (an HMAC of a fixed label, never the key) in `neuron_meta` the first time, and refuses a different key afterwards. To rotate on purpose, stop the web service, set the new key, then run `python -m neuron_agent.persistence.cli setup --rotate-identity-key`. The start-up comparison in every process (ADR 0008 decision 16) is not implemented yet.
 
 Related settings: trusted proxies and per-user limits are under Rate Limiting, audit log routing under Logs and Traces, and the HTTP surface (CORS, docs, headers, hosts) under HTTP Surface.
 
@@ -449,12 +450,12 @@ With `APP_LIMITS_BACKEND=postgres` both guards are shared (ADR 0008 decision 8).
 - **Pool.** The guards share the pool (`APP_POSTGRES_POOL_MAX_SIZE`, per process). Each claim and release holds a connection for a few milliseconds; a claim waits for its owner's other claims on the owner lock, up to `lock_timeout` (2 s), and each waiting claim parks one pool connection meanwhile. A burst of claims from one principal can therefore occupy a share of the pool, which the checkpointer uses too, for up to 2 s; the claims are not made non-blocking (`pg_try_advisory_xact_lock`) because that would break the guarantee that exactly k of many simultaneous claims succeed. The mitigation is the per-replica request rate limiter, which sheds a burst before it reaches the guard.
 - **Gauge and runbook.** `neuron.run_leases.expired` is the number of leases past `expires_at` that nothing has deleted yet. Every replica reports the same table-wide value (sampled every 30 s), so an alert must use the maximum across replicas, never the sum (which multiplies the count by the replica count). It is normally 0, and briefly above 0 after a replica crash (until the owner's next request or the retention job removes the rows). A value that stays above 0 for hours means the retention job is not running or deletes are failing: run `python -m neuron_agent.persistence.cli prune`, check `thread_prune_job_completed` (`expired_leases`) and `run_lease_release_failed` / `run_guard_unavailable`. To free one stuck user at once, delete their rows from `neuron_run_leases`. The alert rule itself is #155.
 - **Erasure is incomplete when a thread is skipped.** `DELETE /v1/me/threads` (bulk erase) skips an owned thread that has a live lease and reports it in `skipped_busy_count`; when that count is above 0 the erasure is incomplete, and the caller must retry after the run ends (up to the run timeout + 15 s if a crashed replica left a stale lease). An erase that fails part-way is audited as `user_data_erased` with `outcome=error` and the number erased so far, never thread IDs.
-- **Requirements.** Migrations 2 to 4 create `neuron_run_leases` and its two indexes; `gen_random_uuid()` needs Postgres 13 or newer. After the database roles are split (#144), the application role needs `SELECT`, `INSERT` and `DELETE` on `neuron_run_leases`; the migrator creates it. This is a prerequisite of #144; no grants exist yet.
+- **Requirements.** Migrations 2 to 4 create `neuron_run_leases` and its two indexes; `gen_random_uuid()` needs Postgres 13 or newer. The migrator creates the table and `setup` grants the application role `SELECT`, `INSERT` and `DELETE` on it, and nothing else (see Database roles below).
 - **Still per process:** `APP_MAX_CONCURRENT_STREAMS` (a per-instance resource cap) and the JWKS cache. The request rate limiter and the token budget have no Postgres version yet (#147, #148), so the app does not start with `postgres` until they exist.
 
 ## Thread Persistence (Postgres)
 
-1. **Provision Postgres** 14 or newer; 16 is tested. Give the application a role that owns its schema.
+1. **Provision Postgres** 14 or newer; 16 is tested. Create the two roles once per environment (see Database roles below): the migrator owns the schema, the application role only reads and writes rows.
 2. **Configure** through the secret manager:
 
    ```text
@@ -479,6 +480,32 @@ With `APP_LIMITS_BACKEND=postgres` both guards are shared (ADR 0008 decision 8).
 Local Postgres for development: `docker compose up` starts the API and Postgres 16 with persistence enabled and the schema created on startup. Integration tests use any reachable database: `APP_TEST_POSTGRES_DSN=postgresql://... make test-integration`.
 
 **Agent Server deployments** don't use any of this: Agent Server provides its own persistence for the `langgraph.json` graph.
+
+### Database roles
+
+ADR 0008 decision 15. Two login roles per environment: `neuron_migrator` owns the schema and is used only by `setup` (`APP_POSTGRES_MIGRATION_DSN`); `neuron_app` is the runtime role (`APP_POSTGRES_DSN`, also used by `prune`). Create them once, as the database owner or an admin role, with `psql -v migrator_password=... -v app_password=... -f roles.sql` (choose the passwords yourself and keep them out of shell history and the repository):
+
+```sql
+CREATE ROLE neuron_migrator LOGIN PASSWORD :'migrator_password'
+    NOSUPERUSER NOCREATEDB NOCREATEROLE;
+CREATE ROLE neuron_app LOGIN PASSWORD :'app_password'
+    NOSUPERUSER NOCREATEDB NOCREATEROLE;
+GRANT CONNECT ON DATABASE :"DBNAME" TO neuron_migrator, neuron_app;
+-- The migrator owns the schema; nobody else may create objects in it. (Before Postgres 15
+-- PUBLIC can create in `public`, so this REVOKE is what keeps the app role from it.)
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+ALTER SCHEMA public OWNER TO neuron_migrator;
+-- Only for a database that already holds neuron tables owned by another role:
+-- ALTER TABLE checkpoints, checkpoint_blobs, checkpoint_writes, checkpoint_migrations,
+--     neuron_migrations, neuron_run_leases OWNER TO neuron_migrator;
+```
+
+- **What `setup` grants.** After every run, as the migrator, `setup` grants the app role `USAGE` on the schema and `SELECT, INSERT, UPDATE, DELETE` on `checkpoints`, `checkpoint_blobs` and `checkpoint_writes`; `SELECT, INSERT, DELETE` on `neuron_run_leases`; `SELECT` on `neuron_meta`; nothing on `neuron_migrations` and `checkpoint_migrations`. It also sets default privileges so tables the migrator creates later (LangGraph's `setup()` after an upgrade, a future migration) are readable and writable by the app role. The app role never gets `CREATE`, `DROP`, `TRUNCATE`, `REFERENCES`, `TRIGGER` or ownership. The grants repeat on every run, so they are idempotent and a table added by an upgrade is covered. A table a new migration adds that needs less than the default DML must be tightened in `persistence/migrations.py` (`table_grant_statements`).
+- **Role name.** `APP_POSTGRES_APP_ROLE` (default `neuron_app`) names the role `setup` grants to; it must match the user in `APP_POSTGRES_DSN`.
+- **Run as.** `python -m neuron_agent.persistence.cli setup` connects as the migrator; the web service and `prune` (`make prune-threads`) connect as the app role. Both commands are operator-only CLIs with no HTTP route.
+- **One role (staging only).** If the platform will not let you create roles (ADR 0008 decision 17, open question 20: not proven on Render's free plan), use one role for both DSNs. `setup` then logs `app_role_grants_skipped` and applies no grants, because the role that owns the tables already has every privilege. This leaves the web process able to drop tables, so it is accepted for a disposable staging database only. With `APP_ENV=production`, `setup` fails if the app role is missing or is the migrator itself.
+- **Checks.** `psql` as `neuron_app`: `DROP TABLE checkpoints` and `TRUNCATE checkpoints` must fail, and `CREATE TABLE x (a int)` must fail with `permission denied for schema`. The `postgres` tests run exactly this against a real database.
+- Not yet checked: that a managed database whose owner is not a superuser accepts the `ALTER SCHEMA ... OWNER TO` above (it may need `GRANT neuron_migrator TO <owner>` first), and that Render allows `CREATE ROLE` at all.
 
 ## Streaming Behind a Reverse Proxy
 

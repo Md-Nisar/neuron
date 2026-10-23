@@ -94,6 +94,16 @@ With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 00
 - **Encryption.** Encryption at rest is the database's responsibility (managed-service or disk encryption). LangGraph's `EncryptedSerializer` is available if application-level encryption is required; it isn't enabled by default.
 - **Access.** Thread history is exposed through the owner-checked history endpoint and `/v1/me/export`. System prompts, tool calls and tool output are never returned. In v0.3.0, owner identity comes from the unauthenticated `X-User-Id` header or `user_id` in the body. In v0.4.0 JWT mode, it comes from the verified principal defined by ADR 0006.
 
+## Guard Tables and Database Roles
+
+ADR 0008 decisions 15 and 16.
+
+- **Guard tables.** `neuron_run_leases` (run leases for `thread_busy` and the per-user cap) and `neuron_meta` (the identity key check value) sit beside the LangGraph tables. Leases hold an owner key (an HMAC) and a thread ID, never message content or the identity key. `neuron_meta` holds an HMAC of a fixed label under `APP_IDENTITY_HASH_KEY`, which does not reveal the key; the key itself is never stored.
+- **Role split.** `neuron_migrator` owns the schema and is the only role that creates, alters or drops anything; it is used by `setup` alone. `neuron_app`, the web service and `prune`, gets DML only: `SELECT, INSERT, UPDATE, DELETE` on the checkpoint tables, `SELECT, INSERT, DELETE` on `neuron_run_leases`, `SELECT` on `neuron_meta`, nothing on the two migration bookkeeping tables. It has no `CREATE`, `DROP`, `TRUNCATE` or ownership, so a SQL-level bug in the web process cannot drop or truncate a table, rewrite the identity check value or forge a migration record. Tests run this split against a real Postgres.
+- **Operator-only CLIs.** `python -m neuron_agent.persistence.cli setup` and `prune` have no HTTP route and are never reachable through the API. `setup` runs as the migrator (`APP_POSTGRES_MIGRATION_DSN`); `prune` runs as the app role (`APP_POSTGRES_DSN`). `setup` stores the check value once and refuses a different key unless `--rotate-identity-key` is passed; its errors never print a DSN, key or check value.
+- **Single role (staging only).** With one role the web process owns the schema and can drop tables (ADR 0008 decision 17). `setup` logs `app_role_grants_skipped`, and fails in production instead. Accepted for a disposable staging database only.
+- **Not covered yet.** The web process still holds `APP_POSTGRES_MIGRATION_DSN` where the platform shares the pre-deploy environment (ADR 0008 open question 20); only `persistence.cli` reads it, and a test pins that. The start-up refusal for a superuser or `CREATE`-capable runtime role, and the start-up identity key comparison, are separate issues.
+
 ## Dependency Vulnerabilities
 
 `make security` fails on any known vulnerability in a locked dependency (OWASP LLM03, supply chain). It resolves nothing itself: it audits exactly the versions pinned in `uv.lock`, using the PyPI advisory database.

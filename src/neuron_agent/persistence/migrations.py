@@ -16,6 +16,8 @@ using the old shape. There are no down-migrations: rollback is redeploying the p
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -51,8 +53,35 @@ CREATE TABLE IF NOT EXISTS neuron_migrations (
 """
 
 
+# The check value is an HMAC of this fixed label under `APP_IDENTITY_HASH_KEY` (ADR 0008
+# decision 16): it identifies the key without revealing it.
+_IDENTITY_LABEL = b"neuron.identity-key-check.v1"
+_IDENTITY_META_KEY = "identity_key_check"
+
+# Tables the app role may read and write, and the ones it gets less on (decision 15).
+# Bookkeeping tables (`neuron_migrations`, `checkpoint_migrations`) get nothing: only the
+# migrator reads them. `neuron_meta` is read-only for the app, so a compromised web process
+# cannot rewrite the identity check value. Leases are never updated, only claimed, released
+# and swept.
+_APP_DML_TABLES = ("checkpoints", "checkpoint_blobs", "checkpoint_writes")
+_APP_NO_ACCESS_TABLES = ("neuron_migrations", "checkpoint_migrations", "neuron_meta")
+
+
 class LockWaitTimeout(TimeoutError):
     """Another `setup` held the advisory lock for the whole wait. The text is fixed."""
+
+
+class IdentityKeyMismatch(Exception):
+    """The database holds a different identity key check value. The text is fixed and safe."""
+
+
+class AppRoleError(Exception):
+    """The app role is unusable and `require_app_role` is set. The text is fixed and safe."""
+
+
+def identity_check_value(identity_hash_key: str) -> str:
+    """HMAC-SHA256 of a fixed label under the key: stored in `neuron_meta`, never the key."""
+    return hmac.new(identity_hash_key.encode("utf-8"), _IDENTITY_LABEL, hashlib.sha256).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -125,6 +154,19 @@ ON neuron_run_leases (expires_at)
         concurrent=True,
         index="neuron_run_leases_expires_idx",
     ),
+    Migration(
+        version=5,
+        name="neuron_meta",
+        # Key/value facts about the deployment; `setup` stores the identity key check value
+        # here (ADR 0008 decision 16). Read-only for the app role (see `_grant_tables`).
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_meta (
+    key text PRIMARY KEY,
+    value text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+)
+""",
+    ),
 )
 
 
@@ -135,12 +177,24 @@ async def run_setup(
     lock_timeout_ms: int | None = None,
     concurrent_lock_timeout_ms: int | None = None,
     lock_wait_seconds: float = LOCK_WAIT_SECONDS,
+    app_role: str | None = None,
+    require_app_role: bool = False,
+    identity_hash_key: str | None = None,
+    rotate_identity_key: bool = False,
 ) -> list[int]:
     """Run LangGraph's `setup()`, then every unapplied migration. Returns the versions applied.
 
     One direct connection holds a session-level advisory lock for the whole run, so
     concurrent `setup` runs serialise and each migration is applied once. Raises on any
     failure; callers must not print the exception text, which can echo connection details.
+
+    The connection's user is the migrator and owns what it creates. With `app_role`, the
+    run also grants that role DML only (ADR 0008 decision 15), on every run, so tables a
+    LangGraph upgrade adds are covered. A missing role, or the migrator itself (the
+    single-role free-tier profile, decision 17), skips the grants with a log line, or raises
+    `AppRoleError` with `require_app_role`. With `identity_hash_key`, the key's check value
+    is stored the first time; a different stored value raises `IdentityKeyMismatch` unless
+    `rotate_identity_key` is set.
     """
     timeout_ms = DEFAULT_LOCK_TIMEOUT_MS if lock_timeout_ms is None else lock_timeout_ms
     concurrent_ms = (
@@ -154,13 +208,146 @@ async def run_setup(
     try:
         await _acquire_lock(conn, lock_wait_seconds)
         await _set_lock_timeout(conn, timeout_ms)
+        target = await _resolve_app_role(conn, app_role, require_app_role)
+        if target is not None:
+            await _grant_defaults(conn, target)  # before setup(): its tables are covered at once
         await AsyncPostgresSaver(conn).setup()
         await conn.execute(_CREATE_TABLE_SQL)
-        return await _apply(
+        applied = await _apply(
             conn, MIGRATIONS if migrations is None else migrations, timeout_ms, concurrent_ms
         )
+        if identity_hash_key:
+            await _check_identity(conn, identity_hash_key, rotate_identity_key)
+        else:
+            logger.info("identity_key_check_skipped", reason="no key configured")
+        if target is not None:
+            await _grant_tables(conn, target)
+        return applied
     finally:
         await conn.close()  # also releases the session advisory lock
+
+
+@dataclass(frozen=True)
+class _AppRole:
+    name: str
+    migrator: str
+    schema: str
+
+
+async def _resolve_app_role(
+    conn: psycopg.AsyncConnection[dict[str, object]], app_role: str | None, required: bool
+) -> _AppRole | None:
+    """The role to grant to, or None to skip (logged) when there is none or it is the migrator."""
+    if app_role is None:
+        logger.info("app_role_grants_skipped", reason="no app role configured")
+        return None
+    cursor = await conn.execute(
+        "SELECT current_user::text AS migrator, current_schema()::text AS schema,"
+        " EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %s) AS found",
+        (app_role,),
+    )
+    row = await cursor.fetchone()
+    assert row is not None  # nosec B101
+    if row["migrator"] == app_role:
+        reason = "the app role is the migration role (single-role profile, staging only)"
+    elif not row["found"]:
+        reason = "the app role does not exist"
+    else:
+        return _AppRole(name=app_role, migrator=str(row["migrator"]), schema=str(row["schema"]))
+    if required:
+        raise AppRoleError(f"cannot grant to the app role: {reason}")
+    logger.warning("app_role_grants_skipped", reason=reason)
+    return None
+
+
+def default_privilege_statements(migrator: str, schema: str, app: str) -> list[sql.Composed]:
+    """Default privileges: tables and sequences the migrator creates later reach the app role."""
+    target = {
+        "migrator": sql.Identifier(migrator),
+        "schema": sql.Identifier(schema),
+        "app": sql.Identifier(app),
+    }
+    return [
+        sql.SQL(statement).format(**target)
+        for statement in (
+            "GRANT USAGE ON SCHEMA {schema} TO {app}",
+            "ALTER DEFAULT PRIVILEGES FOR ROLE {migrator} IN SCHEMA {schema}"
+            " GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {app}",
+            "ALTER DEFAULT PRIVILEGES FOR ROLE {migrator} IN SCHEMA {schema}"
+            " GRANT USAGE, SELECT ON SEQUENCES TO {app}",
+        )
+    ]
+
+
+def table_grant_statements(schema: str, app: str) -> list[sql.Composed]:
+    """Per-table grants, DML only: no CREATE, DROP, TRUNCATE, REFERENCES, TRIGGER or ownership.
+
+    Idempotent and expand-only (the lint in `tests/unit/test_migrations_policy.py` runs on
+    these statements too). They also correct what the default privileges gave the
+    bookkeeping tables.
+    """
+
+    def names(*tables: str) -> sql.Composed:
+        return sql.SQL(", ").join(sql.Identifier(schema, table) for table in tables)
+
+    role = sql.Identifier(app)
+    return [
+        sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(
+            names(*_APP_DML_TABLES), role
+        ),
+        sql.SQL("GRANT SELECT, INSERT, DELETE ON {} TO {}").format(
+            names("neuron_run_leases"), role
+        ),
+        sql.SQL("REVOKE UPDATE ON {} FROM {}").format(names("neuron_run_leases"), role),
+        sql.SQL("REVOKE ALL ON {} FROM {}").format(names(*_APP_NO_ACCESS_TABLES), role),
+        sql.SQL("GRANT SELECT ON {} TO {}").format(names("neuron_meta"), role),
+    ]
+
+
+async def _grant_defaults(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole) -> None:
+    for statement in default_privilege_statements(role.migrator, role.schema, role.name):
+        await conn.execute(statement)
+
+
+async def _grant_tables(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole) -> None:
+    for statement in table_grant_statements(role.schema, role.name):
+        await conn.execute(statement)
+    logger.info("app_role_grants_applied", app_role=role.name)
+
+
+async def _check_identity(
+    conn: psycopg.AsyncConnection[dict[str, object]], identity_hash_key: str, rotate: bool
+) -> None:
+    """Store the key's check value once; refuse a different one unless rotating."""
+    value = identity_check_value(identity_hash_key)
+    async with conn.transaction():
+        cursor = await conn.execute(
+            "INSERT INTO neuron_meta (key, value) VALUES (%s, %s)"
+            " ON CONFLICT (key) DO NOTHING RETURNING value",
+            (_IDENTITY_META_KEY, value),
+        )
+        if await cursor.fetchone() is not None:
+            logger.info("identity_key_check_written")
+            return
+        cursor = await conn.execute(
+            "SELECT value FROM neuron_meta WHERE key = %s", (_IDENTITY_META_KEY,)
+        )
+        row = await cursor.fetchone()
+        stored = str(row["value"]) if row else ""
+        if hmac.compare_digest(stored, value):
+            logger.info("identity_key_check_verified")
+            return
+        if not rotate:
+            raise IdentityKeyMismatch(
+                "APP_IDENTITY_HASH_KEY differs from the key this database was set up with;"
+                " rotating it orphans existing threads (OPERATIONS.md), so pass"
+                " --rotate-identity-key to replace the stored check value"
+            )
+        await conn.execute(
+            "UPDATE neuron_meta SET value = %s, updated_at = now() WHERE key = %s",
+            (value, _IDENTITY_META_KEY),
+        )
+        logger.warning("identity_key_check_rotated")
 
 
 async def _acquire_lock(conn: psycopg.AsyncConnection[dict[str, object]], wait: float) -> None:
