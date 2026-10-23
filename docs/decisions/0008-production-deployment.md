@@ -457,7 +457,7 @@ task still deletes its lease.
   which fails closed until it succeeds. A crash loses that retry, and the reservation
   stays counted, so the ledger errs high. The application role needs `SELECT`, `INSERT`,
   `UPDATE` and `DELETE` on `neuron_token_ledger` and `neuron_token_settlements`
-  (decision 15 / #144); under a split role, migrations 5 to 8 need #144's grant phase.
+  (decision 15 / #144); the #144 grant phase covers the token tables (migrations 6 to 9).
   The budget is enforced **at admission and settled afterwards**: nothing stops a run
   mid-way, so a run can overshoot by its real cost (iterations, history, tool output;
   `APP_MAX_HISTORY_TOKENS` bounds each model call, not the number of calls), and the

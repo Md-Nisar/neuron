@@ -53,6 +53,8 @@ _EXPECTED_TABLES = {
     "neuron_migrations",
     "neuron_meta",
     "neuron_run_leases",
+    "neuron_token_ledger",
+    "neuron_token_settlements",
 }
 
 
@@ -304,6 +306,8 @@ async def test_grants_are_exactly_the_documented_dml(role_db: RoleDatabase) -> N
         "checkpoint_blobs": dml,
         "checkpoint_writes": dml,
         "neuron_run_leases": {"SELECT", "INSERT", "DELETE"},
+        "neuron_token_ledger": dml,
+        "neuron_token_settlements": {"SELECT", "INSERT", "DELETE"},
         "neuron_meta": set(),
         "neuron_migrations": set(),
         "checkpoint_migrations": set(),
@@ -453,8 +457,10 @@ async def test_a_failed_setup_never_leaves_app_dml_on_the_bookkeeping_tables(
     role_db: RoleDatabase,
 ) -> None:
     nothing = {table: [] for table in _BOOKKEEPING}
-    broken = Migration(version=6, name="broken", sql="SELECT 1/0")
-    # A migration fails after migrations 1 to 5 created the tables.
+    broken = Migration(
+        version=max(m.version for m in MIGRATIONS) + 1, name="broken", sql="SELECT 1/0"
+    )
+    # A migration fails after every real migration created the tables.
     with pytest.raises(psycopg.errors.DivisionByZero):
         await _setup(role_db, migrations=[*MIGRATIONS, broken], identity_hash_key=_KEY_A)
     assert await _app_dml_on_bookkeeping(role_db) == nothing

@@ -308,14 +308,13 @@ def test_postgres_needs_a_window_longer_than_a_run() -> None:
 
 
 def test_the_ledger_is_a_logged_table_added_by_expand_only_migrations() -> None:
-    table, index = MIGRATIONS[4], MIGRATIONS[5]
-    assert [m.name for m in MIGRATIONS[6:]] == [
-        "token_settlements",
-        "token_settlements_settled_idx",
-    ]
-    assert "reservation_id uuid PRIMARY KEY" in MIGRATIONS[6].sql
-    assert (table.version, table.name) == (5, "token_ledger")
-    assert (index.version, index.name, index.concurrent) == (6, "token_ledger_minute_idx", True)
+    by_name = {m.name: m for m in MIGRATIONS}
+    table, index = by_name["token_ledger"], by_name["token_ledger_minute_idx"]
+    settlements = by_name["token_settlements"]
+    assert "token_settlements_settled_idx" in by_name
+    assert "reservation_id uuid PRIMARY KEY" in settlements.sql
+    assert (table.version, table.name) == (6, "token_ledger")
+    assert (index.version, index.name, index.concurrent) == (7, "token_ledger_minute_idx", True)
     assert "UNLOGGED" not in table.sql.upper()
     assert "PRIMARY KEY (owner_key, minute)" in table.sql
 
