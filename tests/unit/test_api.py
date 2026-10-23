@@ -26,6 +26,7 @@ from neuron_agent.errors.base import (
     ToolExecutionError,
     ValidationAppError,
 )
+from neuron_agent.observability.logging import log_startup_configuration
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
@@ -301,3 +302,96 @@ def test_agent_invoke_returns_404_for_unknown_or_foreign_thread(
     )
     assert owner.status_code == 200
     assert owner.json()["thread_id"] == thread_id
+
+
+def test_startup_logs_the_effective_limits_once_without_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(
+        env="test",
+        rate_limit_requests_per_window=7,
+        rate_limit_burst=3,
+        max_concurrent_streams=11,
+        max_concurrent_runs_per_user=4,
+        user_token_budget=12_345,
+        request_timeout_seconds=33,
+        tool_timeout_seconds=9,
+        run_timeout_seconds=77,
+        postgres_dsn="postgresql://svc:pw-secret-1@db.example.test/neuron",
+        identity_hash_key="k" * 32,
+    )
+
+    async def startup(self: object) -> None:
+        return None
+
+    async def shutdown(self: object) -> None:
+        return None
+
+    monkeypatch.setattr(api_main, "settings", settings)
+    monkeypatch.setattr(api_main.AgentService, "startup", startup)
+    monkeypatch.setattr(api_main.AgentService, "shutdown", shutdown)
+    with structlog.testing.capture_logs() as logs:
+        with TestClient(app):
+            pass
+    lines = [line for line in logs if line["event"] == "effective_limits"]
+
+    assert len(lines) == 1
+    assert lines[0] == {
+        "event": "effective_limits",
+        "log_level": "info",
+        "limits_backend": "memory",
+        "rate_limit_enabled": True,
+        "rate_limit_requests_per_window": 7,
+        "rate_limit_window_seconds": 60,
+        "rate_limit_burst": 3,
+        "max_concurrent_streams": 11,
+        "max_concurrent_runs_per_user": 4,
+        "user_token_budget": 12_345,
+        "user_token_budget_window_seconds": 3600,
+        "request_timeout_seconds": 33,
+        "tool_timeout_seconds": 9,
+        "run_timeout_seconds": 77,
+        "shutdown_drain_seconds": 5.0,
+    }
+    assert "pw-secret-1" not in str(logs) and "k" * 32 not in str(logs)
+
+
+@pytest.mark.parametrize(
+    ("env", "warned"), [("production", True), ("staging", True), ("test", False)]
+)
+def test_stateless_checkpointer_is_logged_as_a_warning_in_deployed_environments(
+    env: str, warned: bool
+) -> None:
+    settings = Settings.model_construct(env=env, checkpointer="none", limits_backend="memory")
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(settings)
+    stateless = [line for line in logs if line["event"] == "stateless_deployment"]
+
+    assert [line["log_level"] for line in stateless] == (["warning"] if warned else [])
+
+
+def test_approved_langsmith_content_capture_is_logged_with_its_record_only() -> None:
+    settings = Settings.model_construct(
+        env="production",
+        checkpointer="postgres",
+        limits_backend="postgres",
+        langsmith_content_approved=True,
+        langsmith_content_approval_record="ticket-42",
+        langsmith_api_key="lsv2-secret-key",
+        postgres_dsn="postgresql://svc:pw-secret-1@h/n",
+    )
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(settings)
+    lines = [line for line in logs if line["event"] == "langsmith_content_capture_approved"]
+
+    assert lines == [
+        {
+            "event": "langsmith_content_capture_approved",
+            "log_level": "warning",
+            "approval_record": "ticket-42",
+        }
+    ]
+    assert "lsv2-secret-key" not in str(logs) and "pw-secret-1" not in str(logs)
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(Settings(env="test"))
+    assert not [x for x in logs if x["event"] == "langsmith_content_capture_approved"]

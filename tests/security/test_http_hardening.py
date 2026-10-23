@@ -30,13 +30,13 @@ def token(make_token: Callable[..., str]) -> dict[str, str]:
     return bearer(make_token())
 
 
-def _assert_security_headers(response: Any) -> None:
+def _assert_security_headers(response: Any, *, hsts: bool = False) -> None:
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["referrer-policy"] == "no-referrer"
     assert (
         response.headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
     )
-    assert "strict-transport-security" not in response.headers
+    assert ("strict-transport-security" in response.headers) is hsts
 
 
 # --- Settings ---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ def test_api_docs_are_not_found_in_production(
     response = api.client.get(path)
 
     assert response.status_code == 404
-    _assert_security_headers(response)
+    _assert_security_headers(response, hsts=True)
 
 
 @pytest.mark.parametrize("path", _DOCS_PATHS)
@@ -204,8 +204,8 @@ def test_api_docs_gate_holds_behind_a_root_path(
     assert response.status_code == 404
 
 
-def test_api_docs_can_be_enabled_in_production(jwt_api_factory: Callable[..., JwtApi]) -> None:
-    api = jwt_api_factory(env="production", openai_api_key="sk-test", expose_api_docs=True)
+def test_api_docs_can_be_enabled_in_staging(jwt_api_factory: Callable[..., JwtApi]) -> None:
+    api = jwt_api_factory(env="staging", openai_api_key="sk-test", expose_api_docs=True)
 
     assert api.client.get("/openapi.json").status_code == 200
 

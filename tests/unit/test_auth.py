@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWKClientError
+from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
@@ -398,7 +399,7 @@ def test_jwt_settings_require_identity_provider_configuration() -> None:
 @pytest.mark.parametrize("env", ["staging", "production"])
 def test_jwt_settings_reject_unauthenticated_mode(env: str) -> None:
     with pytest.raises(ValueError, match="APP_AUTH_MODE=none"):
-        Settings(env=env, auth_mode="none", openai_api_key="sk-test")
+        Settings(env=env, auth_mode="none", openai_api_key="sk-test", **PRODUCTION_PROFILE)
 
 
 def test_api_requires_authentication_but_health_is_public(monkeypatch: pytest.MonkeyPatch) -> None:

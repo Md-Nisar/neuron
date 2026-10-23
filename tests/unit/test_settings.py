@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.models.factory import _FakeChatModel, create_chat_model
@@ -92,23 +93,9 @@ def test_settings_rejects_resource_limits_out_of_bounds(
         Settings(env="test", openai_api_key=None, **overrides)
 
 
-@pytest.mark.parametrize(
-    ("env", "expected"),
-    [("development", "memory"), ("test", "memory"), ("staging", "none"), ("production", "none")],
-)
-def test_settings_auto_checkpointer_resolves_per_environment(env: str, expected: str) -> None:
-    overrides: dict[str, object] = {"env": env, "openai_api_key": "sk-test"}
-    if env in {"staging", "production"}:
-        overrides.update(
-            {
-                "auth_mode": "jwt",
-                "auth_issuer": "https://issuer.example.test",
-                "auth_audience": "neuron-api",
-                "auth_jwks_url": "https://issuer.example.test/jwks.json",
-                "identity_hash_key": "x" * 32,
-            }
-        )
-    assert Settings(**overrides).checkpointer == expected
+@pytest.mark.parametrize("env", ["development", "test"])
+def test_settings_auto_checkpointer_resolves_to_memory_in_dev_and_test(env: str) -> None:
+    assert Settings(env=env, openai_api_key="sk-test").checkpointer == "memory"
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])
@@ -195,7 +182,7 @@ def _production(**overrides: object) -> Settings:
         auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
         identity_hash_key="x" * 32,
         openai_api_key="sk-test",
-        **overrides,
+        **{**PRODUCTION_PROFILE, **overrides},
     )
 
 
@@ -235,3 +222,307 @@ def test_settings_require_dsn_for_postgres_limits_backend_even_without_checkpoin
 def test_settings_reject_unknown_limits_backend() -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", limits_backend="redis")
+
+
+# --- Production settings validation (ADR 0008 decision 9) -------------------------------
+
+
+def _hardened(env: str, **overrides: object) -> Settings:
+    """Valid staging/production settings; `overrides` replace, and `None` removes, a key."""
+    values: dict[str, object] = {
+        "env": env,
+        "auth_mode": "jwt",
+        "auth_issuer": "https://issuer.example.test",
+        "auth_audience": "neuron-api",
+        "auth_jwks_url": "https://issuer.example.test/.well-known/jwks.json",
+        "identity_hash_key": "x" * 32,
+        "openai_api_key": "sk-test",
+        **PRODUCTION_PROFILE,
+        **overrides,
+    }
+    return Settings(**{k: v for k, v in values.items() if v is not _UNSET})
+
+
+_UNSET = object()
+_BOTH = pytest.mark.parametrize("env", ["staging", "production"])
+
+
+@_BOTH
+def test_the_hardened_profile_is_accepted(env: str) -> None:
+    assert _hardened(env).env == env
+
+
+@_BOTH
+def test_auto_checkpointer_is_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_CHECKPOINTER=auto"):
+        _hardened(env, checkpointer="auto")
+
+
+@_BOTH
+def test_auto_limits_backend_is_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_LIMITS_BACKEND=auto"):
+        _hardened(env, limits_backend="auto")
+
+
+@_BOTH
+def test_checkpointer_and_limits_backend_default_to_auto_and_are_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="auto"):
+        _hardened(env, checkpointer=_UNSET, limits_backend=_UNSET)
+
+
+def test_memory_limits_are_refused_in_production_only() -> None:
+    with pytest.raises(ValidationError, match="APP_LIMITS_BACKEND=memory"):
+        _hardened("production", limits_backend="memory")
+    assert _hardened("staging", limits_backend="memory").limits_backend == "memory"
+
+
+@pytest.mark.parametrize("env", ["development", "test"])
+def test_dev_and_test_keep_auto_defaults(env: str) -> None:
+    settings = Settings(env=env)
+    assert (settings.checkpointer, settings.limits_backend) == ("memory", "memory")
+
+
+@_BOTH
+def test_empty_allowed_hosts_are_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_ALLOWED_HOSTS"):
+        _hardened(env, allowed_hosts=[])
+    with pytest.raises(ValidationError, match="APP_ALLOWED_HOSTS"):
+        _hardened(env, allowed_hosts=_UNSET)
+
+
+@_BOTH
+def test_an_unparsable_trusted_proxy_is_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_TRUSTED_PROXIES"):
+        _hardened(env, trusted_proxies=["10.0.0.0/8", "not-a-cidr"])
+
+
+@_BOTH
+def test_unset_trusted_proxies_are_refused_but_an_explicit_empty_list_is_not(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_TRUSTED_PROXIES must be set"):
+        _hardened(env, trusted_proxies=_UNSET)
+    assert _hardened(env, trusted_proxies=[]).trusted_proxies == []
+
+
+def test_trusted_proxies_set_through_the_environment_count_as_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("APP_TRUSTED_PROXIES", "[]")
+    assert _hardened("production", trusted_proxies=_UNSET).trusted_proxies == []
+    monkeypatch.delenv("APP_TRUSTED_PROXIES")
+    with pytest.raises(ValidationError, match="APP_TRUSTED_PROXIES must be set"):
+        _hardened("production", trusted_proxies=_UNSET)
+
+
+@_BOTH
+@pytest.mark.parametrize(
+    "broad", ["0.0.0.0/0", "::/0", "0.0.0.0/1", "128.0.0.0/1", "::/1", "8000::/1", "10.0.0.0/7"]
+)
+def test_overly_broad_trusted_proxy_ranges_are_refused(env: str, broad: str) -> None:
+    with pytest.raises(ValidationError, match="broader than"):
+        _hardened(env, trusted_proxies=["10.0.0.0/8", broad])
+    with pytest.raises(ValidationError, match="broader than"):
+        _hardened(env, trusted_proxies=["0.0.0.0/1", "128.0.0.0/1"])
+    assert _hardened(env, trusted_proxies=["10.0.0.0/8", "fd00::/16"])
+
+
+@_BOTH
+def test_disabled_rate_limit_is_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_RATE_LIMIT_ENABLED"):
+        _hardened(env, rate_limit_enabled=False)
+
+
+@_BOTH
+def test_startup_setup_is_refused(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_CHECKPOINTER_SETUP_ON_STARTUP"):
+        _hardened(env, checkpointer_setup_on_startup=True)
+
+
+_DSN = "postgresql://svc:pw-secret-1@db.example.test/neuron"
+
+
+@pytest.mark.parametrize(
+    "dsn",
+    [
+        _DSN,
+        _DSN + "?sslmode=disable",
+        _DSN + "?sslmode=prefer",
+        _DSN + "?sslmode=require",
+        _DSN + "?sslmode=verify-ca",
+        _DSN + "?application_name=x&sslmode=require",
+        "host=db.example.test user=svc password=pw-secret-1 dbname=neuron sslmode=require",
+        "host=db.example.test user=svc password=pw-secret-1 dbname=neuron",
+        "postgresql://svc:pw-secret-1@db.example.test/neuron?sslmode=bogus",
+    ],
+)
+def test_production_refuses_a_dsn_below_verify_full(dsn: str) -> None:
+    for field in ("postgres_dsn", "postgres_migration_dsn"):
+        with pytest.raises(ValidationError, match="sslmode=verify-full") as caught:
+            _hardened("production", **{field: dsn})
+        assert "pw-secret-1" not in str(caught.value)
+        assert "db.example.test" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "dsn",
+    [
+        _DSN + "?sslmode=verify-full",
+        _DSN + "?connect_timeout=5&sslmode=verify-full",
+        "host=db.example.test user=svc dbname=neuron sslmode=verify-full",
+        # `sslmode` inside the password is not an sslmode.
+        "host=db.example.test user=svc password='sslmode=verify-full' sslmode=verify-full",
+    ],
+)
+def test_production_accepts_verify_full_in_either_dsn_form(dsn: str) -> None:
+    for field in ("postgres_dsn", "postgres_migration_dsn"):
+        assert _hardened("production", **{field: dsn})
+
+
+def test_a_dsn_that_only_mentions_sslmode_in_the_wrong_place_is_refused() -> None:
+    dsn = "host=db.example.test user=svc password='sslmode=verify-full' dbname=neuron"
+    with pytest.raises(ValidationError, match="sslmode=verify-full"):
+        _hardened("production", postgres_dsn=dsn)
+
+
+def test_staging_accepts_require_but_nothing_weaker() -> None:
+    """ADR 0008 decision 17: free-plan Render staging cannot verify the server certificate."""
+    assert _hardened("staging", postgres_dsn=_DSN + "?sslmode=require")
+    assert _hardened("staging", postgres_migration_dsn=_DSN + "?sslmode=verify-ca")
+    for weaker in ("", "?sslmode=disable", "?sslmode=allow", "?sslmode=prefer"):
+        with pytest.raises(ValidationError, match="sslmode=require"):
+            _hardened("staging", postgres_dsn=_DSN + weaker)
+
+
+@_BOTH
+def test_a_malformed_dsn_is_refused_without_echoing_it(env: str) -> None:
+    with pytest.raises(ValidationError, match="is not valid") as caught:
+        _hardened(env, postgres_dsn="postgresql://svc:pw-secret-1@[bad/neuron")
+    assert "pw-secret-1" not in str(caught.value)
+
+
+@pytest.mark.parametrize("env", ["development", "test"])
+def test_dev_and_test_do_not_require_tls(env: str) -> None:
+    assert Settings(env=env, postgres_dsn=_DSN, checkpointer="postgres")
+
+
+def test_production_refuses_exposed_api_docs() -> None:
+    with pytest.raises(ValidationError, match="APP_EXPOSE_API_DOCS"):
+        _hardened("production", expose_api_docs=True)
+    assert _hardened("production").expose_api_docs is False
+    assert _hardened("staging", expose_api_docs=True).expose_api_docs is True
+
+
+def test_production_requires_hsts_and_staging_does_not() -> None:
+    with pytest.raises(ValidationError, match="APP_HSTS_MAX_AGE_SECONDS"):
+        _hardened("production", hsts_max_age_seconds=0)
+    assert _hardened("production").hsts_max_age_seconds > 0
+    assert _hardened("staging", hsts_max_age_seconds=0).hsts_max_age_seconds == 0
+
+
+@_BOTH
+@pytest.mark.parametrize(
+    "host",
+    [
+        "localhost",
+        "app.localhost",
+        "127.0.0.1",
+        "127.1.2.3",
+        "[::1]",
+        "169.254.169.254",
+        "[fe80::1]",
+        "10.0.0.5",
+        "172.16.0.1",
+        "192.168.1.1",
+        "[fd00::1]",
+        "[::ffff:10.0.0.1]",
+        # inet_aton-style spellings of loopback
+        "2130706433",
+        "0x7f.1",
+        "127.1",
+        "0x7f000001",
+        "0177.0.0.1",
+        # embedded IPv4: NAT64 and 6to4 around 127.0.0.1
+        "[64:ff9b::7f00:1]",
+        "[2002:7f00:1::]",
+        "100.64.0.1",
+        "224.0.0.1",
+        "240.0.0.1",
+        "0.0.0.0",  # noqa: S104
+        "[::]",
+    ],
+)
+def test_jwks_url_with_an_internal_host_is_refused(env: str, host: str) -> None:
+    with pytest.raises(ValidationError, match="non-public"):
+        _hardened(env, auth_jwks_url=f"https://{host}:8443/jwks.json")
+
+
+def test_jwks_url_with_a_public_host_is_accepted_and_development_is_unchanged() -> None:
+    assert _hardened("production", auth_jwks_url="https://1.1.1.1/jwks.json")
+    assert Settings(
+        env="development",
+        auth_mode="jwt",
+        auth_issuer="http://localhost:8765",
+        auth_audience="neuron-api",
+        auth_jwks_url="http://127.0.0.1:8765/jwks.json",
+        identity_hash_key="x" * 32,
+    )
+
+
+def test_production_refuses_langsmith_content_without_an_approval_record() -> None:
+    kwargs: dict[str, object] = {"langsmith_content_approved": True}
+    with pytest.raises(ValidationError, match="APPROVAL_RECORD"):
+        _hardened("production", **kwargs)
+    with pytest.raises(ValidationError, match="APPROVAL_RECORD"):
+        _hardened("production", langsmith_content_approval_record="  ", **kwargs)
+    approved = _hardened(
+        "production", langsmith_content_approval_record="ADR-0009 / ticket 42", **kwargs
+    )
+    assert approved.langsmith_content_approved is True
+    assert _hardened("staging", **kwargs).langsmith_content_approved is True
+    assert _hardened("production").langsmith_content_approved is False
+
+
+def test_validation_errors_never_echo_the_input() -> None:
+    with pytest.raises(ValidationError) as caught:
+        _hardened("production", postgres_dsn=_DSN, allowed_hosts=[])
+    assert "input_value" not in str(caught.value)
+    assert "pw-secret-1" not in str(caught.value)
+
+
+@_BOTH
+@pytest.mark.parametrize("pattern", ["*", "*.com", "*.io"])
+def test_wildcard_allowed_hosts_over_everything_or_a_tld_are_refused(
+    env: str, pattern: str
+) -> None:
+    with pytest.raises(ValidationError, match="top-level domain"):
+        _hardened(env, allowed_hosts=["api.example.test", pattern])
+    assert _hardened(env, allowed_hosts=["*.example.test"])
+
+
+def test_dev_keeps_wildcard_allowed_hosts() -> None:
+    assert Settings(env="development", allowed_hosts=["*"]).allowed_hosts == ["*"]
+
+
+@pytest.mark.parametrize("mode", ["VERIFY-FULL", "Verify-Full", "verify-full ", " verify-full"])
+def test_uppercase_or_padded_sslmode_is_refused(mode: str) -> None:
+    with pytest.raises(ValidationError, match="sslmode"):
+        _hardened("production", postgres_dsn=_DSN + "?sslmode=" + mode.replace(" ", "%20"))
+    with pytest.raises(ValidationError, match="sslmode"):
+        _hardened("production", postgres_dsn=f"host=h user=svc dbname=n sslmode='{mode}'")
+
+
+@_BOTH
+def test_pgsslmode_in_the_environment_does_not_satisfy_the_rule(
+    monkeypatch: pytest.MonkeyPatch, env: str
+) -> None:
+    monkeypatch.setenv("PGSSLMODE", "verify-full")
+    with pytest.raises(ValidationError, match="sslmode"):
+        _hardened(env, postgres_dsn=_DSN)
+
+
+def test_an_empty_trusted_proxies_variable_is_rejected_by_settings_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Operators must write APP_TRUSTED_PROXIES=[]; an empty value is not an empty list."""
+    monkeypatch.setenv("APP_TRUSTED_PROXIES", "")
+    with pytest.raises(Exception, match="trusted_proxies|TRUSTED_PROXIES"):
+        Settings(env="test")

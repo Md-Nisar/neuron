@@ -335,8 +335,24 @@ def bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+#: The explicit choices staging and production require (ADR 0008 decision 9).
+PRODUCTION_PROFILE: dict[str, Any] = {
+    "checkpointer": "none",
+    "limits_backend": "postgres",
+    "postgres_dsn": "postgresql://app@db.example.test/neuron?sslmode=verify-full",
+    "allowed_hosts": ["api.example.test", "testserver"],
+    "trusted_proxies": [],
+    "hsts_max_age_seconds": 31_536_000,
+}
+
+
 def jwt_settings(**overrides: Any) -> Settings:
-    """Production-shaped JWT settings for the test issuer, with request rate limits off."""
+    """Production-shaped JWT settings for the test issuer, with request rate limits off.
+
+    In staging/production the rate limit stays on and `PRODUCTION_PROFILE` fills in the
+    settings those environments require; `overrides` still win.
+    """
+    hardened = overrides.get("env") in {"staging", "production"}
     return Settings(
         **{
             "env": "test",
@@ -345,7 +361,8 @@ def jwt_settings(**overrides: Any) -> Settings:
             "auth_audience": JWT_AUDIENCE,
             "auth_jwks_url": JWKS_URL,
             "identity_hash_key": "h" * 32,
-            "rate_limit_enabled": False,
+            "rate_limit_enabled": hardened,
+            **(PRODUCTION_PROFILE if hardened else {}),
             **overrides,
         }
     )
@@ -370,6 +387,9 @@ def jwt_api_factory(
 
     def build(**overrides: Any) -> JwtApi:
         settings = jwt_settings(**overrides)
+        if settings.env in {"staging", "production"}:
+            # Validation accepted the production profile; the in-process service has no database.
+            settings = settings.model_copy(update={"limits_backend": "memory"})
         service = AgentService(settings)
         monkeypatch.setattr(api_main, "settings", settings)
         monkeypatch.setattr(api_main, "service", service)

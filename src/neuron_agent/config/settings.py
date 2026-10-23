@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from functools import lru_cache
 from typing import Literal
@@ -15,6 +16,8 @@ from pydantic import AliasChoices, Field, SecretStr, field_validator, model_vali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from neuron_agent import __version__
+from neuron_agent.errors.base import AuthorizationError, ValidationAppError
+from neuron_agent.security.input_policy import validate_safe_url
 
 Environment = Literal["development", "staging", "production", "test"]
 CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
@@ -26,6 +29,29 @@ _HOST_PATTERN = re.compile(r"^(\*|(\*\.)?[a-z0-9.-]+)$")
 _ORIGIN_PATTERN = re.compile(r"^https?://([a-z0-9.-]+|\[[0-9a-f:]+\])(:[0-9]{1,5})?$")
 
 
+_SSLMODE_RANK = {
+    "disable": 0,
+    "allow": 1,
+    "prefer": 2,
+    "require": 3,
+    "verify-ca": 4,
+    "verify-full": 5,
+}
+
+
+def _is_internal_host(url: str) -> bool:
+    """True unless `validate_safe_url` accepts the URL's literal host as public.
+
+    Names are not resolved and redirects are not followed, so a public name that resolves to a
+    private address passes (an accepted gap, see SECURITY.md).
+    """
+    try:
+        validate_safe_url(url)
+    except (AuthorizationError, ValidationAppError):
+        return True
+    return False
+
+
 class Settings(BaseSettings):
     """Environment-backed application settings."""
 
@@ -34,6 +60,8 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        # A validation error must never echo the raw input: it holds DSNs and keys.
+        hide_input_in_errors=True,
     )
 
     name: str = "neuron-agent"
@@ -62,6 +90,8 @@ class Settings(BaseSettings):
     enable_langsmith: bool = False
     # Outside development, LangSmith traces carry no prompts or answers unless this is true.
     langsmith_content_approved: bool = False
+    # Production only: names the record (ticket, ADR, review) that approved content capture.
+    langsmith_content_approval_record: str | None = Field(default=None, max_length=200)
     otel_enabled: bool = False
     # None uses APP_NAME.
     otel_service_name: str | None = None
@@ -85,10 +115,11 @@ class Settings(BaseSettings):
             "OTEL_EXPORTER_OTLP_HEADERS",
         ),
     )
-    # "auto" resolves to memory in development/test and none in staging/production.
+    # "auto" resolves to memory in development/test; staging/production must choose explicitly.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
-    # Where the rate limit, token budget and run guards live. "auto" resolves to memory.
+    # Where the rate limit, token budget and run guards live. "auto" resolves to memory in
+    # development/test; staging/production must choose explicitly (production: postgres).
     limits_backend: LimitsBackend = "auto"
     postgres_dsn: SecretStr | None = None
     # Direct, non-pooled DSN of the migrator role; read only by `persistence.cli` (ADR 0008).
@@ -204,7 +235,12 @@ class Settings(BaseSettings):
     def validate_checkpointer(self) -> Settings:
         """Resolve `auto` and reject backends that cannot work in the configured environment."""
         if self.checkpointer == "auto":
-            self.checkpointer = "memory" if self.env in {"development", "test"} else "none"
+            if self.env in {"staging", "production"}:
+                raise ValueError(
+                    "APP_CHECKPOINTER=auto is refused in staging/production; "
+                    "set postgres, or none for a deliberately stateless deployment"
+                )
+            self.checkpointer = "memory"
         if self.checkpointer == "memory" and self.env in {"staging", "production"}:
             raise ValueError(
                 "APP_CHECKPOINTER=memory is not durable; use postgres or none in staging/production"
@@ -224,7 +260,17 @@ class Settings(BaseSettings):
     def validate_limits_backend(self) -> Settings:
         """Resolve `auto`; a Postgres guard store needs a DSN whatever the checkpointer is."""
         if self.limits_backend == "auto":
+            if self.env in {"staging", "production"}:
+                raise ValueError(
+                    "APP_LIMITS_BACKEND=auto is refused in staging/production; "
+                    "set postgres or memory explicitly"
+                )
             self.limits_backend = "memory"
+        if self.limits_backend == "memory" and self.env == "production":
+            raise ValueError(
+                "APP_LIMITS_BACKEND=memory is refused in production: per-process guards "
+                "are not shared across replicas; use postgres"
+            )
         if self.limits_backend == "postgres" and (
             self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
         ):
@@ -280,6 +326,11 @@ class Settings(BaseSettings):
             raise ValueError("APP_AUTH_JWKS_URL is required when APP_AUTH_MODE=jwt")
         if self.env != "development" and not self.auth_jwks_url.startswith("https://"):
             raise ValueError("APP_AUTH_JWKS_URL must use HTTPS outside development")
+        if self.env in {"staging", "production"} and _is_internal_host(self.auth_jwks_url):
+            raise ValueError(
+                "APP_AUTH_JWKS_URL must not point at a local, private or otherwise "
+                "non-public host in staging/production"
+            )
         if not self.auth_algorithms or any(
             algorithm not in {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
             for algorithm in self.auth_algorithms
@@ -312,6 +363,80 @@ class Settings(BaseSettings):
                     "scheme or port, optionally starting with '*.'"
                 )
         return self
+
+    @model_validator(mode="after")
+    def validate_production_profile(self) -> Settings:
+        """Refuse the remaining unsafe staging/production settings (ADR 0008 decision 9).
+
+        Errors name settings, never values: a DSN or an approval record is not echoed.
+        """
+        if self.env not in {"staging", "production"}:
+            return self
+        production = self.env == "production"
+        if not self.allowed_hosts:
+            raise ValueError(
+                "APP_ALLOWED_HOSTS must list the served hostnames in staging/production"
+            )
+        if "trusted_proxies" not in self.model_fields_set:
+            raise ValueError(
+                "APP_TRUSTED_PROXIES must be set in staging/production "
+                "(an explicit [] means no trusted proxy)"
+            )
+        for proxy in self.trusted_proxies:
+            try:
+                network = ipaddress.ip_network(proxy.strip(), strict=False)
+            except ValueError:
+                raise ValueError(
+                    "APP_TRUSTED_PROXIES contains an entry that is not an IP address or CIDR range"
+                ) from None
+            if network.prefixlen < (8 if network.version == 4 else 16):
+                raise ValueError(
+                    "APP_TRUSTED_PROXIES must not contain a range broader than "
+                    "/8 (IPv4) or /16 (IPv6)"
+                )
+        for host in self.allowed_hosts:
+            if host == "*" or (host.startswith("*.") and host.count(".") < 2):
+                raise ValueError(
+                    "APP_ALLOWED_HOSTS must not contain '*' or a wildcard over a whole "
+                    "top-level domain in staging/production"
+                )
+        if not self.rate_limit_enabled:
+            raise ValueError("APP_RATE_LIMIT_ENABLED=false is refused in staging/production")
+        # Staging may use `require` (ADR 0008 decision 17, free-plan Render); production may not.
+        required_sslmode = "verify-full" if production else "require"
+        for name, dsn in (
+            ("APP_POSTGRES_DSN", self.postgres_dsn),
+            ("APP_POSTGRES_MIGRATION_DSN", self.postgres_migration_dsn),
+        ):
+            if dsn is not None and dsn.get_secret_value():
+                self._require_sslmode(name, dsn, required_sslmode)
+        if production and self.expose_api_docs:
+            raise ValueError("APP_EXPOSE_API_DOCS=true is refused in production")
+        if production and not self.hsts_max_age_seconds:
+            raise ValueError(
+                "APP_HSTS_MAX_AGE_SECONDS must be greater than 0 in production "
+                "(the API is served over TLS only)"
+            )
+        if (
+            production
+            and self.langsmith_content_approved
+            and not (self.langsmith_content_approval_record or "").strip()
+        ):
+            raise ValueError(
+                "APP_LANGSMITH_CONTENT_APPROVED=true in production needs "
+                "APP_LANGSMITH_CONTENT_APPROVAL_RECORD naming the approval record"
+            )
+        return self
+
+    @staticmethod
+    def _require_sslmode(name: str, dsn: SecretStr, minimum: str) -> None:
+        try:
+            # libpq's default when the DSN says nothing is `prefer`, which allows plaintext.
+            sslmode = conninfo_to_dict(dsn.get_secret_value()).get("sslmode") or "prefer"
+        except Exception:  # noqa: BLE001 - driver messages can echo the DSN
+            raise ValueError(f"{name} is not valid") from None
+        if _SSLMODE_RANK.get(str(sslmode), -1) < _SSLMODE_RANK[minimum]:
+            raise ValueError(f"{name} must set sslmode={minimum} or stronger in this environment")
 
     @model_validator(mode="after")
     def validate_telemetry_transport(self) -> Settings:

@@ -8,6 +8,7 @@ import pytest
 import structlog.testing
 from langsmith import run_trees
 from langsmith import utils as ls_utils
+from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
@@ -46,6 +47,7 @@ def clean_langsmith_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 _PROD_LIKE = {
+    **PRODUCTION_PROFILE,
     "auth_mode": "jwt",
     "auth_issuer": "https://issuer.example",
     "auth_audience": "neuron",
@@ -58,6 +60,8 @@ def _settings(env: str = "development", **overrides: Any) -> Settings:
     overrides.setdefault("langsmith_api_key", "lsv2-test")
     if env in {"staging", "production"}:
         overrides = {**_PROD_LIKE, **overrides}
+    if env == "production" and overrides.get("langsmith_content_approved"):
+        overrides.setdefault("langsmith_content_approval_record", "ticket-1")
     return Settings(env=env, openai_api_key="sk-test", **overrides)
 
 
