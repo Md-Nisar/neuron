@@ -12,6 +12,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.checkpointer import Persistence
+from neuron_agent.persistence.run_guard import delete_expired_leases
 
 logger = structlog.get_logger(__name__)
 
@@ -30,10 +31,15 @@ async def prune_threads(
 ) -> int:
     """Delete every thread whose last activity is older than `older_than`. Idempotent.
 
-    Returns the number of threads deleted.
+    Also deletes run leases past `expires_at` (ADR 0008 decision 8), which a crashed replica
+    leaves behind. Returns the number of threads deleted.
     """
+    expired_leases = 0
+    if persistence.pool is not None:
+        expired_leases = await delete_expired_leases(persistence.pool)
     checkpointer = persistence.checkpointer
     if checkpointer is None:
+        logger.info("thread_prune_job_completed", count=0, expired_leases=expired_leases)
         audit(
             "threads_pruned",
             outcome="allowed",
@@ -58,7 +64,12 @@ async def prune_threads(
         stale = [thread_id for thread_id, ts in last_activity.items() if ts < cutoff]
     for thread_id in stale:
         await checkpointer.adelete_thread(thread_id)
-    logger.info("thread_prune_job_completed", count=len(stale), retention_days=older_than.days)
+    logger.info(
+        "thread_prune_job_completed",
+        count=len(stale),
+        retention_days=older_than.days,
+        expired_leases=expired_leases,
+    )
     audit(
         "threads_pruned",
         outcome="allowed",

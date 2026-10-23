@@ -41,6 +41,7 @@ from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 from neuron_agent.persistence.checkpointer import Persistence, build_persistence
 from neuron_agent.persistence.guards import build_run_guard, build_token_budget
+from neuron_agent.persistence.run_guard import PostgresRunGuard
 from neuron_agent.persistence.thread_index import OwnedThreadPage, owned_threads
 from neuron_agent.schemas.agent import (
     AgentAnswer,
@@ -113,8 +114,8 @@ class AgentService:
     ) -> None:
         self._settings = settings
         self._token_budget = token_budget or build_token_budget(settings)
-        self._run_guard = run_guard or build_run_guard(settings)
         self._persistence = persistence or build_persistence(settings)
+        self._run_guard = run_guard or build_run_guard(settings, self._persistence)
         self._graph: Any | None = None
         if self._persistence.is_open:
             self._graph = build_graph(settings, checkpointer=self._persistence.checkpointer)
@@ -125,9 +126,13 @@ class AgentService:
             return
         await self._persistence.open(run_setup=self._settings.checkpointer_setup_on_startup)
         self._graph = build_graph(self._settings, checkpointer=self._persistence.checkpointer)
+        if isinstance(self._run_guard, PostgresRunGuard):
+            self._run_guard.start()
 
     async def shutdown(self) -> None:
         """Release persistence resources."""
+        if isinstance(self._run_guard, PostgresRunGuard):
+            await self._run_guard.close()
         if self._persistence.pool is not None:
             await self._persistence.close()
             self._graph = None
@@ -627,11 +632,20 @@ class AgentService:
                 page = await self._owned_threads(owner_key, limit=None)
                 for thread in page.threads:
                     thread_id = thread.thread_id
-                    if thread_id in active_owned or await self._run_guard.is_thread_active(
-                        thread_id
-                    ):
+                    if thread_id in active_owned:
                         continue
-                    await checkpointer.adelete_thread(thread_id)
+                    # Held while it is deleted, so no run can start on it meanwhile.
+                    try:
+                        lease = await self._run_guard.hold_thread(
+                            thread_id=thread_id, owner_key=owner_key or "anonymous"
+                        )
+                    except RunClaimDenied:
+                        skipped_busy += 1  # a run started after the listing
+                        continue
+                    try:
+                        await checkpointer.adelete_thread(thread_id)
+                    finally:
+                        await lease.release()
                     erased += 1
         audit(
             "user_data_erased",
@@ -680,14 +694,22 @@ class AgentService:
         bind_correlation_context(request_id=None, thread_id=thread_id)
         with self._persistence_errors():
             await self._owned_thread_state(thread_id, owner_key)
-            if await self._run_guard.is_thread_active(thread_id):
-                # The in-flight run would re-create the thread with its final write.
+            try:
+                # The in-flight run would re-create the thread with its final write, and a
+                # run starting mid-delete would lose its history; the hold prevents both.
+                lease = await self._run_guard.hold_thread(
+                    thread_id=thread_id, owner_key=owner_key or "anonymous"
+                )
+            except RunClaimDenied:
                 logger.info("agent_thread_busy")
-                raise ThreadBusyError("a run is already in progress on this thread")
-            checkpointer = self._persistence.checkpointer
-            # _owned_thread_state already raised if there is no checkpointer.
-            assert checkpointer is not None  # nosec B101
-            await checkpointer.adelete_thread(thread_id)
+                raise ThreadBusyError("a run is already in progress on this thread") from None
+            try:
+                checkpointer = self._persistence.checkpointer
+                # _owned_thread_state already raised if there is no checkpointer.
+                assert checkpointer is not None  # nosec B101
+                await checkpointer.adelete_thread(thread_id)
+            finally:
+                await lease.release()
         audit(
             "thread_deleted",
             outcome="allowed",
