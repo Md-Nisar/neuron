@@ -237,10 +237,10 @@ ON neuron_token_settlements (settled_at)
         sql="""
 CREATE UNLOGGED TABLE IF NOT EXISTS neuron_rate_buckets (
     key text PRIMARY KEY,
-    tokens double precision NOT NULL,
+    tokens double precision NOT NULL CHECK (tokens >= 0),
     refilled_at timestamptz NOT NULL,
     allowed boolean NOT NULL
-)
+) WITH (fillfactor = 70, autovacuum_vacuum_scale_factor = 0.02)
 """,
     ),
     # Serves the delete of idle buckets (opportunistic and the retention job).

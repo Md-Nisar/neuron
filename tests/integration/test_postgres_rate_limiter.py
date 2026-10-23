@@ -28,7 +28,7 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import PersistenceError
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.guards import build_rate_limiter
-from neuron_agent.persistence.rate_limiter import PostgresRateLimiter
+from neuron_agent.persistence.rate_limiter import PostgresRateLimiter, delete_idle_buckets
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.security.auth import ip_rate_key
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter, RateLimiter
@@ -63,9 +63,11 @@ def _settings(dsn: str, **overrides: Any) -> Settings:
 
 
 @asynccontextmanager
-async def limiter_on(dsn: str, **options: Any) -> AsyncIterator[PostgresRateLimiter]:
+async def limiter_on(
+    dsn: str, pool_size: int = 10, **options: Any
+) -> AsyncIterator[PostgresRateLimiter]:
     """A limiter on its own pool; two of these are two replicas."""
-    persistence = build_persistence(_settings(dsn))
+    persistence = build_persistence(_settings(dsn, postgres_pool_max_size=pool_size))
     await persistence.open()
     assert persistence.pool is not None
     try:
@@ -186,6 +188,70 @@ async def test_the_retention_job_deletes_idle_buckets_and_keeps_recent_ones(
         await persistence.close()
     keys = {row[0] for row in await rows(database, "SELECT key FROM neuron_rate_buckets")}
     assert keys == {"recent", "live"}
+
+
+async def test_retention_deletes_more_idle_rows_than_one_batch(database: str) -> None:
+    persistence = build_persistence(_settings(database))
+    await persistence.open()
+    try:
+        await rows(
+            database,
+            "INSERT INTO neuron_rate_buckets SELECT 'idle:' || n, 0, clock_timestamp()"
+            " - interval '3 hours', true FROM generate_series(1, 2500) AS n",
+        )
+        assert persistence.pool is not None
+        assert await delete_idle_buckets(persistence.pool, 1.0) == 2500
+        assert await bucket_count(database) == 0
+    finally:
+        await persistence.close()
+
+
+async def test_a_future_dated_row_is_treated_as_clock_damage_and_a_negative_balance_is_refused(
+    database: str,
+) -> None:
+    options = {"capacity": 2, "requests_per_window": 10, "window_seconds": 1}
+    async with limiter_on(database, **options) as limiter:
+        assert await _allowed(limiter, "k", 2) == 2
+        await rows(
+            database,
+            "UPDATE neuron_rate_buckets SET refilled_at = clock_timestamp() + interval '1 hour'",
+        )
+        assert (await limiter.check("k")).allowed is False  # no tokens yet, and no extra ones
+        ahead = await rows(
+            database,
+            "SELECT refilled_at > clock_timestamp() + interval '5 seconds'"
+            " FROM neuron_rate_buckets",
+        )
+        assert ahead == [(False,)]  # reset to the database clock, not left an hour ahead
+        await asyncio.sleep(0.35)
+        assert (await limiter.check("k")).allowed is True  # refills normally from there
+    with pytest.raises(psycopg.errors.CheckViolation):
+        await rows(database, "INSERT INTO neuron_rate_buckets VALUES ('neg', -1, now(), true)")
+
+
+async def test_a_hot_key_cannot_drain_the_pool(database: str) -> None:
+    async with limiter_on(database, pool_size=4, lock_timeout_ms=3000, capacity=100) as limiter:
+        await limiter.check("hot")
+        pool = limiter._pool
+        async with await psycopg.AsyncConnection.connect(database) as holder:
+            await holder.execute("UPDATE neuron_rate_buckets SET tokens = tokens WHERE key = 'hot'")
+            tasks = [asyncio.create_task(limiter.check("hot")) for _ in range(20)]
+            await asyncio.sleep(0.3)
+            waiting = await rows(
+                database,
+                "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'"
+                " AND datname = current_database()",
+            )
+            assert 1 <= waiting[0][0] <= 2  # the cap is pool size // 2
+            async with pool.connection(timeout=1) as conn:  # other work still gets a connection
+                await conn.execute("SELECT 1")
+            await asyncio.sleep(0.4)  # the rest gave up waiting for a slot
+            failed = [t for t in tasks if t.done() and t.exception() is not None]
+            assert len(failed) >= 15
+        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+        assert all(
+            isinstance(o, PersistenceError) or getattr(o, "allowed", False) for o in outcomes
+        )
 
 
 # --- fail closed -----------------------------------------------------------------------------

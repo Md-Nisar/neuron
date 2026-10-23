@@ -224,3 +224,22 @@ def test_authenticated_callers_do_not_touch_the_ip_limiters(
         response = client.post("/v1/agent/invoke", json=BODY, headers={"Authorization": "Bearer t"})
     assert response.status_code == 200 and ip.keys == []
     assert principal.keys[0].startswith("principal:")
+
+
+def test_every_v1_route_with_a_permission_is_under_a_rate_limited_prefix() -> None:
+    from fastapi.routing import APIRoute
+
+    routes = [
+        route
+        for route in api_main.app.routes
+        if isinstance(route, APIRoute) and route.path.startswith("/v1")
+    ]
+    assert routes
+    for route in routes:
+        guarded = any(
+            getattr(dep.call, "required_permission", None) for dep in route.dependant.dependencies
+        )
+        assert guarded, f"{route.path} has no require_permission"
+        assert route.path.startswith(api_main._RATE_LIMITED_PREFIXES), (
+            f"{route.path} would be served without a rate limit"
+        )
