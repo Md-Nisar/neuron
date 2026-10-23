@@ -153,13 +153,14 @@ async def test_run_cancelled_at_the_graceful_timeout_charges_usage_and_frees_its
     )
     await service.startup()
     charged: list[int] = []
-    real_charge = service._token_budget.charge
+    real_settle = service._token_budget.settle
 
-    async def charge(key: str, tokens: int) -> None:
-        charged.append(tokens)
-        await real_charge(key, tokens)
+    async def settle(reservation: Any, actual_tokens: int) -> None:
+        if not reservation.settled:
+            charged.append(actual_tokens)
+        await real_settle(reservation, actual_tokens)
 
-    monkeypatch.setattr(service._token_budget, "charge", charge)
+    monkeypatch.setattr(service._token_budget, "settle", settle)
     thread_id = (await service.invoke(AgentRequest(message="first"))).thread_id
     charged.clear()
     guard = service._run_guard

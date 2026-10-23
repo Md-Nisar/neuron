@@ -444,6 +444,19 @@ task still deletes its lease.
   after the answer exists, the answer is delivered, a metric counts the failure, and
   the next admission for that owner fails closed until the store answers. The
   retention job deletes minutes outside the window.
+  *Implemented in #147 (`persistence/token_budget.py`).* Details the design left open:
+  admission is one `READ COMMITTED` transaction under a per-owner
+  `pg_advisory_xact_lock` (so concurrent admissions never exceed the budget, not even by
+  one reservation); the reservation is capped at the budget so a budget smaller than
+  one reservation still admits a run from an empty window; the prompt estimate is the
+  message's UTF-8 bytes / 3; a minute counts until its end plus the window has passed
+  (usage is never forgotten early and is held up to 60 s longer); settling writes only
+  the difference (an upsert when the run used more, a clamped decrement of the
+  reservation's minute when less); a run that never started gives its reservation back;
+  a failed settlement is kept in the process and retried at that owner's next admission,
+  which fails closed until it succeeds. A crash loses that retry, and the reservation
+  stays counted, so the ledger errs high. The application role needs `SELECT`, `INSERT`,
+  `UPDATE` and `DELETE` on `neuron_token_ledger` (decision 15 / #144).
 - **Request rate limiting.** An `UNLOGGED` token-bucket table, one atomic
   `INSERT … ON CONFLICT DO UPDATE … RETURNING` per rate-limited request (or the
   bounded per-process limiter, if open question 7 chooses it). Accepted trade-offs: one

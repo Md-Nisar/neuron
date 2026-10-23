@@ -125,6 +125,32 @@ ON neuron_run_leases (expires_at)
         concurrent=True,
         index="neuron_run_leases_expires_idx",
     ),
+    Migration(
+        version=5,
+        name="token_ledger",
+        # Shared token budget (`persistence/token_budget.py`, ADR 0008 decision 8): tokens
+        # charged per owner per database-clock minute. Logged (not UNLOGGED): a budget must
+        # survive a crash. The primary key is what the atomic upsert conflicts on.
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_token_ledger (
+    owner_key text NOT NULL,
+    minute timestamptz NOT NULL,
+    tokens bigint NOT NULL DEFAULT 0 CHECK (tokens >= 0),
+    PRIMARY KEY (owner_key, minute)
+)
+""",
+    ),
+    # Serves the retention job's delete of minutes outside the window.
+    Migration(
+        version=6,
+        name="token_ledger_minute_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_token_ledger_minute_idx
+ON neuron_token_ledger (minute)
+""",
+        concurrent=True,
+        index="neuron_token_ledger_minute_idx",
+    ),
 )
 
 

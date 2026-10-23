@@ -63,9 +63,11 @@ decision 3), so there is no second trusted set to configure.
 principal, while `APP_MAX_CONCURRENT_STREAMS` remains the process-wide stream
 cap. `APP_USER_TOKEN_BUDGET` and `APP_USER_TOKEN_BUDGET_WINDOW_SECONDS` define a
 rolling, per-principal provider-token budget charged from model `usage_metadata`
-after each run. When usage metadata is unavailable, no provider-token charge can
-be inferred. In-process budgets reset on restart and each replica enforces its
-own limits; cross-replica coordination remains out of scope. Limit-exceeded
+after each run. Since v0.6.0 a run reserves `APP_MAX_OUTPUT_TOKENS` plus a prompt
+estimate at admission and settles to the real usage, or to the prompt estimate when
+usage metadata is unavailable (ADR 0008 decision 8). With `APP_LIMITS_BACKEND=memory`
+budgets reset on restart and each replica enforces its own limits; with `postgres`
+the budget is a shared, durable ledger (`persistence/token_budget.py`). Limit-exceeded
 telemetry logs only the limit type and an opaque owner-key prefix, never a raw
 subject or IP address.
 

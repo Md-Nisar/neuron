@@ -226,7 +226,8 @@ authentication or ownership model; that integration is implemented in issue #58.
 - Distributed rate limiting or concurrency coordination in v0.4.0. ADR 0008 decision 8
   adds the shared guards behind `APP_LIMITS_BACKEND=postgres`: the thread-busy check and
   `APP_MAX_CONCURRENT_RUNS_PER_USER` are shared through Postgres run leases (the principal
-  is still only the HMAC owner key); the rate limiter and token budget follow.
+  is still only the HMAC owner key) and the token budget through a Postgres ledger keyed by
+  the same owner key (#147); the rate limiter follows (#148).
 
 ## Consequences
 

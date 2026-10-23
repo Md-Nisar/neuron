@@ -11,6 +11,9 @@ from pydantic import SecretStr
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import PersistenceError
 from neuron_agent.persistence.checkpointer import build_persistence
+from neuron_agent.persistence.guards import build_rate_limiter
+from neuron_agent.persistence.run_guard import PostgresRunGuard
+from neuron_agent.persistence.token_budget import PostgresTokenBudget
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.services.agent_service import AgentService
 
@@ -169,9 +172,12 @@ def test_limits_postgres_keeps_the_memory_checkpointer() -> None:
     assert persistence.pool is not None and persistence.is_open is False
 
 
-def test_postgres_guards_fail_fast_until_they_exist() -> None:
-    with pytest.raises(NotImplementedError, match="APP_LIMITS_BACKEND=postgres"):
-        AgentService(_guards_settings())
+def test_postgres_service_builds_with_the_shared_guards_but_no_rate_limiter_exists() -> None:
+    service = AgentService(_guards_settings())
+    assert isinstance(service._token_budget, PostgresTokenBudget)
+    assert isinstance(service._run_guard, PostgresRunGuard)
+    with pytest.raises(NotImplementedError, match="request rate limiter.*#148"):
+        build_rate_limiter(_guards_settings())
 
 
 async def test_startup_setup_failure_never_leaks_the_dsn() -> None:

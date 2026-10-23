@@ -113,6 +113,7 @@ class _Instruments:
     errors: metrics.Counter
     policy_blocks: metrics.Counter
     checkpoint_duration: metrics.Histogram
+    budget_settle_failures: metrics.Counter
 
 
 def _meter() -> metrics.Meter:
@@ -145,6 +146,11 @@ def _build(meter: metrics.Meter) -> _Instruments:
         ),
         checkpoint_duration=meter.create_histogram(
             semconv.METRIC_CHECKPOINT_DURATION, unit="s", description="Checkpointer operation"
+        ),
+        budget_settle_failures=meter.create_counter(
+            semconv.METRIC_BUDGET_SETTLE_FAILURES,
+            unit="{failure}",
+            description="Token budget settlements the ledger did not accept",
         ),
     )
 
@@ -228,6 +234,11 @@ def record_checkpoint(seconds: float, *, outcome: str, error_type: str | None) -
         seconds,
         {semconv.NEURON_OUTCOME: outcome, **_error(error_type)},
     )
+
+
+def record_budget_settle_failure() -> None:
+    """Count one settlement that could not be written to the token ledger."""
+    _instruments().budget_settle_failures.add(1)
 
 
 def observe_expired_leases(read: Callable[[], int]) -> None:

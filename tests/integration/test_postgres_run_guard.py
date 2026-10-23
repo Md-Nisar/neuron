@@ -116,7 +116,7 @@ class ScriptedAgent:
 
 @contextmanager
 def _in_process(monkeypatch: pytest.MonkeyPatch, agent: ScriptedAgent) -> Any:
-    # The rate limiter and token budget have no Postgres version yet (#147, #148).
+    # The request rate limiter has no Postgres version yet (#148).
     monkeypatch.setattr(guards, "_require_memory", lambda settings: None)
     monkeypatch.setattr(main_graph, "build_agent", lambda settings: agent)
     yield
