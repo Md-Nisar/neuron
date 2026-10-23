@@ -12,6 +12,7 @@ label a metric. Durations are seconds.
 from __future__ import annotations
 
 import functools
+import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
@@ -119,15 +120,26 @@ class _Instruments:
 
 # State the two observable gauges report. Neither is labelled, and neither holds a user, owner
 # key, thread or run: a readiness result and a count of waiting connection requests.
-_last_ready: bool | None = None
+# The readiness result expires: a loop that stopped updating must not keep exporting a stale 1.
+READINESS_STALE_SECONDS = 60.0
+_monotonic = time.monotonic
+_last_ready: tuple[bool, float] | None = None
+_quiet_when: Callable[[], bool] | None = None
+# One pool source per process (one Persistence per process); a second open replaces the first.
 _pool_waiting_source: Callable[[], int] | None = None
 
 
 def record_readiness(ready: bool) -> None:
-    """Remember the result of the latest `/health/ready` probe, reported as 1 or 0."""
+    """Remember the latest readiness evaluation, reported as 1 or 0 for the next minute."""
     global _last_ready
-    _last_ready = ready
+    _last_ready = (ready, _monotonic())
     _instruments()  # the gauge exists even when nothing else has been recorded yet
+
+
+def quiet_readiness_when(predicate: Callable[[], bool] | None) -> None:
+    """Report no readiness while `predicate()` is true (a draining instance), instead of a 0."""
+    global _quiet_when
+    _quiet_when = predicate
 
 
 def observe_pool_waiting(source: Callable[[], int] | None) -> None:
@@ -138,8 +150,13 @@ def observe_pool_waiting(source: Callable[[], int] | None) -> None:
 
 
 def _observe_ready(options: CallbackOptions) -> Iterable[Observation]:
-    # Nothing is reported until the first probe: there is no result to report yet.
-    return [] if _last_ready is None else [Observation(int(_last_ready))]
+    # Nothing before the first evaluation, once it is stale, or while draining: the series then
+    # disappears (NeuronNoMetrics territory) instead of reading 0 or a frozen 1.
+    if _last_ready is None or _monotonic() - _last_ready[1] > READINESS_STALE_SECONDS:
+        return []
+    if _quiet_when is not None and _quiet_when():
+        return []
+    return [Observation(int(_last_ready[0]))]
 
 
 def _observe_pool_waiting(options: CallbackOptions) -> Iterable[Observation]:

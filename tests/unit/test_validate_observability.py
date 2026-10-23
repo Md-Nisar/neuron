@@ -66,6 +66,7 @@ def test_fetch_extracts_only_the_named_binary_when_the_hash_matches(
         "https://example.test/x.tar.gz",
         hashlib.sha256(data).hexdigest(),
         "tool-1/promtool",
+        hashlib.sha256(b"binary").hexdigest(),
     )
     path = vo.fetch(pin, tmp_path / "bin")
     assert path == tmp_path / "bin" / "promtool" and path.read_bytes() == b"binary"
@@ -78,10 +79,136 @@ def test_fetch_refuses_an_archive_that_does_not_match_the_pinned_hash(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _serve(monkeypatch, _archive("tool-1/promtool", b"tampered"))
-    pin = vo.Pin("promtool", "1", "https://example.test/x.tar.gz", "0" * 64, "tool-1/promtool")
+    pin = vo.Pin(
+        "promtool", "1", "https://example.test/x.tar.gz", "0" * 64, "tool-1/promtool", "0" * 64
+    )
     with pytest.raises(vo.ChecksumError):
         vo.fetch(pin, tmp_path / "bin")
     assert not (tmp_path / "bin" / "promtool").exists()  # nothing extracted
+
+
+def test_fetch_removes_a_binary_whose_hash_is_not_the_pinned_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = _archive("tool-1/promtool", b"binary")
+    _serve(monkeypatch, data)
+    pin = vo.Pin(
+        "promtool",
+        "1",
+        "https://example.test/x.tar.gz",
+        hashlib.sha256(data).hexdigest(),
+        "tool-1/promtool",
+        "1" * 64,
+    )
+    with pytest.raises(vo.ChecksumError):
+        vo.fetch(pin, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_extract_refuses_a_member_that_is_not_a_regular_file(tmp_path: Path) -> None:
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        link = tarfile.TarInfo("tool-1/promtool")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "/etc/passwd"
+        tar.addfile(link)
+    archive = tmp_path / "a.tar.gz"
+    archive.write_bytes(buffer.getvalue())
+    with pytest.raises(ValueError, match="regular file"):
+        vo._extract(archive, "tool-1/promtool", tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+def test_extract_refuses_an_oversized_member(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archive = tmp_path / "a.tar.gz"
+    archive.write_bytes(_archive("tool-1/promtool", b"x" * 100))
+    monkeypatch.setattr(vo, "MAX_BINARY_BYTES", 99)
+    with pytest.raises(ValueError, match="larger than"):
+        vo._extract(archive, "tool-1/promtool", tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+def test_extract_replaces_a_planted_symlink_instead_of_writing_through_it(tmp_path: Path) -> None:
+    victim = tmp_path / "victim"
+    victim.write_text("keep")
+    target = tmp_path / "promtool"
+    target.symlink_to(victim)
+    archive = tmp_path / "a.tar.gz"
+    archive.write_bytes(_archive("tool-1/promtool", b"binary"))
+    vo._extract(archive, "tool-1/promtool", target)
+    assert victim.read_text() == "keep"
+    assert not target.is_symlink() and target.read_bytes() == b"binary"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.tar.gz", "promtool", "victim"]
+
+
+def test_a_binary_already_on_disk_is_trusted_only_with_the_pinned_hash(tmp_path: Path) -> None:
+    pin = vo.Pin(
+        "promtool", "1", "https://x", "0" * 64, "m", hashlib.sha256(b"genuine").hexdigest()
+    )
+    assert vo.cached_binary(pin, tmp_path) is None  # absent
+    (tmp_path / "promtool").write_bytes(b"planted")
+    assert vo.cached_binary(pin, tmp_path) is None  # wrong content
+    (tmp_path / "promtool").write_bytes(b"genuine")
+    assert vo.cached_binary(pin, tmp_path) == tmp_path / "promtool"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+def test_a_symlinked_binary_is_never_trusted_even_with_the_right_content(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    real.write_bytes(b"genuine")
+    (tmp_path / "promtool").symlink_to(real)
+    pin = vo.Pin(
+        "promtool", "1", "https://x", "0" * 64, "m", hashlib.sha256(b"genuine").hexdigest()
+    )
+    assert vo.cached_binary(pin, tmp_path) is None
+
+
+class _Response(io.BytesIO):
+    def __enter__(self) -> _Response:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+
+def test_the_download_is_capped_in_size(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class Opener:
+        def open(self, request: object, timeout: float) -> _Response:
+            return _Response(b"x" * (2 << 20))
+
+    monkeypatch.setattr(vo.urllib.request, "build_opener", lambda *_: Opener())
+    monkeypatch.setattr(vo, "MAX_ARCHIVE_BYTES", 1 << 20)
+    with pytest.raises(ValueError, match="exceeds"):
+        vo._download("https://example.test/x", tmp_path / "a")
+    monkeypatch.setattr(vo, "MAX_ARCHIVE_BYTES", 4 << 20)
+    assert (
+        vo._download("https://example.test/x", tmp_path / "a")
+        == hashlib.sha256(b"x" * (2 << 20)).hexdigest()
+    )
+
+
+def test_redirects_are_followed_only_over_https() -> None:
+    handler = vo._HttpsOnlyRedirects()
+    request = vo.urllib.request.Request("https://github.com/a")  # noqa: S310
+    with pytest.raises(vo.urllib.error.URLError, match="non-https"):
+        handler.redirect_request(request, io.BytesIO(), 302, "Found", {}, "http://evil.test/a")  # type: ignore[arg-type]
+    followed = handler.redirect_request(
+        request,
+        io.BytesIO(),  # type: ignore[arg-type]
+        302,
+        "Found",
+        vo.urllib.request.Request("https://x").headers,  # type: ignore[arg-type]
+        "https://objects.example.test/a",
+    )
+    assert followed is not None and followed.full_url == "https://objects.example.test/a"
+
+
+def test_the_real_pins_record_a_binary_hash() -> None:
+    for pin in vo.PINS:
+        assert re.fullmatch(r"[0-9a-f]{64}", pin.binary_sha256) and pin.binary_sha256 != pin.sha256
 
 
 def test_main_exits_2_without_running_anything_on_a_checksum_mismatch(

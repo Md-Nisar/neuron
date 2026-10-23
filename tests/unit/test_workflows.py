@@ -317,3 +317,7 @@ def test_ci_validates_alert_rules_and_collector_config_with_the_pinned_script() 
     assert not any(token in " ".join(runs) for token in ("apt", "brew", "curl", "latest"))
     checkout = next(s for s in job["steps"] if s.get("uses", "").startswith("actions/checkout@"))
     assert checkout["with"] == {"persist-credentials": False}
+    typecheck = [
+        s["run"] for s in workflow["jobs"]["checks"]["steps"] if "mypy" in s.get("run", "")
+    ]
+    assert len(typecheck) == 1 and "scripts/validate_observability.py" in typecheck[0]

@@ -244,12 +244,14 @@ def test_service_health_and_rejection_alerts_exist_with_the_documented_severity(
         assert "slo" not in alert["labels"] and "error_type" not in alert["labels"]
 
 
-def test_no_metrics_alert_fires_ten_minutes_after_the_last_push() -> None:
+def test_no_metrics_alert_fires_no_sooner_than_ten_minutes_after_the_last_push() -> None:
     alert = _signal_alerts()["no_metrics"]
     assert alert["expr"] == f"absent({_prometheus_name(semconv.METRIC_SERVICE_READY)})"
     exporter = _load("otel-collector.yaml")["exporters"]["prometheus"]
     # The series disappears when the Collector expires it, and the alert waits `for` after that.
-    assert _minutes(exporter["metric_expiration"]) + _minutes(alert["for"]) == 10
+    # Scrape and evaluation intervals only add to this, so 10 minutes is a lower bound.
+    assert _minutes(exporter["metric_expiration"]) + _minutes(alert["for"]) >= 10
+    assert "at least 10 minutes" in alert["annotations"]["summary"]
 
 
 def test_not_ready_and_pool_alerts_read_the_new_gauges_for_five_minutes() -> None:

@@ -420,11 +420,14 @@ groups:
   - name: neuron-service-health
     rules:
       # The Collector's prometheus exporter drops a series 5m after its last update
-      # (`metric_expiration: 5m`), so absent() turns true 5m after the last push from the last
-      # instance, and `for: 5m` makes it 10m. A test checks that the two add up to 10m. absent()
-      # also fires when Prometheus cannot scrape the Collector, which is the same blindness. An
-      # `up{job="..."} == 0` rule would only watch the Collector, which stays up while every
-      # application instance is dead. The gauge is reported after an instance's first readiness probe.
+      # (`metric_expiration: 5m`), so absent() turns true at least 5m after the last push from the
+      # last instance (plus up to a scrape and an evaluation interval), and `for: 5m` adds 5m:
+      # it fires no sooner than 10m after the last push, in practice a little later. A test
+      # checks expiry + `for` >= 10m. absent() also fires when Prometheus cannot scrape the
+      # Collector, which is the same blindness. An `up{job="..."} == 0` rule would only watch the
+      # Collector, which stays up while every application instance is dead. Each instance
+      # evaluates its own readiness every 15s, so no external prober is needed; a draining
+      # instance, or one whose evaluation loop has hung for a minute, reports nothing.
       - alert: NeuronNoMetrics
         expr: absent(neuron_service_ready)
         for: 5m
@@ -432,7 +435,7 @@ groups:
           severity: page
           signal: no_metrics
         annotations:
-          summary: "no metrics from any instance for 10 minutes"
+          summary: "no metrics from any instance for at least 10 minutes"
           runbook_url: OPERATIONS.md#runbook-no-metrics
       - alert: NeuronInstanceNotReady
         expr: neuron_service_ready == 0
@@ -441,7 +444,7 @@ groups:
           severity: page
           signal: not_ready
         annotations:
-          summary: "an instance's /health/ready has failed for 5 minutes"
+          summary: "an instance has been not ready for 5 minutes"
           runbook_url: OPERATIONS.md#runbook-not-ready
       # The gauge is sampled once per 60 s export, so 5m is five samples in a row.
       - alert: NeuronPostgresPoolSaturated

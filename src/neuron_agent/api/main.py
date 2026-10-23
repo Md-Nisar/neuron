@@ -19,7 +19,7 @@ import threading
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from types import FrameType
 from typing import Annotated, Any
 
@@ -82,12 +82,40 @@ service = AgentService(settings)
 auth_verifier = get_shared_token_verifier(settings)
 
 
+_READINESS_INTERVAL_SECONDS = 15.0
+
+
+async def _watch_readiness() -> None:
+    """Evaluate readiness every interval for the `neuron.service.ready` gauge; never raises.
+
+    The probe endpoint records nothing, so no external prober is needed and a flood of probe
+    requests cannot move the gauge. A failing evaluation is logged once per error type and
+    records nothing, so the gauge goes stale and its series disappears.
+    """
+    failed: set[str] = set()
+    while True:
+        try:
+            metrics.record_readiness(await service.is_ready() and await auth_verifier.ready())
+        except Exception as exc:  # the loop must outlive any one failure
+            name = type(exc).__name__
+            if name not in failed:
+                failed.add(name)
+                logger.warning("readiness_watch_failed", error_type=name)
+        await asyncio.sleep(_READINESS_INTERVAL_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await service.startup()
+    metrics.quiet_readiness_when(lambda: service.draining)
+    watcher = asyncio.create_task(_watch_readiness())
     try:
         yield
     finally:
+        watcher.cancel()
+        with suppress(asyncio.CancelledError):
+            await watcher
+        metrics.quiet_readiness_when(None)
         await service.shutdown()
         if telemetry is not None:
             # Flushing can block until the export timeout when the Collector is down.
@@ -432,9 +460,7 @@ async def live() -> dict[str, str]:
 
 @app.get("/health/ready")
 async def ready() -> JSONResponse:
-    is_ready = await service.is_ready() and await auth_verifier.ready()
-    metrics.record_readiness(is_ready)
-    if not is_ready:
+    if not await service.is_ready() or not await auth_verifier.ready():
         return JSONResponse(status_code=503, content={"status": "not_ready"})
     return JSONResponse(content={"status": "ready", "environment": settings.env})
 

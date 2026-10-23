@@ -23,12 +23,12 @@ import argparse
 import hashlib
 import os
 import shutil
-import stat
 import subprocess  # nosec B404
 import sys
 import tarfile
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -53,6 +53,8 @@ class Pin:
     url: str
     sha256: str
     member: str
+    # SHA-256 of the extracted binary, so a binary already on disk is trusted only if it matches.
+    binary_sha256: str
 
 
 PROMTOOL = Pin(
@@ -64,6 +66,7 @@ PROMTOOL = Pin(
     ),
     sha256="e811827af26d822afb09a4f28314f61b618b12cff5369835a67f674d8b46f39a",
     member="prometheus-3.5.0.linux-amd64/promtool",
+    binary_sha256="e59210d5474e2c811a4460fb1593d708b94d58107ae62e9d44e88029bb7e5805",
 )
 OTELCOL = Pin(
     binary="otelcol-contrib",
@@ -74,8 +77,13 @@ OTELCOL = Pin(
     ),
     sha256="81bf885bc9a86705feb3c113c5a356571390e3601eb651ffcf2b3428f6571adb",
     member="otelcol-contrib",
+    binary_sha256="9ebbf92fd2b7e754971d32cfd893d85836b2b48e3c2a7c336b5cde2afcad9963",
 )
 PINS = (PROMTOOL, OTELCOL)
+
+# Largest archive downloaded (the pinned ones are 80 and 121 MB) and largest binary extracted.
+MAX_ARCHIVE_BYTES = 300 * 1024 * 1024
+MAX_BINARY_BYTES = 500 * 1024 * 1024
 
 
 class ChecksumError(Exception):
@@ -98,7 +106,38 @@ def fetch(pin: Pin, bin_dir: Path, *, attempts: int = 3) -> Path:
                 time.sleep(2 * attempt)
         if digest != pin.sha256:
             raise ChecksumError(f"{pin.binary}: sha256 {digest} != pinned {pin.sha256}")
-        return _extract(archive, pin.member, bin_dir / pin.binary)
+        target = _extract(archive, pin.member, bin_dir / pin.binary)
+    if _sha256_file(target) != pin.binary_sha256:
+        target.unlink()
+        raise ChecksumError(f"{pin.binary}: extracted binary does not match its pinned sha256")
+    return target
+
+
+def _sha256_file(path: Path) -> str:
+    sha = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1 << 20):
+            sha.update(chunk)
+    return sha.hexdigest()
+
+
+def cached_binary(pin: Pin, bin_dir: Path) -> Path | None:
+    """A binary already in `bin_dir`, only if it is a regular file with the pinned hash."""
+    path = bin_dir / pin.binary
+    if path.is_symlink() or not path.is_file():
+        return None
+    return path if _sha256_file(path) == pin.binary_sha256 else None
+
+
+class _HttpsOnlyRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow redirects (GitHub serves release assets from another host) but only over https."""
+
+    def redirect_request(  # type: ignore[no-untyped-def]
+        self, req, fp, code, msg, headers, newurl
+    ):
+        if not newurl.startswith("https://"):
+            raise urllib.error.URLError(f"refusing redirect to a non-https URL: {newurl}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def _download(url: str, destination: Path) -> str:
@@ -108,24 +147,44 @@ def _download(url: str, destination: Path) -> str:
     request = urllib.request.Request(  # noqa: S310  # nosec B310
         url, headers={"User-Agent": "neuron-validate-observability"}
     )
-    with urllib.request.urlopen(request, timeout=120) as response:  # noqa: S310  # nosec B310
+    opener = urllib.request.build_opener(_HttpsOnlyRedirects)
+    total = 0
+    with opener.open(request, timeout=120) as response:  # nosec B310
         with destination.open("wb") as out:
             while chunk := response.read(1 << 20):
+                total += len(chunk)
+                if total > MAX_ARCHIVE_BYTES:
+                    raise ValueError(f"download exceeds {MAX_ARCHIVE_BYTES} bytes")
                 sha.update(chunk)
                 out.write(chunk)
     return sha.hexdigest()
 
 
 def _extract(archive: Path, member: str, target: Path) -> Path:
-    """Write the one named member to `target`; the archive's own paths are never used."""
+    """Write the one named regular-file member to `target`; the archive's paths are never used.
+
+    The bytes go to a new, exclusively created temporary file next to `target` (never opened
+    through a symlink) and replace `target` atomically, so a planted symlink or file at `target`
+    is replaced, not written through.
+    """
     with tarfile.open(archive, "r:gz") as tar:
         info = tar.getmember(member)
+        if not info.isreg():
+            raise ValueError(f"{member} is not a regular file")
+        if info.size > MAX_BINARY_BYTES:
+            raise ValueError(f"{member} is larger than {MAX_BINARY_BYTES} bytes")
         source = tar.extractfile(info)
         if source is None:
             raise ValueError(f"{member} is not a regular file")
-        with source, target.open("wb") as out:
-            shutil.copyfileobj(source, out)
-    target.chmod(target.stat().st_mode | stat.S_IXUSR)
+        temporary = target.with_name(f".{target.name}.{os.urandom(6).hex()}.tmp")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            fd = os.open(temporary, flags, 0o755)
+            with source, os.fdopen(fd, "wb") as out:
+                shutil.copyfileobj(source, out)
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
     return target
 
 
@@ -180,8 +239,8 @@ def _binaries(args: argparse.Namespace) -> tuple[Path, Path]:
     bin_dir: Path = args.bin_dir or Path(tempfile.mkdtemp(prefix="neuron-observability-"))
     found = []
     for pin in PINS:
-        path = bin_dir / pin.binary
-        if not path.exists():
+        path = cached_binary(pin, bin_dir)
+        if path is None:  # absent, a symlink, or not the pinned binary: never trusted
             path = fetch(pin, bin_dir)
             print(f"fetched {pin.binary} {pin.version} (sha256 {pin.sha256} verified)")
         found.append(path)

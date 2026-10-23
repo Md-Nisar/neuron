@@ -91,7 +91,7 @@ An attestation proves where and how the image was built, not that tests passed: 
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
-Each `/health/ready` result is also exported as the `neuron.service.ready` gauge (1 ready, 0 not), which the `NeuronInstanceNotReady` and `NeuronNoMetrics` alerts read (see "Service level objectives"); an instance reports it from its first probe.
+Separately from the endpoint, each instance evaluates the same readiness every 15 seconds in a background task and exports it as the `neuron.service.ready` gauge (1 ready, 0 not), which the `NeuronInstanceNotReady` and `NeuronNoMetrics` alerts read (see "Service level objectives"). No external prober is needed, and probe traffic does not move the gauge. The gauge reports nothing while the instance is draining and once its last evaluation is more than 60 seconds old (a hung event loop), so a terminating or hung instance goes quiet instead of reading 0 or a frozen 1.
 
 ## Identity Provider
 
@@ -250,7 +250,7 @@ are in seconds. Instruments:
 | `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |
 | `http.server.request.body.size`, `http.server.response.body.size` | histogram | `http.route`, `http.response.status_code` |
 | `http.server.active_requests` | up-down counter | none |
-| `neuron.service.ready` | observable gauge | none. `1` if the latest `/health/ready` probe passed, `0` if it failed; not reported until the first probe |
+| `neuron.service.ready` | observable gauge | none. `1` if the latest readiness evaluation (every 15 s) passed, `0` if it failed. Not reported before the first evaluation, while draining, or when the last evaluation is over 60 s old |
 | `neuron.db.pool.waiting` | observable gauge, `{request}` | none. Requests waiting for a Postgres pool connection (`requests_waiting` of the psycopg pool's `get_stats()`); reported only while a pool is open |
 
 `neuron.agent.cost` (estimated USD, ADR 0007 section 2) is not emitted: the estimated cost is
@@ -337,14 +337,14 @@ Caveats: a stream that fails after its `200` headers is not an availability fail
 
 | Alert | Fires when | Severity |
 | --- | --- | --- |
-| `NeuronNoMetrics` | `absent(neuron_service_ready)`: no instance has reported for 10 minutes | page |
+| `NeuronNoMetrics` | `absent(neuron_service_ready)`: no instance has reported for at least 10 minutes | page |
 | `NeuronInstanceNotReady` | `neuron_service_ready == 0` for 5 minutes, per instance | page |
 | `NeuronPostgresPoolSaturated` | `neuron_db_pool_waiting > 0` for 5 minutes, per instance | page |
 | `NeuronThreadBusyAnomaly` | `thread_busy` above 5% of `/v1` requests and 0.05 requests/s for 15 minutes | ticket |
 | `NeuronTooManyConcurrentRunsAnomaly` | the same for `too_many_concurrent_runs` | ticket |
 | `NeuronDeniedToolCallsSpike` | more than 10 `insufficient_scope` or `unknown_tool` policy blocks in 10 minutes | ticket |
 
-Instances push their metrics (see "Several workers"), so Prometheus has no `up` series per instance; an `up == 0` rule would only watch the Collector, which stays up while every application instance is dead. `NeuronNoMetrics` uses `absent()` on the readiness gauge instead. The Collector's prometheus exporter drops a series 5 minutes after its last update (`metric_expiration: 5m`), so `absent()` turns true 5 minutes after the last push from the last instance and `for: 5m` makes it 10 (a test checks that the two add up). It also fires when Prometheus cannot scrape the Collector, which is the same blindness. It watches all instances together: one dead instance among several is the `NeuronInstanceNotReady` case, or the gap in `count(neuron_service_ready)`. The readiness gauge is reported after an instance's first `/health/ready` probe, so the platform must probe it (it should already). When one Prometheus serves several environments, add `{deployment_environment_name="<env>"}` to the selectors. The thresholds of the last three alerts are provisional, like the error-class budgets.
+Instances push their metrics (see "Several workers"), so Prometheus has no `up` series per instance; an `up == 0` rule would only watch the Collector, which stays up while every application instance is dead. `NeuronNoMetrics` uses `absent()` on the readiness gauge instead. The Collector's prometheus exporter drops a series 5 minutes after its last update (`metric_expiration: 5m`), so `absent()` turns true at least 5 minutes after the last push from the last instance (plus up to a scrape and an evaluation interval) and `for: 5m` adds 5 more: it fires no sooner than 10 minutes after the last push, in practice a little later (a test checks expiry plus `for` is at least 10 minutes). It also fires when Prometheus cannot scrape the Collector, which is the same blindness. It watches all instances together: one dead instance among several is the `NeuronInstanceNotReady` case, or the gap in `count(neuron_service_ready)`. An instance reports readiness without being probed. A draining instance reports nothing, so a rolling deploy does not page `NeuronInstanceNotReady`; the same goes for the last instance of a service that is being shut down, which `NeuronNoMetrics` then reports once its series expires, as for any other stop. The pool gauge reads one module-level source, because the service has one Persistence (one pool) per process. When one Prometheus serves several environments, add `{deployment_environment_name="<env>"}` to the selectors. The thresholds of the last three alerts are provisional, like the error-class budgets.
 
 **Collector.** `deploy/observability/otel-collector.yaml` (pinned to `opentelemetry-collector-contrib` 0.120.0) receives OTLP and runs, in this order, `memory_limiter`, the attribute allow-list, value redaction, tail sampling (traces only) and `batch`, then exports traces, metrics and logs over OTLP and metrics to Prometheus. Endpoints come from `OTEL_BACKEND_ENDPOINT`, `OTEL_BACKEND_AUTH_HEADER`, `OTEL_RECEIVER_HOST` and `PROMETHEUS_EXPORTER_ENDPOINT`.
 
@@ -387,11 +387,11 @@ Instances push their metrics (see "Several workers"), so Prometheus has no `up` 
 
 #### Runbook: no metrics
 
-`NeuronNoMetrics`. No instance has pushed for 10 minutes, so every other alert is blind as well. Check, in order: Prometheus scraping the Collector's exporter (`PROMETHEUS_EXPORTER_ENDPOINT`, default port 8889; its own `up` for that target); the Collector process and its logs (a `memory_limiter` refusing data is logged there); the application's `APP_OTEL_ENABLED` and `OTEL_EXPORTER_OTLP_ENDPOINT` after a configuration change (the SDK logs `Failed to export ...`); and whether the instances are running at all (`/health/live`, the platform's instance list). If the service itself is down, the availability alerts cannot fire either, so treat this one as an outage until shown otherwise. An instance that is never probed on `/health/ready` reports no readiness gauge; fix the probe.
+`NeuronNoMetrics`. No instance has pushed for at least 10 minutes, so every other alert is blind as well. Check, in order: Prometheus scraping the Collector's exporter (`PROMETHEUS_EXPORTER_ENDPOINT`, default port 8889; its own `up` for that target); the Collector process and its logs (a `memory_limiter` refusing data is logged there); the application's `APP_OTEL_ENABLED` and `OTEL_EXPORTER_OTLP_ENDPOINT` after a configuration change (the SDK logs `Failed to export ...`); and whether the instances are running at all (`/health/live`, the platform's instance list). If the service itself is down, the availability alerts cannot fire either, so treat this one as an outage until shown otherwise. A single instance whose event loop hung also lands here once it is the only one: its readiness evaluation stops, and after 60 seconds its gauge goes quiet.
 
 #### Runbook: not ready
 
-`NeuronInstanceNotReady`, per `service_instance_id`. The instance's last `/health/ready` returned `503` for 5 minutes. Call it and read the logs; the causes are the ones listed under Health Checks: draining (a stuck rollout or shutdown; `service_draining`), the database unreachable (`checkpointer_unreachable`, see the pool runbook), or in jwt mode no usable signing keys (the IdP or its JWKS URL, see Signing keys and JWKS caching). The platform already stopped routing to it; the risk is lost capacity. If all instances are affected, the cause is shared (database, IdP): expect the availability alerts too. An instance that was replaced stops reporting and its alert resolves after the series expires.
+`NeuronInstanceNotReady`, per `service_instance_id`. The instance's own readiness evaluation (the same checks as `/health/ready`) has failed for 5 minutes; a draining instance does not report, so this is not a deploy in progress. Call `/health/ready` and read the logs; the causes are the ones listed under Health Checks: the database unreachable (`checkpointer_unreachable`, see the pool runbook), or in jwt mode no usable signing keys (the IdP or its JWKS URL, see Signing keys and JWKS caching). The platform already stopped routing to it; the risk is lost capacity. If all instances are affected, the cause is shared (database, IdP): expect the availability alerts too. An instance that was replaced stops reporting and its alert resolves after the series expires.
 
 #### Runbook: postgres pool
 
