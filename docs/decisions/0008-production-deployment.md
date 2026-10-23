@@ -534,11 +534,15 @@ In staging and production, start-up fails when:
   `require` on a private network, only as open question 6 decides);
 - in production, `APP_EXPOSE_API_DOCS=true`;
 - the JWKS URL's host is loopback, link-local or private;
-- in production, `APP_AUTH_REQUIRE_TYP=false` when the chosen IdP issues `typ:
-  at+jwt` (open question 2 records which);
-- in production, `APP_HSTS_MAX_AGE_SECONDS=0`, once open question 13 is answered;
+- in production, `APP_HSTS_MAX_AGE_SECONDS=0` (open question 13, resolved: the
+  production API is TLS-only, so HSTS is always safe);
 - `APP_LANGSMITH_CONTENT_APPROVED=true` in production without an explicit
   acknowledgement that names the approval record.
+
+`APP_AUTH_REQUIRE_TYP=false` is deliberately not refused (open question 2, resolved):
+no identity provider is chosen, and a refusal would force `at+jwt` on providers that
+do not issue it. Issuer, audience, scope and expiry checks apply either way; set
+`APP_AUTH_REQUIRE_TYP=true` once the provider is known to issue RFC 9068 tokens.
 
 At every start-up the effective limit values (rate, burst, concurrency, budget,
 timeouts, limits backend) are logged once. Start-up database checks (decision 15)

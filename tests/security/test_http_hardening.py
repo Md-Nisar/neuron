@@ -30,13 +30,13 @@ def token(make_token: Callable[..., str]) -> dict[str, str]:
     return bearer(make_token())
 
 
-def _assert_security_headers(response: Any) -> None:
+def _assert_security_headers(response: Any, *, hsts: bool = False) -> None:
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["referrer-policy"] == "no-referrer"
     assert (
         response.headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
     )
-    assert "strict-transport-security" not in response.headers
+    assert ("strict-transport-security" in response.headers) is hsts
 
 
 # --- Settings ---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ def test_api_docs_are_not_found_in_production(
     response = api.client.get(path)
 
     assert response.status_code == 404
-    _assert_security_headers(response)
+    _assert_security_headers(response, hsts=True)
 
 
 @pytest.mark.parametrize("path", _DOCS_PATHS)

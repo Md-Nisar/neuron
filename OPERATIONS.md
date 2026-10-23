@@ -592,7 +592,7 @@ Clients that disconnect stop their run: model and tool calls are cancelled. A cl
 | `APP_CORS_ALLOWED_ORIGINS` | `[]` (CORS off) | JSON list of exact browser origins, such as `["https://app.example.com"]`. Each must be a lowercase `scheme://host[:port]` with no path or trailing slash, because browsers send exactly that. `*` is rejected. |
 | `APP_EXPOSE_API_DOCS` | `true` in development/test, `false` in staging/production | Serve `/docs`, `/redoc` and `/openapi.json`; otherwise they return `404`. The schema declares the bearer (`JWT`) scheme on every `/v1/*` route. |
 | `APP_ALLOWED_HOSTS` | `[]` (any host) | JSON list of accepted lowercase hostnames, without scheme or port (the port is ignored when matching); `*.example.com` matches subdomains. Other hosts get `400 Invalid host header`. `/health/*` is exempt, since probes usually address the instance by IP. Set it in production for self-hosted deployments. |
-| `APP_HSTS_MAX_AGE_SECONDS` | `0` (off) | Sends `Strict-Transport-Security: max-age=N`. Enable only when every client reaches the API over HTTPS. |
+| `APP_HSTS_MAX_AGE_SECONDS` | `0` (off) | Sends `Strict-Transport-Security: max-age=N`. Required (> 0) in production; enable elsewhere only when every client reaches the API over HTTPS. |
 
 CORS allows `GET`, `POST` and `DELETE` with the `Authorization`, `Content-Type` and `X-Correlation-ID` request headers, and exposes `Retry-After` and `X-Correlation-ID` to scripts. Preflights are cached for 10 minutes. Credentialed (cookie) CORS is never enabled: browsers send the bearer token in `Authorization`.
 
@@ -730,7 +730,7 @@ Before deploying to `staging`/`production`:
 - **JWKS host.** In staging and production `APP_AUTH_JWKS_URL` must not use `localhost` or a loopback, link-local or private IP literal. Host names are not resolved and redirects are not checked, so a public name that resolves to a private address, or a redirect to one, is not caught (accepted gap, `SECURITY.md`).
 - **LangSmith content.** In production `APP_LANGSMITH_CONTENT_APPROVED=true` also needs `APP_LANGSMITH_CONTENT_APPROVAL_RECORD` naming the approval (ticket, ADR or review reference; never a secret).
 - **Startup log.** The effective limits are logged once as `effective_limits` (rate, burst, concurrency, token budget, timeouts and the limits backend); check them after every deploy. Only the FastAPI app (`neuron-api`) emits this line, not an Agent Server deployment. With `APP_LANGSMITH_CONTENT_APPROVED=true` the approval record is logged once as `langsmith_content_capture_approved`.
-- Not yet enforced, pending ADR 0008 open questions 2 and 13: `APP_AUTH_REQUIRE_TYP=false` and `APP_HSTS_MAX_AGE_SECONDS=0` in production.
+- `APP_HSTS_MAX_AGE_SECONDS=0` is refused in production. `APP_AUTH_REQUIRE_TYP=false` is not refused (no identity provider is chosen); set it to `true` once the provider issues `typ: at+jwt`.
 - **Schedule `make prune-threads`** and align `APP_THREAD_RETENTION_DAYS` with your data-retention policy.
 - **Size the run guards.** Set `APP_RUN_TIMEOUT_SECONDS` and `APP_MAX_CONCURRENT_STREAMS` per instance, consistent with proxy timeouts and capacity.
 

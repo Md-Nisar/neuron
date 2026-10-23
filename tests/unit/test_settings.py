@@ -405,6 +405,13 @@ def test_production_refuses_exposed_api_docs() -> None:
     assert _hardened("staging", expose_api_docs=True).expose_api_docs is True
 
 
+def test_production_requires_hsts_and_staging_does_not() -> None:
+    with pytest.raises(ValidationError, match="APP_HSTS_MAX_AGE_SECONDS"):
+        _hardened("production", hsts_max_age_seconds=0)
+    assert _hardened("production").hsts_max_age_seconds > 0
+    assert _hardened("staging", hsts_max_age_seconds=0).hsts_max_age_seconds == 0
+
+
 @_BOTH
 @pytest.mark.parametrize(
     "host",

@@ -342,6 +342,7 @@ PRODUCTION_PROFILE: dict[str, Any] = {
     "postgres_dsn": "postgresql://app@db.example.test/neuron?sslmode=verify-full",
     "allowed_hosts": ["api.example.test", "testserver"],
     "trusted_proxies": [],
+    "hsts_max_age_seconds": 31_536_000,
 }
 
 

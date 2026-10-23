@@ -410,6 +410,11 @@ class Settings(BaseSettings):
                 self._require_sslmode(name, dsn, required_sslmode)
         if production and self.expose_api_docs:
             raise ValueError("APP_EXPOSE_API_DOCS=true is refused in production")
+        if production and not self.hsts_max_age_seconds:
+            raise ValueError(
+                "APP_HSTS_MAX_AGE_SECONDS must be greater than 0 in production "
+                "(the API is served over TLS only)"
+            )
         if (
             production
             and self.langsmith_content_approved
