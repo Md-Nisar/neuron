@@ -135,6 +135,7 @@ Thread ownership is HMAC-SHA256(`APP_IDENTITY_HASH_KEY`, issuer + subject). Chan
 - Rotate only if the key is exposed. The key alone grants no access (a caller still needs a valid token), but with database access it lets someone link threads to known identities.
 - To rotate, deploy the new key to every replica at once and let retention (`make prune-threads`) remove the orphaned threads, as in the v0.3 upgrade below. Tell users their earlier conversations are no longer available.
 - Keep the key identical across replicas and restarts; a mismatch makes threads appear and disappear depending on the replica.
+- `setup` stores a check value of the key (an HMAC of a fixed label, never the key) in `neuron_meta` the first time, and refuses a different key afterwards. To rotate on purpose, stop the web service, set the new key, then run `python -m neuron_agent.persistence.cli setup --rotate-identity-key` once by hand. Never leave `--rotate-identity-key` in a permanent pre-deploy command: it would accept any key. First write and rotation each emit an audit event (`identity_key_check_written`, `identity_key_check_rotated`; no key or value). Use a high-entropy key (`python -c "import secrets; print(secrets.token_urlsafe(32))"` or better), because the stored check value lets someone with database access test guesses offline. The start-up comparison in every process (ADR 0008 decision 16) is not implemented yet.
 
 Related settings: trusted proxies and per-user limits are under Rate Limiting, audit log routing under Logs and Traces, and the HTTP surface (CORS, docs, headers, hosts) under HTTP Surface.
 
@@ -506,15 +507,16 @@ With `APP_LIMITS_BACKEND=postgres` both guards are shared (ADR 0008 decision 8).
 
 ## Thread Persistence (Postgres)
 
-1. **Provision Postgres** 14 or newer; 16 is tested. Give the application a role that owns its schema.
+1. **Provision Postgres** 14 or newer; 16 is tested. Create the two roles once per environment (see Database roles below): the migrator owns the schema, the application role only reads and writes rows.
 2. **Configure** through the secret manager:
 
    ```text
    APP_CHECKPOINTER=postgres
-   APP_POSTGRES_DSN=postgresql://neuron:<password>@<host>:5432/neuron?sslmode=require
+   APP_POSTGRES_DSN=postgresql://neuron_app:<app-password>@<host>:5432/neuron?sslmode=require
+   APP_POSTGRES_MIGRATION_DSN=postgresql://neuron_migrator:<migrator-password>@<host>:5432/neuron?sslmode=require
    ```
 
-   The DSN is a `SecretStr` and is never logged.
+   The runtime DSN must name the **app role** (`neuron_app`), never the database owner or the migrator: a web process running as the schema owner can drop tables. The migration DSN is read by `setup` only. In production, settings refuse start-up when both DSNs use the same user, and the web process refuses to open its pool unless it is connected as `APP_POSTGRES_APP_ROLE` and that role is not a superuser, has no `BYPASSRLS`, is not a member of the schema owner and cannot `CREATE` in the schema. Staging may use one role (ADR 0008 decision 17), so neither check applies there. DSNs are `SecretStr`s and never logged.
 3. **Create or migrate the schema** as a deploy step, before the new version serves traffic: `python -m neuron_agent.persistence.cli setup` (`make db-setup` in a checkout; the runtime image has no `make`). It runs LangGraph's `AsyncPostgresSaver.setup()`, then neuron's own ordered migrations (`persistence/migrations.py`), each recorded in the `neuron_migrations` table; migration 1 is `neuron_checkpoints_owner_idx`, the index behind `/v1/me/*`. It exits non-zero on any failure, so a Render pre-deploy command cancels the deploy. Without the index, `/v1/me/*` still works but scans the `checkpoints` table.
    - **Migration DSN.** `APP_POSTGRES_MIGRATION_DSN` (a `SecretStr`, never logged or printed) is a direct, non-pooled connection as the migrator role. In staging and production `setup` requires it and never falls back to `APP_POSTGRES_DSN`; development and test fall back to the runtime DSN. Only `persistence.cli` reads it. Keep it out of the web process where the platform allows; the pre-deploy command shares the service environment on Render, so a test pins that only the CLI reads it (ADR 0008 open question 20).
    - **One at a time, and bounded.** `setup` holds a session-level advisory lock on that connection for its whole run, so concurrent runs (a pre-deploy and an operator) serialise; a second run waits up to five minutes. Transactional DDL runs with a `lock_timeout` of five seconds, so a migration blocked behind live traffic fails instead of queueing requests behind it; run `setup` again when it clears. Concurrent index builds run outside a transaction under a separate `lock_timeout` of ten minutes, because `CREATE INDEX CONCURRENTLY` also waits for older transactions to finish (a session idle in a repeatable-read or write transaction holds it up), and five seconds would fail the deploy and leave an `INVALID` index; a transaction that outlasts ten minutes still fails the deploy. An `INVALID` index left by a failed concurrent build is dropped and rebuilt on the next run, but only for a migration that names its `index`; an index that was recorded as applied and later dropped by hand is not repaired, and LangGraph's own indexes are out of scope.
@@ -531,6 +533,35 @@ With `APP_LIMITS_BACKEND=postgres` both guards are shared (ADR 0008 decision 8).
 Local Postgres for development: `docker compose up` starts the API and Postgres 16 with persistence enabled and the schema created on startup. Integration tests use any reachable database: `APP_TEST_POSTGRES_DSN=postgresql://... make test-integration`.
 
 **Agent Server deployments** don't use any of this: Agent Server provides its own persistence for the `langgraph.json` graph.
+
+### Database roles
+
+ADR 0008 decision 15. Two login roles per environment: `neuron_migrator` owns the schema and is used only by `setup` (`APP_POSTGRES_MIGRATION_DSN`); `neuron_app` is the runtime role (`APP_POSTGRES_DSN`, also used by `prune`). Create them once, as the database owner or an admin role, with `psql -v migrator_password=... -v app_password=... -f roles.sql` (choose the passwords yourself and keep them out of shell history and the repository):
+
+```sql
+CREATE ROLE neuron_migrator LOGIN PASSWORD :'migrator_password'
+    NOSUPERUSER NOCREATEDB NOCREATEROLE;
+CREATE ROLE neuron_app LOGIN PASSWORD :'app_password'
+    NOSUPERUSER NOCREATEDB NOCREATEROLE;
+GRANT CONNECT ON DATABASE :"DBNAME" TO neuron_migrator, neuron_app;
+-- The migrator owns the schema; nobody else may create objects in it. (Before Postgres 15
+-- PUBLIC can create in `public`, so this REVOKE is what keeps the app role from it.)
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+ALTER SCHEMA public OWNER TO neuron_migrator;
+-- WARNING: ALTER SCHEMA public OWNER TO ... is only safe on a database dedicated to Neuron.
+-- If tables already exist and another role owns them, transfer them first (below); setup
+-- verifies the grants took effect and fails in production if they did not.
+-- Only for a database that already holds neuron tables owned by another role:
+-- ALTER TABLE checkpoints, checkpoint_blobs, checkpoint_writes, checkpoint_migrations,
+--     neuron_migrations, neuron_run_leases OWNER TO neuron_migrator;
+```
+
+- **What `setup` grants.** After every run, as the migrator, `setup` grants the app role `USAGE` on the schema and `SELECT, INSERT, UPDATE, DELETE` on `checkpoints`, `checkpoint_blobs` and `checkpoint_writes`; `SELECT, INSERT, DELETE` on `neuron_run_leases`; nothing on `neuron_migrations`, `checkpoint_migrations` and `neuron_meta` (the identity check value is an offline oracle for a weak key, so the app role does not read it). It also sets default privileges so tables the migrator creates later (LangGraph's `setup()` after an upgrade, a future migration) are readable and writable by the app role. The app role never gets `CREATE`, `DROP`, `TRUNCATE`, `REFERENCES`, `TRIGGER` or ownership. The grants repeat on every run, so they are idempotent and a table added by an upgrade is covered. Each phase runs in one transaction, and a migration that creates a table is tightened in its own transaction, so a failed `setup` never leaves the app role with DML on a bookkeeping table. After granting, `setup` checks the result with `has_table_privilege` and logs `app_role_grants_applied` only if the matrix is what it intended (a `GRANT` by a role that does not own the table only warns); in production a mismatch, or an app role that is a superuser, has `BYPASSRLS`, is a member of the migrator or can `CREATE` in the schema, fails `setup` with a fixed message. A table a new migration adds that needs less than the default DML must be tightened in `persistence/migrations.py` (`table_grant_statements`).
+- **Role name.** `APP_POSTGRES_APP_ROLE` (default `neuron_app`) names the role `setup` grants to; it must match the user in `APP_POSTGRES_DSN`.
+- **Run as.** `python -m neuron_agent.persistence.cli setup` connects as the migrator; the web service and `prune` (`make prune-threads`) connect as the app role. Both commands are operator-only CLIs with no HTTP route.
+- **One role (staging only).** If the platform will not let you create roles (ADR 0008 decision 17, open question 20: not proven on Render's free plan), use one role for both DSNs. `setup` then logs `app_role_grants_skipped` and applies no grants, because the role that owns the tables already has every privilege. This leaves the web process able to drop tables, so it is accepted for a disposable staging database only. With `APP_ENV=production`, `setup` fails if the app role is missing or is the migrator itself.
+- **Checks.** `psql` as `neuron_app`: `DROP TABLE checkpoints` and `TRUNCATE checkpoints` must fail, and `CREATE TABLE x (a int)` must fail with `permission denied for schema`. The `postgres` tests run exactly this against a real database.
+- Not yet checked: that a managed database whose owner is not a superuser accepts the `ALTER SCHEMA ... OWNER TO` above (it may need `GRANT neuron_migrator TO <owner>` first), and that Render allows `CREATE ROLE` at all.
 
 ## Streaming Behind a Reverse Proxy
 

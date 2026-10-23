@@ -10,6 +10,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
 
+from psycopg.conninfo import conninfo_to_dict
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -92,6 +93,8 @@ class Settings(BaseSettings):
     postgres_dsn: SecretStr | None = None
     # Direct, non-pooled DSN of the migrator role; read only by `persistence.cli` (ADR 0008).
     postgres_migration_dsn: SecretStr | None = None
+    # The runtime role `setup` grants DML to (ADR 0008 decision 15); a plain role name.
+    postgres_app_role: str = Field(default="neuron_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
@@ -149,6 +152,14 @@ class Settings(BaseSettings):
     # Only the name LangSmith itself reads: an `APP_`-prefixed copy would pass validation
     # here and still leave the client without a key.
     langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
+
+    @field_validator("postgres_app_role")
+    @classmethod
+    def reject_reserved_role_names(cls, value: str) -> str:
+        """`pg_` names are reserved for Postgres' predefined roles."""
+        if value.startswith("pg_"):
+            raise ValueError("postgres_app_role must not start with pg_")
+        return value
 
     @field_validator("openai_api_key", "nvidia_api_key", "langsmith_api_key", mode="before")
     @classmethod
@@ -225,6 +236,31 @@ class Settings(BaseSettings):
             raise ValueError(
                 "APP_USER_TOKEN_BUDGET_WINDOW_SECONDS must be at least "
                 "APP_RUN_TIMEOUT_SECONDS + 15 when APP_LIMITS_BACKEND=postgres"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_database_roles(self) -> Settings:
+        """Production runs the web process and `setup` as different database users.
+
+        Staging may use one role (ADR 0008 decision 17, free plans); production may not. The
+        error never carries a DSN or a user name.
+        """
+        if self.env != "production" or not self.postgres_dsn or not self.postgres_migration_dsn:
+            return self
+        try:
+            users = [
+                conninfo_to_dict(dsn.get_secret_value()).get("user")
+                for dsn in (self.postgres_dsn, self.postgres_migration_dsn)
+            ]
+        except Exception:  # noqa: BLE001 - driver messages can echo the DSN
+            raise ValueError(
+                "APP_POSTGRES_DSN or APP_POSTGRES_MIGRATION_DSN is not valid"
+            ) from None
+        if users[0] == users[1]:
+            raise ValueError(
+                "APP_POSTGRES_DSN and APP_POSTGRES_MIGRATION_DSN must use different database "
+                "users in production (the runtime user must not own the schema)"
             )
         return self
 

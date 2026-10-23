@@ -194,3 +194,43 @@ async def test_startup_setup_failure_never_leaks_the_dsn() -> None:
     assert str(caught.value).startswith("schema setup failed: ")
     assert persistence.pool is not None
     await persistence.pool.close()
+
+
+async def test_open_closes_the_pool_when_the_role_check_is_cancelled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cancellation during the production role check must not leave the pool open."""
+    import asyncio
+
+    from neuron_agent.persistence import checkpointer as module
+
+    class _Conn:
+        async def __aenter__(self) -> _Conn:
+            return self
+
+        async def __aexit__(self, *exc: object) -> None:
+            return None
+
+    class _Pool:
+        closed = False
+
+        async def open(self, *, wait: bool) -> None:
+            return None
+
+        def connection(self) -> _Conn:
+            return _Conn()
+
+        async def close(self) -> None:
+            self.closed = True
+
+    async def cancelled(conn: object, role: str) -> None:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(module, "verify_runtime_role", cancelled)
+    pool = _Pool()
+    persistence = module.Persistence(  # type: ignore[call-overload,arg-type]
+        backend="postgres", checkpointer=None, pool=pool, app_role="neuron_app"
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await persistence.open()
+    assert pool.closed
