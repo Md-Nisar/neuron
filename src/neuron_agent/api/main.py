@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import importlib
 import ipaddress
 import json
 import math
@@ -703,8 +704,11 @@ class _DrainingServer(uvicorn.Server):
     `/health/ready` turns 503 before Uvicorn stops accepting connections. On SIGTERM the
     real stop is then delayed by `APP_SHUTDOWN_DRAIN_SECONDS`, so the platform keeps
     routing to a listening socket while it converges; Uvicorn's graceful timeout
-    (`APP_RUN_TIMEOUT_SECONDS + 10`) starts after that delay. A second signal, SIGINT or
-    a zero delay stops at once.
+    (`APP_RUN_TIMEOUT_SECONDS + 10`) starts after that delay. A second SIGTERM, a SIGINT
+    or a zero delay skips the delay and starts Uvicorn's graceful shutdown at once (no
+    force); only a SIGINT while `should_exit` is already set forces the exit. Open streams
+    are ended by sse-starlette from the delayed `super().handle_exit`, so they keep running
+    for the drain delay.
     """
 
     def __init__(self, config: uvicorn.Config, *, drain_seconds: float) -> None:
@@ -727,11 +731,18 @@ class _DrainingServer(uvicorn.Server):
             with super().capture_signals():
                 yield
         finally:
-            signal.signal(signal.SIGTERM, previous)
+            signal.signal(signal.SIGTERM, signal.SIG_DFL if previous is None else previous)
 
     def handle_exit(self, sig: int, frame: FrameType | None) -> None:
-        service.begin_drain()
-        if sig == signal.SIGTERM and self._drain_seconds > 0 and not self._exit_scheduled:
+        # Under `python -m` this module is `__main__` while Uvicorn serves the app from the
+        # imported copy; the service that answers requests is that copy's.
+        importlib.import_module("neuron_agent.api.main").service.begin_drain()
+        if (
+            sig == signal.SIGTERM
+            and self._drain_seconds > 0
+            and not self._exit_scheduled
+            and not self.should_exit
+        ):
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:
@@ -749,7 +760,10 @@ class _DrainingServer(uvicorn.Server):
 def build_server(config: Settings, **overrides: Any) -> uvicorn.Server:
     """The server `main()` runs; `overrides` replace Uvicorn options (tests bind port 0)."""
     options = {**uvicorn_options(config), **overrides}
-    return _DrainingServer(uvicorn.Config(**options), drain_seconds=config.shutdown_drain_seconds)
+    uvicorn_config = uvicorn.Config(**options)
+    # Each development reload restart would otherwise wait out the delay.
+    drain = 0.0 if uvicorn_config.should_reload else config.shutdown_drain_seconds
+    return _DrainingServer(uvicorn_config, drain_seconds=drain)
 
 
 def _run(server: uvicorn.Server) -> None:

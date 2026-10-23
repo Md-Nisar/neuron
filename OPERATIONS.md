@@ -54,12 +54,17 @@ and checks that a stale `uv.lock` fails the build. It pushes nothing.
 On SIGTERM `neuron-api` (a `uvicorn.Server` subclass overriding `handle_exit`, the handler Uvicorn 0.53 installs for SIGINT and SIGTERM; ADR 0008 decision 4) does this, in order:
 
 1. `/health/ready` returns `503 {"status": "not_ready"}` at once, and `service_draining` is logged once with `in_flight_runs`. Take the instance out of rotation on that probe.
-2. For `APP_SHUTDOWN_DRAIN_SECONDS` (default `5`, `0`-`60`) Uvicorn keeps accepting connections and new runs are still served, while the load balancer converges. Open streams already end with `service_shutting_down` within 2 s (below).
+2. For `APP_SHUTDOWN_DRAIN_SECONDS` (default `5`, `0`-`60`) Uvicorn keeps accepting connections and new runs are still served, while the load balancer converges. Open streams keep running for the whole delay (readiness is already 503); when the delay ends sse-starlette ends them with `service_shutting_down` within 2 s. A stream opened during the delay is cut shortly after the delay ends.
 3. After that delay Uvicorn stops accepting, and any `POST /v1/agent/*` on a connection still open gets `503 {"detail": "service_shutting_down"}` with `Retry-After: 1`.
 4. In-flight `invoke` runs finish, for up to `APP_RUN_TIMEOUT_SECONDS + 10` s (Uvicorn's graceful timeout, counted from step 3). A run still going then is cancelled: its partial token usage is charged and its thread and per-user slot are released. A SIGKILL skips this; lease expiry (ADR 0008 decision 8) covers it once the Postgres guards exist.
-5. The process exits `0`. A second SIGTERM, or SIGINT, skips the delay and stops at once.
+5. The process exits `0`. A second SIGTERM, or a SIGINT, skips the remaining delay and starts Uvicorn's graceful shutdown at once (no force); only a SIGINT while shutdown has already started forces the exit. With `--reload` (development) the delay is 0.
 
-The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10` (defaults: 5 + 120 + 10 = 135 s; Render `maxShutdownDelaySeconds: 150`). The app cannot read the platform value; the blueprint test in #150 enforces it. Raising either setting means raising the grace.
+The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10`, plus the work after the last request ends: the lifespan closes the database pool, and with `APP_OTEL_ENABLED=true` the telemetry flush can take up to `2 * APP_OTEL_EXPORT_TIMEOUT_SECONDS` (default 10 s each) when the Collector is down. Defaults: 5 + 120 + 10 = 135 s, or 155 s with OpenTelemetry on and the Collector down, plus the pool close. Render's `maxShutdownDelaySeconds: 150` therefore has no margin with OpenTelemetry on and the Collector down (and is exceeded by 5 s at the defaults if a run lasts the full timeout); lower `APP_RUN_TIMEOUT_SECONDS`, `APP_SHUTDOWN_DRAIN_SECONDS` or `APP_OTEL_EXPORT_TIMEOUT_SECONDS`, or raise the grace. The app cannot read the platform value; the blueprint test in #150 enforces it. Raising any of these settings means raising the grace.
+
+Known gaps, to revisit when the Postgres guards land (#136):
+
+- The test that cancels a run at the graceful timeout cancels at service level, not through Uvicorn's request task and its middleware layers. `_finish_usage` is not shielded from a second cancellation, and lifespan shutdown closes the pool while cancelled tasks' `finally` blocks may still run. All harmless with the in-memory guards.
+- `503 service_shutting_down` responses count as 5xx in the availability SLO burn on every deploy.
 
 ## Health Checks
 
@@ -462,7 +467,7 @@ location /v1/agent/stream {
 }
 ```
 
-Clients that disconnect stop their run: model and tool calls are cancelled. A client that stops reading for 30 s is disconnected. On shutdown, open streams receive `error {"code": "service_shutting_down", "retryable": true}` within 2 s, then `done`.
+Clients that disconnect stop their run: model and tool calls are cancelled. A client that stops reading for 30 s is disconnected. On shutdown, open streams keep running for `APP_SHUTDOWN_DRAIN_SECONDS`, then receive `error {"code": "service_shutting_down", "retryable": true}` within 2 s, then `done` (see Shutdown).
 
 ## HTTP Surface
 

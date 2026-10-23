@@ -183,6 +183,44 @@ async def test_run_cancelled_at_the_graceful_timeout_charges_usage_and_frees_its
     await service.shutdown()
 
 
+def test_reload_restarts_do_not_wait_for_the_drain_delay() -> None:
+    reloading = Settings(env="development", shutdown_drain_seconds=5)
+    assert api_main.build_server(reloading)._drain_seconds == 0  # type: ignore[attr-defined]
+    serving = Settings(env="test", shutdown_drain_seconds=5)
+    assert api_main.build_server(serving)._drain_seconds == 5  # type: ignore[attr-defined]
+
+
+async def test_sigterm_after_should_exit_is_not_delayed(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = Settings(env="test", shutdown_drain_seconds=30)
+    monkeypatch.setattr(api_main, "service", AgentService(config))
+    monkeypatch.setattr(AppStatus, "should_exit", False)
+    server = api_main.build_server(config, reload=False)
+    server.should_exit = True
+    server.handle_exit(signal.SIGTERM, None)
+    assert server._exit_scheduled is False  # type: ignore[attr-defined]
+
+
+def test_capture_signals_restores_the_default_when_there_was_no_previous_handler(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = signal.signal
+    original = signal.getsignal(signal.SIGTERM)
+
+    def forgetful(number: int, handler: Any) -> Any:
+        previous = real(number, handler)
+        return None if number == signal.SIGTERM and handler == signal.SIG_IGN else previous
+
+    server = api_main.build_server(Settings(env="test"), reload=False)
+    try:
+        monkeypatch.setattr(signal, "signal", forgetful)
+        with server.capture_signals():
+            pass
+        monkeypatch.setattr(signal, "signal", real)
+        assert signal.getsignal(signal.SIGTERM) == signal.SIG_DFL
+    finally:
+        real(signal.SIGTERM, original)
+
+
 # --- subprocess: the real entrypoint and a real SIGTERM ---------------------------
 
 
@@ -283,3 +321,32 @@ def test_sigterm_ends_streams_finishes_invokes_and_exits_zero(tmp_path: Path) ->
     assert status == 200
     assert '"code": "service_shutting_down"' in body
     assert body.index("service_shutting_down") < body.index("event: done")
+
+
+def test_readiness_turns_503_on_sigterm_under_python_dash_m(tmp_path: Path) -> None:
+    """`python -m` runs this module as `__main__`; Uvicorn serves the imported copy."""
+    port = _free_port()
+    env = {
+        **os.environ,
+        "APP_ENV": "test",
+        "APP_HOST": "127.0.0.1",
+        "APP_PORT": str(port),
+        "APP_SHUTDOWN_DRAIN_SECONDS": "5",
+    }
+    env.pop("PORT", None)
+    server = subprocess.Popen(  # noqa: S603
+        [sys.executable, "-m", "neuron_agent.api.main"],
+        cwd=tmp_path,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        _poll(lambda: _status(port, "/health/ready") == 200, "the server to be ready", 30)
+        server.send_signal(signal.SIGTERM)
+        _poll(lambda: _status(port, "/health/ready") == 503, "readiness to turn 503", 4)
+        assert server.wait(timeout=20) == 0
+    finally:
+        if server.poll() is None:
+            server.kill()
+            server.wait(timeout=10)
