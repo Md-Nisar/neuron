@@ -35,7 +35,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.graphs import main_graph
 from neuron_agent.observability import metrics
-from neuron_agent.persistence import guards, run_guard
+from neuron_agent.persistence import run_guard
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.persistence.run_guard import PostgresRunGuard
@@ -116,8 +116,6 @@ class ScriptedAgent:
 
 @contextmanager
 def _in_process(monkeypatch: pytest.MonkeyPatch, agent: ScriptedAgent) -> Any:
-    # The request rate limiter has no Postgres version yet (#148).
-    monkeypatch.setattr(guards, "_require_memory", lambda settings: None)
     monkeypatch.setattr(main_graph, "build_agent", lambda settings: agent)
     yield
 

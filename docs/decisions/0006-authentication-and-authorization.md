@@ -227,7 +227,7 @@ authentication or ownership model; that integration is implemented in issue #58.
   adds the shared guards behind `APP_LIMITS_BACKEND=postgres`: the thread-busy check and
   `APP_MAX_CONCURRENT_RUNS_PER_USER` are shared through Postgres run leases (the principal
   is still only the HMAC owner key) and the token budget through a Postgres ledger keyed by
-  the same owner key (#147); the rate limiter follows (#148).
+  the same owner key (#147), and the rate limiter's principal buckets use that key too (#148).
 
 ## Consequences
 

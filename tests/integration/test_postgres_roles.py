@@ -26,7 +26,7 @@ from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.persistence.checkpointer import build_persistence
-from neuron_agent.persistence.guards import build_run_guard
+from neuron_agent.persistence.guards import build_rate_limiter, build_run_guard
 from neuron_agent.persistence.migrations import (
     MIGRATIONS,
     IdentityKeyMismatch,
@@ -55,6 +55,7 @@ _EXPECTED_TABLES = {
     "neuron_run_leases",
     "neuron_token_ledger",
     "neuron_token_settlements",
+    "neuron_rate_buckets",
 }
 
 
@@ -194,7 +195,12 @@ async def test_app_role_runs_every_service_and_prune_query(role_db: RoleDatabase
         await service.shutdown()
 
     # Lease claim, release, thread hold and the retention sweep, through the real guard.
-    settings = _settings(role_db, checkpointer="none", limits_backend="postgres")
+    settings = _settings(
+        role_db,
+        checkpointer="none",
+        limits_backend="postgres",
+        identity_hash_key=SecretStr(_KEY_A),
+    )
     persistence = build_persistence(settings)
     await persistence.open()
     try:
@@ -218,6 +224,13 @@ async def test_app_role_runs_every_service_and_prune_query(role_db: RoleDatabase
         assert await guard.count_expired() == 1
         await prune_threads(persistence, older_than=timedelta(days=30), delete_leases=True)
         assert await guard.count_expired() == 0
+
+        # The rate limiter's upsert, its opportunistic delete and the retention delete.
+        limiter = build_rate_limiter(settings, persistence)
+        assert (await limiter.check("ip:probe")).allowed is True
+        await prune_threads(
+            persistence, older_than=timedelta(days=30), rate_bucket_idle_seconds=0.0
+        )
     finally:
         await persistence.close()
 
@@ -308,6 +321,7 @@ async def test_grants_are_exactly_the_documented_dml(role_db: RoleDatabase) -> N
         "neuron_run_leases": {"SELECT", "INSERT", "DELETE"},
         "neuron_token_ledger": dml,
         "neuron_token_settlements": {"SELECT", "INSERT", "DELETE"},
+        "neuron_rate_buckets": dml,
         "neuron_meta": set(),
         "neuron_migrations": set(),
         "checkpoint_migrations": set(),
