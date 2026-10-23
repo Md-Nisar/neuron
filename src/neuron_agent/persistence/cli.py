@@ -61,10 +61,15 @@ def _setup(settings: Settings) -> None:
 
 
 async def _prune(older_than_days: int) -> None:
-    persistence = build_persistence(get_settings())
+    settings = get_settings()
+    persistence = build_persistence(settings)
     await persistence.open()
     try:
-        await prune_threads(persistence, older_than=timedelta(days=older_than_days))
+        await prune_threads(
+            persistence,
+            older_than=timedelta(days=older_than_days),
+            delete_leases=settings.limits_backend == "postgres",
+        )
     finally:
         await persistence.close()
 

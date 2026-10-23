@@ -12,9 +12,11 @@ label a metric. Durations are seconds.
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from opentelemetry import metrics
+from opentelemetry.metrics import CallbackOptions, Observation
 from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
 from opentelemetry.util.types import AttributeValue
 
@@ -225,4 +227,18 @@ def record_checkpoint(seconds: float, *, outcome: str, error_type: str | None) -
     _instruments().checkpoint_duration.record(
         seconds,
         {semconv.NEURON_OUTCOME: outcome, **_error(error_type)},
+    )
+
+
+def observe_expired_leases(read: Callable[[], int]) -> None:
+    """Report `read()` as the gauge of run leases past `expires_at` (see `semconv`)."""
+
+    def observe(_: CallbackOptions) -> list[Observation]:
+        return [Observation(read())]
+
+    _meter().create_observable_gauge(
+        semconv.METRIC_RUN_LEASES_EXPIRED,
+        callbacks=[observe],
+        unit="{lease}",
+        description="Run leases past expires_at that are not yet deleted",
     )

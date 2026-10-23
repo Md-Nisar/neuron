@@ -46,6 +46,13 @@ class RunGuard(Protocol):
         """
         ...
 
+    async def hold_thread(self, *, thread_id: str, owner_key: str) -> RunLease:
+        """Hold `thread_id` while it is deleted: no run starts on it, and no cap is used.
+
+        Raises `RunClaimDenied("thread_busy")` when a run or another hold has the thread.
+        """
+        ...
+
     async def is_thread_active(self, thread_id: str) -> bool: ...
 
     async def active_threads_of(self, owner_key: str) -> frozenset[str]:
@@ -95,6 +102,18 @@ class InMemoryRunGuard:
                 self._active_runs_by_owner[owner_key] = remaining
             else:
                 self._active_runs_by_owner.pop(owner_key, None)
+
+        return RunLease(release)
+
+    async def hold_thread(self, *, thread_id: str, owner_key: str) -> RunLease:
+        if thread_id in self._active_threads:
+            raise RunClaimDenied("thread_busy")
+        self._active_threads.add(thread_id)
+        self._active_thread_owners[thread_id] = owner_key
+
+        async def release() -> None:
+            self._active_threads.discard(thread_id)
+            self._active_thread_owners.pop(thread_id, None)
 
         return RunLease(release)
 

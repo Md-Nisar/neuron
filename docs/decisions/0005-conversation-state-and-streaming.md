@@ -87,7 +87,7 @@ Rejected: WebSockets (bidirectional is not needed, and they're harder to proxy a
 
 ### 5. Concurrent runs on one thread
 
-The double-texting strategy is **reject**. A second run on a thread with a run in flight gets `409 thread_busy`, and the first run is unaffected. The guard is process-local (an in-memory set of active thread IDs), so it doesn't coordinate across replicas. This is the same documented limitation as ADR 0004's rate limiter.
+The double-texting strategy is **reject**. A second run on a thread with a run in flight gets `409 thread_busy`, and the first run is unaffected. With `APP_LIMITS_BACKEND=memory` the guard is process-local (an in-memory set of active thread IDs), so it doesn't coordinate across replicas. With `APP_LIMITS_BACKEND=postgres` it is shared: each run holds a lease row in Postgres, unique per thread, so a second run on the same thread is refused on whichever replica it lands (ADR 0008 decision 8; `persistence/run_guard.py`). `APP_MAX_CONCURRENT_RUNS_PER_USER` is shared the same way; `APP_MAX_CONCURRENT_STREAMS` stays per process, by design. The Postgres guard fails closed: if the database cannot answer, the run is refused with `503 persistence_error` and the model is not called.
 
 Rejected: enqueue, interrupt, and rollback (Agent Server's other multitask strategies). They need a run queue and cross-replica coordination, which ADR 0001 rules out without a requirement.
 
@@ -110,7 +110,7 @@ Rejected: enqueue, interrupt, and rollback (Agent Server's other multitask strat
 - Long-term or cross-thread memory (LangGraph `Store`).
 - Resumable or replayable streams.
 - WebSockets.
-- Multi-replica concurrency coordination.
+- Multi-replica concurrency coordination (in v0.3.0; added by ADR 0008 with `APP_LIMITS_BACKEND=postgres`).
 - Authentication: v0.4.0, defined by ADR 0006.
 
 ## Consequences
@@ -118,5 +118,5 @@ Rejected: enqueue, interrupt, and rollback (Agent Server's other multitask strat
 - Local development gets working multi-turn conversations with no setup. `make test` stays dependency-free.
 - Production gains durable conversations by configuring Postgres. Operators now own a database: setup, backups, retention, and capacity are documented in `OPERATIONS.md`.
 - `langgraph-checkpoint-postgres` and `psycopg[binary,pool]` become runtime dependencies.
-- The thread-busy guard and stream cap are per-process. Multi-replica deployments get correct persistence, but concurrent same-thread runs on different replicas aren't prevented.
+- With `APP_LIMITS_BACKEND=memory` (the default) the thread-busy guard and stream cap are per-process: multi-replica deployments get correct persistence, but concurrent same-thread runs on different replicas aren't prevented. With `APP_LIMITS_BACKEND=postgres` the thread-busy guard and the per-user run cap are shared through Postgres lease rows (ADR 0008 decision 8); the stream cap stays per process.
 - Streamed tokens may be cut short by an error. Clients must treat `final` as the authoritative answer.
