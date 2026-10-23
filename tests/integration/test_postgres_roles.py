@@ -28,12 +28,14 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.guards import build_run_guard
 from neuron_agent.persistence.migrations import (
-    AppRoleError,
+    MIGRATIONS,
     IdentityKeyMismatch,
+    Migration,
     identity_check_value,
     run_setup,
 )
 from neuron_agent.persistence.retention import prune_threads
+from neuron_agent.persistence.roles import AppRoleError
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.run_guard import RunClaimDenied
 from neuron_agent.services.agent_service import AgentService
@@ -302,11 +304,12 @@ async def test_grants_are_exactly_the_documented_dml(role_db: RoleDatabase) -> N
         "checkpoint_blobs": dml,
         "checkpoint_writes": dml,
         "neuron_run_leases": {"SELECT", "INSERT", "DELETE"},
-        "neuron_meta": {"SELECT"},
+        "neuron_meta": set(),
         "neuron_migrations": set(),
         "checkpoint_migrations": set(),
     }
-    # The app role cannot rewrite the identity check value.
+    # The app role can neither read nor rewrite the identity check value.
+    assert "permission denied" in await _denied(role_db.app_dsn, "SELECT value FROM neuron_meta")
     assert "permission denied" in await _denied(
         role_db.app_dsn, "UPDATE neuron_meta SET value = ''"
     )
@@ -426,3 +429,196 @@ async def test_setup_cli_enforces_the_identity_key_without_echoing_it(
     assert await _rows(role_db.migrator_dsn, "SELECT value FROM neuron_meta") == [
         (identity_check_value(_KEY_B),)
     ]
+
+
+# --- ordering, production verification and the runtime role check (review of #144) --------
+
+_BOOKKEEPING = ("neuron_migrations", "checkpoint_migrations", "neuron_meta")
+
+
+async def _app_dml_on_bookkeeping(db: RoleDatabase) -> dict[str, list[str]]:
+    found: dict[str, list[str]] = {}
+    for table in _BOOKKEEPING:
+        rows = await _rows(
+            db.migrator_dsn,
+            "SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE']) AS p"
+            " WHERE has_table_privilege(%s, %s, p)",
+            (db.roles.app, table),
+        )
+        found[table] = [row[0] for row in rows]
+    return found
+
+
+async def test_a_failed_setup_never_leaves_app_dml_on_the_bookkeeping_tables(
+    role_db: RoleDatabase,
+) -> None:
+    nothing = {table: [] for table in _BOOKKEEPING}
+    broken = Migration(version=6, name="broken", sql="SELECT 1/0")
+    # A migration fails after migrations 1 to 5 created the tables.
+    with pytest.raises(psycopg.errors.DivisionByZero):
+        await _setup(role_db, migrations=[*MIGRATIONS, broken], identity_hash_key=_KEY_A)
+    assert await _app_dml_on_bookkeeping(role_db) == nothing
+    # An identity mismatch fails after every migration is applied.
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    with pytest.raises(IdentityKeyMismatch):
+        await _setup(role_db, identity_hash_key=_KEY_B)
+    assert await _app_dml_on_bookkeeping(role_db) == nothing
+    # And so does a database where the defaults already exist and a table is added later.
+    async with await psycopg.AsyncConnection.connect(role_db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute("DROP TABLE neuron_meta")
+        await conn.execute("DELETE FROM neuron_migrations WHERE version = 5")
+    with pytest.raises(psycopg.errors.DivisionByZero):
+        await _setup(role_db, migrations=[*MIGRATIONS, broken])
+    assert await _app_dml_on_bookkeeping(role_db) == nothing
+
+
+async def test_production_setup_verifies_the_role_and_the_privilege_matrix(
+    role_db: RoleDatabase,
+) -> None:
+    with structlog.testing.capture_logs() as logs:
+        await _setup(role_db, require_app_role=True, identity_hash_key=_KEY_A)
+    assert any(entry["event"] == "app_role_grants_applied" for entry in logs)
+
+    # A GRANT by a role that does not own the table only warns; verification catches it.
+    async with await psycopg.AsyncConnection.connect(
+        _DSN, dbname=role_db.name, autocommit=True
+    ) as su:  # type: ignore[arg-type]
+        await su.execute(f"REVOKE ALL ON checkpoint_blobs FROM {role_db.roles.app}")  # nosec B608
+        await su.execute("ALTER TABLE checkpoint_blobs OWNER TO postgres")
+        await su.execute(f"GRANT ALL ON checkpoint_blobs TO {role_db.roles.migrator}")  # nosec B608
+    with structlog.testing.capture_logs() as logs, pytest.raises(AppRoleError) as caught:
+        await _setup(role_db, require_app_role=True)
+    assert "privileges" in str(caught.value)
+    assert not any(entry["event"] == "app_role_grants_applied" for entry in logs)
+    assert any(
+        entry["event"] == "app_role_grants_mismatch" and entry["tables"] == ["checkpoint_blobs"]
+        for entry in logs
+    )
+    # Outside production it is a warning, and "applied" is still not reported.
+    with structlog.testing.capture_logs() as logs:
+        await _setup(role_db)
+    assert not any(entry["event"] == "app_role_grants_applied" for entry in logs)
+
+
+async def _admin(db: RoleDatabase, statement: str) -> None:
+    async with await psycopg.AsyncConnection.connect(_DSN, dbname=db.name, autocommit=True) as conn:  # type: ignore[arg-type]
+        await conn.execute(statement)  # type: ignore[call-overload]
+
+
+@pytest.mark.parametrize(
+    ("grant", "revoke", "phrase"),
+    [
+        ("ALTER ROLE {app} BYPASSRLS", "ALTER ROLE {app} NOBYPASSRLS", "bypasses row-level"),
+        ("GRANT {migrator} TO {app}", "REVOKE {migrator} FROM {app}", "member of the migration"),
+        (
+            "GRANT CREATE ON SCHEMA public TO {app}",
+            "REVOKE CREATE ON SCHEMA public FROM {app}",
+            "can create",
+        ),
+    ],
+)
+async def test_production_setup_refuses_an_overprivileged_app_role(
+    role_db: RoleDatabase, grant: str, revoke: str, phrase: str
+) -> None:
+    names = {"app": role_db.roles.app, "migrator": role_db.roles.migrator}
+    await _admin(role_db, grant.format(**names))
+    try:
+        with pytest.raises(AppRoleError, match=phrase):
+            await _setup(role_db, require_app_role=True)
+        await _setup(role_db)  # outside production the attributes are not checked
+    finally:
+        await _admin(role_db, revoke.format(**names))
+    await _setup(role_db, require_app_role=True)
+
+
+async def test_production_setup_refuses_a_superuser_app_role(role_db: RoleDatabase) -> None:
+    with pytest.raises(AppRoleError, match="superuser"):
+        await run_setup(role_db.migrator_dsn, app_role="postgres", require_app_role=True)
+
+
+def _production_persistence(db: RoleDatabase, dsn: str, app_role: str) -> Any:
+    return build_persistence(
+        Settings.model_construct(
+            env="production",
+            checkpointer="postgres",
+            limits_backend="memory",
+            postgres_dsn=SecretStr(dsn),
+            postgres_app_role=app_role,
+        )
+    )
+
+
+async def test_production_start_up_accepts_only_the_least_privilege_app_role(
+    role_db: RoleDatabase,
+) -> None:
+    await _setup(role_db)
+    persistence = _production_persistence(role_db, role_db.app_dsn, role_db.roles.app)
+    await persistence.open()
+    try:
+        assert await persistence.is_ready() is True
+    finally:
+        await persistence.close()
+
+    # Connected as the migrator (the schema owner), or as a user that is not the app role.
+    for dsn in (role_db.migrator_dsn, role_db.dsn(role_db.roles.migrator)):
+        bad = _production_persistence(role_db, dsn, role_db.roles.app)
+        with pytest.raises(AppRoleError, match="not APP_POSTGRES_APP_ROLE") as caught:
+            await bad.open()
+        assert dsn not in str(caught.value)
+        assert not bad.is_open
+    # The migrator named as the app role is the schema owner.
+    owner = _production_persistence(role_db, role_db.migrator_dsn, role_db.roles.migrator)
+    with pytest.raises(AppRoleError, match="schema owner"):
+        await owner.open()
+    # A superuser.
+    assert _DSN
+    superuser = _production_persistence(
+        role_db, make_conninfo(_DSN, dbname=role_db.name), "postgres"
+    )
+    with pytest.raises(AppRoleError, match="superuser"):
+        await superuser.open()
+
+
+@pytest.mark.parametrize(
+    ("grant", "revoke", "phrase"),
+    [
+        ("GRANT {migrator} TO {app}", "REVOKE {migrator} FROM {app}", "member of the schema owner"),
+        (
+            "GRANT CREATE ON SCHEMA public TO {app}",
+            "REVOKE CREATE ON SCHEMA public FROM {app}",
+            "can create",
+        ),
+        ("ALTER ROLE {app} BYPASSRLS", "ALTER ROLE {app} NOBYPASSRLS", "bypasses row-level"),
+    ],
+)
+async def test_production_start_up_fails_closed_on_an_overprivileged_role(
+    role_db: RoleDatabase, grant: str, revoke: str, phrase: str
+) -> None:
+    await _setup(role_db)
+    names = {"app": role_db.roles.app, "migrator": role_db.roles.migrator}
+    await _admin(role_db, grant.format(**names))
+    try:
+        persistence = _production_persistence(role_db, role_db.app_dsn, role_db.roles.app)
+        with pytest.raises(AppRoleError, match=phrase) as caught:
+            await persistence.open()
+        assert role_db.roles.app_password not in str(caught.value)
+        assert not persistence.is_open
+    finally:
+        await _admin(role_db, revoke.format(**names))
+
+
+async def test_identity_key_audit_events_carry_no_key_or_value(role_db: RoleDatabase) -> None:
+    with structlog.testing.capture_logs() as logs:
+        await _setup(role_db, identity_hash_key=_KEY_A)
+        await _setup(role_db, identity_hash_key=_KEY_B, rotate_identity_key=True)
+    audits = [e for e in logs if e.get("audit") is True or e["event"].startswith("identity_key")]
+    events = [e["event"] for e in audits if e["event"].startswith("identity_key_check_")]
+    assert "identity_key_check_written" in events and "identity_key_check_rotated" in events
+    text = repr(audits)
+    for secret in (_KEY_A, _KEY_B, identity_check_value(_KEY_A), identity_check_value(_KEY_B)):
+        assert secret not in text
+    audit_rows = [e for e in logs if e.get("audit") is True]
+    assert {e["event"] for e in audit_rows} == {
+        "identity_key_check_written",
+        "identity_key_check_rotated",
+    }

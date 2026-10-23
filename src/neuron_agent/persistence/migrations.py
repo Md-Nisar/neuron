@@ -19,7 +19,7 @@ import asyncio
 import hashlib
 import hmac
 import time
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Collection, Sequence
 from dataclasses import dataclass
 
 import psycopg
@@ -27,6 +27,9 @@ import structlog
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg import sql
 from psycopg.rows import dict_row
+
+from neuron_agent.observability.audit import audit
+from neuron_agent.persistence.roles import AppRoleError, role_problems
 
 logger = structlog.get_logger(__name__)
 
@@ -58,13 +61,21 @@ CREATE TABLE IF NOT EXISTS neuron_migrations (
 _IDENTITY_LABEL = b"neuron.identity-key-check.v1"
 _IDENTITY_META_KEY = "identity_key_check"
 
-# Tables the app role may read and write, and the ones it gets less on (decision 15).
-# Bookkeeping tables (`neuron_migrations`, `checkpoint_migrations`) get nothing: only the
-# migrator reads them. `neuron_meta` is read-only for the app, so a compromised web process
-# cannot rewrite the identity check value. Leases are never updated, only claimed, released
-# and swept.
-_APP_DML_TABLES = ("checkpoints", "checkpoint_blobs", "checkpoint_writes")
-_APP_NO_ACCESS_TABLES = ("neuron_migrations", "checkpoint_migrations", "neuron_meta")
+# What the app role may do on each table (ADR 0008 decision 15). Bookkeeping tables get
+# nothing: only the migrator reads them, and `neuron_meta` holds a check value that is an
+# offline oracle for a weak identity key, so the app role does not read it either. Leases are
+# never updated, only claimed, released and swept.
+_DML = frozenset({"SELECT", "INSERT", "UPDATE", "DELETE"})
+_APP_PRIVILEGES: dict[str, frozenset[str]] = {
+    "checkpoints": _DML,
+    "checkpoint_blobs": _DML,
+    "checkpoint_writes": _DML,
+    "neuron_run_leases": frozenset({"SELECT", "INSERT", "DELETE"}),
+    "neuron_meta": frozenset(),
+    "neuron_migrations": frozenset(),
+    "checkpoint_migrations": frozenset(),
+}
+_CHECKED_PRIVILEGES = (*sorted(_DML), "TRUNCATE", "REFERENCES", "TRIGGER")
 
 
 class LockWaitTimeout(TimeoutError):
@@ -73,10 +84,6 @@ class LockWaitTimeout(TimeoutError):
 
 class IdentityKeyMismatch(Exception):
     """The database holds a different identity key check value. The text is fixed and safe."""
-
-
-class AppRoleError(Exception):
-    """The app role is unusable and `require_app_role` is set. The text is fixed and safe."""
 
 
 def identity_check_value(identity_hash_key: str) -> str:
@@ -158,7 +165,7 @@ ON neuron_run_leases (expires_at)
         version=5,
         name="neuron_meta",
         # Key/value facts about the deployment; `setup` stores the identity key check value
-        # here (ADR 0008 decision 16). Read-only for the app role (see `_grant_tables`).
+        # here (ADR 0008 decision 16). No access for the app role (see `table_grant_statements`).
         sql="""
 CREATE TABLE IF NOT EXISTS neuron_meta (
     key text PRIMARY KEY,
@@ -209,19 +216,28 @@ async def run_setup(
         await _acquire_lock(conn, lock_wait_seconds)
         await _set_lock_timeout(conn, timeout_ms)
         target = await _resolve_app_role(conn, app_role, require_app_role)
-        if target is not None:
-            await _grant_defaults(conn, target)  # before setup(): its tables are covered at once
         await AsyncPostgresSaver(conn).setup()
         await conn.execute(_CREATE_TABLE_SQL)
+        # Tables made so far had no default privileges (first run) or are tightened here.
+        # Later tables are tightened in the transaction that creates them.
+        after_ddl = (lambda c: _grant(c, target)) if target is not None else None
+        if after_ddl is not None:
+            await after_ddl(conn)
         applied = await _apply(
-            conn, MIGRATIONS if migrations is None else migrations, timeout_ms, concurrent_ms
+            conn,
+            MIGRATIONS if migrations is None else migrations,
+            timeout_ms,
+            concurrent_ms,
+            after_ddl,
         )
         if identity_hash_key:
             await _check_identity(conn, identity_hash_key, rotate_identity_key)
         else:
             logger.info("identity_key_check_skipped", reason="no key configured")
         if target is not None:
-            await _grant_tables(conn, target)
+            await _verify_role(conn, target, required=require_app_role)
+            if await _verify_grants(conn, target, required=require_app_role):
+                logger.info("app_role_grants_applied", app_role=target.name)
         return applied
     finally:
         await conn.close()  # also releases the session advisory lock
@@ -279,40 +295,98 @@ def default_privilege_statements(migrator: str, schema: str, app: str) -> list[s
     ]
 
 
-def table_grant_statements(schema: str, app: str) -> list[sql.Composed]:
+def table_grant_statements(
+    schema: str, app: str, present: Collection[str] | None = None
+) -> list[sql.Composed]:
     """Per-table grants, DML only: no CREATE, DROP, TRUNCATE, REFERENCES, TRIGGER or ownership.
 
     Idempotent and expand-only (the lint in `tests/unit/test_migrations_policy.py` runs on
-    these statements too). They also correct what the default privileges gave the
-    bookkeeping tables.
+    these statements too). They also take back what the default privileges gave the
+    bookkeeping tables. `present` limits them to tables that exist (None: all of them).
     """
 
-    def names(*tables: str) -> sql.Composed:
-        return sql.SQL(", ").join(sql.Identifier(schema, table) for table in tables)
+    def names(*tables: str) -> sql.Composed | None:
+        wanted = [t for t in tables if present is None or t in present]
+        return sql.SQL(", ").join(sql.Identifier(schema, t) for t in wanted) if wanted else None
 
     role = sql.Identifier(app)
-    return [
-        sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(
-            names(*_APP_DML_TABLES), role
-        ),
-        sql.SQL("GRANT SELECT, INSERT, DELETE ON {} TO {}").format(
-            names("neuron_run_leases"), role
-        ),
-        sql.SQL("REVOKE UPDATE ON {} FROM {}").format(names("neuron_run_leases"), role),
-        sql.SQL("REVOKE ALL ON {} FROM {}").format(names(*_APP_NO_ACCESS_TABLES), role),
-        sql.SQL("GRANT SELECT ON {} TO {}").format(names("neuron_meta"), role),
-    ]
+    dml = names("checkpoints", "checkpoint_blobs", "checkpoint_writes")
+    leases = names("neuron_run_leases")
+    bookkeeping = names("neuron_migrations", "checkpoint_migrations", "neuron_meta")
+    statements: list[sql.Composed] = []
+    if dml is not None:
+        statements.append(
+            sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(dml, role)
+        )
+    if leases is not None:
+        statements.append(sql.SQL("GRANT SELECT, INSERT, DELETE ON {} TO {}").format(leases, role))
+        statements.append(sql.SQL("REVOKE UPDATE ON {} FROM {}").format(leases, role))
+    if bookkeeping is not None:
+        statements.append(sql.SQL("REVOKE ALL ON {} FROM {}").format(bookkeeping, role))
+    return statements
 
 
-async def _grant_defaults(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole) -> None:
-    for statement in default_privilege_statements(role.migrator, role.schema, role.name):
-        await conn.execute(statement)
+async def _grant(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole) -> None:
+    """Default privileges and the table grants for the tables that exist, in one transaction,
+    so a crash cannot leave DML granted without the REVOKEs that follow it."""
+    async with conn.transaction():
+        cursor = await conn.execute(
+            "SELECT tablename::text AS name FROM pg_tables WHERE schemaname = %s", (role.schema,)
+        )
+        present = {str(row["name"]) for row in await cursor.fetchall()}
+        statements = [
+            *default_privilege_statements(role.migrator, role.schema, role.name),
+            *table_grant_statements(role.schema, role.name, present),
+        ]
+        for statement in statements:
+            await conn.execute(statement)
 
 
-async def _grant_tables(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole) -> None:
-    for statement in table_grant_statements(role.schema, role.name):
-        await conn.execute(statement)
-    logger.info("app_role_grants_applied", app_role=role.name)
+async def _verify_grants(
+    conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole, *, required: bool
+) -> bool:
+    """Check the privilege matrix with `has_table_privilege`: a GRANT by a role that does not
+    own the table only warns, so success of the statement proves nothing."""
+    wrong: list[str] = []
+    for table, expected in _APP_PRIVILEGES.items():
+        cursor = await conn.execute(
+            "SELECT p AS priv FROM unnest(%(privs)s::text[]) AS p"
+            " WHERE to_regclass(format('%%I.%%I', %(schema)s::text, %(table)s::text)) IS NOT NULL"
+            " AND has_table_privilege(%(role)s, format('%%I.%%I', %(schema)s::text,"
+            " %(table)s::text), p)",
+            {
+                "privs": list(_CHECKED_PRIVILEGES),
+                "schema": role.schema,
+                "table": table,
+                "role": role.name,
+            },
+        )
+        granted = {str(row["priv"]) for row in await cursor.fetchall()}
+        exists = await conn.execute(
+            "SELECT to_regclass(format('%%I.%%I', %(schema)s::text, %(table)s::text)) IS NOT NULL"
+            " AS found",
+            {"schema": role.schema, "table": table},
+        )
+        found = await exists.fetchone()
+        if found and found["found"] and granted != expected:
+            wrong.append(table)
+    if wrong:
+        logger.warning("app_role_grants_mismatch", tables=wrong)
+        if required:
+            raise AppRoleError("the app role's table privileges are not what setup grants")
+        return False
+    return True
+
+
+async def _verify_role(
+    conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole, *, required: bool
+) -> None:
+    """After granting in production: the app role must not be able to undo the split."""
+    if not required:
+        return
+    problems = await role_problems(conn, role.name, migrator=role.migrator)
+    if problems:
+        raise AppRoleError("the app role is too privileged: " + "; ".join(problems))
 
 
 async def _check_identity(
@@ -328,6 +402,12 @@ async def _check_identity(
         )
         if await cursor.fetchone() is not None:
             logger.info("identity_key_check_written")
+            audit(
+                "identity_key_check_written",
+                outcome="allowed",
+                action="identity_key:record",
+                resource_type="identity_key",
+            )
             return
         cursor = await conn.execute(
             "SELECT value FROM neuron_meta WHERE key = %s", (_IDENTITY_META_KEY,)
@@ -348,6 +428,12 @@ async def _check_identity(
             (value, _IDENTITY_META_KEY),
         )
         logger.warning("identity_key_check_rotated")
+        audit(
+            "identity_key_check_rotated",
+            outcome="allowed",
+            action="identity_key:rotate",
+            resource_type="identity_key",
+        )
 
 
 async def _acquire_lock(conn: psycopg.AsyncConnection[dict[str, object]], wait: float) -> None:
@@ -371,6 +457,8 @@ async def _apply(
     migrations: Sequence[Migration],
     timeout_ms: int,
     concurrent_ms: int,
+    after_ddl: Callable[[psycopg.AsyncConnection[dict[str, object]]], Awaitable[None]]
+    | None = None,
 ) -> list[int]:
     cursor = await conn.execute("SELECT version FROM neuron_migrations")
     done = {row["version"] for row in await cursor.fetchall()}
@@ -404,6 +492,9 @@ async def _apply(
             async with conn.transaction():
                 await conn.execute(migration.sql)
                 await _record(conn, migration)
+                if after_ddl is not None:
+                    # Same transaction: a table the migration made is tightened or not made.
+                    await after_ddl(conn)
         applied.append(migration.version)
         logger.info("migration_applied", version=migration.version, name=migration.name)
     return applied

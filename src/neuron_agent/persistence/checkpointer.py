@@ -24,6 +24,7 @@ from psycopg_pool import AsyncConnectionPool
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import metrics
 from neuron_agent.persistence import migrations
+from neuron_agent.persistence.roles import AppRoleError, verify_runtime_role
 
 logger = structlog.get_logger(__name__)
 
@@ -101,6 +102,8 @@ class Persistence:
     pool: AsyncConnectionPool[Any] | None = None
     ping_timeout_seconds: float = 2.0
     serde: JsonPlusSerializer | None = field(default=None, repr=False)
+    # Set in production: `open()` then refuses a runtime role that is not this least-privilege one.
+    app_role: str | None = None
     _opened: bool = field(default=False, init=False, repr=False)
 
     @property
@@ -113,6 +116,18 @@ class Persistence:
         if self.pool is None:
             return
         await self.pool.open(wait=False)
+        if self.app_role is not None:
+            try:
+                async with self.pool.connection() as conn:
+                    await verify_runtime_role(conn, self.app_role)
+            except AppRoleError:
+                await self.pool.close()
+                raise
+            except psycopg.Error as exc:
+                await self.pool.close()
+                raise AppRoleError(
+                    f"the runtime database role could not be checked: {type(exc).__name__}"
+                ) from None
         if self.backend == "postgres":
             self.checkpointer = instrument_checkpointer(
                 AsyncPostgresSaver(self.pool, serde=self.serde), self.backend
@@ -179,6 +194,7 @@ def build_persistence(settings: Settings) -> Persistence:
         pool=pool,
         ping_timeout_seconds=min(2.0, settings.postgres_pool_timeout_seconds),
         serde=serde,
+        app_role=settings.postgres_app_role if settings.env == "production" else None,
     )
 
 
