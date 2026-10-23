@@ -71,6 +71,14 @@ def test_only_the_virtualenv_is_in_app() -> None:
         )
 
 
+def test_no_pip_or_setuptools_in_the_runtime_image() -> None:
+    # The base image's pip and setuptools are removed; the app runs from /app/.venv (#140).
+    for module in ("pip", "setuptools", "pkg_resources"):
+        result = _docker("run", "--rm", "--entrypoint", "python", IMAGE, "-c", f"import {module}")
+        assert result.returncode != 0, module
+    assert _docker("run", "--rm", "--entrypoint", "which", IMAGE, "pip").returncode != 0
+
+
 def test_no_secret_files_under_app() -> None:
     assert _run("find", "/app", "-name", ".env*").strip() == ""
     # certifi ships cacert.pem inside site-packages, so key material is checked outside it.
