@@ -91,6 +91,8 @@ An attestation proves where and how the image was built, not that tests passed: 
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
+Each `/health/ready` result is also exported as the `neuron.service.ready` gauge (1 ready, 0 not), which the `NeuronInstanceNotReady` and `NeuronNoMetrics` alerts read (see "Service level objectives"); an instance reports it from its first probe.
+
 ## Identity Provider
 
 Staging and production require `APP_AUTH_MODE=jwt`: every `/v1/*` request carries an OAuth 2.0 access token that is a signed JWT (RFC 9068), issued by one OIDC-compliant identity provider (IdP). Neuron never issues tokens or stores users (ADR 0006).
@@ -248,6 +250,8 @@ are in seconds. Instruments:
 | `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |
 | `http.server.request.body.size`, `http.server.response.body.size` | histogram | `http.route`, `http.response.status_code` |
 | `http.server.active_requests` | up-down counter | none |
+| `neuron.service.ready` | observable gauge | none. `1` if the latest `/health/ready` probe passed, `0` if it failed; not reported until the first probe |
+| `neuron.db.pool.waiting` | observable gauge, `{request}` | none. Requests waiting for a Postgres pool connection (`requests_waiting` of the psycopg pool's `get_stats()`); reported only while a pool is open |
 
 `neuron.agent.cost` (estimated USD, ADR 0007 section 2) is not emitted: the estimated cost is
 deferred together with its pricing data.
@@ -327,9 +331,24 @@ provider error ratio =
 
 Caveats: a stream that fails after its `200` headers is not an availability failure (see the `neuron.agent.errors` counter, `neuron.outcome` on `neuron.agent.stream.ttft`, and the `stream_completed` log); `le="15"` and `le="30"` must stay bucket bounds in `observability/metrics.py`; a model call's duration and error include its retries, so a provider error is one that outlasted them. Time to first token is recorded only for streams that sent a token.
 
-**Alerts.** `deploy/observability/prometheus-alerts.yaml` holds recording rules for each ratio over 5m, 30m, 1h, 6h and 3d, and the multi-window, multi-burn-rate alerts of the Google SRE Workbook for each SLO: 14.4x over 1h and 5m (page; 2% of a 30-day budget in 1 h), 6x over 6h and 30m (page) and 1x over 3d and 6h (ticket). An alert fires only when both windows exceed `burn x budget`. For `ttft`, whose 10% budget makes 14.4x unreachable (a ratio of 1.44), the 1h and 5m page fires at 10x, when every stream is slow. Each `alert=True` error class in `errors/base.py` (`configuration_error`, `provider_error`, `provider_quota_exhausted`, `tool_execution_error`, `structured_output_error`, `persistence_error`, `agent_execution_error`) has the 14.4x and 6x pair against a provisional budget of 0.1% of `/v1` requests, using `neuron_agent_errors_total{error_type="<code>"}`. A test keeps the rules, the SLO list and the error classes in step. The rules are examples: load them with `promtool check rules` and route `severity` in Alertmanager. Nothing alerts on no traffic, since the ratios are undefined without requests.
+**Alerts.** `deploy/observability/prometheus-alerts.yaml` holds recording rules for each ratio over 5m, 30m, 1h, 6h and 3d, and the multi-window, multi-burn-rate alerts of the Google SRE Workbook for each SLO: 14.4x over 1h and 5m (page; 2% of a 30-day budget in 1 h), 6x over 6h and 30m (page) and 1x over 3d and 6h (ticket). An alert fires only when both windows exceed `burn x budget`. For `ttft`, whose 10% budget makes 14.4x unreachable (a ratio of 1.44), the 1h and 5m page fires at 10x, when every stream is slow. Each `alert=True` error class in `errors/base.py` (`configuration_error`, `provider_error`, `provider_quota_exhausted`, `tool_execution_error`, `structured_output_error`, `persistence_error`, `agent_execution_error`) has the 14.4x and 6x pair against a provisional budget of 0.1% of `/v1` requests, using `neuron_agent_errors_total{error_type="<code>"}`. A test keeps the rules, the SLO list and the error classes in step. The rules are examples: route `severity` in Alertmanager. The ratios are undefined without requests, so they never alert on no traffic; the service-health alerts below do.
 
-**Collector.** `deploy/observability/otel-collector.yaml` (pinned to `opentelemetry-collector-contrib` 0.120.0; validate it with `otelcol-contrib validate` before use, which this repository does not run) receives OTLP and runs, in this order, `memory_limiter`, the attribute allow-list, value redaction, tail sampling (traces only) and `batch`, then exports traces, metrics and logs over OTLP and metrics to Prometheus. Endpoints come from `OTEL_BACKEND_ENDPOINT`, `OTEL_BACKEND_AUTH_HEADER`, `OTEL_RECEIVER_HOST` and `PROMETHEUS_EXPORTER_ENDPOINT`.
+**Service-health and abuse alerts** (groups `neuron-service-health` and `neuron-rejections`; labelled `signal`, not `slo` or `error_type`; runbooks below):
+
+| Alert | Fires when | Severity |
+| --- | --- | --- |
+| `NeuronNoMetrics` | `absent(neuron_service_ready)`: no instance has reported for 10 minutes | page |
+| `NeuronInstanceNotReady` | `neuron_service_ready == 0` for 5 minutes, per instance | page |
+| `NeuronPostgresPoolSaturated` | `neuron_db_pool_waiting > 0` for 5 minutes, per instance | page |
+| `NeuronThreadBusyAnomaly` | `thread_busy` above 5% of `/v1` requests and 0.05 requests/s for 15 minutes | ticket |
+| `NeuronTooManyConcurrentRunsAnomaly` | the same for `too_many_concurrent_runs` | ticket |
+| `NeuronDeniedToolCallsSpike` | more than 10 `insufficient_scope` or `unknown_tool` policy blocks in 10 minutes | ticket |
+
+Instances push their metrics (see "Several workers"), so Prometheus has no `up` series per instance; an `up == 0` rule would only watch the Collector, which stays up while every application instance is dead. `NeuronNoMetrics` uses `absent()` on the readiness gauge instead. The Collector's prometheus exporter drops a series 5 minutes after its last update (`metric_expiration: 5m`), so `absent()` turns true 5 minutes after the last push from the last instance and `for: 5m` makes it 10 (a test checks that the two add up). It also fires when Prometheus cannot scrape the Collector, which is the same blindness. It watches all instances together: one dead instance among several is the `NeuronInstanceNotReady` case, or the gap in `count(neuron_service_ready)`. The readiness gauge is reported after an instance's first `/health/ready` probe, so the platform must probe it (it should already). When one Prometheus serves several environments, add `{deployment_environment_name="<env>"}` to the selectors. The thresholds of the last three alerts are provisional, like the error-class budgets.
+
+**Collector.** `deploy/observability/otel-collector.yaml` (pinned to `opentelemetry-collector-contrib` 0.120.0) receives OTLP and runs, in this order, `memory_limiter`, the attribute allow-list, value redaction, tail sampling (traces only) and `batch`, then exports traces, metrics and logs over OTLP and metrics to Prometheus. Endpoints come from `OTEL_BACKEND_ENDPOINT`, `OTEL_BACKEND_AUTH_HEADER`, `OTEL_RECEIVER_HOST` and `PROMETHEUS_EXPORTER_ENDPOINT`.
+
+**Validation in CI.** The `observability-config` job of the `ci` workflow runs `scripts/validate_observability.py check`: `promtool check rules` on the alert file and `otelcol-contrib validate` on the Collector config, with both binaries downloaded from their GitHub releases at pinned versions (Prometheus 3.5.0, Collector 0.120.0) and verified against a pinned SHA-256 before use. It then runs `reject-broken`, which proves that each tool exits non-zero on a broken fixture (`tests/fixtures/observability/`). To bump a tool, change its version, URL and hash together in the script, taking the hash from the release's published checksums file and from your own `sha256sum` of the download. Run the same command locally to check your edits (Linux amd64 only). `otelcol-contrib validate` needs `OTEL_BACKEND_ENDPOINT` set; the script supplies a placeholder.
 
 - The allow-list drops every attribute not emitted by `semconv.py`: resource, span, metric data point and log record attributes each have their own list, and span events lose all attributes. HTTP spans keep only method, route, status code, scheme and protocol version, which drops the URL path, user agent and peer address. A new attribute is blocked until it is added to `semconv.py`, the Collector list and the test.
 - Tail sampling keeps every trace with an error span, every trace slower than 30 s (the `run_duration` target) and 10% of the rest. Run the app with `APP_OTEL_TRACES_SAMPLE_RATIO=1.0` (head sampling would discard the errors first), and put a load-balancing exporter keyed by trace ID in front of several Collector replicas.
@@ -365,6 +384,26 @@ Caveats: a stream that fails after its `200` headers is not an availability fail
 | `structured_output_error` | The model returned output that failed the `AgentAnswer` schema or was empty. Check for a model or prompt change; run the evals (`make eval`). |
 | `persistence_error` | The checkpointer failed. Check Postgres and pool saturation (Thread Persistence); the pool reconnects once the database is back. |
 | `agent_execution_error` | An unclassified failure or the iteration cap. Read the server logs' `error_type`, and the trace for a tool loop. |
+
+#### Runbook: no metrics
+
+`NeuronNoMetrics`. No instance has pushed for 10 minutes, so every other alert is blind as well. Check, in order: Prometheus scraping the Collector's exporter (`PROMETHEUS_EXPORTER_ENDPOINT`, default port 8889; its own `up` for that target); the Collector process and its logs (a `memory_limiter` refusing data is logged there); the application's `APP_OTEL_ENABLED` and `OTEL_EXPORTER_OTLP_ENDPOINT` after a configuration change (the SDK logs `Failed to export ...`); and whether the instances are running at all (`/health/live`, the platform's instance list). If the service itself is down, the availability alerts cannot fire either, so treat this one as an outage until shown otherwise. An instance that is never probed on `/health/ready` reports no readiness gauge; fix the probe.
+
+#### Runbook: not ready
+
+`NeuronInstanceNotReady`, per `service_instance_id`. The instance's last `/health/ready` returned `503` for 5 minutes. Call it and read the logs; the causes are the ones listed under Health Checks: draining (a stuck rollout or shutdown; `service_draining`), the database unreachable (`checkpointer_unreachable`, see the pool runbook), or in jwt mode no usable signing keys (the IdP or its JWKS URL, see Signing keys and JWKS caching). The platform already stopped routing to it; the risk is lost capacity. If all instances are affected, the cause is shared (database, IdP): expect the availability alerts too. An instance that was replaced stops reporting and its alert resolves after the series expires.
+
+#### Runbook: postgres pool
+
+`NeuronPostgresPoolSaturated`. `neuron_db_pool_waiting` above zero for five 60 s samples in a row: requests wait for a connection, and after `APP_POSTGRES_POOL_TIMEOUT_SECONDS` they fail as `persistence_error`. Compare `neuron_checkpoint_duration_seconds` (a slow database holds connections longer) with the request rate (more load than `APP_POSTGRES_POOL_MAX_SIZE` allows). If the database is slow, fix that first (Thread Persistence); raising the pool only moves the queue. If load is the cause, raise `APP_POSTGRES_POOL_MAX_SIZE` within the database's `max_connections` across all instances, or add instances. A high-water mark that returns to zero between bursts is not this alert.
+
+#### Runbook: rejections
+
+`NeuronThreadBusyAnomaly`, `NeuronTooManyConcurrentRunsAnomaly`. A client causes these (`409 thread_busy`: a second run on a thread that has one in flight; `429 too_many_concurrent_runs`: a principal above its concurrent-run allowance), so a few are normal. Above 5% of `/v1` requests for 15 minutes is not. The metrics carry no user, so find the source in the logs: `user_limit_exceeded` with `limit_type=concurrent_runs` and the owner key prefix, and the `limit_exceeded` audit events, for the allowance; `agent_thread_busy` (no owner) for the thread, which points to the thread through the request's correlation ID. Usual causes: a client retrying on timeout while the first run is still going (it should wait or resume the thread), a double submit, a script above its allowance, or runs that are slow so that they overlap (check `run_duration`). Tell the owner of the client. Raise the allowance only for a legitimate workload.
+
+#### Runbook: denied tools
+
+`NeuronDeniedToolCallsSpike`. The model asked for a tool its caller's scopes do not allow (`insufficient_scope`) or one that does not exist (`unknown_tool`) more than ten times in 10 minutes. Tool calls are model output, so this is a signal of prompt injection or a changed model, not of an attacker holding credentials. The metric carries no user or tool; use the `authorization_denied` audit events (`resource_type=tool`, `reason` `insufficient_scope` or `unknown_tool`, with the bounded tool name and the actor) and the `execute_tool` spans with `neuron.outcome=denied`. One actor in most of them is a user probing or injecting; spread across many follows a model or prompt change (check the last deploy and the model identifier) or a scope misconfiguration. Nothing was executed: the denial happens in code before the call. Preserve the audit records, and follow the Security incident runbook if the inputs are hostile.
 
 ### Streaming and conversation-state events
 

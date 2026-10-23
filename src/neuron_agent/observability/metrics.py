@@ -12,9 +12,11 @@ label a metric. Durations are seconds.
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from opentelemetry import metrics
+from opentelemetry.metrics import CallbackOptions, Observation
 from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
 from opentelemetry.util.types import AttributeValue
 
@@ -111,6 +113,37 @@ class _Instruments:
     errors: metrics.Counter
     policy_blocks: metrics.Counter
     checkpoint_duration: metrics.Histogram
+    service_ready: metrics.ObservableGauge
+    db_pool_waiting: metrics.ObservableGauge
+
+
+# State the two observable gauges report. Neither is labelled, and neither holds a user, owner
+# key, thread or run: a readiness result and a count of waiting connection requests.
+_last_ready: bool | None = None
+_pool_waiting_source: Callable[[], int] | None = None
+
+
+def record_readiness(ready: bool) -> None:
+    """Remember the result of the latest `/health/ready` probe, reported as 1 or 0."""
+    global _last_ready
+    _last_ready = ready
+    _instruments()  # the gauge exists even when nothing else has been recorded yet
+
+
+def observe_pool_waiting(source: Callable[[], int] | None) -> None:
+    """Report `source()` (requests waiting for a pooled connection) each export; None stops."""
+    global _pool_waiting_source
+    _pool_waiting_source = source
+    _instruments()
+
+
+def _observe_ready(options: CallbackOptions) -> Iterable[Observation]:
+    # Nothing is reported until the first probe: there is no result to report yet.
+    return [] if _last_ready is None else [Observation(int(_last_ready))]
+
+
+def _observe_pool_waiting(options: CallbackOptions) -> Iterable[Observation]:
+    return [] if _pool_waiting_source is None else [Observation(_pool_waiting_source())]
 
 
 def _meter() -> metrics.Meter:
@@ -143,6 +176,17 @@ def _build(meter: metrics.Meter) -> _Instruments:
         ),
         checkpoint_duration=meter.create_histogram(
             semconv.METRIC_CHECKPOINT_DURATION, unit="s", description="Checkpointer operation"
+        ),
+        service_ready=meter.create_observable_gauge(
+            semconv.METRIC_SERVICE_READY,
+            callbacks=[_observe_ready],
+            description="1 if the latest readiness probe passed, 0 if it failed",
+        ),
+        db_pool_waiting=meter.create_observable_gauge(
+            semconv.METRIC_DB_POOL_WAITING,
+            callbacks=[_observe_pool_waiting],
+            unit="{request}",
+            description="Requests waiting for a Postgres pool connection",
         ),
     )
 

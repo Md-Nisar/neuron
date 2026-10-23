@@ -432,7 +432,9 @@ async def live() -> dict[str, str]:
 
 @app.get("/health/ready")
 async def ready() -> JSONResponse:
-    if not await service.is_ready() or not await auth_verifier.ready():
+    is_ready = await service.is_ready() and await auth_verifier.ready()
+    metrics.record_readiness(is_ready)
+    if not is_ready:
         return JSONResponse(status_code=503, content={"status": "not_ready"})
     return JSONResponse(content={"status": "ready", "environment": settings.env})
 

@@ -13,6 +13,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.metrics.export import Metric as SdkMetric
+from pydantic import SecretStr
 from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
 from neuron_agent.api.main import app
@@ -20,6 +21,7 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.graphs import main_graph
 from neuron_agent.models.factory import tracing_middleware
 from neuron_agent.observability import metrics, semconv, telemetry
+from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.services.agent_service import AgentService, PreparedRun
 
 _SUB = "raw-subject-7f3a"
@@ -236,6 +238,61 @@ def test_http_metrics_keep_only_route_and_status(collected: Collector) -> None:
         semconv.HTTP_RESPONSE_STATUS_CODE: 200,
     }
     assert tuple(point.explicit_bounds) == metrics.LLM_LATENCY_BUCKETS
+
+
+def _reported(collected: Collector, name: str) -> bool:
+    """Whether the metric has a data point now (the reader has no data at all if none does)."""
+    return collected.reader.get_metrics_data() is not None and name in collected.metrics()
+
+
+def test_readiness_gauge_reports_the_latest_probe_with_no_labels(
+    collected: Collector, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(metrics, "_last_ready", None)
+    metrics.observe_pool_waiting(None)  # builds the instruments
+    assert not _reported(collected, semconv.METRIC_SERVICE_READY)  # nothing probed yet
+
+    client = TestClient(app)
+    assert client.get("/health/ready").status_code == 200
+    [point] = collected.points(semconv.METRIC_SERVICE_READY)
+    assert point.value == 1 and dict(point.attributes) == {}
+
+    async def not_ready(self: object) -> bool:
+        return False
+
+    monkeypatch.setattr(AgentService, "is_ready", not_ready)
+    assert client.get("/health/ready").status_code == 503
+    [point] = collected.points(semconv.METRIC_SERVICE_READY)
+    assert point.value == 0 and dict(point.attributes) == {}
+
+
+@pytest.mark.anyio
+async def test_pool_waiting_gauge_follows_the_pool_and_stops_when_it_closes(
+    collected: Collector, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(metrics, "_pool_waiting_source", None)
+    settings = Settings(
+        env="test",
+        checkpointer="postgres",
+        postgres_dsn=SecretStr("postgresql://neuron:pw@127.0.0.1:1/neuron"),
+        postgres_pool_timeout_seconds=1,
+        openai_api_key=None,
+    )
+    persistence = build_persistence(settings)
+    assert persistence.pool is not None
+    assert not _reported(collected, semconv.METRIC_DB_POOL_WAITING)  # not opened yet
+
+    await persistence.open()
+    try:
+        [point] = collected.points(semconv.METRIC_DB_POOL_WAITING)
+        assert point.value == persistence.pool.get_stats()["requests_waiting"] == 0
+        assert dict(point.attributes) == {}
+        metrics.observe_pool_waiting(lambda: 4)  # the pool's own statistic, as the pool reports it
+        [point] = collected.points(semconv.METRIC_DB_POOL_WAITING)
+        assert point.value == 4
+    finally:
+        await persistence.close()
+    assert not _reported(collected, semconv.METRIC_DB_POOL_WAITING)
 
 
 def test_configure_telemetry_runs_once_per_process(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,0 +1,10 @@
+# Deliberately invalid: the expression is missing a closing parenthesis. `promtool check rules`
+# must reject it (scripts/validate_observability.py reject-broken, tests/unit/test_validate_observability.py).
+groups:
+  - name: broken
+    rules:
+      - alert: Broken
+        expr: sum(rate(neuron_agent_errors_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: page

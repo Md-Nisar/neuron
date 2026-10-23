@@ -1,11 +1,11 @@
 # OpenTelemetry Collector configuration for the Neuron agent service (ADR 0007, decision 8).
 #
 # Distribution: opentelemetry-collector-contrib, pinned to otel/opentelemetry-collector-contrib:0.120.0.
-# The config was written against that release and has NOT been validated with the
-# `otelcol-contrib validate` binary in this repository's CI (only parsed and checked by
-# tests/unit/test_observability_deploy.py). Validate before use:
-#   otelcol-contrib validate --config deploy/observability/otel-collector.yaml
-# Bump the version deliberately and re-validate.
+# CI validates it with that release's `otelcol-contrib validate` (scripts/validate_observability.py,
+# which pins the binary by version and SHA-256), and tests/unit/test_observability_deploy.py checks
+# its contents. By hand (the backend endpoint must be set, any value will do):
+#   OTEL_BACKEND_ENDPOINT=localhost:4317 otelcol-contrib validate --config deploy/observability/otel-collector.yaml
+# Bump the version deliberately: change it here and in scripts/validate_observability.py together.
 #
 # Flow: app --OTLP/HTTP--> receiver -> memory_limiter -> allow-list -> [tail_sampling] -> batch -> exporters.
 #
