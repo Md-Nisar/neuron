@@ -24,7 +24,14 @@ from psycopg_pool import AsyncConnectionPool
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import metrics
 from neuron_agent.persistence import migrations
-from neuron_agent.persistence.roles import AppRoleError, verify_runtime_role
+from neuron_agent.persistence.migrations import identity_check_value
+from neuron_agent.persistence.roles import verify_runtime_role
+from neuron_agent.persistence.startup_checks import (
+    DATABASE_CHECK_FAILED,
+    StartupCheckError,
+    verify_identity_key,
+    verify_tls,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -104,6 +111,10 @@ class Persistence:
     serde: JsonPlusSerializer | None = field(default=None, repr=False)
     # Set in production: `open()` then refuses a runtime role that is not this least-privilege one.
     app_role: str | None = None
+    # Set in staging and production: `open()` refuses a connection without TLS, and an identity
+    # key whose check value differs from the one `setup` recorded (ADR 0008 decisions 15, 16).
+    require_tls: bool = False
+    identity_check: str | None = field(default=None, repr=False)
     _opened: bool = field(default=False, init=False, repr=False)
 
     @property
@@ -116,22 +127,8 @@ class Persistence:
         if self.pool is None:
             return
         await self.pool.open(wait=False)
-        if self.app_role is not None:
-            try:
-                async with self.pool.connection() as conn:
-                    await verify_runtime_role(conn, self.app_role)
-            except AppRoleError:
-                await self.pool.close()
-                raise
-            except psycopg.Error as exc:
-                await self.pool.close()
-                raise AppRoleError(
-                    f"the runtime database role could not be checked: {type(exc).__name__}"
-                ) from None
-            except BaseException:
-                # Cancellation or an unexpected error must not leave a half-open pool behind.
-                await self.pool.close()
-                raise
+        if self.app_role is not None or self.require_tls or self.identity_check is not None:
+            await self._run_startup_checks()
         if self.backend == "postgres":
             self.checkpointer = instrument_checkpointer(
                 AsyncPostgresSaver(self.pool, serde=self.serde), self.backend
@@ -141,6 +138,34 @@ class Persistence:
         self._opened = True
         metrics.observe_pool_waiting(self._pool_waiting)
         logger.info("checkpointer_opened", backend=self.backend)
+
+    async def _run_startup_checks(self) -> None:
+        """Refuse start-up on the first failed check: log its code once, close the pool, raise."""
+        assert self.pool is not None  # nosec B101
+        failure: StartupCheckError | None = None
+        try:
+            async with self.pool.connection() as conn:
+                if self.require_tls:
+                    await verify_tls(conn)
+                if self.app_role is not None:
+                    await verify_runtime_role(conn, self.app_role)
+                if self.identity_check is not None:
+                    await verify_identity_key(conn, self.identity_check)
+        except StartupCheckError as exc:
+            failure = exc
+        except psycopg.Error as exc:
+            failure = StartupCheckError(
+                f"the database could not be checked: {type(exc).__name__}", DATABASE_CHECK_FAILED
+            )
+        except BaseException:
+            # Cancellation or an unexpected error must not leave a half-open pool behind.
+            await self.pool.close()
+            raise
+        if failure is not None:
+            await self.pool.close()
+            logger.error("database_startup_check_failed", error_code=failure.code)
+            # Raised outside the handler: a driver error must not stay in `__context__`.
+            raise failure
 
     async def close(self) -> None:
         """Close the connection pool, if any."""
@@ -198,6 +223,7 @@ def build_persistence(settings: Settings) -> Persistence:
         check=AsyncConnectionPool.check_connection,
         open=False,
     )
+    hardened = settings.env in {"staging", "production"}
     return Persistence(
         backend=backend,
         checkpointer=saver,
@@ -205,6 +231,12 @@ def build_persistence(settings: Settings) -> Persistence:
         ping_timeout_seconds=min(2.0, settings.postgres_pool_timeout_seconds),
         serde=serde,
         app_role=settings.postgres_app_role if settings.env == "production" else None,
+        require_tls=hardened,
+        identity_check=(
+            identity_check_value(settings.identity_hash_key.get_secret_value())
+            if hardened and settings.identity_hash_key is not None
+            else None
+        ),
     )
 
 

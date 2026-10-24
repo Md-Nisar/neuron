@@ -681,6 +681,18 @@ trials, run 39225629460). Both stay within NVIDIA's API terms.
   label, not the key) in a `neuron_meta` table the first time it runs. Every process
   compares its key's check value at start-up and refuses to become ready on mismatch,
   so a replica with a different key cannot orphan threads or split limits.
+- **Implementation (#139).** "Refuses to become ready" is implemented as refusing
+  start-up: the pool's first connection runs the TLS, role and identity checks, and a
+  failure closes the pool, logs one stable `error_code` and stops the process, as the role
+  check already did. The platform then keeps the previous release; a process that never
+  starts cannot answer `/health/ready`. The app role has no access to `neuron_meta` (the
+  check value is an offline oracle for a weak key), so the comparison is a migration-12
+  `SECURITY DEFINER` function, `neuron_identity_status(text)`, with a pinned
+  `search_path`, `EXECUTE` revoked from `PUBLIC` and granted to the app role only. It
+  returns `match`, `mismatch` or `unset` for the candidate and never the stored value. The
+  residual risk is a boolean guessing oracle for a holder of the app role, who already
+  holds the key's consumer (the web process) and is rate-limited by the database; keys
+  are at least 32 characters.
 - Rotating the key is a maintenance operation, not a rolling deploy: scale the web
   service to zero, update the key, update the check value, start again. It resets
   owner keys, budgets, rate-limit buckets and leases, and orphans existing threads

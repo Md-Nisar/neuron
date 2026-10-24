@@ -7,6 +7,7 @@ the migrator; everything the service and the prune CLI do then runs as the app r
 
 from __future__ import annotations
 
+import asyncio
 import os
 import secrets
 import subprocess  # nosec B404 - runs this repo's own CLI
@@ -25,6 +26,7 @@ from psycopg.conninfo import make_conninfo
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.persistence import cli
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.guards import build_rate_limiter, build_run_guard
 from neuron_agent.persistence.migrations import (
@@ -36,6 +38,7 @@ from neuron_agent.persistence.migrations import (
 )
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.persistence.roles import AppRoleError
+from neuron_agent.persistence.startup_checks import StartupCheckError
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.run_guard import RunClaimDenied
 from neuron_agent.services.agent_service import AgentService
@@ -557,7 +560,7 @@ async def test_production_setup_refuses_a_superuser_app_role(role_db: RoleDataba
 
 
 def _production_persistence(db: RoleDatabase, dsn: str, app_role: str) -> Any:
-    return build_persistence(
+    persistence = build_persistence(
         Settings.model_construct(
             env="production",
             checkpointer="postgres",
@@ -566,6 +569,8 @@ def _production_persistence(db: RoleDatabase, dsn: str, app_role: str) -> Any:
             postgres_app_role=app_role,
         )
     )
+    persistence.require_tls = False  # the CI server has no TLS; see the TLS tests below
+    return persistence
 
 
 async def test_production_start_up_accepts_only_the_least_privilege_app_role(
@@ -622,6 +627,7 @@ async def test_production_start_up_fails_closed_on_an_overprivileged_role(
         with pytest.raises(AppRoleError, match=phrase) as caught:
             await persistence.open()
         assert role_db.roles.app_password not in str(caught.value)
+        assert caught.value.code == "role_too_privileged"
         assert not persistence.is_open
     finally:
         await _admin(role_db, revoke.format(**names))
@@ -642,3 +648,157 @@ async def test_identity_key_audit_events_carry_no_key_or_value(role_db: RoleData
         "identity_key_check_written",
         "identity_key_check_rotated",
     }
+
+
+# --- start-up checks: TLS and identity key (#139) ------------------------------------------
+
+
+def _hardened(dsn: str, *, tls: bool = False, key: str | None = None) -> Any:
+    """Staging-shaped persistence (TLS and key checks; the role check is production-only)."""
+    persistence = build_persistence(
+        Settings.model_construct(
+            env="staging",
+            checkpointer="postgres",
+            limits_backend="memory",
+            postgres_dsn=SecretStr(dsn),
+            identity_hash_key=SecretStr(key) if key else None,
+        )
+    )
+    persistence.require_tls = tls  # the CI server has no TLS; the TLS tests set it themselves
+    return persistence
+
+
+async def test_identity_function_answers_match_mismatch_or_unset_and_hides_the_value(
+    role_db: RoleDatabase,
+) -> None:
+    ask = "SELECT neuron_identity_status(%s)"
+    mine = identity_check_value(_KEY_A)
+    await _setup(role_db)
+    assert await _rows(role_db.app_dsn, ask, (mine,)) == [("unset",)]
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    assert await _rows(role_db.app_dsn, ask, (mine,)) == [("match",)]
+    assert await _rows(role_db.app_dsn, ask, (identity_check_value(_KEY_B),)) == [("mismatch",)]
+    # The role still cannot read the table, and the function is not open to PUBLIC.
+    assert "permission denied" in await _denied(role_db.app_dsn, "SELECT * FROM neuron_meta")
+    assert await _rows(
+        role_db.migrator_dsn,
+        "SELECT count(*), bool_or(a.grantee = 0) FROM pg_proc p, aclexplode(p.proacl) a"
+        " WHERE p.proname = 'neuron_identity_status'",
+    ) == [(2, False)]
+    assert await _rows(
+        role_db.migrator_dsn,
+        "SELECT proconfig FROM pg_proc WHERE proname = 'neuron_identity_status'",
+    ) == [(["search_path=pg_catalog, pg_temp"],)]
+
+
+async def test_startup_identity_check_accepts_the_recorded_key_only(role_db: RoleDatabase) -> None:
+    await _setup(role_db)
+    unset = _hardened(role_db.app_dsn, key=_KEY_A)
+    with pytest.raises(StartupCheckError) as caught:
+        await unset.open()
+    assert caught.value.code == "identity_key_unrecorded"
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    good = _hardened(role_db.app_dsn, key=_KEY_A)
+    await good.open()
+    try:
+        assert await good.is_ready() is True
+    finally:
+        await good.close()
+    with structlog.testing.capture_logs() as logs:
+        bad = _hardened(role_db.app_dsn, key=_KEY_B)
+        with pytest.raises(StartupCheckError) as caught:
+            await bad.open()
+    assert caught.value.code == "identity_key_mismatch"
+    assert not bad.is_open
+    failures = [e for e in logs if e["event"] == "database_startup_check_failed"]
+    assert [e["error_code"] for e in failures] == ["identity_key_mismatch"]
+    text = repr(logs) + str(caught.value)
+    for secret in (_KEY_A, _KEY_B, identity_check_value(_KEY_A), identity_check_value(_KEY_B)):
+        assert secret not in text
+    assert role_db.roles.app_password not in text and role_db.app_dsn not in text
+
+
+async def test_startup_identity_check_without_the_function_is_unrecorded(
+    role_db: RoleDatabase,
+) -> None:
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    await _admin(role_db, "DROP FUNCTION neuron_identity_status(text)")
+    persistence = _hardened(role_db.app_dsn, key=_KEY_A)
+    with pytest.raises(StartupCheckError) as caught:
+        await persistence.open()
+    assert caught.value.code == "identity_key_unrecorded"
+
+
+async def test_startup_tls_check(role_db: RoleDatabase) -> None:
+    await _setup(role_db)
+    plain = _hardened(make_conninfo(role_db.app_dsn, sslmode="disable"), tls=True)
+    with structlog.testing.capture_logs() as logs:
+        with pytest.raises(StartupCheckError) as caught:
+            await plain.open()
+    assert caught.value.code == "tls_required"
+    assert [e["error_code"] for e in logs if e["event"] == "database_startup_check_failed"] == [
+        "tls_required"
+    ]
+    assert not plain.is_open
+    assert role_db.roles.app_password not in str(caught.value) + repr(logs)
+    # The app role reads its own row in pg_stat_ssl. With TLS on the server (not the CI service
+    # container) a `require` connection passes; without it the connection cannot be made.
+    secure = _hardened(make_conninfo(role_db.app_dsn, sslmode="require"), tls=True)
+    if (await _rows(role_db.app_dsn, "SELECT current_setting('ssl')"))[0][0] == "on":
+        await secure.open()
+        try:
+            assert await secure.is_ready() is True
+        finally:
+            await secure.close()
+    else:
+        with pytest.raises(StartupCheckError) as unreachable:
+            await secure.open()
+        assert unreachable.value.code == "database_check_failed"
+
+
+async def test_production_start_up_runs_the_identity_check_with_the_role_check(
+    role_db: RoleDatabase,
+) -> None:
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    settings = Settings.model_construct(
+        env="production",
+        checkpointer="postgres",
+        limits_backend="memory",
+        postgres_dsn=SecretStr(role_db.app_dsn),
+        postgres_app_role=role_db.roles.app,
+        identity_hash_key=SecretStr(_KEY_A),
+    )
+    good = build_persistence(settings)
+    good.require_tls = False
+    await good.open()
+    await good.close()
+    wrong_key = build_persistence(
+        settings.model_copy(update={"identity_hash_key": SecretStr(_KEY_B)})
+    )
+    wrong_key.require_tls = False
+    with pytest.raises(StartupCheckError) as caught:
+        await wrong_key.open()
+    assert caught.value.code == "identity_key_mismatch"
+
+
+async def test_prune_cli_applies_the_same_checks_and_exits_non_zero(
+    role_db: RoleDatabase, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    settings = Settings.model_construct(
+        env="staging",
+        checkpointer="postgres",
+        limits_backend="memory",
+        postgres_dsn=SecretStr(make_conninfo(role_db.app_dsn, sslmode="disable")),
+        identity_hash_key=SecretStr(_KEY_A),
+        log_level="WARNING",
+        thread_retention_days=30,
+    )
+    monkeypatch.setattr(cli, "get_settings", lambda: settings)
+    monkeypatch.setattr(cli, "configure_logging", lambda **_: None)
+    with pytest.raises(SystemExit) as exit_info:
+        await asyncio.to_thread(cli.main, ["prune"])
+    assert exit_info.value.code == 1
+    err = capsys.readouterr().err
+    assert "tls_required" in err
+    assert role_db.roles.app_password not in err and _KEY_A not in err
