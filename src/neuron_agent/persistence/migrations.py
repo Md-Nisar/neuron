@@ -79,6 +79,9 @@ _APP_PRIVILEGES: dict[str, frozenset[str]] = {
     "neuron_migrations": frozenset(),
     "checkpoint_migrations": frozenset(),
 }
+# The one function the app role may run: it answers whether a candidate check value matches the
+# one in `neuron_meta` without letting the role read that table (migration 12).
+_IDENTITY_FUNCTION = "neuron_identity_status"
 _CHECKED_PRIVILEGES = (*sorted(_DML), "TRUNCATE", "REFERENCES", "TRIGGER")
 
 
@@ -254,6 +257,32 @@ ON neuron_rate_buckets (refilled_at)
         concurrent=True,
         index="neuron_rate_buckets_refilled_idx",
     ),
+    Migration(
+        version=12,
+        name="identity_status_function",
+        # Start-up identity key check (ADR 0008 decision 16). The app role has no access to
+        # `neuron_meta`, so it asks this SECURITY DEFINER function (owned by the migrator, so it
+        # can read the table) whether its candidate check value matches: 'match', 'mismatch' or
+        # 'unset'. It never returns the stored value. `search_path` is pinned so no object the
+        # caller can create is resolved in its place; the schema is the migrator's current one.
+        sql="""
+DO $do$
+BEGIN
+    EXECUTE format($f$
+CREATE OR REPLACE FUNCTION %1$I.neuron_identity_status(candidate text) RETURNS text
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $body$
+SELECT coalesce(
+    (SELECT CASE WHEN value = candidate THEN 'match' ELSE 'mismatch' END
+     FROM %1$I.neuron_meta WHERE key = 'identity_key_check'),
+    'unset')
+$body$
+$f$, current_schema());
+    EXECUTE format(
+        'REVOKE ALL ON FUNCTION %I.neuron_identity_status(text) FROM PUBLIC', current_schema());
+END
+$do$
+""",
+    ),
 )
 
 
@@ -382,7 +411,8 @@ def table_grant_statements(
 
     Idempotent and expand-only (the lint in `tests/unit/test_migrations_policy.py` runs on
     these statements too). They also take back what the default privileges gave the
-    bookkeeping tables. `present` limits them to tables that exist (None: all of them).
+    bookkeeping tables. `present` limits them to tables (and the identity function) that
+    exist (None: all of them).
     """
 
     def names(*tables: str) -> sql.Composed | None:
@@ -395,6 +425,12 @@ def table_grant_statements(
     ledger = names("neuron_token_ledger", "neuron_rate_buckets")
     bookkeeping = names("neuron_migrations", "checkpoint_migrations", "neuron_meta")
     statements: list[sql.Composed] = []
+    if present is None or _IDENTITY_FUNCTION in present:
+        statements.append(
+            sql.SQL("GRANT EXECUTE ON FUNCTION {}(text) TO {}").format(
+                sql.Identifier(schema, _IDENTITY_FUNCTION), role
+            )
+        )
     if dml is not None:
         statements.append(
             sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(dml, role)
@@ -419,12 +455,25 @@ async def _grant(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRol
             "SELECT tablename::text AS name FROM pg_tables WHERE schemaname = %s", (role.schema,)
         )
         present = {str(row["name"]) for row in await cursor.fetchall()}
+        if await _identity_function_exists(conn, role.schema):
+            present.add(_IDENTITY_FUNCTION)
         statements = [
             *default_privilege_statements(role.migrator, role.schema, role.name),
             *table_grant_statements(role.schema, role.name, present),
         ]
         for statement in statements:
             await conn.execute(statement)
+
+
+async def _identity_function_exists(
+    conn: psycopg.AsyncConnection[dict[str, object]], schema: str
+) -> bool:
+    cursor = await conn.execute(
+        "SELECT to_regprocedure(format('%%I.%%I(text)', %s::text, %s::text)) IS NOT NULL AS found",
+        (schema, _IDENTITY_FUNCTION),
+    )
+    row = await cursor.fetchone()
+    return bool(row and row["found"])
 
 
 async def _verify_grants(
@@ -455,6 +504,29 @@ async def _verify_grants(
         found = await exists.fetchone()
         if found and found["found"] and granted != expected:
             wrong.append(table)
+    if await _identity_function_exists(conn, role.schema):
+        cursor = await conn.execute(
+            "SELECT has_function_privilege(%s, to_regprocedure(format('%%I.%%I(text)',"
+            " %s::text, %s::text)), 'EXECUTE') AS ok",
+            (role.name, role.schema, _IDENTITY_FUNCTION),
+        )
+        executable = await cursor.fetchone()
+        if not (executable and executable["ok"]):
+            wrong.append(_IDENTITY_FUNCTION)
+        # Hardened as migration 12 made it: SECURITY DEFINER, pinned search_path, no PUBLIC.
+        hardened = await conn.execute(
+            "SELECT p.prosecdef"
+            " AND coalesce(p.proconfig, '{}') @> ARRAY['search_path=pg_catalog, pg_temp']"
+            " AND NOT EXISTS (SELECT 1"
+            " FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a"
+            " WHERE a.grantee = 0) AS ok"
+            " FROM pg_proc p"
+            " WHERE p.oid = to_regprocedure(format('%%I.%%I(text)', %s::text, %s::text))",
+            (role.schema, _IDENTITY_FUNCTION),
+        )
+        row = await hardened.fetchone()
+        if not (row and row["ok"]) and _IDENTITY_FUNCTION not in wrong:
+            wrong.append(_IDENTITY_FUNCTION)
     if wrong:
         logger.warning("app_role_grants_mismatch", tables=wrong)
         if required:

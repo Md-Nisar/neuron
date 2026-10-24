@@ -25,7 +25,7 @@ from neuron_agent.observability.logging import configure_logging
 from neuron_agent.persistence import migrations
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
-from neuron_agent.persistence.roles import AppRoleError
+from neuron_agent.persistence.startup_checks import StartupCheckError
 
 
 class SetupError(Exception):
@@ -51,9 +51,11 @@ def _describe(exc: Exception) -> str:
     """Name a failure without its text: driver messages can echo hosts and credentials."""
     if isinstance(
         exc,
-        SetupError | migrations.LockWaitTimeout | migrations.IdentityKeyMismatch | AppRoleError,
+        SetupError | migrations.LockWaitTimeout | migrations.IdentityKeyMismatch,
     ):
         return str(exc)
+    if isinstance(exc, StartupCheckError):
+        return f"{exc.code}: {exc}"
     sqlstate = getattr(exc, "sqlstate", None) if isinstance(exc, psycopg.Error) else None
     return type(exc).__name__ + (f" (SQLSTATE {sqlstate})" if sqlstate else "")
 

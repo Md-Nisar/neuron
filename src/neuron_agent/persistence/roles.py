@@ -14,9 +14,18 @@ from typing import Any
 
 import psycopg
 
+from neuron_agent.persistence.startup_checks import (
+    ROLE_NOT_APP_USER,
+    ROLE_TOO_PRIVILEGED,
+    StartupCheckError,
+)
 
-class AppRoleError(Exception):
+
+class AppRoleError(StartupCheckError):
     """The app role is unusable or too privileged. The text is fixed and safe to print."""
+
+    def __init__(self, message: str, code: str = ROLE_TOO_PRIVILEGED) -> None:
+        super().__init__(message, code)
 
 
 _ROLE_SQL = """
@@ -54,7 +63,7 @@ async def verify_runtime_role(conn: psycopg.AsyncConnection[Any], app_role: str)
     cursor = await conn.execute("SELECT current_user::text AS name")
     row = await cursor.fetchone()
     if row is None or row["name"] != app_role:
-        raise AppRoleError("the database user is not APP_POSTGRES_APP_ROLE")
+        raise AppRoleError("the database user is not APP_POSTGRES_APP_ROLE", ROLE_NOT_APP_USER)
     problems = await role_problems(conn, app_role)
     if problems:
         raise AppRoleError("the runtime database role is too privileged: " + "; ".join(problems))
