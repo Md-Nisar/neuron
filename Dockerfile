@@ -1,7 +1,7 @@
 # Both bases are pinned by digest (the multi-arch index digest); the tag stays in the FROM line
 # and in the comment so Dependabot can bump tag and digest together.
 # ghcr.io/astral-sh/uv:0.11.29-python3.13-trixie-slim
-FROM ghcr.io/astral-sh/uv:0.11.29-python3.13-trixie-slim@sha256:0b973c14a35cb0dc8fe63a2e8c9919fd797ac566de13090fcf0df4a6b3994b78 AS builder
+FROM ghcr.io/astral-sh/uv:0.13.5-python3.13-trixie-slim@sha256:331fbb158258608b9391e802305a9a2c9e42d689435c1d98706647122a122ab0 AS builder
 ENV UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy
 WORKDIR /app
