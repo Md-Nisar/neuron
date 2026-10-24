@@ -802,3 +802,38 @@ async def test_prune_cli_applies_the_same_checks_and_exits_non_zero(
     err = capsys.readouterr().err
     assert "tls_required" in err
     assert role_db.roles.app_password not in err and _KEY_A not in err
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        "ALTER FUNCTION neuron_identity_status(text) SECURITY INVOKER",
+        "ALTER FUNCTION neuron_identity_status(text) OWNER TO {app}",
+    ],
+)
+async def test_startup_identity_check_refuses_a_function_that_is_not_the_migrators(
+    role_db: RoleDatabase, tamper: str
+) -> None:
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    await _admin(role_db, tamper.format(app=role_db.roles.app))
+    persistence = _hardened(role_db.app_dsn, key=_KEY_A)
+    with pytest.raises(StartupCheckError) as caught:
+        await persistence.open()
+    assert caught.value.code == "identity_check_unsafe"
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        "GRANT EXECUTE ON FUNCTION neuron_identity_status(text) TO PUBLIC",
+        "ALTER FUNCTION neuron_identity_status(text) RESET search_path",
+        "ALTER FUNCTION neuron_identity_status(text) SECURITY INVOKER",
+    ],
+)
+async def test_setup_refuses_a_loosened_identity_function(
+    role_db: RoleDatabase, tamper: str
+) -> None:
+    await _setup(role_db, identity_hash_key=_KEY_A)
+    await _admin(role_db, tamper)
+    with pytest.raises(AppRoleError):
+        await _setup(role_db, identity_hash_key=_KEY_A, require_app_role=True)

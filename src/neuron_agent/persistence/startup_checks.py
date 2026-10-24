@@ -20,6 +20,7 @@ ROLE_TOO_PRIVILEGED = "role_too_privileged"
 TLS_REQUIRED = "tls_required"
 IDENTITY_KEY_MISMATCH = "identity_key_mismatch"
 IDENTITY_KEY_UNRECORDED = "identity_key_unrecorded"
+IDENTITY_CHECK_UNSAFE = "identity_check_unsafe"
 DATABASE_CHECK_FAILED = "database_check_failed"
 
 
@@ -54,7 +55,15 @@ async def verify_identity_key(conn: psycopg.AsyncConnection[Any], check_value: s
     """
     status: str | None
     try:
-        cursor = await conn.execute("SELECT neuron_identity_status(%s) AS status", (check_value,))
+        # Whatever the session's search_path resolves must be the migrator's SECURITY DEFINER
+        # function, not one the app role created in an earlier schema.
+        cursor = await conn.execute(
+            "SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_proc p"
+            " WHERE p.oid = to_regprocedure('neuron_identity_status(text)')"
+            " AND p.prosecdef AND pg_get_userbyid(p.proowner) <> current_user)"
+            " THEN neuron_identity_status(%s) ELSE 'unsafe' END AS status",
+            (check_value,),
+        )
     except psycopg.errors.UndefinedFunction:
         # `setup` has not run migration 12 yet: nothing is recorded.
         status = "unset"
@@ -63,6 +72,11 @@ async def verify_identity_key(conn: psycopg.AsyncConnection[Any], check_value: s
         status = row["status"] if row else None
     if status == "match":
         return
+    if status == "unsafe":
+        raise StartupCheckError(
+            "the identity check function is not the migrator's SECURITY DEFINER function",
+            IDENTITY_CHECK_UNSAFE,
+        )
     if status == "unset":
         raise StartupCheckError(
             "no identity key check value is recorded; run setup with APP_IDENTITY_HASH_KEY",

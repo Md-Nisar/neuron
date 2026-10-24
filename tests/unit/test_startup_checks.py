@@ -52,6 +52,7 @@ async def test_tls_passes_only_on_ssl_true() -> None:
         ("mismatch", IDENTITY_KEY_MISMATCH),
         ("unset", IDENTITY_KEY_UNRECORDED),
         (None, IDENTITY_KEY_MISMATCH),
+        ("unsafe", "identity_check_unsafe"),
     ],
 )
 async def test_identity_key_failures_carry_a_stable_code(status: str | None, code: str) -> None:

@@ -513,6 +513,20 @@ async def _verify_grants(
         executable = await cursor.fetchone()
         if not (executable and executable["ok"]):
             wrong.append(_IDENTITY_FUNCTION)
+        # Hardened as migration 12 made it: SECURITY DEFINER, pinned search_path, no PUBLIC.
+        hardened = await conn.execute(
+            "SELECT p.prosecdef"
+            " AND coalesce(p.proconfig, '{}') @> ARRAY['search_path=pg_catalog, pg_temp']"
+            " AND NOT EXISTS (SELECT 1"
+            " FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a"
+            " WHERE a.grantee = 0) AS ok"
+            " FROM pg_proc p"
+            " WHERE p.oid = to_regprocedure(format('%%I.%%I(text)', %s::text, %s::text))",
+            (role.schema, _IDENTITY_FUNCTION),
+        )
+        row = await hardened.fetchone()
+        if not (row and row["ok"]) and _IDENTITY_FUNCTION not in wrong:
+            wrong.append(_IDENTITY_FUNCTION)
     if wrong:
         logger.warning("app_role_grants_mismatch", tables=wrong)
         if required:
