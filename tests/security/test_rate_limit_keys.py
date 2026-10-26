@@ -61,7 +61,21 @@ def test_forwarded_for_lines_are_joined(monkeypatch: pytest.MonkeyPatch) -> None
     assert api_main._client_ip(request) == "203.0.113.8"
 
 
-@pytest.mark.parametrize("bad", [b"203.0.113.8:4444", b"[2001:db8::1]", b"[2001:db8::1]:443", b"x"])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        b"x",
+        b"203.0.113.8:",
+        b"203.0.113.8:99999",
+        b"203.0.113.8:44:44",
+        b"[203.0.113.8]:443",
+        b"[2001:db8::1",
+        b"[2001:db8::1]:",
+        b"[2001:db8::1]:x",
+        b"[2001:db8::1]443",
+        b"2001:db8::1]:443",
+    ],
+)
 def test_unparseable_forwarded_entry_stops_the_walk_at_the_last_good_address(
     monkeypatch: pytest.MonkeyPatch, bad: bytes
 ) -> None:
@@ -73,6 +87,35 @@ def test_unparseable_forwarded_entry_stops_the_walk_at_the_last_good_address(
     assert api_main._client_ip(_request("10.2.3.4", b"198.51.100.77", bad + b", 10.9.9.9")) == (
         "10.9.9.9"
     )
+
+
+@pytest.mark.parametrize(
+    ("entry", "expected"),
+    [
+        (b"203.0.113.8", "203.0.113.8"),
+        (b"203.0.113.8:4444", "203.0.113.8"),
+        (b"2001:db8:9:9::7", "2001:db8:9:9::/64"),
+        (b"[2001:db8:9:9::7]", "2001:db8:9:9::/64"),
+        (b"[2001:db8:9:9::7]:443", "2001:db8:9:9::/64"),
+        (b"[::ffff:203.0.113.8]:443", "203.0.113.8"),
+    ],
+)
+def test_forwarded_entry_port_and_brackets_are_stripped(
+    monkeypatch: pytest.MonkeyPatch, entry: bytes, expected: str
+) -> None:
+    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
+
+    assert api_main._client_ip(_request("10.2.3.4", b"198.51.100.77, " + entry)) == expected
+    # A trusted hop with a port is still skipped, and the spoofed leftmost entry stays ignored.
+    chain = b"198.51.100.77, " + entry + b", 10.1.1.1:8080"
+    assert api_main._client_ip(_request("10.2.3.4", chain)) == expected
+
+
+def test_forwarded_port_cannot_hide_a_spoofed_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
+
+    # Garbage right of a real client stops the walk at the trusted peer, not at the left entry.
+    assert api_main._client_ip(_request("10.2.3.4", b"198.51.100.77:1, junk:1")) == "10.2.3.4"
 
 
 def test_forwarded_for_is_ignored_without_trusted_proxies(
