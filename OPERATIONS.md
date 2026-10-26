@@ -2,12 +2,44 @@
 
 ## Deployment
 
-Two deployment paths are supported:
+Two deployment paths are supported: the self-hosted container (`Dockerfile`) deployed on Render by the `render.yaml` Blueprint below, and LangGraph Agent Server/LangSmith using `langgraph.json` (not deployed, not release-gating). Production deployments must inject secrets through the platform secret manager.
 
-- LangGraph Agent Server/LangSmith using `langgraph.json`.
-- Self-hosted container using `Dockerfile`.
+### Reference deployment (Render)
 
-Production deployments must inject secrets through the platform secret manager.
+`render.yaml` (ADR 0008 decisions 1, 10 and 15) defines both environments. Everything in it is an assumption about Render until a staging deploy from it reaches `ready` and Render's validation passes; neither has been done (#150 acceptance criterion 2).
+
+| Piece | Staging | Production |
+| --- | --- | --- |
+| Web service (image `ghcr.io/md-nisar/neuron`) | `neuron-staging`, 1 instance | `neuron-production`, 2 instances |
+| Health check, pre-deploy | `/health/ready`; `python -m neuron_agent.persistence.cli setup` | same |
+| `maxShutdownDelaySeconds` | 180 | 180 |
+| Postgres 16 | `neuron-staging-db`, `ipAllowList: []` | `neuron-production-db`, `ipAllowList: []` |
+| Retention | cron `neuron-prune-staging`, daily 03:17 UTC, `... cli prune` | `neuron-prune-production` |
+| Collector (private service) | `neuron-collector-staging` | `neuron-collector-production` |
+| Limits backend | `postgres` | `postgres` |
+
+Plan names (`starter`, `basic-256mb`, `basic-1gb`) are placeholders for the owner's choice (ADR 0008 open question 1). Free plans suit a disposable staging only (decision 17): they have no pre-deploy command or cron plan, so for a free staging remove `preDeployCommand` and the cron service, run `setup` and `prune` by hand against the external connection, and accept `sslmode=require`.
+
+**First deploy, in order**
+
+1. Pick an image digest built from `main` and verify it (see "Published image and attestation"). Replace each `image.url` of the three web and cron services with `ghcr.io/md-nisar/neuron@sha256:<digest>`. A private package also needs a registry credential in the Render workspace (open question 14).
+2. Create the Blueprint in Render. It prompts for every `sync: false` value; leave the DSNs for step 4 (or enter placeholders and edit them later) because the roles do not exist yet.
+3. **Create the database roles**, once per environment, with the owner connection string from the Render Dashboard (`psql` from a shell inside Render, since `ipAllowList` is empty): run the `roles.sql` in "Database roles" (`neuron_migrator`, `neuron_app`; choose both passwords yourself).
+4. Set the secrets in the Dashboard. Each DSN is the **role's**, not the owner's, with `sslmode` in the string (`verify-full` in production; staging also accepts `require`; the Render internal connection string supports `require` only, so staging only until verified TLS is proven):
+   - web: `APP_POSTGRES_DSN` (`neuron_app`), `APP_POSTGRES_MIGRATION_DSN` (`neuron_migrator`), `APP_IDENTITY_HASH_KEY` (32+ characters, different per environment, identical on every instance), `OPENAI_API_KEY`, `APP_AUTH_ISSUER`, `APP_AUTH_JWKS_URL`.
+   - cron: the same except the migration DSN. `prune` loads the whole settings, so it needs the identity key, the issuer, the JWKS URL and the provider key too.
+   - Collector: `OTEL_BACKEND_ENDPOINT` and optionally `OTEL_BACKEND_AUTH_HEADER`, plus a secret file named `otel-collector.yaml` holding `deploy/observability/otel-collector.yaml`.
+5. Deploy. The pre-deploy `setup` runs as the migrator and grants the app role; a failure cancels the deploy and the previous release keeps serving. Run the smoke test (below).
+
+**Settings the Blueprint fixes.** Non-secret settings live in environment groups, one per role and environment (`neuron-web-*`, `neuron-cron-*`, `neuron-collector-*`): `APP_ENV`, `APP_AUTH_MODE=jwt`, a different `APP_AUTH_AUDIENCE` per environment, `APP_CHECKPOINTER=postgres`, `APP_LIMITS_BACKEND=postgres`, `APP_EXPOSE_API_DOCS=false`, `APP_ALLOWED_HOSTS`, `APP_TRUSTED_PROXIES=[]`, `APP_HSTS_MAX_AGE_SECONDS` (production), `APP_POSTGRES_POOL_MAX_SIZE` and `APP_OTEL_*`. Render does not allow `sync: false` in a group, so every secret is a service-level `sync: false` variable. Edit `APP_ALLOWED_HOSTS` to the real hostnames (the defaults assume `<service>.onrender.com`; a custom domain replaces them). `APP_TRUSTED_PROXIES` is `[]` (forwarded headers ignored, so per-IP limits see Render's proxy address) until Render's proxy range is confirmed (open question 5). `tests/unit/test_render_blueprint.py` checks the file: it holds no secret value, no `fromDatabase`, no unknown `APP_*` key, a shutdown delay above the drain formula, and settings that pass `Settings` validation.
+
+**Connection budget.** `max_connections` is set by the database plan; read it with `SHOW max_connections;` (not taken from documentation here). Per environment the peak is
+
+`web instances x APP_POSTGRES_POOL_MAX_SIZE + pre-deploy + cron + admin headroom`
+
+Production steady state: 2 x 10 = 20. During a rolling deploy old and new instances overlap, so budget 4 x 10 = 40, plus `setup` (up to 2), `prune` (a pool of 2) and 5 for admin access: 49 connections must fit under `max_connections`. If not, lower `APP_POSTGRES_POOL_MAX_SIZE` in the group or raise the database plan. More instances multiply the first term.
+
+**Who can read the secrets.** Environment variables and groups on Render are readable by every workspace member with access to the service and by any account-wide API key; that set can read production secrets, including the app DSN, the identity key and the provider key. The migration DSN sits in the web service's environment because pre-deploy shares it (ADR 0008 open question 20); only `persistence.cli` reads it, and a test pins that. Keep the workspace membership list short, keep production and staging in separate workspaces where the account allows, and rotate secrets when a member leaves. The Collector and cron services reference no web group and hold no web-only secret.
 
 ### Container image
 
@@ -61,7 +93,7 @@ On SIGTERM `neuron-api` (a `uvicorn.Server` subclass overriding `handle_exit`, t
 
 Signal-driven drain is POSIX only: Windows cannot deliver SIGTERM to a process, so the real-signal tests are skipped there (the target platform is Linux).
 
-The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10`, plus the work after the last request ends: the lifespan closes the database pool, and with `APP_OTEL_ENABLED=true` the telemetry flush can take up to `2 * APP_OTEL_EXPORT_TIMEOUT_SECONDS` (default 10 s each) when the Collector is down. Defaults: 5 + 120 + 10 = 135 s, or 155 s with OpenTelemetry on and the Collector down, plus the pool close. Render's `maxShutdownDelaySeconds: 150` therefore has no margin with OpenTelemetry on and the Collector down (and is exceeded by 5 s at the defaults if a run lasts the full timeout); lower `APP_RUN_TIMEOUT_SECONDS`, `APP_SHUTDOWN_DRAIN_SECONDS` or `APP_OTEL_EXPORT_TIMEOUT_SECONDS`, or raise the grace. The app cannot read the platform value; the blueprint test in #150 enforces it. Raising any of these settings means raising the grace.
+The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10`, plus the work after the last request ends: the lifespan closes the database pool, and with `APP_OTEL_ENABLED=true` the telemetry flush can take up to `2 * APP_OTEL_EXPORT_TIMEOUT_SECONDS` (default 10 s each) when the Collector is down. Defaults: 5 + 120 + 10 = 135 s, or 155 s with OpenTelemetry on and the Collector down, plus the pool close. `render.yaml` therefore sets `maxShutdownDelaySeconds: 180` (Render allows 1 to 300), not the 150 first proposed, which had no margin with OpenTelemetry on and the Collector down. The app cannot read the platform value; `tests/unit/test_render_blueprint.py` enforces the ordering. Raising any of these settings means raising the grace.
 
 Known gaps, to revisit when the Postgres guards land (#136):
 
