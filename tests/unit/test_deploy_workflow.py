@@ -158,3 +158,11 @@ def test_ci_must_have_passed_on_the_commit_before_any_deploy() -> None:
         position = _index(job, "--workflow ci.yml")
         assert position < _index(job, "deploy_tools.py trigger")
         assert "continue-on-error" not in _steps(job)[position]
+
+
+def test_the_staging_job_never_checks_out_the_triggering_run() -> None:
+    """CodeQL flags `ref: workflow_run.head_sha`; the scripts come from the default branch."""
+    checkout = _steps("staging")[0]
+    assert checkout["uses"].startswith("actions/checkout@")
+    assert "ref" not in checkout["with"]
+    assert checkout["with"]["persist-credentials"] is False
