@@ -22,6 +22,15 @@
 # Connection budget per environment (OPERATIONS.md): numInstances x APP_POSTGRES_POOL_MAX_SIZE,
 # plus the pre-deploy and cron connections, must stay under the plan's max_connections.
 
+# NOT DEPLOYABLE TO PRODUCTION YET (ADR 0008 open question 6): production requires
+# sslmode=verify-full, Render's internal connection string is assumed to support `require` only,
+# and the empty ipAllowList blocks the external hostname. Do not sync neuron-production until a
+# verify-full connection from the web service to its database is proven. Do not widen
+# ipAllowList (never 0.0.0.0/0) and do not weaken validate_production_profile to get past this.
+# Staging and production share one workspace and region here, so they share a private network:
+# keep them in separate Render workspaces (OPERATIONS.md) so staging cannot reach the production
+# Collector.
+
 services:
   # ---------------------------------------------------------------- staging
   - type: web

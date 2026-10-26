@@ -27,10 +27,11 @@ _GROUPS: dict[str, dict[str, str]] = {
 _WEB = [s for s in _SERVICES if s["type"] == "web"]
 _CRON = [s for s in _SERVICES if s["type"] == "cron"]
 _COLLECTORS = [s for s in _SERVICES if s["type"] == "pserv"]
+_IMAGE_PLACEHOLDER = "ghcr.io/md-nisar/neuron"
 _CLI = "python -m neuron_agent.persistence.cli"
 # Secrets the web service holds and no other role may reference.
 _WEB_ONLY_SECRETS = {"APP_POSTGRES_MIGRATION_DSN"}
-_SECRET_KEY = re.compile(r"(DSN|KEY|TOKEN|SECRET|PASSWORD|HEADER)")
+_SECRET_KEY = re.compile(r"(DSN|KEY|TOKEN|SECRET|PASSWORD|HEADER|BACKEND_ENDPOINT)")
 
 
 def _settings_names() -> set[str]:
@@ -97,10 +98,14 @@ def test_web_service_shape(service: dict[str, Any]) -> None:
     env = _env(service)
     assert service["runtime"] == "image"
     assert service["image"]["url"].startswith("ghcr.io/md-nisar/neuron")
-    assert not service["image"]["url"].endswith(":latest")
+    url = service["image"]["url"]
+    # Deploy by digest. The shipped file carries the untagged placeholder and must be replaced
+    # with `@sha256:<digest>` before the first sync; a mutable tag is never acceptable.
+    assert "@sha256:" in url or url == _IMAGE_PLACEHOLDER
     assert service["healthCheckPath"] == "/health/ready"
     assert service["preDeployCommand"] == f"{_CLI} setup"
     assert env["APP_ENV"] in {"staging", "production"}
+    assert "APP_POSTGRES_MIGRATION_DSN" in {e["key"] for e in service["envVars"] if "key" in e}
     assert env["APP_AUTH_MODE"] == "jwt"
     assert env["APP_EXPOSE_API_DOCS"] == "false"
     assert env["APP_CHECKPOINTER"] == "postgres"
