@@ -84,6 +84,8 @@ def test_postgres_runs_with_tls_and_the_tests_require_it() -> None:
     assert '"$POSTGRES_IMAGE"' in run
     assert "-c ssl=on" in run and "ssl_cert_file" in run and "ssl_key_file" in run
     assert "pg_isready -h 127.0.0.1" in run  # not the socket-only init server
+    # The container's postgres user (999) must reach the key: the 0700 temp dir is opened up.
+    assert 'chmod 755 "$certs"' in run and "chown 999:999" in run and "chmod 600" in run
     assert job["steps"].index(start) < next(
         i for i, s in enumerate(job["steps"]) if "pytest -m postgres" in s.get("run", "")
     )

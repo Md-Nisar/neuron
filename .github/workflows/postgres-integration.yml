@@ -35,6 +35,9 @@ jobs:
           certs="$(mktemp -d)"
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=localhost" \
             -keyout "$certs/server.key" -out "$certs/server.crt"
+          # `mktemp -d` is 0700 and owned by the runner; the container's postgres user (uid 999)
+          # must be able to enter the directory and must own the key (Postgres insists on 0600).
+          chmod 755 "$certs"
           sudo chown 999:999 "$certs/server.key" "$certs/server.crt"
           sudo chmod 600 "$certs/server.key"
           docker run -d --name postgres -p 5432:5432 \
