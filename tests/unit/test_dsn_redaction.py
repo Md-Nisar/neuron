@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from collections.abc import Iterator
 
 import pytest
@@ -10,7 +11,7 @@ from psycopg_pool import PoolTimeout
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.persistence import cli
+from neuron_agent.persistence import cli, dsn_redaction
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.dsn_redaction import DsnRedactionFilter
 
@@ -95,8 +96,6 @@ def test_filter_scrubs_message_args_and_exception_text() -> None:
     try:
         raise ValueError(f"bad conninfo password={_PASSWORD}")
     except ValueError:
-        import sys
-
         exc_info = sys.exc_info()
     record = logging.LogRecord(
         "psycopg.pool",
@@ -120,3 +119,12 @@ def test_setup_cli_failure_never_prints_the_password(
         cli._setup(_settings(_MALFORMED_DSN), rotate_identity_key=False)
     seen = capsys.readouterr()
     assert _PASSWORD not in seen.out + seen.err + "\n".join(captured.text)
+
+
+def test_a_second_install_keeps_redacting_the_first_dsn() -> None:
+    first = "postgresql://u:first-pw-1234@h/db"  # noqa: S105
+    second = "postgresql://u:second-pw-5678@h/db"  # noqa: S105
+    dsn_redaction.install_dsn_redaction(first)
+    redactor = dsn_redaction.install_dsn_redaction(second)
+    text = redactor.redact(f"{first} and {second} first-pw-1234 second-pw-5678")
+    assert "first-pw-1234" not in text and "second-pw-5678" not in text

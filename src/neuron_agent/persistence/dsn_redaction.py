@@ -19,7 +19,7 @@ import psycopg.conninfo
 _LOGGERS = ("psycopg", "psycopg.pool")
 _REDACTED = "***"
 # Fallbacks for a string `conninfo_to_dict` cannot parse: `://user:password@` and `password=...`.
-_URI_PASSWORD = re.compile(r"(://[^/\s:@]*:)[^@\s]*(@)")
+_URI_PASSWORD = re.compile(r"(://[^/\s:@]*:)[^/\s]*(@)")
 _KEYWORD_PASSWORD = re.compile(r"(password\s*=\s*)('(?:[^'\\]|\\.)*'|\S+)", re.IGNORECASE)
 
 
@@ -59,9 +59,16 @@ class DsnRedactionFilter(logging.Filter):
         return True
 
 
+_known_dsns: set[str] = set()
+
+
 def install_dsn_redaction(*dsns: str) -> DsnRedactionFilter:
-    """Attach a redaction filter for these DSNs to psycopg's loggers (replacing any earlier one)."""
-    redactor = DsnRedactionFilter(*dsns)
+    """Attach a redaction filter to psycopg's loggers covering every DSN seen so far.
+
+    Additive: a second call (another `Settings` in the same process) keeps the earlier DSNs.
+    """
+    _known_dsns.update(dsns)
+    redactor = DsnRedactionFilter(*sorted(_known_dsns))
     for name in _LOGGERS:
         target = logging.getLogger(name)
         for existing in [f for f in target.filters if isinstance(f, DsnRedactionFilter)]:

@@ -218,6 +218,124 @@ def build_persistence(settings: Settings) -> Persistence:
     dsn = settings.postgres_dsn.get_secret_value()
     # psycopg_pool logs the driver's error text, which can echo the DSN (issue #204).
     install_dsn_redaction(dsn)
+    pool: AsyncConnectionPool[Any] | None = None
+    ping_timeout_seconds: float = 2.0
+    serde: JsonPlusSerializer | None = field(default=None, repr=False)
+    # Set in production: `open()` then refuses a runtime role that is not this least-privilege one.
+    app_role: str | None = None
+    # Set in staging and production: `open()` refuses a connection without TLS, and an identity
+    # key whose check value differs from the one `setup` recorded (ADR 0008 decisions 15, 16).
+    require_tls: bool = False
+    identity_check: str | None = field(default=None, repr=False)
+    _opened: bool = field(default=False, init=False, repr=False)
+
+    @property
+    def is_open(self) -> bool:
+        """Whether the pool is open and the checkpointer usable (true without a database)."""
+        return self.pool is None or self._opened
+
+    async def open(self, *, run_setup: bool = False) -> None:
+        """Open the connection pool, create the saver, and optionally create the schema."""
+        if self.pool is None:
+            return
+        await self.pool.open(wait=False)
+        if self.app_role is not None or self.require_tls or self.identity_check is not None:
+            await self._run_startup_checks()
+        if self.backend == "postgres":
+            self.checkpointer = instrument_checkpointer(
+                AsyncPostgresSaver(self.pool, serde=self.serde), self.backend
+            )
+            if run_setup:
+                await setup_schema(self)
+        self._opened = True
+        metrics.observe_pool_waiting(self._pool_waiting)
+        logger.info("checkpointer_opened", backend=self.backend)
+
+    async def _run_startup_checks(self) -> None:
+        """Refuse start-up on the first failed check: log its code once, close the pool, raise."""
+        assert self.pool is not None  # nosec B101
+        failure: StartupCheckError | None = None
+        try:
+            async with self.pool.connection() as conn:
+                if self.require_tls:
+                    await verify_tls(conn)
+                if self.app_role is not None:
+                    await verify_runtime_role(conn, self.app_role)
+                if self.identity_check is not None:
+                    await verify_identity_key(conn, self.identity_check)
+        except StartupCheckError as exc:
+            failure = exc
+        except psycopg.Error as exc:
+            failure = StartupCheckError(
+                f"the database could not be checked: {type(exc).__name__}", DATABASE_CHECK_FAILED
+            )
+        except BaseException:
+            # Cancellation or an unexpected error must not leave a half-open pool behind.
+            await self.pool.close()
+            raise
+        if failure is not None:
+            await self.pool.close()
+            logger.error("database_startup_check_failed", error_code=failure.code)
+            # Raised outside the handler: a driver error must not stay in `__context__`.
+            raise failure
+
+    async def close(self) -> None:
+        """Close the connection pool, if any."""
+        if self.pool is None:
+            return
+        await self.pool.close()
+        self._opened = False
+        metrics.observe_pool_waiting(None)
+        if self.backend == "postgres":
+            self.checkpointer = None
+        logger.info("checkpointer_closed", backend=self.backend)
+
+    def _pool_waiting(self) -> int:
+        assert self.pool is not None  # nosec B101
+        return self.pool.get_stats()["requests_waiting"]
+
+    async def is_ready(self) -> bool:
+        """Return whether the backing store is reachable (always true without a database)."""
+        if self.pool is None:
+            return True
+        if not self.is_open:
+            return False
+        try:
+            async with asyncio.timeout(self.ping_timeout_seconds):
+                async with self.pool.connection() as conn:
+                    await conn.execute("SELECT 1")
+        except (TimeoutError, psycopg.Error) as exc:
+            logger.warning(
+                "checkpointer_unreachable", backend=self.backend, error_type=type(exc).__name__
+            )
+            return False
+        return True
+
+
+def build_persistence(settings: Settings) -> Persistence:
+    """Build (but do not open) the checkpointer selected by settings."""
+    serde = JsonPlusSerializer(allowed_msgpack_modules=_ALLOWED_MSGPACK_MODULES)
+    backend = settings.checkpointer
+    saver: BaseCheckpointSaver[Any] | None = None
+    if backend == "memory":
+        saver = instrument_checkpointer(InMemorySaver(serde=serde), "memory")
+    elif backend != "postgres":
+        backend = "none"
+    if backend != "postgres" and settings.limits_backend != "postgres":
+        return Persistence(backend=backend, checkpointer=saver)
+
+    # Settings validation guarantees a DSN when either backend is postgres.
+    assert settings.postgres_dsn is not None  # nosec B101
+    dsn = settings.postgres_dsn.get_secret_value()
+    # psycopg_pool logs the driver's error text, which can echo the DSN (issue #204).
+    install_dsn_redaction(
+        dsn,
+        *(
+            [settings.postgres_migration_dsn.get_secret_value()]
+            if settings.postgres_migration_dsn
+            else []
+        ),
+    )
     pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
         conninfo=dsn,
         max_size=settings.postgres_pool_max_size,
