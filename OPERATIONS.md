@@ -789,6 +789,122 @@ After each deploy run `SMOKE_TEST_TOKEN=<token> uv run python scripts/smoke_test
 - **Prefer workload identity federation.** Where the IdP supports it, exchange the CI job's GitHub OIDC token for the access token at run time, so no client secret is stored (ADR 0008, open question 2). Otherwise store the client secret as an Environment secret and add its rotation to the secret rotation runbook.
 - **Retention of its requests.** With `APP_CHECKPOINTER=none` (the staging and production default) nothing is stored. With persistence on, the run creates one thread owned by the smoke principal; the script then calls `DELETE /v1/threads/{id}`, which needs `threads:delete`. Without that scope the script warns and the thread stays until `make prune-threads` removes it after `APP_THREAD_RETENTION_DAYS`. Grant `threads:delete` to the smoke principal only on deployments that persist threads; it can delete only its own threads.
 
-## Rollback
+## Runbooks
 
-Rollback by redeploying the previous container image or reverting the LangSmith deployment to the previous repository revision. Before removing graph nodes or state fields, verify no active threads depend on them.
+The reference deployment is Render (ADR 0008). Every Render-specific statement below is an **assumption** until a staging deploy has run it, and every procedure here is **unrehearsed**: nothing has been executed on a real deployment, which the owner deferred for this milestone. Commands name the repository's own tools, so they can be checked offline; fix a step when a real run disagrees. Never put a DSN, password, key or hook URL in a ticket, a chat or a shell history.
+
+### Deploy
+
+1. **Path.** Merge to `main`. `ci` and `image-publish` run; when `image-publish` succeeds, `deploy.yml` deploys staging by digest (see "Deploy pipeline"). To release, bump the version in `pyproject.toml` with a matching `CHANGELOG.md` section, merge, then push a `v*` tag on `main`; approve the `production` Environment when prompted.
+2. **What pre-deploy does.** Render runs `python -m neuron_agent.persistence.cli setup` as the migrator before the new instances take traffic: LangGraph's schema, neuron's ordered migrations, grants for the app role, and the identity-key check value. A failure cancels the deploy and the previous release keeps serving.
+3. **Watch a rolling deploy.** In the Render Dashboard, open the service's Events and Logs. Expect the new instances to pass `/health/ready` before the old ones drain (`maxShutdownDelaySeconds: 180`). Meanwhile, `neuron.service.ready` and the `NeuronInstanceNotReady` alert (`deploy/observability/prometheus-alerts.yaml`) show readiness from the telemetry side. A deploy that never goes ready is rolled back by Render's health check; confirm with the next step.
+4. **Read the deployed digest.** The deploy job's log prints each service and its hook status; the digest is the `image-digest` artifact of the `image-publish` run for the commit (or tag). In the Dashboard the service shows the image reference it runs. They must be the same `@sha256:` value for every service of the environment.
+5. **Verify.** `SMOKE_TEST_TOKEN=<token> uv run python scripts/smoke_test.py <base-url>` (see "Smoke Test"); exit `0` means ready and one authenticated invoke answered.
+
+### Rollback
+
+Rollback is redeploying the previous digest; there are no down-migrations (ADR 0008 decision 7).
+
+1. **Choose the digest.** The previous release's `image-digest` artifact (the `image-publish` run of the previous tag's commit). Verify it with `gh attestation verify` as in "Published image and attestation".
+2. **Redeploy it.** Re-run the `deploy.yml` production job for that tag (a re-run keeps the original digest), or in the Dashboard set each production service to that digest. Do both web and cron to the same digest.
+3. **When it is safe.** Only while the previous release works against the current schema. Migrations are expand-only (add tables, nullable columns, concurrent indexes), so the previous release keeps working after a forward migration; a later release that contracts the schema (`contract_release` in `persistence/migrations.py`) cannot be rolled back past the release that stopped using the old shape. Check `neuron_migrations` against the previous release's `MIGRATIONS` list: the previous image must not need a table, column or index the database lacks.
+4. **When a migration must be reverted.** Write a new forward migration that undoes it (a release of its own, through the pipeline); never edit LangGraph's tables or `neuron_migrations` by hand, and never `DROP` anything to "fix" a deploy. A `langgraph-checkpoint-postgres` bump follows `docs/rollback-test-checkpoint-postgres.md`.
+5. **Verify** with the smoke test and `/health/ready`; record the digest rolled back to.
+
+For a LangSmith/Agent Server deployment (not release-gating), revert to the previous repository revision. Before removing graph nodes or state fields, verify no active threads depend on them.
+
+### Migration failure
+
+`setup` prints the exception class and SQLSTATE only. Find the cause in the pre-deploy log, fix it, and run `setup` again (idempotent).
+
+| Symptom | Cause | Action |
+| --- | --- | --- |
+| Pre-deploy exits non-zero; the previous release still serves | A migration failed or timed out | Read the class and SQLSTATE, fix, re-run `python -m neuron_agent.persistence.cli setup` as the migrator (a Render one-off job or the external connection). Do not edit `neuron_migrations`. |
+| `lock_timeout` (SQLSTATE `55P03`) | A transactional migration waited five seconds behind live traffic | Re-run when the blocking transaction ends; find it with `SELECT pid, state, query_start, left(query, 80) FROM pg_stat_activity WHERE state <> 'idle' ORDER BY query_start;`. |
+| "another setup held the migration lock for too long" | A second `setup` waited 300 seconds for the advisory lock while the first built a large index | Wait for the first to finish, then re-run. |
+| An `INVALID` index | A concurrent build failed | `setup` drops and rebuilds it on the next run, for a migration that names its `index`. Check with `SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid;`. |
+| A long-running concurrent index build | Older transactions holding it up (ten-minute lock budget) | Find idle-in-transaction sessions in `pg_stat_activity`, end them with the owner's approval, re-run. |
+| Start-up refuses with an `error_code` | See the start-up checks table under "Thread Persistence (Postgres)" | Fix the cause the table names; the pool is closed and the previous release keeps serving. |
+
+### Roles
+
+Create `neuron_migrator` and `neuron_app` once per environment with the `roles.sql` in "Database roles", then set the two DSNs (`APP_POSTGRES_MIGRATION_DSN` for the migrator, `APP_POSTGRES_DSN` for the app role). Verify as `neuron_app`: `DROP TABLE checkpoints` and `CREATE TABLE x (a int)` must fail.
+
+**Rotate a role's password** (both DSNs change, with a short overlap):
+
+1. `ALTER ROLE neuron_app PASSWORD '<new>';` as the owner. Existing pooled connections stay open; new ones need the new password.
+2. Update `APP_POSTGRES_DSN` in the web service and the cron job, redeploy, confirm `/health/ready`.
+3. Do the same for `neuron_migrator` and `APP_POSTGRES_MIGRATION_DSN` (the web service's environment; the pre-deploy shares it). Run `setup` once to prove the new migrator DSN.
+4. Record the date. The old passwords are no longer valid; nothing else to revoke.
+
+### Rotation
+
+Each secret, with a maximum age (a rule for the owner to adjust). Rotate sooner after any suspected exposure or when a person with access leaves.
+
+| Secret | Max age | Procedure |
+| --- | --- | --- |
+| `OPENAI_API_KEY` (provider key) | 90 days | Create the new key at the provider, set it on the web and cron services, redeploy, confirm a smoke test, revoke the old key. |
+| Database role passwords | 90 days | "Roles" above. |
+| IdP signing keys | Per the IdP | The IdP publishes the new key in its JWKS before signing with it; the service refetches the JWKS (see "Signing keys and JWKS caching"). Confirm tokens still verify; remove the old key at the IdP after tokens signed with it expire. |
+| Smoke-test credential (`SMOKE_TEST_TOKEN` source) | 90 days, or federate | Rotate the IdP client secret, update the Environment secret. Prefer workload identity federation (see "Smoke Test"). |
+| Deploy hooks (`DEPLOY_HOOKS`) | 180 days | In the Render Dashboard regenerate each service's deploy hook, update the Environment secret for that environment, and run a staging deploy. A leaked hook can trigger a deploy of the image it is given, not read data. |
+| `APP_IDENTITY_HASH_KEY` | Only on exposure | A maintenance operation, below. |
+
+**Rotate `APP_IDENTITY_HASH_KEY`.** It resets owner keys, budgets, buckets and leases, and orphans every thread: owners get `404` for their old threads, so tell users first.
+
+1. Announce the maintenance window. Generate the new key (`python -c "import secrets; print(secrets.token_urlsafe(32))"`).
+2. Scale the web service to zero (Dashboard) so no instance runs with the old key; keep the cron job from running during the window.
+3. Set the new key on the web and cron services.
+4. Run `python -m neuron_agent.persistence.cli setup --rotate-identity-key` once, by hand, as the migrator. Never leave that flag in the pre-deploy command.
+5. Scale the web service back up. Run the smoke test. `make prune-threads` removes the orphaned threads at retention.
+6. Record the date and that the threads were orphaned.
+
+### Backups and restore
+
+Assumptions to confirm in the Render account: the PITR window of the chosen plan, that backups are encrypted and keyed by Render, and the plan's backup retention. Record them here when known: window ____, encryption ____, retention ____.
+
+- **Relation to retention.** A backup keeps threads that `APP_THREAD_RETENTION_DAYS` or a user's erasure later deleted, until the backup expires; size backup retention against the data-retention policy.
+- **Replaying erasures after a restore.** After restoring to a point in time, re-apply every erasure made after that point: the audit log records each erasure (`thread_deleted`, `user_data_erased`; see "Conversation Retention and Deletion") with the actor and time; re-run each one, then `python -m neuron_agent.persistence.cli prune`. Do not return the restored database to service before the replay.
+- **Restore to a new database** (the production database is not overwritten):
+  1. Start the restore to a new Render Postgres instance from the Dashboard (point in time or latest backup). Keep `ipAllowList: []`.
+  2. Create the roles with `roles.sql` and run `setup` as the migrator (it adds grants and is idempotent); the identity key must be the same value as production or every thread is orphaned.
+  3. Point a staging copy of the service at it (never production) and run the smoke test; count threads: `SELECT count(*) FROM checkpoints;`.
+  4. Record the restore start, the time it was usable (RTO) and the age of the newest restored data (RPO), using the template below.
+  5. Delete the restored instance after the drill, and record the deletion.
+
+  | Field | Value |
+  | --- | --- |
+  | Date, operator | |
+  | Backup or PITR timestamp | |
+  | Restore started / usable (RTO) | |
+  | Newest data restored (RPO) | |
+  | Smoke test result | |
+  | Restored instance deleted at | |
+
+  The restore has not been rehearsed (scope: ADR 0008 open question 15); rehearse it at the release gate.
+
+### Capacity
+
+Table sizes against the plan's storage. Run as the owner or migrator:
+
+```sql
+SELECT relname, pg_size_pretty(pg_total_relation_size(oid)) AS total
+FROM pg_class
+WHERE relname IN ('checkpoints', 'checkpoint_blobs', 'checkpoint_writes',
+                  'neuron_run_leases', 'neuron_token_ledger',
+                  'neuron_token_settlements', 'neuron_rate_buckets')
+ORDER BY pg_total_relation_size(oid) DESC;
+SELECT pg_size_pretty(pg_database_size(current_database()));
+```
+
+Threshold: investigate when the database passes 70% of the plan's storage, and raise the plan or shorten `APP_THREAD_RETENTION_DAYS` before 85%. The checkpoint tables dominate; the guard tables stay small (the daily prune deletes expired rows).
+
+### Platform facts
+
+Assumed for Render until confirmed in the account:
+
+- **Logs.** Retention is set by the plan (record it: ____ days). Anyone with workspace access to a service can read its logs; the app logs no prompt, answer, token, DSN or key, and IP addresses appear only as a keyed prefix hash.
+- **Who can read environment groups.** Every workspace member with access to the service, and any account-wide API key (see "Who can read the secrets"). Keep production and staging in separate workspaces.
+- **The IP log prefix key is per process.** It is random at start-up (`_LOG_IDENTITY_KEY`), so the same address hashes differently in each process and after each restart; do not correlate across instances or restarts.
+- **Egress.** The service can reach the internet. The SSRF helper (`validate_safe_url` in `security/input_policy.py`) is the only control on tool fetches; there is no network egress allow-list.
+
