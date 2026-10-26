@@ -19,7 +19,7 @@ import psycopg.conninfo
 _LOGGERS = ("psycopg", "psycopg.pool")
 _REDACTED = "***"
 # Fallbacks for a string `conninfo_to_dict` cannot parse: `://user:password@` and `password=...`.
-_URI_PASSWORD = re.compile(r"(://[^/\s:@]*:)[^/\s]*(@)")
+_URI_PASSWORD = re.compile(r"(://[^/\s:@]*:)[^\s]*(@)")
 _KEYWORD_PASSWORD = re.compile(r"(password\s*=\s*)('(?:[^'\\]|\\.)*'|\S+)", re.IGNORECASE)
 
 

@@ -128,3 +128,12 @@ def test_a_second_install_keeps_redacting_the_first_dsn() -> None:
     redactor = dsn_redaction.install_dsn_redaction(second)
     text = redactor.redact(f"{first} and {second} first-pw-1234 second-pw-5678")
     assert "first-pw-1234" not in text and "second-pw-5678" not in text
+
+
+@pytest.mark.parametrize("password", ["p/w", "p@w", "p:w", "p#w", "a/b@c:d#e"])
+def test_the_uri_fallback_redacts_awkward_passwords(password: str) -> None:
+    redactor = DsnRedactionFilter()  # no configured DSN: only the regex fallbacks apply
+    text = redactor.redact(f"invalid URI postgresql://user:{password}@host:5432/db")
+    for part in password.replace("@", " ").replace("/", " ").split():
+        assert f":{part}@" not in text
+    assert password not in text
