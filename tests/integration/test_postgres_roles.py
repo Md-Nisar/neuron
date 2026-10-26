@@ -744,7 +744,10 @@ async def test_startup_tls_check(role_db: RoleDatabase) -> None:
     # The app role reads its own row in pg_stat_ssl. With TLS on the server (not the CI service
     # container) a `require` connection passes; without it the connection cannot be made.
     secure = _hardened(make_conninfo(role_db.app_dsn, sslmode="require"), tls=True)
-    if (await _rows(role_db.app_dsn, "SELECT current_setting('ssl')"))[0][0] == "on":
+    tls_on = (await _rows(role_db.app_dsn, "SELECT current_setting('ssl')"))[0][0] == "on"
+    if os.environ.get("APP_TEST_POSTGRES_REQUIRE_TLS") == "1":
+        assert tls_on, "CI runs Postgres with TLS; the success path must not be skipped"
+    if tls_on:
         await secure.open()
         try:
             assert await secure.is_ready() is True
