@@ -82,6 +82,11 @@ _APP_PRIVILEGES: dict[str, frozenset[str]] = {
 # The one function the app role may run: it answers whether a candidate check value matches the
 # one in `neuron_meta` without letting the role read that table (migration 12).
 _IDENTITY_FUNCTION = "neuron_identity_status"
+# The tables the guards (run leases, token budget, rate limiter) read and write, derived from the
+# grants above so a new guard table is picked up by readiness without another list.
+GUARD_TABLES = tuple(
+    sorted(t for t, grants in _APP_PRIVILEGES.items() if grants and t.startswith("neuron_"))
+)
 _CHECKED_PRIVILEGES = (*sorted(_DML), "TRUNCATE", "REFERENCES", "TRIGGER")
 
 

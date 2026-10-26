@@ -150,10 +150,18 @@ async def test_limits_postgres_opens_a_pool_without_a_checkpointer() -> None:
     assert persistence.pool.closed is True and persistence.is_open is False
 
 
-async def test_limits_postgres_readiness_is_true_when_the_database_answers() -> None:
+def _fake_pool(missing: list[str]) -> object:
+    """A pool whose database lacks the given guard tables (as `to_regclass` would report)."""
+    queries: list[tuple[str, object]] = []
+
+    class _Cursor:
+        async def fetchall(self) -> list[dict[str, str]]:
+            return [{"name": name} for name in missing]
+
     class _Conn:
-        async def execute(self, _: str) -> None:
-            return None
+        async def execute(self, query: str, params: object = None) -> _Cursor:
+            queries.append((query, params))
+            return _Cursor()
 
     class _Connection:
         async def __aenter__(self) -> _Conn:
@@ -166,8 +174,36 @@ async def test_limits_postgres_readiness_is_true_when_the_database_answers() -> 
         def connection(self) -> _Connection:
             return _Connection()
 
+    pool = _Pool()
+    pool.queries = queries  # type: ignore[attr-defined]
+    return pool
+
+
+async def test_limits_postgres_readiness_is_true_when_the_guard_tables_exist() -> None:
     persistence = build_persistence(_guards_settings())
-    persistence.pool = _Pool()  # type: ignore[assignment]
+    persistence.pool = _fake_pool([])  # type: ignore[assignment]
+    persistence._opened = True
+    assert await persistence.is_ready() is True
+    _, params = persistence.pool.queries[0]  # type: ignore[attr-defined]
+    assert "neuron_rate_buckets" in params[0]  # type: ignore[index]
+
+
+async def test_limits_postgres_readiness_is_false_when_setup_was_not_run() -> None:
+    # Issue #207: migrations 10/11 missing means every guarded request fails closed.
+    persistence = build_persistence(_guards_settings())
+    persistence.pool = _fake_pool(["neuron_rate_buckets"])  # type: ignore[assignment]
+    persistence._opened = True
+    with structlog.testing.capture_logs() as logs:
+        assert await persistence.is_ready() is False
+    assert next(log for log in logs if log["event"] == "guard_tables_missing")["tables"] == [
+        "neuron_rate_buckets"
+    ]
+
+
+async def test_guard_tables_are_not_checked_without_the_postgres_limits_backend() -> None:
+    persistence = build_persistence(_postgres_settings())  # checkpointer only
+    assert persistence.check_guard_tables is False
+    persistence.pool = _fake_pool(["neuron_rate_buckets"])  # type: ignore[assignment]
     persistence._opened = True
     assert await persistence.is_ready() is True
 
