@@ -282,6 +282,20 @@ async def test_a_missing_table_fails_closed(database: str) -> None:
         assert (await limiter.check("k")).allowed is True
 
 
+async def test_readiness_follows_the_guard_tables(database: str) -> None:
+    persistence = build_persistence(_settings(database))
+    await persistence.open()
+    try:
+        assert await persistence.is_ready() is True
+        await rows(database, "ALTER TABLE neuron_rate_buckets RENAME TO neuron_rate_buckets_off")
+        with structlog.testing.capture_logs():
+            assert await persistence.is_ready() is False
+        await rows(database, "ALTER TABLE neuron_rate_buckets_off RENAME TO neuron_rate_buckets")
+        assert await persistence.is_ready() is True
+    finally:
+        await persistence.close()
+
+
 async def test_an_unreachable_database_is_a_503_over_http_and_recovers(
     database: str, tmp_path: Path
 ) -> None:
