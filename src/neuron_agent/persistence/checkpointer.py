@@ -24,6 +24,7 @@ from psycopg_pool import AsyncConnectionPool
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import metrics
 from neuron_agent.persistence import migrations
+from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
 from neuron_agent.persistence.migrations import identity_check_value
 from neuron_agent.persistence.roles import verify_runtime_role
 from neuron_agent.persistence.startup_checks import (
@@ -214,8 +215,11 @@ def build_persistence(settings: Settings) -> Persistence:
 
     # Settings validation guarantees a DSN when either backend is postgres.
     assert settings.postgres_dsn is not None  # nosec B101
+    dsn = settings.postgres_dsn.get_secret_value()
+    # psycopg_pool logs the driver's error text, which can echo the DSN (issue #204).
+    install_dsn_redaction(dsn)
     pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
-        conninfo=settings.postgres_dsn.get_secret_value(),
+        conninfo=dsn,
         max_size=settings.postgres_pool_max_size,
         timeout=settings.postgres_pool_timeout_seconds,
         kwargs={"autocommit": True, "row_factory": dict_row, "prepare_threshold": 0},
