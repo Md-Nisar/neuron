@@ -224,3 +224,31 @@ def test_blueprint_values_pass_settings_validation(
         assert settings.checkpointer == "postgres"
         assert settings.expose_api_docs is False
         assert settings.auth_mode == "jwt"
+
+
+@pytest.mark.parametrize("env", ["staging", "production"])
+def test_instances_export_all_traces_to_their_own_collector(env: str) -> None:
+    """#156: tail sampling needs every span; an environment never feeds the other Collector."""
+    collector = next(s for s in _COLLECTORS if s["name"] == f"neuron-collector-{env}")
+    for service in [s for s in _WEB if s["name"].endswith(env)]:
+        values = _env(service)
+        assert values["APP_OTEL_ENABLED"] == "true", service["name"]
+        assert values["APP_OTEL_TRACES_SAMPLE_RATIO"] == "1.0", service["name"]
+        assert values["APP_OTEL_EXPORTER_OTLP_ENDPOINT"] == f"http://{collector['name']}:4318"
+        assert values["APP_OTEL_SERVICE_NAME"].endswith(env)
+
+
+@pytest.mark.parametrize("env", ["staging", "production"])
+def test_the_collector_runs_the_shipped_config_on_the_pinned_release(env: str) -> None:
+    collector = next(s for s in _COLLECTORS if s["name"] == f"neuron-collector-{env}")
+    shipped = Path("deploy/observability/otel-collector.yaml").read_text("utf-8")
+    pinned = re.search(r"otel/opentelemetry-collector-contrib:(\d+\.\d+\.\d+)", shipped)
+    assert pinned, "the shipped config states the release it is pinned to"
+    version = pinned.group(1)
+    assert collector["image"]["url"].endswith(f"opentelemetry-collector-contrib:{version}")
+    # The shipped file is mounted as a secret file, so the config is the reviewed one.
+    assert "--config=/etc/secrets/otel-collector.yaml" in collector["dockerCommand"]
+    # It listens on all interfaces of its private network, and holds no application secret.
+    assert _env(collector)["OTEL_RECEIVER_HOST"] == "0.0.0.0"  # noqa: S104
+    assert _secret_keys(collector) <= {"OTEL_BACKEND_ENDPOINT", "OTEL_BACKEND_AUTH_HEADER"}
+    assert collector["type"] == "pserv"  # private: no public URL
