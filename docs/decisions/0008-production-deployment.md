@@ -754,6 +754,22 @@ Rules for the profile:
   image-backed (prebuilt image) service is allowed on the free plan is not stated in
   the documentation and must be proven first.
 
+### Implementation note: `render.yaml` assumptions (#150)
+
+The owner's standing direction is to assume Render facts work and fix on the first deploy. The Blueprint keys were checked against Render's Blueprint reference and its published JSON schema (`render.com/schema/render.yaml.json`, read 2026-10-26; `render.yaml` validates against it). Everything else below is assumed, not proven, and not yet exercised by a Render validation or a staging deploy:
+
+- `preDeployCommand` works on `runtime: image` services, runs with the web service's environment, and cancels the deploy on a non-zero exit (open questions 4 and 20). The reference does not say.
+- `image.url` accepts `ghcr.io/md-nisar/neuron@sha256:<digest>`; the file ships an untagged URL that must be replaced before the first sync. A private package needs a registry credential (open question 14).
+- A cron job accepts `runtime: image` with `dockerCommand`, and a private service can run the Collector image with a secret file at `/etc/secrets/otel-collector.yaml` and listen on 4318 at `http://<service-name>:4318`.
+- `sync: false` is not allowed in an environment group (documented), so groups hold non-secret settings and every secret is a service-level `sync: false` variable. Secret groups created in the Dashboard are not used.
+- `ipAllowList: []` blocks external connections but keeps internal ones (documented for external only).
+- Plan names (`starter`, `basic-256mb`, `basic-1gb`) and each plan's `max_connections` are unconfirmed (open question 1); services share one region (`oregon`) so the private network applies.
+- Default hostnames are `<service-name>.onrender.com` for `APP_ALLOWED_HOSTS`; `APP_TRUSTED_PROXIES=[]` until the proxy range is confirmed (open question 5); `APP_HSTS_MAX_AGE_SECONDS=31536000` in production (open question 13).
+- Open question 12 is answered by one `render.yaml` defining both environments.
+- Amendment to decision 1: `maxShutdownDelaySeconds` is 180, not 150. With OpenTelemetry on and the Collector down the shutdown needs 5 + 120 + 10 + 20 = 155 s plus the pool close; the blueprint test requires the value to exceed that sum (maximum 300).
+- `prune` loads the full settings, so the cron job also holds the provider key, identity key, issuer and JWKS URL, though it only deletes rows.
+- The staging Blueprint uses paid plans so the pre-deploy path is exercised; decision 17's free profile needs the edits listed in `OPERATIONS.md`.
+
 ## Migration and rollout
 
 1. Image, entrypoint and pipeline first (decisions 2, 3, 6), deploying to staging with

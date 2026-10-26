@@ -1,0 +1,303 @@
+# Render Blueprint for the reference deployment (ADR 0008 decisions 1, 10 and 15; #150).
+#
+# One file defines both environments. Staging and production are separate trust domains: each
+# has its own database, audience, identity hash key and secrets, and nothing is shared.
+#
+# Rules this file follows (tests/unit/test_render_blueprint.py enforces them):
+#   - No secret or DSN value appears here. Every secret is `sync: false`: Render prompts for it
+#     when the Blueprint is first created and ignores the file afterwards. Render does not allow
+#     `sync: false` inside an environment group, so the groups below hold non-secret settings
+#     only and each service carries its own secrets.
+#   - The runtime DSN (APP_POSTGRES_DSN) is the app role's, pasted as a secret. It is never
+#     `fromDatabase`, which yields the database owner. Create the roles first (OPERATIONS.md,
+#     "Deployment"). Use sslmode=verify-full in production; staging also accepts require.
+#   - The migration DSN is read by `persistence.cli setup` only. The pre-deploy command shares
+#     the web service's environment on Render, so the web service carries it (ADR 0008
+#     open question 20); the cron job and the Collector never do.
+#   - The image is deployed by digest. The URL below has no tag on purpose: before the first
+#     sync set it to `ghcr.io/md-nisar/neuron@sha256:<digest>` of an image that passed
+#     `gh attestation verify` (OPERATIONS.md, "Published image and attestation").
+#   - Plan names are assumptions (ADR 0008 open question 1) and need confirming in the account.
+#
+# Connection budget per environment (OPERATIONS.md): numInstances x APP_POSTGRES_POOL_MAX_SIZE,
+# plus the pre-deploy and cron connections, must stay under the plan's max_connections.
+
+services:
+  # ---------------------------------------------------------------- staging
+  - type: web
+    name: neuron-staging
+    runtime: image
+    image:
+      url: ghcr.io/md-nisar/neuron
+    plan: starter
+    region: oregon
+    numInstances: 1
+    healthCheckPath: /health/ready
+    # Above APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10 + 2 x
+    # APP_OTEL_EXPORT_TIMEOUT_SECONDS (OPERATIONS.md, "Shutdown"); the test checks it.
+    maxShutdownDelaySeconds: 180
+    preDeployCommand: python -m neuron_agent.persistence.cli setup
+    envVars:
+      - fromGroup: neuron-web-staging
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APP_POSTGRES_DSN
+        sync: false
+      - key: APP_POSTGRES_MIGRATION_DSN
+        sync: false
+      - key: APP_IDENTITY_HASH_KEY
+        sync: false
+      - key: APP_AUTH_ISSUER
+        sync: false
+      - key: APP_AUTH_JWKS_URL
+        sync: false
+
+  - type: cron
+    name: neuron-prune-staging
+    runtime: image
+    image:
+      url: ghcr.io/md-nisar/neuron
+    plan: starter
+    region: oregon
+    schedule: "17 3 * * *"
+    dockerCommand: python -m neuron_agent.persistence.cli prune
+    envVars:
+      - fromGroup: neuron-cron-staging
+      # `prune` loads the full settings, so these are required even though it only deletes rows.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APP_POSTGRES_DSN
+        sync: false
+      - key: APP_IDENTITY_HASH_KEY
+        sync: false
+      - key: APP_AUTH_ISSUER
+        sync: false
+      - key: APP_AUTH_JWKS_URL
+        sync: false
+
+  - type: pserv
+    name: neuron-collector-staging
+    runtime: image
+    image:
+      url: docker.io/otel/opentelemetry-collector-contrib:0.120.0
+    plan: starter
+    region: oregon
+    # deploy/observability/otel-collector.yaml, uploaded as the secret file `otel-collector.yaml`
+    # in the Render Dashboard (Render mounts secret files under /etc/secrets).
+    dockerCommand: /otelcol-contrib --config=/etc/secrets/otel-collector.yaml
+    envVars:
+      - fromGroup: neuron-collector-staging
+      - key: OTEL_BACKEND_ENDPOINT
+        sync: false
+      - key: OTEL_BACKEND_AUTH_HEADER
+        sync: false
+
+  # ------------------------------------------------------------- production
+  - type: web
+    name: neuron-production
+    runtime: image
+    image:
+      url: ghcr.io/md-nisar/neuron
+    plan: starter
+    region: oregon
+    numInstances: 2
+    healthCheckPath: /health/ready
+    maxShutdownDelaySeconds: 180
+    preDeployCommand: python -m neuron_agent.persistence.cli setup
+    envVars:
+      - fromGroup: neuron-web-production
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APP_POSTGRES_DSN
+        sync: false
+      - key: APP_POSTGRES_MIGRATION_DSN
+        sync: false
+      - key: APP_IDENTITY_HASH_KEY
+        sync: false
+      - key: APP_AUTH_ISSUER
+        sync: false
+      - key: APP_AUTH_JWKS_URL
+        sync: false
+
+  - type: cron
+    name: neuron-prune-production
+    runtime: image
+    image:
+      url: ghcr.io/md-nisar/neuron
+    plan: starter
+    region: oregon
+    schedule: "17 3 * * *"
+    dockerCommand: python -m neuron_agent.persistence.cli prune
+    envVars:
+      - fromGroup: neuron-cron-production
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APP_POSTGRES_DSN
+        sync: false
+      - key: APP_IDENTITY_HASH_KEY
+        sync: false
+      - key: APP_AUTH_ISSUER
+        sync: false
+      - key: APP_AUTH_JWKS_URL
+        sync: false
+
+  - type: pserv
+    name: neuron-collector-production
+    runtime: image
+    image:
+      url: docker.io/otel/opentelemetry-collector-contrib:0.120.0
+    plan: starter
+    region: oregon
+    dockerCommand: /otelcol-contrib --config=/etc/secrets/otel-collector.yaml
+    envVars:
+      - fromGroup: neuron-collector-production
+      - key: OTEL_BACKEND_ENDPOINT
+        sync: false
+      - key: OTEL_BACKEND_AUTH_HEADER
+        sync: false
+
+databases:
+  # Empty ipAllowList: no connection from outside Render. Roles are created by an operator
+  # (OPERATIONS.md, "Deployment"); Render has no declarative role resource.
+  - name: neuron-staging-db
+    databaseName: neuron
+    user: neuron_owner
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    ipAllowList: []
+
+  - name: neuron-production-db
+    databaseName: neuron
+    user: neuron_owner
+    plan: basic-1gb
+    region: oregon
+    postgresMajorVersion: "16"
+    ipAllowList: []
+
+# Non-secret settings, split per service role and environment. Settings the cron job needs to
+# pass `Settings` validation are repeated in its own group so it never references a web group.
+envVarGroups:
+  - name: neuron-web-staging
+    envVars:
+      - key: APP_ENV
+        value: staging
+      - key: APP_LOG_LEVEL
+        value: INFO
+      - key: APP_AUTH_MODE
+        value: jwt
+      - key: APP_AUTH_AUDIENCE
+        value: neuron-api-staging
+      - key: APP_CHECKPOINTER
+        value: postgres
+      - key: APP_LIMITS_BACKEND
+        value: postgres
+      - key: APP_POSTGRES_POOL_MAX_SIZE
+        value: "10"
+      - key: APP_EXPOSE_API_DOCS
+        value: "false"
+      - key: APP_ALLOWED_HOSTS
+        value: '["neuron-staging.onrender.com"]'
+      # Explicit and empty until Render's proxy range is confirmed (ADR 0008 open question 5).
+      - key: APP_TRUSTED_PROXIES
+        value: "[]"
+      - key: APP_OTEL_ENABLED
+        value: "true"
+      - key: APP_OTEL_SERVICE_NAME
+        value: neuron-agent-staging
+      - key: APP_OTEL_TRACES_SAMPLE_RATIO
+        value: "1.0"
+      - key: APP_OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://neuron-collector-staging:4318
+
+  - name: neuron-cron-staging
+    envVars:
+      - key: APP_ENV
+        value: staging
+      - key: APP_LOG_LEVEL
+        value: INFO
+      - key: APP_AUTH_MODE
+        value: jwt
+      - key: APP_AUTH_AUDIENCE
+        value: neuron-api-staging
+      - key: APP_CHECKPOINTER
+        value: postgres
+      - key: APP_LIMITS_BACKEND
+        value: postgres
+      - key: APP_POSTGRES_POOL_MAX_SIZE
+        value: "2"
+      - key: APP_EXPOSE_API_DOCS
+        value: "false"
+      - key: APP_ALLOWED_HOSTS
+        value: '["neuron-staging.onrender.com"]'
+      - key: APP_TRUSTED_PROXIES
+        value: "[]"
+
+  - name: neuron-collector-staging
+    envVars:
+      - key: OTEL_RECEIVER_HOST
+        value: 0.0.0.0
+
+  - name: neuron-web-production
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_LOG_LEVEL
+        value: INFO
+      - key: APP_AUTH_MODE
+        value: jwt
+      - key: APP_AUTH_AUDIENCE
+        value: neuron-api-production
+      - key: APP_CHECKPOINTER
+        value: postgres
+      - key: APP_LIMITS_BACKEND
+        value: postgres
+      - key: APP_POSTGRES_POOL_MAX_SIZE
+        value: "10"
+      - key: APP_EXPOSE_API_DOCS
+        value: "false"
+      - key: APP_ALLOWED_HOSTS
+        value: '["neuron-production.onrender.com"]'
+      - key: APP_TRUSTED_PROXIES
+        value: "[]"
+      # One year; the API is served over TLS only (ADR 0008 open question 13).
+      - key: APP_HSTS_MAX_AGE_SECONDS
+        value: "31536000"
+      - key: APP_OTEL_ENABLED
+        value: "true"
+      - key: APP_OTEL_SERVICE_NAME
+        value: neuron-agent-production
+      - key: APP_OTEL_TRACES_SAMPLE_RATIO
+        value: "1.0"
+      - key: APP_OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://neuron-collector-production:4318
+
+  - name: neuron-cron-production
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_LOG_LEVEL
+        value: INFO
+      - key: APP_AUTH_MODE
+        value: jwt
+      - key: APP_AUTH_AUDIENCE
+        value: neuron-api-production
+      - key: APP_CHECKPOINTER
+        value: postgres
+      - key: APP_LIMITS_BACKEND
+        value: postgres
+      - key: APP_POSTGRES_POOL_MAX_SIZE
+        value: "2"
+      - key: APP_EXPOSE_API_DOCS
+        value: "false"
+      - key: APP_ALLOWED_HOSTS
+        value: '["neuron-production.onrender.com"]'
+      - key: APP_TRUSTED_PROXIES
+        value: "[]"
+      - key: APP_HSTS_MAX_AGE_SECONDS
+        value: "31536000"
+
+  - name: neuron-collector-production
+    envVars:
+      - key: OTEL_RECEIVER_HOST
+        value: 0.0.0.0
