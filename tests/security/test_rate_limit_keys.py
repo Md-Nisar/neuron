@@ -74,6 +74,10 @@ def test_forwarded_for_lines_are_joined(monkeypatch: pytest.MonkeyPatch) -> None
         b"[2001:db8::1]:x",
         b"[2001:db8::1]443",
         b"2001:db8::1]:443",
+        b"203.0.113.8:65536",
+        "203.0.113.8:\u0668\u0660".encode(),  # non-ASCII digits are not a port
+        b"203.0.113.08",
+        b"203.0.113.8 :80",
     ],
 )
 def test_unparseable_forwarded_entry_stops_the_walk_at_the_last_good_address(
@@ -94,6 +98,8 @@ def test_unparseable_forwarded_entry_stops_the_walk_at_the_last_good_address(
     [
         (b"203.0.113.8", "203.0.113.8"),
         (b"203.0.113.8:4444", "203.0.113.8"),
+        (b"203.0.113.8:65535", "203.0.113.8"),
+        (b"2001:db8:9:9::1:80", "2001:db8:9:9::/64"),  # bare IPv6 is never port-stripped
         (b"2001:db8:9:9::7", "2001:db8:9:9::/64"),
         (b"[2001:db8:9:9::7]", "2001:db8:9:9::/64"),
         (b"[2001:db8:9:9::7]:443", "2001:db8:9:9::/64"),
