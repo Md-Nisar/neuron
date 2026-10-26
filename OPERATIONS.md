@@ -81,6 +81,12 @@ layout with `tests/integration/test_image_layout.py` (run it locally with
 `NEURON_TEST_IMAGE=neuron-agent uv run pytest tests/integration/test_image_layout.py -m docker`)
 and checks that a stale `uv.lock` fails the build. It pushes nothing.
 
+### Deploy pipeline
+
+`deploy.yml` promotes one attested digest and never rebuilds it (ADR 0008 decision 6, steps 5 to 7). After a successful `image-publish` run on `main`, the `staging` job requires a green `ci` on the commit, reads the digest from that run's `image-digest` artifact, verifies the attestation (signer `image-publish.yml`, source ref `refs/heads/main`, SLSA provenance), calls every staging service's deploy hook with that digest, waits `DEPLOY_SETTLE_SECONDS` (default 300) and runs `scripts/smoke_test.py`. A `v*` tag starts the `production` job in the `production` Environment (required reviewer): it checks the tag is on `main`, equals the `pyproject.toml` version and has a `CHANGELOG.md` section, finds the `image-publish` run that built the tagged commit, requires its staging run (titled `staging <run id>`) to have passed, re-verifies the attestation, re-scans the digest (reported only), deploys every production service with the same digest, smoke-tests, and only then publishes the GitHub Release (draft first) from the changelog section.
+
+Set per Environment (`staging`, `production`): secret `DEPLOY_HOOKS` (JSON `{"<service name>": "<deploy hook URL>"}`, the names in `render.yaml`), secret `SMOKE_TEST_TOKEN`, variable `SMOKE_TEST_URL`. No Render API key is used. Not proven (Render facts are assumed, and no real deployment has run this): that a hook accepts `imgURL` for an image service, that the fixed settle wait covers a rolling deploy, and that the pre-deploy `setup` ran (the smoke test's readiness check fails closed when the guard tables are missing, but Render's own deploy status is not read).
+
 ### Shutdown
 
 On SIGTERM `neuron-api` (a `uvicorn.Server` subclass overriding `handle_exit`, the handler Uvicorn 0.53 installs for SIGINT and SIGTERM; ADR 0008 decision 4) does this, in order:
