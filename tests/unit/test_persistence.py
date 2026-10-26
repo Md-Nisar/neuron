@@ -123,6 +123,18 @@ def _guards_settings(checkpointer: str = "none") -> Settings:
     )
 
 
+async def test_service_is_not_ready_while_the_guard_store_is_unreachable() -> None:
+    # limits_backend=postgres with no checkpointer: readiness (and so /health/ready's 503)
+    # follows the guard store alone.
+    persistence = build_persistence(_guards_settings())
+    service = AgentService(_guards_settings(), persistence=persistence)
+    await persistence.open()
+    try:
+        assert await service.is_ready() is False
+    finally:
+        await persistence.close()
+
+
 async def test_limits_postgres_opens_a_pool_without_a_checkpointer() -> None:
     persistence = build_persistence(_guards_settings())
     assert persistence.pool is not None and persistence.backend == "none"
