@@ -43,6 +43,9 @@ _ALLOWED_MSGPACK_MODULES = [("neuron_agent.schemas.agent", "AgentAnswer")]
 _INSTRUMENTED_OPERATIONS = ("aget_tuple", "aput", "aput_writes", "adelete_thread")
 SLOW_CHECKPOINT_MS = 250.0
 
+# Warm connections kept open, capped at `APP_POSTGRES_POOL_MAX_SIZE` (the psycopg_pool default).
+_POOL_MIN_SIZE = 4
+
 
 def instrument_checkpointer(
     checkpointer: BaseCheckpointSaver[Any], backend: str
@@ -219,7 +222,9 @@ def build_persistence(settings: Settings) -> Persistence:
     # psycopg_pool logs the driver's error text, which can echo the DSN (issue #204).
     install_dsn_redaction(dsn)
     pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
-        conninfo=dsn,
+        conninfo=settings.postgres_dsn.get_secret_value(),
+        # psycopg_pool defaults min_size to 4, which is invalid when max_size is below it.
+        min_size=min(_POOL_MIN_SIZE, settings.postgres_pool_max_size),
         max_size=settings.postgres_pool_max_size,
         timeout=settings.postgres_pool_timeout_seconds,
         kwargs={"autocommit": True, "row_factory": dict_row, "prepare_threshold": 0},

@@ -31,6 +31,15 @@ def _postgres_settings() -> Settings:
     )
 
 
+@pytest.mark.parametrize("max_size", [1, 2, 3, 4, 10])
+def test_postgres_pool_min_size_never_exceeds_max_size(max_size: int) -> None:
+    settings = _postgres_settings().model_copy(update={"postgres_pool_max_size": max_size})
+    persistence = build_persistence(settings)
+    assert persistence.pool is not None
+    assert persistence.pool.max_size == max_size
+    assert 1 <= persistence.pool.min_size <= max_size
+
+
 async def test_none_backend_has_no_checkpointer() -> None:
     persistence = build_persistence(Settings(env="test", checkpointer="none", openai_api_key=None))
     assert persistence.checkpointer is None
