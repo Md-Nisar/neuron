@@ -64,7 +64,7 @@ eval:
 AUDIT_IGNORES :=
 
 security:
-	uv run python -m bandit -q -r src scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py scripts/validate_observability.py
+	uv run python -m bandit -q -r src scripts/dev_token.py scripts/smoke_test.py scripts/deploy_tools.py scripts/token_report.py scripts/validate_observability.py
 	@# Two steps, not a pipe: /bin/sh has no pipefail, so a failed export would audit nothing.
 	@reqs=$$(mktemp) \
 		&& uv export --frozen --format requirements-txt --no-emit-project --all-groups -q -o "$$reqs" \

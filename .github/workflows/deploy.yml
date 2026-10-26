@@ -1,0 +1,246 @@
+name: deploy
+
+# Deploys by digest and never rebuilds (ADR 0008 decision 6, steps 5-7; #151).
+#   - staging:    every image-publish run on main that succeeded (build, scan, attest).
+#   - production: a `v*` tag, in the `production` Environment (required reviewer). It takes the
+#     digest of the main run that built and attested the tagged commit, never the mutable
+#     `sha-` tag, and only after that run's staging deploy and smoke test passed.
+# It cannot sign anything: only image-publish.yml can (tests/unit/test_workflows.py), and the
+# provenance is verified here against that signer.
+#
+# Render facts are assumed (ADR 0008, "Implementation note: render.yaml assumptions"): a deploy
+# hook per service takes the image as `imgURL`; DEPLOY_HOOKS is an Environment secret holding
+# {"<service name>": "<hook URL>"}, never an account-wide Render API key. There is no Render API
+# here, so "live" is a fixed settle wait followed by the smoke test, and the pre-deploy
+# migration is proved by readiness, not read from Render. Untested against a real deployment.
+run-name: >-
+  ${{ github.event_name == 'workflow_run'
+  && format('staging {0}', github.event.workflow_run.id)
+  || format('production {0}', github.ref_name) }}
+
+on:
+  workflow_run:
+    workflows: [image-publish]
+    types: [completed]
+    branches: [main]
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+env:
+  IMAGE_REPO: ghcr.io/md-nisar/neuron
+  # The services that run our image (the Collector runs a third-party one), per render.yaml.
+  # tests/unit/test_deploy_workflow.py keeps these equal to render.yaml's.
+  STAGING_SERVICES: neuron-staging,neuron-prune-staging
+  PRODUCTION_SERVICES: neuron-production,neuron-prune-production
+  ATTESTATION_PREDICATE: https://slsa.dev/provenance/v1
+
+jobs:
+  staging:
+    if: >-
+      github.event_name == 'workflow_run'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: staging
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BUILD_RUN_ID: ${{ github.event.workflow_run.id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      # image-publish does not run the ci gates, so require them here (ADR 0008 decision 6, step 1).
+      - name: ci passed on this commit
+        env:
+          COMMIT: ${{ github.event.workflow_run.head_sha }}
+        # ci runs beside image-publish on the same push, so wait for it (at most 20 minutes).
+        run: |
+          for _ in $(seq 40); do
+            ok="$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$COMMIT" \
+              --status success --limit 1 --json databaseId --jq 'length')"
+            test "$ok" -ge 1 && exit 0
+            sleep 30
+          done
+          echo "ci has not passed on $COMMIT" >&2
+          exit 1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read the digest recorded by the build run
+        id: image
+        run: |
+          gh run download "$BUILD_RUN_ID" -R "$GITHUB_REPOSITORY" -n image-digest
+          image="$(cat image-digest.txt)"
+          python3 scripts/deploy_tools.py check-image --image "$image"
+          echo "ref=$image" >> "$GITHUB_OUTPUT"
+      # A digest whose attestation fails (wrong signer workflow or source ref) never deploys.
+      - name: Verify the attestation
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          gh attestation verify "oci://$IMAGE" -R "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/image-publish.yml" \
+            --source-ref refs/heads/main \
+            --predicate-type "$ATTESTATION_PREDICATE"
+      - name: Mask the deploy hooks
+        env:
+          DEPLOY_HOOKS: ${{ secrets.DEPLOY_HOOKS }}
+        run: python3 -c "import json, os; [print('::add-mask::' + v) for v in json.loads(os.environ['DEPLOY_HOOKS']).values()]"
+      - name: Deploy every staging service with the same digest
+        env:
+          DEPLOY_HOOKS: ${{ secrets.DEPLOY_HOOKS }}
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: python3 scripts/deploy_tools.py trigger --image "$IMAGE" --services "$STAGING_SERVICES"
+      - name: Wait for the deploys to go live
+        env:
+          SETTLE_SECONDS: ${{ vars.DEPLOY_SETTLE_SECONDS || '300' }}
+        run: sleep "$SETTLE_SECONDS"
+      - name: Smoke test staging
+        env:
+          SMOKE_TEST_TOKEN: ${{ secrets.SMOKE_TEST_TOKEN }}
+          SMOKE_TEST_URL: ${{ vars.SMOKE_TEST_URL }}
+        run: python3 scripts/smoke_test.py "$SMOKE_TEST_URL"
+
+  production:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The tag is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: The tag matches pyproject.toml and CHANGELOG.md
+        run: python3 scripts/deploy_tools.py check-release --tag "$TAG"
+      - name: Find the main build run of this commit
+        id: build
+        run: |
+          id="$(gh run list -R "$GITHUB_REPOSITORY" --workflow image-publish.yml --branch main \
+            --commit "$GITHUB_SHA" --status success --json databaseId --jq '.[0].databaseId // empty')"
+          test -n "$id" || { echo "no successful image-publish run on main for this commit" >&2; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+      # The staging run is titled "staging <build run id>" (run-name above), so this ties the
+      # approval to the exact build, not to whatever main points at now.
+      - name: Staging deployed and smoke-tested this build
+        env:
+          BUILD_RUN_ID: ${{ steps.build.outputs.id }}
+        run: |
+          ok="$(gh run list -R "$GITHUB_REPOSITORY" --workflow deploy.yml --event workflow_run \
+            --status success --limit 100 --json displayTitle \
+            --jq "[.[] | select(.displayTitle == \"staging $BUILD_RUN_ID\")] | length")"
+          test "$ok" -ge 1 || { echo "no passing staging deploy for build $BUILD_RUN_ID" >&2; exit 1; }
+      # image-publish does not run the ci gates, so require them here (ADR 0008 decision 6, step 1).
+      - name: ci passed on this commit
+        env:
+          COMMIT: ${{ github.sha }}
+        # ci runs beside image-publish on the same push, so wait for it (at most 20 minutes).
+        run: |
+          for _ in $(seq 40); do
+            ok="$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$COMMIT" \
+              --status success --limit 1 --json databaseId --jq 'length')"
+            test "$ok" -ge 1 && exit 0
+            sleep 30
+          done
+          echo "ci has not passed on $COMMIT" >&2
+          exit 1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read the digest recorded by the main build run
+        id: image
+        env:
+          BUILD_RUN_ID: ${{ steps.build.outputs.id }}
+        run: |
+          gh run download "$BUILD_RUN_ID" -R "$GITHUB_REPOSITORY" -n image-digest
+          image="$(cat image-digest.txt)"
+          python3 scripts/deploy_tools.py check-image --image "$image"
+          echo "ref=$image" >> "$GITHUB_OUTPUT"
+      - name: Verify the attestation again
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          gh attestation verify "oci://$IMAGE" -R "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/image-publish.yml" \
+            --source-ref refs/heads/main \
+            --predicate-type "$ATTESTATION_PREDICATE"
+      # New CVEs appear between staging and promotion: reported, not blocking.
+      - name: Re-scan the digest
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.image.outputs.ref }}
+          version: v0.70.0
+          cache: false
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          trivyignores: .trivyignore.yaml
+      - name: Mask the deploy hooks
+        env:
+          DEPLOY_HOOKS: ${{ secrets.DEPLOY_HOOKS }}
+        run: python3 -c "import json, os; [print('::add-mask::' + v) for v in json.loads(os.environ['DEPLOY_HOOKS']).values()]"
+      - name: Deploy every production service with the same digest
+        env:
+          DEPLOY_HOOKS: ${{ secrets.DEPLOY_HOOKS }}
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: python3 scripts/deploy_tools.py trigger --image "$IMAGE" --services "$PRODUCTION_SERVICES"
+      - name: Wait for the deploys to go live
+        env:
+          SETTLE_SECONDS: ${{ vars.DEPLOY_SETTLE_SECONDS || '300' }}
+        run: sleep "$SETTLE_SECONDS"
+      - name: Smoke test production
+        env:
+          SMOKE_TEST_TOKEN: ${{ secrets.SMOKE_TEST_TOKEN }}
+          SMOKE_TEST_URL: ${{ vars.SMOKE_TEST_URL }}
+        run: python3 scripts/smoke_test.py "$SMOKE_TEST_URL"
+
+  # The release is published only after production deployed and passed its smoke test.
+  release:
+    needs: production
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Draft first, then published, so the release is immutable once visible (decision 6, step 7).
+      - name: Publish the GitHub Release from the CHANGELOG section
+        run: |
+          python3 scripts/changelog_section.py "${TAG#v}" > release-notes.md
+          gh release create "$TAG" --draft --verify-tag --title "$TAG" --notes-file release-notes.md
+          gh release edit "$TAG" --draft=false
