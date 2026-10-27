@@ -25,6 +25,14 @@ from langchain.agents.middleware import (
 from langchain.agents.structured_output import (
     StructuredOutputError as LangChainStructuredOutputError,
 )
+from langchain_core.exceptions import (
+    ModelAuthenticationError,
+    ModelError,
+    ModelNotFoundError,
+    ModelPermissionDeniedError,
+    ModelRateLimitError,
+    ModelTimeoutError,
+)
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, ToolMessage
@@ -401,7 +409,10 @@ def tool_timeout_middleware(timeout_seconds: float) -> AgentMiddleware:
 
 def _is_retryable_provider_error(exc: Exception) -> bool:
     """Classify raw provider exceptions as retryable without exposing secrets in logs."""
-    if not isinstance(exc, _RETRYABLE_PROVIDER_ERRORS) or _is_quota_error(exc):
+    retryable = isinstance(exc, _RETRYABLE_PROVIDER_ERRORS) or (
+        isinstance(exc, ModelError) and exc.is_retryable
+    )
+    if not retryable or _is_quota_error(exc):
         return False
     counter = _retry_counter.get()
     if counter is None:
@@ -576,16 +587,20 @@ def classify_agent_error(exc: Exception) -> AppError:
         return exc
     if _is_quota_error(exc):
         return ProviderQuotaError("model provider has no API credit; add credit to the account")
-    if isinstance(exc, openai.RateLimitError):
+    # `langchain-core`'s provider-neutral types come first so any provider is classified the
+    # same way; the `openai` types stay for errors raised outside a LangChain integration.
+    if isinstance(exc, ModelRateLimitError | openai.RateLimitError):
         return AppRateLimitError("model provider rate limit exceeded")
-    if isinstance(exc, openai.APITimeoutError):
+    if isinstance(exc, ModelTimeoutError | openai.APITimeoutError):
         return ProviderTimeoutError("model provider timed out")
-    if isinstance(exc, openai.AuthenticationError):
+    if isinstance(
+        exc, ModelAuthenticationError | ModelPermissionDeniedError | openai.AuthenticationError
+    ):
         return ConfigurationError("model provider authentication failed")
-    if isinstance(exc, openai.NotFoundError):
+    if isinstance(exc, ModelNotFoundError | openai.NotFoundError):
         # An unknown model or one the account can't use: retrying never helps.
         return ConfigurationError("model provider has no such model for this account")
-    if isinstance(exc, openai.OpenAIError):
+    if isinstance(exc, ModelError | openai.OpenAIError):
         return ProviderError("model provider request failed")
     if isinstance(exc, GraphRecursionError):
         return AgentStepLimitError("agent did not finish within the iteration limit")
