@@ -245,6 +245,8 @@ Configuration is in `OPERATIONS.md#opentelemetry`.
 
 The service is stateless except for provider clients and graph construction. Horizontal scaling is supported for the HTTP layer. Durable thread state requires Agent Server managed persistence or a configured production checkpointer.
 
+v0.7.0 (tool registry, MCP tools, human approvals, per-user memory, a second provider and model fallback) is designed in [ADR 0009](docs/decisions/0009-extensible-agent-platform.md) and implemented issue by issue; this document describes the code that exists today.
+
 Multi-instance deployment, shared Postgres-backed limits and leases, migrations, the container image and the Render reference platform are designed in [ADR 0008](docs/decisions/0008-production-deployment.md) (v0.6.0); they are being implemented issue by issue, so this document describes the code that exists today.
 
 ## Failure Handling

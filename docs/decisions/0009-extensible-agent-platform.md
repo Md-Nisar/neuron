@@ -2,8 +2,10 @@
 
 ## Status
 
-Proposed. Inputs: `docs/research-notes.md` ("v0.7.0 Research" and its addendum). Supersedes
-one clause of ADR 0005 (decision 6). Production deployment stays configured but is not
+Accepted (2026-10-27). Inputs: `docs/research-notes.md` ("v0.7.0 Research" and its
+addendum). The owner confirmed the product requirement below by asking for it to be
+implemented. Supersedes one clause of ADR 0005 (decision 3: the agent's internal state is
+never checkpointed). Production deployment stays configured but is not
 exercised or tested until after v1.0.0 (owner decision, 2026-10-27); every check in this
 release runs locally, on the NVIDIA development model, with fakes where a provider has no
 key.
@@ -14,7 +16,7 @@ The roadmap theme for v0.7.0 is "Tools + models + HITL + memory". ADR 0001, 0002
 deferred memory, retrieval, human approval and mutating tools until a product requirement
 exists. None was written down, so the owner asked for one to be chosen.
 
-**Product requirement (chosen for the owner to confirm).** A personal assistant that
+**Product requirement (chosen by the architect, confirmed by the owner).** A personal assistant that
 remembers what a user explicitly asks it to remember, and does so only with the user's
 approval:
 
@@ -91,7 +93,7 @@ embeddings, no background jobs. Anything beyond it needs a new requirement and A
    - **Reference server:** an in-repo test server (`convert_units`) over loopback, so
      tests and evals run offline.
 
-6. **Approvals (supersedes ADR 0005 decision 6).** `HumanInTheLoopMiddleware` in batched
+6. **Approvals (supersedes the checkpointing clause of ADR 0005 decision 3).** `HumanInTheLoopMiddleware` in batched
    mode, configured from the registry: every `mutating` tool is gated, with
    `allowed_decisions=["approve", "reject"]` only (no `edit`, no `respond`).
    - The agent is compiled with `checkpointer=None`, inheriting the main graph's. The
