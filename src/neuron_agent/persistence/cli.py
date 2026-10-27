@@ -89,10 +89,11 @@ async def _prune(older_than_days: int) -> None:
     await persistence.open()
     try:
         if persistence.store is not None and settings.memory_ttl_days:
-            from neuron_agent.memory.store import MemoryStore
+            from neuron_agent.memory.store import MemoryStore, memory_id_key
 
             await MemoryStore(
                 persistence.store,
+                id_key=memory_id_key(settings),
                 max_items=settings.memory_max_items,
                 max_chars=settings.memory_max_chars,
                 ttl_days=settings.memory_ttl_days,

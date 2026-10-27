@@ -114,6 +114,8 @@ class _Instruments:
     errors: metrics.Counter
     policy_blocks: metrics.Counter
     model_fallbacks: metrics.Counter
+    approvals: metrics.Counter
+    memory_operations: metrics.Counter
     checkpoint_duration: metrics.Histogram
     budget_settle_failures: metrics.Counter
     service_ready: metrics.ObservableGauge
@@ -197,6 +199,16 @@ def _build(meter: metrics.Meter) -> _Instruments:
             semconv.METRIC_MODEL_FALLBACKS,
             unit="{fallback}",
             description="Model calls switched to a fallback model",
+        ),
+        approvals=meter.create_counter(
+            semconv.METRIC_APPROVALS,
+            unit="{approval}",
+            description="Approval requests and decisions",
+        ),
+        memory_operations=meter.create_counter(
+            semconv.METRIC_MEMORY_OPERATIONS,
+            unit="{operation}",
+            description="Per-user memory operations",
         ),
         checkpoint_duration=meter.create_histogram(
             semconv.METRIC_CHECKPOINT_DURATION, unit="s", description="Checkpointer operation"
@@ -297,6 +309,18 @@ def record_model_fallback(source: str, target: str) -> None:
     """Count one switch from model `source` to model `target` (configured identifiers)."""
     _instruments().model_fallbacks.add(
         1, {semconv.NEURON_FALLBACK_FROM: source, semconv.NEURON_FALLBACK_TO: target}
+    )
+
+
+def record_approval(decision: str) -> None:
+    """Count one approval request (`requested`) or decision (`approve`, `reject`)."""
+    _instruments().approvals.add(1, {semconv.NEURON_APPROVAL_DECISION: decision})
+
+
+def record_memory_operation(operation: str, *, outcome: str) -> None:
+    """Count one memory operation (`remember`, `list`, `forget`, `erase`)."""
+    _instruments().memory_operations.add(
+        1, {semconv.NEURON_MEMORY_OPERATION: operation, semconv.NEURON_OUTCOME: outcome}
     )
 
 

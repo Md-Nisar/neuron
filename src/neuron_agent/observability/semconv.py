@@ -29,6 +29,10 @@ OPERATION_INVOKE_AGENT = "invoke_agent"
 OPERATION_CHAT = "chat"
 OPERATION_EXECUTE_TOOL = "execute_tool"
 STREAM_SPAN = "neuron.stream"
+# One span per approval request or decision, and one per memory operation (ADR 0009). Names and
+# counts only: never the tool arguments, the note text, an ID or an owner key.
+APPROVAL_SPAN = "neuron.approval"
+MEMORY_SPAN_PREFIX = "neuron.memory"
 
 # GenAI attributes.
 GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
@@ -58,6 +62,11 @@ NEURON_STREAM_TTFT_MS = "neuron.stream.ttft_ms"
 NEURON_STREAM_EVENTS = "neuron.stream.events"
 NEURON_STREAM_TERMINATION = "neuron.stream.termination"
 NEURON_RULE = "neuron.rule"
+NEURON_APPROVAL_DECISION = "neuron.approval.decision"  # requested, approve or reject
+NEURON_APPROVAL_ACTIONS = "neuron.approval.actions"
+NEURON_MEMORY_OPERATION = "neuron.memory.operation"  # remember, list, forget or erase
+NEURON_MEMORY_ITEMS = "neuron.memory.items"
+OUTCOME_INTERRUPTED = "interrupted"  # a run or tool call that paused for approval
 NEURON_FALLBACK_FROM = "neuron.fallback.from"
 NEURON_FALLBACK_TO = "neuron.fallback.to"
 
@@ -75,6 +84,10 @@ METRIC_ERRORS = "neuron.agent.errors"
 METRIC_POLICY_BLOCKS = "neuron.agent.policy.blocks"
 # Model fallbacks, by the configured model ids switched from and to (bounded, operator-chosen).
 METRIC_MODEL_FALLBACKS = "neuron.model.fallbacks"
+# Approval requests and decisions by `neuron.approval.decision`; memory operations by
+# `neuron.memory.operation` and `neuron.outcome`.
+METRIC_APPROVALS = "neuron.approvals"
+METRIC_MEMORY_OPERATIONS = "neuron.memory.operations"
 METRIC_CHECKPOINT_DURATION = "neuron.checkpoint.duration"
 METRIC_SERVICE_READY = "neuron.service.ready"
 METRIC_DB_POOL_WAITING = "neuron.db.pool.waiting"
@@ -105,5 +118,7 @@ METRIC_ATTRIBUTE_ALLOW_LIST = frozenset(
         NEURON_RULE,
         NEURON_FALLBACK_FROM,
         NEURON_FALLBACK_TO,
+        NEURON_APPROVAL_DECISION,
+        NEURON_MEMORY_OPERATION,
     }
 )

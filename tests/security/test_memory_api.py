@@ -11,6 +11,7 @@ import pytest
 import structlog.testing
 from tests.conftest import JWT_ISSUER, HistoryEchoAgent, JwtApi, bearer
 
+from neuron_agent.config.settings import Settings
 from neuron_agent.security.auth import Principal, principal_owner_key
 
 _READ = "agent:invoke threads:read memories:read"
@@ -24,7 +25,7 @@ def api(jwt_api_factory: Callable[..., JwtApi], echo_agent: HistoryEchoAgent) ->
     return jwt_api_factory(memory_enabled=True)
 
 
-def _owner(api: JwtApi, subject: str) -> str:
+def _owner_key(settings: Settings, subject: str) -> str:
     principal = Principal(
         issuer=JWT_ISSUER,
         subject=subject,
@@ -32,9 +33,13 @@ def _owner(api: JwtApi, subject: str) -> str:
         token_id=None,
         expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
-    key = api.settings.identity_hash_key
+    key = settings.identity_hash_key
     assert key is not None
     return principal_owner_key(principal, key.get_secret_value())
+
+
+def _owner(api: JwtApi, subject: str) -> str:
+    return _owner_key(api.settings, subject)
 
 
 def _store(api: JwtApi, subject: str, *texts: str) -> list[str]:

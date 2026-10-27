@@ -249,6 +249,14 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
     `.cache_creation.input_tokens`, `.reasoning.output_tokens`) and `neuron.retry_count`.
   - `execute_tool {tool}`, one per tool call, with `gen_ai.tool.name` and `neuron.outcome`
     (`success`, `error` or `denied`). A tool the agent doesn't have is named `unknown`.
+  - `neuron.approval`, one per approval request or decision, with `neuron.approval.decision`
+    (`requested`, `approve`, `reject`) and `neuron.approval.actions` (how many tool calls it
+    covers). A run or tool call that paused for approval has `neuron.outcome` `interrupted`
+    (not an error). `neuron.memory.<operation>` (`remember`, `list`, `forget`, `erase`), one per
+    memory operation, with `neuron.memory.operation`, `neuron.outcome` and `neuron.memory.items`
+    (a count). None of them carries tool arguments, note text, an approval or memory ID or an
+    owner key. No alert rule changes: approvals and memory add no failure mode the existing
+    error-rate and latency alerts miss, and a pause is not counted as a failed stream.
   - `neuron.stream` around an SSE stream (the parent of its `invoke_agent` span), with
     `neuron.stream.ttft_ms`, `neuron.stream.events` and `neuron.stream.termination`, which
     takes the `stream_completed` log's values plus `client_disconnect`.
@@ -284,6 +292,8 @@ are in seconds. Instruments:
 | `neuron.agent.stream.ttft` | histogram | `neuron.outcome` (the stream's termination: `completed`, `approval_required`, `error`, `timeout`, `shutdown`, `client_disconnect`); streams that sent no token are not recorded |
 | `neuron.agent.tool.duration` | histogram | `gen_ai.operation.name` (`execute_tool`), `gen_ai.tool.name`, `neuron.outcome` (`success`, `error`, `denied`, `interrupted`), `error.type` |
 | `neuron.agent.errors` | counter | `error.type`, an `AppError` code. Counts each failed request or run once, client errors (such as `validation_error`) included; filter on the code |
+| `neuron.approvals` | counter | `neuron.approval.decision`: `requested`, `approve`, `reject` |
+| `neuron.memory.operations` | counter | `neuron.memory.operation`: `remember`, `list`, `forget`, `erase`; `neuron.outcome`: `success`, `error` |
 | `neuron.model.fallbacks` | counter | `neuron.fallback.from`, `neuron.fallback.to`: the configured model ids switched from and to |
 | `neuron.agent.policy.blocks` | counter | `neuron.rule`: `empty_message`, `message_too_long`, `control_characters`, `token_budget`, `concurrent_runs`, `concurrent_streams`, `request_rate`, `insufficient_scope`, `unknown_tool` |
 | `neuron.checkpoint.duration` | histogram | `neuron.outcome`, `error.type` (the exception class) |

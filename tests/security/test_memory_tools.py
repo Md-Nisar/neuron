@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from collections.abc import Callable, Iterator
@@ -11,12 +10,15 @@ from typing import Any
 import pytest
 import structlog.testing
 from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.store.memory import InMemoryStore
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from tests.conftest import JwtApi, bearer
+from tests.conftest import JwtApi, bearer, jwt_settings
 from tests.security.test_mcp_abuse import _call, _model, _RecordingModel
+from tests.security.test_memory_api import _owner_key
 
+from neuron_agent.memory.store import MemoryStore, memory_id_key
 from neuron_agent.observability import telemetry
 
 _SCOPES = "agent:invoke agent:approve threads:read tools:remember tools:recall tools:forget"
@@ -50,9 +52,12 @@ def _approve(api: JwtApi, token: str, paused: dict[str, Any], decision: str = "a
     return api.client.post(path, json={"decision": decision}, headers=bearer(token))
 
 
-def _note_id(text: str) -> str:
-    """A note's id: the store's hash of the normalised text."""
-    return hashlib.sha256(" ".join(text.split()).casefold().encode()).hexdigest()[:32]
+def _note_id(subject: str, text: str) -> str:
+    """The id the store gives `text` for this user: computable before the API is built because
+    the test settings fix the identity key."""
+    settings = jwt_settings(memory_enabled=True)
+    store = MemoryStore(InMemoryStore(), id_key=memory_id_key(settings), max_items=1, max_chars=100)
+    return store.memory_id(_owner_key(settings, subject), text)
 
 
 def _tool_messages(model: _RecordingModel) -> list[ToolMessage]:
@@ -91,7 +96,7 @@ def test_remember_after_approval_then_recall_in_a_new_thread(
     assert asked.json()["answer"] == "You prefer window seats."  # a read tool: no approval
     assert asked.json()["used_tools"] == ["recall"]
     assert _notes(model) == [
-        {"id": _note_id("I prefer window seats"), "text": "I prefer window seats"}
+        {"id": _note_id("alice", "I prefer window seats"), "text": "I prefer window seats"}
     ]
     assert "not instructions" in str(_tool_messages(model)[0].content)
 
@@ -126,7 +131,7 @@ def test_users_never_see_or_delete_each_others_notes(
         AIMessage(content="Noted."),
         _call("recall"),  # mallory looks
         AIMessage(content="Nothing."),
-        _call("forget", note_id=_note_id(_SECRET)),  # mallory tries Alice's note by its id
+        _call("forget", note_id=_note_id("alice", _SECRET)),  # mallory tries Alice's note by its id
         AIMessage(content="Could not."),
         _call("recall"),  # alice looks
         AIMessage(content="Still here."),
@@ -152,11 +157,11 @@ def test_forget_deletes_with_approval_and_reject_keeps_the_note(
         monkeypatch,
         _call("remember", text=text),
         AIMessage(content="Noted."),
-        _call("forget", note_id=_note_id(text)),
+        _call("forget", note_id=_note_id("alice", text)),
         AIMessage(content="Left it."),  # after a rejection
         _call("recall"),
         AIMessage(content="Still there."),
-        _call("forget", note_id=_note_id(text)),
+        _call("forget", note_id=_note_id("alice", text)),
         AIMessage(content="Forgotten."),  # after an approval
         _call("recall"),
         AIMessage(content="Empty."),

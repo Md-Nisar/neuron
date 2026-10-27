@@ -49,7 +49,17 @@ def _allowed(statements: list[dict[str, Any]], context: str) -> set[str]:
 
 
 def _attribute_constants() -> set[str]:
-    skipped = ("METRIC_", "OPERATION_", "USAGE_TYPE_", "SEMCONV", "AGENT_NAME", "STREAM_SPAN")
+    skipped = (
+        "METRIC_",
+        "OPERATION_",
+        "USAGE_TYPE_",
+        "SEMCONV",
+        "AGENT_NAME",
+        "STREAM_SPAN",
+        "APPROVAL_SPAN",
+        "MEMORY_SPAN",
+        "OUTCOME_",
+    )
     return {
         value
         for name, value in vars(semconv).items()
