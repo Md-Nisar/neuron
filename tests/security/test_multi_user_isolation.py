@@ -53,6 +53,11 @@ def _route_requests(
         ("GET", f"/v1/threads/{thread_id}/messages", None),
         ("DELETE", f"/v1/threads/{thread_id}", None),
         ("POST", f"/v1/threads/{thread_id}/approvals/{approval_id}", {"decision": "approve"}),
+        (
+            "POST",
+            f"/v1/threads/{thread_id}/approvals/{approval_id}/stream",
+            {"decision": "approve"},
+        ),
         ("GET", "/v1/me/threads", None),
         ("GET", "/v1/me/export", None),
         ("DELETE", "/v1/me/threads", None),

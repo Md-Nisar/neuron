@@ -281,7 +281,7 @@ are in seconds. Instruments:
 | `gen_ai.client.operation.duration` | histogram | `gen_ai.operation.name` (`chat`), `gen_ai.provider.name`, `gen_ai.request.model`, `error.type` on failure |
 | `gen_ai.client.token.usage` | histogram, `{token}` | the same, plus `gen_ai.token.type` (`input`, `output`; both include cache-read and reasoning tokens) |
 | `neuron.agent.run.duration` | histogram | `gen_ai.operation.name` (`invoke_agent`), `neuron.outcome` (`success`, `error`, `cancelled`), `error.type` |
-| `neuron.agent.stream.ttft` | histogram | `neuron.outcome` (the stream's termination: `completed`, `error`, `timeout`, `shutdown`, `client_disconnect`); streams that sent no token are not recorded |
+| `neuron.agent.stream.ttft` | histogram | `neuron.outcome` (the stream's termination: `completed`, `approval_required`, `error`, `timeout`, `shutdown`, `client_disconnect`); streams that sent no token are not recorded |
 | `neuron.agent.tool.duration` | histogram | `gen_ai.operation.name` (`execute_tool`), `gen_ai.tool.name`, `neuron.outcome` (`success`, `error`, `denied`, `interrupted`), `error.type` |
 | `neuron.agent.errors` | counter | `error.type`, an `AppError` code. Counts each failed request or run once, client errors (such as `validation_error`) included; filter on the code |
 | `neuron.model.fallbacks` | counter | `neuron.fallback.from`, `neuron.fallback.to`: the configured model ids switched from and to |
@@ -468,7 +468,7 @@ Every event carries `request_id`, `thread_id` and `run_id`. None of them contain
 | Event | Level | Key fields | Meaning |
 | --- | --- | --- | --- |
 | `stream_started` | info | — | a `/v1/agent/stream` run began |
-| `stream_completed` | info / warning | `termination` (`completed`, `error`, `timeout`, `shutdown`), `error_code`, `ttft_ms`, `duration_ms`, `tokens_streamed`, `events_streamed` | the stream reached `done`; warning unless `completed` |
+| `stream_completed` | info / warning | `termination` (`completed`, `approval_required`, `error`, `timeout`, `shutdown`), `error_code`, `ttft_ms`, `duration_ms`, `tokens_streamed`, `events_streamed` | the stream reached `done`; warning unless `completed` or `approval_required` (the run paused for a decision) |
 | `stream_cancelled` | info | `termination=client_disconnect`, plus the same timing and count fields | the client went away before `done`; the run was cancelled |
 | `stream_rejected` | warning | `termination` (the error code, e.g. `thread_busy`, `too_many_streams`, `thread_not_found`) | the stream was refused before the first byte |
 | `agent_execution_started` | info | `turn`, `history_messages`, `model` | `turn` is the 1-based user-turn number in the thread |
@@ -482,7 +482,7 @@ Every event carries `request_id`, `thread_id` and `run_id`. None of them contain
 
 Suggested alerts:
 - **Time to first token:** sustained rise in p95 `ttft_ms`.
-- **Failed streams:** `stream_completed` with `termination != completed` above a few percent of streams.
+- **Failed streams:** `stream_completed` with `termination` other than `completed` or `approval_required` above a few percent of streams.
 - **Disconnects:** a spike in `stream_cancelled`. This usually means client or proxy timeouts, so check proxy buffering and timeouts first.
 - **Capacity:** any `stream_rejected` with `too_many_streams`, which means you're at capacity; scale out or raise `APP_MAX_CONCURRENT_STREAMS`.
 - **Database:** any `checkpoint_operation_failed`, or a sustained `checkpoint_operation_slow` rate.

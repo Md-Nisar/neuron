@@ -78,6 +78,7 @@ Rejected for now: `SummarizationMiddleware`. It adds a second model call per lon
   | `token` | `text` (answer delta) |
   | `tool_call` | `name` only, never arguments |
   | `final` | the validated `AgentAnswer` payload (same fields as `AgentResponse`) |
+  | `approval_required` | (ADR 0009) the pause: `request_id`, `thread_id`, `approval` (`approval_id`, `actions` with their arguments in full, `allowed_decisions`); instead of `final`. Additive: protocol version 1 |
   | `error` | `code`, `retryable`, following `AppError.user_visible` rules |
   | `done` | empty |
 

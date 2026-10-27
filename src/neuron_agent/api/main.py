@@ -79,7 +79,7 @@ from neuron_agent.security.auth import (
     persistence_unavailable,
     require_permission,
 )
-from neuron_agent.services.agent_service import AgentService
+from neuron_agent.services.agent_service import AgentService, PreparedRun
 
 settings = get_settings()
 configure_logging(
@@ -605,21 +605,30 @@ async def stream_agent(
 
     Validation, rate limiting and thread resolution happen before the first byte, so those
     failures use normal HTTP status codes. Failures after the stream starts become a single
-    `error` event followed by `done`.
+    `error` event followed by `done`. A run that stops for an approval ends with an
+    `approval_required` event instead of `final`.
     """
-    bind_correlation_context(request_id=None, thread_id=request.thread_id)
+    prepare = (
+        service.prepare(request, streaming=True)
+        if principal is None
+        else service.prepare(request, streaming=True, principal=principal)
+    )
+    return await _stream_prepared(prepare, thread_id=request.thread_id)
+
+
+async def _stream_prepared(
+    prepare: Awaitable[PreparedRun], *, thread_id: str | None
+) -> EventSourceResponse:
+    """Stream a run once it is claimed; claim failures are plain HTTP errors."""
+    bind_correlation_context(request_id=None, thread_id=thread_id)
     try:
-        run = (
-            await service.prepare(request, streaming=True)
-            if principal is None
-            else await service.prepare(request, streaming=True, principal=principal)
-        )
+        run = await prepare
     except AppError as exc:
         metrics.record_error(exc.context.code)
         logger.warning(
             "stream_rejected",
             termination=exc.context.code,
-            thread_id=request.thread_id,
+            thread_id=thread_id,
             error_code=exc.context.code,
             error_type=type(exc).__name__,
         )
@@ -724,6 +733,27 @@ async def decide_approval(
         )
     except AppError as exc:
         raise _http_error("approval_decision_failed", exc) from exc
+
+
+@app.post("/v1/threads/{thread_id}/approvals/{approval_id}/stream")
+async def stream_approval_decision(
+    thread_id: uuid.UUID,
+    approval_id: Annotated[str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.:-]+$")],
+    body: ApprovalDecisionRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:approve"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> EventSourceResponse:
+    """`decide_approval`, with the continuation streamed like `/v1/agent/stream`."""
+    prepare = (
+        service.prepare_decision(
+            str(thread_id), approval_id, body.decision, streaming=True, user_id=user_id
+        )
+        if principal is None
+        else service.prepare_decision(
+            str(thread_id), approval_id, body.decision, streaming=True, principal=principal
+        )
+    )
+    return await _stream_prepared(prepare, thread_id=str(thread_id))
 
 
 @app.get("/v1/me/threads", response_model=UserThreadsResponse)

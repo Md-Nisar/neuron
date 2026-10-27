@@ -284,6 +284,20 @@ class AgentService:
             lease=lease,
         )
 
+    def _audit_thread_created(self, run: PreparedRun) -> None:
+        if run.created_thread:
+            audit(
+                "thread_created",
+                outcome="allowed",
+                actor=run.budget_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="agent:invoke",
+                resource_type="thread",
+                resource_id=run.thread_id,
+                request_id=run.request_id,
+                run_id=run.run_id,
+            )
+
     async def _reserve_budget(self, budget_key: str, tokens: int) -> BudgetReservation:
         """Reserve `tokens` of the owner's budget, or raise `QuotaExceededError`."""
         decision = await self._token_budget.reserve(budget_key, tokens)
@@ -359,9 +373,27 @@ class AgentService:
         principal: Principal | None = None,
         usage: TokenUsageAccumulator | None = None,
     ) -> AgentResponse | ApprovalRequiredResponse:
-        """Decide a pending approval and continue the run: a new run, with its own lease,
-        budget reservation and timeout. A missing, foreign or already-decided approval is the
-        same `ApprovalNotFoundError`.
+        """Decide a pending approval and continue the run (see `prepare_decision`)."""
+        run = await self.prepare_decision(
+            thread_id, approval_id, decision, user_id=user_id, principal=principal, usage=usage
+        )
+        return await self._execute(run)
+
+    async def prepare_decision(
+        self,
+        thread_id: str,
+        approval_id: str,
+        decision: Literal["approve", "reject"],
+        *,
+        streaming: bool = False,
+        user_id: str | None = None,
+        principal: Principal | None = None,
+        usage: TokenUsageAccumulator | None = None,
+    ) -> PreparedRun:
+        """Claim the run that continues a pending approval; nothing has executed yet.
+
+        A new run, with its own lease, budget reservation and timeout. A missing, foreign or
+        already-decided approval is the same `ApprovalNotFoundError`.
         """
         if self._refusing_new_runs():
             raise ShuttingDownError("server is shutting down")
@@ -374,7 +406,8 @@ class AgentService:
         reservation = await self._reserve_budget(budget_key, self._settings.max_output_tokens)
         try:
             lease = self._count_in_flight(
-                await self._claim(thread_id, streaming=False, owner_key=budget_key), reservation
+                await self._claim(thread_id, streaming=streaming, owner_key=budget_key),
+                reservation,
             )
         except BaseException:
             await self._token_budget.settle(reservation, 0)
@@ -399,7 +432,7 @@ class AgentService:
             reason=decision,
             count=actions,
         )
-        run = PreparedRun(
+        return PreparedRun(
             request_id=request_id,
             thread_id=thread_id,
             run_id=run_id,
@@ -411,7 +444,6 @@ class AgentService:
             created_thread=False,
             lease=lease,
         )
-        return await self._execute(run)
 
     async def _matching_interrupt(
         self, thread_id: str, owner_key: str | None, approval_id: str
@@ -484,18 +516,7 @@ class AgentService:
             if (interrupts := result.get("__interrupt__"))
             else _response(run, result["answer"])
         )
-        if run.created_thread:
-            audit(
-                "thread_created",
-                outcome="allowed",
-                actor=run.budget_key[:12] if self._settings.auth_mode == "jwt" else None,
-                issuer_id=self._settings.auth_issuer_id,
-                action="agent:invoke",
-                resource_type="thread",
-                resource_id=run.thread_id,
-                request_id=run.request_id,
-                run_id=run.run_id,
-            )
+        self._audit_thread_created(run)
         return response
 
     async def stream(
@@ -578,6 +599,7 @@ class AgentService:
         # Withholds text that could be a system prompt quote; the graph guards the final answer.
         guard = StreamLeakGuard()
         answer: AgentAnswer | None = None
+        pending: Interrupt | None = None
         try:
             async with asyncio.timeout(self._settings.run_timeout_seconds):
                 with self._persistence_errors():
@@ -590,6 +612,10 @@ class AgentService:
                         # node; its model tokens are only surfaced with subgraphs enabled.
                         subgraphs=True,
                     ):
+                        if mode == "updates" and not namespace and "__interrupt__" in chunk:
+                            # A tool waits for a decision (ADR 0009): the run ends here.
+                            pending = chunk["__interrupt__"][0]
+                            continue
                         if mode == "updates" and not namespace and "agent" in chunk:
                             answer = chunk["agent"]["answer"]
                             continue
@@ -615,7 +641,14 @@ class AgentService:
                 StreamEvent("error", {"code": "internal_server_error", "retryable": False})
             )
         else:
-            if answer is None:
+            if pending is not None:
+                # Text the guard still holds is the model's own, said before it asked for the tool.
+                if tail := guard.flush():
+                    queue.put_nowait(StreamEvent("token", {"text": tail}))
+                self._audit_thread_created(run)
+                paused = self._approval_required(run, pending)
+                queue.put_nowait(StreamEvent("approval_required", paused.model_dump()))
+            elif answer is None:
                 logger.error("agent_stream_missing_answer")
                 queue.put_nowait(
                     StreamEvent("error", {"code": "internal_server_error", "retryable": False})
@@ -623,18 +656,7 @@ class AgentService:
             else:
                 if (tail := guard.flush()) and answer.answer != SYSTEM_PROMPT_REFUSAL:
                     queue.put_nowait(StreamEvent("token", {"text": tail}))
-                if run.created_thread:
-                    audit(
-                        "thread_created",
-                        outcome="allowed",
-                        actor=run.budget_key[:12] if self._settings.auth_mode == "jwt" else None,
-                        issuer_id=self._settings.auth_issuer_id,
-                        action="agent:invoke",
-                        resource_type="thread",
-                        resource_id=run.thread_id,
-                        request_id=run.request_id,
-                        run_id=run.run_id,
-                    )
+                self._audit_thread_created(run)
                 queue.put_nowait(StreamEvent("final", _response(run, answer).model_dump()))
         finally:
             # Unbounded queue: its size is bounded by the run's own output
@@ -1079,6 +1101,8 @@ class _StreamStats:
                 self.first_token_ms = self._elapsed_ms()
         elif event.event == "final":
             self.termination = "completed"
+        elif event.event == "approval_required":
+            self.termination = "approval_required"
         elif event.event == "error":
             self.error_code = event.data.get("code")
             if self.termination is None:
@@ -1096,7 +1120,11 @@ class _StreamStats:
         if not self.finished:
             logger.info("stream_cancelled", termination="client_disconnect", **fields)
             return
-        log = logger.info if self.termination == "completed" else logger.warning
+        log = (
+            logger.info
+            if self.termination in {"completed", "approval_required"}
+            else logger.warning
+        )
         log("stream_completed", termination=self.termination, error_code=self.error_code, **fields)
 
     def record_on(self, span: Span) -> None:
