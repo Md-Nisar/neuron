@@ -26,7 +26,7 @@ from typing import Annotated, Any
 import anyio
 import structlog
 import uvicorn
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
@@ -63,6 +63,8 @@ from neuron_agent.persistence.guards import build_ip_pre_limiter, build_rate_lim
 from neuron_agent.schemas.agent import (
     AgentRequest,
     AgentResponse,
+    ApprovalDecisionRequest,
+    ApprovalRequiredResponse,
     ThreadHistoryResponse,
     UserDataErasureResponse,
     UserDataExportResponse,
@@ -536,12 +538,12 @@ async def ready() -> JSONResponse:
 
 @app.post(
     "/v1/agent/invoke",
-    response_model=AgentResponse,
+    response_model=AgentResponse | ApprovalRequiredResponse,
 )
 async def invoke_agent(
     request: AgentRequest,
     principal: Annotated[Principal | None, Depends(require_permission("agent:invoke"))] = None,
-) -> AgentResponse:
+) -> AgentResponse | ApprovalRequiredResponse:
     request_id = None
     thread_id = request.thread_id
     bind_correlation_context(request_id=request_id, thread_id=thread_id)
@@ -558,10 +560,12 @@ async def invoke_agent(
         thread_id = response.thread_id
         bind_correlation_context(request_id=request_id, thread_id=thread_id)
         logger.info(
-            "agent_request_completed",
+            "agent_request_completed"
+            if isinstance(response, AgentResponse)
+            else "agent_request_paused",
             request_id=request_id,
             thread_id=thread_id,
-            confidence=response.confidence,
+            confidence=response.confidence if isinstance(response, AgentResponse) else None,
             duration_ms=round((time.monotonic() - started) * 1000, 2),
         )
         return response
@@ -691,6 +695,35 @@ async def delete_thread(
     except AppError as exc:
         raise _http_error("thread_delete_failed", exc) from exc
     return Response(status_code=204)
+
+
+@app.post(
+    "/v1/threads/{thread_id}/approvals/{approval_id}",
+    response_model=AgentResponse | ApprovalRequiredResponse,
+)
+async def decide_approval(
+    thread_id: uuid.UUID,
+    approval_id: Annotated[str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.:-]+$")],
+    body: ApprovalDecisionRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:approve"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> AgentResponse | ApprovalRequiredResponse:
+    """Approve or reject the tool call a run paused on, and continue it (ADR 0009, decision 6).
+
+    A new run: it has its own lease, rate limit, token budget and timeout. A missing, foreign
+    or already-decided approval is the same `404`.
+    """
+    bind_correlation_context(request_id=None, thread_id=str(thread_id))
+    try:
+        if principal is None:
+            return await service.decide_approval(
+                str(thread_id), approval_id, body.decision, user_id=user_id
+            )
+        return await service.decide_approval(
+            str(thread_id), approval_id, body.decision, principal=principal
+        )
+    except AppError as exc:
+        raise _http_error("approval_decision_failed", exc) from exc
 
 
 @app.get("/v1/me/threads", response_model=UserThreadsResponse)

@@ -26,6 +26,12 @@ from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.auth import Principal
 
 _MARKER = "alice-secret-7f3c"  # conversation content that must never cross users
+_APPROVAL_ID = "0123456789abcdef0123456789abcdef"  # nothing is pending under this ID
+
+
+def _not_found(path: str) -> dict[str, str]:
+    """The one 404 body for a thread or approval the caller cannot reach."""
+    return {"detail": "approval_not_found" if "/approvals/" in path else "thread_not_found"}
 
 
 def _parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
@@ -37,13 +43,16 @@ def _parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
     return events
 
 
-def _route_requests(thread_id: str) -> list[tuple[str, str, dict[str, Any] | None]]:
+def _route_requests(
+    thread_id: str, approval_id: str = _APPROVAL_ID
+) -> list[tuple[str, str, dict[str, Any] | None]]:
     """One request per `/v1/*` route, aimed at `thread_id` wherever the route takes one."""
     return [
         ("POST", "/v1/agent/invoke", {"message": "probe", "thread_id": thread_id}),
         ("POST", "/v1/agent/stream", {"message": "probe", "thread_id": thread_id}),
         ("GET", f"/v1/threads/{thread_id}/messages", None),
         ("DELETE", f"/v1/threads/{thread_id}", None),
+        ("POST", f"/v1/threads/{thread_id}/approvals/{approval_id}", {"decision": "approve"}),
         ("GET", "/v1/me/threads", None),
         ("GET", "/v1/me/export", None),
         ("DELETE", "/v1/me/threads", None),
@@ -58,7 +67,7 @@ def test_matrix_covers_every_v1_route() -> None:
         for method in route.methods
     }
     probe = "{thread_id}"
-    covered = {(method, path) for method, path, _ in _route_requests(probe)}
+    covered = {(method, path) for method, path, _ in _route_requests(probe, "{approval_id}")}
     assert covered == declared
 
 
@@ -95,7 +104,7 @@ def test_other_user_cannot_reach_owned_thread_on_any_route(
     for (method, path, body), (_, unknown_path, unknown_body) in zip(
         _route_requests(thread_id), _route_requests(unknown), strict=True
     ):
-        if body is not None:
+        if body is not None and "/approvals/" not in path:  # that body takes no identity field
             body = {**body, "user_id": "alice"}
             unknown_body = {**unknown_body, "user_id": "alice"} if unknown_body else None
         response = jwt_api.client.request(method, path, json=body, headers=spoofed)
@@ -108,7 +117,7 @@ def test_other_user_cannot_reach_owned_thread_on_any_route(
         baseline = jwt_api.client.request(method, unknown_path, json=unknown_body, headers=spoofed)
         # Another user's thread is indistinguishable from a thread that doesn't exist.
         assert response.status_code == baseline.status_code == 404, (method, path)
-        assert response.json() == baseline.json() == {"detail": "thread_not_found"}
+        assert response.json() == baseline.json() == _not_found(path)
 
     # The intruder's erase-all and the failed delete left the owner's thread intact.
     history = _history(jwt_api, thread_id, alice)
@@ -125,6 +134,11 @@ def test_owner_reaches_own_thread_on_every_route(
         if method == "DELETE":
             continue  # Deletion is checked last, below.
         response = jwt_api.client.request(method, path, json=body, headers=bearer(alice))
+        if "/approvals/" in path:
+            # The owner reaches the route; nothing is pending under this ID (the pending case
+            # is tested in test_approval_api.py).
+            assert (response.status_code, response.json()) == (404, _not_found(path))
+            continue
         assert response.status_code == 200, (method, path, response.text)
     listing = jwt_api.client.get("/v1/me/threads", headers=bearer(alice)).json()
     assert [t["thread_id"] for t in listing["threads"]] == [thread_id]

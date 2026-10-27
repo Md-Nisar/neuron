@@ -63,6 +63,18 @@ class ThreadBusyError(AppError):
     context = ErrorContext(code="thread_busy", http_status=409, retryable=True)
 
 
+class ApprovalNotFoundError(AppError):
+    """No pending approval with this ID for the caller: missing, another user's, or decided."""
+
+    context = ErrorContext(code="approval_not_found", http_status=404)
+
+
+class ApprovalPendingError(AppError):
+    """The thread waits for a decision on a tool call; it takes no new message until then."""
+
+    context = ErrorContext(code="approval_pending", http_status=409)
+
+
 class ExportTooLargeError(AppError):
     """A user export page exceeds the configured response-size cap."""
 

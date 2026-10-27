@@ -12,18 +12,21 @@ import uuid
 from collections.abc import AsyncGenerator, Iterator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import anyio
 import psycopg
 import structlog
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from langgraph.types import Command, Interrupt, StateSnapshot
 from opentelemetry import trace
 from opentelemetry.trace import Span
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AppError,
+    ApprovalNotFoundError,
+    ApprovalPendingError,
     AuthenticationError,
     CapacityError,
     ConcurrentRunsExceededError,
@@ -47,7 +50,10 @@ from neuron_agent.schemas.agent import (
     AgentAnswer,
     AgentRequest,
     AgentResponse,
+    ApprovalRequest,
+    ApprovalRequiredResponse,
     ExportedThread,
+    PendingAction,
     ThreadHistoryResponse,
     ThreadMessage,
     UserDataErasureResponse,
@@ -61,7 +67,7 @@ from neuron_agent.security.authorization import (
     AuthorizationContext,
     TokenUsageAccumulator,
 )
-from neuron_agent.security.input_policy import validate_user_message
+from neuron_agent.security.input_policy import audit_tool_name, validate_user_message
 from neuron_agent.security.output_policy import SYSTEM_PROMPT_REFUSAL, StreamLeakGuard
 from neuron_agent.security.run_guard import RunClaimDenied, RunDenialReason, RunGuard, RunLease
 from neuron_agent.security.usage_budget import BudgetReservation, TokenBudget
@@ -93,7 +99,7 @@ class PreparedRun:
     request_id: str
     thread_id: str
     run_id: str
-    graph_input: dict[str, Any]
+    graph_input: Any
     authorization: AuthorizationContext
     budget_key: str
     budget_reservation: BudgetReservation
@@ -227,29 +233,9 @@ class AgentService:
         owner_key = self._owner_key(request.user_id, principal)
         message = validate_user_message(request.message, max_chars=self._settings.max_prompt_chars)
         budget_key = owner_key or "anonymous"
-        prompt_estimate = estimate_prompt_tokens(message)
-        budget_decision = await self._token_budget.reserve(
-            budget_key, self._settings.max_output_tokens + prompt_estimate
+        reservation = await self._reserve_budget(
+            budget_key, self._settings.max_output_tokens + estimate_prompt_tokens(message)
         )
-        reservation = budget_decision.reservation
-        if not budget_decision.allowed or reservation is None:
-            metrics.record_policy_block("token_budget")
-            logger.warning(
-                "user_limit_exceeded",
-                limit_type="token_budget",
-                owner_key_prefix=budget_key[:12],
-                retry_after=budget_decision.retry_after_seconds,
-            )
-            audit(
-                "limit_exceeded",
-                outcome="denied",
-                actor=budget_key[:12] if self._settings.auth_mode == "jwt" else None,
-                issuer_id=self._settings.auth_issuer_id,
-                action="agent:invoke",
-                resource_type="agent",
-                reason="token_budget",
-            )
-            raise QuotaExceededError(budget_decision.retry_after_seconds)
         try:
             bind_correlation_context(
                 request_id=request_id, thread_id=request.thread_id, run_id=run_id
@@ -270,13 +256,14 @@ class AgentService:
             if self._settings.auth_mode == "jwt"
             else {"user_id_hash": owner_key}
         )
-        permissions = (
-            DEV_PERMISSIONS | frozenset(spec.scope for spec in self._tools() if spec.scope)
-            if self._settings.auth_mode == "none"
-            else principal.scopes
-            if principal is not None
-            else frozenset()
-        )
+        if request.thread_id is not None and self._can_pause():
+            try:
+                with self._persistence_errors():
+                    if await self._pending_interrupts(thread_id):
+                        raise ApprovalPendingError("the thread waits for a decision on a tool call")
+            except BaseException:
+                await lease.release()
+                raise
         return PreparedRun(
             request_id=request_id,
             thread_id=thread_id,
@@ -289,18 +276,179 @@ class AgentService:
                 "run_id": run_id,
                 **owner_state,
             },
-            authorization=AuthorizationContext(
-                permissions,
-                principal,
-                usage=usage or TokenUsageAccumulator(),
-                actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
-                issuer_id=self._settings.auth_issuer_id,
-            ),
+            authorization=self._authorization(owner_key, principal, usage),
             budget_key=budget_key,
             budget_reservation=reservation,
             checkpoint_owner=owner_key,
             created_thread=request.thread_id is None,
             lease=lease,
+        )
+
+    async def _reserve_budget(self, budget_key: str, tokens: int) -> BudgetReservation:
+        """Reserve `tokens` of the owner's budget, or raise `QuotaExceededError`."""
+        decision = await self._token_budget.reserve(budget_key, tokens)
+        if not decision.allowed or decision.reservation is None:
+            metrics.record_policy_block("token_budget")
+            logger.warning(
+                "user_limit_exceeded",
+                limit_type="token_budget",
+                owner_key_prefix=budget_key[:12],
+                retry_after=decision.retry_after_seconds,
+            )
+            audit(
+                "limit_exceeded",
+                outcome="denied",
+                actor=budget_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="agent:invoke",
+                resource_type="agent",
+                reason="token_budget",
+            )
+            raise QuotaExceededError(decision.retry_after_seconds)
+        return decision.reservation
+
+    def _can_pause(self) -> bool:
+        """Whether a run on this service can wait for an approval."""
+        return self._persistence.checkpointer is not None and bool(self._tools().mutating())
+
+    async def _pending_interrupts(self, thread_id: str) -> list[Interrupt]:
+        snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
+        return [interrupt for task in snapshot.tasks for interrupt in task.interrupts]
+
+    def _approval_required(
+        self, run: PreparedRun, interrupt: Interrupt
+    ) -> ApprovalRequiredResponse:
+        """The response for a run that paused, and the `approval_requested` audit event."""
+        actions = [
+            PendingAction(name=str(action["name"]), args=dict(action["args"]))
+            for action in interrupt.value["action_requests"]
+        ]
+        approval = ApprovalRequest(
+            approval_id=interrupt.id, actions=actions, allowed_decisions=["approve", "reject"]
+        )
+        known = self._tools().names()
+        logger.info(
+            "approval_requested",
+            request_id=run.request_id,
+            run_id=run.run_id,
+            tool_names=[audit_tool_name(action.name, known) for action in actions],
+        )
+        audit(
+            "approval_requested",
+            outcome="allowed",
+            actor=run.budget_key[:12] if self._settings.auth_mode == "jwt" else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="agent:invoke",
+            resource_type="approval",
+            resource_id=approval.approval_id,
+            request_id=run.request_id,
+            run_id=run.run_id,
+            count=len(actions),
+        )
+        return ApprovalRequiredResponse(
+            request_id=run.request_id, thread_id=run.thread_id, approval=approval
+        )
+
+    async def decide_approval(
+        self,
+        thread_id: str,
+        approval_id: str,
+        decision: Literal["approve", "reject"],
+        *,
+        user_id: str | None = None,
+        principal: Principal | None = None,
+        usage: TokenUsageAccumulator | None = None,
+    ) -> AgentResponse | ApprovalRequiredResponse:
+        """Decide a pending approval and continue the run: a new run, with its own lease,
+        budget reservation and timeout. A missing, foreign or already-decided approval is the
+        same `ApprovalNotFoundError`.
+        """
+        if self._refusing_new_runs():
+            raise ShuttingDownError("server is shutting down")
+        owner_key = self._owner_key(user_id, principal)
+        request_id, run_id = str(uuid.uuid4()), str(uuid.uuid4())
+        bind_correlation_context(request_id=request_id, thread_id=thread_id, run_id=run_id)
+        # Cheap refusals first: nothing is reserved or claimed for an approval that isn't there.
+        await self._matching_interrupt(thread_id, owner_key, approval_id)
+        budget_key = owner_key or "anonymous"
+        reservation = await self._reserve_budget(budget_key, self._settings.max_output_tokens)
+        try:
+            lease = self._count_in_flight(
+                await self._claim(thread_id, streaming=False, owner_key=budget_key), reservation
+            )
+        except BaseException:
+            await self._token_budget.settle(reservation, 0)
+            raise
+        try:
+            # Again, now that no other decision can run: a decision is single-use.
+            pending = await self._matching_interrupt(thread_id, owner_key, approval_id)
+        except BaseException:
+            await lease.release()
+            raise
+        actions = len(pending.value["action_requests"])
+        audit(
+            "approval_decided",
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="agent:approve",
+            resource_type="approval",
+            resource_id=approval_id,
+            request_id=request_id,
+            run_id=run_id,
+            reason=decision,
+            count=actions,
+        )
+        run = PreparedRun(
+            request_id=request_id,
+            thread_id=thread_id,
+            run_id=run_id,
+            graph_input=Command(resume={"decisions": [{"type": decision}] * actions}),
+            authorization=self._authorization(owner_key, principal, usage),
+            budget_key=budget_key,
+            budget_reservation=reservation,
+            checkpoint_owner=owner_key,
+            created_thread=False,
+            lease=lease,
+        )
+        return await self._execute(run)
+
+    async def _matching_interrupt(
+        self, thread_id: str, owner_key: str | None, approval_id: str
+    ) -> Interrupt:
+        """The thread's pending interrupt with this ID, for its owner only."""
+        with self._persistence_errors():
+            try:
+                snapshot = await self._owned_snapshot(thread_id, owner_key)
+            except ThreadNotFoundError:
+                raise ApprovalNotFoundError("approval not found") from None
+        for task in snapshot.tasks:
+            for interrupt in task.interrupts:
+                if interrupt.id == approval_id:
+                    return interrupt
+        logger.info("approval_not_found")
+        raise ApprovalNotFoundError("approval not found")
+
+    def _authorization(
+        self,
+        owner_key: str | None,
+        principal: Principal | None,
+        usage: TokenUsageAccumulator | None,
+    ) -> AuthorizationContext:
+        """The run's trusted authorization inputs, from the verified principal only."""
+        permissions = (
+            DEV_PERMISSIONS | frozenset(spec.scope for spec in self._tools() if spec.scope)
+            if self._settings.auth_mode == "none"
+            else principal.scopes
+            if principal is not None
+            else frozenset()
+        )
+        return AuthorizationContext(
+            permissions,
+            principal,
+            usage=usage or TokenUsageAccumulator(),
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+            issuer_id=self._settings.auth_issuer_id,
         )
 
     async def invoke(
@@ -309,9 +457,13 @@ class AgentService:
         *,
         principal: Principal | None = None,
         usage: TokenUsageAccumulator | None = None,
-    ) -> AgentResponse:
+    ) -> AgentResponse | ApprovalRequiredResponse:
         """Run one turn. A caller-supplied `usage` accumulator receives the run's token counts."""
         run = await self.prepare(request, principal=principal, usage=usage)
+        return await self._execute(run)
+
+    async def _execute(self, run: PreparedRun) -> AgentResponse | ApprovalRequiredResponse:
+        """Run a prepared run to its end or to a pause for approval, then settle and release."""
         try:
             with self._persistence_errors():
                 async with asyncio.timeout(self._settings.run_timeout_seconds):
@@ -326,7 +478,12 @@ class AgentService:
                 await self._finish_usage(run)
             finally:
                 await run.lease.release()
-        response = _response(run, result["answer"])
+        # Checked first: after a pause the state still holds the previous turn's answer.
+        response: AgentResponse | ApprovalRequiredResponse = (
+            self._approval_required(run, interrupts[0])
+            if (interrupts := result.get("__interrupt__"))
+            else _response(run, result["answer"])
+        )
         if run.created_thread:
             audit(
                 "thread_created",
@@ -837,6 +994,11 @@ class AgentService:
         A missing thread, another user's thread, and a service without persistence all raise
         the same `ThreadNotFoundError`, so thread IDs cannot be probed.
         """
+        values: dict[str, Any] = (await self._owned_snapshot(thread_id, owner_key)).values
+        return values
+
+    async def _owned_snapshot(self, thread_id: str, owner_key: str | None) -> StateSnapshot:
+        """`_owned_thread_state` with the whole snapshot (state and pending tasks)."""
         if self._persistence.checkpointer is None:
             raise ThreadNotFoundError("thread not found")
         snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
@@ -854,8 +1016,7 @@ class AgentService:
                 reason="thread_not_found",
             )
             raise ThreadNotFoundError("thread not found")
-        values: dict[str, Any] = snapshot.values
-        return values
+        return snapshot  # type: ignore[no-any-return]
 
     def _owner_key(self, user_id: str | None, principal: Principal | None) -> str | None:
         """Resolve the owner without allowing request identity to override JWT identity."""
