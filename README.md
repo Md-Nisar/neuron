@@ -44,6 +44,8 @@ Set `OPENAI_API_KEY` in `.env` before live model execution. Without a key, devel
 
 For development you can use a model from NVIDIA's API catalog instead (`build.nvidia.com`, which offers OpenAI-compatible models on a free tier): set `NVIDIA_API_KEY` and `APP_DEFAULT_MODEL=nvidia:<model-id>`, such as a model ID from the catalog's model list. The app calls NVIDIA's OpenAI-compatible endpoint (`https://integrate.api.nvidia.com/v1`) through the same client, retries and error handling. The model must support tool calling. The free tier is for development and evaluation; keep real user data off it.
 
+Anthropic is a third provider (`ANTHROPIC_API_KEY` or `APP_ANTHROPIC_API_KEY`, `APP_DEFAULT_MODEL=anthropic:<model-id>`). It is covered by unit tests with fakes only: v0.7.0 has no funded Anthropic key, so it has **not been run against the live API**. Without a key, development and test fall back to the local fake model, like the other providers.
+
 ## Authentication
 
 Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed JWT) when `APP_AUTH_MODE=jwt`, which staging and production enforce (ADR 0006). The token's verified issuer and subject identify the caller and own their threads; scopes grant permissions:
@@ -253,7 +255,7 @@ uv run pytest tests/integration/test_live_openai_smoke.py -m integration -q
 ## Troubleshooting
 
 - **No `OPENAI_API_KEY` locally**: expected. `development`/`test` fall back to a fake local chat model (`create_chat_model` in `models/factory.py`); health checks and `make test` still pass. Only live calls (`make test-integration`, `make eval` with a key, or `make api` without a key against a real request) need one.
-- **Settings fail to construct with a provider-key error**: `APP_ENV=staging` or `production` require the selected provider's key (`OPENAI_API_KEY`/`APP_OPENAI_API_KEY`, or `NVIDIA_API_KEY`/`APP_NVIDIA_API_KEY` for `nvidia:` models) to be set — this is `Settings.require_provider_key_outside_tests` failing fast on purpose.
+- **Settings fail to construct with a provider-key error**: `APP_ENV=staging` or `production` require the selected provider's key (`OPENAI_API_KEY`/`APP_OPENAI_API_KEY`, `NVIDIA_API_KEY`/`APP_NVIDIA_API_KEY` for `nvidia:` models, or `ANTHROPIC_API_KEY`/`APP_ANTHROPIC_API_KEY` for `anthropic:` models) to be set — this is `Settings.require_provider_key_outside_tests` failing fast on purpose.
 - **Unexpectedly hitting `429 rate_limited` while testing locally**: the default limiter allows a burst of 20 and 60/min thereafter per client IP; set `APP_RATE_LIMIT_ENABLED=false` or raise the limits in `.env` for local load testing.
 - **`mypy`/`ruff` failures on a fresh clone**: run `uv sync` first so the dev dependency group (ruff, mypy, bandit) is installed; `make format lint typecheck` assume `uv run` resolves against the synced `.venv`.
 - **A test hangs instead of failing**: check whether it's unintentionally exercising the real `ChatOpenAI` client (a credential is set in the shell/`.env` where a test expected the fake model) — `APP_REQUEST_TIMEOUT_SECONDS`/`APP_TOOL_TIMEOUT_SECONDS` only bound the agent's own calls, not an unrelated hang in test setup.

@@ -44,6 +44,8 @@ _LIVE_VARS = (
     "OPENAI_API_KEY",
     "APP_NVIDIA_API_KEY",
     "NVIDIA_API_KEY",
+    "APP_ANTHROPIC_API_KEY",
+    "ANTHROPIC_API_KEY",
 )
 _dotenv = dotenv_values(".env") if os.path.isfile(".env") else {}
 _LIVE_ENV = {n: v for n in _LIVE_VARS if (v := os.environ.get(n) or _dotenv.get(n))}

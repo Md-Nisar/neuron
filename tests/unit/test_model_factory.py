@@ -4,6 +4,7 @@ import httpx
 import openai
 import pytest
 from langchain.agents.structured_output import StructuredOutputValidationError
+from langchain_anthropic import ChatAnthropic
 from langchain_core.exceptions import (
     ContextOverflowError,
     ModelAPIError,
@@ -99,6 +100,29 @@ def test_create_chat_model_targets_the_nvidia_openai_compatible_endpoint() -> No
     assert model.request_timeout == 60
 
 
+def test_create_chat_model_builds_anthropic_with_the_same_limits() -> None:
+    settings = _production_settings(
+        default_model="anthropic:example-model",
+        anthropic_api_key=SecretStr("sk-ant-test"),
+        request_timeout_seconds=45,
+        max_output_tokens=1234,
+    )
+    model = create_chat_model(settings)
+
+    assert isinstance(model, ChatAnthropic)
+    assert model.model == "example-model"
+    assert model.anthropic_api_key.get_secret_value() == "sk-ant-test"
+    # Retries belong to the retry middleware, not the SDK, as for the other providers.
+    assert model.max_retries == 0
+    assert model.default_request_timeout == 45
+    assert model.max_tokens == 1234
+
+
+def test_anthropic_without_a_key_uses_the_fake_model_in_development() -> None:
+    settings = Settings(env="development", default_model="anthropic:example-model")
+    assert isinstance(create_chat_model(settings), _FakeChatModel)
+
+
 def test_create_chat_model_falls_back_without_the_selected_providers_key() -> None:
     settings = Settings(
         env="development",
@@ -124,7 +148,7 @@ def test_classify_agent_error_passes_through_app_errors() -> None:
 
 def test_create_chat_model_rejects_unsupported_provider() -> None:
     settings = _production_settings(
-        default_model="anthropic:claude",
+        default_model="mistral:large",
     )
     with pytest.raises(ConfigurationError):
         create_chat_model(settings)

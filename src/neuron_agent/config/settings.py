@@ -180,6 +180,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    anthropic_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_ANTHROPIC_API_KEY",
+            "ANTHROPIC_API_KEY",
+        ),
+    )
+
     # Only the name LangSmith itself reads: an `APP_`-prefixed copy would pass validation
     # here and still leave the client without a key.
     langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
@@ -192,7 +200,13 @@ class Settings(BaseSettings):
             raise ValueError("postgres_app_role must not start with pg_")
         return value
 
-    @field_validator("openai_api_key", "nvidia_api_key", "langsmith_api_key", mode="before")
+    @field_validator(
+        "openai_api_key",
+        "nvidia_api_key",
+        "anthropic_api_key",
+        "langsmith_api_key",
+        mode="before",
+    )
     @classmethod
     def empty_provider_key_is_unset(cls, value: object) -> object:
         """`OPENAI_API_KEY=` (as copied from `.env.example`) means no key, not an empty one."""
@@ -200,7 +214,11 @@ class Settings(BaseSettings):
 
     def provider_api_key(self, provider: str) -> SecretStr | None:
         """Return the API key for a `default_model` provider prefix, if one is configured."""
-        key = {"openai": self.openai_api_key, "nvidia": self.nvidia_api_key}.get(provider)
+        key = {
+            "openai": self.openai_api_key,
+            "nvidia": self.nvidia_api_key,
+            "anthropic": self.anthropic_api_key,
+        }.get(provider)
         return key if key is not None and key.get_secret_value() else None
 
     @model_validator(mode="after")
@@ -209,7 +227,7 @@ class Settings(BaseSettings):
         provider = self.default_model.partition(":")[0]
         if (
             self.env in {"staging", "production"}
-            and provider in {"openai", "nvidia"}
+            and provider in {"openai", "nvidia", "anthropic"}
             and self.provider_api_key(provider) is None
         ):
             raise ValueError(

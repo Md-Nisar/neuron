@@ -246,7 +246,7 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
   - `chat {model}` (CLIENT), one per model call, its retries included, with
     `gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.response.model`, token usage by
     kind (`gen_ai.usage.input_tokens`, `.output_tokens`, `.cache_read.input_tokens`,
-    `.reasoning.output_tokens`) and `neuron.retry_count`.
+    `.cache_creation.input_tokens`, `.reasoning.output_tokens`) and `neuron.retry_count`.
   - `execute_tool {tool}`, one per tool call, with `gen_ai.tool.name` and `neuron.outcome`
     (`success`, `error` or `denied`). A tool the agent doesn't have is named `unknown`.
   - `neuron.stream` around an SSE stream (the parent of its `invoke_agent` span), with

@@ -45,7 +45,7 @@ processors:
           - keep_keys(attributes, ["service.name", "service.version", "deployment.environment.name", "service.instance.id"])
       - context: span
         statements:
-          - keep_keys(attributes, ["neuron.correlation_id", "gen_ai.operation.name", "gen_ai.agent.name", "gen_ai.conversation.id", "gen_ai.provider.name", "gen_ai.request.model", "gen_ai.response.model", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.usage.cache_read.input_tokens", "gen_ai.usage.reasoning.output_tokens", "gen_ai.tool.name", "error.type", "neuron.run_id", "neuron.owner_key_prefix", "neuron.turn", "neuron.retry_count", "neuron.outcome", "neuron.stream.ttft_ms", "neuron.stream.events", "neuron.stream.termination", "http.request.method", "http.route", "http.response.status_code", "url.scheme", "network.protocol.version"])
+          - keep_keys(attributes, ["neuron.correlation_id", "gen_ai.operation.name", "gen_ai.agent.name", "gen_ai.conversation.id", "gen_ai.provider.name", "gen_ai.request.model", "gen_ai.response.model", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.usage.cache_read.input_tokens", "gen_ai.usage.cache_creation.input_tokens", "gen_ai.usage.reasoning.output_tokens", "gen_ai.tool.name", "error.type", "neuron.run_id", "neuron.owner_key_prefix", "neuron.turn", "neuron.retry_count", "neuron.outcome", "neuron.stream.ttft_ms", "neuron.stream.events", "neuron.stream.termination", "http.request.method", "http.route", "http.response.status_code", "url.scheme", "network.protocol.version"])
       # The service records no span events (exceptions are never recorded: messages can carry content).
       - context: spanevent
         statements:

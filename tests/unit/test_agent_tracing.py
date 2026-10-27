@@ -218,7 +218,7 @@ async def test_agent_server_run_records_ids_owner_prefix_and_token_usage(
         "input_tokens": 120,
         "output_tokens": 30,
         "total_tokens": 150,
-        "input_token_details": {"cache_read": 100},
+        "input_token_details": {"cache_read": 100, "cache_creation": 7},
         "output_token_details": {"reasoning": 12},
     }
     stream_replies(
@@ -262,6 +262,7 @@ async def test_agent_server_run_records_ids_owner_prefix_and_token_usage(
     assert chat_attributes[semconv.GEN_AI_USAGE_INPUT_TOKENS] == 120
     assert chat_attributes[semconv.GEN_AI_USAGE_OUTPUT_TOKENS] == 30
     assert chat_attributes[semconv.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == 100
+    assert chat_attributes[semconv.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] == 7
     assert chat_attributes[semconv.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS] == 12
 
 
