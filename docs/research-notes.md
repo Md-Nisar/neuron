@@ -617,3 +617,42 @@ price file; (2) a tool registry (one declaration per tool); (3) approvals, which
 (2) for a mutating tool and a decision on `checkpointer`; (4) memory, which needs (3)
 for gated writes if writes are tool-driven. Items (1) and (2) have no open product
 question and could start first.
+
+### Addendum (2026-10-27): owner decisions and follow-up checks
+
+Owner decisions, in answer to the open questions above: (1) no product requirement
+given; Claude chooses one, to be confirmed in ADR 0009; (2) superseding ADR 0005's
+`checkpointer=False` for approvals is accepted; (3) the second provider is Anthropic,
+with no funded key, so every test, verification and eval runs on the NVIDIA key and the
+Anthropic path is verified with fakes only; (4) bump `langchain`; (5) MCP is in.
+
+Checks made after those answers:
+
+- **Bump resolves.** A scratch `uv lock` (not committed) moves `langchain` 1.3.18 to
+  1.4.7, `langchain-core` 1.6.1 to 1.7.0, `langgraph` 1.2.11 to 1.2.18, `langchain-openai`
+  1.6.0 to 1.7.3 and `langsmith` 0.11.2 to 0.14.13 with no conflict. `langchain` 1.4.7
+  is the PyPI latest (2026-10-21); per-call interrupts and `v3` streaming need >= 1.4.6.
+- **MCP package.** A model summary of the LangChain docs says the standalone
+  `langchain-mcp-adapters` (PyPI 0.3.2, last release 2026-08-06) is no longer maintained
+  and was replaced by `langchain.mcp` (`MCPAdapter`, beta, extra `langchain[mcp]`, built
+  on FastMCP, tool interception through `@wrap_tool_call` middleware, tool annotations at
+  `tool.metadata["mcp"]["tool"]["annotations"]`, elicitation surfaced as an interrupt,
+  sampling and roots unsupported). Not verified against the pages themselves, and the
+  beta label means the API can move. Timeouts and input-schema conversion are not
+  documented there.
+- **Cost of MCP.** `langchain[mcp]` plus `langchain-anthropic` add 28 packages to the
+  lock (`fastmcp`, `fastmcp-slim`, `mcp`, `mcp-types`, `anthropic`, `authlib`,
+  `cyclopts`, `joserfc`, `pyperclip`, `python-multipart`, ...). All are on PyPI and at
+  least 168 days old, so the `new-dependencies` job passes; the footprint itself is
+  ASI04 surface and needs the dependency audit and a pinned lock.
+- **MCP transports** (spec 2025-11-25): stdio and Streamable HTTP. A stdio server is a
+  local subprocess started by the client. For Streamable HTTP, servers MUST validate
+  `Origin` (DNS rebinding), SHOULD bind to localhost when local and SHOULD authenticate.
+  The MCP security page forbids passing a client's token through to another service.
+- **Postgres store, from the installed 3.2.0 source.** `setup()` creates a `store` table
+  (`prefix` is the namespace, `key`, `value jsonb`, timestamps) with a concurrent index
+  on `prefix`, and TTL columns (`expires_at`, `ttl_minutes`) with a partial index. The
+  `store_vectors` table and `CREATE EXTENSION vector` are created only when an embedding
+  index is configured. So without semantic search there is no pgvector requirement, and
+  TTL is supported. Because the index is built `CONCURRENTLY`, setup needs the same
+  autocommit migrator connection as the checkpointer.
