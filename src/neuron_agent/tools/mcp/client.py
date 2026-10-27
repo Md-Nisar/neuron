@@ -80,7 +80,13 @@ class _LimitedTransport(httpx2.AsyncHTTPTransport):
         self._limit = limit
 
     async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        # The count is of the bytes received. A compressed body would expand past it when it is
+        # decoded, so no compression is asked for or accepted.
+        request.headers["Accept-Encoding"] = "identity"
         response = await super().handle_async_request(request)
+        if response.headers.get("content-encoding", "identity").lower() != "identity":
+            await response.aclose()
+            raise ResponseTooLargeError
         declared = response.headers.get("content-length", "")
         if declared.isdigit() and int(declared) > self._limit:
             await response.aclose()

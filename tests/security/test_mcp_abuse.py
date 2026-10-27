@@ -306,3 +306,24 @@ async def test_a_tool_result_over_the_wire_limit_raises_instead_of_returning() -
             await spec.tool.ainvoke(_CONVERT)
 
     assert "x" * 100 not in str(raised.value)
+
+
+async def test_a_compressed_response_is_refused_not_expanded() -> None:
+    """A small gzip body can decode to far more than the limit, so none is accepted."""
+    import gzip
+
+    bomb = gzip.compress(b"0" * 5_000_000)
+    seen_encoding: list[str] = []
+
+    async def gzipped(request: Any) -> Response:
+        seen_encoding.append(request.headers.get("accept-encoding", ""))
+        return Response(bomb, media_type="application/json", headers={"Content-Encoding": "gzip"})
+
+    app = Starlette(routes=[Route("/mcp", gzipped, methods=["GET", "POST"])])
+    with serve(app) as url:
+        with structlog.testing.capture_logs() as logs:
+            specs = await _discover(_config(url, {"convert_units": "sha256:" + "a" * 64}), {})
+
+    assert specs == []
+    assert seen_encoding == ["identity"]
+    assert [log["event"] for log in logs] == ["mcp_server_unavailable"]
