@@ -375,3 +375,245 @@ sync --no-dev`), pins neither base image by digest, and `.dockerignore` excludes
   `aprune(thread_ids, strategy="keep_latest"|"delete")` with no schema change; neuron
   locks 3.1.2. Today's retention deletes whole stale threads, which is enough for
   v0.6.0.
+
+## v0.7.0 Research: Extensible Agent Platform (2026-10)
+
+Input to the v0.7.0 ADRs. Collected 2026-10-27. The roadmap theme is "Tools + models +
+HITL + memory". Sources are the LangChain/LangGraph/MCP/OWASP pages named below, a
+spike run against the versions in `uv.lock` (`langchain` 1.3.18, `langgraph` 1.2.11,
+`langchain-core` 1.6.1), and this repository. Where a page was read through a model
+summary, or not at all, the entry says so. Treat vendor docs as perishable: several
+pages describe `langchain` >= 1.4.6, which this repository does not lock.
+
+### What v0.7.0 inherits
+
+- Deferred to v0.7.0 by earlier ADRs and drafts: long-term memory and retrieval
+  (ADR 0001, 0002), human approval before any mutating tool (ADR 0003), estimated cost
+  (`neuron.agent.cost`; no verifiable dated price data yet), and the invalid-`AgentAnswer`
+  retry loop that runs until `run_timeout` (`docs/releases/v0.6.0-issues.md`, Deferred).
+- CLAUDE.md requires a concrete product requirement and an ADR before memory,
+  retrieval, queues or subgraphs. **No product requirement for memory or approvals is
+  written down yet.** That is the first decision for the owner, and it decides the scope.
+- Production is out of scope until after v1.0.0 (owner decision, 2026-10-27): v0.7.0 is
+  built and verified locally; production settings stay, but are not exercised.
+
+### Human approval (HITL)
+
+Sources: https://docs.langchain.com/oss/python/langchain/human-in-the-loop,
+https://docs.langchain.com/oss/python/langgraph/interrupts (both read as `.md`).
+
+- `HumanInTheLoopMiddleware(interrupt_on={tool: True | False | {allowed_decisions,
+  description, when}})`. Decisions: `approve`, `edit` (same tool name, new args),
+  `reject` (optional message), `respond` (required message). Resume is
+  `Command(resume={"decisions": [...]})` in the order of the requested actions, on the
+  same `thread_id`. A checkpointer is required; the docs name `InMemorySaver` as
+  prototype-only.
+- **Resume re-runs the interrupted node from its start.** Code before the interrupt
+  runs again, so side effects before it must be idempotent or moved after it. The docs
+  warn that `respond` is recorded as a *successful* tool result, so it must never stand
+  in for denying a side-effecting tool, and that large `edit`s can make the model
+  re-plan.
+- `interrupt_mode="per_call"` (one interrupt per gated call, answered by interrupt id)
+  and `version="v2"`/`stream_events(version="v3")` need `langchain` >= 1.4.6. This
+  repository locks 1.3.18, which has only the batched mode. `when` needs >= 1.3.3.
+- Not covered by the docs: an agent compiled with `checkpointer=False`, and interrupts
+  from a subgraph agent that is only called inside a parent node.
+- **Spike (this repository's shape).** `create_agent(..., checkpointer=False)` called
+  with `await agent.ainvoke(...)` from a node of a parent graph that has a checkpointer,
+  one gated tool, fake model. Result: with `checkpointer=False` the interrupt is raised
+  and the resume completes, but **the approved tool never ran** (0 calls) and the run
+  still ended normally. With `checkpointer=None` (inherit the parent's) the interrupt
+  is raised, and after `approve` the tool ran exactly once. So `models/factory.py`'s
+  `checkpointer=False` (ADR 0005) cannot coexist with approvals, and a failure here is
+  silent. Any approval feature needs a test that asserts the tool ran once after
+  approval and zero times after rejection.
+- Consequences to design before building: (1) the agent's internal tool-call state
+  would then be checkpointed, which ADR 0005 deliberately avoided (thread history is
+  user turns and final answers only); (2) `call_agent` re-runs on resume, so anything it
+  does before the agent call (token accounting, audit events, logs) happens twice;
+  (3) a pending approval outlives `APP_RUN_TIMEOUT_SECONDS`, so the run must end at the
+  pause (release the lease, settle tokens) and the decision must start a new run with
+  its own lease, budget and timeout; (4) pending approvals need an owner check (a
+  foreign or missing thread is the same 404), a scope (for example `agent:approve`), an
+  expiry and retention, and audit events for requested and decided; (5)
+  `models/factory.py` already treats `GraphBubbleUp` as "interrupted" in the tool span,
+  so tracing has a seam; (6) the streaming route and `StreamLeakGuard` need an
+  `interrupt` event.
+- `edit` and `respond` widen the attack surface (the human approves one thing, the tool
+  runs another). The smallest safe first release allows `approve` and `reject` only.
+
+### Models and providers
+
+Sources: https://docs.langchain.com/oss/python/langchain/middleware/built-in,
+https://docs.langchain.com/oss/python/langchain/models (the second was read only in
+part; its structured-output and usage sections came through a summary).
+
+- `ModelFallbackMiddleware(first_model, *additional_models)`. Read from the installed
+  1.3.18 source: it tries each model in order, catches any `Exception` except
+  `GraphBubbleUp`, and re-raises the last one if all fail. The docs do not say how it
+  interacts with a retry middleware. neuron's own `provider_retry_middleware` and
+  `empty_reply_retry_middleware` sit around the model call, so the order matters and
+  needs a test.
+- `langchain-core` 1.6.1 has provider-neutral exceptions (`ModelRateLimitError`,
+  `ModelAuthenticationError`, `ModelNotFoundError`, `ModelPermissionDeniedError`,
+  `ModelTimeoutError`, `ModelAPIError`, `ContextOverflowError`, ...). The models page
+  says integrations raise them with an `is_retryable` flag; that was **not** confirmed
+  verbatim. Today `classify_agent_error` matches `openai.*` classes only, so a second
+  provider would fall through to `AgentExecutionError`. Moving to the neutral types is
+  the main code change for multi-provider support.
+- Provider packages: `langchain-anthropic` (`ChatAnthropic`) and
+  `langchain-google-genai` (`ChatGoogleGenerativeAI`), or `init_chat_model("provider:model")`.
+  None is installed or locked. Each is a new dependency (the `new-dependencies` job
+  needs PyPI packages older than 90 days; both are old enough to check). NVIDIA stays on
+  `ChatOpenAI` with a base URL.
+- Not verified: how `response_format=AgentAnswer` is realised per provider (a summary
+  says `create_agent` picks native structured output when the model profile supports
+  it); the exact `usage_metadata` keys for cache reads and writes per provider (a
+  summary says the key sets differ). Both affect token budgets and the eval harness,
+  and need a spike per provider before the ADR.
+- The `max_retries` default in LangChain is 6 with backoff; neuron sets 0 and owns its
+  retries. A new provider class must be given the same setting.
+- Cost: still no dated, verifiable price source. The 0.5.0 judgement stands: do not
+  ship estimated cost from guessed prices. A committed price file with a retrieval date
+  and a test that fails when it is older than N days is the least-bad design.
+- Operational lesson from this milestone: the nightly eval failed for six days because
+  the NVIDIA account lost access to one model (404, surfaced as `configuration_error`).
+  A fallback chain would have hidden that, so fallback must emit a metric and a log
+  event per use, and the eval harness must pin one model and never fall back.
+
+### Tools and MCP
+
+Sources: https://modelcontextprotocol.io/specification/2025-11-25/server/tools,
+.../basic/security_best_practices (read), the MCP schema page (annotations, read
+through a summary).
+
+- MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
+  `openWorldHint`) are hints. The tools page says clients **MUST** treat them as
+  untrusted unless they come from trusted servers. They cannot replace neuron's
+  allow-list and scopes.
+- The tools page says there **SHOULD** be a human able to deny tool invocations, with
+  confirmation prompts for sensitive operations. It defines no confirmation protocol.
+  Servers may send `notifications/tools/list_changed`, so a tool list can change after
+  review.
+- The spec and its security page give no guidance on tool-description poisoning or
+  rug pulls. Third-party sources (CSA, MCPTox) describe them: the description is itself
+  untrusted input, and there is no pinning or signed manifest in the protocol. Mitigation
+  in neuron's terms: pin tool names, descriptions and schemas in code (a hash in
+  settings or a lockfile), refuse a changed definition, and never auto-allow an MCP tool
+  by annotation.
+- `langchain-mcp-adapters` was not researched (no primary source read); it would be a
+  new dependency with a network client inside the trust boundary. A stdio server is
+  local code execution (the security page requires explicit consent before running a
+  configured command). Recommendation for the ADR: out of scope for v0.7.0 unless a
+  concrete server is named; the registry below does not need it.
+- Without MCP, "extensible" can mean a small in-repo tool registry: each tool declares
+  its name, input schema, required scope, risk class (read-only, mutating) and timeout;
+  the allow-list, `HIGH_RISK_TOOL_NAMES`, scope checks, span names and tests derive from
+  that one declaration instead of the four places that list tools today
+  (`agents/factory.py`, `security/input_policy.py`, `security/authorization.py`,
+  `models/factory.py`).
+- `validate_safe_url` (#167) exists; there is no fetch tool yet. Any network tool must
+  also handle DNS rebinding and redirects, which `validate_safe_url` does not (it does
+  no DNS resolution), and `OPERATIONS.md` already records that the service can reach
+  the internet and that the helper is the only control on tool fetches.
+
+### Memory
+
+Sources: https://docs.langchain.com/oss/python/langchain/long-term-memory,
+https://docs.langchain.com/oss/python/langgraph/stores (read);
+https://langchain-ai.github.io/langmem/ (read); the Postgres store reference page
+returned only a redirect and was **not** read.
+
+- Store API: `put`/`get`/`delete`/`search`/`list_namespaces` and async twins;
+  namespace is a tuple, key a string. Search without a query lists a namespace prefix
+  and silently truncates at `limit`. Semantic search needs an `index` config
+  (`embed`, `dims`, `fields`); changing the embedding model or dimensions needs
+  re-embedding all data and there is no migration tooling.
+- Inside tools the store is reached as `runtime.store` (`ToolRuntime`), and
+  `create_agent` takes `store=` and `context_schema=`. Access from middleware is not
+  documented. The docs recommend the namespace `(user_id, "memories")` with `user_id`
+  from the runtime context, set by the application and not by the model. That matches
+  neuron's rule that identity enters only through the verified principal; the namespace
+  key would be the owner key (the HMAC), never the raw subject.
+- The docs offer no security or privacy guidance for the store beyond "the store is
+  shared within a deployment". Everything below is neuron's to design:
+  per-owner namespaces, extending `GET /v1/me/export` and `DELETE /v1/me/threads` (user
+  data rights, v0.4.0) to memories, retention, an off switch, size and count caps, and
+  a per-owner `memories:read`/`memories:write` scope.
+- OWASP ASI06 "Memory & Context Poisoning" names the main risk: a stored memory is
+  untrusted input that outlives the session, so one injected instruction persists across
+  threads. Mitigations to design: memories are data, rendered into the prompt in a
+  delimited block and never as instructions; only user-visible, user-deletable
+  memories; no memory written from tool output or retrieved content; the output guard
+  and eval security suite extended with cross-session injection cases.
+- Writes can be tool-driven (the model chooses) or background (an extractor runs after
+  a turn). Background extraction is a second model call per turn: token cost, latency
+  and a new failure mode, and it needs its own budget and timeout. Tool-driven writes
+  are visible in the trajectory and can be gated by approval.
+- LangMem (`langmem`: `create_manage_memory_tool`, `create_search_memory_tool`,
+  `create_memory_store_manager`): the docs show no version, date or maintenance status;
+  its examples use `create_react_agent` and older model names. Not verified as
+  maintained, so the ADR should prefer the plain `BaseStore` API over a dependency.
+- Postgres: `PostgresStore`/`AsyncPostgresStore` ship with `langgraph-checkpoint-postgres`
+  (already locked, 3.2.0) and need `store.setup()`. Whether `pgvector` is required for
+  semantic search, and TTL support, were **not** confirmed from a primary page (a
+  LangChain forum answer says pgvector; treat as unverified). neuron's migrations
+  (#143) and role split (#144) would have to cover the store's tables: `setup` runs as the
+  migrator, the app role gets DML only. That is a real design task, not a flag.
+- Agent Server (`langgraph.json`) supplies its own store; the `langgraph.json` graph
+  is compiled without a checkpointer for the same reason (ADR 0005), so memory needs the
+  same two-path handling.
+
+### Security framing
+
+- OWASP Top 10 for Agentic Applications 2026 (Dec 2025, CC BY-SA 4.0,
+  https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026; the
+  item names below are from the PDF's table of contents, the descriptions were not
+  read): ASI01 Agent Goal Hijack, ASI02 Tool Misuse and Exploitation, ASI03 Identity and
+  Privilege Abuse, ASI04 Agentic Supply Chain Vulnerabilities, ASI05 Unexpected Code
+  Execution (RCE), ASI06 Memory & Context Poisoning, ASI07 Insecure Inter-Agent
+  Communication, ASI08 Cascading Failures, ASI09 Human-Agent Trust Exploitation, ASI10
+  Rogue Agents.
+- Mapping to v0.7.0: tools and the registry (ASI02, ASI03), MCP or any third-party tool
+  source (ASI04), memory (ASI06), approvals (ASI09: an approval prompt must show the
+  exact arguments, and the human is not a trust boundary if they approve by habit),
+  fallback chains and background extraction (ASI08). ASI05, ASI07 and ASI10 are not
+  touched while there is one agent and no code-execution tool (ADR 0001, 0003).
+- Eval and security gates: the security suite (dataset v4) has no cross-session cases
+  and no approval cases. Each new capability needs its cases in the same PR, and the
+  nightly gate is unusable until it runs again (see the nightly-eval notes in
+  CHANGELOG, Unreleased).
+
+### Observability
+
+- OpenTelemetry GenAI semantic conventions are still marked Development per the
+  sources found (a June 2026 article claiming "stable" conflicts with two later ones),
+  and no source covered memory operations or a tool-execution status. neuron already
+  keeps names in `observability/semconv.py`, so new spans (`approval`, `memory.search`,
+  `memory.write`) and the `interrupted` outcome belong there, tagged as neuron-specific.
+  Prompts, answers, tool arguments and memory contents stay out of telemetry (the v0.5.0
+  leak scan); memory counts, namespaces' hashes and sizes are fine.
+
+### Open questions for the owner
+
+1. What is the concrete product requirement for memory and for approvals? Without a
+   tool that needs approval, HITL cannot be shown to work end to end; without a use for
+   memory, ADR 0002's "no requirement" still stands.
+2. Is an HITL release acceptable if it changes the agent to `checkpointer=None` and
+   therefore stores the agent's internal steps in the thread (ADR 0005 supersession)?
+3. Which second provider, if any (Anthropic or Google), and is a key available to run
+   the live suites on it? NVIDIA stays the free development model.
+4. Is the `langchain` bump to >= 1.4.6 wanted (per-call interrupts, `v3` streaming)? It
+   is a framework upgrade under AGENTS.md: re-check docs, update the lock, add
+   regression tests for graph state and structured output.
+5. Is MCP in or out of v0.7.0? Recommendation: out, with the in-repo registry in.
+6. Memory write path: tool-driven, background, or both; and the retention default.
+
+### Proposed split (for discussion)
+
+Four independent ADRs, in this order, each with its own issues and eval cases:
+(1) provider-neutral models and fallback, plus the structured-output retry fix and a
+price file; (2) a tool registry (one declaration per tool); (3) approvals, which needs
+(2) for a mutating tool and a decision on `checkpointer`; (4) memory, which needs (3)
+for gated writes if writes are tool-driven. Items (1) and (2) have no open product
+question and could start first.
