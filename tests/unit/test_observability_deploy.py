@@ -19,7 +19,12 @@ _DEPLOY = _ROOT / "deploy" / "observability"
 _BUDGETS = {"availability": 0.005, "ttft": 0.10, "run_duration": 0.05, "provider_errors": 0.01}
 _SLOS = set(_BUDGETS)
 # Attributes only metrics carry, and the resource attributes that have their own list.
-_METRIC_ONLY = {semconv.GEN_AI_USAGE_TYPE, semconv.NEURON_RULE}
+_METRIC_ONLY = {
+    semconv.GEN_AI_USAGE_TYPE,
+    semconv.NEURON_RULE,
+    semconv.NEURON_FALLBACK_FROM,
+    semconv.NEURON_FALLBACK_TO,
+}
 _RESOURCE = {
     semconv.SERVICE_NAME,
     semconv.SERVICE_VERSION,

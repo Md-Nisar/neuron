@@ -18,6 +18,7 @@ import structlog
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
     AgentMiddleware,
+    ModelFallbackMiddleware,
     ModelRetryMiddleware,
     ToolCallRequest,
     wrap_tool_call,
@@ -44,7 +45,7 @@ from langgraph.errors import GraphBubbleUp, GraphRecursionError
 from langgraph.types import Command
 from opentelemetry.trace import Span, SpanKind
 
-from neuron_agent.config.settings import Settings
+from neuron_agent.config.settings import SUPPORTED_PROVIDERS, Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
     AgentStepLimitError,
@@ -495,6 +496,22 @@ def _is_empty_message(reply: Any) -> bool:
     )
 
 
+def agent_middleware(settings: Settings) -> list[AgentMiddleware]:
+    """The agent's middleware, outermost first."""
+    fallback = model_fallback_middleware(settings)
+    return [
+        # Outside the tracing layer: each attempt is its own `chat` span.
+        empty_reply_retry_middleware(),
+        tracing_middleware(settings),
+        tool_authorization_middleware(),
+        tool_failure_isolation_middleware(),
+        tool_timeout_middleware(settings.tool_timeout_seconds),
+        # Directly outside the provider retries: a model is retried, then the next is tried.
+        *([fallback] if fallback else []),
+        provider_retry_middleware(settings),
+    ]
+
+
 def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
     """Create the configurable LangChain agent harness."""
     model = create_chat_model(settings)
@@ -503,15 +520,7 @@ def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
         tools=list(tools),
         system_prompt=load_prompt("system/main.md"),
         response_format=AgentAnswer,
-        middleware=[
-            # Outside the tracing layer: each attempt is its own `chat` span.
-            empty_reply_retry_middleware(),
-            tracing_middleware(settings),
-            tool_authorization_middleware(),
-            tool_failure_isolation_middleware(),
-            tool_timeout_middleware(settings.tool_timeout_seconds),
-            provider_retry_middleware(settings),
-        ],
+        middleware=agent_middleware(settings),
         name="neuron_main_agent",
         context_schema=AuthorizationContext,
         # Runs as a subgraph of the main graph. Never checkpoint its internal state
@@ -545,10 +554,12 @@ class _FakeChatModel(FakeListChatModel):
 _NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 
-def create_chat_model(settings: Settings) -> ChatOpenAI | ChatAnthropic | _FakeChatModel:
-    """Create the chat model with provider-specific runtime limits."""
-    provider, model_name = _split_model_identifier(settings.default_model)
-    if provider not in {"openai", "nvidia", "anthropic"}:
+def create_chat_model(
+    settings: Settings, identifier: str | None = None
+) -> ChatOpenAI | ChatAnthropic | _FakeChatModel:
+    """Create the chat model (default: `APP_DEFAULT_MODEL`) with provider-specific limits."""
+    provider, model_name = _split_model_identifier(identifier or settings.default_model)
+    if provider not in SUPPORTED_PROVIDERS:
         raise ConfigurationError(f"unsupported model provider: {provider}")
 
     api_key = settings.provider_api_key(provider)
@@ -577,6 +588,40 @@ def create_chat_model(settings: Settings) -> ChatOpenAI | ChatAnthropic | _FakeC
         max_retries=0,
         **provider_options,
     )
+
+
+def model_fallback_middleware(settings: Settings) -> AgentMiddleware | None:
+    """Try `APP_FALLBACK_MODELS` in order when the default model's call has failed.
+
+    It sits outside the provider retries, so a model is retried before the next one is tried,
+    and each fallback model gets the same retries.
+    """
+    if not settings.fallback_models:
+        return None
+    models = [create_chat_model(settings, identifier) for identifier in settings.fallback_models]
+    return _ModelFallbackMiddleware(settings.default_model, settings.fallback_models, models)
+
+
+class _ModelFallbackMiddleware(ModelFallbackMiddleware):
+    """`ModelFallbackMiddleware` that counts and logs each switch, with identifiers only."""
+
+    def __init__(self, primary: str, identifiers: Sequence[str], models: Sequence[Any]) -> None:
+        super().__init__(*models)
+        self._chain = [primary, *identifiers]
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        attempt = 0
+
+        async def counting_handler(req: Any) -> Any:
+            nonlocal attempt
+            if attempt:
+                source, target = self._chain[attempt - 1], self._chain[attempt]
+                metrics.record_model_fallback(source, target)
+                logger.warning("model_fallback", from_model=source, to_model=target)
+            attempt += 1
+            return await handler(req)
+
+        return await super().awrap_model_call(request, counting_handler)
 
 
 def agent_invocation_config(settings: Settings, *, run_id: str | None) -> dict[str, Any]:

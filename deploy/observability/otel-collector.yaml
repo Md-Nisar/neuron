@@ -56,7 +56,7 @@ processors:
           - keep_keys(attributes, ["service.name", "service.version", "deployment.environment.name", "service.instance.id"])
       - context: datapoint
         statements:
-          - keep_keys(attributes, ["gen_ai.request.model", "gen_ai.provider.name", "gen_ai.operation.name", "gen_ai.tool.name", "gen_ai.token.type", "error.type", "http.route", "http.response.status_code", "neuron.outcome", "neuron.rule"])
+          - keep_keys(attributes, ["gen_ai.request.model", "gen_ai.provider.name", "gen_ai.operation.name", "gen_ai.tool.name", "gen_ai.token.type", "error.type", "http.route", "http.response.status_code", "neuron.outcome", "neuron.rule", "neuron.fallback.from", "neuron.fallback.to"])
     log_statements:
       - context: resource
         statements:

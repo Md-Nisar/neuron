@@ -58,6 +58,8 @@ NEURON_STREAM_TTFT_MS = "neuron.stream.ttft_ms"
 NEURON_STREAM_EVENTS = "neuron.stream.events"
 NEURON_STREAM_TERMINATION = "neuron.stream.termination"
 NEURON_RULE = "neuron.rule"
+NEURON_FALLBACK_FROM = "neuron.fallback.from"
+NEURON_FALLBACK_TO = "neuron.fallback.to"
 
 # HTTP attributes kept on the FastAPI HTTP metrics; every other one is dropped (ADR 0007).
 HTTP_ROUTE = "http.route"
@@ -71,6 +73,8 @@ METRIC_STREAM_TTFT = "neuron.agent.stream.ttft"
 METRIC_TOOL_DURATION = "neuron.agent.tool.duration"
 METRIC_ERRORS = "neuron.agent.errors"
 METRIC_POLICY_BLOCKS = "neuron.agent.policy.blocks"
+# Model fallbacks, by the configured model ids switched from and to (bounded, operator-chosen).
+METRIC_MODEL_FALLBACKS = "neuron.model.fallbacks"
 METRIC_CHECKPOINT_DURATION = "neuron.checkpoint.duration"
 METRIC_SERVICE_READY = "neuron.service.ready"
 METRIC_DB_POOL_WAITING = "neuron.db.pool.waiting"
@@ -99,5 +103,7 @@ METRIC_ATTRIBUTE_ALLOW_LIST = frozenset(
         HTTP_RESPONSE_STATUS_CODE,
         NEURON_OUTCOME,
         NEURON_RULE,
+        NEURON_FALLBACK_FROM,
+        NEURON_FALLBACK_TO,
     }
 )

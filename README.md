@@ -46,6 +46,8 @@ For development you can use a model from NVIDIA's API catalog instead (`build.nv
 
 Anthropic is a third provider (`ANTHROPIC_API_KEY` or `APP_ANTHROPIC_API_KEY`, `APP_DEFAULT_MODEL=anthropic:<model-id>`). It is covered by unit tests with fakes only: v0.7.0 has no funded Anthropic key, so it has **not been run against the live API**. Without a key, development and test fall back to the local fake model, like the other providers.
 
+To keep answering when the default model is down or unavailable to the account, list fallbacks: `APP_FALLBACK_MODELS='["anthropic:<model-id>"]'`. They are tried in order after the default model's own retries; each switch is logged and counted by model id.
+
 ## Authentication
 
 Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed JWT) when `APP_AUTH_MODE=jwt`, which staging and production enforce (ADR 0006). The token's verified issuer and subject identify the caller and own their threads; scopes grant permissions:
