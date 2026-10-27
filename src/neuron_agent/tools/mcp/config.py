@@ -16,7 +16,6 @@ import re
 from collections.abc import Collection
 from pathlib import Path
 from typing import Annotated, Literal
-from urllib.parse import urlparse
 
 from pydantic import (
     BaseModel,
@@ -29,17 +28,18 @@ from pydantic import (
 )
 
 from neuron_agent.errors.base import ConfigurationError
-from neuron_agent.security.input_policy import validate_safe_url
 from neuron_agent.tools.mcp.pins import PIN_PREFIX
+from neuron_agent.tools.mcp.urls import validate_mcp_url
 
 MAX_SERVERS = 8
 MAX_TOOLS_PER_SERVER = 32
-_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 _PIN = re.compile(re.escape(PIN_PREFIX) + r"[0-9a-f]{64}")
-# Names become part of a tool name and a scope (`mcp_<server>_<tool>`, `tools:mcp.<server>.<tool>`),
-# so they use one lowercase alphabet with no separator that could make two names collide.
-_Name = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,31}$")]
-_ToolName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,47}$")]
+# Names become part of a tool name and a scope (`mcp_<server>_<tool>`, `tools:mcp.<server>.<tool>`).
+# A server name has no underscore, so the first `_` after `mcp_` ends it and two servers can never
+# produce the same tool name. The longest tool name, 4 + 16 + 1 + 40 characters, fits the 64 that
+# model providers allow.
+_Name = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9]{0,15}$")]
+_ToolName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,39}$")]
 _REFUSED_KEYS = {
     "command": "stdio servers run a subprocess from configuration and are not supported",
     "args": "stdio servers run a subprocess from configuration and are not supported",
@@ -106,22 +106,6 @@ class McpConfig(BaseModel):
         if len(set(names)) != len(names):
             raise ValueError("a server name is used twice")
         return self
-
-
-def validate_mcp_url(url: str, *, env: str) -> str:
-    """Accept an `https` URL that passes `validate_safe_url`; in development and test also a
-    loopback URL (the in-repo reference server). Nothing else, `http` included."""
-    parsed = urlparse(url)
-    if env in {"development", "test"} and parsed.hostname in _LOOPBACK_HOSTS:
-        if parsed.scheme not in {"http", "https"} or parsed.username or parsed.password:
-            raise ConfigurationError("MCP server URL must be http(s) without credentials")
-        return url
-    if parsed.scheme != "https":
-        raise ConfigurationError("MCP server URL must use https")
-    try:
-        return validate_safe_url(url)
-    except Exception as exc:
-        raise ConfigurationError(f"MCP server URL is not allowed: {exc}") from None
 
 
 def parse_mcp_config(text: str, *, env: str, token_names: Collection[str]) -> McpConfig:

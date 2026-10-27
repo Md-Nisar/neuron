@@ -46,6 +46,7 @@ from neuron_agent.security.output_policy import (
     leaks_system_prompt,
 )
 from neuron_agent.state.main import MainGraphState
+from neuron_agent.tools.registry import ToolRegistry
 
 logger = structlog.get_logger(__name__)
 
@@ -260,11 +261,20 @@ def evict_oldest_turns(
 
 
 def build_graph(
-    settings: Settings | None = None, checkpointer: BaseCheckpointSaver[Any] | None = None
+    settings: Settings | None = None,
+    checkpointer: BaseCheckpointSaver[Any] | None = None,
+    registry: ToolRegistry | None = None,
 ) -> Any:
-    """Build and compile the graph, persisting thread state when a checkpointer is given."""
+    """Build and compile the graph, persisting thread state when a checkpointer is given.
+
+    `registry` is the tool set (the builtin tools when omitted).
+    """
     resolved_settings = settings or get_settings()
-    agent = build_agent(resolved_settings)
+    agent = (
+        build_agent(resolved_settings, registry)
+        if registry is not None
+        else build_agent(resolved_settings)
+    )
 
     async def agent_node(state: MainGraphState, config: RunnableConfig) -> dict[str, Any]:
         context = get_runtime().context

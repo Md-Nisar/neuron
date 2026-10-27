@@ -66,6 +66,7 @@ from neuron_agent.security.output_policy import SYSTEM_PROMPT_REFUSAL, StreamLea
 from neuron_agent.security.run_guard import RunClaimDenied, RunDenialReason, RunGuard, RunLease
 from neuron_agent.security.usage_budget import BudgetReservation, TokenBudget
 from neuron_agent.services.streaming import AnswerTokenExtractor, StreamEvent, tool_call_names
+from neuron_agent.tools.registry import ToolRegistry, builtin_registry
 
 logger = structlog.get_logger(__name__)
 
@@ -123,18 +124,32 @@ class AgentService:
         self._token_budget = token_budget or build_token_budget(settings, self._persistence)
         self._run_guard = run_guard or build_run_guard(settings, self._persistence)
         self._graph: Any | None = None
+        # The tool set the graph was built with; None means the builtin tools.
+        self._registry: ToolRegistry | None = None
         self._drain_started: float | None = None
         self._in_flight = 0
         if self._persistence.is_open:
             self._graph = build_graph(settings, checkpointer=self._persistence.checkpointer)
 
+    def use_registry(self, registry: ToolRegistry) -> None:
+        """Serve `registry` (builtin plus MCP tools) from the next `startup`."""
+        self._registry = registry
+
     async def startup(self) -> None:
-        """Open persistence resources (connection pool) before serving requests."""
-        if self._persistence.is_open:
-            return
-        await self._persistence.open(run_setup=self._settings.checkpointer_setup_on_startup)
-        self._graph = build_graph(self._settings, checkpointer=self._persistence.checkpointer)
-        if isinstance(self._run_guard, PostgresRunGuard):
+        """Open persistence resources (connection pool) and build the graph.
+
+        An in-memory service already has a graph; it is rebuilt only for a `use_registry` tool set.
+        """
+        opened = not self._persistence.is_open
+        if opened:
+            await self._persistence.open(run_setup=self._settings.checkpointer_setup_on_startup)
+        if opened or self._registry is not None:
+            self._graph = build_graph(
+                self._settings,
+                checkpointer=self._persistence.checkpointer,
+                registry=self._registry,
+            )
+        if opened and isinstance(self._run_guard, PostgresRunGuard):
             self._run_guard.start()
 
     async def shutdown(self) -> None:
@@ -144,6 +159,9 @@ class AgentService:
         if self._persistence.pool is not None:
             await self._persistence.close()
             self._graph = None
+
+    def _tools(self) -> ToolRegistry:
+        return self._registry or builtin_registry()
 
     @property
     def graph(self) -> Any:
@@ -253,7 +271,7 @@ class AgentService:
             else {"user_id_hash": owner_key}
         )
         permissions = (
-            DEV_PERMISSIONS
+            DEV_PERMISSIONS | frozenset(spec.scope for spec in self._tools() if spec.scope)
             if self._settings.auth_mode == "none"
             else principal.scopes
             if principal is not None

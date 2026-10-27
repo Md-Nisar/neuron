@@ -177,6 +177,17 @@ for (;;) {
 
 Treat `token` events as a live preview. The `final` event carries the validated answer. Authentication, validation and authorization failures, `404`, `409`, `429` and `503` are ordinary HTTP errors returned before the stream starts. A token that expires mid-stream doesn't end the stream; it's checked once, at the start.
 
+## MCP tools (optional)
+
+The agent can use read-only tools from an [MCP](https://modelcontextprotocol.io) server you run or trust (ADR 0009). Nothing is loaded unless you set `APP_MCP_SERVERS`.
+
+1. Start a server. For a local try-out: `uv run python scripts/mcp_reference_server.py` (a unit converter on `http://127.0.0.1:8765/mcp`).
+2. Pin it: `uv run neuron-mcp-pin http://127.0.0.1:8765/mcp --name units`. It prints each tool's description (read it) and a config entry with a SHA-256 pin of the tool's name, description and input schema.
+3. Save the entry in a file as `{"servers": [ ... ]}`, set `"risk": "read"` for tools that change nothing, and point `APP_MCP_SERVERS` at it. A remote server must be `https`; give it a token with `APP_MCP_BEARER_TOKENS='{"units": "<token>"}'` (or `"auth": "none"`).
+4. Grant the scope `tools:mcp.<server>.<tool>` to the users who may use it (development with `APP_AUTH_MODE=none` grants all).
+
+A tool whose definition later differs from its pin, or that is not in the file, is not registered. Only Streamable HTTP is supported (no stdio). Tools are read once at start-up, so restart after changing the server or the file. Tools marked (or defaulting to) `mutating` are refused until human approval exists.
+
 ## Migrating from 0.3.x
 
 0.4.0 replaces caller-chosen identity with verified tokens. Breaking changes:
