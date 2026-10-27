@@ -66,6 +66,19 @@ def test_nightly_timeout_leaves_headroom_over_the_measured_run() -> None:
     assert cap >= 74 + 30
 
 
+def test_nightly_checks_the_model_before_the_evals_and_prints_only_a_status() -> None:
+    steps = _load("nightly-eval.yml")["jobs"]["live-eval"]["steps"]
+    names = [step.get("name", "") for step in steps]
+    probe = steps[names.index("Check the model is reachable")]
+    assert names.index("Check the model is reachable") < names.index("Run the live evals")
+    assert probe["env"]["NVIDIA_API_KEY"] == "${{ secrets.NVIDIA_API_KEY }}"
+    script = probe["run"]
+    # The model comes from the workflow's APP_DEFAULT_MODEL, never a second copy of its name.
+    assert "APP_DEFAULT_MODEL" in script
+    # The response body can name the account or model; only the status code is printed.
+    assert "-o /dev/null" in script and "%{http_code}" in script
+
+
 def _uses_lines() -> list[tuple[str, str]]:
     found = []
     for path in sorted(WORKFLOWS.glob("*.yml")):
