@@ -410,12 +410,37 @@ def _client_ip(request: Request) -> str:
         entries = ",".join(request.headers.getlist("X-Forwarded-For")).split(",")
         while entries and _trusted_proxy(address):
             try:
-                address = _unmapped(ipaddress.ip_address(entries.pop().strip()))
+                address = _unmapped(_forwarded_address(entries.pop()))
             except ValueError:
                 break
     if isinstance(address, ipaddress.IPv6Address):
         return str(ipaddress.IPv6Network((int(address), 64), strict=False))
     return str(address)
+
+
+def _forwarded_address(entry: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+    """Parse one X-Forwarded-For entry: a bare IP, `v4:port`, `[v6]` or `[v6]:port`.
+
+    Anything else raises ValueError, so the caller stops trusting the header there.
+    """
+    entry = entry.strip()
+    if entry.startswith("["):
+        host, bracket, rest = entry[1:].partition("]")
+        address = ipaddress.ip_address(host)
+        if not bracket or address.version != 6 or (rest and not _is_port(rest.removeprefix(":"))):
+            raise ValueError(entry)
+        if rest and not rest.startswith(":"):
+            raise ValueError(entry)
+        return address
+    if entry.count(":") == 1:
+        entry, _, port = entry.partition(":")
+        if not _is_port(port):
+            raise ValueError(entry)
+    return ipaddress.ip_address(entry)
+
+
+def _is_port(text: str) -> bool:
+    return text.isascii() and text.isdigit() and int(text) <= 65535
 
 
 def _unmapped(

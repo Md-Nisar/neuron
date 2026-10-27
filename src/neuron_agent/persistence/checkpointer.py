@@ -24,6 +24,7 @@ from psycopg_pool import AsyncConnectionPool
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import metrics
 from neuron_agent.persistence import migrations
+from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
 from neuron_agent.persistence.migrations import identity_check_value
 from neuron_agent.persistence.roles import verify_runtime_role
 from neuron_agent.persistence.startup_checks import (
@@ -41,6 +42,9 @@ _ALLOWED_MSGPACK_MODULES = [("neuron_agent.schemas.agent", "AgentAnswer")]
 # Checkpointer operations that are timed, and the latency above which one is logged.
 _INSTRUMENTED_OPERATIONS = ("aget_tuple", "aput", "aput_writes", "adelete_thread")
 SLOW_CHECKPOINT_MS = 250.0
+
+# Warm connections kept open, capped at `APP_POSTGRES_POOL_MAX_SIZE` (the psycopg_pool default).
+_POOL_MIN_SIZE = 4
 
 
 def instrument_checkpointer(
@@ -92,6 +96,10 @@ def _timed(
     return wrapper
 
 
+# Names (of the given array) that are not relations on the search path: one cheap round trip.
+_MISSING_TABLES_SQL = "SELECT n AS name FROM unnest(%s::text[]) AS n WHERE to_regclass(n) IS NULL"
+
+
 @dataclass
 class Persistence:
     """The configured checkpointer plus the connection pool it owns, if any.
@@ -115,6 +123,9 @@ class Persistence:
     # key whose check value differs from the one `setup` recorded (ADR 0008 decisions 15, 16).
     require_tls: bool = False
     identity_check: str | None = field(default=None, repr=False)
+    # Set with `APP_LIMITS_BACKEND=postgres`: readiness also needs the guard tables, because the
+    # guards fail closed on every request when `setup` has not created them.
+    check_guard_tables: bool = False
     _opened: bool = field(default=False, init=False, repr=False)
 
     @property
@@ -188,14 +199,24 @@ class Persistence:
             return True
         if not self.is_open:
             return False
+        missing: list[str] = []
         try:
             async with asyncio.timeout(self.ping_timeout_seconds):
                 async with self.pool.connection() as conn:
-                    await conn.execute("SELECT 1")
+                    if not self.check_guard_tables:
+                        await conn.execute("SELECT 1")
+                    else:
+                        cursor = await conn.execute(
+                            _MISSING_TABLES_SQL, [list(migrations.GUARD_TABLES)]
+                        )
+                        missing = [row["name"] for row in await cursor.fetchall()]
         except (TimeoutError, psycopg.Error) as exc:
             logger.warning(
                 "checkpointer_unreachable", backend=self.backend, error_type=type(exc).__name__
             )
+            return False
+        if missing:
+            logger.warning("guard_tables_missing", backend=self.backend, tables=missing)
             return False
         return True
 
@@ -214,8 +235,13 @@ def build_persistence(settings: Settings) -> Persistence:
 
     # Settings validation guarantees a DSN when either backend is postgres.
     assert settings.postgres_dsn is not None  # nosec B101
+    dsn = settings.postgres_dsn.get_secret_value()
+    # psycopg_pool logs the driver's error text, which can echo the DSN (issue #204).
+    install_dsn_redaction(dsn)
     pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
         conninfo=settings.postgres_dsn.get_secret_value(),
+        # psycopg_pool defaults min_size to 4, which is invalid when max_size is below it.
+        min_size=min(_POOL_MIN_SIZE, settings.postgres_pool_max_size),
         max_size=settings.postgres_pool_max_size,
         timeout=settings.postgres_pool_timeout_seconds,
         kwargs={"autocommit": True, "row_factory": dict_row, "prepare_threshold": 0},
@@ -229,6 +255,7 @@ def build_persistence(settings: Settings) -> Persistence:
         checkpointer=saver,
         pool=pool,
         ping_timeout_seconds=min(2.0, settings.postgres_pool_timeout_seconds),
+        check_guard_tables=settings.limits_backend == "postgres",
         serde=serde,
         app_role=settings.postgres_app_role if settings.env == "production" else None,
         require_tls=hardened,

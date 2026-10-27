@@ -135,7 +135,7 @@ def test_owner_reaches_own_thread_on_every_route(
     assert deleted.status_code == 204
     _owned_thread(jwt_api, alice)
     erased = jwt_api.client.delete("/v1/me/threads", headers=bearer(alice))
-    assert erased.json() == {"erased_count": 1, "skipped_busy_count": 0}
+    assert erased.json() == {"erased_count": 1, "skipped_busy_count": 0, "complete": True}
 
 
 def test_same_subject_from_another_issuer_is_not_the_owner(

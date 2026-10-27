@@ -125,6 +125,19 @@ jobs:
           subject-digest: ${{ needs.build-push.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+      # The deploy workflow resolves the digest from this run's artifact, never from the
+      # mutable `sha-` tag (ADR 0008 decision 6, step 6).
+      - name: Write the digest file
+        env:
+          DIGEST: ${{ needs.build-push.outputs.digest }}
+        run: printf '%s@%s\n' "$IMAGE" "$DIGEST" > image-digest.txt
+      - name: Keep the digest with this run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-digest
+          path: image-digest.txt
+          if-no-files-found: error
+          retention-days: 90
       - name: Record the digest
         env:
           DIGEST: ${{ needs.build-push.outputs.digest }}

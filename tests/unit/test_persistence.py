@@ -31,6 +31,15 @@ def _postgres_settings() -> Settings:
     )
 
 
+@pytest.mark.parametrize("max_size", [1, 2, 3, 4, 10])
+def test_postgres_pool_min_size_never_exceeds_max_size(max_size: int) -> None:
+    settings = _postgres_settings().model_copy(update={"postgres_pool_max_size": max_size})
+    persistence = build_persistence(settings)
+    assert persistence.pool is not None
+    assert persistence.pool.max_size == max_size
+    assert 1 <= persistence.pool.min_size <= max_size
+
+
 async def test_none_backend_has_no_checkpointer() -> None:
     persistence = build_persistence(Settings(env="test", checkpointer="none", openai_api_key=None))
     assert persistence.checkpointer is None
@@ -123,6 +132,18 @@ def _guards_settings(checkpointer: str = "none") -> Settings:
     )
 
 
+async def test_service_is_not_ready_while_the_guard_store_is_unreachable() -> None:
+    # limits_backend=postgres with no checkpointer: readiness (and so /health/ready's 503)
+    # follows the guard store alone.
+    persistence = build_persistence(_guards_settings())
+    service = AgentService(_guards_settings(), persistence=persistence)
+    await persistence.open()
+    try:
+        assert await service.is_ready() is False
+    finally:
+        await persistence.close()
+
+
 async def test_limits_postgres_opens_a_pool_without_a_checkpointer() -> None:
     persistence = build_persistence(_guards_settings())
     assert persistence.pool is not None and persistence.backend == "none"
@@ -138,10 +159,18 @@ async def test_limits_postgres_opens_a_pool_without_a_checkpointer() -> None:
     assert persistence.pool.closed is True and persistence.is_open is False
 
 
-async def test_limits_postgres_readiness_is_true_when_the_database_answers() -> None:
+def _fake_pool(missing: list[str]) -> object:
+    """A pool whose database lacks the given guard tables (as `to_regclass` would report)."""
+    queries: list[tuple[str, object]] = []
+
+    class _Cursor:
+        async def fetchall(self) -> list[dict[str, str]]:
+            return [{"name": name} for name in missing]
+
     class _Conn:
-        async def execute(self, _: str) -> None:
-            return None
+        async def execute(self, query: str, params: object = None) -> _Cursor:
+            queries.append((query, params))
+            return _Cursor()
 
     class _Connection:
         async def __aenter__(self) -> _Conn:
@@ -154,8 +183,36 @@ async def test_limits_postgres_readiness_is_true_when_the_database_answers() -> 
         def connection(self) -> _Connection:
             return _Connection()
 
+    pool = _Pool()
+    pool.queries = queries  # type: ignore[attr-defined]
+    return pool
+
+
+async def test_limits_postgres_readiness_is_true_when_the_guard_tables_exist() -> None:
     persistence = build_persistence(_guards_settings())
-    persistence.pool = _Pool()  # type: ignore[assignment]
+    persistence.pool = _fake_pool([])  # type: ignore[assignment]
+    persistence._opened = True
+    assert await persistence.is_ready() is True
+    _, params = persistence.pool.queries[0]  # type: ignore[attr-defined]
+    assert "neuron_rate_buckets" in params[0]  # type: ignore[index]
+
+
+async def test_limits_postgres_readiness_is_false_when_setup_was_not_run() -> None:
+    # Issue #207: migrations 10/11 missing means every guarded request fails closed.
+    persistence = build_persistence(_guards_settings())
+    persistence.pool = _fake_pool(["neuron_rate_buckets"])  # type: ignore[assignment]
+    persistence._opened = True
+    with structlog.testing.capture_logs() as logs:
+        assert await persistence.is_ready() is False
+    assert next(log for log in logs if log["event"] == "guard_tables_missing")["tables"] == [
+        "neuron_rate_buckets"
+    ]
+
+
+async def test_guard_tables_are_not_checked_without_the_postgres_limits_backend() -> None:
+    persistence = build_persistence(_postgres_settings())  # checkpointer only
+    assert persistence.check_guard_tables is False
+    persistence.pool = _fake_pool(["neuron_rate_buckets"])  # type: ignore[assignment]
     persistence._opened = True
     assert await persistence.is_ready() is True
 

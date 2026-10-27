@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 
 class AgentRequest(BaseModel):
@@ -121,7 +121,16 @@ class UserDataExportResponse(BaseModel):
 
 
 class UserDataErasureResponse(BaseModel):
-    """Result of an idempotent erase-all request."""
+    """Result of an idempotent erase-all request.
+
+    `complete` is false while any owned thread was skipped because a run was active on it: the
+    caller has not erased everything and should repeat the request once the run has ended.
+    """
 
     erased_count: int
     skipped_busy_count: int
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def complete(self) -> bool:
+        return self.skipped_busy_count == 0

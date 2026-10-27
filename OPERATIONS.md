@@ -2,12 +2,44 @@
 
 ## Deployment
 
-Two deployment paths are supported:
+Two deployment paths are supported: the self-hosted container (`Dockerfile`) deployed on Render by the `render.yaml` Blueprint below, and LangGraph Agent Server/LangSmith using `langgraph.json` (not deployed, not release-gating). Production deployments must inject secrets through the platform secret manager.
 
-- LangGraph Agent Server/LangSmith using `langgraph.json`.
-- Self-hosted container using `Dockerfile`.
+### Reference deployment (Render)
 
-Production deployments must inject secrets through the platform secret manager.
+`render.yaml` (ADR 0008 decisions 1, 10 and 15) defines both environments. Everything in it is an assumption about Render until a staging deploy from it reaches `ready` and Render's validation passes; neither has been done (#150 acceptance criterion 2).
+
+| Piece | Staging | Production |
+| --- | --- | --- |
+| Web service (image `ghcr.io/md-nisar/neuron`) | `neuron-staging`, 1 instance | `neuron-production`, 2 instances |
+| Health check, pre-deploy | `/health/ready`; `python -m neuron_agent.persistence.cli setup` | same |
+| `maxShutdownDelaySeconds` | 180 | 180 |
+| Postgres 16 | `neuron-staging-db`, `ipAllowList: []` | `neuron-production-db`, `ipAllowList: []` |
+| Retention | cron `neuron-prune-staging`, daily 03:17 UTC, `... cli prune` | `neuron-prune-production` |
+| Collector (private service) | `neuron-collector-staging` | `neuron-collector-production` |
+| Limits backend | `postgres` | `postgres` |
+
+Plan names (`starter`, `basic-256mb`, `basic-1gb`) are placeholders for the owner's choice (ADR 0008 open question 1). Free plans suit a disposable staging only (decision 17): they have no pre-deploy command or cron plan, so for a free staging remove `preDeployCommand` and the cron service, run `setup` and `prune` by hand against the external connection, and accept `sslmode=require`.
+
+**First deploy, in order**
+
+1. Pick an image digest built from `main` and verify it (see "Published image and attestation"). Replace each `image.url` of the three web and cron services with `ghcr.io/md-nisar/neuron@sha256:<digest>`. A private package also needs a registry credential in the Render workspace (open question 14).
+2. Create the Blueprint in Render. It prompts for every `sync: false` value; leave the DSNs for step 4 (or enter placeholders and edit them later) because the roles do not exist yet.
+3. **Create the database roles**, once per environment, with the owner connection string from the Render Dashboard (`psql` from a shell inside Render, since `ipAllowList` is empty): run the `roles.sql` in "Database roles" (`neuron_migrator`, `neuron_app`; choose both passwords yourself).
+4. Set the secrets in the Dashboard. Each DSN is the **role's**, not the owner's, with `sslmode` in the string (`verify-full` in production; staging also accepts `require`; the Render internal connection string supports `require` only, so staging only until verified TLS is proven):
+   - web: `APP_POSTGRES_DSN` (`neuron_app`), `APP_POSTGRES_MIGRATION_DSN` (`neuron_migrator`), `APP_IDENTITY_HASH_KEY` (32+ characters, different per environment, identical on every instance), `OPENAI_API_KEY`, `APP_AUTH_ISSUER`, `APP_AUTH_JWKS_URL`.
+   - cron: the same except the migration DSN. `prune` loads the whole settings, so it needs the identity key, the issuer, the JWKS URL and the provider key too.
+   - Collector: `OTEL_BACKEND_ENDPOINT` and optionally `OTEL_BACKEND_AUTH_HEADER`, plus a secret file named `otel-collector.yaml` holding `deploy/observability/otel-collector.yaml`.
+5. Deploy. The pre-deploy `setup` runs as the migrator and grants the app role; a failure cancels the deploy and the previous release keeps serving. Run the smoke test (below).
+
+**Settings the Blueprint fixes.** Non-secret settings live in environment groups, one per role and environment (`neuron-web-*`, `neuron-cron-*`, `neuron-collector-*`): `APP_ENV`, `APP_AUTH_MODE=jwt`, a different `APP_AUTH_AUDIENCE` per environment, `APP_CHECKPOINTER=postgres`, `APP_LIMITS_BACKEND=postgres`, `APP_EXPOSE_API_DOCS=false`, `APP_ALLOWED_HOSTS`, `APP_TRUSTED_PROXIES=[]`, `APP_HSTS_MAX_AGE_SECONDS` (production), `APP_POSTGRES_POOL_MAX_SIZE` and `APP_OTEL_*`. Render does not allow `sync: false` in a group, so every secret is a service-level `sync: false` variable. Edit `APP_ALLOWED_HOSTS` to the real hostnames (the defaults assume `<service>.onrender.com`; a custom domain replaces them). `APP_TRUSTED_PROXIES` is `[]` (forwarded headers ignored, so per-IP limits see Render's proxy address) until Render's proxy range is confirmed (open question 5). `tests/unit/test_render_blueprint.py` checks the file: it holds no secret value, no `fromDatabase`, no unknown `APP_*` key, a shutdown delay above the drain formula, and settings that pass `Settings` validation.
+
+**Connection budget.** `max_connections` is set by the database plan; read it with `SHOW max_connections;` (not taken from documentation here). Per environment the peak is
+
+`web instances x APP_POSTGRES_POOL_MAX_SIZE + pre-deploy + cron + admin headroom`
+
+Production steady state: 2 x 10 = 20. During a rolling deploy old and new instances overlap, so budget 4 x 10 = 40, plus `setup` (up to 2), `prune` (a pool of 2) and 5 for admin access: 49 connections must fit under `max_connections`. If not, lower `APP_POSTGRES_POOL_MAX_SIZE` in the group or raise the database plan. More instances multiply the first term.
+
+**Who can read the secrets.** Environment variables and groups on Render are readable by every workspace member with access to the service and by any account-wide API key; that set can read production secrets, including the app DSN, the identity key and the provider key. The migration DSN sits in the web service's environment because pre-deploy shares it (ADR 0008 open question 20); only `persistence.cli` reads it, and a test pins that. Keep the workspace membership list short, keep production and staging in separate workspaces where the account allows, and rotate secrets when a member leaves. The Collector and cron services reference no web group and hold no web-only secret.
 
 ### Container image
 
@@ -49,6 +81,12 @@ layout with `tests/integration/test_image_layout.py` (run it locally with
 `NEURON_TEST_IMAGE=neuron-agent uv run pytest tests/integration/test_image_layout.py -m docker`)
 and checks that a stale `uv.lock` fails the build. It pushes nothing.
 
+### Deploy pipeline
+
+`deploy.yml` promotes one attested digest and never rebuilds it (ADR 0008 decision 6, steps 5 to 7). After a successful `image-publish` run on `main`, the `staging` job requires a green `ci` on the commit, reads the digest from that run's `image-digest` artifact, verifies the attestation (signer `image-publish.yml`, source ref `refs/heads/main`, SLSA provenance), calls every staging service's deploy hook with that digest, waits `DEPLOY_SETTLE_SECONDS` (default 300) and runs `scripts/smoke_test.py`. A `v*` tag starts the `production` job in the `production` Environment (required reviewer): it checks the tag is on `main`, equals the `pyproject.toml` version and has a `CHANGELOG.md` section, finds the `image-publish` run that built the tagged commit, requires its staging run (titled `staging <run id>`) to have passed, re-verifies the attestation, re-scans the digest (reported only), deploys every production service with the same digest, smoke-tests, and only then publishes the GitHub Release (draft first) from the changelog section.
+
+Set per Environment (`staging`, `production`): secret `DEPLOY_HOOKS` (JSON `{"<service name>": "<deploy hook URL>"}`, the names in `render.yaml`), secret `SMOKE_TEST_TOKEN`, variable `SMOKE_TEST_URL`. No Render API key is used. Not proven (Render facts are assumed, and no real deployment has run this): that a hook accepts `imgURL` for an image service, that the fixed settle wait covers a rolling deploy, and that the pre-deploy `setup` ran (the smoke test's readiness check fails closed when the guard tables are missing, but Render's own deploy status is not read).
+
 ### Shutdown
 
 On SIGTERM `neuron-api` (a `uvicorn.Server` subclass overriding `handle_exit`, the handler Uvicorn 0.53 installs for SIGINT and SIGTERM; ADR 0008 decision 4) does this, in order:
@@ -61,7 +99,7 @@ On SIGTERM `neuron-api` (a `uvicorn.Server` subclass overriding `handle_exit`, t
 
 Signal-driven drain is POSIX only: Windows cannot deliver SIGTERM to a process, so the real-signal tests are skipped there (the target platform is Linux).
 
-The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10`, plus the work after the last request ends: the lifespan closes the database pool, and with `APP_OTEL_ENABLED=true` the telemetry flush can take up to `2 * APP_OTEL_EXPORT_TIMEOUT_SECONDS` (default 10 s each) when the Collector is down. Defaults: 5 + 120 + 10 = 135 s, or 155 s with OpenTelemetry on and the Collector down, plus the pool close. Render's `maxShutdownDelaySeconds: 150` therefore has no margin with OpenTelemetry on and the Collector down (and is exceeded by 5 s at the defaults if a run lasts the full timeout); lower `APP_RUN_TIMEOUT_SECONDS`, `APP_SHUTDOWN_DRAIN_SECONDS` or `APP_OTEL_EXPORT_TIMEOUT_SECONDS`, or raise the grace. The app cannot read the platform value; the blueprint test in #150 enforces it. Raising any of these settings means raising the grace.
+The platform's termination grace must exceed `APP_SHUTDOWN_DRAIN_SECONDS + APP_RUN_TIMEOUT_SECONDS + 10`, plus the work after the last request ends: the lifespan closes the database pool, and with `APP_OTEL_ENABLED=true` the telemetry flush can take up to `2 * APP_OTEL_EXPORT_TIMEOUT_SECONDS` (default 10 s each) when the Collector is down. Defaults: 5 + 120 + 10 = 135 s, or 155 s with OpenTelemetry on and the Collector down, plus the pool close. `render.yaml` therefore sets `maxShutdownDelaySeconds: 180` (Render allows 1 to 300), not the 150 first proposed, which had no margin with OpenTelemetry on and the Collector down. The app cannot read the platform value; `tests/unit/test_render_blueprint.py` enforces the ordering. Raising any of these settings means raising the grace.
 
 Known gaps, to revisit when the Postgres guards land (#136):
 
@@ -87,7 +125,7 @@ An attestation proves where and how the image was built, not that tests passed: 
 ## Health Checks
 
 - `/health/live`: process is serving requests.
-- `/health/ready`: application configuration loaded; not draining for shutdown (see Shutdown); with `APP_CHECKPOINTER=postgres`, the database reachable; and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
+- `/health/ready`: application configuration loaded; not draining for shutdown (see Shutdown); with `APP_CHECKPOINTER=postgres` or `APP_LIMITS_BACKEND=postgres`, the database reachable (and, with the latter, the guard tables created by `setup` present, so an unmigrated database is not ready); and in jwt mode, no unresolved JWKS fetch failure while no usable cached keys remain. Returns `503 {"status": "not_ready"}` otherwise, so take the instance out of rotation. After a failed fetch, a probe retries the JWKS at most once per 5 seconds per process, bounded by `APP_AUTH_JWKS_TIMEOUT_SECONDS`; a healthy instance makes no IdP call (see Signing keys and JWKS caching).
 
 Health checks intentionally avoid LLM calls to prevent cost spikes and dependency coupling.
 
@@ -293,6 +331,17 @@ your security/compliance policy; keep it separate from `APP_THREAD_RETENTION_DAY
 audit records contain metadata and are not deleted with conversation data. Protect audit
 sink access and retention against unauthorized modification/deletion.
 
+### Telemetry on the reference deployment
+
+ADR 0008 decision 12; `render.yaml` defines it (Render facts are assumed, and nothing here has run on a real deployment).
+
+- **Path.** Each web instance exports OTLP/HTTP to `http://neuron-collector-<env>:4318`, a Render private service, over the workspace's private network. The Collector runs the shipped `deploy/observability/otel-collector.yaml` (mounted as the secret file `otel-collector.yaml`; upload it in the Dashboard, since a Blueprint cannot declare a secret file) on the pinned `opentelemetry-collector-contrib` release, and forwards traces, metrics and logs to the backend chosen in ADR 0008 open question 10 through `OTEL_BACKEND_ENDPOINT` and, if needed, `OTEL_BACKEND_AUTH_HEADER` (both `sync: false` on the Collector only). The Collector's service has no database, provider or `APP_*` secret.
+- **Settings.** The web groups set `APP_OTEL_ENABLED=true`, `APP_OTEL_TRACES_SAMPLE_RATIO=1.0` (tail sampling needs every span; head sampling would discard the errors first) and `APP_OTEL_EXPORTER_OTLP_ENDPOINT`. A test (`tests/unit/test_render_blueprint.py`) pins them and that each environment points at its own Collector.
+- **One replica, no load balancing.** Tail sampling decides per trace once all its spans arrive, so every span of a trace must reach the same Collector. With one replica that always holds, so no trace-ID load-balancing exporter is needed. Do not scale the Collector past one instance without adding one (see the Collector notes under "Service level objectives").
+- **Staging and production share a private network** when they are in one Render workspace and region, so staging could reach the production Collector. Keep them in separate workspaces (see "Who can read the secrets"); the OTLP receiver has no authentication.
+- **Metrics and alerts.** The Collector's Prometheus exporter listens on port 8889 of the private service; a backend that scrapes must run where it can reach it, or use an OTLP metrics endpoint. Load `deploy/observability/prometheus-alerts.yaml` in the backend and check it with `promtool` (the `observability-config` CI job does).
+- **Not verified (open until a real deployment).** (1) One streamed run with a tool call on staging shows a linked trace, its logs (by `trace_id`) and its metrics in the backend, and the shipped alert rules load there. (2) The staging telemetry passes the v0.5.0 leak scan. To run the scan, capture the staging telemetry (an export from the backend, or a temporary file exporter on the Collector as in `docs/releases/v0.5.0-gate/otel-collector.gate.yaml`) and search it for the forbidden strings of `docs/releases/v0.5.0-gate/telemetry_gate.py` (the prompt, the answer, the tool expression, its arguments and result, both bearer tokens and their segments, the raw `sub`, and with a live model the provider key), with a positive control that finds the prompt in the client transcript; record the result in the PR. Neither check has been run.
+
 ### Service level objectives
 
 SLIs, targets and alerts for the service (ADR 0007, decision 8). **Targets were set at the v0.5.0 release gate (#99)** from live runs on the development model (`nvidia/nemotron-3-super-120b-a12b`, NVIDIA free tier, 2026-10-16/17); re-check them on the production model, which has not been measured (no OpenAI run). The PromQL uses the names the Collector's Prometheus exporter produces from the OTLP metrics above: dots become underscores, unit `s` adds `_seconds`, counters add `_total`, histograms add `_bucket`/`_count`, and attributes become labels (`error.type` is `error_type`). Resource attributes are labels too (`service_instance_id` keeps workers apart), so every query aggregates with `sum(...)`.
@@ -493,7 +542,7 @@ With `APP_LIMITS_BACKEND=postgres` both guards are shared (ADR 0008 decision 8).
 - **Fail closed.** Every guard transaction sets `lock_timeout` (2 s) and `statement_timeout` (5 s). A database error, a lock wait past the timeout, or a pool checkout timeout makes the request `503` (error code `persistence_error`, `alert=true`) and the model is not called. A failed release is logged (`run_lease_release_failed`) and never fails the request; expiry covers it.
 - **Pool.** The guards share the pool (`APP_POSTGRES_POOL_MAX_SIZE`, per process). Each claim and release holds a connection for a few milliseconds; a claim waits for its owner's other claims on the owner lock, up to `lock_timeout` (2 s), and each waiting claim parks one pool connection meanwhile. A burst of claims from one principal can therefore occupy a share of the pool, which the checkpointer uses too, for up to 2 s; the claims are not made non-blocking (`pg_try_advisory_xact_lock`) because that would break the guarantee that exactly k of many simultaneous claims succeed. The mitigation is the per-replica request rate limiter, which sheds a burst before it reaches the guard.
 - **Gauge and runbook.** `neuron.run_leases.expired` is the number of leases past `expires_at` that nothing has deleted yet. Every replica reports the same table-wide value (sampled every 30 s), so an alert must use the maximum across replicas, never the sum (which multiplies the count by the replica count). It is normally 0, and briefly above 0 after a replica crash (until the owner's next request or the retention job removes the rows). A value that stays above 0 for hours means the retention job is not running or deletes are failing: run `python -m neuron_agent.persistence.cli prune`, check `thread_prune_job_completed` (`expired_leases`) and `run_lease_release_failed` / `run_guard_unavailable`. To free one stuck user at once, delete their rows from `neuron_run_leases`. The alert is `NeuronRunLeasesExpired` (runbook: run leases).
-- **Erasure is incomplete when a thread is skipped.** `DELETE /v1/me/threads` (bulk erase) skips an owned thread that has a live lease and reports it in `skipped_busy_count`; when that count is above 0 the erasure is incomplete, and the caller must retry after the run ends (up to the run timeout + 15 s if a crashed replica left a stale lease). An erase that fails part-way is audited as `user_data_erased` with `outcome=error` and the number erased so far, never thread IDs.
+- **Erasure is incomplete when a thread is skipped.** `DELETE /v1/me/threads` (bulk erase) skips an owned thread that has a live lease and reports it in `skipped_busy_count`; when that count is above 0 the response has `"complete": false` and the erasure is incomplete, and the caller must retry after the run ends (up to the run timeout + 15 s if a crashed replica left a stale lease). An erase that fails part-way is audited as `user_data_erased` with `outcome=error` and the number erased so far, never thread IDs.
 - **Requirements.** Migrations 2 to 4 create `neuron_run_leases` and its two indexes; `gen_random_uuid()` needs Postgres 13 or newer. After the database roles are split (#144), the application role needs `SELECT`, `INSERT` and `DELETE` on `neuron_run_leases`; the migrator creates it. This is a prerequisite of #144; no grants exist yet.
 - **Still per process:** `APP_MAX_CONCURRENT_STREAMS` (a per-instance resource cap) and the JWKS cache. The request rate limiter is shared too (#148, see Rate Limiting).
 
@@ -662,7 +711,7 @@ Key scheme: two limiters per worker, each with the same limits and the same 10,0
 
 The address is the client's IPv4 address, or its IPv6 `/64` network (`ip:2001:db8:1:2::/64`), so one IPv6 subscriber shares one bucket however many addresses it uses. The /64 grouping is a coarse pre-auth guard: an attacker holding a /48 can rotate through 65,536 /64s. An IPv4-mapped IPv6 address (`::ffff:192.0.2.5`) is keyed as the plain IPv4 address. A peer address that does not parse as an IP is used as given.
 
-Behind a trusted proxy, all `X-Forwarded-For` lines are joined and read right to left, skipping trusted hops. The first entry that does not parse as a bare IP address (`203.0.113.8:4444` and `[2001:db8::1]` both fail) ends the walk, and the last address read is the key; nothing to the left of it is believed. A proxy that adds ports or brackets therefore rate-limits all clients as one address, the proxy's, until it is fixed.
+Behind a trusted proxy, all `X-Forwarded-For` lines are joined and read right to left, skipping trusted hops. Each entry may be a bare IP, `ip:port` (IPv4), `[v6]` or `[v6]:port`; a valid port (0-65535) is stripped. The first entry that does not parse (`203.0.113.8:`, `[2001:db8::1]:x`, `2001:db8::1]:443`, a port above 65535) ends the walk, and the last address read is the key; nothing to the left of it is believed. A bare IPv6 address cannot carry a port.
 
 By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON list of trusted proxy IP addresses/CIDRs only when the app is reachable exclusively through those proxies. Do not configure Uvicorn's `--forwarded-allow-ips`: `neuron-api` turns Uvicorn's proxy-header rewriting off, so the app's `_client_ip` is the only place proxy headers are parsed. The app uses forwarded addresses only when its immediate peer is in `APP_TRUSTED_PROXIES`, preventing clients from choosing their own IP bucket.
 
@@ -676,7 +725,7 @@ By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON li
    - **Bloat.** Every rate-limited request updates a row, so the table churns dead tuples. It is created with `fillfactor = 70` (room for HOT updates, which avoid index writes on the primary key but not on the `refilled_at` index, which changes on every update) and `autovacuum_vacuum_scale_factor = 0.02`. Expect a steady autovacuum load on this table and some bloat between vacuums; it holds at most one row per active key.
    - **Clock damage.** A row dated more than 5 s ahead of the database clock (a restore, a manual edit) is reset to the database time on its next check, with no extra tokens; `tokens >= 0` is a CHECK constraint.
    - **Pre-limit is best effort.** The in-memory IP pre-limit tracks at most 10,000 keys per process; an attacker rotating more distinct addresses evicts old entries and reaches the shared limiter, which still limits each key.
-   - **Proxy.** `APP_TRUSTED_PROXIES` works only if the proxy appends the peer address to `X-Forwarded-For` rather than passing the client's header through. An unparseable rightmost entry (for example `203.0.113.8:4444`) ends the walk, and the key falls back to the proxy's own address, so all clients share one bucket until the proxy is fixed.
+   - **Proxy.** `APP_TRUSTED_PROXIES` works only if the proxy appends the peer address to `X-Forwarded-For` rather than passing the client's header through. An unparseable rightmost entry (for example `203.0.113.8:x`) ends the walk, and the key falls back to the proxy's own address, so all clients share one bucket until the proxy is fixed.
    - **Deploy order.** Run `setup` before deploying a release that uses the Postgres limiter. A replica that starts before migration 10 reports ready but answers every rate-limited `/v1` request with `503` and logs `rate_limiter_db_unavailable` per request.
    - **Requirements.** Migrations 10 and 11 create the table and its index. The `setup` grant phase (#144) gives the application role `SELECT`, `INSERT`, `UPDATE` and `DELETE` on `neuron_rate_buckets`. `APP_IDENTITY_HASH_KEY` is required (see Scaling).
 
@@ -757,6 +806,122 @@ After each deploy run `SMOKE_TEST_TOKEN=<token> uv run python scripts/smoke_test
 - **Prefer workload identity federation.** Where the IdP supports it, exchange the CI job's GitHub OIDC token for the access token at run time, so no client secret is stored (ADR 0008, open question 2). Otherwise store the client secret as an Environment secret and add its rotation to the secret rotation runbook.
 - **Retention of its requests.** With `APP_CHECKPOINTER=none` (the staging and production default) nothing is stored. With persistence on, the run creates one thread owned by the smoke principal; the script then calls `DELETE /v1/threads/{id}`, which needs `threads:delete`. Without that scope the script warns and the thread stays until `make prune-threads` removes it after `APP_THREAD_RETENTION_DAYS`. Grant `threads:delete` to the smoke principal only on deployments that persist threads; it can delete only its own threads.
 
-## Rollback
+## Runbooks
 
-Rollback by redeploying the previous container image or reverting the LangSmith deployment to the previous repository revision. Before removing graph nodes or state fields, verify no active threads depend on them.
+The reference deployment is Render (ADR 0008). Every Render-specific statement below is an **assumption** until a staging deploy has run it, and every procedure here is **unrehearsed**: nothing has been executed on a real deployment, which the owner deferred for this milestone. Commands name the repository's own tools, so they can be checked offline; fix a step when a real run disagrees. Never put a DSN, password, key or hook URL in a ticket, a chat or a shell history.
+
+### Deploy
+
+1. **Path.** Merge to `main`. `ci` and `image-publish` run; when `image-publish` succeeds, `deploy.yml` deploys staging by digest (see "Deploy pipeline"). To release, bump the version in `pyproject.toml` with a matching `CHANGELOG.md` section, merge, then push a `v*` tag on `main`; approve the `production` Environment when prompted.
+2. **What pre-deploy does.** Render runs `python -m neuron_agent.persistence.cli setup` as the migrator before the new instances take traffic: LangGraph's schema, neuron's ordered migrations, grants for the app role, and the identity-key check value. A failure cancels the deploy and the previous release keeps serving.
+3. **Watch a rolling deploy.** In the Render Dashboard, open the service's Events and Logs. Expect the new instances to pass `/health/ready` before the old ones drain (`maxShutdownDelaySeconds: 180`). Meanwhile, `neuron.service.ready` and the `NeuronInstanceNotReady` alert (`deploy/observability/prometheus-alerts.yaml`) show readiness from the telemetry side. A deploy that never goes ready is rolled back by Render's health check; confirm with the next step.
+4. **Read the deployed digest.** The deploy job's log prints each service and its hook status; the digest is the `image-digest` artifact of the `image-publish` run for the commit (or tag). In the Dashboard the service shows the image reference it runs. They must be the same `@sha256:` value for every service of the environment.
+5. **Verify.** `SMOKE_TEST_TOKEN=<token> uv run python scripts/smoke_test.py <base-url>` (see "Smoke Test"); exit `0` means ready and one authenticated invoke answered.
+
+### Rollback
+
+Rollback is redeploying the previous digest; there are no down-migrations (ADR 0008 decision 7).
+
+1. **Choose the digest.** The previous release's `image-digest` artifact (the `image-publish` run of the previous tag's commit). Verify it with `gh attestation verify` as in "Published image and attestation".
+2. **Redeploy it.** Re-run the `deploy.yml` production job for that tag (a re-run keeps the original digest), or in the Dashboard set each production service to that digest. Do both web and cron to the same digest.
+3. **When it is safe.** Only while the previous release works against the current schema. Migrations are expand-only (add tables, nullable columns, concurrent indexes), so the previous release keeps working after a forward migration; a later release that contracts the schema (`contract_release` in `persistence/migrations.py`) cannot be rolled back past the release that stopped using the old shape. Check `neuron_migrations` against the previous release's `MIGRATIONS` list: the previous image must not need a table, column or index the database lacks.
+4. **When a migration must be reverted.** Write a new forward migration that undoes it (a release of its own, through the pipeline); never edit LangGraph's tables or `neuron_migrations` by hand, and never `DROP` anything to "fix" a deploy. A `langgraph-checkpoint-postgres` bump follows `docs/rollback-test-checkpoint-postgres.md`.
+5. **Verify** with the smoke test and `/health/ready`; record the digest rolled back to.
+
+For a LangSmith/Agent Server deployment (not release-gating), revert to the previous repository revision. Before removing graph nodes or state fields, verify no active threads depend on them.
+
+### Migration failure
+
+`setup` prints the exception class and SQLSTATE only. Find the cause in the pre-deploy log, fix it, and run `setup` again (idempotent).
+
+| Symptom | Cause | Action |
+| --- | --- | --- |
+| Pre-deploy exits non-zero; the previous release still serves | A migration failed or timed out | Read the class and SQLSTATE, fix, re-run `python -m neuron_agent.persistence.cli setup` as the migrator (a Render one-off job or the external connection). Do not edit `neuron_migrations`. |
+| `lock_timeout` (SQLSTATE `55P03`) | A transactional migration waited five seconds behind live traffic | Re-run when the blocking transaction ends; find it with `SELECT pid, state, query_start, left(query, 80) FROM pg_stat_activity WHERE state <> 'idle' ORDER BY query_start;`. |
+| "another setup held the migration lock for too long" | A second `setup` waited 300 seconds for the advisory lock while the first built a large index | Wait for the first to finish, then re-run. |
+| An `INVALID` index | A concurrent build failed | `setup` drops and rebuilds it on the next run, for a migration that names its `index`. Check with `SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid;`. |
+| A long-running concurrent index build | Older transactions holding it up (ten-minute lock budget) | Find idle-in-transaction sessions in `pg_stat_activity`, end them with the owner's approval, re-run. |
+| Start-up refuses with an `error_code` | See the start-up checks table under "Thread Persistence (Postgres)" | Fix the cause the table names; the pool is closed and the previous release keeps serving. |
+
+### Roles
+
+Create `neuron_migrator` and `neuron_app` once per environment with the `roles.sql` in "Database roles", then set the two DSNs (`APP_POSTGRES_MIGRATION_DSN` for the migrator, `APP_POSTGRES_DSN` for the app role). Verify as `neuron_app`: `DROP TABLE checkpoints` and `CREATE TABLE x (a int)` must fail.
+
+**Rotate a role's password** (both DSNs change, with a short overlap):
+
+1. `ALTER ROLE neuron_app PASSWORD '<new>';` as the owner. Existing pooled connections stay open; new ones need the new password.
+2. Update `APP_POSTGRES_DSN` in the web service and the cron job, redeploy, confirm `/health/ready`.
+3. Do the same for `neuron_migrator` and `APP_POSTGRES_MIGRATION_DSN` (the web service's environment; the pre-deploy shares it). Run `setup` once to prove the new migrator DSN.
+4. Record the date. The old passwords are no longer valid; nothing else to revoke.
+
+### Rotation
+
+Each secret, with a maximum age (a rule for the owner to adjust). Rotate sooner after any suspected exposure or when a person with access leaves.
+
+| Secret | Max age | Procedure |
+| --- | --- | --- |
+| `OPENAI_API_KEY` (provider key) | 90 days | Create the new key at the provider, set it on the web and cron services, redeploy, confirm a smoke test, revoke the old key. |
+| Database role passwords | 90 days | "Roles" above. |
+| IdP signing keys | Per the IdP | The IdP publishes the new key in its JWKS before signing with it; the service refetches the JWKS (see "Signing keys and JWKS caching"). Confirm tokens still verify; remove the old key at the IdP after tokens signed with it expire. |
+| Smoke-test credential (`SMOKE_TEST_TOKEN` source) | 90 days, or federate | Rotate the IdP client secret, update the Environment secret. Prefer workload identity federation (see "Smoke Test"). |
+| Deploy hooks (`DEPLOY_HOOKS`) | 180 days | In the Render Dashboard regenerate each service's deploy hook, update the Environment secret for that environment, and run a staging deploy. A leaked hook can trigger a deploy of the image it is given, not read data. |
+| `APP_IDENTITY_HASH_KEY` | Only on exposure | A maintenance operation, below. |
+
+**Rotate `APP_IDENTITY_HASH_KEY`.** It resets owner keys, budgets, buckets and leases, and orphans every thread: owners get `404` for their old threads, so tell users first.
+
+1. Announce the maintenance window. Generate the new key (`python -c "import secrets; print(secrets.token_urlsafe(32))"`).
+2. Scale the web service to zero (Dashboard) so no instance runs with the old key; keep the cron job from running during the window.
+3. Set the new key on the web and cron services.
+4. Run `python -m neuron_agent.persistence.cli setup --rotate-identity-key` once, by hand, as the migrator. Never leave that flag in the pre-deploy command.
+5. Scale the web service back up. Run the smoke test. `make prune-threads` removes the orphaned threads at retention.
+6. Record the date and that the threads were orphaned.
+
+### Backups and restore
+
+Assumptions to confirm in the Render account: the PITR window of the chosen plan, that backups are encrypted and keyed by Render, and the plan's backup retention. Record them here when known: window ____, encryption ____, retention ____.
+
+- **Relation to retention.** A backup keeps threads that `APP_THREAD_RETENTION_DAYS` or a user's erasure later deleted, until the backup expires; size backup retention against the data-retention policy.
+- **Replaying erasures after a restore.** After restoring to a point in time, re-apply every erasure made after that point: the audit log records each erasure (`thread_deleted`, `user_data_erased`; see "Conversation Retention and Deletion") with the actor and time; re-run each one, then `python -m neuron_agent.persistence.cli prune`. Do not return the restored database to service before the replay.
+- **Restore to a new database** (the production database is not overwritten):
+  1. Start the restore to a new Render Postgres instance from the Dashboard (point in time or latest backup). Keep `ipAllowList: []`.
+  2. Create the roles with `roles.sql` and run `setup` as the migrator (it adds grants and is idempotent); the identity key must be the same value as production or every thread is orphaned.
+  3. Point a staging copy of the service at it (never production) and run the smoke test; count threads: `SELECT count(*) FROM checkpoints;`.
+  4. Record the restore start, the time it was usable (RTO) and the age of the newest restored data (RPO), using the template below.
+  5. Delete the restored instance after the drill, and record the deletion.
+
+  | Field | Value |
+  | --- | --- |
+  | Date, operator | |
+  | Backup or PITR timestamp | |
+  | Restore started / usable (RTO) | |
+  | Newest data restored (RPO) | |
+  | Smoke test result | |
+  | Restored instance deleted at | |
+
+  The restore has not been rehearsed (scope: ADR 0008 open question 15); rehearse it at the release gate.
+
+### Capacity
+
+Table sizes against the plan's storage. Run as the owner or migrator:
+
+```sql
+SELECT relname, pg_size_pretty(pg_total_relation_size(oid)) AS total
+FROM pg_class
+WHERE relname IN ('checkpoints', 'checkpoint_blobs', 'checkpoint_writes',
+                  'neuron_run_leases', 'neuron_token_ledger',
+                  'neuron_token_settlements', 'neuron_rate_buckets')
+ORDER BY pg_total_relation_size(oid) DESC;
+SELECT pg_size_pretty(pg_database_size(current_database()));
+```
+
+Threshold: investigate when the database passes 70% of the plan's storage, and raise the plan or shorten `APP_THREAD_RETENTION_DAYS` before 85%. The checkpoint tables dominate; the guard tables stay small (the daily prune deletes expired rows).
+
+### Platform facts
+
+Assumed for Render until confirmed in the account:
+
+- **Logs.** Retention is set by the plan (record it: ____ days). Anyone with workspace access to a service can read its logs; the app logs no prompt, answer, token, DSN or key, and IP addresses appear only as a keyed prefix hash.
+- **Who can read environment groups.** Every workspace member with access to the service, and any account-wide API key (see "Who can read the secrets"). Keep production and staging in separate workspaces.
+- **The IP log prefix key is per process.** It is random at start-up (`_LOG_IDENTITY_KEY`), so the same address hashes differently in each process and after each restart; do not correlate across instances or restarts.
+- **Egress.** The service can reach the internet. The SSRF helper (`validate_safe_url` in `security/input_policy.py`) is the only control on tool fetches; there is no network egress allow-list.
+
