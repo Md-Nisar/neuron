@@ -222,8 +222,11 @@ async def test_erase_all_is_owner_scoped_busy_aware_and_idempotent() -> None:
 
     assert first.erased_count == 1
     assert first.skipped_busy_count == 1
+    assert first.complete is False  # a skipped thread means the erasure is incomplete
     assert second.erased_count == 0
     assert second.skipped_busy_count == 1
+    assert second.complete is False
+    assert first.model_dump()["complete"] is False  # it is in the JSON the caller sees
     with pytest.raises(ThreadNotFoundError):
         await service.get_history(alice_delete, "alice", limit=10, offset=0)
     assert (await service.get_history(bob_thread, "bob", limit=10, offset=0)).total == 2
@@ -491,9 +494,9 @@ def test_user_data_rights_endpoints_are_scoped_paginated_and_idempotent(
 
     erased = client.delete("/v1/me/threads", headers=alice_headers)
     assert erased.status_code == 200
-    assert erased.json() == {"erased_count": 2, "skipped_busy_count": 0}
+    assert erased.json() == {"erased_count": 2, "skipped_busy_count": 0, "complete": True}
     repeated = client.delete("/v1/me/threads", headers=alice_headers)
-    assert repeated.json() == {"erased_count": 0, "skipped_busy_count": 0}
+    assert repeated.json() == {"erased_count": 0, "skipped_busy_count": 0, "complete": True}
     assert (
         client.get(
             f"/v1/threads/{bob_thread_id}/messages", headers={"X-User-Id": "bob"}
