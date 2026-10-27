@@ -58,6 +58,8 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `agent:approve` | `POST /v1/threads/{id}/approvals/{approval_id}` (decide a tool call that needs approval) |
 | `threads:read` | `GET /v1/threads/{id}/messages`, `GET /v1/me/threads`, `GET /v1/me/export` |
 | `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads` |
+| `memories:read` | `GET /v1/me/memories` |
+| `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |
 | `tools:calculator` | lets the agent use the `calculator` tool |
 | `tools:mcp.<server>.<tool>` | lets the agent use that MCP tool |
 
@@ -190,6 +192,10 @@ for (;;) {
 ```
 
 Treat `token` events as a live preview. The `final` event carries the validated answer. Authentication, validation and authorization failures, `404`, `409`, `429` and `503` are ordinary HTTP errors returned before the stream starts. A token that expires mid-stream doesn't end the stream; it's checked once, at the start.
+
+## Memory (optional)
+
+With `APP_MEMORY_ENABLED=true` the assistant can keep notes for each user, only when the user asks and only after they approve (ADR 0009). The `remember` tool saves only words the user wrote; `recall` reads them back; `forget` deletes one (scopes `tools:remember`, `tools:recall`, `tools:forget`). Users see and control their notes without the model: `GET /v1/me/memories` lists them, `DELETE /v1/me/memories/{id}` and `DELETE /v1/me/memories` delete them, `GET /v1/me/export` includes them on its first page, and `DELETE /v1/me/threads` (erase my data) deletes them with the threads (`erased_memory_count`). Deleting a single thread does not delete memories. Memories are stored per user (the owner key, never the raw identity) with the limits `APP_MEMORY_MAX_ITEMS`, `APP_MEMORY_MAX_CHARS` and `APP_MEMORY_TTL_DAYS`. Run `setup` after enabling it on Postgres. Not available through Agent Server.
 
 ## MCP tools (optional)
 

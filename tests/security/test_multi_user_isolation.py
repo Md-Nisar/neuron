@@ -27,11 +27,18 @@ from neuron_agent.security.auth import Principal
 
 _MARKER = "alice-secret-7f3c"  # conversation content that must never cross users
 _APPROVAL_ID = "0123456789abcdef0123456789abcdef"  # nothing is pending under this ID
+_MEMORY_ID = "fedcba9876543210fedcba9876543210"  # no memory has this ID
 
 
 def _not_found(path: str) -> dict[str, str]:
     """The one 404 body for a thread or approval the caller cannot reach."""
     return {"detail": "approval_not_found" if "/approvals/" in path else "thread_not_found"}
+
+
+@pytest.fixture
+def jwt_api(jwt_api_factory: Callable[..., JwtApi], echo_agent: HistoryEchoAgent) -> JwtApi:
+    """Memory is on here, so the `/v1/me/memories` routes in the matrix are really served."""
+    return jwt_api_factory(memory_enabled=True)
 
 
 def _parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
@@ -44,7 +51,7 @@ def _parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
 
 
 def _route_requests(
-    thread_id: str, approval_id: str = _APPROVAL_ID
+    thread_id: str, approval_id: str = _APPROVAL_ID, memory_id: str = _MEMORY_ID
 ) -> list[tuple[str, str, dict[str, Any] | None]]:
     """One request per `/v1/*` route, aimed at `thread_id` wherever the route takes one."""
     return [
@@ -60,6 +67,9 @@ def _route_requests(
         ),
         ("GET", "/v1/me/threads", None),
         ("GET", "/v1/me/export", None),
+        ("GET", "/v1/me/memories", None),
+        ("DELETE", f"/v1/me/memories/{memory_id}", None),
+        ("DELETE", "/v1/me/memories", None),
         ("DELETE", "/v1/me/threads", None),
     ]
 
@@ -72,7 +82,9 @@ def test_matrix_covers_every_v1_route() -> None:
         for method in route.methods
     }
     probe = "{thread_id}"
-    covered = {(method, path) for method, path, _ in _route_requests(probe, "{approval_id}")}
+    covered = {
+        (method, path) for method, path, _ in _route_requests(probe, "{approval_id}", "{memory_id}")
+    }
     assert covered == declared
 
 
@@ -115,8 +127,10 @@ def test_other_user_cannot_reach_owned_thread_on_any_route(
         response = jwt_api.client.request(method, path, json=body, headers=spoofed)
         assert _MARKER not in response.text, (method, path)
         if unknown_path == path and unknown_body == body:
-            # A caller-scoped `/v1/me/*` route: it succeeds, scoped to the intruder only.
-            assert response.status_code == 200, (method, path, response.text)
+            # A caller-scoped `/v1/me/*` route: it succeeds, scoped to the intruder only. (A
+            # memory ID is not a thread: nobody has the probe ID, so the answer is the one 404.)
+            expected = 404 if "/memories/" in path else 200
+            assert response.status_code == expected, (method, path, response.text)
             assert thread_id not in response.text, (method, path)
             continue
         baseline = jwt_api.client.request(method, unknown_path, json=unknown_body, headers=spoofed)
@@ -154,7 +168,12 @@ def test_owner_reaches_own_thread_on_every_route(
     assert deleted.status_code == 204
     _owned_thread(jwt_api, alice)
     erased = jwt_api.client.delete("/v1/me/threads", headers=bearer(alice))
-    assert erased.json() == {"erased_count": 1, "skipped_busy_count": 0, "complete": True}
+    assert erased.json() == {
+        "erased_count": 1,
+        "skipped_busy_count": 0,
+        "erased_memory_count": 0,
+        "complete": True,
+    }
 
 
 def test_same_subject_from_another_issuer_is_not_the_owner(

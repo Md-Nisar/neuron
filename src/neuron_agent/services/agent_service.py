@@ -31,6 +31,8 @@ from neuron_agent.errors.base import (
     CapacityError,
     ConcurrentRunsExceededError,
     ExportTooLargeError,
+    MemoryDisabledError,
+    MemoryNotFoundError,
     PersistenceError,
     QuotaExceededError,
     RunTimeoutError,
@@ -39,7 +41,7 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
-from neuron_agent.memory.store import MemoryStore
+from neuron_agent.memory.store import Memory, MemoryStore
 from neuron_agent.memory.tools import memory_specs
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
@@ -55,6 +57,9 @@ from neuron_agent.schemas.agent import (
     ApprovalRequest,
     ApprovalRequiredResponse,
     ExportedThread,
+    MemoriesResponse,
+    MemoryErasureResponse,
+    MemoryItem,
     PendingAction,
     ThreadHistoryResponse,
     ThreadMessage,
@@ -890,6 +895,11 @@ class AgentService:
                     raise ExportTooLargeError("reduce the thread or message page size and retry")
                 exported.append(item)
                 has_more_messages |= message_offset + message_limit < len(messages)
+        memories = (
+            [_memory_item(m) for m in await self._memory.list(owner_key)]
+            if self._memory is not None and offset == 0
+            else []
+        )
         response = UserDataExportResponse(
             threads=exported,
             total_threads=page.total,
@@ -898,6 +908,7 @@ class AgentService:
             message_limit=message_limit,
             message_offset=message_offset,
             has_more_messages=has_more_messages,
+            memories=memories,
         )
         if len(response.model_dump_json().encode("utf-8")) > max_bytes:
             raise ExportTooLargeError("reduce the thread or message page size and retry")
@@ -916,12 +927,84 @@ class AgentService:
         )
         return response
 
+    def _require_memory(self) -> MemoryStore:
+        if self._memory is None:
+            raise MemoryDisabledError("memory is not enabled")
+        return self._memory
+
+    def _audit_memory(
+        self,
+        event: str,
+        owner_key: str | None,
+        *,
+        action: str,
+        count: int | None = None,
+        resource_id: str | None = None,
+    ) -> None:
+        audit(
+            event,
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action=action,
+            resource_type="memory",
+            resource_id=resource_id,
+            count=count,
+        )
+
+    async def list_memories(
+        self,
+        user_id: str | None,
+        *,
+        limit: int,
+        offset: int,
+        principal: Principal | None = None,
+    ) -> MemoriesResponse:
+        """A page of the caller's own memories, oldest first."""
+        memory = self._require_memory()
+        owner_key = self._owner_key(user_id, principal)
+        with self._persistence_errors():
+            found = await memory.list(owner_key)
+        self._audit_memory("memories_read", owner_key, action="memories:read", count=len(found))
+        return MemoriesResponse(
+            memories=[_memory_item(m) for m in found[offset : offset + limit]],
+            total=len(found),
+            limit=limit,
+            offset=offset,
+        )
+
+    async def forget_memory(
+        self, memory_id: str, user_id: str | None, *, principal: Principal | None = None
+    ) -> None:
+        """Delete one of the caller's memories; another user's ID is the same `404`."""
+        memory = self._require_memory()
+        owner_key = self._owner_key(user_id, principal)
+        with self._persistence_errors():
+            deleted = await memory.forget(owner_key, memory_id)
+        if not deleted:
+            raise MemoryNotFoundError("memory not found")
+        self._audit_memory(
+            "memory_deleted", owner_key, action="memories:write", resource_id=memory_id
+        )
+
+    async def erase_memories(
+        self, user_id: str | None, *, principal: Principal | None = None
+    ) -> MemoryErasureResponse:
+        """Delete all of the caller's memories."""
+        memory = self._require_memory()
+        owner_key = self._owner_key(user_id, principal)
+        with self._persistence_errors():
+            erased = await memory.erase(owner_key)
+        self._audit_memory("memories_erased", owner_key, action="memories:write", count=erased)
+        return MemoryErasureResponse(erased_count=erased)
+
     async def erase_user_data(
         self, user_id: str | None, *, principal: Principal | None = None
     ) -> UserDataErasureResponse:
         """Delete all discoverable owned threads, skipping active runs idempotently."""
         owner_key = self._owner_key(user_id, principal)
         erased = 0
+        erased_memories = 0
         skipped_busy = 0
         failed = True
         try:
@@ -952,6 +1035,12 @@ class AgentService:
                         finally:
                             await lease.release()
                         erased += 1
+            if self._memory is not None:
+                with self._persistence_errors():
+                    erased_memories = await self._memory.erase(owner_key)
+                self._audit_memory(
+                    "memories_erased", owner_key, action="threads:erase_all", count=erased_memories
+                )
             failed = False
         finally:
             # Also when it stops part-way: the count so far, never thread IDs.
@@ -973,7 +1062,11 @@ class AgentService:
                 if skipped_busy
                 else None,
             )
-        return UserDataErasureResponse(erased_count=erased, skipped_busy_count=skipped_busy)
+        return UserDataErasureResponse(
+            erased_count=erased,
+            skipped_busy_count=skipped_busy,
+            erased_memory_count=erased_memories,
+        )
 
     async def _owned_threads(
         self, owner_key: str | None, *, limit: int | None, offset: int = 0
@@ -1083,6 +1176,10 @@ def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:
         refused=answer.refused,
         clarification_needed=answer.clarification_needed,
     )
+
+
+def _memory_item(memory: Memory) -> MemoryItem:
+    return MemoryItem(id=memory.id, text=memory.text, created_at=memory.created_at)
 
 
 def _error_event(exc: AppError) -> StreamEvent:

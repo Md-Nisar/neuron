@@ -151,7 +151,7 @@ class HistoryEchoAgent:
 def echo_agent(monkeypatch: pytest.MonkeyPatch) -> HistoryEchoAgent:
     """Make every graph built during the test use a `HistoryEchoAgent`."""
     agent = HistoryEchoAgent()
-    monkeypatch.setattr(main_graph, "build_agent", lambda settings: agent)
+    monkeypatch.setattr(main_graph, "build_agent", lambda settings, registry=None: agent)
     return agent
 
 
@@ -233,7 +233,10 @@ def stream_replies(monkeypatch: pytest.MonkeyPatch) -> Callable[..., StreamingFa
 JWT_ISSUER = "https://issuer.example.test"
 JWT_AUDIENCE = "neuron-api"
 JWKS_URL = "https://issuer.example.test/.well-known/jwks.json"
-ALL_SCOPES = "agent:invoke agent:approve threads:read threads:delete tools:calculator"
+ALL_SCOPES = (
+    "agent:invoke agent:approve threads:read threads:delete memories:read memories:write "
+    "tools:calculator"
+)
 
 
 @dataclass(frozen=True)
