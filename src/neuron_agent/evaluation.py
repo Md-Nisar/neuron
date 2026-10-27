@@ -30,11 +30,11 @@ from langchain.agents.middleware import AgentMiddleware
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ThreadNotFoundError
 from neuron_agent.models import factory
-from neuron_agent.models.factory import _TOOL_PERMISSIONS
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.auth import Principal
 from neuron_agent.security.authorization import DEV_PERMISSIONS, TokenUsageAccumulator
 from neuron_agent.services.agent_service import AgentService
+from neuron_agent.tools.registry import builtin_registry
 
 REPORT_VERSION = 1
 
@@ -286,7 +286,7 @@ def evaluate_case(
         reasons.append(f"expected tools {expected_tools}, got {used_tools}")
 
     for tool in used_tools:
-        needed = _TOOL_PERMISSIONS.get(tool)
+        needed = builtin_registry().scope_for(tool)
         if needed is not None and needed not in permissions:
             reasons.append(f"tool {tool} ran without permission {needed}")
 
@@ -545,7 +545,7 @@ async def _run_security_case(
 
 def _permitted_tools(permissions: frozenset[str]) -> list[str]:
     """Tools a caller with `permissions` may run: `utc_now` is public, the rest need theirs."""
-    return sorted({"utc_now", *(t for t, p in _TOOL_PERMISSIONS.items() if p in permissions)})
+    return sorted(builtin_registry().visible_to(permissions))
 
 
 def _graded_as_attacker(case: dict[str, object], permissions: frozenset[str]) -> dict[str, object]:

@@ -147,7 +147,9 @@ def _violations(directory: Path, src_root: Path = _SRC_ROOT, package: str = _PAC
 def _registered_tools() -> list[object]:
     registered: list[object] = []
     with mock.patch.object(
-        agent_factory, "create_main_agent", lambda settings, tools: registered.extend(tools)
+        agent_factory,
+        "create_main_agent",
+        lambda settings, registry: registered.extend(registry.tools()),
     ):
         agent_factory.build_agent(Settings())
     return registered

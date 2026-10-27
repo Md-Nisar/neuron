@@ -45,7 +45,7 @@ from neuron_agent.models.factory import (
     get_retry_attempts,
     reset_retry_attempts,
 )
-from neuron_agent.tools import calculator, utc_now
+from neuron_agent.tools.registry import builtin_registry
 
 _REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
 
@@ -310,7 +310,7 @@ async def test_fake_chat_model_tolerates_create_agent_tool_binding() -> None:
     The base fake model's `bind_tools` raises `NotImplementedError`, which previously
     crashed every `/v1/agent/invoke` call made without credentials configured."""
     settings = Settings(env="test", openai_api_key=None)
-    agent = create_main_agent(settings, tools=[utc_now, calculator])
+    agent = create_main_agent(settings, builtin_registry())
 
     result = await agent.ainvoke(
         {"messages": [AIMessage(content="hi")]}, config={"recursion_limit": 5}
