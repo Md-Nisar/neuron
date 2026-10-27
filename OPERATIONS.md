@@ -51,7 +51,7 @@ The `Dockerfile` builds a two-stage image (ADR 0008 decision 2):
   (`.dockerignore`: `pyproject.toml`, `uv.lock`, `README.md`, `LICENSE`, `NOTICE`, `src/`).
 - **Reproducible.** `uv sync --locked --no-dev --no-editable` has no fallback: a `uv.lock`
   that is out of date with `pyproject.toml` fails the build. Both bases
-  (`ghcr.io/astral-sh/uv:0.11.29-python3.13-trixie-slim` and `python:3.13-slim-trixie`) are
+  (`ghcr.io/astral-sh/uv:0.13.5-python3.13-trixie-slim` and `python:3.13-slim-trixie`) are
   pinned by index digest; the tag stays beside the digest so Dependabot can bump both.
 - **Runtime.** User and group `10001:10001` (non-root), `HEALTHCHECK` on `/health/live` at the
   configured port, `CMD ["neuron-api"]`. It reads `APP_HOST`/`APP_PORT` (image defaults
