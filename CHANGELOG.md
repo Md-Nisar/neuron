@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Nightly eval: the development model is now `nvidia/nemotron-3-ultra-550b-a55b`. Every nightly since 2026-10-21 failed with `configuration_error` (the provider answered 404 for `nvidia/nemotron-3-super-120b-a12b`, which the account can no longer use), so `compare` was inconclusive. The workflow also makes one status-only call before the long run and fails in seconds on a bad key or an unavailable model. No baseline exists for the new model yet, so only the security gate applies until one is committed; the old baseline stays in `evals/baselines/` as history.
+
 ## 0.6.0
 
 "Production Deployment" (ADR 0008, `docs/releases/v0.6.0-release-verification.md`): the service can be deployed to a hosted platform with a Postgres-backed state, shared limits across replicas, least-privilege database roles, an attested image promoted by digest from staging to production, a Render Blueprint, alerts and runbooks. **Not yet verified on a real deployment:** the Render Blueprint, the deploy pipeline, the runbooks and the telemetry pipeline were written against assumed Render behaviour and have never run end to end (the owner deferred a real Render deploy for this release); see Known issues and the verification record.

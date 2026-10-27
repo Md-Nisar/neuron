@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_DEFAULT_MODEL: nvidia:nvidia/nemotron-3-super-120b-a12b
+  APP_DEFAULT_MODEL: nvidia:nvidia/nemotron-3-ultra-550b-a55b
 
 jobs:
   live-eval:
@@ -40,6 +40,22 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::NVIDIA_API_KEY is not configured; skipping the live evals."
+          fi
+      - name: Check the model is reachable
+        if: steps.provider.outputs.configured == 'true'
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          # One tiny call before the long run. Only the status is printed: 401/403 is a bad
+          # key, 404 is an account without access to this model, 410 a retired model.
+          model="${APP_DEFAULT_MODEL#*:}"
+          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+            https://integrate.api.nvidia.com/v1/chat/completions \
+            -H "Authorization: Bearer $NVIDIA_API_KEY" -H 'content-type: application/json' \
+            -d "{\"model\":\"$model\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}")
+          if [ "$status" != "200" ]; then
+            echo "::error::$model returned HTTP $status; check NVIDIA_API_KEY and the model (EVALUATION.md, Automated runs)."
+            exit 1
           fi
       - if: steps.provider.outputs.configured == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
