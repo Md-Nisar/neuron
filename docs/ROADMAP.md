@@ -6,7 +6,7 @@
 | **v0.4.0** | Secure Multi-User          | ✅ Authentication + authorization      |
 | **v0.5.0** | Evaluation + Observability | ✅ Measure quality + production behavior |
 | **v0.6.0** | Production Deployment      | 🟡 Prepared (0.6.0 on `main`, not tagged) |
-| **v0.7.0** | Extensible Agent Platform  | Tools + models + HITL + memory        |
+| **v0.7.0** | Extensible Agent Platform  | 🟡 Implemented, release gate pending (tracker #253) |
 | **v0.8.0** | User Application           | Web UX + chat experience              |
 | **v0.9.0** | Production Candidate       | Load/security/DR/release freeze       |
 | **v1.0.0** | Production AI Application  | Stable production platform            |
