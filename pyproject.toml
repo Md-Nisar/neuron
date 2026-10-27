@@ -120,4 +120,8 @@ only_mutate = ["src/neuron_agent/security/*", "src/neuron_agent/tools/*"]
 pytest_add_cli_args_test_selection = ["tests/security/", "tests/unit/"]
 # mutmut already copies tests/, pyproject.toml and uv.lock into mutants/; listing tests/conftest.py
 # or tests/fixtures/ here crashes, because they are copied before mutants/tests/ exists.
-also_copy = ["scripts/", "deploy/", ".github/", ".env.example", "langgraph.json", "OPERATIONS.md"]
+also_copy = [
+  "scripts/", "deploy/", ".github/", "docs/", ".env.example", "langgraph.json",
+  "Dockerfile", ".dockerignore", ".trivyignore.yaml", "render.yaml",
+  "OPERATIONS.md", "SECURITY.md", "CHANGELOG.md",
+]
