@@ -27,8 +27,8 @@ def test_postgres_job_guards() -> None:
     job = _job()
     assert job["runs-on"] == "ubuntu-latest"
     assert 0 < job["timeout-minutes"] <= 30
-    image = job["services"]["postgres"]["image"]
-    assert re.fullmatch(r"postgres:16@sha256:[0-9a-f]{64}", image)
+    assert "services" not in job  # the server is started by a step, with TLS on
+    assert re.fullmatch(r"postgres:16@sha256:[0-9a-f]{64}", job["env"]["POSTGRES_IMAGE"])
     assert job["env"]["APP_TEST_POSTGRES_DSN"].startswith("postgresql://")
     assert "secrets." not in _FILE.read_text("utf-8")  # no provider key reaches the job
     runs = "\n".join(s.get("run", "") for s in job["steps"])
@@ -75,3 +75,20 @@ def test_junit_check_main_exit_codes(tmp_path: Path) -> None:
     assert main(["x", str(ok)]) == 0
     bad = _report(tmp_path, '<testsuite tests="5" skipped="5"/>')
     assert main(["x", str(bad)]) == 1
+
+
+def test_postgres_runs_with_tls_and_the_tests_require_it() -> None:
+    job = _job()
+    start = next(s for s in job["steps"] if s.get("name") == "Start Postgres with TLS")
+    run = start["run"]
+    assert '"$POSTGRES_IMAGE"' in run
+    assert "-c ssl=on" in run and "ssl_cert_file" in run and "ssl_key_file" in run
+    assert "pg_isready -h 127.0.0.1" in run  # not the socket-only init server
+    # The container's postgres user (999) must reach the key: the 0700 temp dir is opened up.
+    assert 'chmod 755 "$certs"' in run and "chown 999:999" in run and "chmod 600" in run
+    assert job["steps"].index(start) < next(
+        i for i, s in enumerate(job["steps"]) if "pytest -m postgres" in s.get("run", "")
+    )
+    assert job["env"]["APP_TEST_POSTGRES_REQUIRE_TLS"] == "1"
+    tls_test = Path("tests/integration/test_postgres_roles.py").read_text("utf-8")
+    assert "APP_TEST_POSTGRES_REQUIRE_TLS" in tls_test
