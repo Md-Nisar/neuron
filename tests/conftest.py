@@ -55,8 +55,15 @@ os.environ["APP_ENABLE_LANGSMITH"] = "false"
 for _name in _LIVE_VARS[1:]:
     os.environ[_name] = ""
 
-from neuron_agent.api import main as api_main  # noqa: E402
 from neuron_agent.config.settings import Settings, get_settings  # noqa: E402
+
+# Tests state their own environment. A developer `.env` sets values (`APP_TRUSTED_PROXIES`,
+# `APP_IDENTITY_HASH_KEY`, ...) that tests of the "unset" case must not inherit. Applied
+# before `api.main` builds its module-level settings; live tests get their values back
+# from `_LIVE_ENV` through the environment.
+Settings.model_config["env_file"] = None
+
+from neuron_agent.api import main as api_main  # noqa: E402
 from neuron_agent.graphs import main_graph  # noqa: E402
 from neuron_agent.models import factory  # noqa: E402
 from neuron_agent.schemas.agent import AgentAnswer  # noqa: E402

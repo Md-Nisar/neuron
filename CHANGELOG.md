@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Nightly eval: the development model is now `nvidia/nemotron-3-ultra-550b-a55b`. Every nightly since 2026-10-21 failed with `configuration_error` (the provider answered 404 for `nvidia/nemotron-3-super-120b-a12b`, which the account can no longer use), so `compare` was inconclusive. The workflow also makes one status-only call before the long run and fails in seconds on a bad key or an unavailable model. No baseline exists for the new model yet, so only the security gate applies until one is committed; the old baseline stays in `evals/baselines/` as history.
+- Tests no longer read a developer `.env`. `Settings` ignored the file only in CI, so a filled-in `.env` (with `APP_TRUSTED_PROXIES` or `APP_IDENTITY_HASH_KEY`) failed five tests that expect those settings unset. `tests/conftest.py` turns the file off for `Settings`, and the subprocess test runs outside the repository root. Test-only; no runtime change.
 
 ## 0.6.0
 
