@@ -560,12 +560,14 @@ def approval_middleware(registry: ToolRegistry) -> AgentMiddleware | None:
     runs is exactly what was shown. The run resumes from the thread's checkpoint, which is why
     an agent with gated tools is compiled to inherit its caller's checkpointer.
     """
-    gated = {
-        spec.name: InterruptOnConfig(
+    gated: dict[str, InterruptOnConfig] = {}
+    for spec in registry.mutating():
+        config = InterruptOnConfig(
             allowed_decisions=["approve", "reject"], description=_APPROVAL_PROMPT
         )
-        for spec in registry.mutating()
-    }
+        if spec.approval_when is not None:
+            config["when"] = spec.approval_when
+        gated[spec.name] = config
     if not gated:
         return None
     return HumanInTheLoopMiddleware(interrupt_on=dict(gated), interrupt_mode="batched")

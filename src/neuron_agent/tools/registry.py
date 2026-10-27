@@ -11,9 +11,9 @@ all read this registry, so a tool without a spec cannot be offered to the model 
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from langchain_core.tools import BaseTool
 
@@ -40,6 +40,9 @@ class ToolSpec:
     scope: str | None
     risk: Risk = "read"
     source: Source = "builtin"
+    # For a `mutating` tool: return False for a call the tool will refuse by itself, so the user
+    # is not asked to approve something that cannot happen. True (or None) asks as usual.
+    approval_when: Callable[[Any], bool] | None = None
 
     def __post_init__(self) -> None:
         if self.name in HIGH_RISK_TOOL_NAMES:

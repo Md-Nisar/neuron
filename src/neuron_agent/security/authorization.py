@@ -27,6 +27,8 @@ class AuthorizationContext:
     usage: TokenUsageAccumulator | None = None
     actor: str | None = None
     issuer_id: str | None = None
+    # The HMAC owner key of the caller: what per-user data is filed under. Never a raw subject.
+    owner_key: str | None = None
 
 
 UNKNOWN_MODEL = "unknown"
