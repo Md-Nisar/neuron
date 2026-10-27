@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     # Bearer token per server name, a JSON object. Never the caller's token.
     mcp_bearer_tokens: dict[str, SecretStr] = Field(default_factory=dict)
     mcp_max_output_bytes: int = Field(default=16_384, ge=1024, le=262_144)
+    # Per-user memory (ADR 0009): off unless enabled. The limits are per user.
+    memory_enabled: bool = False
+    memory_max_items: int = Field(default=50, ge=1, le=1000)
+    memory_max_chars: int = Field(default=500, ge=20, le=2000)
+    memory_ttl_days: int | None = Field(default=None, ge=1, le=3650)
     tool_timeout_seconds: int = Field(default=20, ge=1, le=60)
     max_agent_iterations: int = Field(default=8, ge=1, le=25)
     provider_max_retries: int = Field(default=2, ge=0, le=5)

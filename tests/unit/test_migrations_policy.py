@@ -276,6 +276,7 @@ def test_setup_passes_the_role_and_key_and_requires_the_split_in_production(
         "require_app_role": required,
         "identity_hash_key": "k" * 40,
         "rotate_identity_key": True,
+        "memory_store": False,
     }
 
 

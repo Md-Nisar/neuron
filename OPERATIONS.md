@@ -594,6 +594,8 @@ With `APP_LIMITS_BACKEND=postgres` both guards are shared (ADR 0008 decision 8).
 5. **Back up** like any user-data store, with retention aligned to `APP_THREAD_RETENTION_DAYS` (see below). Restoring a backup restores conversations, including ones deleted after it was taken.
 6. **Watch** `checkpoint_operation_slow`, `checkpoint_operation_failed` and `checkpointer_unreachable` (see Logs and Traces).
 
+**Per-user memory** (ADR 0009, off by default). With `APP_MEMORY_ENABLED=true` run `setup` again (it creates the `store` table as the migrator and grants the app role DML on it only) before deploying; readiness (`/health/ready`) stays 503 until the table exists. `APP_MEMORY_TTL_DAYS` makes memories expire; `prune` removes the expired ones of users who never return. Memories are user data: thread deletion does not remove them, the user-data routes do (#247). Back them up with the rest of the database.
+
 Local Postgres for development: `docker compose up` starts the API and Postgres 16 with persistence enabled and the schema created on startup. Integration tests use any reachable database: `APP_TEST_POSTGRES_DSN=postgresql://... make test-integration`.
 
 **Agent Server deployments** don't use any of this: Agent Server provides its own persistence for the `langgraph.json` graph.

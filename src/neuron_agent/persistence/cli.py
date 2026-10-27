@@ -73,6 +73,7 @@ def _setup(settings: Settings, *, rotate_identity_key: bool) -> None:
                 require_app_role=settings.env == "production",
                 identity_hash_key=key.get_secret_value() if key else None,
                 rotate_identity_key=rotate_identity_key,
+                memory_store=settings.memory_enabled,
             )
         )
     except Exception as exc:
@@ -87,6 +88,15 @@ async def _prune(older_than_days: int) -> None:
     persistence = build_persistence(settings)
     await persistence.open()
     try:
+        if persistence.store is not None and settings.memory_ttl_days:
+            from neuron_agent.memory.store import MemoryStore
+
+            await MemoryStore(
+                persistence.store,
+                max_items=settings.memory_max_items,
+                max_chars=settings.memory_max_chars,
+                ttl_days=settings.memory_ttl_days,
+            ).purge_expired()
         await prune_threads(
             persistence,
             older_than=timedelta(days=older_than_days),

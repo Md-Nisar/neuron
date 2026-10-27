@@ -25,6 +25,7 @@ from dataclasses import dataclass
 import psycopg
 import structlog
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.store.postgres import AsyncPostgresStore
 from psycopg import sql
 from psycopg.rows import dict_row
 
@@ -78,7 +79,12 @@ _APP_PRIVILEGES: dict[str, frozenset[str]] = {
     "neuron_meta": frozenset(),
     "neuron_migrations": frozenset(),
     "checkpoint_migrations": frozenset(),
+    # LangGraph's `AsyncPostgresStore` tables, created only when memory is enabled (ADR 0009).
+    "store": _DML,
+    "store_migrations": frozenset(),
 }
+# The table per-user memory lives in; readiness needs it when memory is on.
+STORE_TABLE = "store"
 # The one function the app role may run: it answers whether a candidate check value matches the
 # one in `neuron_meta` without letting the role read that table (migration 12).
 _IDENTITY_FUNCTION = "neuron_identity_status"
@@ -302,6 +308,7 @@ async def run_setup(
     require_app_role: bool = False,
     identity_hash_key: str | None = None,
     rotate_identity_key: bool = False,
+    memory_store: bool = False,
 ) -> list[int]:
     """Run LangGraph's `setup()`, then every unapplied migration. Returns the versions applied.
 
@@ -315,7 +322,8 @@ async def run_setup(
     single-role free-tier profile, decision 17), skips the grants with a log line, or raises
     `AppRoleError` with `require_app_role`. With `identity_hash_key`, the key's check value
     is stored the first time; a different stored value raises `IdentityKeyMismatch` unless
-    `rotate_identity_key` is set.
+    `rotate_identity_key` is set. With `memory_store`, LangGraph's store tables are created too
+    (per-user memory, ADR 0009); without it a database that never enabled memory gets none.
     """
     timeout_ms = DEFAULT_LOCK_TIMEOUT_MS if lock_timeout_ms is None else lock_timeout_ms
     concurrent_ms = (
@@ -331,6 +339,8 @@ async def run_setup(
         await _set_lock_timeout(conn, timeout_ms)
         target = await _resolve_app_role(conn, app_role, require_app_role)
         await AsyncPostgresSaver(conn).setup()
+        if memory_store:
+            await AsyncPostgresStore(conn).setup()
         await conn.execute(_CREATE_TABLE_SQL)
         # Tables made so far had no default privileges (first run) or are tightened here.
         # Later tables are tightened in the transaction that creates them.
@@ -428,7 +438,10 @@ def table_grant_statements(
     dml = names("checkpoints", "checkpoint_blobs", "checkpoint_writes")
     leases = names("neuron_run_leases", "neuron_token_settlements")
     ledger = names("neuron_token_ledger", "neuron_rate_buckets")
-    bookkeeping = names("neuron_migrations", "checkpoint_migrations", "neuron_meta")
+    memory = names(STORE_TABLE)
+    bookkeeping = names(
+        "neuron_migrations", "checkpoint_migrations", "neuron_meta", "store_migrations"
+    )
     statements: list[sql.Composed] = []
     if present is None or _IDENTITY_FUNCTION in present:
         statements.append(
@@ -439,6 +452,10 @@ def table_grant_statements(
     if dml is not None:
         statements.append(
             sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(dml, role)
+        )
+    if memory is not None:
+        statements.append(
+            sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(memory, role)
         )
     if leases is not None:
         statements.append(sql.SQL("GRANT SELECT, INSERT, DELETE ON {} TO {}").format(leases, role))

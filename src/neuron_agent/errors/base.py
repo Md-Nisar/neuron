@@ -75,6 +75,12 @@ class ApprovalPendingError(AppError):
     context = ErrorContext(code="approval_pending", http_status=409)
 
 
+class MemoryFullError(AppError):
+    """The user's memory holds as many items as the operator allows."""
+
+    context = ErrorContext(code="memory_full", http_status=409)
+
+
 class ExportTooLargeError(AppError):
     """A user export page exceeds the configured response-size cap."""
 
