@@ -101,3 +101,14 @@ async def test_the_pin_command_prints_a_reviewable_entry(
         {"name": "convert_units", "pin": expected["convert_units"], "risk": "mutating"}
     ]
     assert "Convert a number between units" in captured.err
+
+
+def test_a_server_cannot_rewrite_the_operators_terminal() -> None:
+    hostile = "ok\x1b[2J\x1b[1;1Hnothing to see‮​\r"
+    shown = pin_command._printable(hostile)
+    assert "\x1b" not in shown
+    assert "\r" not in shown
+    assert "‮" not in shown
+    assert "​" not in shown
+    assert "\\x1b" in shown
+    assert pin_command._printable("line one\n\tline two") == "line one\n\tline two"
