@@ -57,7 +57,7 @@ Rejected:
 
 ### 3. What is persisted, and the context window
 
-> **Amended by [ADR 0009](0009-extensible-agent-platform.md) decision 6.** The agent no longer runs with `checkpointer=False`: tool approvals need it to resume. Thread history is unchanged (user turns and final answers only); the history, export and summary routes read `messages` only.
+> **Amended by [ADR 0009](0009-extensible-agent-platform.md) decision 6.** An agent that has `mutating` tools no longer runs with `checkpointer=False`: it inherits the thread's checkpointer so a run paused for approval can resume. Without such tools nothing changes. Thread history is unchanged (user turns and final answers only; the history, export and summary routes read `messages` only), but the checkpoint of a paused or approved run now also holds that run's tool calls and results, which thread deletion and retention remove with the rest.
 
 - Thread history persists only the user turn (`HumanMessage`) and the final answer (`AIMessage`). The intermediate tool-call and tool-result messages produced inside `create_agent` aren't persisted. This avoids storing raw tool output and makes it impossible for history trimming to orphan a tool call from its result.
 - A turn is committed atomically. `AgentService` passes the new user message in a per-run `user_message` state field, not in `messages`. The agent node appends both the `HumanMessage` and the final `AIMessage` to `messages` in a single update, only on success. A failed or cancelled run therefore never leaves a dangling user turn in history. Graph inputs that arrive with `messages` already populated (Agent Server, LangGraph Studio) are still supported.

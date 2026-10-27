@@ -81,6 +81,10 @@ class ToolRegistry:
     def mutating(self) -> list[ToolSpec]:
         return [spec for spec in self._specs.values() if spec.risk == "mutating"]
 
+    def without_mutating(self) -> ToolRegistry:
+        """The same registry without the tools that need approval (no run can pause)."""
+        return ToolRegistry(spec for spec in self._specs.values() if spec.risk != "mutating")
+
     def scope_for(self, name: str) -> str | None:
         spec = self._specs.get(name)
         return spec.scope if spec else None

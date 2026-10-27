@@ -13,8 +13,7 @@ from langchain_core.tools import tool
 from langgraph.runtime import Runtime
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import ConfigurationError
-from neuron_agent.models.factory import create_main_agent, tool_authorization_middleware
+from neuron_agent.models.factory import tool_authorization_middleware
 from neuron_agent.security.authorization import DEV_PERMISSIONS, AuthorizationContext
 from neuron_agent.security.input_policy import HIGH_RISK_TOOL_NAMES
 from neuron_agent.tools import calculator, utc_now
@@ -81,10 +80,26 @@ def test_duplicate_names_are_refused() -> None:
         ToolRegistry([ToolSpec(calculator, "tools:calculator"), ToolSpec(calculator, None)])
 
 
-def test_a_mutating_tool_cannot_build_an_agent_until_approvals_exist() -> None:
-    registry = ToolRegistry([ToolSpec(note_taker, "tools:note_taker", risk="mutating")])
-    with pytest.raises(ConfigurationError, match="note_taker"):
-        create_main_agent(Settings(env="test"), registry)
+def test_a_mutating_tool_gets_an_approval_gate_and_a_read_tool_does_not() -> None:
+    from langchain.agents.middleware import HumanInTheLoopMiddleware
+
+    from neuron_agent.models.factory import agent_middleware
+
+    gated = ToolRegistry(
+        [*builtin_registry(), ToolSpec(note_taker, "tools:note_taker", "mutating")]
+    )
+    [hitl] = [
+        m
+        for m in agent_middleware(Settings(env="test"), gated)
+        if isinstance(m, HumanInTheLoopMiddleware)
+    ]
+    assert hitl.interrupt_on["note_taker"]["allowed_decisions"] == ["approve", "reject"]
+    assert set(hitl.interrupt_on) == {"note_taker"}
+    assert not [
+        m
+        for m in agent_middleware(Settings(env="test"), builtin_registry())
+        if isinstance(m, HumanInTheLoopMiddleware)
+    ]
 
 
 def _request(tools: list[Any], permissions: frozenset[str]) -> ModelRequest[Any]:

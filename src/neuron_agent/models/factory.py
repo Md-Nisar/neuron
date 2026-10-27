@@ -18,6 +18,8 @@ import structlog
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
     AgentMiddleware,
+    HumanInTheLoopMiddleware,
+    InterruptOnConfig,
     ModelFallbackMiddleware,
     ModelRetryMiddleware,
     ToolCallRequest,
@@ -547,15 +549,39 @@ def _is_empty_message(reply: Any) -> bool:
     )
 
 
+_APPROVAL_PROMPT = "Run this tool? It changes data outside this conversation."
+
+
+def approval_middleware(registry: ToolRegistry) -> AgentMiddleware | None:
+    """Pause the run for a human decision before any `mutating` tool runs (ADR 0009 decision 6).
+
+    All the model's gated calls in one turn are decided together in one interrupt, by `approve`
+    or `reject` only: a reviewer cannot edit the call or answer in the tool's place, so what
+    runs is exactly what was shown. The run resumes from the thread's checkpoint, which is why
+    an agent with gated tools is compiled to inherit its caller's checkpointer.
+    """
+    gated = {
+        spec.name: InterruptOnConfig(
+            allowed_decisions=["approve", "reject"], description=_APPROVAL_PROMPT
+        )
+        for spec in registry.mutating()
+    }
+    if not gated:
+        return None
+    return HumanInTheLoopMiddleware(interrupt_on=dict(gated), interrupt_mode="batched")
+
+
 def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMiddleware]:
     """The agent's middleware, outermost first."""
     fallback = model_fallback_middleware(settings)
+    approval = approval_middleware(registry)
     return [
         # Outside the tracing layer: each attempt is its own `chat` span.
         empty_reply_retry_middleware(),
         structured_output_retry_middleware(),
         tracing_middleware(settings),
         tool_authorization_middleware(registry),
+        *([approval] if approval else []),
         tool_failure_isolation_middleware(),
         tool_timeout_middleware(settings.tool_timeout_seconds),
         # Directly outside the provider retries: a model is retried, then the next is tried.
@@ -566,12 +592,6 @@ def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMi
 
 def create_main_agent(settings: Settings, registry: ToolRegistry) -> Any:
     """Create the configurable LangChain agent harness with the registry's tools."""
-    if mutating := registry.mutating():
-        # Until approvals are wired (ADR 0009, decision 6) a mutating tool would run unreviewed.
-        names = ", ".join(spec.name for spec in mutating)
-        raise ConfigurationError(
-            f"mutating tools need human approval, which is not enabled: {names}"
-        )
     model = create_chat_model(settings)
     return create_agent(
         model=model,
@@ -581,10 +601,11 @@ def create_main_agent(settings: Settings, registry: ToolRegistry) -> Any:
         middleware=agent_middleware(settings, registry),
         name="neuron_main_agent",
         context_schema=AuthorizationContext,
-        # Runs as a subgraph of the main graph. Never checkpoint its internal state
-        # (tool calls/results, intermediate steps): only the main graph's user turns and
-        # final answers are thread history (ADR 0005).
-        checkpointer=False,
+        # Runs as a subgraph of the main graph. Thread history is only the main graph's user
+        # turns and final answers (ADR 0005), so without gated tools its internal state (tool
+        # calls and results) is not checkpointed. With them it must inherit the main graph's
+        # checkpointer (`None`), or an approved call would be lost on resume (ADR 0009).
+        checkpointer=None if registry.mutating() else False,
     )
 
 
