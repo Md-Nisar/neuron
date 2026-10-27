@@ -7,6 +7,7 @@ import asyncio
 import os
 import subprocess  # nosec B404 - runs this repository's own app
 import sys
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -75,7 +76,7 @@ def test_the_postgres_rate_limiter_needs_the_identity_key_for_its_ip_keys() -> N
     assert isinstance(build_rate_limiter(off, build_persistence(off)), PostgresRateLimiter)
 
 
-def _import_app(**extra: str) -> subprocess.CompletedProcess[str]:
+def _import_app(cwd: Path, **extra: str) -> subprocess.CompletedProcess[str]:
     env = {
         **{k: v for k, v in os.environ.items() if not k.startswith("APP_")},
         "APP_ENV": "test",
@@ -86,6 +87,8 @@ def _import_app(**extra: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603  # nosec B603
         [sys.executable, "-I", "-c", "import neuron_agent.api.main"],
         env=env,
+        # Not the repository root: a developer `.env` there must not reach the new process.
+        cwd=cwd,
         capture_output=True,
         text=True,
         timeout=120,
@@ -93,13 +96,15 @@ def _import_app(**extra: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_the_real_app_starts_with_the_postgres_backend() -> None:
-    result = _import_app(APP_IDENTITY_HASH_KEY=_KEY.get_secret_value())
+def test_the_real_app_starts_with_the_postgres_backend(tmp_path: Path) -> None:
+    result = _import_app(tmp_path, APP_IDENTITY_HASH_KEY=_KEY.get_secret_value())
     assert result.returncode == 0, result.stderr
 
 
-def test_the_real_app_without_the_identity_key_stops_without_leaking_the_dsn() -> None:
-    result = _import_app()
+def test_the_real_app_without_the_identity_key_stops_without_leaking_the_dsn(
+    tmp_path: Path,
+) -> None:
+    result = _import_app(tmp_path)
     assert result.returncode != 0
     assert "APP_IDENTITY_HASH_KEY is required for shared rate limits" in result.stderr
     assert "unused" not in result.stderr  # the DSN's password never shows

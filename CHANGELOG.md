@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Tests no longer read a developer `.env`. `Settings` ignored the file only in CI, so a filled-in `.env` (with `APP_TRUSTED_PROXIES` or `APP_IDENTITY_HASH_KEY`) failed five tests that expect those settings unset. `tests/conftest.py` turns the file off for `Settings`, and the subprocess test runs outside the repository root. Test-only; no runtime change.
+
 ## 0.6.0
 
 "Production Deployment" (ADR 0008, `docs/releases/v0.6.0-release-verification.md`): the service can be deployed to a hosted platform with a Postgres-backed state, shared limits across replicas, least-privilege database roles, an attested image promoted by digest from staging to production, a Render Blueprint, alerts and runbooks. **Not yet verified on a real deployment:** the Render Blueprint, the deploy pipeline, the runbooks and the telemetry pipeline were written against assumed Render behaviour and have never run end to end (the owner deferred a real Render deploy for this release); see Known issues and the verification record.
