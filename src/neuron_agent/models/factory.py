@@ -26,6 +26,7 @@ from langchain.agents.middleware import (
 from langchain.agents.structured_output import (
     StructuredOutputError as LangChainStructuredOutputError,
 )
+from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain_anthropic import ChatAnthropic
 from langchain_core.exceptions import (
     ModelAuthenticationError,
@@ -37,7 +38,7 @@ from langchain_core.exceptions import (
 )
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
@@ -474,6 +475,55 @@ class _EmptyReplyRetryMiddleware(AgentMiddleware[Any, Any]):
         raise AssertionError("unreachable")  # pragma: no cover
 
 
+_MAX_STRUCTURED_OUTPUT_RETRIES = 2
+_STRUCTURED_OUTPUT_TOOL = AgentAnswer.__name__
+
+
+def structured_output_retry_middleware() -> AgentMiddleware:
+    """Retry an invalid `AgentAnswer` at most twice, then fail as `structured_output_error`.
+
+    `create_agent` answers a bad structured-output tool call with an error message and calls
+    the model again, bounded only by the iteration limit; a provider-native schema fails to
+    parse inside the model call and is not retried at all. Both are bounded here the same
+    way. Every attempt's tokens are counted: a retried tool-call attempt is a response the
+    inner layers see, and a discarded parse failure is charged below.
+    """
+    return _StructuredOutputRetryMiddleware()
+
+
+class _StructuredOutputRetryMiddleware(AgentMiddleware[Any, Any]):
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        failed = _failed_answers_this_run(request.messages)
+        if failed > _MAX_STRUCTURED_OUTPUT_RETRIES:
+            last = next(m for m in reversed(request.messages) if isinstance(m, AIMessage))
+            logger.warning("structured_output_retries_exhausted", attempts=failed)
+            raise StructuredOutputValidationError(
+                _STRUCTURED_OUTPUT_TOOL, ValueError("retries exhausted"), last
+            )
+        for retry in range(_MAX_STRUCTURED_OUTPUT_RETRIES + 1 - failed):
+            try:
+                return await handler(request)
+            except LangChainStructuredOutputError as exc:
+                # An empty reply is the empty-reply retry's, which wraps this one.
+                last_try = retry == _MAX_STRUCTURED_OUTPUT_RETRIES - failed
+                if last_try or _is_empty_message(exc.ai_message):
+                    raise
+                _charge_discarded_attempt(request, exc.ai_message)
+                logger.warning("structured_output_retry", retry_attempt=failed + retry + 1)
+        raise AssertionError("unreachable")  # pragma: no cover
+
+
+def _failed_answers_this_run(messages: Sequence[Any]) -> int:
+    """Structured-output tool calls this run that were answered with an error, not accepted."""
+    failed = 0
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage):
+            break
+        if isinstance(message, ToolMessage) and message.name == _STRUCTURED_OUTPUT_TOOL:
+            failed += 1
+    return failed
+
+
 def _charge_discarded_attempt(request: Any, message: AIMessage) -> None:
     context = request.runtime.context
     if isinstance(context, AuthorizationContext) and context.usage is not None:
@@ -502,6 +552,7 @@ def agent_middleware(settings: Settings) -> list[AgentMiddleware]:
     return [
         # Outside the tracing layer: each attempt is its own `chat` span.
         empty_reply_retry_middleware(),
+        structured_output_retry_middleware(),
         tracing_middleware(settings),
         tool_authorization_middleware(),
         tool_failure_isolation_middleware(),
