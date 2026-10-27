@@ -163,3 +163,37 @@ async def test_cli_setup_flag_follows_the_setting(
     await anyio.to_thread.run_sync(lambda: cli._setup(settings, rotate_identity_key=False))
     assert migrated == [True]
     assert await _rows(role_db.migrator_dsn, "SELECT to_regclass('store')::text") == [("store",)]
+
+
+async def test_hardened_start_up_refuses_a_database_without_the_memory_store(
+    role_db: RoleDatabase,  # noqa: F811
+) -> None:
+    from neuron_agent.persistence.startup_checks import STORE_MISSING, StartupCheckError
+
+    await _setup(role_db)  # memory not set up
+    persistence = build_persistence(_settings(role_db))
+    persistence.check_store = True  # what staging and production set
+    with pytest.raises(StartupCheckError) as caught:
+        await persistence.open()
+    assert caught.value.code == STORE_MISSING
+
+    await _setup(role_db, memory_store=True)
+    persistence = build_persistence(_settings(role_db))
+    persistence.check_store = True
+    await persistence.open()  # the app role has DML on the table: allowed
+    await persistence.close()
+
+
+async def test_hardened_start_up_refuses_a_role_without_access_to_the_store(
+    role_db: RoleDatabase,  # noqa: F811
+) -> None:
+    from neuron_agent.persistence.startup_checks import STORE_NO_ACCESS, StartupCheckError
+
+    await _setup(role_db, memory_store=True)
+    async with await psycopg.AsyncConnection.connect(role_db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(f'REVOKE ALL ON store FROM "{role_db.roles.app}"')  # nosec B608
+    persistence = build_persistence(_settings(role_db))
+    persistence.check_store = True
+    with pytest.raises(StartupCheckError) as caught:
+        await persistence.open()
+    assert caught.value.code == STORE_NO_ACCESS

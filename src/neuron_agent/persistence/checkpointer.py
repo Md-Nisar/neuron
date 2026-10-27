@@ -34,6 +34,7 @@ from neuron_agent.persistence.startup_checks import (
     DATABASE_CHECK_FAILED,
     StartupCheckError,
     verify_identity_key,
+    verify_store,
     verify_tls,
 )
 
@@ -126,6 +127,9 @@ class Persistence:
     # key whose check value differs from the one `setup` recorded (ADR 0008 decisions 15, 16).
     require_tls: bool = False
     identity_check: str | None = field(default=None, repr=False)
+    # Set in staging and production with memory on: `open()` refuses a database whose `store`
+    # table is missing or not usable by this role.
+    check_store: bool = False
     # Set with `APP_LIMITS_BACKEND=postgres`: readiness also needs the guard tables, because the
     # guards fail closed on every request when `setup` has not created them.
     check_guard_tables: bool = False
@@ -145,7 +149,12 @@ class Persistence:
         if self.pool is None:
             return
         await self.pool.open(wait=False)
-        if self.app_role is not None or self.require_tls or self.identity_check is not None:
+        if (
+            self.app_role is not None
+            or self.require_tls
+            or self.identity_check is not None
+            or self.check_store
+        ):
             await self._run_startup_checks()
         if self.backend == "postgres":
             self.checkpointer = instrument_checkpointer(
@@ -171,6 +180,8 @@ class Persistence:
                     await verify_runtime_role(conn, self.app_role)
                 if self.identity_check is not None:
                     await verify_identity_key(conn, self.identity_check)
+                if self.check_store:
+                    await verify_store(conn)
         except StartupCheckError as exc:
             failure = exc
         except psycopg.Error as exc:
@@ -275,6 +286,7 @@ def build_persistence(settings: Settings) -> Persistence:
         ping_timeout_seconds=min(2.0, settings.postgres_pool_timeout_seconds),
         check_guard_tables=settings.limits_backend == "postgres",
         memory_enabled=settings.memory_enabled,
+        check_store=hardened and settings.memory_enabled,
         serde=serde,
         app_role=settings.postgres_app_role if settings.env == "production" else None,
         require_tls=hardened,

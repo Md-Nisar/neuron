@@ -21,6 +21,8 @@ TLS_REQUIRED = "tls_required"
 IDENTITY_KEY_MISMATCH = "identity_key_mismatch"
 IDENTITY_KEY_UNRECORDED = "identity_key_unrecorded"
 IDENTITY_CHECK_UNSAFE = "identity_check_unsafe"
+STORE_MISSING = "store_missing"
+STORE_NO_ACCESS = "store_no_access"
 DATABASE_CHECK_FAILED = "database_check_failed"
 
 
@@ -86,3 +88,28 @@ async def verify_identity_key(conn: psycopg.AsyncConnection[Any], check_value: s
         "APP_IDENTITY_HASH_KEY differs from the key this database was set up with",
         IDENTITY_KEY_MISMATCH,
     )
+
+
+async def verify_store(conn: psycopg.AsyncConnection[Any]) -> None:
+    """Refuse start-up with memory on when the `store` table is missing or this role cannot use it.
+
+    Readiness would report the missing table too, but a replica that cannot serve memory should
+    not start and replace one that can.
+    """
+    cursor = await conn.execute(
+        "SELECT to_regclass('store') IS NOT NULL AS present,"
+        " COALESCE(has_table_privilege(current_user, to_regclass('store'),"
+        " 'SELECT,INSERT,UPDATE,DELETE'), false) AS usable"
+    )
+    row = await cursor.fetchone()
+    if row is None or not row["present"]:
+        raise StartupCheckError(
+            "memory is enabled but the store table does not exist; "
+            "run setup with APP_MEMORY_ENABLED=true",
+            STORE_MISSING,
+        )
+    if not row["usable"]:
+        raise StartupCheckError(
+            "the database role cannot read and write the memory store; run setup to grant it",
+            STORE_NO_ACCESS,
+        )
