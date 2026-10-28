@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 import httpx2
 import structlog
@@ -35,6 +35,12 @@ from neuron_agent.tools.registry import ToolSpec
 logger = structlog.get_logger(__name__)
 
 _MAX_LIST_PAGES = 10
+# What a server may send while the tool list is read.
+_DISCOVERY_MAX_BYTES = 1_048_576
+# JSON can spend up to six bytes (`\\u00XX`) on one character of the capped text; the rest is
+# the protocol envelope.
+_JSON_EXPANSION = 6
+_ENVELOPE_BYTES = 65_536
 # What the model sees when a tool's reply cannot be used. The server's own words are untrusted
 # and never repeated.
 _UNUSABLE_RESULT = "Error: the tool returned an unusable result. Answer without it."
@@ -44,15 +50,71 @@ class McpResultError(ToolException):
     """A reply that is an error, holds more than text, or is larger than allowed."""
 
 
+class ResponseTooLargeError(Exception):
+    """A server sent more bytes than the client reads; the connection is dropped."""
+
+
+class _CountingStream(httpx2.AsyncByteStream):
+    def __init__(self, inner: httpx2.AsyncByteStream, limit: int) -> None:
+        self._inner = inner
+        self._limit = limit
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        total = 0
+        async for chunk in self._inner:
+            total += len(chunk)
+            if total > self._limit:
+                raise ResponseTooLargeError
+            yield chunk
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()
+
+
+class _LimitedTransport(httpx2.AsyncHTTPTransport):
+    """Stops reading a response once it passes `limit` bytes, before it is held in memory."""
+
+    def __init__(self, limit: int) -> None:
+        # No proxy from the environment: the bearer token goes to the configured server only.
+        super().__init__(trust_env=False)
+        self._limit = limit
+
+    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        # The count is of the bytes received. A compressed body would expand past it when it is
+        # decoded, so no compression is asked for or accepted.
+        request.headers["Accept-Encoding"] = "identity"
+        response = await super().handle_async_request(request)
+        if response.headers.get("content-encoding", "identity").lower() != "identity":
+            await response.aclose()
+            raise ResponseTooLargeError
+        declared = response.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > self._limit:
+            await response.aclose()
+            raise ResponseTooLargeError
+        return httpx2.Response(
+            response.status_code,
+            headers=response.headers,
+            stream=_CountingStream(cast("httpx2.AsyncByteStream", response.stream), self._limit),
+            extensions=response.extensions,
+        )
+
+
 @asynccontextmanager
 async def _connect(
-    url: str, *, token: SecretStr | None, env: str, timeout: float
+    url: str, *, token: SecretStr | None, env: str, timeout: float, max_response_bytes: int
 ) -> AsyncIterator[Client]:
     if not is_local_test_server(url, env=env):
         validate_safe_url(url)
     headers = {"Authorization": f"Bearer {token.get_secret_value()}"} if token else None
-    async with httpx2.AsyncClient(headers=headers, timeout=httpx2.Timeout(timeout)) as http:
-        transport = streamable_http_client(url, http_client=http)
+    async with httpx2.AsyncClient(
+        headers=headers,
+        timeout=httpx2.Timeout(timeout),
+        transport=_LimitedTransport(max_response_bytes),
+        trust_env=False,
+    ) as http:
+        transport = streamable_http_client(
+            url, http_client=http, max_sse_event_size=max_response_bytes
+        )
         # No sampling, roots, elicitation or logging callback: none is advertised, so the
         # server cannot request any of them. No response cache: every call reaches the server.
         async with Client(transport, read_timeout_seconds=timeout, cache=None) as client:
@@ -85,7 +147,13 @@ def _langchain_tool(
     max_output_bytes: int,
 ) -> StructuredTool:
     async def call(**arguments: Any) -> str:
-        async with _connect(server.url, token=token, env=env, timeout=timeout) as client:
+        async with _connect(
+            server.url,
+            token=token,
+            env=env,
+            timeout=timeout,
+            max_response_bytes=max_output_bytes * _JSON_EXPANSION + _ENVELOPE_BYTES,
+        ) as client:
             result = await client.call_tool(remote_name, arguments)
         return _text_of(result, max_output_bytes)
 
@@ -117,7 +185,9 @@ async def fetch_definitions(
 ) -> list[FetchedTool]:
     """The tool definitions a server reports now (also used to compute pins)."""
     async with asyncio.timeout(timeout):
-        async with _connect(url, token=token, env=env, timeout=timeout) as client:
+        async with _connect(
+            url, token=token, env=env, timeout=timeout, max_response_bytes=_DISCOVERY_MAX_BYTES
+        ) as client:
             return await _list_definitions(client)
 
 
