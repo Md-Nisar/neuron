@@ -58,6 +58,7 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `agent:approve` | `GET /v1/threads/{id}/approval` (read the pending approval), `POST /v1/threads/{id}/approvals/{approval_id}` (decide a tool call that needs approval) |
 | `threads:read` | `GET /v1/threads/{id}/messages`, `GET /v1/me/threads`, `GET /v1/me/export` |
 | `threads:write` | `PATCH /v1/threads/{id}` (rename a conversation) |
+| `feedback:write` | `POST /v1/threads/{id}/runs/{run_id}/feedback` (rate an answer) |
 | `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads` |
 | `memories:read` | `GET /v1/me/memories` |
 | `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |

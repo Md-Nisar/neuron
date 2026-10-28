@@ -65,6 +65,8 @@ from neuron_agent.schemas.agent import (
     AgentResponse,
     ApprovalDecisionRequest,
     ApprovalRequiredResponse,
+    FeedbackRequest,
+    FeedbackResponse,
     MemoriesResponse,
     MemoryErasureResponse,
     RenameThreadRequest,
@@ -707,6 +709,32 @@ async def rename_thread(
         return await service.rename_thread(str(thread_id), body.title, user_id, principal=principal)
     except AppError as exc:
         raise _http_error("thread_rename_failed", exc) from exc
+
+
+@app.post("/v1/threads/{thread_id}/runs/{run_id}/feedback", response_model=FeedbackResponse)
+async def rate_answer(
+    thread_id: uuid.UUID,
+    run_id: uuid.UUID,
+    body: FeedbackRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("feedback:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> FeedbackResponse:
+    """Rate one answer (ADR 0010, decision 6): a score and a fixed reason, once per run.
+
+    A repeat returns the rating that stands. Another user's or a missing thread is the same
+    `404`.
+    """
+    try:
+        return await service.submit_feedback(
+            str(thread_id),
+            str(run_id),
+            body.score,
+            body.reason,
+            user_id,
+            **({} if principal is None else {"principal": principal}),
+        )
+    except AppError as exc:
+        raise _http_error("feedback_failed", exc) from exc
 
 
 @app.delete("/v1/threads/{thread_id}", status_code=204)
