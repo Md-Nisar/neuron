@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-28). Inputs: `docs/releases/v0.9.0-research.md`. The owner answered the
+Accepted (2026-10-28, owner approval). Inputs: `docs/releases/v0.9.0-research.md`. The owner answered the
 first four research questions on 2026-10-28:
 
 - The system under test is the local reference stack (option A).
@@ -10,7 +10,7 @@ first four research questions on 2026-10-28:
 - An NVIDIA key exists.
 - Load is measured in runs per second as a baseline, not against a fixed target.
 
-Questions 5 to 8 are answered here as proposals and listed under "Open questions". Production
+The owner approved this ADR and the proposals under "Open questions" on 2026-10-28. Production
 deployment stays out of scope until after v1.0.0 (owner decision, 2026-10-27).
 
 ## Context
@@ -186,6 +186,8 @@ All of it must come from repeatable scripts that can later run unchanged against
   estimate it would be invented.
 
 ## Open questions
+
+All five were decided as proposed (owner, 2026-10-28).
 
 1. **Fake-model profile for the baseline** (research Q5). Proposed: 800 ms to first token,
    40 tokens per second and 200 output tokens, which approximates the NVIDIA runs in the
