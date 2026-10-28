@@ -522,3 +522,11 @@ async def test_service_response_carries_the_answer_flags(monkeypatch: pytest.Mon
     finally:
         await service.shutdown()
     assert (response.refused, response.clarification_needed) == (False, True)
+
+
+def test_the_report_schema_accepts_every_suite_the_cli_can_run() -> None:
+    # The nightly compare failed with "'approval' is not one of [...]" when the schema lagged.
+    from neuron_agent.evaluation import SUITES
+
+    schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))
+    assert set(schema["$defs"]["suiteName"]["enum"]) == set(SUITES)
