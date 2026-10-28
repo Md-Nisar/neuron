@@ -586,3 +586,26 @@ def test_thread_endpoints_are_rate_limited(
     path = f"/v1/threads/{uuid.uuid4()}/messages"
     assert client.get(path).status_code == 404
     assert client.get(path).status_code == 429
+
+
+def test_a_stored_run_stamp_is_not_sent_to_the_model_provider() -> None:
+    from langchain_core.messages import AIMessage
+    from langchain_openai.chat_models.base import _convert_message_to_dict
+
+    stamped = AIMessage(content="x", additional_kwargs={"run_id": "5a7f2c10"})
+
+    assert _convert_message_to_dict(stamped) == {"content": "x", "role": "assistant"}
+
+
+def test_only_a_stamped_answer_counts_as_a_run_of_the_thread() -> None:
+    from langchain_core.messages import AIMessage, HumanMessage
+
+    from neuron_agent.services.agent_service import _thread_has_answer
+
+    messages = [
+        HumanMessage(content="q", additional_kwargs={"run_id": "r1"}),  # a user turn never counts
+        AIMessage(content="a"),  # a thread stored before the stamp existed
+        AIMessage(content="b", additional_kwargs={"run_id": "r2"}),
+    ]
+
+    assert [_thread_has_answer(messages, run) for run in ("r1", "r2", "r3")] == [False, True, False]
