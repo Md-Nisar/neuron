@@ -32,3 +32,13 @@ updates:
       docker-base-images:
         patterns:
           - "*"
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      web-dependencies:
+        patterns:
+          - "*"

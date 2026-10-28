@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak web-install web-dev web-format web-lint web-typecheck web-test web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -77,3 +77,30 @@ security:
 
 build:
 	uv build
+
+# The web application (ADR 0010). Install from the lockfile only; `make web` runs every gate.
+web-install:
+	npm --prefix web ci
+
+web-dev:
+	npm --prefix web run dev
+
+web-format:
+	npm --prefix web run format:check
+
+web-lint:
+	npm --prefix web run lint
+
+web-typecheck:
+	npm --prefix web run typecheck
+
+web-test:
+	npm --prefix web test
+
+web-build:
+	npm --prefix web run build
+
+web-audit:
+	npm --prefix web audit --audit-level=low
+
+web: web-format web-lint web-typecheck web-test web-build web-audit
