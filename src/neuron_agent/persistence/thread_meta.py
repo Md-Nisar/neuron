@@ -16,7 +16,7 @@ from typing import Any, Protocol
 
 from psycopg_pool import AsyncConnectionPool
 
-TITLE_MAX_CHARS = 80
+from neuron_agent.schemas.agent import TITLE_MAX_CHARS
 
 
 def derive_title(message: str) -> str | None:
@@ -26,6 +26,8 @@ def derive_title(message: str) -> str | None:
 
 class ThreadTitles(Protocol):
     async def set_if_absent(self, owner_key: str, thread_id: str, title: str) -> None: ...
+
+    async def rename(self, owner_key: str, thread_id: str, title: str) -> None: ...
 
     async def titles(self, owner_key: str, thread_ids: Sequence[str]) -> dict[str, str]: ...
 
@@ -40,6 +42,9 @@ class InMemoryThreadTitles:
 
     async def set_if_absent(self, owner_key: str, thread_id: str, title: str) -> None:
         self._titles.setdefault((owner_key, thread_id), title)
+
+    async def rename(self, owner_key: str, thread_id: str, title: str) -> None:
+        self._titles[owner_key, thread_id] = title
 
     async def titles(self, owner_key: str, thread_ids: Sequence[str]) -> dict[str, str]:
         return {t: self._titles[owner_key, t] for t in thread_ids if (owner_key, t) in self._titles}
@@ -61,6 +66,15 @@ class PostgresThreadTitles:
             await conn.execute(
                 "INSERT INTO neuron_thread_meta (owner_key, thread_id, title) "
                 "VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                (owner_key, thread_id, title),
+            )
+
+    async def rename(self, owner_key: str, thread_id: str, title: str) -> None:
+        async with self._pool.connection() as conn:
+            await conn.execute(
+                "INSERT INTO neuron_thread_meta (owner_key, thread_id, title) "
+                "VALUES (%s, %s, %s) ON CONFLICT (owner_key, thread_id) "
+                "DO UPDATE SET title = EXCLUDED.title, updated_at = now()",
                 (owner_key, thread_id, title),
             )
 
