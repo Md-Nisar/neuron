@@ -56,7 +56,7 @@ embeddings, no background jobs. Anything beyond it needs a new requirement and A
      no content. The eval harness runs with an empty list and never falls back, so a
      lost model shows as an error, not a quiet switch.
    - The invalid-`AgentAnswer` retry is bounded (at most two retries), then fails with
-     `422 structured_output_error` instead of running until `run_timeout`.
+     `502 structured_output_error` (the existing status) instead of running until `run_timeout`.
    - Token accounting records cache read and write tokens where a provider reports them.
    - **Estimated cost is dropped from v0.7.0** (third deferral): there is no verifiable,
      dated price data, and the development model is free. It returns with production.
