@@ -356,3 +356,38 @@ describe("streamRun: the request", () => {
     await expect(call).rejects.toThrow(TypeError);
   });
 });
+
+describe("approval ids from the server are path-safe", () => {
+  const wire = (approvalId: string, threadId = "t1") =>
+    frame("approval_required", {
+      ...approval,
+      thread_id: threadId,
+      approval: { ...approval.approval, approval_id: approvalId },
+    });
+
+  it.each(["..", ".", "a/b", "a b", "a?b=1", "a#b", "%2e%2e", "", "x".repeat(129), "../x", "a\n"])(
+    "reports a protocol error for the approval id %j",
+    async (id) => {
+      const events = await collect(run(respond(sseResponse(streamOf([wire(id)])))));
+
+      expect(events[0]).toEqual({
+        type: "error",
+        data: { code: "protocol_error", retryable: false },
+      });
+    },
+  );
+
+  it("reports a protocol error for an unsafe thread id", async () => {
+    const events = await collect(run(respond(sseResponse(streamOf([wire("a1", "../t")])))));
+
+    expect(events[0]).toMatchObject({ type: "error", data: { code: "protocol_error" } });
+  });
+
+  it.each(["a1", "approval:7f3a.9-b_c", "..a", "a.."])("accepts the approval id %j", async (id) => {
+    const events = await collect(
+      run(respond(sseResponse(streamOf([wire(id), frame("done", {})])))),
+    );
+
+    expect(events[0]).toMatchObject({ type: "approval_required" });
+  });
+});

@@ -91,8 +91,24 @@ the server's `APP_MAX_PROMPT_CHARS`; the server stays authoritative).
 - Assistant text is Markdown rendered as React elements: raw HTML stays literal text, images are
   never loaded, code is text, and only absolute `http(s)` and `mailto` links become links, each in
   a new tab with `noopener` and its real host shown next to the label.
-- An `approval_required` reply shows a fixed notice only. The approval card is a separate issue
-  (#287); until then a pending approval cannot be decided from this page.
+- An `approval_required` reply shows the approval card (see below).
+
+### Approval card
+
+Rendered by `ApprovalCard`, only from the server's validated `approval_required` payload, outside
+the Markdown renderer (which cannot produce a button or the card's double border).
+
+- Approve and Reject call `POST /v1/threads/{id}/approvals/{approval_id}/stream` with the ids from
+  that payload, validated again before they go into the URL path (an id of `.` or `..` is refused),
+  and show the continuation as a new reply. Only the decisions the server offers appear.
+- The tool name and arguments are shown in full, with control, zero-width and direction-override
+  characters made visible (`[U+202E]`). If they are too long to show in full (4000 characters),
+  Approve is disabled and only Reject is offered.
+- One decision per approval, however many clicks (a synchronous guard, tested). If the approval
+  is gone (`404`: decided in another tab, or expired) the card says so neutrally and does not
+  claim a decision. `409`, `401`, a network failure or Stop leave it undecided and decidable.
+- "You approved this" / "You rejected this" come from the user's click and the HTTP result, never
+  from what the model says next.
 
 **Dependency pins.** `package.json` holds `micromark` at 4.0.2 and `micromark-core-commonmark`
 at 2.0.3 (`overrides`). Their next releases (2026-09-26) added a new package,

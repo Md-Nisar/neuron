@@ -1,9 +1,19 @@
-import { displayText, type RunState } from "@/lib/stream";
+import { displayText, type ApprovalRequired, type Decision, type RunState } from "@/lib/stream";
 
 export interface Failure {
   /** A fixed reason (a start-error kind or a stream error code), never server text. */
   kind: string;
   retryAfterSeconds: number | null;
+}
+
+/** What the user has done with a pending approval; set by clicks and HTTP results, never by text. */
+export type ApprovalState = "pending" | "deciding" | "approved" | "rejected" | "unavailable";
+
+export interface MessageApproval {
+  payload: ApprovalRequired;
+  state: ApprovalState;
+  /** Why the last attempt did not go through (the approval stays decidable), if it did not. */
+  failure: Failure | null;
 }
 
 export type MessageStatus = "done" | "streaming" | "stopped" | "failed" | "needs_approval";
@@ -15,6 +25,8 @@ export interface ChatMessage {
   toolCalls: string[];
   status: MessageStatus;
   failure: Failure | null;
+  /** Set only from a validated `approval_required` event. */
+  approval: MessageApproval | null;
 }
 
 export interface ChatState {
@@ -30,6 +42,11 @@ export type ChatAction =
   | { type: "progress"; assistantId: string; run: RunState }
   | { type: "start_failed"; assistantId: string; failure: Failure }
   | { type: "stopped"; assistantId: string }
+  | { type: "continue"; assistantId: string }
+  | { type: "approval_deciding"; messageId: string }
+  | { type: "approval_decided"; messageId: string; decision: Decision }
+  | { type: "approval_unavailable"; messageId: string }
+  | { type: "approval_failed"; messageId: string; failure: Failure }
   | { type: "finished" }
   | { type: "drop_last_turn" }
   | { type: "reset" };
@@ -40,6 +57,27 @@ function update(
   change: (message: ChatMessage) => ChatMessage,
 ): ChatMessage[] {
   return messages.map((message) => (message.id === id ? change(message) : message));
+}
+
+function newMessage(
+  id: string,
+  role: ChatMessage["role"],
+  text: string,
+  status: MessageStatus,
+): ChatMessage {
+  return { id, role, text, toolCalls: [], status, failure: null, approval: null };
+}
+
+function setApproval(
+  messages: ChatMessage[],
+  id: string,
+  change: Partial<Pick<MessageApproval, "state" | "failure">>,
+): ChatMessage[] {
+  return update(messages, id, (message) =>
+    message.approval === null
+      ? message
+      : { ...message, approval: { ...message.approval, ...change } },
+  );
 }
 
 function statusOf(run: RunState): MessageStatus {
@@ -63,22 +101,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         running: true,
         messages: [
           ...state.messages,
-          {
-            id: action.userId,
-            role: "user",
-            text: action.text,
-            toolCalls: [],
-            status: "done",
-            failure: null,
-          },
-          {
-            id: action.assistantId,
-            role: "assistant",
-            text: "",
-            toolCalls: [],
-            status: "streaming",
-            failure: null,
-          },
+          newMessage(action.userId, "user", action.text, "done"),
+          newMessage(action.assistantId, "assistant", "", "streaming"),
         ],
       };
     case "progress": {
@@ -93,6 +117,11 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           toolCalls: run.toolCalls,
           status: statusOf(run),
           failure,
+          approval:
+            message.approval ??
+            (run.approval === null
+              ? null
+              : { payload: run.approval, state: "pending", failure: null }),
         })),
       };
     }
@@ -111,6 +140,46 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         messages: update(state.messages, action.assistantId, (message) =>
           message.status === "streaming" ? { ...message, status: "stopped" } : message,
         ),
+      };
+    case "continue":
+      // The decision was accepted: the continuation is a new reply under the same turn.
+      return {
+        ...state,
+        running: true,
+        messages: [...state.messages, newMessage(action.assistantId, "assistant", "", "streaming")],
+      };
+    case "approval_deciding":
+      return {
+        ...state,
+        running: true,
+        messages: setApproval(state.messages, action.messageId, {
+          state: "deciding",
+          failure: null,
+        }),
+      };
+    case "approval_decided":
+      return {
+        ...state,
+        messages: setApproval(state.messages, action.messageId, {
+          state: action.decision === "approve" ? "approved" : "rejected",
+          failure: null,
+        }),
+      };
+    case "approval_unavailable":
+      return {
+        ...state,
+        messages: setApproval(state.messages, action.messageId, {
+          state: "unavailable",
+          failure: null,
+        }),
+      };
+    case "approval_failed":
+      return {
+        ...state,
+        messages: setApproval(state.messages, action.messageId, {
+          state: "pending",
+          failure: action.failure,
+        }),
       };
     case "finished":
       // A stream always ends in a terminal state; anything still "streaming" lost its result.
