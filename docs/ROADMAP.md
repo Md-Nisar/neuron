@@ -21,8 +21,6 @@ v0.8.0 is designed in [ADR 0010](decisions/0010-user-application.md) (Accepted; 
 
 v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (research: `docs/releases/v0.9.0-research.md`; issue drafts: `docs/releases/v0.9.0-issues.md`), Accepted 2026-10-28, and tracked by the issues labelled `v0.9.0` (tracker #338). Everything is measured on a local reference stack; hosted deployment stays after v1.0.0.
 
-v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) and tracked by the issues labelled `v0.9.0` (tracker #338). It was verified on a local reference stack only; the release freeze starts at the tag.
-
 ## Deferred until after v1.0.0
 
 | Item | What is left | Owner release |
