@@ -10,6 +10,13 @@ export interface FakeMemory {
 export interface FakeMessage {
   role: "user" | "assistant";
   content: string;
+  tool_calls?: { name: string; summary: string; status: string }[];
+}
+export interface FakeApproval {
+  approval_id: string;
+  actions: { name: string; args: Record<string, unknown> }[];
+  /** Answer with another thread's id, as a hostile server might. */
+  thread_id?: string;
 }
 export interface FakeThread {
   thread_id: string;
@@ -17,6 +24,8 @@ export interface FakeThread {
   updated_at: string;
   messages: FakeMessage[];
   title?: string | null;
+  /** The approval a paused thread waits on. */
+  pending?: FakeApproval | undefined;
 }
 
 export interface FakeData {
@@ -121,6 +130,40 @@ export function fakeApi(data: FakeData) {
             message_count: t.messages.length,
           })),
           total: data.threads.length,
+          limit,
+          offset,
+        }),
+      );
+    }
+    const sub = /^\/v1\/threads\/([^/]+)\/(messages|approval)$/.exec(url.pathname);
+    if (sub !== null && method === "GET") {
+      const found = data.threads.find((t) => t.thread_id === decodeURIComponent(sub[1] ?? ""));
+      if (found === undefined)
+        return Promise.resolve(jsonResponse(404, { detail: "thread_not_found" }));
+      if (sub[2] === "approval") {
+        const { pending } = found;
+        if (pending === undefined)
+          return Promise.resolve(jsonResponse(404, { detail: "approval_not_found" }));
+        return Promise.resolve(
+          jsonResponse(200, {
+            status: "approval_required",
+            request_id: "req-1",
+            thread_id: pending.thread_id ?? found.thread_id,
+            approval: {
+              approval_id: pending.approval_id,
+              actions: pending.actions,
+              allowed_decisions: ["approve", "reject"],
+            },
+          }),
+        );
+      }
+      const offset = int("offset", 0);
+      const limit = Math.min(int("limit", 50), 100);
+      return Promise.resolve(
+        jsonResponse(200, {
+          thread_id: found.thread_id,
+          messages: found.messages.slice(offset, offset + limit),
+          total: found.messages.length,
           limit,
           offset,
         }),

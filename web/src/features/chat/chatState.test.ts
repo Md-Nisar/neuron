@@ -106,6 +106,51 @@ describe("chatReducer", () => {
   });
 });
 
+describe("attach_approval", () => {
+  const payload = {
+    request_id: "r",
+    thread_id: "t1",
+    approval: {
+      approval_id: "a1",
+      actions: [{ name: "x", args: {} }],
+      allowed_decisions: ["approve" as const],
+    },
+  };
+  const opened = (why: "pending" | "rejected"): ChatState =>
+    chatReducer(initialChatState, {
+      type: "open",
+      threadId: "t1",
+      earlierHidden: false,
+      messages: [
+        {
+          id: "m1",
+          role: "assistant",
+          text: "",
+          toolCalls: [],
+          skipped: [{ name: "x", why }],
+          status: "needs_approval",
+          failure: null,
+          approval: null,
+        },
+      ],
+    });
+  const attach = (state: ChatState, messageId = "m1") =>
+    chatReducer(state, { type: "attach_approval", messageId, payload });
+
+  it("gives a waiting message its card, once", () => {
+    const once = attach(opened("pending"));
+    expect(once.messages[0]?.approval?.state).toBe("pending");
+    const other = { ...payload, approval: { ...payload.approval, approval_id: "a2" } };
+    const twice = chatReducer(once, { type: "attach_approval", messageId: "m1", payload: other });
+    expect(twice.messages[0]?.approval?.payload.approval.approval_id).toBe("a1");
+  });
+
+  it("gives nothing to a message that is not waiting, or that is gone", () => {
+    expect(attach(opened("rejected")).messages[0]?.approval).toBeNull();
+    expect(attach(opened("pending"), "gone").messages[0]?.approval).toBeNull();
+  });
+});
+
 describe("retryableText", () => {
   it("offers the last user message after a failed or stopped reply", () => {
     for (const status of ["failed", "stopped"] as const) {

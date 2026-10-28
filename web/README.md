@@ -125,7 +125,12 @@ more"), with `PATCH /v1/threads/{id}` to rename and `DELETE /v1/threads/{id}` to
   chat clears the chat. A conversation that is already gone is dropped from the list.
 - **Refresh:** the first page reloads when a reply finishes; a page that arrives after a reload is
   ignored.
-- Opening a past conversation (resume) is not built yet.
+- **Open** shows a past conversation (the latest 100 messages, with a notice if there are more) and
+  continues it. Tool calls are shown as the server recorded them: used, rejected, or could not run.
+  A conversation that ended waiting for a decision gets its approval card back from
+  `GET /v1/threads/{id}/approval` (scope `agent:approve`); if that is gone or refused, only a
+  "Waiting for approval" notice is shown and nothing can be decided. A card addressed to another
+  thread is never shown. Opening is disabled while a reply streams.
 
 ## Your data (`src/features/data`)
 

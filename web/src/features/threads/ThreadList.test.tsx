@@ -17,6 +17,8 @@ function setup(
     token?: string | null;
     fetch?: typeof fetch;
     refresh?: number;
+    active?: string;
+    openDisabled?: boolean;
     /** Answers a request itself (or delays it); resolving to undefined lets the fake serve it. */
     intercept?: (method: string, url: URL) => Promise<Response | undefined>;
   } = {},
@@ -24,6 +26,7 @@ function setup(
   const api = fakeApi({ memories: [], threads });
   const onSessionEnded = vi.fn();
   const onDeleted = vi.fn();
+  const onOpen = vi.fn();
   const user = userEvent.setup();
   const gated: typeof fetch = async (input, init) =>
     (await options.intercept?.(
@@ -41,6 +44,9 @@ function setup(
       }}
       refresh={refresh}
       onDeleted={onDeleted}
+      onOpen={onOpen}
+      activeThreadId={options.active ?? null}
+      openDisabled={options.openDisabled ?? false}
     />
   );
   const view = render(ui(options.refresh ?? 0));
@@ -49,6 +55,7 @@ function setup(
     user,
     onSessionEnded,
     onDeleted,
+    onOpen,
     rerender: (n: number) => {
       view.rerender(ui(n));
     },
@@ -170,6 +177,34 @@ describe("ThreadList", () => {
 
     expect(await screen.findByText("second")).toBeInTheDocument();
     expect(screen.getByText("first")).toBeInTheDocument();
+  });
+});
+
+describe("opening", () => {
+  it("opens the conversation that was clicked, and marks the current one", async () => {
+    const { user, onOpen } = setup([withTitle(1, "first"), withTitle(2, "second")], {
+      active: thread(2, 2).thread_id,
+    });
+    await screen.findByText("first");
+
+    await user.click(screen.getByRole("button", { name: "Open first" }));
+
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith(thread(1, 2).thread_id);
+    expect(screen.getByRole("button", { name: "Open second" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Open first" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("cannot be used while a reply is streaming or another conversation loads", async () => {
+    const { user, onOpen } = setup([withTitle(1, "first")], { openDisabled: true });
+    await screen.findByText("first");
+
+    await user.click(screen.getByRole("button", { name: "Open first" }));
+
+    expect(screen.getByRole("button", { name: "Open first" })).toBeDisabled();
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });
 

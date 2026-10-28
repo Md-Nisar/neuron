@@ -16,6 +16,12 @@ export interface MessageApproval {
   failure: Failure | null;
 }
 
+/** A tool call from an earlier session that did not complete, as the server recorded it. */
+export interface SkippedTool {
+  name: string;
+  why: "pending" | "rejected" | "failed";
+}
+
 export type MessageStatus = "done" | "streaming" | "stopped" | "failed" | "needs_approval";
 
 export interface ChatMessage {
@@ -23,6 +29,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   toolCalls: string[];
+  skipped: SkippedTool[];
   status: MessageStatus;
   failure: Failure | null;
   /** Set only from a validated `approval_required` event. */
@@ -33,9 +40,16 @@ export interface ChatState {
   threadId: string | null;
   messages: ChatMessage[];
   running: boolean;
+  /** An opened conversation was longer than one page: its earliest messages are not shown. */
+  earlierHidden: boolean;
 }
 
-export const initialChatState: ChatState = { threadId: null, messages: [], running: false };
+export const initialChatState: ChatState = {
+  threadId: null,
+  messages: [],
+  running: false,
+  earlierHidden: false,
+};
 
 export type ChatAction =
   | { type: "send"; userId: string; assistantId: string; text: string }
@@ -47,6 +61,8 @@ export type ChatAction =
   | { type: "approval_decided"; messageId: string; decision: Decision }
   | { type: "approval_unavailable"; messageId: string }
   | { type: "approval_failed"; messageId: string; failure: Failure }
+  | { type: "open"; threadId: string; messages: ChatMessage[]; earlierHidden: boolean }
+  | { type: "attach_approval"; messageId: string; payload: ApprovalRequired }
   | { type: "finished" }
   | { type: "drop_last_turn" }
   | { type: "reset" };
@@ -65,7 +81,7 @@ function newMessage(
   text: string,
   status: MessageStatus,
 ): ChatMessage {
-  return { id, role, text, toolCalls: [], status, failure: null, approval: null };
+  return { id, role, text, toolCalls: [], skipped: [], status, failure: null, approval: null };
 }
 
 function setApproval(
@@ -180,6 +196,23 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           state: "pending",
           failure: action.failure,
         }),
+      };
+    case "open":
+      return {
+        threadId: action.threadId,
+        messages: action.messages,
+        running: false,
+        earlierHidden: action.earlierHidden,
+      };
+    case "attach_approval":
+      // Only a message still waiting on a decision takes a card, and only once.
+      return {
+        ...state,
+        messages: update(state.messages, action.messageId, (message) =>
+          message.approval === null && message.skipped.some((tool) => tool.why === "pending")
+            ? { ...message, approval: { payload: action.payload, state: "pending", failure: null } }
+            : message,
+        ),
       };
     case "finished":
       // A stream always ends in a terminal state; anything still "streaming" lost its result.

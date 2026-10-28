@@ -289,6 +289,9 @@ describe("the conversation list has no accessibility violations", () => {
         }}
         refresh={0}
         onDeleted={vi.fn()}
+        onOpen={vi.fn()}
+        activeThreadId={null}
+        openDisabled={false}
       />,
     );
   }
