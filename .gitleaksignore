@@ -1,2 +1,3 @@
 # Fake password in a redaction test (issue #204); not a credential.
 24aeae2ed43932b0b2a66f027ca524432793cb4f:tests/unit/test_dsn_redaction.py:generic-api-key:19
+7451d5791c21c6aeb6ecdc36d194f0f14113c951:tests/unit/test_dsn_redaction.py:generic-api-key:20
