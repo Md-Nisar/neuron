@@ -1194,6 +1194,7 @@ def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:
     return AgentResponse(
         request_id=run.request_id,
         thread_id=run.thread_id,
+        run_id=run.run_id,
         answer=answer.answer,
         used_tools=answer.used_tools,
         confidence=answer.confidence,
