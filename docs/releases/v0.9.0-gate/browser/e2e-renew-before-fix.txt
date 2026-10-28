@@ -1,0 +1,22 @@
+csp-inline-script PASS: blocked (script-src-elem)
+[
+ [
+  "csp-inline-script",
+  "PASS: blocked (script-src-elem)"
+ ],
+ [
+  "after-7-min",
+  {
+   "signedIn": false,
+   "sessionEndedText": true,
+   "page": "neuron | Your session ended. Please sign in again. | Sign in"
+  }
+ ],
+ [
+  "keycloak-requests",
+  [
+   "269s GET /auth?response_type=code&client_id=neuron-web&redirect_uri=http%3A%2F%",
+   "270s frame chrome-error://chromewebdata/"
+  ]
+ ]
+]

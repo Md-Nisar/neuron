@@ -716,10 +716,11 @@ python scripts/web_headers.py --api-origin https://api.example.com \
     --issuer https://id.example.com/realms/neuron --format nginx
 ```
 
-The policy: `default-src 'none'`; scripts, styles, images and fonts from `'self'` only (no inline script or style, no `eval`, no `data:`); `connect-src` limited to the API and the identity provider; `frame-src` to the identity provider; `base-uri`, `form-action`, `object-src` and `worker-src` `'none'`; `upgrade-insecure-requests`. With it: `Referrer-Policy: no-referrer` (the sign-in callback URL carries a one-time code), `X-Content-Type-Options: nosniff`, `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` `same-origin`, a `Permissions-Policy` that turns off device APIs, and HSTS. `index.html` is `no-cache`; `/assets/*` is hashed and `immutable`.
+The policy: `default-src 'none'`; scripts, styles, images and fonts from `'self'` only (no inline script or style, no `eval`, no `data:`); `connect-src` limited to the API and the identity provider; `frame-src` to `'self'` and the identity provider; `base-uri`, `form-action`, `object-src` and `worker-src` `'none'`; `upgrade-insecure-requests`. With it: `Referrer-Policy: no-referrer` (the sign-in callback URL carries a one-time code), `X-Content-Type-Options: nosniff`, `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` `same-origin`, a `Permissions-Policy` that turns off device APIs, and HSTS. `index.html` is `no-cache`; `/assets/*` is hashed and `immutable`.
 
 Two things to know:
 
+- **`frame-src` includes `'self'`.** The silent-renew frame starts at the identity provider and is redirected back to the app root, and a CSP `frame-src` is checked on every redirect hop. Without `'self'` the frame ended on a browser error page and every session ended at token expiry (found by the first real-browser run, `docs/releases/v0.9.0-gate/browser/`).
 - **`frame-ancestors 'self'`, not `'none'` as ADR 0010 first said.** Silent renew loads this app inside a hidden frame of itself (the redirect URI is the app root), so `'none'` would block it. `'self'` still stops every other site from framing the app. If you give up silent renew, `'none'` is the stricter choice.
 - **nginx does not inherit `add_header` into a block that has its own `add_header`.** The nginx output repeats the full set in every location for that reason; if you write your own, do the same, or a cache rule will silently remove the CSP from the HTML.
 
