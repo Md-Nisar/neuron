@@ -1,8 +1,6 @@
-import { ChatScreen } from "@/features/chat/ChatScreen";
-import { DataScreen } from "@/features/data/DataScreen";
-import { useState } from "react";
-
 import { useAuth, type AuthErrorCode } from "@/lib/auth";
+
+import { SignedInView } from "./SignedInView";
 
 /** Fixed wording per reason. Text from the identity provider is never shown. */
 const ERROR_TEXT: Record<AuthErrorCode, string> = {
@@ -24,7 +22,6 @@ export interface AppProps {
 
 export function App({ apiUrl, maxChars }: AppProps) {
   const auth = useAuth();
-  const [view, setView] = useState<"chat" | "data">("chat");
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6">
       <h1 className="text-2xl font-semibold">neuron</h1>
@@ -51,53 +48,7 @@ export function App({ apiUrl, maxChars }: AppProps) {
         </div>
       )}
       {auth.status === "signed_in" && (
-        <div className="mt-4">
-          <p>Signed in{auth.displayName === null ? "" : ` as ${auth.displayName}`}.</p>
-          <button type="button" className="mt-2 rounded border px-3 py-1" onClick={auth.signOut}>
-            Sign out
-          </button>
-          <nav aria-label="Sections" className="mt-4 flex gap-2">
-            <button
-              type="button"
-              className="rounded border px-3 py-1"
-              aria-pressed={view === "chat"}
-              onClick={() => {
-                setView("chat");
-              }}
-            >
-              Chat
-            </button>
-            <button
-              type="button"
-              className="rounded border px-3 py-1"
-              aria-pressed={view === "data"}
-              onClick={() => {
-                setView("data");
-              }}
-            >
-              Your data
-            </button>
-          </nav>
-          {/* The chat stays mounted (hidden) so a conversation in progress survives a visit to "Your data". */}
-          <div hidden={view !== "chat"}>
-            <ChatScreen
-              apiUrl={apiUrl}
-              maxChars={maxChars}
-              getAccessToken={auth.getAccessToken}
-              onSessionEnded={auth.sessionEnded}
-            />
-          </div>
-          {view === "data" && (
-            <DataScreen
-              deps={{
-                apiUrl,
-                getAccessToken: auth.getAccessToken,
-                onSessionEnded: auth.sessionEnded,
-              }}
-              onErased={auth.signOut}
-            />
-          )}
-        </div>
+        <SignedInView auth={auth} apiUrl={apiUrl} maxChars={maxChars} />
       )}
     </main>
   );

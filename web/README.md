@@ -110,6 +110,23 @@ the Markdown renderer (which cannot produce a button or the card's double border
 - "You approved this" / "You rejected this" come from the user's click and the HTTP result, never
   from what the model says next.
 
+## Conversations (`src/features/threads`)
+
+Below the chat, a list of the user's conversations from `GET /v1/me/threads` (30 per page, "Load
+more"), with `PATCH /v1/threads/{id}` to rename and `DELETE /v1/threads/{id}` to delete. Needs
+`threads:read`, plus `threads:write` to rename and `threads:delete` to delete.
+
+- **Titles are untrusted.** They come from what the user typed. They are shown as text only, with
+  invisible and reordering characters marked (`displaySafe`) and cut at 200 characters.
+- **Rename:** Enter saves, Escape cancels. Empty or over-80-character titles are refused before
+  sending; if the server refuses one, a fixed message is shown. The title shown after saving is the
+  one the server stored. A second Enter while a save is in flight sends nothing more.
+- **Delete** takes a second click ("Confirm delete"). Deleting the conversation that is open in the
+  chat clears the chat. A conversation that is already gone is dropped from the list.
+- **Refresh:** the first page reloads when a reply finishes; a page that arrives after a reload is
+  ignored.
+- Opening a past conversation (resume) is not built yet.
+
 ## Your data (`src/features/data`)
 
 The "Your data" page (opened from the nav; the chat stays mounted so a draft survives a visit) uses
