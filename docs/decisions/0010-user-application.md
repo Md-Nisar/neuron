@@ -10,6 +10,14 @@ popular UI library. Production deployment stays out of scope until after v1.0.0 
 decision, 2026-10-27): every check in this release runs locally, on the fake model or the
 NVIDIA development model.
 
+**Amendments.**
+- 2026-10-28: decision 7 now reads `frame-ancestors 'self'`, not `'none'`. Silent renew loads
+  the app in a hidden frame of itself, so `'none'` blocks it; `'self'` still stops every
+  other site from framing the app. If silent renew fails its real-browser test (open
+  question 2), delete the renew frame and return to `'none'`.
+- 2026-10-28: open question 3 is answered by ADR 0011. There is no thread-ownership table
+  (ownership lives in checkpoint metadata), so titles get their own table and migration.
+
 ## Context
 
 Through v0.7.0 neuron is an API: streaming, approvals, memory and data rights exist, but
@@ -98,7 +106,7 @@ file upload, voice, localisation, and any hosted deployment of the UI.
      text can never create or resolve one. Approve and reject act only on the id in that
      payload.
    - The host serves a strict CSP (no inline script, `connect-src` limited to the API and
-     Keycloak origins, `frame-ancestors 'none'`). Titles are rendered as text.
+     Keycloak origins, `frame-ancestors 'self'`, see Amendments). Titles are rendered as text.
    - A fixed UI security test set (XSS payloads in `token`, `final`, titles and tool
      summaries; markdown image beacons; look-alike approval text; open redirect in the
      sign-in callback) runs in CI.

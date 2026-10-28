@@ -18,6 +18,8 @@ DEV_PERMISSIONS = frozenset(
         "agent:invoke",
         "agent:approve",
         "threads:read",
+        "threads:write",
+        "feedback:write",
         "threads:delete",
         "memories:read",
         "memories:write",

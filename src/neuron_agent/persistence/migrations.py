@@ -74,6 +74,10 @@ _APP_PRIVILEGES: dict[str, frozenset[str]] = {
     "neuron_run_leases": frozenset({"SELECT", "INSERT", "DELETE"}),
     "neuron_token_ledger": _DML,
     "neuron_rate_buckets": _DML,
+    # Conversation titles (ADR 0011); present from migration 13 on any database.
+    "neuron_thread_meta": _DML,
+    # Answer ratings (ADR 0011); present from migration 15.
+    "neuron_feedback": _DML,
     # Settled reservation ids are only inserted (idempotent settle) and swept by retention.
     "neuron_token_settlements": frozenset({"SELECT", "INSERT", "DELETE"}),
     "neuron_meta": frozenset(),
@@ -90,8 +94,16 @@ STORE_TABLE = "store"
 _IDENTITY_FUNCTION = "neuron_identity_status"
 # The tables the guards (run leases, token budget, rate limiter) read and write, derived from the
 # grants above so a new guard table is picked up by readiness without another list.
+THREAD_META_TABLE = "neuron_thread_meta"
+FEEDBACK_TABLE = "neuron_feedback"
+# Tables of per-user content the API reads and writes; readiness needs them on Postgres.
+USER_CONTENT_TABLES = (THREAD_META_TABLE, FEEDBACK_TABLE)
 GUARD_TABLES = tuple(
-    sorted(t for t, grants in _APP_PRIVILEGES.items() if grants and t.startswith("neuron_"))
+    sorted(
+        t
+        for t, grants in _APP_PRIVILEGES.items()
+        if grants and t.startswith("neuron_") and t not in USER_CONTENT_TABLES
+    )
 )
 _CHECKED_PRIVILEGES = (*sorted(_DML), "TRUNCATE", "REFERENCES", "TRIGGER")
 
@@ -294,6 +306,60 @@ END
 $do$
 """,
     ),
+    Migration(
+        version=13,
+        name="thread_meta",
+        # Conversation titles (`persistence/thread_meta.py`, ADR 0011): content derived from the
+        # user's first message, filed under the HMAC owner key and removed with the thread.
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_thread_meta (
+    owner_key text NOT NULL,
+    thread_id text NOT NULL,
+    title text NOT NULL CHECK (char_length(title) <= 80),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (owner_key, thread_id)
+)
+""",
+    ),
+    # Serves the delete by thread ID (thread deletion, erasure and retention know no owner).
+    Migration(
+        version=14,
+        name="thread_meta_thread_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_thread_meta_thread_idx
+ON neuron_thread_meta (thread_id)
+""",
+        concurrent=True,
+        index="neuron_thread_meta_thread_idx",
+    ),
+    Migration(
+        version=15,
+        name="feedback",
+        # Answer ratings (`persistence/feedback.py`, ADR 0010 decision 6): a score and a fixed
+        # reason per (owner, run), never text. The primary key makes a rating idempotent.
+        sql="""
+CREATE TABLE IF NOT EXISTS neuron_feedback (
+    owner_key text NOT NULL,
+    thread_id text NOT NULL,
+    run_id text NOT NULL,
+    score smallint NOT NULL CHECK (score IN (-1, 1)),
+    reason text CHECK (reason IS NULL OR char_length(reason) <= 32),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (owner_key, run_id)
+)
+""",
+    ),
+    # Serves the delete by thread ID (thread deletion, erasure and retention know no owner).
+    Migration(
+        version=16,
+        name="feedback_thread_idx",
+        sql="""
+CREATE INDEX CONCURRENTLY IF NOT EXISTS neuron_feedback_thread_idx
+ON neuron_feedback (thread_id)
+""",
+        concurrent=True,
+        index="neuron_feedback_thread_idx",
+    ),
 )
 
 
@@ -437,7 +503,7 @@ def table_grant_statements(
     role = sql.Identifier(app)
     dml = names("checkpoints", "checkpoint_blobs", "checkpoint_writes")
     leases = names("neuron_run_leases", "neuron_token_settlements")
-    ledger = names("neuron_token_ledger", "neuron_rate_buckets")
+    ledger = names("neuron_token_ledger", "neuron_rate_buckets", *USER_CONTENT_TABLES)
     memory = names(STORE_TABLE)
     bookkeeping = names(
         "neuron_migrations", "checkpoint_migrations", "neuron_meta", "store_migrations"

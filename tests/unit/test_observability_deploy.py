@@ -57,6 +57,7 @@ def _attribute_constants() -> set[str]:
         "AGENT_NAME",
         "STREAM_SPAN",
         "APPROVAL_SPAN",
+        "FEEDBACK_SPAN",
         "MEMORY_SPAN",
         "OUTCOME_",
     )

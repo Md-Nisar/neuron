@@ -212,9 +212,18 @@ async def test_limits_postgres_readiness_is_false_when_setup_was_not_run() -> No
 async def test_guard_tables_are_not_checked_without_the_postgres_limits_backend() -> None:
     persistence = build_persistence(_postgres_settings())  # checkpointer only
     assert persistence.check_guard_tables is False
-    persistence.pool = _fake_pool(["neuron_rate_buckets"])  # type: ignore[assignment]
+    persistence.pool = _fake_pool([])  # type: ignore[assignment]
     persistence._opened = True
     assert await persistence.is_ready() is True
+    _, params = persistence.pool.queries[0]  # type: ignore[attr-defined]
+    assert params[0] == ["neuron_thread_meta", "neuron_feedback"]  # type: ignore[index]
+
+
+async def test_postgres_readiness_is_false_when_the_thread_meta_migration_was_not_run() -> None:
+    persistence = build_persistence(_postgres_settings())
+    persistence.pool = _fake_pool(["neuron_feedback"])  # type: ignore[assignment]
+    persistence._opened = True
+    assert await persistence.is_ready() is False
 
 
 def test_memory_limits_with_memory_checkpointer_open_no_pool() -> None:
