@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-28). Inputs: `docs/releases/v0.8.0-research.md`. The owner answered the
+Accepted (2026-10-28, owner approval). Inputs: `docs/releases/v0.8.0-research.md`. The owner answered the
 research questions on 2026-10-28: Keycloak as the identity provider, a single-assistant
 product shape (left to the architect), server-stored conversation titles, a Node toolchain
 in the repository, feedback (#104) in this release, and the latest stable web stack with a
