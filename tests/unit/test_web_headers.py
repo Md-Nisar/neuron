@@ -59,7 +59,7 @@ class TestPolicy:
         policy = csp()
 
         assert policy["connect-src"] == [API, "https://id.example.com"]
-        assert policy["frame-src"] == ["https://id.example.com"]
+        assert policy["frame-src"] == ["'self'", "https://id.example.com"]
 
     def test_one_origin_is_listed_once(self) -> None:
         policy = directives(

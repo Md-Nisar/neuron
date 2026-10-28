@@ -6,7 +6,7 @@ shadcn/ui (copied source; add components with `npx shadcn@latest add <name>` and
 Needs Node from `.nvmrc` and the npm in `package.json` (`packageManager`). Run from the repo root:
 
     make web-install   # npm ci: installs from the lockfile only
-    make web-dev       # http://127.0.0.1:5173 (the origin the dev Keycloak allows)
+    make web-dev       # open http://localhost:5173 (the one origin the dev Keycloak allows; 127.0.0.1 is refused)
     make web           # format check, lint, typecheck, test, build, npm audit
 
 Rules for this directory:
@@ -67,11 +67,14 @@ What it guarantees, each pinned by a test in `src/lib/auth/*.test.ts`:
   the callback, whether or not it succeeds.
 - Provider error text is never shown; the UI has fixed wording per reason.
 
-**Silent renew is attempted but unproven in a real browser.** Before the token expires, a hidden
-frame asks the provider's own session for a new one (`prompt=none`, no refresh token). Whether
-that works on `localhost` across browsers depends on cookie behaviour (ADR 0010, open question 2).
-It is tested here with a fake frame only. Any failure falls back to "Your session ended. Please
-sign in again", never to storing a refresh token.
+**Silent renew works in Chromium against the local Keycloak; other browsers and cross-site hosting
+are unproven.** Before the token expires, a hidden frame asks the provider's own session for a new
+one (`prompt=none`, no refresh token). A Playwright run (Chromium, app on `localhost:5173`, Keycloak
+on `localhost:8180`, the reference CSP) stayed signed in past the 5-minute token lifetime. Both
+origins are the same site, so this does not settle third-party cookie blocking when the app and
+the provider are on different sites (ADR 0010, open question 2). The reference CSP needs `frame-src
+'self'`. Any failure falls back to "Your session ended. Please sign in again", never to storing a
+refresh token.
 
 ## Chat (`src/features/chat`)
 

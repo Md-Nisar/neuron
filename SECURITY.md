@@ -165,7 +165,7 @@ Not covered, by design or by limit:
 - **Script that runs on the app's origin can read the token in memory** and call the API as the user. The controls above exist to stop such script running; none of them helps once it does.
 - **`sessionStorage` holds the sign-in transaction** (state, nonce, PKCE verifier) for up to ten minutes across the redirect. It is deleted when the callback arrives.
 - **No Trusted Types.** `require-trusted-types-for 'script'` is not set because it could not be tried in a real browser here.
-- **Nothing was enforced by a real browser.** The CSP is tested as a policy and the source is checked against it; no Playwright run has loaded a built page under the headers. Silent renew is likewise unproven in a browser (`web/README.md`).
+- **One browser, one machine.** The CSP is tested as a policy and the source is checked against it, and a Playwright run (Chromium, the local Keycloak, `docs/releases/v0.9.0-gate/browser/`) loaded the built page under the headers: an injected inline script was blocked and silent renew worked. Other browsers, a hosted origin, and a provider on another site (third-party cookie blocking) are not tested (`web/README.md`).
 
 ## Remaining Limitations
 
