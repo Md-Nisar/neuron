@@ -159,6 +159,16 @@ describe("displaySafe", () => {
     ["halfwidth Hangul filler", 0xffa0],
     ["Khmer inherent vowel", 0x17b4],
     ["blank Braille pattern", 0x2800],
+    ["variation selector 16 (emoji style)", 0xfe0f],
+    ["variation selector 1", 0xfe00],
+    ["supplementary variation selector (hidden data)", 0xe0100],
+    ["last supplementary variation selector", 0xe01ef],
+    ["Mongolian free variation selector", 0x180b],
+    ["unassigned code point", 0x378],
+    ["unassigned default-ignorable", 0x2065],
+    ["unassigned default-ignorable plane 15", 0xfff0],
+    ["unassigned in a far plane", 0x3fffd],
+    ["noncharacter", 0xfffe],
   ])("makes the %s visible", (_name, codePoint) => {
     const shown = displaySafe(`x${at(codePoint)}y`);
     const marker = `[U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}]`;
@@ -175,6 +185,24 @@ describe("displaySafe", () => {
     expect(displaySafe(`ok${hidden}`)).toBe(
       "ok[U+E0069][U+E0067][U+E006E][U+E006F][U+E0072][U+E0065]",
     );
+  });
+
+  it("marks a lone surrogate, which would otherwise be dropped or shown as a replacement box", () => {
+    expect(displaySafe(`a${String.fromCharCode(0xd800)}b`)).toBe("a[U+D800]b");
+  });
+
+  it("passes every ordinary kind of visible text through untouched", () => {
+    const visible = [
+      "plain ASCII, punctuation! (yes) [no] {maybe} <ok> @#$%&*+=/\\|~^_-`'\"",
+      "accents: é ü ñ ç, combining: e" + String.fromCodePoint(0x301),
+      "CJK: " + String.fromCodePoint(0x4e2d, 0x6587, 0x3042, 0xac00),
+      "Arabic and Hebrew: " + String.fromCodePoint(0x627, 0x644, 0x5d0, 0x5d1),
+      "Devanagari with marks: " + String.fromCodePoint(0x915, 0x93f),
+      "numbers and symbols: 12 3.4 \u20ac \u00a9 \u221e \u2192 \u2713",
+      "emoji without a selector: " + String.fromCodePoint(0x1f600, 0x1f680),
+      "tab\tnewline\ncarriage\r",
+    ];
+    for (const text of visible) expect(displaySafe(text)).toBe(text);
   });
 
   it("keeps a plain space, which is the one space that is not a look-alike", () => {

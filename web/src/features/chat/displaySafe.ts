@@ -1,29 +1,33 @@
 /**
- * Make text safe to show where a user is asked to consent to it. Anything that is invisible,
- * reorders text, or looks like a space but is not one can make text read differently from what it
- * is (a reversed file name, hidden words, Unicode "tag" characters that carry a hidden message),
- * so each such character is replaced with a visible marker like [U+202E].
+ * Make text safe to show where a user is asked to consent to it. Anything invisible, anything
+ * that reorders text, and anything that looks like a space but is not one can make text read
+ * differently from what it is (a reversed file name, hidden words, Unicode "tag" or variation
+ * selector characters that carry a hidden message). Each such character is replaced with a
+ * visible marker like [U+202E].
  *
- * Covered, by Unicode property so the list cannot fall behind: control characters (Cc), format
- * characters (Cf: zero-width, direction overrides and isolates, soft hyphen, tag characters),
- * line and paragraph separators (Zl, Zp), private use (Co) and every space other than the plain
- * one (Zs); plus the characters that render blank although they are letters or symbols (the
- * combining grapheme joiner, Hangul and Khmer fillers, and the blank Braille pattern). Tab,
- * line feed, carriage return and the plain space are kept.
+ * This is an allowlist, so a new kind of invisible character is shown by default: only letters,
+ * marks, numbers, punctuation and symbols are passed through, together with the plain space, tab,
+ * line feed and carriage return. Everything else is marked: control, format, separator, private
+ * use, unassigned and surrogate code points, and every space but the plain one. On top of that,
+ * Unicode's own `Default_Ignorable_Code_Point` set is marked even where it falls inside a passed
+ * category (variation selectors, the combining grapheme joiner, Hangul and Khmer fillers), plus
+ * the blank Braille pattern, which is a symbol that renders as nothing.
  *
- * No invisible character appears in this file (a test checks that), so the fillers are listed
- * by code point.
+ * Cost: an emoji written with a variation selector (a heart with U+FE0F) shows the marker. For
+ * text a person is asked to approve, noise is better than hidden characters.
+ *
+ * No invisible character appears in this file (a test checks that), so the blank Braille pattern
+ * is built from its code point.
  */
-const BLANK_LOOKALIKES = [0x034f, 0x115f, 0x1160, 0x17b4, 0x17b5, 0x2800, 0x3164, 0xffa0]
-  .map((codePoint) => String.fromCodePoint(codePoint))
-  .join("");
+const BLANK_BRAILLE = String.fromCodePoint(0x2800);
 
-const SUSPECT = new RegExp(`[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}\\p{Zs}\\p{Co}${BLANK_LOOKALIKES}]`, "gu");
-const KEPT = new Set([" ", "\t", "\n", "\r"]);
+const SUSPECT = new RegExp(
+  `[^\\p{L}\\p{M}\\p{N}\\p{P}\\p{S} \\t\\n\\r]|\\p{Default_Ignorable_Code_Point}|${BLANK_BRAILLE}`,
+  "gu",
+);
 
 export function displaySafe(text: string): string {
   return text.replace(SUSPECT, (char) => {
-    if (KEPT.has(char)) return char;
     const hex = (char.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0");
     return `[U+${hex}]`;
   });
