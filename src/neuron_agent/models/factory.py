@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
@@ -40,8 +41,14 @@ from langchain_core.exceptions import (
 )
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
-from langchain_core.outputs import ChatGenerationChunk
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+)
+from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
@@ -612,6 +619,16 @@ def create_main_agent(settings: Settings, registry: ToolRegistry) -> Any:
     )
 
 
+def _tool_name(tool: dict[str, Any] | type | Callable[..., Any] | BaseTool) -> str | None:
+    if isinstance(tool, BaseTool):
+        return tool.name
+    if isinstance(tool, dict):
+        function = tool.get("function")
+        name = function.get("name") if isinstance(function, dict) else tool.get("name")
+        return name if isinstance(name, str) else None
+    return getattr(tool, "__name__", None)
+
+
 class _FakeChatModel(FakeListChatModel):
     """`FakeListChatModel` that tolerates `create_agent`'s unconditional `bind_tools` call.
 
@@ -627,9 +644,20 @@ class _FakeChatModel(FakeListChatModel):
     ttft_ms: int = 0
     tokens_per_second: int = 0
     output_tokens: int | None = None
+    bound_tool_names: tuple[str, ...] = ()
 
     def _shaped(self) -> bool:
         return bool(self.ttft_ms or self.tokens_per_second or self.output_tokens is not None)
+
+    def _note_to_remember(self, messages: list[BaseMessage]) -> str | None:
+        """The text of a `remember: ...` user turn when the memory tool is bound."""
+        if "remember" not in self.bound_tool_names or not messages:
+            return None
+        last = messages[-1]
+        if not isinstance(last, HumanMessage) or not isinstance(last.content, str):
+            return None
+        prefix = "remember:"
+        return last.content[len(prefix) :].strip() if last.content.startswith(prefix) else None
 
     def _words(self) -> list[str]:
         if self.output_tokens is None:
@@ -646,10 +674,35 @@ class _FakeChatModel(FakeListChatModel):
         time.sleep(delay)
         return " ".join(words)
 
-    async def _astream(self, *args: Any, **kwargs: Any) -> AsyncIterator[ChatGenerationChunk]:
+    async def _agenerate(
+        self, messages: list[BaseMessage], *args: Any, **kwargs: Any
+    ) -> ChatResult:
+        note = self._note_to_remember(messages) if self._shaped() else None
+        if note is None:
+            return await super()._agenerate(messages, *args, **kwargs)
+        await asyncio.sleep(self.ttft_ms / 1000)
+        call = {"name": "remember", "args": {"text": note}, "id": uuid.uuid4().hex}
+        return ChatResult(generations=[ChatGeneration(message=AIMessage("", tool_calls=[call]))])
+
+    async def _astream(
+        self, messages: list[BaseMessage], *args: Any, **kwargs: Any
+    ) -> AsyncIterator[ChatGenerationChunk]:
         if not self._shaped():
-            async for chunk in super()._astream(*args, **kwargs):
+            async for chunk in super()._astream(messages, *args, **kwargs):
                 yield chunk
+            return
+        note = self._note_to_remember(messages)
+        if note is not None:
+            # Load scenario (c): a mutating tool call, so the run pauses for approval.
+            await asyncio.sleep(self.ttft_ms / 1000)
+            call = {"name": "remember", "args": json.dumps({"text": note}), "id": uuid.uuid4().hex}
+            yield ChatGenerationChunk(
+                message=AIMessageChunk(
+                    content="",
+                    tool_call_chunks=[{**call, "index": 0}],
+                    chunk_position="last",
+                )
+            )
             return
         words = self._words()
         await asyncio.sleep(self.ttft_ms / 1000)
@@ -671,7 +724,8 @@ class _FakeChatModel(FakeListChatModel):
         tool_choice: str | None = None,
         **kwargs: Any,
     ) -> Runnable[LanguageModelInput, AIMessage]:
-        return self
+        names = tuple(name for tool in tools if isinstance(name := _tool_name(tool), str) and name)
+        return self.model_copy(update={"bound_tool_names": names})
 
 
 # NVIDIA's API catalog is OpenAI-compatible, so both providers share `ChatOpenAI` and the

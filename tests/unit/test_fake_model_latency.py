@@ -92,3 +92,27 @@ def test_latency_settings_are_refused_in_staging_and_production(
 def test_latency_settings_are_bounded(override: dict[str, int]) -> None:
     with pytest.raises(ValidationError):
         _fake(**override)
+
+
+async def test_remember_turn_calls_the_memory_tool_when_shaped_and_bound() -> None:
+    from langchain_core.messages import HumanMessage
+    from langchain_core.tools import tool
+
+    @tool
+    def remember(text: str) -> str:
+        """Remember a note."""
+        return text
+
+    model = create_chat_model(_fake(fake_model_output_tokens=5)).bind_tools([remember])
+    message = await model.ainvoke([HumanMessage("remember: buy milk")])
+    assert message.tool_calls[0]["name"] == "remember"
+    assert message.tool_calls[0]["args"] == {"text": "buy milk"}
+
+
+async def test_remember_turn_is_plain_text_without_the_tool_or_the_profile() -> None:
+    from langchain_core.messages import HumanMessage
+
+    shaped = create_chat_model(_fake(fake_model_output_tokens=3))  # tool not bound
+    assert not (await shaped.ainvoke([HumanMessage("remember: x")])).tool_calls
+    plain = create_chat_model(_fake())
+    assert not (await plain.ainvoke([HumanMessage("remember: x")])).tool_calls

@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token web-install web-dev web-format web-lint web-typecheck web-test web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -33,6 +33,12 @@ reference-digest:
 reference-token:
 	@sh scripts/reference_token.sh $(USER_NAME)
 
+# Load scenarios against the running reference stack (ADR 0012): LOAD_SCENARIO=mix|new_thread|
+# follow_up|approval, LOAD_STEP_SECONDS, LOAD_STEP_USERS. Steps are written to LOAD_RESULTS_FILE.
+load:
+	uv run python -m loadtest.provision
+	uv run python -m locust -f loadtest/locustfile.py --headless --only-summary
+
 # Development only: a local signing key and JWKS instead of an identity provider.
 dev-auth:
 	@uv run python scripts/dev_token.py setup
@@ -48,13 +54,13 @@ dev-keycloak:
 	@uv run python scripts/dev_keycloak.py
 
 format:
-	uv run python -m ruff format src tests scripts
+	uv run python -m ruff format src tests loadtest
 
 lint:
-	uv run python -m ruff check src tests scripts
+	uv run python -m ruff check src tests loadtest
 
 typecheck:
-	uv run python -m mypy src scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py scripts/validate_observability.py
+	uv run python -m mypy src loadtest scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py scripts/validate_observability.py
 
 test:
 	uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/evals
@@ -83,7 +89,7 @@ eval:
 AUDIT_IGNORES :=
 
 security:
-	uv run python -m bandit -q -r src scripts/dev_token.py scripts/smoke_test.py scripts/deploy_tools.py scripts/token_report.py scripts/validate_observability.py
+	uv run python -m bandit -q -r src loadtest scripts/dev_token.py scripts/smoke_test.py scripts/deploy_tools.py scripts/token_report.py scripts/validate_observability.py
 	@# Two steps, not a pipe: /bin/sh has no pipefail, so a failed export would audit nothing.
 	@reqs=$$(mktemp) \
 		&& uv export --frozen --format requirements-txt --no-emit-project --all-groups -q -o "$$reqs" \

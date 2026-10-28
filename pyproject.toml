@@ -63,6 +63,7 @@ dev = [
     "jsonschema>=4.26.0",
     "langgraph-api>=0.15.4",
     "langgraph-cli[inmem]>=0.4.33",
+    "locust>=2.47.0",
     "mypy>=1.19.0",
     "pip-audit>=2.9.0",
     "pytest>=9.0.0",
