@@ -1,0 +1,110 @@
+# Reference stack (ADR 0012 decision 3): the system under test for every v0.9.0 load,
+# security (DAST) and disaster-recovery number. Two API replicas share one Postgres, so rate
+# limits, the token budget and run leases cross instances, behind the local Keycloak.
+#
+#   NEURON_IMAGE=neuron:ref make reference-up      # image built from the release commit
+#   make reference-down
+#
+# It is not a deployment: no number measured here is hosted capacity. Every port binds to
+# loopback. The image is passed in, never built here, so the digest can be recorded.
+#
+# The production settings profile is used wherever validation allows it locally. Each
+# relaxation is listed here with its reason:
+#   - APP_ENV=development, not production. The fake model's latency settings (the load
+#     profile) are refused in staging/production by design, and production requires an
+#     HTTPS identity provider on a public host and Postgres with sslmode=verify-full, none
+#     of which exist on a laptop or CI host.
+#   - Postgres is reached over the compose network without TLS (ADR 0012 open question 5):
+#     sslmode=disable. The roles, grants and `setup` step are the production ones.
+#   - The JWKS is fetched over http from the Keycloak container; the issuer claim stays the
+#     host-visible http://localhost:8180 URL, as in the development stack.
+#   - No provider key is set, so the fake model with latency answers (load never targets the
+#     NVIDIA API, ADR 0012 decision 4). Live evals run separately (`neuron-eval`).
+#   - Throwaway credentials, local use only.
+x-api: &api
+  image: ${NEURON_IMAGE:?set NEURON_IMAGE to the image to test, for example neuron:ref}
+  pull_policy: never
+  restart: "no"
+  depends_on:
+    setup:
+      condition: service_completed_successfully
+    keycloak:
+      condition: service_healthy
+  environment: &api-env
+    APP_ENV: development
+    APP_AUTH_MODE: jwt
+    APP_AUTH_ISSUER: http://localhost:8180/realms/neuron
+    APP_AUTH_AUDIENCE: neuron-api
+    APP_AUTH_JWKS_URL: http://keycloak:8080/realms/neuron/protocol/openid-connect/certs
+    APP_AUTH_ALGORITHMS: '["RS256"]'
+    APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator"],"neuron-reader":["threads:read"]}'
+    APP_IDENTITY_HASH_KEY: reference-stack-identity-key-local-only-0001
+    APP_CHECKPOINTER: postgres
+    APP_LIMITS_BACKEND: postgres
+    APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@postgres:5432/neuron?sslmode=disable
+    APP_ALLOWED_HOSTS: '["localhost","127.0.0.1","api1","api2"]'
+    APP_TRUSTED_PROXIES: '[]'
+    APP_RATE_LIMIT_ENABLED: "true"
+    APP_FAKE_MODEL_TTFT_MS: ${FAKE_TTFT_MS:-800}
+    APP_FAKE_MODEL_TOKENS_PER_SECOND: ${FAKE_TOKENS_PER_SECOND:-40}
+    APP_FAKE_MODEL_OUTPUT_TOKENS: ${FAKE_OUTPUT_TOKENS:-200}
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: neuron_owner
+      POSTGRES_PASSWORD: owner-local-only
+      POSTGRES_DB: neuron
+    volumes:
+      - ./deploy/reference/init-roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuron_owner -d neuron"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin-local-only
+      KC_HOSTNAME: http://localhost:8180
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./deploy/keycloak/neuron-realm.json:/opt/keycloak/data/import/neuron-realm.json:ro
+    ports:
+      - "127.0.0.1:8180:8080"
+    healthcheck:
+      # The image has no curl; a bare TCP request to the realm endpoint is enough.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/neuron HTTP/1.0\\r\\nHost: localhost:8180\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q '200'"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  # The pre-deploy step: schema, migrations and the app role's grants, as the migrator.
+  setup:
+    image: ${NEURON_IMAGE:?set NEURON_IMAGE to the image to test, for example neuron:ref}
+    pull_policy: never
+    restart: "no"
+    command: ["python", "-m", "neuron_agent.persistence.cli", "setup"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *api-env
+      APP_POSTGRES_MIGRATION_DSN: postgresql://neuron_migrator:migrator-local-only@postgres:5432/neuron?sslmode=disable
+
+  api1:
+    <<: *api
+    ports:
+      - "127.0.0.1:8101:8000"
+
+  api2:
+    <<: *api
+    ports:
+      - "127.0.0.1:8102:8000"

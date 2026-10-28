@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak web-install web-dev web-format web-lint web-typecheck web-test web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token web-install web-dev web-format web-lint web-typecheck web-test web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -17,6 +17,21 @@ db-setup:
 
 prune-threads:
 	uv run python -m neuron_agent.persistence.cli prune
+
+# The v0.9.0 reference stack (ADR 0012): two API replicas, Postgres and Keycloak, from an
+# image passed in. `NEURON_IMAGE=neuron:ref make reference-up`; local use only.
+reference-up:
+	docker compose -f docker-compose.reference.yml up -d --wait
+
+reference-down:
+	docker compose -f docker-compose.reference.yml down -v
+
+reference-digest:
+	@sh scripts/reference_digest.sh
+
+# Prints an access token for a reference-stack user (default alice) for the smoke test.
+reference-token:
+	@sh scripts/reference_token.sh $(USER_NAME)
 
 # Development only: a local signing key and JWKS instead of an identity provider.
 dev-auth:
