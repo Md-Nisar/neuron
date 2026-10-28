@@ -16,6 +16,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from locust import LoadTestShape
+from locust.stats import StatsError
 
 from loadtest.slo import breaches, summarise_step
 
@@ -40,8 +41,12 @@ class StepShape(LoadTestShape):
             return users, users
         summary = summarise_step(self.runner.stats, users, time.monotonic() - self._step_started)
         found = breaches(summary)
+        errors: dict[str, int] = {}
+        for error in self.runner.stats.errors.values():
+            label = f"{error.name}: {StatsError.parse_error(error.error)}"
+            errors[label] = errors.get(label, 0) + error.occurrences
         with RESULTS.open("a", encoding="utf-8") as out:
-            out.write(json.dumps({**asdict(summary), "breaches": found}) + "\n")
+            out.write(json.dumps({**asdict(summary), "breaches": found, "errors": errors}) + "\n")
         if found and self._broken_at is None:
             self._broken_at = self._step
         self._step += 1

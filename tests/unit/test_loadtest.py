@@ -120,3 +120,66 @@ def test_step_summary_counts_runs_and_ignores_rejections() -> None:
     step = summarise_step(stats, 10, 60.0)
     assert (step.runs, step.failures, step.ttft_p90_ms, step.run_p95_ms) == (90, 2, 900.0, 6500.0)
     assert step.runs_per_second == 1.5
+
+
+def _step(users: int, runs: int, breaches: list[str] | None = None) -> dict[str, object]:
+    return {
+        "users": users,
+        "seconds": 100.0,
+        "runs": runs,
+        "failures": 0,
+        "ttft_p90_ms": 1200.0,
+        "run_p95_ms": 6500.0,
+        "breaches": breaches or [],
+        "errors": {"run:mix: http_503": 4} if breaches else {},
+    }
+
+
+def test_baseline_takes_the_best_step_inside_the_slos_and_the_next_failure() -> None:
+    from loadtest.baseline import scenario_result
+
+    result = scenario_result(
+        [_step(10, 500), _step(20, 900), _step(30, 950, ["availability"]), _step(40, 600, ["ttft"])]
+    )
+    assert result["sustained_runs_per_second"] == 9.0
+    assert result["knee_users"] == 20
+    assert result["first_breach"] == {
+        "users": 30,
+        "breaches": ["availability"],
+        "errors": {"run:mix: http_503": 4},
+    }
+
+
+def test_baseline_with_no_breach_reports_no_knee_reached() -> None:
+    from loadtest.baseline import scenario_result
+
+    result = scenario_result([_step(10, 500), _step(20, 900)])
+    assert result["slo_broken"] is False
+    assert result["first_breach"] is None
+
+
+def _document(rate: float, host: str = "h", profile: str = "p") -> dict[str, object]:
+    return {
+        "host": host,
+        "fake_model_profile": profile,
+        "scenarios": {"mix": {"sustained_runs_per_second": rate}},
+    }
+
+
+def test_compare_reports_a_drop_of_more_than_ten_percent_only() -> None:
+    from loadtest.baseline import compare
+
+    assert compare(_document(10.0), _document(9.1)) == []
+    assert compare(_document(10.0), _document(11.0)) == []
+    (line,) = compare(_document(10.0), _document(8.9))
+    assert line.startswith("mix: 10.0 -> 8.9")
+
+
+def test_compare_refuses_a_different_host_or_profile() -> None:
+    import pytest
+    from loadtest.baseline import compare
+
+    with pytest.raises(ValueError, match="host differs"):
+        compare(_document(10.0), _document(10.0, host="other"))
+    with pytest.raises(ValueError, match="fake_model_profile differs"):
+        compare(_document(10.0), _document(10.0, profile="other"))
