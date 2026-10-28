@@ -81,8 +81,11 @@ async def test_memory_survives_across_processes_and_users_stay_apart(
             persistence = build_persistence(settings)
             await persistence.open()
             try:
-                memory = MemoryStore(persistence.store, max_items=5, max_chars=100)
-                await memory.remember(os.environ["MEMORY_TEST_OWNER"], "written by another process")
+                memory = MemoryStore(
+                    persistence.store, id_key=b"k" * 32, max_items=5, max_chars=100
+                )
+                owner = os.environ["MEMORY_TEST_OWNER"]
+                await memory.remember(owner, "written by another process")
             finally:
                 await persistence.close()
 
@@ -98,7 +101,7 @@ async def test_memory_survives_across_processes_and_users_stay_apart(
     await persistence.open()
     try:
         assert persistence.store is not None
-        memory = MemoryStore(persistence.store, max_items=5, max_chars=100)
+        memory = MemoryStore(persistence.store, id_key=b"k" * 32, max_items=5, max_chars=100)
         assert [m.text for m in await memory.list(_ALICE)] == ["written by another process"]
         assert await memory.list(_BOB) == []
         # Idempotent across processes too: the same words are the same row.

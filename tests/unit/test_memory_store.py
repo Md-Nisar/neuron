@@ -16,6 +16,7 @@ pytestmark = pytest.mark.anyio
 
 _ALICE = "a" * 64
 _BOB = "b" * 64
+_KEY = b"k" * 32
 
 
 class _Clock:
@@ -32,7 +33,12 @@ def _memory(
     clock, store = _Clock(), InMemoryStore()
     return (
         MemoryStore(
-            store, max_items=max_items, max_chars=max_chars, ttl_days=ttl_days, clock=clock
+            store,
+            id_key=_KEY,
+            max_items=max_items,
+            max_chars=max_chars,
+            ttl_days=ttl_days,
+            clock=clock,
         ),
         store,
         clock,
@@ -148,3 +154,73 @@ async def test_purge_does_nothing_without_a_ttl() -> None:
     clock.now += timedelta(days=3650)
     assert await memory.purge_expired() == 0
     assert len(await store.asearch(("memories", _ALICE))) == 1
+
+
+async def test_an_id_is_keyed_and_per_owner_not_a_hash_of_the_words() -> None:
+    import hashlib
+
+    memory, store, _ = _memory()
+    mine = await memory.remember(_ALICE, "I am vegetarian")
+    theirs = await memory.remember(_BOB, "I am vegetarian")
+
+    assert mine.id != theirs.id  # not comparable between users
+    assert mine.id != hashlib.sha256(b"i am vegetarian").hexdigest()[:32]  # no dictionary check
+    other_key = MemoryStore(store, id_key=b"x" * 32, max_items=5, max_chars=100)
+    assert other_key.memory_id(_ALICE, "I am vegetarian") != mine.id
+    assert memory.memory_id(_ALICE, "  i AM   vegetarian ") == mine.id  # stable for a repeat
+
+
+async def test_operations_leave_a_span_and_a_count_with_no_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from neuron_agent.observability import metrics, telemetry
+
+    exporter, reader = InMemorySpanExporter(), InMemoryMetricReader()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    meter_provider = MeterProvider(metric_readers=[reader], views=metrics.metric_views())
+    monkeypatch.setattr(telemetry, "tracer", lambda: tracer_provider.get_tracer("t"))
+    monkeypatch.setattr(metrics, "_meter", lambda: meter_provider.get_meter("t"))
+
+    memory, _, _ = _memory(max_items=1)
+    saved = await memory.remember(_ALICE, "private words")
+    await memory.list(_ALICE)
+    with pytest.raises(MemoryFullError):
+        await memory.remember(_ALICE, "more private words")
+    await memory.forget(_ALICE, saved.id)
+    await memory.erase(_ALICE)
+
+    spans = exporter.get_finished_spans()
+    assert [s.name for s in spans] == [
+        "neuron.memory.remember",
+        "neuron.memory.list",
+        "neuron.memory.remember",
+        "neuron.memory.forget",
+        "neuron.memory.erase",
+    ]
+    assert [dict(s.attributes or {})["neuron.outcome"] for s in spans] == [
+        "success",
+        "success",
+        "error",
+        "success",
+        "success",
+    ]
+    assert "private" not in str([dict(s.attributes or {}) for s in spans])
+    data = reader.get_metrics_data()
+    assert data is not None
+    points = [
+        p
+        for r in data.resource_metrics
+        for s in r.scope_metrics
+        for m in s.metrics
+        if m.name == "neuron.memory.operations"
+        for p in m.data.data_points
+    ]
+    assert sum(p.value for p in points) == 5
+    assert "private" not in str([dict(p.attributes) for p in points])

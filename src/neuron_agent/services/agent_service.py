@@ -41,7 +41,7 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
-from neuron_agent.memory.store import Memory, MemoryStore
+from neuron_agent.memory.store import Memory, MemoryStore, memory_id_key
 from neuron_agent.memory.tools import memory_specs
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
@@ -160,6 +160,7 @@ class AgentService:
             return
         self._memory = MemoryStore(
             store,
+            id_key=memory_id_key(self._settings),
             max_items=self._settings.memory_max_items,
             max_chars=self._settings.memory_max_chars,
             ttl_days=self._settings.memory_ttl_days,
@@ -367,6 +368,7 @@ class AgentService:
             approval_id=interrupt.id, actions=actions, allowed_decisions=["approve", "reject"]
         )
         known = self._tools().names()
+        self._record_approval("requested", len(actions))
         logger.info(
             "approval_requested",
             request_id=run.request_id,
@@ -388,6 +390,18 @@ class AgentService:
         return ApprovalRequiredResponse(
             request_id=run.request_id, thread_id=run.thread_id, approval=approval
         )
+
+    @staticmethod
+    def _record_approval(decision: str, actions: int) -> None:
+        """One span and one count for an approval request or decision: no arguments, no IDs."""
+        with telemetry.start_span(
+            semconv.APPROVAL_SPAN,
+            attributes={
+                semconv.NEURON_APPROVAL_DECISION: decision,
+                semconv.NEURON_APPROVAL_ACTIONS: actions,
+            },
+        ):
+            metrics.record_approval(decision)
 
     async def decide_approval(
         self,
@@ -445,6 +459,7 @@ class AgentService:
             await lease.release()
             raise
         actions = len(pending.value["action_requests"])
+        self._record_approval(decision, actions)
         audit(
             "approval_decided",
             outcome="allowed",
