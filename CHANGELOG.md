@@ -5,7 +5,7 @@
 "Production Candidate" (ADR 0012, `docs/releases/v0.9.0-release-verification.md`). Everything was measured on a local reference stack (two API replicas, Postgres, Keycloak, a fake model with latency) and the NVIDIA development model; **no hosted deployment, real browser or production model was used**. The release freeze starts at the tag (`CONTRIBUTING.md`).
 
 Known issues:
-- The live `compare` against the committed baseline is a `regression` and inconclusive: on `nemotron-3-ultra-550b-a55b` three tool-selection cases fail 3/3 (the model answers without calling the tool) and 57 trials ended in infrastructure errors (rate limits). It needs the owner's sign-off.
+- The live `compare` of `nemotron-3-ultra-550b-a55b` against the committed super-120b baseline is a `regression` and inconclusive: three tool-selection cases fail 3/3 (the model answers without calling the tool) and 57 trials ended in infrastructure errors (rate limits). The owner kept super-120b as the baseline; the ultra report is evidence only, so the nightly applies only the security gate.
 - Load numbers are for one 4-CPU host that also ran the load generator, with 90-second steps instead of 10-minute ones and the per-user token budget raised. They are not hosted capacity.
 - The first failure under load is `503 too_many_streams` at 210 virtual users (`APP_MAX_CONCURRENT_STREAMS=100` per replica).
 - The fake-model profile (800 ms to first token) is much faster than the NVIDIA runs (p50 about 6.4 s).
@@ -20,7 +20,7 @@ Changes:
 - DAST (#331). A manual `dast.yml` workflow and `scripts/dast_scan.sh` run ZAP's API scan (image pinned by digest); `scripts/dast_gate.py` fails on medium or higher findings that `deploy/reference/zap-rules.tsv` does not excuse.
 - Restore drill (#332) and rollback rehearsal (#333). `scripts/dr_drill.py` and `scripts/rollback_rehearsal.sh`; results in `docs/releases/v0.9.0-gate/`.
 - Freeze policy and `vX.Y.Z-rc.N` tags (#334). `check-release` accepts them, `deploy.yml` skips production for them and publishes a pre-release.
-- Live evals (#335). A `--trials 3` baseline for `nemotron-3-ultra-550b-a55b`. The nightly `compare` had failed because the report schema lacked the `approval` suite; fixed, with a test.
+- Live evals (#335). A `--trials 3` report for `nemotron-3-ultra-550b-a55b` (evidence only; the committed baseline stays super-120b). The nightly `compare` had failed because the report schema lacked the `approval` suite; fixed, with a test.
 
 ## 0.8.0
 
