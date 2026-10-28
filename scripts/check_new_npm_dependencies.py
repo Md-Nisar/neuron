@@ -1,17 +1,26 @@
 # Copyright 2026 Md Nisar Ahmed
 # SPDX-License-Identifier: Apache-2.0
 
-"""Verify npm packages a pull request adds to `web/package.json` (AI code verification gate).
+"""Verify npm packages a pull request adds to `web/` (AI code verification gate).
 
-The npm twin of `check_new_dependencies.py`: for every package newly named in `dependencies`,
-`devDependencies`, `optionalDependencies` or `peerDependencies`, confirm on the npm registry
-that it exists and that its first publication is at least MIN_AGE_DAYS old ("slopsquatting").
+The npm twin of `check_new_dependencies.py`. Two checks:
+
+1. Age ("slopsquatting"): every package newly named in the manifest's dependency sections, and,
+   when lockfiles are given, every package name new in the head lockfile (direct or transitive,
+   since the lockfile is what `npm ci` installs), must exist on the npm registry and have been
+   first published at least MIN_AGE_DAYS ago.
+2. Lockfile integrity (offline, on every head entry): `resolved` must be exactly
+   `https://registry.npmjs.org/<name>/-/<basename>-<version>.tgz` for the package the entry's
+   path names, and `integrity` must be a SHA-2 hash. A lockfile edited to fetch a different
+   package, version or host under a familiar name fails here.
+
 A package that passes still needs a reviewer to confirm it is the intended project.
 
 Usage: python scripts/check_new_npm_dependencies.py <base-package.json> <head-package.json>
+           [<base-package-lock.json> <head-package-lock.json>]
 
-A base file that does not exist counts as an empty manifest (the PR that creates `web/`).
-Exit codes: 0 no new packages or all checks passed, 1 a check failed, 2 registry unreachable.
+A base file that does not exist counts as empty (the PR that creates `web/`).
+Exit codes: 0 all checks passed, 1 a check failed, 2 registry unreachable.
 Set ALLOW_YOUNG_PACKAGES=true (the `new-dependency-approved` PR label) to accept young packages.
 """
 
@@ -24,6 +33,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,6 +43,9 @@ MIN_AGE_DAYS = 90
 REGISTRY_URL = "https://registry.npmjs.org/{name}"
 _NAME = re.compile(r"^(@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*$")
 _SECTIONS = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
+_TARBALL = "https://registry.npmjs.org/{name}/-/{base}-{version}.tgz"
+_INTEGRITY = re.compile(r"^sha(256|384|512)-[A-Za-z0-9+/]+={0,2}$")
+_FETCH_WORKERS = 8
 
 
 def declared_packages(manifest: dict[str, Any]) -> set[str]:
@@ -43,6 +56,40 @@ def declared_packages(manifest: dict[str, Any]) -> set[str]:
         if isinstance(entries, dict):
             names.update(name for name in entries if isinstance(name, str))
     return names
+
+
+def _entry_name(path: str, entry: dict[str, Any]) -> str:
+    """The registry package an entry installs: its `name` (aliases) or its path's last segment."""
+    declared = entry.get("name")
+    if isinstance(declared, str):
+        return declared
+    return path.rsplit("node_modules/", 1)[-1]
+
+
+def lockfile_names(lock: dict[str, Any]) -> set[str]:
+    """Registry names of every package the lockfile installs (the root project excluded)."""
+    packages = lock.get("packages", {})
+    return {
+        _entry_name(path, entry)
+        for path, entry in packages.items()
+        if path and isinstance(entry, dict) and "resolved" in entry
+    }
+
+
+def lockfile_violations(lock: dict[str, Any]) -> list[str]:
+    """Entries whose tarball URL or integrity hash does not match the package they name."""
+    problems: list[str] = []
+    for path, entry in lock.get("packages", {}).items():
+        if not path or not isinstance(entry, dict) or entry.get("link"):
+            continue
+        name, version = _entry_name(path, entry), entry.get("version")
+        expected = _TARBALL.format(name=name, base=name.split("/")[-1], version=version)
+        if not _NAME.fullmatch(name) or entry.get("resolved") != expected:
+            problems.append(f"{path}: resolved is not {expected}")
+        integrity = entry.get("integrity")
+        if not isinstance(integrity, str) or not _INTEGRITY.fullmatch(integrity):
+            problems.append(f"{path}: integrity is missing or not a SHA-2 hash")
+    return problems
 
 
 @dataclass(frozen=True)
@@ -91,28 +138,52 @@ def _load(path: str) -> dict[str, Any]:
     return loaded
 
 
+def _check_age(names: list[str], allow_young: bool) -> int:
+    """Judge each name against the registry; 0 all passed, 1 some failed, 2 unreachable."""
+    now = datetime.now(UTC)
+
+    def check(name: str) -> Verdict | Exception:
+        try:
+            return judge(name, fetch_metadata(name), now, allow_young)
+        except (urllib.error.URLError, TimeoutError) as error:
+            return error
+
+    with ThreadPoolExecutor(max_workers=_FETCH_WORKERS) as pool:
+        results = list(pool.map(check, names))
+    failed = False
+    for name, result in zip(names, results, strict=True):
+        if isinstance(result, Exception):
+            print(f"::error::Could not reach the npm registry to check {name}: {result}")
+            return 2
+        level = "notice" if result.ok else "error"
+        print(f"::{level}::New npm dependency {result.name}: {result.message}")
+        failed = failed or not result.ok
+    return 1 if failed else 0
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
+    if len(argv) not in (3, 5):
         print(__doc__, file=sys.stderr)
         return 2
-    added = sorted(declared_packages(_load(argv[2])) - declared_packages(_load(argv[1])))
+    base_names = declared_packages(_load(argv[1]))
+    head_names = declared_packages(_load(argv[2]))
+    added = head_names - base_names
+    if len(argv) == 5:
+        head_lock = _load(argv[4])
+        problems = lockfile_violations(head_lock)
+        for problem in problems:
+            print(f"::error::Lockfile entry {problem}")
+        if problems:
+            return 1
+        added |= lockfile_names(head_lock) - lockfile_names(_load(argv[3]))
     if not added:
         print("No new npm dependencies.")
         return 0
     allow_young = os.environ.get("ALLOW_YOUNG_PACKAGES", "").lower() == "true"
-    now = datetime.now(UTC)
-    failed = False
-    for name in added:
-        try:
-            verdict = judge(name, fetch_metadata(name), now, allow_young)
-        except (urllib.error.URLError, TimeoutError) as error:
-            print(f"::error::Could not reach the npm registry to check {name}: {error}")
-            return 2
-        level = "notice" if verdict.ok else "error"
-        print(f"::{level}::New npm dependency {verdict.name}: {verdict.message}")
-        failed = failed or not verdict.ok
-    print("A reviewer must confirm each new dependency is the intended, reputable project.")
-    return 1 if failed else 0
+    status = _check_age(sorted(added), allow_young)
+    if status != 2:
+        print("A reviewer must confirm each new dependency is the intended, reputable project.")
+    return status
 
 
 if __name__ == "__main__":

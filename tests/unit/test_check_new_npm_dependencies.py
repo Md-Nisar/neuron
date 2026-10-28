@@ -77,3 +77,87 @@ def test_no_added_packages_passes_without_network(tmp_path: Path) -> None:
     manifest.write_text(json.dumps({"dependencies": {"react": "19.3.1"}}), encoding="utf-8")
 
     assert check.main(["check", str(manifest), str(manifest)]) == 0
+
+
+# --- lockfile integrity and transitive packages ---------------------------------------------
+
+_INTEGRITY = "sha512-" + "A" * 86 + "=="
+
+
+def _lock(**entries: dict[str, Any]) -> dict[str, Any]:
+    return {"lockfileVersion": 3, "packages": {"": {"name": "neuron-web"}, **entries}}
+
+
+def _entry(package: str, version: str = "1.2.3", **overrides: Any) -> dict[str, Any]:
+    base = package.split("/")[-1]
+    return {
+        "version": version,
+        "resolved": f"https://registry.npmjs.org/{package}/-/{base}-{version}.tgz",
+        "integrity": _INTEGRITY,
+        **overrides,
+    }
+
+
+def test_a_faithful_lockfile_has_no_violations() -> None:
+    lock = _lock(
+        **{
+            "node_modules/react": _entry("react"),
+            "node_modules/@types/react": _entry("@types/react"),
+            "node_modules/a/node_modules/react": _entry("react", "18.0.0"),
+        }
+    )
+
+    assert check.lockfile_violations(lock) == []
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        _entry("react", resolved="https://registry.npmjs.org/reakt/-/reakt-1.2.3.tgz"),
+        _entry("react", resolved="https://registry.npmjs.org/react/-/react-9.9.9.tgz"),
+        _entry("react", resolved="http://registry.npmjs.org/react/-/react-1.2.3.tgz"),
+        _entry("react", resolved="https://evil.example/react/-/react-1.2.3.tgz"),
+        _entry("react", resolved="https://registry.npmjs.org/react/-/react-1.2.3.tgz?x=1"),
+        _entry("react", resolved="git+https://github.com/someone/react.git#abc"),
+        _entry("react", integrity="sha1-AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+        {k: v for k, v in _entry("react").items() if k != "integrity"},
+        {k: v for k, v in _entry("react").items() if k != "resolved"},
+    ],
+)
+def test_tampered_lockfile_entries_are_reported(entry: dict[str, Any]) -> None:
+    assert check.lockfile_violations(_lock(**{"node_modules/react": entry}))
+
+
+def test_an_entry_whose_path_names_one_package_but_fetches_another_is_reported() -> None:
+    lock = _lock(**{"node_modules/react": _entry("preact")})
+
+    assert check.lockfile_violations(lock)
+
+
+def test_an_aliased_package_is_judged_by_its_real_name() -> None:
+    aliased = _entry("real-package", name="real-package")
+
+    assert check.lockfile_violations(_lock(**{"node_modules/alias": aliased})) == []
+    assert check.lockfile_names(_lock(**{"node_modules/alias": aliased})) == {"real-package"}
+
+
+def test_transitive_names_new_in_the_head_lockfile_are_the_ones_checked() -> None:
+    base = _lock(**{"node_modules/react": _entry("react")})
+    head = _lock(
+        **{
+            "node_modules/react": _entry("react", "1.2.4"),
+            "node_modules/left-pad": _entry("left-pad"),
+            "node_modules/x/node_modules/left-pad": _entry("left-pad", "0.1.0"),
+        }
+    )
+
+    assert check.lockfile_names(head) - check.lockfile_names(base) == {"left-pad"}
+
+
+def test_main_fails_on_a_tampered_lockfile_before_any_network_call(tmp_path: Path) -> None:
+    manifest = tmp_path / "package.json"
+    manifest.write_text("{}", encoding="utf-8")
+    bad = tmp_path / "lock.json"
+    bad.write_text(json.dumps(_lock(**{"node_modules/react": _entry("preact")})), encoding="utf-8")
+
+    assert check.main(["check", str(manifest), str(manifest), str(manifest), str(bad)]) == 1

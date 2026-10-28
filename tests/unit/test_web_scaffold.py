@@ -47,12 +47,13 @@ def test_lockfile_is_committed_and_installs_run_no_scripts() -> None:
     assert "save-exact=true" in npmrc
 
 
-def test_lockfile_resolves_only_from_the_npm_registry() -> None:
-    lock = json.loads((WEB / "package-lock.json").read_text(encoding="utf-8"))
-    resolved = [p["resolved"] for p in lock["packages"].values() if "resolved" in p]
+def test_lockfile_entries_match_the_packages_they_name() -> None:
+    from scripts import check_new_npm_dependencies as gate
 
-    assert resolved
-    assert all(url.startswith("https://registry.npmjs.org/") for url in resolved)
+    lock = json.loads((WEB / "package-lock.json").read_text(encoding="utf-8"))
+
+    assert len(gate.lockfile_names(lock)) > 100
+    assert gate.lockfile_violations(lock) == []
 
 
 def test_typescript_is_strict_and_raw_html_is_banned_by_lint() -> None:
@@ -99,6 +100,7 @@ def test_new_npm_packages_face_the_age_check_and_the_lockfile_is_not_counted_as_
     text = (ROOT / ".github/workflows/ai-code-verification.yml").read_text(encoding="utf-8")
 
     assert "scripts/check_new_npm_dependencies.py" in text
+    assert "web/package-lock.json" in text.split("check_new_npm_dependencies.py")[1]
     assert "':(exclude)web/package-lock.json'" in text
 
 

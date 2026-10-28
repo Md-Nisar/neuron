@@ -55,14 +55,17 @@ jobs:
         run: |
           git show "origin/${BASE_REF}:pyproject.toml" > "$RUNNER_TEMP/base-pyproject.toml"
           python scripts/check_new_dependencies.py "$RUNNER_TEMP/base-pyproject.toml" pyproject.toml
-      - name: Check npm packages added to web/package.json
+      - name: Check npm packages added to web/ (manifest and lockfile)
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           ALLOW_YOUNG_PACKAGES: ${{ contains(github.event.pull_request.labels.*.name, 'new-dependency-approved') }}
         run: |
           # The base may not have web/ yet (the PR that creates it): an empty manifest then.
           git show "origin/${BASE_REF}:web/package.json" > "$RUNNER_TEMP/base-package.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/base-package.json"
-          python scripts/check_new_npm_dependencies.py "$RUNNER_TEMP/base-package.json" web/package.json
+          git show "origin/${BASE_REF}:web/package-lock.json" > "$RUNNER_TEMP/base-lock.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/base-lock.json"
+          python scripts/check_new_npm_dependencies.py \
+            "$RUNNER_TEMP/base-package.json" web/package.json \
+            "$RUNNER_TEMP/base-lock.json" web/package-lock.json
 
   pr-hygiene:
     # Small batches and an honest PR description keep human review meaningful.
