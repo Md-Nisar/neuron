@@ -8,7 +8,7 @@ Known issues:
 - The live `compare` of `nemotron-3-ultra-550b-a55b` against the committed super-120b baseline is a `regression` and inconclusive: three tool-selection cases fail 3/3 (the model answers without calling the tool) and 57 trials ended in infrastructure errors (rate limits). The owner kept super-120b as the baseline; the ultra report is evidence only, so the nightly applies only the security gate.
 - Load numbers are for one 4-CPU host that also ran the load generator, with 90-second steps instead of 10-minute ones and the per-user token budget raised. They are not hosted capacity.
 - The first failure under load is `503 too_many_streams` at 210 virtual users (`APP_MAX_CONCURRENT_STREAMS=100` per replica).
-- The fake-model profile (800 ms to first token) is much faster than the NVIDIA runs (p50 about 6.4 s).
+- The ADR's fake-model profile (800 ms to first token) is faster than the NVIDIA model. The baseline was repeated with real-model latency (2 s to first token, 10 tokens/s): 15.6 to 21.6 runs/s inside the SLOs, and the same first failure (`too_many_streams` at 210 users). The real model itself was not load tested: the free NVIDIA key allows 40 requests per minute, so results with it may differ.
 - The gates #160, #253 and #293 stay deferred until after v1.0.0; no hosted deployment has run.
 
 Changes:
