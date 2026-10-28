@@ -41,9 +41,7 @@ def test_staging_follows_a_successful_main_build_and_production_follows_a_tag() 
     assert "head_branch == 'main'" in staging["if"]
     assert staging["environment"] == "staging"
     production = _JOBS["production"]
-    assert (
-        production["if"] == "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')"
-    )
+    assert "startsWith(github.ref, 'refs/tags/v')" in production["if"]
     assert production["environment"] == "production"
 
 
@@ -112,6 +110,18 @@ def test_a_failing_gate_leaves_production_untouched_and_the_release_waits_for_it
     assert "startsWith(github.ref, 'refs/tags/v')" in _JOBS["release"]["if"]
     publish = _steps("release")[-1]["run"]
     assert publish.index("--draft ") < publish.index("--draft=false")
+
+
+def test_a_pre_release_tag_skips_production_and_is_published_as_a_pre_release() -> None:
+    assert "!contains(github.ref_name, '-')" in _JOBS["production"]["if"]
+    condition = _JOBS["release"]["if"]
+    assert "always()" in condition
+    assert "needs.production.result == 'success'" in condition
+    assert "needs.production.result == 'skipped'" in condition
+    assert "contains(github.ref_name, '-')" in condition
+    steps = _steps("release")
+    assert any("check-release" in step.get("run", "") for step in steps)
+    assert "--prerelease" in steps[-1]["run"]
 
 
 def test_the_smoke_test_runs_after_each_deploy_and_the_rescan_never_blocks() -> None:

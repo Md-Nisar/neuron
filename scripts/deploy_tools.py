@@ -5,7 +5,7 @@
 
 The workflow (`.github/workflows/deploy.yml`) calls three subcommands:
 
-    check-release  --tag v1.2.3            the tag matches pyproject.toml and CHANGELOG.md
+    check-release  --tag v1.2.3[-rc.N]      the tag matches pyproject.toml and CHANGELOG.md
     check-image    --image REF             REF is `ghcr.io/md-nisar/neuron@sha256:<64 hex>`
     trigger        --image REF --services a,b
                                            POST each service's deploy hook with that image
@@ -39,7 +39,7 @@ except ImportError:  # imported as `scripts.deploy_tools`, as the tests do
 
 HOOKS_ENV = "DEPLOY_HOOKS"
 IMAGE_PATTERN = re.compile(r"^ghcr\.io/md-nisar/neuron@sha256:[0-9a-f]{64}$")
-TAG_PATTERN = re.compile(r"^v(\d+\.\d+\.\d+)$")
+TAG_PATTERN = re.compile(r"^v(\d+\.\d+\.\d+)(-rc\.[1-9]\d*)?$")
 _HOOK_HOST = "api.render.com"
 _ROOT = Path(__file__).resolve().parents[1]
 
@@ -55,10 +55,14 @@ def check_image(image: str) -> None:
 
 
 def check_release(tag: str, pyproject_text: str, changelog_text: str) -> str:
-    """Return the version when `tag` is `vX.Y.Z`, equals `pyproject.toml` and has a section."""
+    """Return the version when `tag` is `vX.Y.Z` or `vX.Y.Z-rc.N` and its base version matches.
+
+    A pre-release tag is checked against the base version's `pyproject.toml` version and
+    CHANGELOG section (ADR 0012 decision 12).
+    """
     match = TAG_PATTERN.fullmatch(tag)
     if match is None:
-        raise DeployError("tag must look like v1.2.3")
+        raise DeployError("tag must look like v1.2.3 or v1.2.3-rc.1")
     version = match.group(1)
     declared = tomllib.loads(pyproject_text)["project"]["version"]
     if declared != version:

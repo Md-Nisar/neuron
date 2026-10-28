@@ -116,8 +116,9 @@ jobs:
           SMOKE_TEST_URL: ${{ vars.SMOKE_TEST_URL }}
         run: python3 scripts/smoke_test.py "$SMOKE_TEST_URL"
 
+  # A pre-release tag (`vX.Y.Z-rc.N`, ADR 0012 decision 12) never deploys to production.
   production:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
@@ -226,9 +227,13 @@ jobs:
         run: python3 scripts/smoke_test.py "$SMOKE_TEST_URL"
 
   # The release is published only after production deployed and passed its smoke test.
+  # A pre-release tag skips production and is published as a GitHub pre-release.
   release:
     needs: production
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      ${{ always() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      && (needs.production.result == 'success'
+      || (contains(github.ref_name, '-') && needs.production.result == 'skipped')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -241,8 +246,14 @@ jobs:
         with:
           persist-credentials: false
       # Draft first, then published, so the release is immutable once visible (decision 6, step 7).
+      - name: The tag matches pyproject.toml and CHANGELOG.md
+        run: python3 scripts/deploy_tools.py check-release --tag "$TAG"
       - name: Publish the GitHub Release from the CHANGELOG section
         run: |
-          python3 scripts/changelog_section.py "${TAG#v}" > release-notes.md
-          gh release create "$TAG" --draft --verify-tag --title "$TAG" --notes-file release-notes.md
+          base="${TAG#v}"
+          base="${base%%-*}"
+          python3 scripts/changelog_section.py "$base" > release-notes.md
+          flag=""
+          case "$TAG" in *-*) flag="--prerelease" ;; esac
+          gh release create "$TAG" --draft --verify-tag --title "$TAG" --notes-file release-notes.md $flag
           gh release edit "$TAG" --draft=false

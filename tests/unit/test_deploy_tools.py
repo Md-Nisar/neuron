@@ -45,11 +45,26 @@ def test_a_matching_tag_with_a_changelog_section_passes() -> None:
     assert deploy_tools.check_release("v1.2.3", PYPROJECT, CHANGELOG) == "1.2.3"
 
 
+@pytest.mark.parametrize("tag", ["v1.2.3-rc.1", "v1.2.3-rc.12"])
+def test_a_release_candidate_tag_is_checked_against_its_base_version(tag: str) -> None:
+    assert deploy_tools.check_release(tag, PYPROJECT, CHANGELOG) == "1.2.3"
+
+
+def test_a_release_candidate_of_another_version_or_without_a_section_is_refused() -> None:
+    with pytest.raises(deploy_tools.DeployError, match="differs"):
+        deploy_tools.check_release("v1.2.4-rc.1", PYPROJECT, CHANGELOG.replace("1.2.3", "1.2.4"))
+    with pytest.raises(deploy_tools.DeployError, match="no section"):
+        deploy_tools.check_release("v1.2.3-rc.1", PYPROJECT, "## 1.2.2\n\n")
+
+
 @pytest.mark.parametrize(
     ("tag", "pyproject", "changelog", "message"),
     [
         ("1.2.3", PYPROJECT, CHANGELOG, "v1.2.3"),
         ("v1.2", PYPROJECT, CHANGELOG, "v1.2.3"),
+        ("v1.2.3-rc.0", PYPROJECT, CHANGELOG, "v1.2.3"),
+        ("v1.2.3-beta.1", PYPROJECT, CHANGELOG, "v1.2.3"),
+        ("v1.2.3-rc", PYPROJECT, CHANGELOG, "v1.2.3"),
         ("v1.2.4", PYPROJECT, CHANGELOG.replace("1.2.3", "1.2.4"), "differs"),
         ("v1.2.3", PYPROJECT, "# Changelog\n\n## Unreleased\n\n- next\n", "no section"),
         ("v1.2.3", PYPROJECT, "## 1.2.3\n\n", "no section"),
