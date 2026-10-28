@@ -141,6 +141,29 @@ class ExportedThread(BaseModel):
     messages: list[ThreadMessage]
 
 
+class MemoryItem(BaseModel):
+    """One of the user's memories (what they asked the assistant to remember)."""
+
+    id: str
+    text: str
+    created_at: datetime
+
+
+class MemoriesResponse(BaseModel):
+    """A page of the caller's memories, oldest first."""
+
+    memories: list[MemoryItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class MemoryErasureResponse(BaseModel):
+    """Result of deleting all of the caller's memories."""
+
+    erased_count: int
+
+
 class UserDataExportResponse(BaseModel):
     """Paginated conversation export, with independent thread/message offsets."""
 
@@ -151,6 +174,8 @@ class UserDataExportResponse(BaseModel):
     message_limit: int
     message_offset: int
     has_more_messages: bool
+    # The caller's memories, whole, on the first page only (offset 0); empty when memory is off.
+    memories: list[MemoryItem] = Field(default_factory=list)
 
 
 class UserDataErasureResponse(BaseModel):
@@ -162,6 +187,8 @@ class UserDataErasureResponse(BaseModel):
 
     erased_count: int
     skipped_busy_count: int
+    # How many memories were deleted with the threads (0 when memory is off).
+    erased_memory_count: int = 0
 
     @computed_field  # type: ignore[prop-decorator]
     @property

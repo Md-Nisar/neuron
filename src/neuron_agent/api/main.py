@@ -65,6 +65,8 @@ from neuron_agent.schemas.agent import (
     AgentResponse,
     ApprovalDecisionRequest,
     ApprovalRequiredResponse,
+    MemoriesResponse,
+    MemoryErasureResponse,
     ThreadHistoryResponse,
     UserDataErasureResponse,
     UserDataExportResponse,
@@ -793,6 +795,46 @@ async def export_my_data(
         )
     except AppError as exc:
         raise _http_error("user_data_export_failed", exc) from exc
+
+
+@app.get("/v1/me/memories", response_model=MemoriesResponse)
+async def list_my_memories(
+    principal: Annotated[Principal | None, Depends(require_permission("memories:read"))] = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user_id: str | None = _UserIdHeader,
+) -> MemoriesResponse:
+    """The caller's memories, oldest first (ADR 0009, decision 7)."""
+    try:
+        return await service.list_memories(user_id, limit=limit, offset=offset, principal=principal)
+    except AppError as exc:
+        raise _http_error("memory_list_failed", exc) from exc
+
+
+@app.delete("/v1/me/memories/{memory_id}", status_code=204)
+async def delete_my_memory(
+    memory_id: Annotated[str, Path(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")],
+    principal: Annotated[Principal | None, Depends(require_permission("memories:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> Response:
+    """Delete one of the caller's memories; an unknown or foreign ID is the same `404`."""
+    try:
+        await service.forget_memory(memory_id, user_id, principal=principal)
+    except AppError as exc:
+        raise _http_error("memory_delete_failed", exc) from exc
+    return Response(status_code=204)
+
+
+@app.delete("/v1/me/memories", response_model=MemoryErasureResponse)
+async def erase_my_memories(
+    principal: Annotated[Principal | None, Depends(require_permission("memories:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> MemoryErasureResponse:
+    """Delete all of the caller's memories."""
+    try:
+        return await service.erase_memories(user_id, principal=principal)
+    except AppError as exc:
+        raise _http_error("memory_erase_failed", exc) from exc
 
 
 @app.delete("/v1/me/threads", response_model=UserDataErasureResponse)

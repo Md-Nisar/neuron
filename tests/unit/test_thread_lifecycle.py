@@ -494,9 +494,19 @@ def test_user_data_rights_endpoints_are_scoped_paginated_and_idempotent(
 
     erased = client.delete("/v1/me/threads", headers=alice_headers)
     assert erased.status_code == 200
-    assert erased.json() == {"erased_count": 2, "skipped_busy_count": 0, "complete": True}
+    assert erased.json() == {
+        "erased_count": 2,
+        "skipped_busy_count": 0,
+        "erased_memory_count": 0,
+        "complete": True,
+    }
     repeated = client.delete("/v1/me/threads", headers=alice_headers)
-    assert repeated.json() == {"erased_count": 0, "skipped_busy_count": 0, "complete": True}
+    assert repeated.json() == {
+        "erased_count": 0,
+        "skipped_busy_count": 0,
+        "erased_memory_count": 0,
+        "complete": True,
+    }
     assert (
         client.get(
             f"/v1/threads/{bob_thread_id}/messages", headers={"X-User-Id": "bob"}

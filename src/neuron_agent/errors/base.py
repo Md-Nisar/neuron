@@ -75,6 +75,18 @@ class ApprovalPendingError(AppError):
     context = ErrorContext(code="approval_pending", http_status=409)
 
 
+class MemoryDisabledError(AppError):
+    """Per-user memory is not enabled on this deployment."""
+
+    context = ErrorContext(code="memory_disabled", http_status=404)
+
+
+class MemoryNotFoundError(AppError):
+    """The caller has no memory with this ID (missing or someone else's: the same answer)."""
+
+    context = ErrorContext(code="memory_not_found", http_status=404)
+
+
 class MemoryFullError(AppError):
     """The user's memory holds as many items as the operator allows."""
 

@@ -14,7 +14,15 @@ if TYPE_CHECKING:
     from neuron_agent.security.auth import Principal
 
 DEV_PERMISSIONS = frozenset(
-    {"agent:invoke", "agent:approve", "threads:read", "threads:delete", "tools:calculator"}
+    {
+        "agent:invoke",
+        "agent:approve",
+        "threads:read",
+        "threads:delete",
+        "memories:read",
+        "memories:write",
+        "tools:calculator",
+    }
 )
 
 
