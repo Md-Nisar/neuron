@@ -1,0 +1,33 @@
+{
+  "protocol_version": "1",
+  "events": ["run_started", "token", "tool_call", "final", "approval_required", "error", "done"],
+  "payloads": {
+    "final": {
+      "status": "completed",
+      "request_id": "r1",
+      "thread_id": "t1",
+      "answer": "57",
+      "used_tools": ["calculator"],
+      "confidence": 0.9,
+      "refused": false,
+      "clarification_needed": false
+    },
+    "approval_required": {
+      "status": "approval_required",
+      "request_id": "r1",
+      "thread_id": "t1",
+      "approval": {
+        "approval_id": "a1",
+        "actions": [
+          {
+            "name": "remember",
+            "args": {
+              "text": "likes tea"
+            }
+          }
+        ],
+        "allowed_decisions": ["approve", "reject"]
+      }
+    }
+  }
+}
