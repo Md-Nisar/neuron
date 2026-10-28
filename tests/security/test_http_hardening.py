@@ -113,6 +113,31 @@ def test_allowed_origin_can_read_responses(
     assert "x-correlation-id" in exposed
 
 
+@pytest.mark.parametrize(
+    ("method", "allowed"),
+    [("GET", True), ("POST", True), ("DELETE", True), ("PATCH", True), ("PUT", False)],
+)
+def test_preflight_allows_the_methods_the_web_app_uses(
+    jwt_api_factory: Callable[..., JwtApi], method: str, allowed: bool
+) -> None:
+    # The web app renames a conversation with PATCH /v1/threads/{id}; a browser blocks it at the
+    # preflight unless the method is listed (found by the first real-browser run, #293).
+    api = jwt_api_factory(cors_allowed_origins=[_APP_ORIGIN])
+    response = api.client.options(
+        "/v1/threads/t1",
+        headers={
+            "Origin": _APP_ORIGIN,
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+
+    listed = [
+        m.strip() for m in response.headers.get("access-control-allow-methods", "").split(",")
+    ]
+    assert (method in listed) is allowed
+
+
 def test_allowed_origin_can_read_error_responses(jwt_api_factory: Callable[..., JwtApi]) -> None:
     api = jwt_api_factory(cors_allowed_origins=[_APP_ORIGIN])
     response = api.client.get("/v1/me/threads", headers={"Origin": _APP_ORIGIN})

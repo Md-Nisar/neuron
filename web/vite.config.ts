@@ -2,7 +2,8 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-// The dev server listens on loopback only; the Keycloak realm allows exactly this origin.
+// The dev server listens on loopback only. Open it as http://localhost:5173: that is the one
+// origin the Keycloak realm allows (127.0.0.1 gets "Invalid parameter: redirect_uri").
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },

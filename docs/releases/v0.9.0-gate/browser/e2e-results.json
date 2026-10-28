@@ -1,0 +1,66 @@
+[
+ [
+  "PASS",
+  "chat: send a message and receive an answer"
+ ],
+ [
+  "PASS",
+  "feedback: rate an answer"
+ ],
+ [
+  "PASS",
+  "approval: remember pauses for approval, approve stores the memory"
+ ],
+ [
+  "PASS",
+  "data: the approved memory is listed under Your data"
+ ],
+ [
+  "INFO",
+  "a page reload drops the session (token is in memory only); Sign in is shown"
+ ],
+ [
+  "PASS",
+  "resume: after a reload the conversation is listed and opens with its history"
+ ],
+ [
+  "PASS",
+  "rename: a conversation can be renamed"
+ ],
+ [
+  "PASS",
+  "security: XSS payload, markdown beacon and look-alike approval text render as text"
+ ],
+ [
+  "PASS",
+  "security: only the app, Keycloak and the API origin were contacted (no third party, no analytics)"
+ ],
+ [
+  "PASS",
+  "security: the callback does not keep code or state in the address bar or storage"
+ ],
+ [
+  "PASS",
+  "security: a callback with an unlisted redirect_uri is refused by Keycloak"
+ ],
+ [
+  "PASS",
+  "security: the app sets a Content-Security-Policy"
+ ],
+ [
+  "PASS",
+  "delete: a conversation can be deleted"
+ ],
+ [
+  "INFO",
+  "export keys: exported_at,threads,memories"
+ ],
+ [
+  "PASS",
+  "export: Download my data produces a JSON file"
+ ],
+ [
+  "PASS",
+  "erase: typing the confirmation erases the data and signs out"
+ ]
+]

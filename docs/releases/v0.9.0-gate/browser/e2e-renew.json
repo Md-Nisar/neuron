@@ -1,0 +1,26 @@
+[
+ [
+  "csp-inline-script",
+  "PASS: blocked (script-src-elem)"
+ ],
+ [
+  "after-7-min",
+  {
+   "signedIn": true,
+   "sessionEndedText": false,
+   "page": "neuron | Signed in as alice. | Sign out | Chat | Your data | New conversation | Message | 0 / 12000 | Send | Conversations | No conversations yet."
+  }
+ ],
+ [
+  "chat-after-7-min",
+  true
+ ],
+ [
+  "keycloak-requests",
+  [
+   "269s GET /auth?response_type=code&client_id=neuron-web&redirect_uri=http%3A%2F%",
+   "269s frame http://localhost:5173/?state=KRNpEJylkMqKVroPTW_pT9nIKIsqdbSPsqrlxnF1_KY&session_state=68d",
+   "270s POST /token"
+  ]
+ ]
+]

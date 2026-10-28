@@ -80,7 +80,9 @@ def content_security_policy(*, api_origin: str, issuer: str, development: bool =
         "img-src 'self'",
         "font-src 'self'",
         f"connect-src {api} {idp}" if api != idp else f"connect-src {api}",
-        f"frame-src {idp}",
+        # The silent-renew frame starts at the provider and is redirected back to this app, and
+        # frame-src is checked on every redirect hop: without 'self' the frame ends on an error page.
+        f"frame-src 'self' {idp}",
         # 'self', not 'none': silent renew loads this app in a frame of itself (web/README.md).
         "frame-ancestors 'self'",
         "base-uri 'none'",
