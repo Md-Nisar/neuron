@@ -45,6 +45,11 @@ _NAME = re.compile(r"^(@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*$")
 _SECTIONS = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
 _TARBALL = "https://registry.npmjs.org/{name}/-/{base}-{version}.tgz"
 _INTEGRITY = re.compile(r"^sha(256|384|512)-[A-Za-z0-9+/]+={0,2}$")
+# Strict semver, no path or URL syntax: it is interpolated into the tarball URL below.
+_VERSION = re.compile(
+    r"^\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$"
+)
+_ALIAS = re.compile(r"^npm:((?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*)@.+$")
 _FETCH_WORKERS = 8
 
 
@@ -56,6 +61,20 @@ def declared_packages(manifest: dict[str, Any]) -> set[str]:
         if isinstance(entries, dict):
             names.update(name for name in entries if isinstance(name, str))
     return names
+
+
+def declared_aliases(manifest: dict[str, Any]) -> dict[str, str]:
+    """`{alias: real package}` for `"alias": "npm:real@range"` entries in the manifest."""
+    aliases: dict[str, str] = {}
+    for section in _SECTIONS:
+        entries = manifest.get(section, {})
+        if not isinstance(entries, dict):
+            continue
+        for alias, spec in entries.items():
+            match = _ALIAS.match(spec) if isinstance(spec, str) else None
+            if match:
+                aliases[alias] = match.group(1)
+    return aliases
 
 
 def _entry_name(path: str, entry: dict[str, Any]) -> str:
@@ -76,15 +95,51 @@ def lockfile_names(lock: dict[str, Any]) -> set[str]:
     }
 
 
-def lockfile_violations(lock: dict[str, Any]) -> list[str]:
-    """Entries whose tarball URL or integrity hash does not match the package they name."""
+def lockfile_violations(lock: dict[str, Any], aliases: dict[str, str] | None = None) -> list[str]:
+    """Why the lockfile cannot be trusted, empty when every entry matches the package it names.
+
+    Fails closed: an unexpected lockfile shape (a version other than 3, a legacy `dependencies`
+    tree, no `packages`), any `link` or bundled entry, a `version` that is not plain semver,
+    and a `name` that differs from the path (an alias) unless `package.json` declares that
+    exact alias at the top level, are all reported.
+    """
     problems: list[str] = []
-    for path, entry in lock.get("packages", {}).items():
-        if not path or not isinstance(entry, dict) or entry.get("link"):
+    packages = lock.get("packages")
+    if lock.get("lockfileVersion") != 3:
+        problems.append("lockfileVersion must be 3 (regenerate with the pinned npm)")
+    if "dependencies" in lock:
+        problems.append("legacy `dependencies` tree is present; it can disagree with `packages`")
+    if not isinstance(packages, dict) or len(packages) < 2:
+        problems.append("`packages` is missing or lists no installed package")
+        return problems
+    allowed_aliases = aliases or {}
+    for path, entry in packages.items():
+        if not path:
             continue
-        name, version = _entry_name(path, entry), entry.get("version")
+        if not isinstance(entry, dict):
+            problems.append(f"{path}: entry is not an object")
+            continue
+        if entry.get("link") or entry.get("inBundle"):
+            problems.append(f"{path}: link and bundled entries are not allowed")
+            continue
+        name = _entry_name(path, entry)
+        if "name" in entry:
+            alias = path.rsplit("node_modules/", 1)[-1]
+            top_level = path == f"node_modules/{alias}"
+            if not (top_level and allowed_aliases.get(alias) == name):
+                problems.append(
+                    f"{path}: installs {name!r}, an alias package.json does not declare"
+                )
+        version = entry.get("version")
+        if (
+            not _NAME.fullmatch(name)
+            or not isinstance(version, str)
+            or not _VERSION.fullmatch(version)
+        ):
+            problems.append(f"{path}: package name or version is not plain npm syntax")
+            continue
         expected = _TARBALL.format(name=name, base=name.split("/")[-1], version=version)
-        if not _NAME.fullmatch(name) or entry.get("resolved") != expected:
+        if entry.get("resolved") != expected:
             problems.append(f"{path}: resolved is not {expected}")
         integrity = entry.get("integrity")
         if not isinstance(integrity, str) or not _INTEGRITY.fullmatch(integrity):
@@ -169,8 +224,11 @@ def main(argv: list[str]) -> int:
     head_names = declared_packages(_load(argv[2]))
     added = head_names - base_names
     if len(argv) == 5:
+        if not Path(argv[4]).exists():
+            print(f"::error::Head lockfile {argv[4]} is missing")
+            return 1
         head_lock = _load(argv[4])
-        problems = lockfile_violations(head_lock)
+        problems = lockfile_violations(head_lock, declared_aliases(_load(argv[2])))
         for problem in problems:
             print(f"::error::Lockfile entry {problem}")
         if problems:

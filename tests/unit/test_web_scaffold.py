@@ -47,13 +47,14 @@ def test_lockfile_is_committed_and_installs_run_no_scripts() -> None:
     assert "save-exact=true" in npmrc
 
 
-def test_lockfile_entries_match_the_packages_they_name() -> None:
+def test_lockfile_entries_match_the_packages_they_name(manifest: dict[str, Any]) -> None:
     from scripts import check_new_npm_dependencies as gate
 
     lock = json.loads((WEB / "package-lock.json").read_text(encoding="utf-8"))
 
     assert len(gate.lockfile_names(lock)) > 100
-    assert gate.lockfile_violations(lock) == []
+    aliases = gate.declared_aliases(manifest)
+    assert gate.lockfile_violations(lock, aliases) == []
 
 
 def test_typescript_is_strict_and_raw_html_is_banned_by_lint() -> None:
