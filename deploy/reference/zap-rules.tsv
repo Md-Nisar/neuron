@@ -1,0 +1,2 @@
+# Alerts the DAST gate (scripts/dast_gate.py) does not fail on: `<ZAP plugin id><TAB><reason>`.
+# Medium or higher only; every entry needs a reason. Empty means nothing is excused.
