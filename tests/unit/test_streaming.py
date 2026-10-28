@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import Iterator
 from typing import Any
 
@@ -117,6 +118,8 @@ async def test_stream_emits_run_started_tokens_final_done(stream_replies: Any) -
     )
     assert final["thread_id"] == events[0].data["thread_id"]
     assert final["request_id"] == events[0].data["request_id"]
+    assert final["run_id"] == events[0].data["run_id"]
+    assert uuid.UUID(final["run_id"]).version == 4
 
 
 async def test_stream_structured_output_tool_call_yields_answer_tokens(

@@ -150,7 +150,7 @@ Persistence is selected with `APP_CHECKPOINTER`:
 
 ### Streaming
 
-`POST /v1/agent/stream` takes the same body as `/invoke` and streams server-sent events: `run_started`, then `token` events (answer text deltas) and `tool_call` events (tool names only), then `final` (the same fields as the `/invoke` response) or `error`, and finally `done`.
+`POST /v1/agent/stream` takes the same body as `/invoke` and streams server-sent events: `run_started` (with `request_id`, `thread_id` and a server-generated `run_id`), then `token` events (answer text deltas) and `tool_call` events (tool names only), then `final` (the same fields as the `/invoke` response, including the same `run_id`) or `error`, and finally `done`.
 
 ```bash
 curl -N -X POST http://127.0.0.1:8000/v1/agent/stream \

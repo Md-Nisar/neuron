@@ -57,6 +57,7 @@ class AgentResponse(BaseModel):
     status: Literal["completed"] = "completed"
     request_id: str
     thread_id: str
+    run_id: str | None = None
     answer: str
     used_tools: list[str]
     confidence: float
