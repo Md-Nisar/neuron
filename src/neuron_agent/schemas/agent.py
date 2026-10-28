@@ -131,6 +131,7 @@ class UserThreadSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: int
+    title: str | None = None
 
 
 class UserThreadsResponse(BaseModel):
@@ -150,6 +151,7 @@ class ExportedThread(BaseModel):
     updated_at: datetime
     message_total: int
     messages: list[ThreadMessage]
+    title: str | None = None
 
 
 class MemoryItem(BaseModel):

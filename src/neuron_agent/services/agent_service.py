@@ -50,6 +50,7 @@ from neuron_agent.persistence.checkpointer import Persistence, build_persistence
 from neuron_agent.persistence.guards import build_run_guard, build_token_budget
 from neuron_agent.persistence.run_guard import PostgresRunGuard
 from neuron_agent.persistence.thread_index import OwnedThreadPage, owned_threads
+from neuron_agent.persistence.thread_meta import derive_title
 from neuron_agent.schemas.agent import (
     AgentAnswer,
     AgentRequest,
@@ -114,6 +115,8 @@ class PreparedRun:
     checkpoint_owner: str | None
     created_thread: bool
     lease: RunLease
+    # Set for a run that creates its thread: stored as the thread's title once the run succeeds.
+    title: str | None = None
 
     @property
     def config(self) -> dict[str, Any]:
@@ -310,7 +313,19 @@ class AgentService:
             checkpoint_owner=owner_key,
             created_thread=request.thread_id is None,
             lease=lease,
+            title=derive_title(message) if request.thread_id is None else None,
         )
+
+    async def _name_new_thread(self, run: PreparedRun) -> None:
+        """File the first message's title under the thread; a failure never fails the run."""
+        if run.title is None or run.checkpoint_owner is None:
+            return
+        try:
+            await self._persistence.thread_titles.set_if_absent(
+                run.checkpoint_owner, run.thread_id, run.title
+            )
+        except Exception as exc:  # noqa: BLE001 - a title is a convenience, the answer stands
+            logger.warning("thread_title_failed", error_type=type(exc).__name__)
 
     def _audit_thread_created(self, run: PreparedRun) -> None:
         if run.created_thread:
@@ -593,6 +608,7 @@ class AgentService:
             else _response(run, result["answer"])
         )
         self._audit_thread_created(run)
+        await self._name_new_thread(run)
         return response
 
     async def stream(
@@ -722,6 +738,7 @@ class AgentService:
                 if tail := guard.flush():
                     queue.put_nowait(StreamEvent("token", {"text": tail}))
                 self._audit_thread_created(run)
+                await self._name_new_thread(run)
                 paused = self._approval_required(run, pending)
                 queue.put_nowait(StreamEvent("approval_required", paused.model_dump()))
             elif answer is None:
@@ -733,6 +750,7 @@ class AgentService:
                 if (tail := guard.flush()) and answer.answer != SYSTEM_PROMPT_REFUSAL:
                     queue.put_nowait(StreamEvent("token", {"text": tail}))
                 self._audit_thread_created(run)
+                await self._name_new_thread(run)
                 queue.put_nowait(StreamEvent("final", _response(run, answer).model_dump()))
         finally:
             # Unbounded queue: its size is bounded by the run's own output
@@ -897,6 +915,7 @@ class AgentService:
         summaries: list[UserThreadSummary] = []
         with self._persistence_errors():
             page = await self._owned_threads(owner_key, limit=limit, offset=offset)
+            titles = await self._titles_of(owner_key, page)
             for thread in page.threads:
                 messages = await self._latest_public_messages(thread.thread_id, owner_key)
                 if messages is None:
@@ -907,6 +926,7 @@ class AgentService:
                         created_at=thread.created_at,
                         updated_at=thread.updated_at,
                         message_count=len(messages),
+                        title=titles.get(thread.thread_id),
                     )
                 )
         return UserThreadsResponse(threads=summaries, total=page.total, limit=limit, offset=offset)
@@ -932,11 +952,13 @@ class AgentService:
         exported_bytes = 0
         with self._persistence_errors():
             page = await self._owned_threads(owner_key, limit=limit, offset=offset)
+            titles = await self._titles_of(owner_key, page)
             for thread in page.threads:
                 messages = await self._latest_public_messages(thread.thread_id, owner_key)
                 if messages is None:
                     continue
                 item = ExportedThread(
+                    title=titles.get(thread.thread_id),
                     thread_id=thread.thread_id,
                     created_at=thread.created_at,
                     updated_at=thread.updated_at,
@@ -1094,9 +1116,12 @@ class AgentService:
                             continue
                         try:
                             await checkpointer.adelete_thread(thread_id)
+                            await self._persistence.thread_titles.forget_threads([thread_id])
                         finally:
                             await lease.release()
                         erased += 1
+                    if skipped_busy == 0 and owner_key is not None:
+                        await self._persistence.thread_titles.forget_owner(owner_key)
             if self._memory is not None:
                 with self._persistence_errors():
                     erased_memories = await self._memory.erase(owner_key)
@@ -1128,6 +1153,13 @@ class AgentService:
             erased_count=erased,
             skipped_busy_count=skipped_busy,
             erased_memory_count=erased_memories,
+        )
+
+    async def _titles_of(self, owner_key: str | None, page: OwnedThreadPage) -> dict[str, str]:
+        if owner_key is None:
+            return {}
+        return await self._persistence.thread_titles.titles(
+            owner_key, [thread.thread_id for thread in page.threads]
         )
 
     async def _owned_threads(
@@ -1175,6 +1207,7 @@ class AgentService:
                 # _owned_thread_state already raised if there is no checkpointer.
                 assert checkpointer is not None  # nosec B101
                 await checkpointer.adelete_thread(thread_id)
+                await self._persistence.thread_titles.forget_threads([thread_id])
             finally:
                 await lease.release()
         audit(

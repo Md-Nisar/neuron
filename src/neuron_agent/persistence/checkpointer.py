@@ -37,6 +37,11 @@ from neuron_agent.persistence.startup_checks import (
     verify_store,
     verify_tls,
 )
+from neuron_agent.persistence.thread_meta import (
+    InMemoryThreadTitles,
+    PostgresThreadTitles,
+    ThreadTitles,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -138,6 +143,18 @@ class Persistence:
     memory_enabled: bool = False
     store: BaseStore | None = field(default=None, repr=False)
     _opened: bool = field(default=False, init=False, repr=False)
+    _thread_titles: ThreadTitles | None = field(default=None, init=False, repr=False)
+
+    @property
+    def thread_titles(self) -> ThreadTitles:
+        """Conversation titles: Postgres beside a Postgres checkpointer, else process memory."""
+        if self._thread_titles is None:
+            self._thread_titles = (
+                PostgresThreadTitles(self.pool)
+                if self.backend == "postgres" and self.pool is not None
+                else InMemoryThreadTitles()
+            )
+        return self._thread_titles
 
     @property
     def is_open(self) -> bool:
@@ -225,6 +242,7 @@ class Persistence:
         tables = [
             *(migrations.GUARD_TABLES if self.check_guard_tables else ()),
             *((migrations.STORE_TABLE,) if self.memory_enabled else ()),
+            *((migrations.THREAD_META_TABLE,) if self.backend == "postgres" else ()),
         ]
         try:
             async with asyncio.timeout(self.ping_timeout_seconds):
