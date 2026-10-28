@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.0
+
+"User Application" (ADR 0010, ADR 0011, `docs/releases/v0.8.0-release-verification.md`): a browser chat app in `web/` (React, Vite, strict TypeScript) on the existing API, plus the server changes it needs. Everything was checked with fake models, a fake OIDC provider and jsdom; **no real Keycloak, browser, screen reader or live model was used** (see the verification record).
+
+Known issues:
+- Sign-in, silent renew, the CSP and the layouts were never exercised in a real browser or against a real Keycloak. Playwright end to end (#293) is not done.
+- Real Keycloak tokens may lack `nbf`, which the API requires; unchecked, and the requirement is unchanged.
+- Ratings are not forwarded to LangSmith (#285); that needs a LangSmith run ID the service does not keep.
+- Answers on threads stored before 0.8.0 have no run ID, so they cannot be rated.
+- No live `--trials 3` model run and no token usage report for this release.
+
+Changes:
+- Web app (`web/`, #280 to #283, #287, #288, #284, #286, #289, #291, #292). Sign-in with Authorization Code + PKCE, a typed client for the seven stream events, chat with streaming, stop and retry, sanitized markdown, the approval card, memories, export and erase, a conversation list with rename and delete, resuming a conversation, and rating an answer. Reference CSP, security headers and a browser threat model in `web/README.md` and `SECURITY.md`. Accessibility checks, focus management, small-screen and dark-mode layout.
+- Keycloak development stack (#279): a realm export and API settings for local sign-in; development only.
+- Run ID (#276, #315). `final` and the `/v1/agent/invoke` response carry `run_id`; each stored answer is stamped with its run and `GET /v1/threads/{id}/messages` returns it as `run_id`.
+- History with tool calls (#278). History turns carry `tool_calls` (name, a bounded argument summary, and a status of `pending`, `completed`, `failed` or `rejected`); tool output is never returned.
+- Pending approval (#286, #307). `GET /v1/threads/{id}/approval` returns the pending approval of an owned thread (scope `agent:approve`); the same 404 for missing and foreign threads.
+- Conversation titles (#277, ADR 0011, #309, #310). A title of at most 80 characters is derived from the first message; `PATCH /v1/threads/{id}` renames (scope `threads:write`); `GET /v1/me/threads` and export return it; delete, erase and `make prune-threads` remove it. Migrations 13 and 14 add `neuron_thread_meta`.
+- Answer ratings (#285, #313, #315). `POST /v1/threads/{id}/runs/{run_id}/feedback` (scope `feedback:write`) takes a score of -1 or 1 and one of a fixed set of reasons, once per (owner, run); a run ID the thread does not carry is a 404. Telemetry is a log event, a `neuron.feedback` span and counter by score and reason, never content, and the Collector allow-list names them. Migrations 15 and 16 add `neuron_feedback`.
+- Development permissions (`DEV_PERMISSIONS`) gain `threads:write` and `feedback:write`, so the development Keycloak role includes them.
+
 ## 0.7.0
 
 "Extensible Agent Platform" (ADR 0009, `docs/releases/v0.7.0-release-verification.md`): a tool registry, pinned MCP tools, human approval for mutating tools, per-user memory, an Anthropic provider with model fallback, and approval and memory evals. Not tagged: the owner decides after reviewing the verification record.
