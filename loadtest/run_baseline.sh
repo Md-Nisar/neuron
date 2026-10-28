@@ -10,7 +10,7 @@ export LOAD_STEP_USERS=${LOAD_STEP_USERS:-30}
 export LOAD_MAX_STEPS=${LOAD_MAX_STEPS:-10}
 export LOAD_THINK_SECONDS=${LOAD_THINK_SECONDS:-6}
 uv run python -m loadtest.provision
-for scenario in new_thread follow_up approval mix; do
+for scenario in ${LOAD_SCENARIOS:-new_thread follow_up approval mix}; do
     # LOAD_RESOURCES=1 also records CPU, memory and Postgres connections (loadtest/resources.py).
     if [ "${LOAD_RESOURCES:-}" = 1 ]; then
         uv run python -m loadtest.resources sample --out "$out/$scenario.resources.jsonl" &
