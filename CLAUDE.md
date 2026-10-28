@@ -73,11 +73,11 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-The latest tagged release is v0.5.0 ("Evaluation + Observability") per `docs/ROADMAP.md`: OpenTelemetry traces, metrics and log correlation, token accounting, SLOs and a Collector config, LangSmith governance, eval harness v2 with repeated trials, baselines and a `compare` gate, and security eval dataset v4 (ADR 0007, see `CHANGELOG.md`). v0.4.0 added JWT authentication (ADR 0006), principal-owned threads, scopes, per-user limits, audit logs, user data rights and HTTP hardening.
+The latest tagged release is v0.8.0 ("User Application", ADR 0010 and 0011): a `web/` single-page app with Keycloak sign-in (PKCE), streaming chat, approvals, memories, data rights, conversation titles and feedback. v0.6.0 ("Production Deployment", ADR 0008) and v0.7.0 ("Extensible Agent Platform", ADR 0009) were tagged on 2026-10-28 as well. All three shipped with their release gates open (#160, #253, #293), deferred by the owner until after v1.0.0; nothing has run on a real Render deployment, a real browser against Keycloak, or the OpenAI production model.
 
-v0.6.0 ("Production Deployment", ADR 0008) is prepared but **not tagged**: `main` is at version 0.6.0 with its `CHANGELOG.md` section. It adds a digest-pinned, attested image, versioned migrations and database roles, Postgres-backed limits and run leases, production settings validation, a Render blueprint, the `deploy.yml` pipeline, runbooks and Collector telemetry docs. Nothing has run on a real Render deployment, and several #160 exit criteria are recorded as not done; the owner decides whether to tag (`docs/releases/v0.6.0-release-verification.md`).
+v0.9.0 ("Production Candidate", ADR 0012, tracker #338) is in progress: a local reference stack, a runs-per-second load baseline on a fake model with latency, a threat model and DAST, a restore drill and rollback rehearsal, and a release freeze from the v0.9.0 tag with `vX.Y.Z-rc.N` tags before v1.0.0. Staging and production stay out of scope until after v1.0.0.
 
-Release verification is recorded in `docs/releases/v0.6.0-release-verification.md` and `docs/releases/v0.5.0-release-verification.md` (and the earlier ones beside them). v0.5.0's live checks ran on the NVIDIA development model, where the security gate does not pass; the OpenAI production model was not run (no key). Both are known issues in `CHANGELOG.md`; v0.3.0 and v0.4.0 were verified with fake models only. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
+Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.md`. Check `docs/ROADMAP.md` and open issues before assuming a not-yet-released feature already exists.
 
 ## AI code verification
 
