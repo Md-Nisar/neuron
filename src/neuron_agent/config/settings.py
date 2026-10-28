@@ -25,6 +25,8 @@ LimitsBackend = Literal["auto", "memory", "postgres"]
 AuthMode = Literal["none", "jwt"]
 # Browsers send origins as lowercase `scheme://host[:port]`; CORS matching is exact.
 # Starlette compares hostnames without the port, so entries can't carry ports or schemes.
+# Model identifier prefixes `create_chat_model` can build.
+SUPPORTED_PROVIDERS = frozenset({"openai", "nvidia", "anthropic"})
 _HOST_PATTERN = re.compile(r"^(\*|(\*\.)?[a-z0-9.-]+)$")
 _ORIGIN_PATTERN = re.compile(r"^https?://([a-z0-9.-]+|\[[0-9a-f:]+\])(:[0-9]{1,5})?$")
 
@@ -75,6 +77,9 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
     default_model: str = "openai:gpt-5.4-mini"
+    # Tried in order when the default model's call fails after its retries (ADR 0009). A JSON
+    # list such as ["anthropic:<model>", "openai:<model>"]; empty means no fallback.
+    fallback_models: list[str] = Field(default_factory=list, max_length=3)
     request_timeout_seconds: int = Field(default=60, ge=1, le=300)
     tool_timeout_seconds: int = Field(default=20, ge=1, le=60)
     max_agent_iterations: int = Field(default=8, ge=1, le=25)
@@ -222,18 +227,33 @@ class Settings(BaseSettings):
         return key if key is not None and key.get_secret_value() else None
 
     @model_validator(mode="after")
+    def validate_fallback_models(self) -> Settings:
+        """Refuse a fallback that could not be built, or that repeats a model."""
+        seen = {self.default_model}
+        for identifier in self.fallback_models:
+            provider, separator, name = identifier.partition(":")
+            if provider not in SUPPORTED_PROVIDERS or not separator or not name:
+                raise ValueError(
+                    "APP_FALLBACK_MODELS entries must be provider:model with provider one of "
+                    + ", ".join(sorted(SUPPORTED_PROVIDERS))
+                )
+            if identifier in seen:
+                raise ValueError("APP_FALLBACK_MODELS must not repeat a model")
+            seen.add(identifier)
+        return self
+
+    @model_validator(mode="after")
     def require_provider_key_outside_tests(self) -> Settings:
         """Fail early for live model execution in production-like environments."""
-        provider = self.default_model.partition(":")[0]
-        if (
-            self.env in {"staging", "production"}
-            and provider in {"openai", "nvidia", "anthropic"}
-            and self.provider_api_key(provider) is None
-        ):
-            raise ValueError(
-                f"{provider.upper()}_API_KEY is required for {provider} models "
-                "in staging/production"
-            )
+        if self.env not in {"staging", "production"}:
+            return self
+        for identifier in (self.default_model, *self.fallback_models):
+            provider = identifier.partition(":")[0]
+            if provider in SUPPORTED_PROVIDERS and self.provider_api_key(provider) is None:
+                raise ValueError(
+                    f"{provider.upper()}_API_KEY is required for {provider} models "
+                    "in staging/production"
+                )
         return self
 
     @model_validator(mode="after")
