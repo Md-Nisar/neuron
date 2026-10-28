@@ -708,6 +708,25 @@ async def delete_thread(
     return Response(status_code=204)
 
 
+@app.get("/v1/threads/{thread_id}/approval", response_model=ApprovalRequiredResponse)
+async def get_pending_approval(
+    thread_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:approve"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> ApprovalRequiredResponse:
+    """The approval a thread is paused on, for a client that reloaded (ADR 0010).
+
+    Needs `agent:approve`: only someone who can decide it may read the arguments. A missing,
+    foreign or absent approval is the same `404` as for a decision.
+    """
+    try:
+        if principal is None:
+            return await service.get_pending_approval(str(thread_id), user_id=user_id)
+        return await service.get_pending_approval(str(thread_id), principal=principal)
+    except AppError as exc:
+        raise _http_error("approval_read_failed", exc) from exc
+
+
 @app.post(
     "/v1/threads/{thread_id}/approvals/{approval_id}",
     response_model=AgentResponse | ApprovalRequiredResponse,

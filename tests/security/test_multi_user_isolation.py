@@ -32,7 +32,8 @@ _MEMORY_ID = "fedcba9876543210fedcba9876543210"  # no memory has this ID
 
 def _not_found(path: str) -> dict[str, str]:
     """The one 404 body for a thread or approval the caller cannot reach."""
-    return {"detail": "approval_not_found" if "/approvals/" in path else "thread_not_found"}
+    is_approval = "/approvals/" in path or path.endswith("/approval")
+    return {"detail": "approval_not_found" if is_approval else "thread_not_found"}
 
 
 @pytest.fixture
@@ -59,6 +60,7 @@ def _route_requests(
         ("POST", "/v1/agent/stream", {"message": "probe", "thread_id": thread_id}),
         ("GET", f"/v1/threads/{thread_id}/messages", None),
         ("DELETE", f"/v1/threads/{thread_id}", None),
+        ("GET", f"/v1/threads/{thread_id}/approval", None),
         ("POST", f"/v1/threads/{thread_id}/approvals/{approval_id}", {"decision": "approve"}),
         (
             "POST",
@@ -153,7 +155,7 @@ def test_owner_reaches_own_thread_on_every_route(
         if method == "DELETE":
             continue  # Deletion is checked last, below.
         response = jwt_api.client.request(method, path, json=body, headers=bearer(alice))
-        if "/approvals/" in path:
+        if "/approvals/" in path or path.endswith("/approval"):
             # The owner reaches the route; nothing is pending under this ID (the pending case
             # is tested in test_approval_api.py).
             assert (response.status_code, response.json()) == (404, _not_found(path))
