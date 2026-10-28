@@ -67,10 +67,10 @@ from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.security.authorization import AuthorizationContext, require_permission
 from neuron_agent.security.input_policy import audit_tool_name
+from neuron_agent.tools.registry import ToolRegistry, builtin_registry
 
 logger = structlog.get_logger(__name__)
 
-_TOOL_PERMISSIONS = {"calculator": "tools:calculator"}
 
 # Fixed text for a rejected tool input: the tool's own message can carry the model's input.
 _TOOL_INPUT_ERROR = (
@@ -220,25 +220,25 @@ def _record_model_response(span: Span, messages: list[Any]) -> tuple[int, int] |
     return usage[semconv.GEN_AI_USAGE_INPUT_TOKENS], usage[semconv.GEN_AI_USAGE_OUTPUT_TOKENS]
 
 
-def tool_authorization_middleware() -> AgentMiddleware:
+def tool_authorization_middleware(registry: ToolRegistry | None = None) -> AgentMiddleware:
     """Filter model-visible tools and enforce the same decision at tool execution."""
-    return _ToolAuthorizationMiddleware()
+    return _ToolAuthorizationMiddleware(registry or builtin_registry())
 
 
 class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
     """Combine model-side filtering and execution-side authorization hooks."""
+
+    def __init__(self, registry: ToolRegistry) -> None:
+        super().__init__()
+        self._registry = registry
 
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
         context = request.runtime.context
         permissions = (
             context.permissions if isinstance(context, AuthorizationContext) else frozenset()
         )
-        visible = [
-            tool
-            for tool in request.tools
-            if tool.name == "utc_now"
-            or (tool.name in _TOOL_PERMISSIONS and _TOOL_PERMISSIONS[tool.name] in permissions)
-        ]
+        allowed = set(self._registry.visible_to(permissions))
+        visible = [tool for tool in request.tools if tool.name in allowed]
         response = await handler(request.override(tools=visible))
         if isinstance(context, AuthorizationContext) and context.usage is not None:
             messages = getattr(response, "result", [])
@@ -254,8 +254,9 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         tool_name = request.tool_call.get("name", "unknown")
-        permission = _TOOL_PERMISSIONS.get(tool_name)
-        audit_name = audit_tool_name(tool_name, (*_TOOL_PERMISSIONS, "utc_now"))
+        spec = self._registry.spec(tool_name)
+        permission = spec.scope if spec else None
+        audit_name = audit_tool_name(tool_name, self._registry.names())
         context = request.runtime.context
         permissions = (
             context.permissions if isinstance(context, AuthorizationContext) else frozenset()
@@ -278,7 +279,7 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                     reason="insufficient_scope",
                 )
                 return _denied_tool_call(request, tool_name)
-        elif tool_name != "utc_now":
+        elif spec is None:
             metrics.record_policy_block("unknown_tool")
             audit(
                 "authorization_denied",
@@ -546,7 +547,7 @@ def _is_empty_message(reply: Any) -> bool:
     )
 
 
-def agent_middleware(settings: Settings) -> list[AgentMiddleware]:
+def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMiddleware]:
     """The agent's middleware, outermost first."""
     fallback = model_fallback_middleware(settings)
     return [
@@ -554,7 +555,7 @@ def agent_middleware(settings: Settings) -> list[AgentMiddleware]:
         empty_reply_retry_middleware(),
         structured_output_retry_middleware(),
         tracing_middleware(settings),
-        tool_authorization_middleware(),
+        tool_authorization_middleware(registry),
         tool_failure_isolation_middleware(),
         tool_timeout_middleware(settings.tool_timeout_seconds),
         # Directly outside the provider retries: a model is retried, then the next is tried.
@@ -563,15 +564,21 @@ def agent_middleware(settings: Settings) -> list[AgentMiddleware]:
     ]
 
 
-def create_main_agent(settings: Settings, tools: Sequence[BaseTool]) -> Any:
-    """Create the configurable LangChain agent harness."""
+def create_main_agent(settings: Settings, registry: ToolRegistry) -> Any:
+    """Create the configurable LangChain agent harness with the registry's tools."""
+    if mutating := registry.mutating():
+        # Until approvals are wired (ADR 0009, decision 6) a mutating tool would run unreviewed.
+        names = ", ".join(spec.name for spec in mutating)
+        raise ConfigurationError(
+            f"mutating tools need human approval, which is not enabled: {names}"
+        )
     model = create_chat_model(settings)
     return create_agent(
         model=model,
-        tools=list(tools),
+        tools=registry.tools(),
         system_prompt=load_prompt("system/main.md"),
         response_format=AgentAnswer,
-        middleware=agent_middleware(settings),
+        middleware=agent_middleware(settings, registry),
         name="neuron_main_agent",
         context_schema=AuthorizationContext,
         # Runs as a subgraph of the main graph. Never checkpoint its internal state

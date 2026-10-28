@@ -14,6 +14,7 @@ from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.services.agent_service import AgentService
+from neuron_agent.tools.registry import builtin_registry
 
 pytestmark = pytest.mark.anyio
 
@@ -80,7 +81,7 @@ def test_every_attempt_is_counted_in_the_runs_token_usage(
 def test_the_middleware_sits_inside_the_empty_reply_retry_and_outside_tracing() -> None:
     from neuron_agent.models.factory import agent_middleware
 
-    kinds = [type(m).__name__ for m in agent_middleware(Settings(env="test"))]
+    kinds = [type(m).__name__ for m in agent_middleware(Settings(env="test"), builtin_registry())]
     assert kinds.index("_EmptyReplyRetryMiddleware") < kinds.index(
         "_StructuredOutputRetryMiddleware"
     )

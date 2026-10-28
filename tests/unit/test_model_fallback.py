@@ -20,6 +20,7 @@ from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.models import factory
 from neuron_agent.observability import metrics, semconv
 from neuron_agent.security.authorization import AuthorizationContext
+from neuron_agent.tools.registry import builtin_registry
 
 pytestmark = pytest.mark.anyio
 
@@ -83,12 +84,12 @@ def _fallback_points(reader: InMemoryMetricReader) -> list[Any]:
 
 def test_no_fallback_by_default() -> None:
     assert Settings(env="test").fallback_models == []
-    middleware = factory.agent_middleware(_settings())
+    middleware = factory.agent_middleware(_settings(), builtin_registry())
     assert not any(isinstance(m, ModelFallbackMiddleware) for m in middleware)
 
 
 def test_fallback_sits_directly_outside_the_provider_retries() -> None:
-    middleware = factory.agent_middleware(_settings(fallback_models=_FALLBACKS))
+    middleware = factory.agent_middleware(_settings(fallback_models=_FALLBACKS), builtin_registry())
     kinds = [type(m) for m in middleware]
     retry = next(i for i, m in enumerate(middleware) if isinstance(m, ModelRetryMiddleware))
     fallback = next(i for i, m in enumerate(middleware) if isinstance(m, ModelFallbackMiddleware))

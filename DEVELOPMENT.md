@@ -55,8 +55,8 @@ It sums input, output, cache-read and cache-write tokens per agent, grouped by i
 
 1. Add the tool under `src/neuron_agent/tools/`.
 2. Define a narrow input contract and bounded side effects.
-3. Add authorization requirements to `security/input_policy.py`.
-4. Wire it in `agents/factory.py`.
+3. Register it in `tools/registry.py` (`builtin_registry`) with a `ToolSpec`: its scope (`tools:<name>`, or none for a public read-only builtin) and risk class (`read` or `mutating`). The allow-list, scope checks, audit names and span names all derive from the spec; a tool without one is not offered or callable. A `mutating` tool needs human approval (ADR 0009 decision 6) and the agent refuses to build without it until that is wired. Names on `HIGH_RISK_TOOL_NAMES` in `security/input_policy.py` are always refused.
+4. Add the scope to `DEV_PERMISSIONS` if development should grant it.
 5. Add unit, failure, and security tests.
 6. Update `SECURITY.md` and the relevant ADR if the tool mutates external state.
 
