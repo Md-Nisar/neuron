@@ -28,6 +28,8 @@ from neuron_agent.security.auth import Principal
 _MARKER = "alice-secret-7f3c"  # conversation content that must never cross users
 _APPROVAL_ID = "0123456789abcdef0123456789abcdef"  # nothing is pending under this ID
 _MEMORY_ID = "fedcba9876543210fedcba9876543210"  # no memory has this ID
+_RUN_ID = "5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6"  # a run nobody rated
+_RUN_ID = "5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6"  # a run nobody rated
 
 
 def _not_found(path: str) -> dict[str, str]:
@@ -52,7 +54,10 @@ def _parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
 
 
 def _route_requests(
-    thread_id: str, approval_id: str = _APPROVAL_ID, memory_id: str = _MEMORY_ID
+    thread_id: str,
+    approval_id: str = _APPROVAL_ID,
+    memory_id: str = _MEMORY_ID,
+    run_id: str = _RUN_ID,
 ) -> list[tuple[str, str, dict[str, Any] | None]]:
     """One request per `/v1/*` route, aimed at `thread_id` wherever the route takes one."""
     return [
@@ -60,6 +65,7 @@ def _route_requests(
         ("POST", "/v1/agent/stream", {"message": "probe", "thread_id": thread_id}),
         ("GET", f"/v1/threads/{thread_id}/messages", None),
         ("PATCH", f"/v1/threads/{thread_id}", {"title": "taken over"}),
+        ("POST", f"/v1/threads/{thread_id}/runs/{run_id}/feedback", {"score": 1}),
         ("DELETE", f"/v1/threads/{thread_id}", None),
         ("GET", f"/v1/threads/{thread_id}/approval", None),
         ("POST", f"/v1/threads/{thread_id}/approvals/{approval_id}", {"decision": "approve"}),
@@ -86,7 +92,8 @@ def test_matrix_covers_every_v1_route() -> None:
     }
     probe = "{thread_id}"
     covered = {
-        (method, path) for method, path, _ in _route_requests(probe, "{approval_id}", "{memory_id}")
+        (method, path)
+        for method, path, _ in _route_requests(probe, "{approval_id}", "{memory_id}", "{run_id}")
     }
     assert covered == declared
 
@@ -124,9 +131,8 @@ def test_other_user_cannot_reach_owned_thread_on_any_route(
     for (method, path, body), (_, unknown_path, unknown_body) in zip(
         _route_requests(thread_id), _route_requests(unknown), strict=True
     ):
-        if (
-            body is not None and "/approvals/" not in path and method != "PATCH"
-        ):  # no identity field
+        takes_identity = "/approvals/" not in path and method != "PATCH"
+        if body is not None and takes_identity and not path.endswith("/feedback"):
             body = {**body, "user_id": "alice"}
             unknown_body = {**unknown_body, "user_id": "alice"} if unknown_body else None
         response = jwt_api.client.request(method, path, json=body, headers=spoofed)
@@ -250,6 +256,7 @@ _ROUTE_PERMISSION = {
     "/v1/agent/stream": "agent:invoke",
     "/v1/threads/{id}/messages": "threads:read",
     "/v1/threads/{id}:PATCH": "threads:write",
+    f"/v1/threads/{{id}}/runs/{_RUN_ID}/feedback": "feedback:write",
     "/v1/threads/{id}": "threads:delete",
     "/v1/me/threads:GET": "threads:read",
     "/v1/me/export": "threads:read",
@@ -263,12 +270,13 @@ def _permission(method: str, path: str, thread_id: str) -> str:
 
 
 @pytest.mark.parametrize(
-    "revoked", ["agent:invoke", "threads:read", "threads:write", "threads:delete"]
+    "revoked",
+    ["agent:invoke", "threads:read", "threads:write", "threads:delete", "feedback:write"],
 )
 def test_revoked_permission_is_enforced_on_the_next_token(
     jwt_api: JwtApi, make_token: Callable[..., str], revoked: str
 ) -> None:
-    granted = {"agent:invoke", "threads:read", "threads:write", "threads:delete"}
+    granted = {"agent:invoke", "threads:read", "threads:write", "threads:delete", "feedback:write"}
     alice = make_token("alice", scopes=" ".join(sorted(granted)))
     thread_id = _owned_thread(jwt_api, alice)
     reduced = make_token("alice", scopes=" ".join(sorted(granted - {revoked})))
@@ -282,7 +290,13 @@ def test_revoked_permission_is_enforced_on_the_next_token(
         assert response.json() == {"detail": "authorization_error"}
         assert f'scope="{revoked}"' in response.headers["www-authenticate"]
         checked += 1
-    expected = {"agent:invoke": 2, "threads:read": 3, "threads:write": 1, "threads:delete": 2}
+    expected = {
+        "agent:invoke": 2,
+        "threads:read": 3,
+        "threads:write": 1,
+        "threads:delete": 2,
+        "feedback:write": 1,
+    }
     assert checked == expected[revoked]
     # A denied delete or erase removed nothing.
     assert _MARKER in _history(jwt_api, thread_id, alice).text

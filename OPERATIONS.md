@@ -138,7 +138,7 @@ Staging and production require `APP_AUTH_MODE=jwt`: every `/v1/*` request carrie
 ### Connecting an IdP
 
 1. **Register the API** as a resource (API, audience or resource server, depending on the IdP), with an identifier such as `neuron-api`. Access tokens must carry it in `aud`, be JWTs (not opaque tokens), be signed with RS256/384/512 or ES256/384/512 with a `kid` header, and contain all of `iss`, `aud`, `sub`, `exp`, `nbf` and `iat`; a token missing any of them is rejected (`auth_failed`, `reason="invalid_claims"`). Check that the IdP includes `nbf`, since some omit it by default. ID tokens carry the client ID in `aud`, so they are rejected.
-2. **Define the scopes** `agent:invoke`, `agent:approve` (only if you use tools that need approval), `threads:read`, `threads:write` (rename), `threads:delete` and `tools:calculator` (see README "Authentication"), and grant them to the client applications that need them. If the IdP models permissions as roles instead, map roles to scopes with `APP_AUTH_ROLES_CLAIM` and `APP_AUTH_ROLE_PERMISSIONS`; a role grants nothing unless it's mapped.
+2. **Define the scopes** `agent:invoke`, `agent:approve` (only if you use tools that need approval), `threads:read`, `threads:write` (rename), `feedback:write` (rate answers), `threads:delete` and `tools:calculator` (see README "Authentication"), and grant them to the client applications that need them. If the IdP models permissions as roles instead, map roles to scopes with `APP_AUTH_ROLES_CLAIM` and `APP_AUTH_ROLE_PERMISSIONS`; a role grants nothing unless it's mapped.
 3. **Service accounts** use the client-credentials grant and the same scopes. There is no separate API-key path.
 4. **Configure Neuron** from the IdP's discovery document (`<issuer>/.well-known/openid-configuration`): `issuer` becomes `APP_AUTH_ISSUER` (compared exactly, including any trailing slash) and `jwks_uri` becomes `APP_AUTH_JWKS_URL`.
 
@@ -293,6 +293,7 @@ are in seconds. Instruments:
 | `neuron.agent.tool.duration` | histogram | `gen_ai.operation.name` (`execute_tool`), `gen_ai.tool.name`, `neuron.outcome` (`success`, `error`, `denied`, `interrupted`), `error.type` |
 | `neuron.agent.errors` | counter | `error.type`, an `AppError` code. Counts each failed request or run once, client errors (such as `validation_error`) included; filter on the code |
 | `neuron.approvals` | counter | `neuron.approval.decision`: `requested`, `approve`, `reject` |
+| `neuron.feedback` | counter | `neuron.feedback.score`: `up`, `down`; `neuron.feedback.reason`: a fixed reason or `none` |
 | `neuron.memory.operations` | counter | `neuron.memory.operation`: `remember`, `list`, `forget`, `erase`; `neuron.outcome`: `success`, `error` |
 | `neuron.model.fallbacks` | counter | `neuron.fallback.from`, `neuron.fallback.to`: the configured model ids switched from and to |
 | `neuron.agent.policy.blocks` | counter | `neuron.rule`: `empty_message`, `message_too_long`, `control_characters`, `token_budget`, `concurrent_runs`, `concurrent_streams`, `request_rate`, `insufficient_scope`, `unknown_tool` |
@@ -694,7 +695,7 @@ With the Node version in `web/.nvmrc`: `make web-install` (installs from the loc
 ### The API side
 
 - **CORS:** put the UI's exact origin in `APP_CORS_ALLOWED_ORIGINS` (for example `["https://app.example.com"]`; see HTTP Surface). The app sends only `GET`, `POST` and `DELETE` with `Authorization`, `Content-Type` and `Accept`, and reads `Retry-After`; all are already allowed or exposed. Cookies are never used.
-- **Scopes:** the UI needs `agent:invoke`, `agent:approve`, `threads:read`, `threads:write`, `threads:delete`, `memories:read` and `memories:write`. A user with fewer sees the matching action refused, not a broken page.
+- **Scopes:** the UI needs `agent:invoke`, `agent:approve`, `threads:read`, `threads:write`, `feedback:write`, `threads:delete`, `memories:read` and `memories:write`. A user with fewer sees the matching action refused, not a broken page.
 
 ### The identity provider (Keycloak)
 
@@ -973,7 +974,7 @@ FROM pg_class
 WHERE relname IN ('checkpoints', 'checkpoint_blobs', 'checkpoint_writes',
                   'neuron_run_leases', 'neuron_token_ledger',
                   'neuron_token_settlements', 'neuron_rate_buckets',
-                  'neuron_thread_meta')
+                  'neuron_thread_meta', 'neuron_feedback')
 ORDER BY pg_total_relation_size(oid) DESC;
 SELECT pg_size_pretty(pg_database_size(current_database()));
 ```

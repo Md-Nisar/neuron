@@ -58,6 +58,7 @@ from neuron_agent.schemas.agent import (
     ApprovalRequest,
     ApprovalRequiredResponse,
     ExportedThread,
+    FeedbackResponse,
     MemoriesResponse,
     MemoryErasureResponse,
     MemoryItem,
@@ -927,6 +928,56 @@ class AgentService:
         )
         return ThreadTitleResponse(thread_id=thread_id, title=title)
 
+    async def submit_feedback(
+        self,
+        thread_id: str,
+        run_id: str,
+        score: int,
+        reason: str | None,
+        user_id: str | None,
+        *,
+        principal: Principal | None = None,
+    ) -> FeedbackResponse:
+        """Record the caller's rating of one answer; the first rating of a run stands.
+
+        A missing thread and another user's thread are the same `404`. The `run_id` is not
+        checked against the thread's history (an old run's ID is not kept there): it only keys
+        the caller's own rating, and a run ID already rated on another thread is refused.
+        """
+        owner_key = self._owner_key(user_id, principal)
+        bind_correlation_context(request_id=None, thread_id=thread_id, run_id=run_id)
+        with self._persistence_errors():
+            await self._owned_thread_state(thread_id, owner_key)
+            if owner_key is None:  # an anonymous thread has no owner to file a rating under
+                raise ThreadNotFoundError("thread not found")
+            stored = await self._persistence.feedback.record(
+                owner_key, thread_id, run_id, score, reason
+            )
+        if stored.thread_id != thread_id:
+            raise ThreadNotFoundError("thread not found")
+        if stored.created:
+            label = "up" if stored.score > 0 else "down"
+            with telemetry.start_span(
+                semconv.FEEDBACK_SPAN,
+                attributes={
+                    semconv.NEURON_FEEDBACK_SCORE: label,
+                    semconv.NEURON_FEEDBACK_REASON: stored.reason or "none",
+                },
+            ):
+                metrics.record_feedback(label, stored.reason or "none")
+            logger.info("user_feedback", score=label, reason=stored.reason or "none")
+            audit(
+                "feedback_recorded",
+                outcome="allowed",
+                actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="feedback:write",
+                resource_type="run",
+                resource_id=run_id,
+                reason=stored.reason,
+            )
+        return FeedbackResponse(run_id=run_id, score=stored.score, reason=stored.reason)
+
     async def list_user_threads(
         self,
         user_id: str | None,
@@ -1144,12 +1195,12 @@ class AgentService:
                             continue
                         try:
                             await checkpointer.adelete_thread(thread_id)
-                            await self._persistence.thread_titles.forget_threads([thread_id])
+                            await self._forget_thread_content([thread_id])
                         finally:
                             await lease.release()
                         erased += 1
                     if skipped_busy == 0 and owner_key is not None:
-                        await self._persistence.thread_titles.forget_owner(owner_key)
+                        await self._forget_owner_content(owner_key)
             if self._memory is not None:
                 with self._persistence_errors():
                     erased_memories = await self._memory.erase(owner_key)
@@ -1182,6 +1233,15 @@ class AgentService:
             skipped_busy_count=skipped_busy,
             erased_memory_count=erased_memories,
         )
+
+    async def _forget_thread_content(self, thread_ids: list[str]) -> None:
+        """Remove what is kept beside a deleted thread: its title and the ratings of its runs."""
+        await self._persistence.thread_titles.forget_threads(thread_ids)
+        await self._persistence.feedback.forget_threads(thread_ids)
+
+    async def _forget_owner_content(self, owner_key: str) -> None:
+        await self._persistence.thread_titles.forget_owner(owner_key)
+        await self._persistence.feedback.forget_owner(owner_key)
 
     async def _titles_of(self, owner_key: str | None, page: OwnedThreadPage) -> dict[str, str]:
         if owner_key is None:
@@ -1235,7 +1295,7 @@ class AgentService:
                 # _owned_thread_state already raised if there is no checkpointer.
                 assert checkpointer is not None  # nosec B101
                 await checkpointer.adelete_thread(thread_id)
-                await self._persistence.thread_titles.forget_threads([thread_id])
+                await self._forget_thread_content([thread_id])
             finally:
                 await lease.release()
         audit(

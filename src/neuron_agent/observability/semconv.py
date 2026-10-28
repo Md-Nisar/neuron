@@ -32,6 +32,8 @@ STREAM_SPAN = "neuron.stream"
 # One span per approval request or decision, and one per memory operation (ADR 0009). Names and
 # counts only: never the tool arguments, the note text, an ID or an owner key.
 APPROVAL_SPAN = "neuron.approval"
+# One span per recorded answer rating (ADR 0010 decision 6): score and reason only.
+FEEDBACK_SPAN = "neuron.feedback"
 MEMORY_SPAN_PREFIX = "neuron.memory"
 
 # GenAI attributes.
@@ -64,6 +66,8 @@ NEURON_STREAM_TERMINATION = "neuron.stream.termination"
 NEURON_RULE = "neuron.rule"
 NEURON_APPROVAL_DECISION = "neuron.approval.decision"  # requested, approve or reject
 NEURON_APPROVAL_ACTIONS = "neuron.approval.actions"
+NEURON_FEEDBACK_SCORE = "neuron.feedback.score"  # up or down
+NEURON_FEEDBACK_REASON = "neuron.feedback.reason"  # a fixed reason, or none
 NEURON_MEMORY_OPERATION = "neuron.memory.operation"  # remember, list, forget or erase
 NEURON_MEMORY_ITEMS = "neuron.memory.items"
 OUTCOME_INTERRUPTED = "interrupted"  # a run or tool call that paused for approval
@@ -88,6 +92,8 @@ METRIC_MODEL_FALLBACKS = "neuron.model.fallbacks"
 # `neuron.memory.operation` and `neuron.outcome`.
 METRIC_APPROVALS = "neuron.approvals"
 METRIC_MEMORY_OPERATIONS = "neuron.memory.operations"
+# Answer ratings by `neuron.feedback.score` and `neuron.feedback.reason`.
+METRIC_FEEDBACK = "neuron.feedback"
 METRIC_CHECKPOINT_DURATION = "neuron.checkpoint.duration"
 METRIC_SERVICE_READY = "neuron.service.ready"
 METRIC_DB_POOL_WAITING = "neuron.db.pool.waiting"
@@ -119,6 +125,8 @@ METRIC_ATTRIBUTE_ALLOW_LIST = frozenset(
         NEURON_FALLBACK_FROM,
         NEURON_FALLBACK_TO,
         NEURON_APPROVAL_DECISION,
+        NEURON_FEEDBACK_SCORE,
+        NEURON_FEEDBACK_REASON,
         NEURON_MEMORY_OPERATION,
     }
 )

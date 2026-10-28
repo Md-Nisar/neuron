@@ -60,6 +60,7 @@ _EXPECTED_TABLES = {
     "neuron_token_settlements",
     "neuron_rate_buckets",
     "neuron_thread_meta",
+    "neuron_feedback",
 }
 
 
@@ -327,6 +328,7 @@ async def test_grants_are_exactly_the_documented_dml(role_db: RoleDatabase) -> N
         "neuron_token_settlements": {"SELECT", "INSERT", "DELETE"},
         "neuron_rate_buckets": dml,
         "neuron_thread_meta": dml,
+        "neuron_feedback": dml,
         "neuron_meta": set(),
         "neuron_migrations": set(),
         "checkpoint_migrations": set(),

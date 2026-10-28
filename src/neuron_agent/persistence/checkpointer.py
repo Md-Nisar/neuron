@@ -28,6 +28,7 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.observability import metrics
 from neuron_agent.persistence import migrations
 from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
+from neuron_agent.persistence.feedback import FeedbackStore, InMemoryFeedback, PostgresFeedback
 from neuron_agent.persistence.migrations import identity_check_value
 from neuron_agent.persistence.roles import verify_runtime_role
 from neuron_agent.persistence.startup_checks import (
@@ -144,6 +145,18 @@ class Persistence:
     store: BaseStore | None = field(default=None, repr=False)
     _opened: bool = field(default=False, init=False, repr=False)
     _thread_titles: ThreadTitles | None = field(default=None, init=False, repr=False)
+    _feedback: FeedbackStore | None = field(default=None, init=False, repr=False)
+
+    @property
+    def feedback(self) -> FeedbackStore:
+        """Answer ratings: Postgres beside a Postgres checkpointer, else process memory."""
+        if self._feedback is None:
+            self._feedback = (
+                PostgresFeedback(self.pool)
+                if self.backend == "postgres" and self.pool is not None
+                else InMemoryFeedback()
+            )
+        return self._feedback
 
     @property
     def thread_titles(self) -> ThreadTitles:
@@ -242,7 +255,7 @@ class Persistence:
         tables = [
             *(migrations.GUARD_TABLES if self.check_guard_tables else ()),
             *((migrations.STORE_TABLE,) if self.memory_enabled else ()),
-            *((migrations.THREAD_META_TABLE,) if self.backend == "postgres" else ()),
+            *(migrations.USER_CONTENT_TABLES if self.backend == "postgres" else ()),
         ]
         try:
             async with asyncio.timeout(self.ping_timeout_seconds):

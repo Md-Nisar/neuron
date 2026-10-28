@@ -127,6 +127,7 @@ async def prune_threads(
     for thread_id in stale:
         await checkpointer.adelete_thread(thread_id)
     await persistence.thread_titles.forget_threads(stale)
+    await persistence.feedback.forget_threads(stale)
     expired_leases = await _prune_leases(persistence) if delete_leases else 0
     ledger_minutes = await _ledger(persistence, ledger_window_seconds)
     idle_buckets = await _buckets(persistence, rate_bucket_idle_seconds)

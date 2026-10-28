@@ -234,7 +234,7 @@ JWT_ISSUER = "https://issuer.example.test"
 JWT_AUDIENCE = "neuron-api"
 JWKS_URL = "https://issuer.example.test/.well-known/jwks.json"
 ALL_SCOPES = (
-    "agent:invoke agent:approve threads:read threads:write threads:delete "
+    "agent:invoke agent:approve threads:read threads:write threads:delete feedback:write "
     "memories:read memories:write tools:calculator"
 )
 
