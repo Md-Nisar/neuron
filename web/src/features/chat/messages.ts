@@ -43,6 +43,13 @@ export function failureText(failure: Failure): string {
   }
 }
 
+/** Why opening an earlier conversation failed. */
+export function openFailureText(failure: Failure): string {
+  return failure.kind === "unexpected"
+    ? "That conversation could not be opened. Try again."
+    : failureText(failure);
+}
+
 export const APPROVAL_TEXT = {
   deciding: "Sending your decision…",
   approved: "You approved this.",

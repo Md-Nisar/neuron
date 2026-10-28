@@ -96,3 +96,47 @@ describe("useChat.decide", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("useChat.open", () => {
+  const history = (): Response =>
+    new Response(
+      JSON.stringify({ messages: [{ role: "user", content: "hi", tool_calls: [] }], total: 1 }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  const hook = (fetchMock: typeof fetch) =>
+    renderHook(() =>
+      useChat({
+        apiUrl: "http://127.0.0.1:8000",
+        getAccessToken: () => "tok",
+        onSessionEnded: vi.fn(),
+        maxChars: 1000,
+        fetch: fetchMock,
+      }),
+    );
+
+  it("loads once if called twice in the same tick", async () => {
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(history()));
+    const { result } = hook(fetchMock);
+    await act(async () => {
+      await Promise.all([result.current.open("t1"), result.current.open("t1")]);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.threadId).toBe("t1");
+  });
+
+  it("does nothing while a reply is streaming", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    fetchMock.mockResolvedValueOnce(sseResponse(controlledStream().stream));
+    const { result } = hook(fetchMock);
+    await act(async () => {
+      void result.current.send("hello");
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await result.current.open("t1");
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

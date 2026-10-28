@@ -140,6 +140,12 @@ function parseApproval(name: string, p: Record<string, unknown>): ApprovalRequir
   };
 }
 
+/** The body of `GET /v1/threads/{id}/approval`: the same payload as an `approval_required` event. */
+export function parseApprovalBody(body: unknown): ApprovalRequired {
+  if (!isRecord(body)) return invalid("approval");
+  return parseApproval("approval", body);
+}
+
 /** Turn one SSE message into a typed event; `null` for an event this client does not know. */
 export function parseStreamEvent(name: string, raw: string): StreamEvent | null {
   switch (name) {

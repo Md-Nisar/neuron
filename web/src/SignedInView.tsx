@@ -73,6 +73,12 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
         <ThreadList
           deps={dataDeps}
           refresh={refresh}
+          activeThreadId={chat.threadId}
+          openDisabled={chat.running || chat.opening}
+          onOpen={(threadId) => {
+            setView("chat");
+            void chat.open(threadId);
+          }}
           onDeleted={(threadId) => {
             if (chat.threadId === threadId) chat.newConversation();
           }}

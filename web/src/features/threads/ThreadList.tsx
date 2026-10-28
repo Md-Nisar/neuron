@@ -28,9 +28,22 @@ export interface ThreadListProps {
   refresh: number;
   /** A conversation was deleted on the server: the chat must drop it if it is open. */
   onDeleted: (threadId: string) => void;
+  /** Show this conversation in the chat and continue it. */
+  onOpen: (threadId: string) => void;
+  /** The conversation open in the chat, if it has a server-side thread. */
+  activeThreadId: string | null;
+  /** True while a reply is streaming or another conversation is loading. */
+  openDisabled: boolean;
 }
 
-export function ThreadList({ deps, refresh, onDeleted }: ThreadListProps) {
+export function ThreadList({
+  deps,
+  refresh,
+  onDeleted,
+  onOpen,
+  activeThreadId,
+  openDisabled,
+}: ThreadListProps) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -247,6 +260,18 @@ export function ThreadList({ deps, refresh, onDeleted }: ThreadListProps) {
                   </div>
                 ) : (
                   <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      aria-label={`Open ${shownTitle(thread.title)}`}
+                      aria-current={thread.thread_id === activeThreadId ? "true" : undefined}
+                      disabled={openDisabled}
+                      className="rounded border px-2 py-0.5"
+                      onClick={() => {
+                        onOpen(thread.thread_id);
+                      }}
+                    >
+                      Open
+                    </button>
                     <button
                       type="button"
                       ref={register(`${thread.thread_id}:rename`)}

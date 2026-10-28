@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 
 import {
   initialRunState,
@@ -8,7 +8,11 @@ import {
   type Decision,
 } from "@/lib/stream";
 
+import { ApiError } from "@/lib/request";
+
 import { approvalStreamPath } from "./approval";
+import { toChatMessages } from "./history";
+import { getHistory, getPendingApproval, HISTORY_PAGE } from "./historyApi";
 
 import { chatReducer, initialChatState, retryableText, type Failure } from "./chatState";
 import { checkDraft, type DraftProblem } from "./limits";
@@ -26,6 +30,11 @@ export function useChat(deps: ChatDeps) {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const abort = useRef<AbortController | null>(null);
   const deciding = useRef(new Set<string>());
+  const [opening, setOpening] = useState(false);
+  const [openFailure, setOpenFailure] = useState<Failure | null>(null);
+  const [openedAt, setOpenedAt] = useState(0);
+  const openRequest = useRef(0);
+  const openingNow = useRef(false);
 
   useEffect(
     () => () => {
@@ -150,6 +159,51 @@ export function useChat(deps: ChatDeps) {
     }
   }
 
+  /**
+   * Show an earlier conversation and continue it. The history is what the server stored: tool
+   * calls and their outcomes are the server's records. A conversation that ended waiting for a
+   * decision gets its approval card back, from the server's own copy of the request.
+   */
+  async function open(threadId: string): Promise<void> {
+    // The ref is checked synchronously, so a double-click cannot start two loads.
+    if (state.running || openingNow.current) return;
+    openingNow.current = true;
+    const request = ++openRequest.current;
+    setOpening(true);
+    setOpenFailure(null);
+    const current = () => request === openRequest.current;
+    try {
+      let page = await getHistory(deps, threadId, 0);
+      const earlierHidden = page.total > HISTORY_PAGE;
+      if (earlierHidden) page = await getHistory(deps, threadId, page.total - HISTORY_PAGE);
+      if (!current()) return;
+      const messages = toChatMessages(page.messages, () => crypto.randomUUID());
+      dispatch({ type: "open", threadId, messages, earlierHidden });
+      setOpenedAt((n) => n + 1);
+      const waiting = messages.find((message) => message.status === "needs_approval");
+      if (waiting === undefined) return;
+      try {
+        const payload = await getPendingApproval(deps, threadId);
+        // The reducer ignores a message that is gone, so a conversation left meanwhile is safe.
+        dispatch({ type: "attach_approval", messageId: waiting.id, payload });
+      } catch (error) {
+        // Decided elsewhere, not yours to decide, or unreadable: the notice stays, with no card.
+        if (error instanceof ApiError && error.kind === "unauthorized") deps.onSessionEnded();
+      }
+    } catch (error) {
+      if (!current()) return;
+      const failure: Failure =
+        error instanceof ApiError
+          ? { kind: error.kind, retryAfterSeconds: error.retryAfterSeconds }
+          : { kind: "unexpected", retryAfterSeconds: null };
+      setOpenFailure(failure);
+      if (failure.kind === "unauthorized") deps.onSessionEnded();
+    } finally {
+      openingNow.current = false;
+      if (current()) setOpening(false);
+    }
+  }
+
   /** Validate and send. Returns what is wrong with the draft, or null if it was sent. */
   async function send(raw: string): Promise<DraftProblem | null> {
     if (state.running) return null;
@@ -164,6 +218,12 @@ export function useChat(deps: ChatDeps) {
   return {
     messages: state.messages,
     threadId: state.threadId,
+    earlierHidden: state.earlierHidden,
+    opening,
+    openFailure,
+    /** Counts successful opens, so the page can move focus to the conversation. */
+    openedAt,
+    open,
     running: state.running,
     canRetry: retryText !== null,
     send,
@@ -177,6 +237,10 @@ export function useChat(deps: ChatDeps) {
       await run(retryText);
     },
     newConversation: () => {
+      openRequest.current++;
+      openingNow.current = false;
+      setOpening(false);
+      setOpenFailure(null);
       abort.current?.abort();
       dispatch({ type: "reset" });
     },

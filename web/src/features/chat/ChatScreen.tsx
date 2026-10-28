@@ -4,10 +4,17 @@ import type { Decision } from "@/lib/stream";
 
 import { characterCount, checkDraft, type DraftProblem } from "./limits";
 import { ApprovalCard } from "./ApprovalCard";
+import { displaySafe } from "./displaySafe";
 import { Markdown } from "./Markdown";
-import { draftProblemText, failureText } from "./messages";
+import { draftProblemText, failureText, openFailureText } from "./messages";
 import type { ChatMessage } from "./chatState";
 import { useChat, type ChatDeps } from "./useChat";
+
+const SKIPPED_TEXT = {
+  pending: "Waiting for approval",
+  rejected: "You rejected",
+  failed: "Could not run",
+} as const;
 
 function MessageView({
   message,
@@ -28,6 +35,11 @@ function MessageView({
           {message.toolCalls.length > 0 && (
             <p className="mt-1 text-xs opacity-70">Used: {message.toolCalls.join(", ")}</p>
           )}
+          {message.skipped.map((tool, index) => (
+            <p key={index} className="mt-1 text-xs opacity-70">
+              {SKIPPED_TEXT[tool.why]}: {displaySafe(tool.name)}
+            </p>
+          ))}
           {message.status === "streaming" && message.text === "" && (
             <p className="opacity-70">Thinking…</p>
           )}
@@ -72,6 +84,12 @@ export function ChatView({ chat, maxChars }: { chat: Chat; maxChars: number }) {
     wasRunning.current = chat.running;
   }, [chat.running]);
 
+  // An opened conversation is ready to continue: put the cursor in the composer. (A pending
+  // approval card takes focus itself when it arrives, a moment later.)
+  useEffect(() => {
+    if (chat.openedAt > 0) composer.current?.focus();
+  }, [chat.openedAt]);
+
   async function submit(): Promise<void> {
     const found = checkDraft(draft, maxChars).problem;
     setProblem(found);
@@ -108,6 +126,15 @@ export function ChatView({ chat, maxChars }: { chat: Chat; maxChars: number }) {
           New conversation
         </button>
       </div>
+      {chat.opening && <p className="mt-2 opacity-70">Opening conversation…</p>}
+      {chat.openFailure !== null && (
+        <p role="alert" className="mt-2">
+          {openFailureText(chat.openFailure)}
+        </p>
+      )}
+      {chat.earlierHidden && (
+        <p className="mt-2 text-xs opacity-70">Earlier messages are not shown.</p>
+      )}
       <div role="log" aria-label="Messages" aria-live="polite" className="mt-4">
         <ul className="space-y-3">
           {chat.messages.map((message) => (
