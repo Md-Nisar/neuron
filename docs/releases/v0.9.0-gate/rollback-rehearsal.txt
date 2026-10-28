@@ -1,0 +1,16 @@
+18:39:59 deploy new image neuron:ref
+18:40:42 migrations after new: 
+smoke_test: passed (ready, invoke, cleanup)
+smoke_test: passed (ready, invoke, cleanup)
+18:41:01 created thread f6f633fc-7774-4cba-9307-346767eef154
+18:41:01 roll back to neuron:v080 (setup runs first, then both replicas)
+18:41:23 migrations after rollback: 
+18:41:23 ready on 8101
+18:41:23 ready on 8102
+smoke_test: passed (ready, invoke, cleanup)
+smoke_test: passed (ready, invoke, cleanup)
+18:41:24 thread readable on the old image via the other replica: HTTP 200
+18:41:24 roll forward again to neuron:ref
+smoke_test: passed (ready, invoke, cleanup)
+smoke_test: passed (ready, invoke, cleanup)
+18:41:58 rollback rehearsal passed
