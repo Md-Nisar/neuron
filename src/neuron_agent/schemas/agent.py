@@ -96,11 +96,21 @@ class ApprovalDecisionRequest(BaseModel):
     decision: Literal["approve", "reject"]
 
 
+class ToolCallRecord(BaseModel):
+    """A tool call the assistant made: its name, a bounded summary of the arguments and how it
+    ended. Never the tool's output."""
+
+    name: str
+    summary: str
+    status: Literal["pending", "completed", "failed", "rejected"]
+
+
 class ThreadMessage(BaseModel):
     """One conversation turn as exposed to clients."""
 
     role: Literal["user", "assistant"]
     content: str
+    tool_calls: list[ToolCallRecord] = Field(default_factory=list)
 
 
 class ThreadHistoryResponse(BaseModel):

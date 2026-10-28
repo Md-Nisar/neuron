@@ -142,6 +142,8 @@ curl -s "http://127.0.0.1:8000/v1/me/export?limit=5&offset=0&message_limit=20&me
 curl -s -X DELETE "http://127.0.0.1:8000/v1/me/threads" -H "$AUTH"
 ```
 
+The messages endpoint also returns each assistant tool call as `tool_calls`: `name`, a bounded `summary` of the arguments (at most 200 characters, built by the server) and a `status` of `pending` (waiting for an approval), `completed`, `failed` or `rejected`. Tool output is never returned.
+
 Export returns only user and assistant text and is bounded by `APP_USER_DATA_EXPORT_MAX_BYTES` (default 5 MB); use the returned pagination fields to fetch further threads/messages. Listing returns summaries without conversation content. See `SECURITY.md` for retention and coverage limitations.
 
 Persistence is selected with `APP_CHECKPOINTER`:

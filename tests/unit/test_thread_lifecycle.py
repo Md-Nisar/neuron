@@ -81,7 +81,53 @@ async def test_history_hides_system_and_tool_messages() -> None:
         },
     )
     page = await service.get_history(thread_id, None, limit=100, offset=0)
-    assert [m.content for m in page.messages] == ["hi", "hi"]
+    assert [m.content for m in page.messages] == ["hi", "hi", ""]
+    record = page.messages[2].tool_calls[0]
+    assert (record.name, record.summary, record.status) == (
+        "calculator",
+        "expression=1+1",
+        "completed",
+    )
+    assert "raw tool output" not in page.model_dump_json()
+    assert "internal prompt" not in page.model_dump_json()
+
+
+def _tool_turn(result: ToolMessage | None, **args: Any) -> list[Any]:
+    call = {"name": "remember", "args": args, "id": "c1"}
+    return [AIMessage(content="", tool_calls=[call]), *([result] if result else [])]
+
+
+def test_tool_call_records_cover_every_outcome() -> None:
+    project = agent_service._public_thread_messages
+    done = ToolMessage(content="ok", tool_call_id="c1", status="success")
+    failed = ToolMessage(content="boom", tool_call_id="c1", status="error")
+    rejected = ToolMessage(
+        content="User rejected the tool call for `remember` with id c1.",
+        tool_call_id="c1",
+        status="error",
+    )
+    for result, waiting, expected in [
+        (done, False, "completed"),
+        (failed, False, "failed"),
+        (rejected, False, "rejected"),
+        (None, True, "pending"),
+        (None, False, "failed"),
+    ]:
+        turns = project(_tool_turn(result, text="x"), with_tools=True, awaiting_decision=waiting)
+        assert [c.status for c in turns[0].tool_calls] == [expected]
+    # Text-only projection (list counts, export) is unchanged.
+    assert project(_tool_turn(done, text="x")) == []
+
+
+def test_tool_call_summary_is_bounded_and_single_line() -> None:
+    turns = agent_service._public_thread_messages(
+        _tool_turn(None, text="a\n\nb " + "z" * 500, other="y" * 500, third="w" * 500),
+        with_tools=True,
+    )
+    summary = turns[0].tool_calls[0].summary
+    assert len(summary) <= 200
+    assert "\n" not in summary
+    assert summary.startswith("text=a b zzz")
 
 
 @pytest.mark.usefixtures("echo_agent")
@@ -427,7 +473,7 @@ def test_get_messages_endpoint(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "thread_id": thread_id,
-        "messages": [{"role": "user", "content": "hi"}],
+        "messages": [{"role": "user", "content": "hi", "tool_calls": []}],
         "total": 2,
         "limit": 1,
         "offset": 0,
