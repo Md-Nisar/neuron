@@ -246,7 +246,17 @@ Configuration is in `OPERATIONS.md#opentelemetry`.
 
 The service is stateless except for provider clients and graph construction. Horizontal scaling is supported for the HTTP layer. Durable thread state requires Agent Server managed persistence or a configured production checkpointer.
 
-v0.7.0 (tool registry, MCP tools, human approvals, per-user memory, a second provider and model fallback) is designed in [ADR 0009](docs/decisions/0009-extensible-agent-platform.md) and implemented issue by issue; this document describes the code that exists today.
+## Extensible Agent Platform (v0.7.0)
+
+Designed in [ADR 0009](docs/decisions/0009-extensible-agent-platform.md). The request flow is unchanged; what changed is what the agent harness is built from:
+
+- **Tool registry** (`tools/registry.py`): one `ToolSpec` per tool (scope, risk `read` or `mutating`, source `builtin` or `mcp`, optional `approval_when`). Authorization, the model-visible tool list and approval gating all read it.
+- **MCP tools** (`tools/mcp/`): pinned, text-only tools from operator-configured servers over Streamable HTTP, read once at start-up.
+- **Approvals**: `HumanInTheLoopMiddleware` pauses a run before a `mutating` tool; the service stores the LangGraph interrupt ID as the approval ID and `POST /v1/threads/{id}/approvals/{approval_id}` resumes it from the thread checkpoint (needs a persistent checkpointer).
+- **Memory** (`memory/`): per-user notes in a LangGraph `Store` (in-memory, or `AsyncPostgresStore` on the shared pool) behind `recall`, `remember` and `forget` tools and `/v1/me/memories` routes.
+- **Models** (`models/factory.py`): providers `openai`, `nvidia`, `anthropic`; an ordered fallback chain on provider errors; a bounded retry for invalid structured output.
+- **Telemetry**: `neuron.approval` and `neuron.memory.*` spans and counters, names only.
+
 
 Multi-instance deployment, shared Postgres-backed limits and leases, migrations, the container image and the Render reference platform are designed in [ADR 0008](docs/decisions/0008-production-deployment.md) (v0.6.0); they are being implemented issue by issue, so this document describes the code that exists today.
 

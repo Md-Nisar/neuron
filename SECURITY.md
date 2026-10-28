@@ -57,16 +57,18 @@ Primary risks are prompt injection, unsafe tool use, sensitive logging, SSRF, de
 - Bandit security scan in CI.
 - Dependency vulnerability audit: `make security` runs `pip-audit` against every locked dependency (`uv export` of `uv.lock`, all groups) after Bandit. See Dependency Vulnerabilities.
 
-## Future Mutating Tools
+## Mutating Tools and Agentic Threats (v0.7.0)
 
-Mutating or high-impact tools require:
+Mutating tools now exist behind a fixed set of controls (ADR 0009): authorization outside the model (scope per tool), human approval for every `mutating` tool (`approve` or `reject`, no edit), approval IDs bound to the owner and thread and usable once, audit events (`approval_requested`, `approval_decided`, `authorization_denied`), and tests for unauthorized, duplicate and replayed decisions. Idempotency is per tool: `remember` is keyed by the hash of the note, so repeating it stores one note. A new mutating tool must add its own idempotency story and tests.
 
-- authorization checks outside the model
-- human approval if impact is high
-- idempotency keys
-- retry policy
-- audit logs
-- tests for unauthorized calls and duplicate execution
+How the OWASP agentic risks that v0.7.0 touches are handled:
+
+| Risk | Where it shows up | Control | Tests |
+| ---- | ----------------- | ------- | ----- |
+| ASI02 tool misuse | MCP and memory tools | scope per tool, `mutating` default for MCP tools, approval, size and timeout caps, `approval_when` refuses calls that cannot be valid | `test_mcp_abuse`, `test_approval_api`, `test_memory_tools` |
+| ASI04 supply chain | MCP servers | operator-only server list, https to public hosts, SHA-256 pin of each tool definition, no stdio, no sampling, roots or elicitation, no redirects off origin, no proxy or compression | `test_mcp_abuse`, `test_mcp_pins` |
+| ASI06 memory poisoning | per-user memory | `remember` saves only text the user wrote, approval before writing, owner from trusted context, notes returned as escaped data, per-user limits, user can list and delete | `test_memory_tools`, `test_memory_api`, `approval` and security evals |
+| ASI09 trust in the agent | approvals | the user decides on the exact arguments that will run; the model cannot edit them or answer in the tool's place | `test_approval_api`, `test_approval_stream`, `approval` eval |
 
 ## Streaming Output Policy
 
@@ -153,6 +155,9 @@ What the pipeline does not prove: an attestation shows where and how the image w
 - **Injected tool calls the security eval can't see.** A prompt-injected call to a tool the caller is permitted to use, or a denied tool attempt, doesn't fail a security eval case; denied calls are absent from `used_tools` (`EVALUATION.md`).
 - **Denied tool calls are not `403`s.** The `authorization_denied` audit event (`resource_type=tool`) and the `insufficient_scope`/`unknown_tool` policy-block metric are the only signals of an injected tool attempt. The example alert `NeuronDeniedToolCallsSpike` (`deploy/observability/prometheus-alerts.yaml`; runbook in `OPERATIONS.md`) fires on more than ten of those policy blocks in 10 minutes; a handful stays below it, so review the audit events too.
 - **Reference deployment (Render, #150).** The web service holds `APP_POSTGRES_MIGRATION_DSN` (schema owner) because Render's pre-deploy command shares its environment, so an environment dump or RCE in the web process exposes owner-equivalent credentials; the cron job also holds the provider and identity keys because `prune` loads full settings. The OTLP Collector accepts unauthenticated traffic from its private network, so staging and production must live in separate workspaces. Accepted for now; see ADR 0008 open question 20.
+- **v0.7.0 not exercised in staging or production.** Approvals, MCP, memory and the Anthropic provider are unit-, graph- and integration-tested (Postgres 16 locally) and verified with fakes or the NVIDIA development model. Anthropic was never called live (no funded key). Production and staging settings are validated but unrun.
+- **MCP trust is the pin, not the server.** A pinned definition proves the tool is the one reviewed, not that the server behaves well. Results are untrusted data, but a server that is allowed a tool can still return misleading text; mark anything with side effects `mutating`.
+- **Memory concurrency.** The item limit is checked before the write, so concurrent writes by one user can exceed it by the number in flight. Memory is not available on the Agent Server path.
 - **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`, and `neuron-api` refuses a non-loopback bind unless `APP_ENV` is set explicitly. Accepted residual risk: an explicit `APP_ENV=development` on a public host still serves unauthenticated.
 
 ## Secrets
