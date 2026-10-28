@@ -18,6 +18,9 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from langgraph.store.base import BaseStore
+from langgraph.store.memory import InMemoryStore
+from langgraph.store.postgres import AsyncPostgresStore
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -126,6 +129,10 @@ class Persistence:
     # Set with `APP_LIMITS_BACKEND=postgres`: readiness also needs the guard tables, because the
     # guards fail closed on every request when `setup` has not created them.
     check_guard_tables: bool = False
+    # Per-user memory (ADR 0009): `InMemoryStore` without a database, `AsyncPostgresStore` on the
+    # pool (made in `open()`) with one. None while memory is off.
+    memory_enabled: bool = False
+    store: BaseStore | None = field(default=None, repr=False)
     _opened: bool = field(default=False, init=False, repr=False)
 
     @property
@@ -146,6 +153,8 @@ class Persistence:
             )
             if run_setup:
                 await setup_schema(self)
+        if self.memory_enabled:
+            self.store = AsyncPostgresStore(self.pool)
         self._opened = True
         metrics.observe_pool_waiting(self._pool_waiting)
         logger.info("checkpointer_opened", backend=self.backend)
@@ -187,6 +196,8 @@ class Persistence:
         metrics.observe_pool_waiting(None)
         if self.backend == "postgres":
             self.checkpointer = None
+        if self.memory_enabled:
+            self.store = None
         logger.info("checkpointer_closed", backend=self.backend)
 
     def _pool_waiting(self) -> int:
@@ -200,15 +211,17 @@ class Persistence:
         if not self.is_open:
             return False
         missing: list[str] = []
+        tables = [
+            *(migrations.GUARD_TABLES if self.check_guard_tables else ()),
+            *((migrations.STORE_TABLE,) if self.memory_enabled else ()),
+        ]
         try:
             async with asyncio.timeout(self.ping_timeout_seconds):
                 async with self.pool.connection() as conn:
-                    if not self.check_guard_tables:
+                    if not tables:
                         await conn.execute("SELECT 1")
                     else:
-                        cursor = await conn.execute(
-                            _MISSING_TABLES_SQL, [list(migrations.GUARD_TABLES)]
-                        )
+                        cursor = await conn.execute(_MISSING_TABLES_SQL, [tables])
                         missing = [row["name"] for row in await cursor.fetchall()]
         except (TimeoutError, psycopg.Error) as exc:
             logger.warning(
@@ -231,7 +244,12 @@ def build_persistence(settings: Settings) -> Persistence:
     elif backend != "postgres":
         backend = "none"
     if backend != "postgres" and settings.limits_backend != "postgres":
-        return Persistence(backend=backend, checkpointer=saver)
+        return Persistence(
+            backend=backend,
+            checkpointer=saver,
+            memory_enabled=settings.memory_enabled,
+            store=InMemoryStore() if settings.memory_enabled else None,
+        )
 
     # Settings validation guarantees a DSN when either backend is postgres.
     assert settings.postgres_dsn is not None  # nosec B101
@@ -256,6 +274,7 @@ def build_persistence(settings: Settings) -> Persistence:
         pool=pool,
         ping_timeout_seconds=min(2.0, settings.postgres_pool_timeout_seconds),
         check_guard_tables=settings.limits_backend == "postgres",
+        memory_enabled=settings.memory_enabled,
         serde=serde,
         app_role=settings.postgres_app_role if settings.env == "production" else None,
         require_tls=hardened,
@@ -279,7 +298,7 @@ async def setup_schema(persistence: Persistence) -> None:
         assert isinstance(conninfo, str)  # nosec B101
         failure: str | None = None
         try:
-            await migrations.run_setup(conninfo)
+            await migrations.run_setup(conninfo, memory_store=persistence.memory_enabled)
         except Exception as exc:
             # Driver messages can echo DSN fragments; keep only the class name. Raised
             # outside the handler so the original is not left in `__context__` either.
