@@ -57,8 +57,18 @@ services:
       POSTGRES_USER: neuron_owner
       POSTGRES_PASSWORD: owner-local-only
       POSTGRES_DB: neuron
+    # WAL archiving, so the restore drill (scripts/dr_drill.py) can recover to a point in time.
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=test ! -f /var/lib/postgresql/wal_archive/%f && cp %p /var/lib/postgresql/wal_archive/%f
+      - -c
+      - archive_timeout=10
     volumes:
       - ./deploy/reference/init-roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+      - ./deploy/reference/init-archive.sh:/docker-entrypoint-initdb.d/05-archive.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U neuron_owner -d neuron"]
       interval: 2s
