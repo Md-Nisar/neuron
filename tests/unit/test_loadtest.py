@@ -183,3 +183,43 @@ def test_compare_refuses_a_different_host_or_profile() -> None:
         compare(_document(10.0), _document(10.0, host="other"))
     with pytest.raises(ValueError, match="fake_model_profile differs"):
         compare(_document(10.0), _document(10.0, profile="other"))
+
+
+def test_docker_stats_figures_are_parsed() -> None:
+    from loadtest.resources import parse_bytes, parse_percent
+
+    assert parse_percent("182.50%") == 182.5
+    assert parse_bytes("512MiB / 15.7GiB") == 512 * 1024**2
+    assert parse_bytes("1.5GiB / 15.7GiB") == 1.5 * 1024**3
+
+
+def test_host_cpu_is_the_busy_share_between_two_readings() -> None:
+    from loadtest.resources import host_cpu_percent
+
+    # user nice system idle iowait: 60 of 100 ticks busy
+    assert host_cpu_percent([0, 0, 0, 0, 0], [40, 0, 20, 30, 10]) == 60.0
+    assert host_cpu_percent([1, 1, 1, 1, 1], [1, 1, 1, 1, 1]) == 0.0
+
+
+def test_samples_are_folded_into_the_window_of_each_step() -> None:
+    from loadtest.resources import summarise_steps
+
+    def sample(at: float, cpu: float, connections: int) -> dict[str, object]:
+        return {
+            "at": at,
+            "host_cpu": cpu,
+            "pg_connections": connections,
+            "containers": {"neuron-api1-1": {"cpu": cpu * 2, "mem": 100 * 1024**2}},
+        }
+
+    samples = [sample(5, 10, 3), sample(95, 50, 9), sample(105, 70, 11), sample(185, 90, 20)]
+    steps = [
+        {"users": 30, "seconds": 100.0, "ended_at": 100.0},
+        {"users": 60, "seconds": 100.0, "ended_at": 200.0},
+    ]
+    first, second = summarise_steps(samples, steps)  # type: ignore[arg-type]
+    assert first["samples"] == 2 and second["samples"] == 2
+    assert first["series"]["api1.cpu"] == {"mean": 60.0, "max": 100.0}
+    assert second["series"]["host_cpu"] == {"mean": 80.0, "max": 90.0}
+    assert second["series"]["pg_connections"]["max"] == 20.0
+    assert second["series"]["api1.mem_mib"]["max"] == 100.0
