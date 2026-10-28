@@ -45,7 +45,9 @@ def test_web_client_is_a_public_pkce_code_flow_client(realm: dict[str, Any]) -> 
     assert not client["serviceAccountsEnabled"]
     # Exact origins and a loopback redirect: no wildcard host.
     assert client["webOrigins"] == ["http://localhost:5173"]
-    assert all(uri.startswith("http://localhost:5173/") for uri in client["redirectUris"])
+    # Fixed allow-list, no wildcard: the sign-in redirect and the sign-out redirect (#282).
+    assert client["redirectUris"] == ["http://localhost:5173/"]
+    assert client["attributes"]["post.logout.redirect.uris"] == "http://localhost:5173/"
 
 
 @pytest.mark.parametrize("client_id", ["neuron-web", "neuron-dev-test"])
@@ -121,3 +123,17 @@ def test_http_identity_provider_is_still_refused_outside_development() -> None:
             openai_api_key="sk-test",
             **PRODUCTION_PROFILE,
         )
+
+
+@pytest.mark.parametrize("client_id", ["neuron-web", "neuron-dev-test"])
+def test_realm_roles_can_reach_the_token(realm: dict[str, Any], client_id: str) -> None:
+    """With full scope off and no scope mappings, Keycloak drops realm roles: `roles` is empty."""
+    client = _client(realm, client_id)
+    mapped = {
+        role
+        for mapping in realm.get("scopeMappings", [])
+        if mapping["client"] == client_id
+        for role in mapping["roles"]
+    }
+
+    assert client["fullScopeAllowed"] is True or mapped >= set(dev_keycloak.ROLE_PERMISSIONS)
