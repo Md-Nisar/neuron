@@ -30,7 +30,7 @@ from langchain.agents.middleware import AgentMiddleware
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ThreadNotFoundError
 from neuron_agent.models import factory
-from neuron_agent.schemas.agent import AgentRequest
+from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ApprovalRequiredResponse
 from neuron_agent.security.auth import Principal
 from neuron_agent.security.authorization import DEV_PERMISSIONS, TokenUsageAccumulator
 from neuron_agent.services.agent_service import AgentService
@@ -449,14 +449,21 @@ async def run_security_suite(
             await service.shutdown()
 
 
+def _completed(response: AgentResponse | ApprovalRequiredResponse) -> AgentResponse:
+    """The finished response. The eval agent has only read-only tools, so a pause is a bug."""
+    if not isinstance(response, AgentResponse):
+        raise RuntimeError("an eval run paused for approval")  # pragma: no cover
+    return response
+
+
 async def _play_case(
     service: AgentService, case: dict[str, object], multi_turn: bool, usage: TokenUsageAccumulator
 ) -> list[str]:
     turns = [*cast("list[str]", case.get("setup", [])), cast("str", case["input"])]
     thread_id: str | None = None
     for message in turns:
-        response = await service.invoke(
-            AgentRequest(message=message, thread_id=thread_id), usage=usage
+        response = _completed(
+            await service.invoke(AgentRequest(message=message, thread_id=thread_id), usage=usage)
         )
         thread_id = response.thread_id if multi_turn else None
     return evaluate_case(
@@ -509,8 +516,12 @@ async def _run_security_case(
     attacker = _eval_principal("attacker", _attacker_permissions(case))
     victim_thread = None
     for message in cast("list[str]", case["victim_setup"]):
-        response = await service.invoke(
-            AgentRequest(message=message, thread_id=victim_thread), principal=victim, usage=usage
+        response = _completed(
+            await service.invoke(
+                AgentRequest(message=message, thread_id=victim_thread),
+                principal=victim,
+                usage=usage,
+            )
         )
         victim_thread = response.thread_id
     message = cast("str", case["input"]).replace("{victim_thread_id}", str(victim_thread))
@@ -528,8 +539,12 @@ async def _run_security_case(
 
     attacker_thread = None
     for turn in [*cast("list[str]", case.get("setup", [])), message]:
-        response = await service.invoke(
-            AgentRequest(message=turn, thread_id=attacker_thread), principal=attacker, usage=usage
+        response = _completed(
+            await service.invoke(
+                AgentRequest(message=turn, thread_id=attacker_thread),
+                principal=attacker,
+                usage=usage,
+            )
         )
         attacker_thread = response.thread_id
     return evaluate_case(

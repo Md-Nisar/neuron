@@ -13,7 +13,9 @@ from neuron_agent.errors.base import AuthorizationError
 if TYPE_CHECKING:
     from neuron_agent.security.auth import Principal
 
-DEV_PERMISSIONS = frozenset({"agent:invoke", "threads:read", "threads:delete", "tools:calculator"})
+DEV_PERMISSIONS = frozenset(
+    {"agent:invoke", "agent:approve", "threads:read", "threads:delete", "tools:calculator"}
+)
 
 
 @dataclass(frozen=True)

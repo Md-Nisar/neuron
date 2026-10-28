@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
@@ -52,8 +52,9 @@ class AgentAnswer(BaseModel):
 
 
 class AgentResponse(BaseModel):
-    """HTTP response payload."""
+    """HTTP response payload for a run that finished."""
 
+    status: Literal["completed"] = "completed"
     request_id: str
     thread_id: str
     answer: str
@@ -61,6 +62,38 @@ class AgentResponse(BaseModel):
     confidence: float
     refused: bool = False
     clarification_needed: bool = False
+
+
+class PendingAction(BaseModel):
+    """A tool call waiting for a decision, exactly as the model made it."""
+
+    name: str
+    args: dict[str, Any]
+
+
+class ApprovalRequest(BaseModel):
+    """What the caller is asked to decide. One decision covers every action listed."""
+
+    approval_id: str
+    actions: list[PendingAction]
+    allowed_decisions: list[Literal["approve", "reject"]]
+
+
+class ApprovalRequiredResponse(BaseModel):
+    """HTTP response payload for a run that paused before a tool that needs approval."""
+
+    status: Literal["approval_required"] = "approval_required"
+    request_id: str
+    thread_id: str
+    approval: ApprovalRequest
+
+
+class ApprovalDecisionRequest(BaseModel):
+    """`POST /v1/threads/{thread_id}/approvals/{approval_id}` body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["approve", "reject"]
 
 
 class ThreadMessage(BaseModel):

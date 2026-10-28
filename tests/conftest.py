@@ -233,7 +233,7 @@ def stream_replies(monkeypatch: pytest.MonkeyPatch) -> Callable[..., StreamingFa
 JWT_ISSUER = "https://issuer.example.test"
 JWT_AUDIENCE = "neuron-api"
 JWKS_URL = "https://issuer.example.test/.well-known/jwks.json"
-ALL_SCOPES = "agent:invoke threads:read threads:delete tools:calculator"
+ALL_SCOPES = "agent:invoke agent:approve threads:read threads:delete tools:calculator"
 
 
 @dataclass(frozen=True)
