@@ -1,0 +1,82 @@
+{
+  "image": "neuron:ref sha256:490b2636010aa145c7964c01ba5029c4fc8138769c1617fb30170a6c22a01c28 (built from 0979439 plus later commits; v0.8.0 code + #326 to #329)",
+  "host": "Linux x86_64, 4 CPUs",
+  "fake_model_profile": "fake model: 800 ms to first token, 40 tokens/s, 200 tokens",
+  "note": "Steps of 90 s, 30 more users each (the issue asked for 10-minute steps; shortened for the session). 300 Keycloak test users, think time 6 s, token budget raised to 10M (default 100k/h ends a run in minutes). Load generator and stack share one host, so numbers include the generator's CPU. Failure mode one step past the knee: 503 too_many_streams (APP_MAX_CONCURRENT_STREAMS=100 per replica). Not hosted capacity.",
+  "scenarios": {
+    "approval": {
+      "sustained_runs_per_second": 15.87,
+      "knee_users": 90,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:approval_pause: RuntimeError('http_503')": 111,
+          "run:approval: RuntimeError('http_503')": 69
+        }
+      },
+      "ttft_p90_ms_at_knee": 3800,
+      "run_p95_ms_at_knee": 11000
+    },
+    "follow_up": {
+      "sustained_runs_per_second": 11.2,
+      "knee_users": 150,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:follow_up_seed: RuntimeError('http_503')": 21,
+          "run:follow_up: RuntimeError('http_503')": 78
+        }
+      },
+      "ttft_p90_ms_at_knee": 6100,
+      "run_p95_ms_at_knee": 15000
+    },
+    "mix": {
+      "sustained_runs_per_second": 12.43,
+      "knee_users": 150,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:new_thread: RuntimeError('http_503')": 39,
+          "run:follow_up: RuntimeError('http_503')": 54,
+          "run:follow_up_seed: RuntimeError('http_503')": 1,
+          "run:approval_pause: RuntimeError('http_503')": 4,
+          "run:approval: RuntimeError('http_503')": 19
+        }
+      },
+      "ttft_p90_ms_at_knee": 7100,
+      "run_p95_ms_at_knee": 17000
+    },
+    "new_thread": {
+      "sustained_runs_per_second": 12.48,
+      "knee_users": 120,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:new_thread: RuntimeError('http_503')": 150
+        }
+      },
+      "ttft_p90_ms_at_knee": 2700,
+      "run_p95_ms_at_knee": 10000
+    }
+  }
+}
