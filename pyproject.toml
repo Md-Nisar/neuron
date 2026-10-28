@@ -1,6 +1,6 @@
 [project]
 name = "neuron-agent"
-version = "0.6.0"
+version = "0.7.0"
 description = "Production-oriented LangChain/LangGraph agent service baseline"
 readme = "README.md"
 license = "Apache-2.0"

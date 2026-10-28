@@ -1,7 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
+"Extensible Agent Platform" (ADR 0009, `docs/releases/v0.7.0-release-verification.md`): a tool registry, pinned MCP tools, human approval for mutating tools, per-user memory, an Anthropic provider with model fallback, and approval and memory evals. Not tagged: the owner decides after reviewing the verification record.
+
+Breaking changes: see the "Docs for v0.7.0 (#250)" entry below.
+
+Known issues:
+- Anthropic was verified with fakes only (no funded key); OpenAI was not run.
+- The live `--trials 3` regression and security runs were not done: no valid NVIDIA key was available, so no baseline or `compare` result exists for v0.7.0.
+- Staging and production settings are validated and unit-tested but nothing ran there; production is out of scope until after v1.0.0.
+- Memory is not available on the Agent Server path, and its item limit can be exceeded by concurrent writes.
+
+Changes:
 - Docs for v0.7.0 (#250). `SECURITY.md` gains the mutating-tool controls and a table of the agentic risks v0.7.0 touches (ASI02, ASI04, ASI06, ASI09) with their tests, and three limitations; `ARCHITECTURE.md` gains the platform section; the roadmap marks v0.7.0 as implemented with the release gate pending. **Breaking changes in v0.7.0:** `/v1/agent/invoke` returns `AgentResponse | ApprovalRequiredResponse` (typed clients must handle `status`); `/v1/agent/stream` can end in `approval_required` instead of `final`; new scopes `agent:approve`, `memories:read`, `memories:write`; `build_graph` and `build_agent` take an optional registry; staging and production refuse the unsafe settings listed under #249.
 - Approval evals and security dataset v5 (#244, #248, ADR 0009 decision 9). New `approval` eval suite (`tests/fixtures/eval_approval_cases.json`, `neuron-eval --suite approval`): scripted fake-model runs through the real service with a memory store, code-graded invariants over the store (a stored note was approved, was written by the user, was not rejected; no approval ID reused) plus per-case expectations (pause, stored/not stored, note count, forbidden keywords). The security dataset moves to v5 with approval and memory attack cases (note forged from tool output, paraphrase, bulk write, cross-user recall, injection through a note), and `approval` joins `SECURITY_SUITES`, so `compare` gates it at zero tolerance. Baselines were not recorded: no valid NVIDIA key was available (the key pasted earlier was exposed and must be revoked), so only the fake-model runs in `make test` were executed; Anthropic and production models were not run.
 - Production settings validation for v0.7.0 (#249, ADR 0009 decision 10), unit-tested only; nothing here ran in a real staging or production. Staging and production now refuse: `APP_MEMORY_ENABLED=true` without `APP_CHECKPOINTER=postgres` (memories must be durable and approvals need saved state); an MCP server list with an `http` URL, a loopback address, a malformed entry or a missing token (the existing loader rules, now pinned for both environments at start-up); MCP tools that need approval without `APP_CHECKPOINTER=postgres` (they would otherwise be dropped silently); and, with memory on, a database whose `store` table is missing (`store_missing`) or not usable by the app role (`store_no_access`), as new start-up check codes next to `tls_required` and the role checks (integration tests on Postgres 16). Development and test are unchanged.
