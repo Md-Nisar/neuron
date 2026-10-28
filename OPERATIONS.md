@@ -972,7 +972,8 @@ SELECT relname, pg_size_pretty(pg_total_relation_size(oid)) AS total
 FROM pg_class
 WHERE relname IN ('checkpoints', 'checkpoint_blobs', 'checkpoint_writes',
                   'neuron_run_leases', 'neuron_token_ledger',
-                  'neuron_token_settlements', 'neuron_rate_buckets')
+                  'neuron_token_settlements', 'neuron_rate_buckets',
+                  'neuron_thread_meta')
 ORDER BY pg_total_relation_size(oid) DESC;
 SELECT pg_size_pretty(pg_database_size(current_database()));
 ```
