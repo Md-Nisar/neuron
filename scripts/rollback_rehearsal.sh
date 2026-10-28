@@ -16,7 +16,7 @@ smoke() {
             grep -v UV_NATIVE
     done
 }
-migrations() { docker exec "$($compose ps -q postgres)" psql -U neuron_owner -d neuron -tAc \
+migrations() { docker exec "$(NEURON_IMAGE=$new $compose ps -q postgres)" psql -U neuron_owner -d neuron -tAc \
     "SELECT string_agg(version::text, ',' ORDER BY version) FROM neuron_migrations"; }
 
 NEURON_IMAGE=$new $compose down -v >/dev/null 2>&1 || true
