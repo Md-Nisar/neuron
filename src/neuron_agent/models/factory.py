@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
@@ -40,7 +40,8 @@ from langchain_core.exceptions import (
 )
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langchain_core.outputs import ChatGenerationChunk
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
@@ -618,7 +619,50 @@ class _FakeChatModel(FakeListChatModel):
     even when `create_chat_model` falls back to this model because no provider key is
     configured. The base `bind_tools` raises `NotImplementedError`; this fake model
     never calls tools, so binding is a no-op that returns itself unchanged.
+
+    With `ttft_ms`, `tokens_per_second` or `output_tokens` set it streams one word per
+    token after a first-token delay, so load tests see a realistic latency profile.
     """
+
+    ttft_ms: int = 0
+    tokens_per_second: int = 0
+    output_tokens: int | None = None
+
+    def _shaped(self) -> bool:
+        return bool(self.ttft_ms or self.tokens_per_second or self.output_tokens is not None)
+
+    def _words(self) -> list[str]:
+        if self.output_tokens is None:
+            return [self.responses[0]]
+        return ["token"] * self.output_tokens
+
+    def _call(self, *args: Any, **kwargs: Any) -> str:
+        if not self._shaped():
+            return super()._call(*args, **kwargs)
+        words = self._words()
+        delay = self.ttft_ms / 1000
+        if self.tokens_per_second:
+            delay += len(words) / self.tokens_per_second
+        time.sleep(delay)
+        return " ".join(words)
+
+    async def _astream(self, *args: Any, **kwargs: Any) -> AsyncIterator[ChatGenerationChunk]:
+        if not self._shaped():
+            async for chunk in super()._astream(*args, **kwargs):
+                yield chunk
+            return
+        words = self._words()
+        await asyncio.sleep(self.ttft_ms / 1000)
+        for index, word in enumerate(words):
+            last = index == len(words) - 1
+            yield ChatGenerationChunk(
+                message=AIMessageChunk(
+                    content=word if last else f"{word} ",
+                    chunk_position="last" if last else None,
+                )
+            )
+            if self.tokens_per_second and not last:
+                await asyncio.sleep(1 / self.tokens_per_second)
 
     def bind_tools(
         self,
@@ -645,7 +689,12 @@ def create_chat_model(
 
     api_key = settings.provider_api_key(provider)
     if settings.env in {"development", "test"} and api_key is None:
-        return _FakeChatModel(responses=["Local test response."])
+        return _FakeChatModel(
+            responses=["Local test response."],
+            ttft_ms=settings.fake_model_ttft_ms,
+            tokens_per_second=settings.fake_model_tokens_per_second,
+            output_tokens=settings.fake_model_output_tokens,
+        )
 
     if provider == "anthropic":
         return ChatAnthropic(

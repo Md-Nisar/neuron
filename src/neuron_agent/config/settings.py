@@ -134,6 +134,10 @@ class Settings(BaseSettings):
     # "auto" resolves to memory in development/test; staging/production must choose explicitly.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
+    # Development/test fake model only (ADR 0012 decision 4); 0 and None keep the instant answer.
+    fake_model_ttft_ms: int = Field(default=0, ge=0, le=10_000)
+    fake_model_tokens_per_second: int = Field(default=0, ge=0, le=1_000)
+    fake_model_output_tokens: int | None = Field(default=None, ge=1, le=2_000)
     # Where the rate limit, token budget and run guards live. "auto" resolves to memory in
     # development/test; staging/production must choose explicitly (production: postgres).
     limits_backend: LimitsBackend = "auto"
@@ -303,6 +307,17 @@ class Settings(BaseSettings):
                 "APP_CHECKPOINTER_SETUP_ON_STARTUP is refused in staging/production; "
                 "run `python -m neuron_agent.persistence.cli setup` as a deploy step"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_fake_model_settings(self) -> Settings:
+        """The fake model's latency settings exist for load tests, never for a deployment."""
+        if self.env in {"staging", "production"} and (
+            self.fake_model_ttft_ms
+            or self.fake_model_tokens_per_second
+            or self.fake_model_output_tokens is not None
+        ):
+            raise ValueError("APP_FAKE_MODEL_* settings are refused in staging/production")
         return self
 
     @model_validator(mode="after")
