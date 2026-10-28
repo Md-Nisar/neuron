@@ -41,3 +41,34 @@ try {
   would change origin is refused), with no cookies and no redirects.
 - `src/lib/stream/contract.json` is checked against the server's models by
   `tests/unit/test_web_stream_contract.py`; update both together when the protocol changes.
+
+## Sign-in (`src/lib/auth`)
+
+Authorization Code + PKCE (S256), written out in about 400 lines so each check is testable; no
+OAuth library. Against the development Keycloak (`docker compose --profile keycloak up keycloak`,
+`make dev-keycloak >> .env`, then `make web-dev`), sign in as `alice` / `dev-only-alice`.
+
+Settings (build time, `web/.env.local`, both optional): `VITE_OIDC_ISSUER` (default
+`http://localhost:8180/realms/neuron`; plain HTTP is accepted on loopback only) and
+`VITE_OIDC_CLIENT_ID` (default `neuron-web`). The redirect URI is the page origin's root and
+must equal the single URI the realm registers.
+
+What it guarantees, each pinned by a test in `src/lib/auth/*.test.ts`:
+
+- `state` and `nonce` are checked; the PKCE verifier never leaves the browser except in the
+  token request; an `iss` that names another issuer is refused (RFC 9207).
+- The provider's endpoints must be on the issuer's origin; the callback's `code` and `state` are
+  removed from the address bar before anything else happens.
+- After sign-in the user goes only to a local path (`//host`, `\host`, absolute and `javascript:`
+  URLs fall back to `/`).
+- The access token lives in a private field only: never in `localStorage`, `sessionStorage`,
+  cookies, history, the URL or the console. The refresh token the provider returns is never read.
+  `sessionStorage` holds just the one-time transaction across the redirect and it is deleted on
+  the callback, whether or not it succeeds.
+- Provider error text is never shown; the UI has fixed wording per reason.
+
+**Silent renew is attempted but unproven in a real browser.** Before the token expires, a hidden
+frame asks the provider's own session for a new one (`prompt=none`, no refresh token). Whether
+that works on `localhost` across browsers depends on cookie behaviour (ADR 0010, open question 2).
+It is tested here with a fake frame only. Any failure falls back to "Your session ended. Please
+sign in again", never to storing a refresh token.
