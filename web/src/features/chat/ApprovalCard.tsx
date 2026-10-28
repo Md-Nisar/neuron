@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import type { Decision } from "@/lib/stream";
 
 import { viewAction } from "./approval";
@@ -42,9 +44,19 @@ export function ApprovalCard({
   const open = state === "pending" || state === "deciding";
   const busy = state === "deciding";
   const outcome = outcomeText(approval);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  // A card is created by a live approval request, so take the user to it: keyboard and
+  // screen-reader users would otherwise not know a decision is waiting.
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
+
   return (
     <section aria-label="Approval required" className="mt-2 rounded border-4 border-double p-3">
-      <h3 className="font-semibold">Approval needed</h3>
+      <h3 ref={heading} tabIndex={-1} className="font-semibold outline-offset-2">
+        Approval needed
+      </h3>
       <p className="text-sm">
         neuron wants to run {actions.length === 1 ? "this tool" : "these tools"}. Nothing runs
         unless you approve.
@@ -61,7 +73,7 @@ export function ApprovalCard({
       </ul>
       {open && !complete && <p className="mt-2">{APPROVAL_TEXT.tooLong}</p>}
       {open && (
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           {allowed.includes("approve") && (
             <button
               type="button"

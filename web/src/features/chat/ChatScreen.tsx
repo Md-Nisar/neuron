@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type SubmitEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type SubmitEvent } from "react";
 
 import type { Decision } from "@/lib/stream";
 
@@ -18,7 +18,7 @@ function MessageView({
 }) {
   const mine = message.role === "user";
   return (
-    <li className={mine ? "ml-8 rounded border p-3" : "mr-8 rounded p-3"}>
+    <li className={mine ? "ml-4 rounded border p-3 sm:ml-8" : "mr-4 rounded p-3 sm:mr-8"}>
       <p className="mb-1 text-xs font-medium opacity-70">{mine ? "You" : "neuron"}</p>
       {mine ? (
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
@@ -52,12 +52,27 @@ export function ChatScreen(deps: ChatDeps) {
   const [problem, setProblem] = useState<DraftProblem | null>(null);
   const count = characterCount(draft.trim());
   const blocked = chat.running || draft.trim() === "";
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const wasRunning = useRef(false);
+
+  // When a reply ends, the Stop button (or a decided approval's buttons) disappears and keyboard
+  // focus would fall to the page. Return it to the composer, unless focus has gone somewhere
+  // deliberate (the approval card takes it first when it appears).
+  useEffect(() => {
+    if (wasRunning.current && !chat.running) {
+      const active = document.activeElement;
+      if (active === null || active === document.body) composer.current?.focus();
+    }
+    wasRunning.current = chat.running;
+  }, [chat.running]);
 
   async function submit(): Promise<void> {
     const found = checkDraft(draft, deps.maxChars).problem;
     setProblem(found);
     if (found !== null || chat.running) return;
     setDraft("");
+    // Clicking Send disables it while the reply streams: keep the user in the composer.
+    composer.current?.focus();
     await chat.send(draft);
   }
 
@@ -76,25 +91,35 @@ export function ChatScreen(deps: ChatDeps) {
   return (
     <section aria-label="Conversation" className="mt-6">
       <div className="flex justify-end">
-        <button type="button" className="rounded border px-3 py-1" onClick={chat.newConversation}>
+        <button
+          type="button"
+          className="rounded border px-3 py-1"
+          onClick={() => {
+            chat.newConversation();
+            composer.current?.focus();
+          }}
+        >
           New conversation
         </button>
       </div>
-      <ul role="log" aria-label="Messages" aria-live="polite" className="mt-4 space-y-3">
-        {chat.messages.map((message) => (
-          <MessageView
-            key={message.id}
-            message={message}
-            onDecide={(decision) => void chat.decide(message.id, decision)}
-          />
-        ))}
-      </ul>
+      <div role="log" aria-label="Messages" aria-live="polite" className="mt-4">
+        <ul className="space-y-3">
+          {chat.messages.map((message) => (
+            <MessageView
+              key={message.id}
+              message={message}
+              onDecide={(decision) => void chat.decide(message.id, decision)}
+            />
+          ))}
+        </ul>
+      </div>
       <form onSubmit={onSubmit} className="mt-4">
         <label htmlFor="message" className="sr-only">
           Message
         </label>
         <textarea
           id="message"
+          ref={composer}
           value={draft}
           rows={3}
           className="w-full rounded border p-2"
@@ -113,7 +138,7 @@ export function ChatScreen(deps: ChatDeps) {
             {draftProblemText(problem, deps.maxChars)}
           </p>
         )}
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           <button type="submit" className="rounded border px-3 py-1" disabled={blocked}>
             Send
           </button>

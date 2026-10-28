@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { deleteMemory, listMemories, type DataDeps } from "./api";
 import { dataErrorText } from "./messages";
@@ -15,6 +15,18 @@ export function MemoriesSection({ deps }: { deps: DataDeps }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const deleteButtons = useRef(new Map<string, HTMLButtonElement>());
+  const refocus = useRef<string | null>(null);
+
+  // Leaving the "Confirm delete" step removes the button that had focus: put focus back on
+  // that memory's Delete button (or, once it is gone, on the section heading).
+  useEffect(() => {
+    if (confirming === null && refocus.current !== null) {
+      deleteButtons.current.get(refocus.current)?.focus();
+      refocus.current = null;
+    }
+  }, [confirming]);
 
   /** Append the next page ("Load more"). The first page is loaded by the effect below. */
   async function loadMore(offset: number): Promise<void> {
@@ -51,9 +63,12 @@ export function MemoriesSection({ deps }: { deps: DataDeps }) {
   }, []);
 
   async function remove(id: string): Promise<void> {
+    refocus.current = id;
     setConfirming(null);
     try {
       await deleteMemory(deps, id);
+      // The memory (and its buttons) are about to disappear: keep focus in the section.
+      heading.current?.focus();
       setMemories((current) => current.filter((memory) => memory.id !== id));
       setTotal((current) => Math.max(0, current - 1));
       setError(null);
@@ -64,7 +79,7 @@ export function MemoriesSection({ deps }: { deps: DataDeps }) {
 
   return (
     <section aria-labelledby="memories-heading" className="mt-6">
-      <h2 id="memories-heading" className="text-lg font-semibold">
+      <h2 id="memories-heading" ref={heading} tabIndex={-1} className="text-lg font-semibold">
         Memories
       </h2>
       <p className="text-sm opacity-80">
@@ -85,9 +100,10 @@ export function MemoriesSection({ deps }: { deps: DataDeps }) {
             <p className="whitespace-pre-wrap break-words">{memory.text}</p>
             <p className="text-xs opacity-70">{when(memory.created_at)}</p>
             {confirming === memory.id ? (
-              <div className="mt-1 flex gap-2">
+              <div className="mt-1 flex flex-wrap gap-2">
                 <button
                   type="button"
+                  autoFocus
                   className="rounded border px-2 py-0.5"
                   onClick={() => void remove(memory.id)}
                 >
@@ -97,6 +113,7 @@ export function MemoriesSection({ deps }: { deps: DataDeps }) {
                   type="button"
                   className="rounded border px-2 py-0.5"
                   onClick={() => {
+                    refocus.current = memory.id;
                     setConfirming(null);
                   }}
                 >
@@ -106,6 +123,10 @@ export function MemoriesSection({ deps }: { deps: DataDeps }) {
             ) : (
               <button
                 type="button"
+                ref={(node) => {
+                  if (node === null) deleteButtons.current.delete(memory.id);
+                  else deleteButtons.current.set(memory.id, node);
+                }}
                 className="mt-1 rounded border px-2 py-0.5"
                 onClick={() => {
                   setConfirming(memory.id);
