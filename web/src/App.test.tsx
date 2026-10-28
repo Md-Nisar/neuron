@@ -29,7 +29,7 @@ function view(snapshot: AuthSnapshot) {
   const fake = fakeSession(snapshot);
   render(
     <AuthProvider session={fake.session}>
-      <App />
+      <App apiUrl="http://127.0.0.1:8000" maxChars={12000} />
     </AuthProvider>,
   );
   return fake;
@@ -66,7 +66,7 @@ describe("App", () => {
       <AuthProvider
         session={fakeSession({ status: "signed_in", displayName: hostile, error: null }).session}
       >
-        <App />
+        <App apiUrl="http://127.0.0.1:8000" maxChars={12000} />
       </AuthProvider>,
     );
 

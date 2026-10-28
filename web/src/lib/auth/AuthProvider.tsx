@@ -14,6 +14,8 @@ export function AuthProvider({ session, children }: { session: AuthSession; chil
 export interface UseAuth extends AuthSnapshot {
   signIn: () => void;
   signOut: () => void;
+  /** The API said 401: drop the token and show the sign-in prompt. */
+  sessionEnded: () => void;
   /** The current access token for an API call, or null (signed out, expired). */
   getAccessToken: () => string | null;
 }
@@ -29,6 +31,9 @@ export function useAuth(): UseAuth {
     },
     signOut: () => {
       void session.signOut();
+    },
+    sessionEnded: () => {
+      session.expire();
     },
     getAccessToken: () => session.getAccessToken(),
   };

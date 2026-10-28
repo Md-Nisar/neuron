@@ -26,6 +26,9 @@ def test_every_dependency_is_pinned_to_an_exact_version(manifest: dict[str, Any]
         for name, version in manifest[section].items():
             assert _EXACT.match(version), f"{name}@{version} is not an exact version"
     assert not {"optionalDependencies", "peerDependencies"} & manifest.keys()
+    # A pin that holds a transitive package back is part of the supply chain: exact too.
+    for name, version in manifest.get("overrides", {}).items():
+        assert _EXACT.match(version), f"override {name}@{version} is not an exact version"
 
 
 def test_node_and_package_manager_are_pinned_and_agree(manifest: dict[str, Any]) -> None:
