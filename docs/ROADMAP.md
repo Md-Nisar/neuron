@@ -20,3 +20,13 @@ v0.7.0 is designed in [ADR 0009](decisions/0009-extensible-agent-platform.md) an
 v0.8.0 is designed in [ADR 0010](decisions/0010-user-application.md) (Accepted; issue drafts in `docs/releases/v0.8.0-issues.md`). Thread title and feedback storage: [ADR 0011](decisions/0011-thread-metadata-storage.md). The code is merged and the version is 0.8.0, but the release gate is open: nothing ran against a real Keycloak or browser ([record](releases/v0.8.0-release-verification.md)). Tagged as v0.8.0 on 2026-10-28 with the gate deferred.
 
 v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (research: `docs/releases/v0.9.0-research.md`; issue drafts: `docs/releases/v0.9.0-issues.md`), Accepted 2026-10-28, and tracked by the issues labelled `v0.9.0` (tracker #338). Everything is measured on a local reference stack; hosted deployment stays after v1.0.0.
+
+## Deferred until after v1.0.0
+
+| Item | What is left | Owner release |
+| --- | --- | --- |
+| #160 v0.6.0 gate | Hosted Render deployment, pipeline, restore and rollback on Render, OpenAI production model | after v1.0.0 |
+| #253 v0.7.0 tracker | Anthropic live, production model, staging and production runs | after v1.0.0 |
+| #293 v0.8.0 gate and #290 | Playwright end to end, real browser and Keycloak sign-in, CSP and silent renew | after v1.0.0 |
+| #285 | Forwarding ratings to LangSmith | after v1.0.0 |
+| External penetration test | ADR 0012 open question 2 | after v1.0.0 |

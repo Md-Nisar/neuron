@@ -42,6 +42,16 @@ _SSLMODE_RANK = {
 }
 
 
+def _is_loopback_bind(host: str) -> bool:
+    """Whether a bind address is reachable from this machine only."""
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
 def _is_internal_host(url: str) -> bool:
     """True unless `validate_safe_url` accepts the URL's literal host as public.
 
@@ -134,6 +144,10 @@ class Settings(BaseSettings):
     # "auto" resolves to memory in development/test; staging/production must choose explicitly.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
+    # Development/test fake model only (ADR 0012 decision 4); 0 and None keep the instant answer.
+    fake_model_ttft_ms: int = Field(default=0, ge=0, le=10_000)
+    fake_model_tokens_per_second: int = Field(default=0, ge=0, le=1_000)
+    fake_model_output_tokens: int | None = Field(default=None, ge=1, le=2_000)
     # Where the rate limit, token budget and run guards live. "auto" resolves to memory in
     # development/test; staging/production must choose explicitly (production: postgres).
     limits_backend: LimitsBackend = "auto"
@@ -306,6 +320,17 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def validate_fake_model_settings(self) -> Settings:
+        """The fake model's latency settings exist for load tests, never for a deployment."""
+        if self.env in {"staging", "production"} and (
+            self.fake_model_ttft_ms
+            or self.fake_model_tokens_per_second
+            or self.fake_model_output_tokens is not None
+        ):
+            raise ValueError("APP_FAKE_MODEL_* settings are refused in staging/production")
+        return self
+
+    @model_validator(mode="after")
     def validate_limits_backend(self) -> Settings:
         """Resolve `auto`; a Postgres guard store needs a DSN whatever the checkpointer is."""
         if self.limits_backend == "auto":
@@ -365,6 +390,11 @@ class Settings(BaseSettings):
         if self.auth_mode == "none":
             if self.env in {"staging", "production"}:
                 raise ValueError("APP_AUTH_MODE=none is only allowed in development and test")
+            if self.env != "development" and not _is_loopback_bind(self.host):
+                raise ValueError(
+                    "APP_AUTH_MODE=none must not bind a non-loopback APP_HOST outside "
+                    "development; use APP_AUTH_MODE=jwt or APP_HOST=127.0.0.1"
+                )
             return self
 
         if not self.auth_issuer:

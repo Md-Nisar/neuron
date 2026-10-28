@@ -1,0 +1,1057 @@
+{
+	"@programName": "ZAP",
+	"@version": "2.17.0",
+	"@generated": "Wed, 28 Oct 2026 17:57:59",
+	"created": "2026-10-28T17:57:59.932208554Z",
+	"insights":[
+		{
+			"level": "Medium",
+			"reason": "Exceeded High",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.code.4xx",
+			"description": "Percentage of responses with status code 4xx",
+			"statistic": "99"
+		},
+		{
+			"level": "Low",
+			"reason": "Warning",
+			"site": "",
+			"key": "insight.log.error",
+			"description": "ZAP errors logged - see the zap.log file for details",
+			"statistic": "3"
+		},
+		{
+			"level": "Low",
+			"reason": "Warning",
+			"site": "",
+			"key": "insight.log.warn",
+			"description": "ZAP warnings logged - see the zap.log file for details",
+			"statistic": "18"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "",
+			"key": "insight.network.failure",
+			"description": "Percentage of network failures",
+			"statistic": "1"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.code.2xx",
+			"description": "Percentage of responses with status code 2xx",
+			"statistic": "66"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.endpoint.ctype.application/json",
+			"description": "Percentage of endpoints with content type application/json",
+			"statistic": "91"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.endpoint.ctype.text/plain",
+			"description": "Percentage of endpoints with content type text/plain",
+			"statistic": "8"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.endpoint.method.DELETE",
+			"description": "Percentage of endpoints with method DELETE",
+			"statistic": "10"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.endpoint.method.GET",
+			"description": "Percentage of endpoints with method GET",
+			"statistic": "65"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.endpoint.method.PATCH",
+			"description": "Percentage of endpoints with method PATCH",
+			"statistic": "2"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.endpoint.method.POST",
+			"description": "Percentage of endpoints with method POST",
+			"statistic": "21"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:8101",
+			"key": "insight.endpoint.total",
+			"description": "Count of total endpoints",
+			"statistic": "78"
+		}
+	],
+	"site":[ 
+		{
+			"@name": "http://127.0.0.1:8101",
+			"@host": "127.0.0.1",
+			"@port": "8101",
+			"@ssl": "false",
+			"alerts": [ 
+				{
+					"pluginid": "40018",
+					"alertRef": "40018",
+					"alert": "SQL Injection",
+					"name": "SQL Injection",
+					"riskcode": "3",
+					"confidence": "2",
+					"riskdesc": "High (Medium)",
+					"desc": "<p>SQL injection may be possible.</p>",
+					"instances":[ 
+						{
+							"id": "847",
+							"uri": "http://127.0.0.1:8101/v1/me/threads?limit=50+AND+1%3D1+--+&offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/threads (limit,offset)",
+							"method": "GET",
+							"param": "limit",
+							"attack": "50 OR 1=1 -- ",
+							"evidence": "",
+							"otherinfo": "The page results were successfully manipulated using the boolean conditions [50 AND 1=1 -- ] and [50 OR 1=1 -- ]\nThe parameter value being modified was stripped from the HTML output for the purposes of the comparison.\nData was NOT returned for the original parameter.\nThe vulnerability was detected by successfully retrieving more data than originally returned, by manipulating the parameter."
+						}
+					],
+					"count": "1",
+					"systemic": false,
+					"solution": "<p>Do not trust client side input, even if there is client side validation in place.</p><p>In general, type check all data on the server side.</p><p>If the application uses JDBC, use PreparedStatement or CallableStatement, with parameters passed by '?'</p><p>If the application uses ASP, use ADO Command Objects with strong type checking and parameterized queries.</p><p>If database Stored Procedures can be used, use them.</p><p>Do *not* concatenate strings into queries in the stored procedure, or use 'exec', 'exec immediate', or equivalent functionality!</p><p>Do not create dynamic SQL queries using simple string concatenation.</p><p>Escape all data received from the client.</p><p>Apply an 'allow list' of allowed characters, or a 'deny list' of disallowed characters in user input.</p><p>Apply the principle of least privilege by using the least privileged database user possible.</p><p>In particular, avoid using the 'sa' or 'db-owner' database users. This does not eliminate SQL injection, but minimizes its impact.</p><p>Grant the minimum database access that is necessary for the application.</p>",
+					"otherinfo": "<p>The page results were successfully manipulated using the boolean conditions [50 AND 1=1 -- ] and [50 OR 1=1 -- ]</p><p>The parameter value being modified was stripped from the HTML output for the purposes of the comparison.</p><p>Data was NOT returned for the original parameter.</p><p>The vulnerability was detected by successfully retrieving more data than originally returned, by manipulating the parameter.</p>",
+					"reference": "<p>https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html</p>",
+					"cweid": "89",
+					"wascid": "19",
+					"sourceid": "864"
+				},
+				{
+					"pluginid": "100000",
+					"alertRef": "100000-1",
+					"alert": "A Client Error response code was returned by the server",
+					"name": "A Client Error response code was returned by the server",
+					"riskcode": "0",
+					"confidence": "3",
+					"riskdesc": "Informational (High)",
+					"desc": "<p>A response code of 429 was returned by the server.</p><p>This may indicate that the application is failing to handle unexpected input correctly.</p><p>Raised by the 'Alert on HTTP Response Code Error' script</p>",
+					"instances":[ 
+						{
+							"id": "2322",
+							"uri": "http://127.0.0.1:8101/v1/me/memories",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2324",
+							"uri": "http://127.0.0.1:8101/v1/me/memories/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories\/",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "9",
+							"uri": "http://127.0.0.1:8101/v1/me/memories/memory_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories\/memory_id",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2318",
+							"uri": "http://127.0.0.1:8101/v1/me/memories/memory_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories\/memory_id",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2319",
+							"uri": "http://127.0.0.1:8101/v1/me/memories/memory_id/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories\/memory_id\/",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2316",
+							"uri": "http://127.0.0.1:8101/v1/me/threads",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/threads",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2317",
+							"uri": "http://127.0.0.1:8101/v1/me/threads/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/threads\/",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "3",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "2314",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2315",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/",
+							"method": "DELETE",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "24",
+							"uri": "http://127.0.0.1:8101",
+							"nodeName": "http:\/\/127.0.0.1:8101",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2329",
+							"uri": "http://127.0.0.1:8101/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "10",
+							"uri": "http://127.0.0.1:8101/4504303763239292373",
+							"nodeName": "http:\/\/127.0.0.1:8101\/4504303763239292373",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "29",
+							"uri": "http://127.0.0.1:8101/health",
+							"nodeName": "http:\/\/127.0.0.1:8101\/health",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2335",
+							"uri": "http://127.0.0.1:8101/health/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/health\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "11",
+							"uri": "http://127.0.0.1:8101/health/8746203038271936006",
+							"nodeName": "http:\/\/127.0.0.1:8101\/health\/8746203038271936006",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "36",
+							"uri": "http://127.0.0.1:8101/v1",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2337",
+							"uri": "http://127.0.0.1:8101/v1/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "12",
+							"uri": "http://127.0.0.1:8101/v1/548564316450149342",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/548564316450149342",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "43",
+							"uri": "http://127.0.0.1:8101/v1/agent",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2340",
+							"uri": "http://127.0.0.1:8101/v1/agent/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "13",
+							"uri": "http://127.0.0.1:8101/v1/agent/7347008554735301037",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/7347008554735301037",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2669",
+							"uri": "http://127.0.0.1:8101/v1/agent/actuator/health",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/actuator\/health",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "49",
+							"uri": "http://127.0.0.1:8101/v1/me",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2341",
+							"uri": "http://127.0.0.1:8101/v1/me/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "14",
+							"uri": "http://127.0.0.1:8101/v1/me/8110885229169431177",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/8110885229169431177",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2343",
+							"uri": "http://127.0.0.1:8101/v1/me/export",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/export",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "1028",
+							"uri": "http://127.0.0.1:8101/v1/me/export?limit=5&offset=0&message_limit=20&message_offset=0%22",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/export (limit,message_limit,message_offset,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "56",
+							"uri": "http://127.0.0.1:8101/v1/me/export?limit=http%3A%2F%2Fwww.google.com%2F&offset=0&message_limit=20&message_offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/export (limit,message_limit,message_offset,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2344",
+							"uri": "http://127.0.0.1:8101/v1/me/export/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/export\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "55",
+							"uri": "http://127.0.0.1:8101/v1/me/memories",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "673",
+							"uri": "http://127.0.0.1:8101/v1/me/memories?limit=50%27%28&offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories (limit,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "92",
+							"uri": "http://127.0.0.1:8101/v1/me/memories?limit=http%3A%2F%2Fwww.google.com%2F&offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories (limit,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2353",
+							"uri": "http://127.0.0.1:8101/v1/me/memories/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "15",
+							"uri": "http://127.0.0.1:8101/v1/me/memories/5860160891109049385",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/memories\/5860160891109049385",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "405",
+							"otherinfo": ""
+						},
+						{
+							"id": "2346",
+							"uri": "http://127.0.0.1:8101/v1/me/threads",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/threads",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "845",
+							"uri": "http://127.0.0.1:8101/v1/me/threads?limit=50+OR+1%3D1+--+&offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/threads (limit,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "115",
+							"uri": "http://127.0.0.1:8101/v1/me/threads?limit=http%3A%2F%2Fwww.google.com%2F&offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/threads (limit,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2347",
+							"uri": "http://127.0.0.1:8101/v1/me/threads/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/me\/threads\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "113",
+							"uri": "http://127.0.0.1:8101/v1/threads",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2349",
+							"uri": "http://127.0.0.1:8101/v1/threads/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "16",
+							"uri": "http://127.0.0.1:8101/v1/threads/9169529773236941755",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/9169529773236941755",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "405",
+							"otherinfo": ""
+						},
+						{
+							"id": "117",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "405",
+							"otherinfo": ""
+						},
+						{
+							"id": "2356",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "405",
+							"otherinfo": ""
+						},
+						{
+							"id": "17",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/293267871899518764",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/293267871899518764",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "6",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approval",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approval",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "2359",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approval",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approval",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2360",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approval/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approval\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "125",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2358",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "18",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/7723849319509265856",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/7723849319509265856",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "405",
+							"otherinfo": ""
+						},
+						{
+							"id": "133",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "405",
+							"otherinfo": ""
+						},
+						{
+							"id": "2365",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "405",
+							"otherinfo": ""
+						},
+						{
+							"id": "19",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id/5954279673569314709",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id\/5954279673569314709",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2366",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/messages",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/messages",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/messages?limit=50&offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/messages (limit,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "145",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/messages?limit=http%3A%2F%2Fwww.google.com%2F&offset=0",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/messages (limit,offset)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2367",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/messages/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/messages\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "137",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2363",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "20",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/5486454918191753262",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/5486454918191753262",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "140",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/run_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/run_id",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2368",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/run_id/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/run_id\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "21",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/run_id/1284523812693400794",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/run_id\/1284523812693400794",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "4",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id ()({title})",
+							"method": "PATCH",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "25",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id ()({title})",
+							"method": "PATCH",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2333",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/ ()({title})",
+							"method": "PATCH",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "1731",
+							"uri": "http://127.0.0.1:8101/computeMetadata/v1/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/computeMetadata\/v1\/ ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "400",
+							"otherinfo": ""
+						},
+						{
+							"id": "1729",
+							"uri": "http://127.0.0.1:8101/latest/meta-data/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/latest\/meta-data\/ ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "400",
+							"otherinfo": ""
+						},
+						{
+							"id": "1753",
+							"uri": "http://127.0.0.1:8101/metadata/instance",
+							"nodeName": "http:\/\/127.0.0.1:8101\/metadata\/instance ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "400",
+							"otherinfo": ""
+						},
+						{
+							"id": "1755",
+							"uri": "http://127.0.0.1:8101/metadata/v1",
+							"nodeName": "http:\/\/127.0.0.1:8101\/metadata\/v1 ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "400",
+							"otherinfo": ""
+						},
+						{
+							"id": "1735",
+							"uri": "http://127.0.0.1:8101/opc/v1/instance/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/opc\/v1\/instance\/ ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "400",
+							"otherinfo": ""
+						},
+						{
+							"id": "1741",
+							"uri": "http://127.0.0.1:8101/opc/v2/instance/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/opc\/v2\/instance\/ ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "400",
+							"otherinfo": ""
+						},
+						{
+							"id": "1757",
+							"uri": "http://127.0.0.1:8101/openstack/latest/meta_data.json",
+							"nodeName": "http:\/\/127.0.0.1:8101\/openstack\/latest\/meta_data.json ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "400",
+							"otherinfo": ""
+						},
+						{
+							"id": "0",
+							"uri": "http://127.0.0.1:8101/v1/agent/invoke",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/invoke ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "32",
+							"uri": "http://127.0.0.1:8101/v1/agent/invoke",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/invoke ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2325",
+							"uri": "http://127.0.0.1:8101/v1/agent/invoke/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/invoke\/ ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "1",
+							"uri": "http://127.0.0.1:8101/v1/agent/stream",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/stream ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "35",
+							"uri": "http://127.0.0.1:8101/v1/agent/stream",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/stream ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2313",
+							"uri": "http://127.0.0.1:8101/v1/agent/stream/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/agent\/stream\/ ()({message,thread_id,user_id})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "7",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id ()({decision})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "30",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id ()({decision})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2327",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id\/ ()({decision})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "8",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id/stream",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id\/stream ()({decision})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "34",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id/stream",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id\/stream ()({decision})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2326",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/approvals/approval_id/stream/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/approvals\/approval_id\/stream\/ ()({decision})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "5",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/run_id/feedback",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/run_id\/feedback ()({score,reason})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "422",
+							"otherinfo": ""
+						},
+						{
+							"id": "31",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/run_id/feedback",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/run_id\/feedback ()({score,reason})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						},
+						{
+							"id": "2334",
+							"uri": "http://127.0.0.1:8101/v1/threads/thread_id/runs/run_id/feedback/",
+							"nodeName": "http:\/\/127.0.0.1:8101\/v1\/threads\/thread_id\/runs\/run_id\/feedback\/ ()({score,reason})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "429",
+							"otherinfo": ""
+						}
+					],
+					"count": "89",
+					"systemic": false,
+					"solution": "",
+					"otherinfo": "",
+					"reference": "",
+					"cweid": "388",
+					"wascid": "20",
+					"sourceid": "2369"
+				}
+			]
+		}
+	],
+	"sequences":[
+	]
+
+}

@@ -1,0 +1,8 @@
+{"users": 30, "seconds": 90.07169718399928, "runs": 283, "failures": 0, "ttft_p90_ms": 5700, "run_p95_ms": 13000, "breaches": [], "errors": {}}
+{"users": 60, "seconds": 90.13159183300013, "runs": 599, "failures": 0, "ttft_p90_ms": 4000, "run_p95_ms": 11000, "breaches": [], "errors": {}}
+{"users": 90, "seconds": 90.06029954500082, "runs": 841, "failures": 0, "ttft_p90_ms": 3800, "run_p95_ms": 14000, "breaches": [], "errors": {}}
+{"users": 120, "seconds": 90.08646620400032, "runs": 1126, "failures": 0, "ttft_p90_ms": 3800, "run_p95_ms": 14000, "breaches": [], "errors": {}}
+{"users": 150, "seconds": 90.06299311399926, "runs": 1373, "failures": 0, "ttft_p90_ms": 4300, "run_p95_ms": 13000, "breaches": [], "errors": {}}
+{"users": 180, "seconds": 90.06755804100067, "runs": 1451, "failures": 0, "ttft_p90_ms": 4700, "run_p95_ms": 16000, "breaches": [], "errors": {}}
+{"users": 210, "seconds": 90.05064788000072, "runs": 1652, "failures": 157, "ttft_p90_ms": 6500, "run_p95_ms": 17000, "breaches": ["availability"], "errors": {"run:follow_up: RuntimeError('http_503')": 71, "run:new_thread: RuntimeError('http_503')": 53, "run:follow_up_seed: RuntimeError('http_503')": 3, "run:approval: RuntimeError('http_503')": 16, "run:approval_pause: RuntimeError('http_503')": 14}}
+{"users": 240, "seconds": 90.09494126499976, "runs": 2138, "failures": 619, "ttft_p90_ms": 6000, "run_p95_ms": 17000, "breaches": ["availability"], "errors": {"run:new_thread: RuntimeError('http_503')": 296, "run:follow_up_seed: RuntimeError('http_503')": 33, "run:approval_pause: RuntimeError('http_503')": 49, "run:follow_up: RuntimeError('http_503')": 201, "run:approval: RuntimeError('http_503')": 40}}

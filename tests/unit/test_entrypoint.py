@@ -92,7 +92,7 @@ def test_invalid_port_is_rejected_without_leaking_other_settings(
 
 def test_uvicorn_options_come_from_settings() -> None:
     options = api_main.uvicorn_options(
-        _settings(env="test", host=PUBLIC, port=9100, run_timeout_seconds=45)
+        _settings(env="development", host=PUBLIC, port=9100, run_timeout_seconds=45)
     )
     assert options == {
         "app": "neuron_agent.api.main:app",
@@ -130,7 +130,7 @@ def test_main_starts_on_a_public_bind_with_an_explicit_app_env(
 ) -> None:
     ran: list[uvicorn.Config] = []
     clean_env.setattr(api_main, "_run", lambda server: ran.append(server.config))
-    clean_env.setenv("APP_ENV", "test")
+    clean_env.setenv("APP_ENV", "development")
     clean_env.setenv("APP_HOST", PUBLIC)
     clean_env.setattr(api_main, "settings", _settings())
 

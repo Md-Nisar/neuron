@@ -33,7 +33,7 @@
     }
   },
   "$defs": {
-    "suiteName": { "enum": ["single_turn", "multi_turn", "security"] },
+    "suiteName": { "enum": ["single_turn", "multi_turn", "security", "approval"] },
     "count": { "type": "integer", "minimum": 0 },
     "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
     "milliseconds": { "type": ["number", "null"], "minimum": 0 },

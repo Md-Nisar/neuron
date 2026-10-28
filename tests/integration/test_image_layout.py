@@ -145,7 +145,8 @@ def container() -> Iterator[str]:
     name = f"neuron-layout-{uuid.uuid4().hex[:8]}"
     started = _docker(
         "run", "-d", "--name", name,
-        "-e", "APP_ENV=test", "-e", "APP_OTEL_ENABLED=false", "-e", "APP_ENABLE_LANGSMITH=false",
+        "-e", "APP_ENV=test", "-e", "APP_HOST=127.0.0.1",
+        "-e", "APP_OTEL_ENABLED=false", "-e", "APP_ENABLE_LANGSMITH=false",
         IMAGE,
     )  # fmt: skip
     assert started.returncode == 0, started.stderr

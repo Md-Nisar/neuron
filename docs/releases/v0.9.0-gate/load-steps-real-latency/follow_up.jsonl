@@ -1,0 +1,8 @@
+{"users": 30, "seconds": 90.0987055139999, "runs": 270, "failures": 0, "ttft_p90_ms": 4900, "run_p95_ms": 12000, "breaches": [], "errors": {}}
+{"users": 60, "seconds": 90.09103460300003, "runs": 540, "failures": 0, "ttft_p90_ms": 3900, "run_p95_ms": 11000, "breaches": [], "errors": {}}
+{"users": 90, "seconds": 90.06091055300021, "runs": 793, "failures": 0, "ttft_p90_ms": 5000, "run_p95_ms": 12000, "breaches": [], "errors": {}}
+{"users": 120, "seconds": 90.05498637099981, "runs": 1049, "failures": 0, "ttft_p90_ms": 4200, "run_p95_ms": 12000, "breaches": [], "errors": {}}
+{"users": 150, "seconds": 90.0602966460001, "runs": 1249, "failures": 0, "ttft_p90_ms": 4000, "run_p95_ms": 12000, "breaches": [], "errors": {}}
+{"users": 180, "seconds": 90.06017646400005, "runs": 1405, "failures": 0, "ttft_p90_ms": 4500, "run_p95_ms": 14000, "breaches": [], "errors": {}}
+{"users": 210, "seconds": 90.06003859299972, "runs": 1506, "failures": 135, "ttft_p90_ms": 6400, "run_p95_ms": 15000, "breaches": ["availability"], "errors": {"run:follow_up: RuntimeError('http_503')": 110, "run:follow_up_seed: RuntimeError('http_503')": 25}}
+{"users": 240, "seconds": 90.08344995100015, "runs": 1991, "failures": 588, "ttft_p90_ms": 6900, "run_p95_ms": 16000, "breaches": ["availability"], "errors": {"run:follow_up_seed: RuntimeError('http_503')": 203, "run:follow_up: RuntimeError('http_503')": 385}}

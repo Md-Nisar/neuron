@@ -1,0 +1,38 @@
+name: dast
+
+# ZAP API scan of the reference stack (ADR 0012 decision 7, #331). Manual only: it builds the
+# image, starts the stack, signs in as a test user and scans /openapi.json. Medium or higher
+# findings fail the run unless deploy/reference/zap-rules.tsv excuses them with a reason.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dast
+  cancel-in-progress: false
+
+jobs:
+  zap-api-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image under test
+        run: docker build -t neuron:ref --build-arg "GIT_SHA=$GITHUB_SHA" .
+      - name: Start the reference stack
+        env:
+          NEURON_IMAGE: neuron:ref
+        run: make reference-up
+      - name: Scan and gate
+        run: sh scripts/dast_scan.sh dast-report
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-report
+          path: dast-report
+          if-no-files-found: ignore

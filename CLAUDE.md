@@ -75,7 +75,7 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 The latest tagged release is v0.8.0 ("User Application", ADR 0010 and 0011): a `web/` single-page app with Keycloak sign-in (PKCE), streaming chat, approvals, memories, data rights, conversation titles and feedback. v0.6.0 ("Production Deployment", ADR 0008) and v0.7.0 ("Extensible Agent Platform", ADR 0009) were tagged on 2026-10-28 as well. All three shipped with their release gates open (#160, #253, #293), deferred by the owner until after v1.0.0; nothing has run on a real Render deployment, a real browser against Keycloak, or the OpenAI production model.
 
-v0.9.0 ("Production Candidate", ADR 0012, tracker #338) is in progress: a local reference stack, a runs-per-second load baseline on a fake model with latency, a threat model and DAST, a restore drill and rollback rehearsal, and a release freeze from the v0.9.0 tag with `vX.Y.Z-rc.N` tags before v1.0.0. Staging and production stay out of scope until after v1.0.0.
+v0.9.0 ("Production Candidate", ADR 0012) is prepared on the branch and **not tagged**: a local reference stack (`docker-compose.reference.yml`, `make reference-up`), Locust load tests (`loadtest/`, `make load`), a threat model, a DAST workflow, a restore drill and a rollback rehearsal, with evidence in `docs/releases/v0.9.0-gate/`. The release freeze (`CONTRIBUTING.md`) starts at the tag.
 
 Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.md`. Check `docs/ROADMAP.md` and open issues before assuming a not-yet-released feature already exists.
 

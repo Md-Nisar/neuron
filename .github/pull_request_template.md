@@ -27,6 +27,7 @@ Tool / model:
 - [ ] No new dependency, or each new one is necessary and verified as the intended project
 - [ ] Security-relevant changes checked against SECURITY.md and AGENTS.md forbidden patterns
 - [ ] Docs and ADRs updated where architecture or behaviour changed
+- [ ] After the v0.9.0 tag: this change respects the release freeze (CONTRIBUTING.md), or the owner's approval is linked
 
 ## Notes for the reviewer
 
