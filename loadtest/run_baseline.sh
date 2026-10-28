@@ -13,5 +13,5 @@ uv run python -m loadtest.provision
 for scenario in new_thread follow_up approval mix; do
     LOAD_SCENARIO=$scenario LOAD_RESULTS_FILE="$out/$scenario.jsonl" \
         uv run python -m locust -f loadtest/locustfile.py --headless --only-summary \
-        > "$out/$scenario.log" 2>&1
+        > "$out/$scenario.log" 2>&1 || true  # Locust exits 1 when any request failed
 done

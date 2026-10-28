@@ -46,6 +46,9 @@ x-api: &api
     APP_ALLOWED_HOSTS: '["localhost","127.0.0.1","api1","api2"]'
     APP_TRUSTED_PROXIES: '[]'
     APP_RATE_LIMIT_ENABLED: "true"
+    # Load relaxation: with the default 100,000 tokens/hour a load user exhausts its budget
+    # within minutes and the run rate measures the budget, not the stack (first baseline try).
+    APP_USER_TOKEN_BUDGET: "10000000"
     APP_FAKE_MODEL_TTFT_MS: ${FAKE_TTFT_MS:-800}
     APP_FAKE_MODEL_TOKENS_PER_SECOND: ${FAKE_TOKENS_PER_SECOND:-40}
     APP_FAKE_MODEL_OUTPUT_TOKENS: ${FAKE_OUTPUT_TOKENS:-200}
