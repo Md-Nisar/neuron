@@ -3,7 +3,10 @@ import { useEffect, useRef, useState, type KeyboardEvent, type SubmitEvent } fro
 import type { Decision } from "@/lib/stream";
 
 import { characterCount, checkDraft, type DraftProblem } from "./limits";
+import type { DataDeps } from "@/features/data/api";
+
 import { ApprovalCard } from "./ApprovalCard";
+import { FeedbackBar } from "./FeedbackBar";
 import { displaySafe } from "./displaySafe";
 import { Markdown } from "./Markdown";
 import { draftProblemText, failureText, openFailureText } from "./messages";
@@ -16,12 +19,20 @@ const SKIPPED_TEXT = {
   failed: "Could not run",
 } as const;
 
+/** What is needed to rate an answer; without it the chat shows no rating buttons. */
+export interface FeedbackTarget {
+  deps: DataDeps;
+  threadId: string | null;
+}
+
 function MessageView({
   message,
   onDecide,
+  feedback,
 }: {
   message: ChatMessage;
   onDecide: (decision: Decision) => void;
+  feedback: FeedbackTarget | undefined;
 }) {
   const mine = message.role === "user";
   return (
@@ -47,6 +58,16 @@ function MessageView({
           {message.approval !== null && (
             <ApprovalCard approval={message.approval} onDecide={onDecide} />
           )}
+          {feedback?.threadId != null &&
+            message.runId !== null &&
+            message.status === "done" &&
+            message.text !== "" && (
+              <FeedbackBar
+                deps={feedback.deps}
+                threadId={feedback.threadId}
+                runId={message.runId}
+              />
+            )}
           {message.status === "failed" && message.failure !== null && (
             <p role="alert" className="mt-1">
               {failureText(message.failure)}
@@ -65,7 +86,15 @@ export function ChatScreen(deps: ChatDeps) {
   return <ChatView chat={useChat(deps)} maxChars={deps.maxChars} />;
 }
 
-export function ChatView({ chat, maxChars }: { chat: Chat; maxChars: number }) {
+export function ChatView({
+  chat,
+  maxChars,
+  feedback,
+}: {
+  chat: Chat;
+  maxChars: number;
+  feedback?: DataDeps;
+}) {
   const [draft, setDraft] = useState("");
   const [problem, setProblem] = useState<DraftProblem | null>(null);
   const count = characterCount(draft.trim());
@@ -142,6 +171,9 @@ export function ChatView({ chat, maxChars }: { chat: Chat; maxChars: number }) {
               key={message.id}
               message={message}
               onDecide={(decision) => void chat.decide(message.id, decision)}
+              feedback={
+                feedback === undefined ? undefined : { deps: feedback, threadId: chat.threadId }
+              }
             />
           ))}
         </ul>

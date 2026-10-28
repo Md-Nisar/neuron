@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "@/App";
 import { ChatScreen } from "@/features/chat/ChatScreen";
+import { FeedbackBar } from "@/features/chat/FeedbackBar";
 import { DataScreen } from "@/features/data/DataScreen";
 import { ThreadList } from "@/features/threads/ThreadList";
 import { AuthProvider } from "@/lib/auth";
@@ -326,6 +327,38 @@ describe("the conversation list has no accessibility violations", () => {
     await user.click(await screen.findByRole("button", { name: "Rename Trip" }));
     await user.click(screen.getByRole("button", { name: "Delete Other" }));
 
+    expect(await accessibilityViolations()).toEqual([]);
+  });
+});
+
+describe("the rating bar has no accessibility violations", () => {
+  function bar() {
+    const api = fakeApi({ memories: [], threads: [thread(1, 2)] });
+    // In the page the bar sits inside the conversation region; give the test the same landmark.
+    render(
+      <main>
+        <FeedbackBar
+          deps={{
+            apiUrl: API,
+            getAccessToken: () => "tok-1",
+            onSessionEnded: vi.fn(),
+            fetch: api.fetch,
+          }}
+          threadId={thread(1, 2).thread_id}
+          runId="5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6"
+        />
+      </main>,
+    );
+    return userEvent.setup();
+  }
+
+  it("at rest, choosing a reason, and after rating", async () => {
+    const user = bar();
+    expect(await accessibilityViolations()).toEqual([]);
+    await user.click(screen.getByRole("button", { name: "Not helpful" }));
+    expect(await accessibilityViolations()).toEqual([]);
+    await user.click(screen.getByRole("button", { name: "Inaccurate" }));
+    await screen.findByText(/Your rating/);
     expect(await accessibilityViolations()).toEqual([]);
   });
 });

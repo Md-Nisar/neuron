@@ -69,7 +69,7 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
       </nav>
       {/* The chat stays mounted (hidden) so a conversation in progress survives a visit to "Your data". */}
       <div hidden={view !== "chat"}>
-        <ChatView chat={chat} maxChars={maxChars} />
+        <ChatView chat={chat} maxChars={maxChars} feedback={dataDeps} />
         <ThreadList
           deps={dataDeps}
           refresh={refresh}

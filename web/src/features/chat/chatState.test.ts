@@ -128,6 +128,7 @@ describe("attach_approval", () => {
           text: "",
           toolCalls: [],
           skipped: [{ name: "x", why }],
+          runId: null,
           status: "needs_approval",
           failure: null,
           approval: null,

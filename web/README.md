@@ -110,6 +110,19 @@ the Markdown renderer (which cannot produce a button or the card's double border
 - "You approved this" / "You rejected this" come from the user's click and the HTTP result, never
   from what the model says next.
 
+## Rating answers (`src/features/chat/FeedbackBar.tsx`)
+
+Each finished answer from this session has "Helpful" and "Not helpful" buttons. A thumbs down asks
+for one of the server's fixed reasons (Inaccurate, Not useful, Unsafe, Other) or "No reason"; there is
+no free text. It calls `POST /v1/threads/{id}/runs/{run_id}/feedback` and needs `feedback:write`.
+
+- One rating per answer: the server keeps the first, and the page shows the rating the server
+  answered with, so a rating made in another tab is shown as it is stored.
+- A failure shows a fixed message next to the buttons (permission, gone, or a server problem) and
+  never blocks the chat; the buttons stay so the user can try again. Repeated clicks send once.
+- No rating is offered on a streaming, stopped or failed answer, or on answers loaded from an earlier
+  session: history does not carry run IDs, so those cannot be rated yet.
+
 ## Conversations (`src/features/threads`)
 
 Below the chat, a list of the user's conversations from `GET /v1/me/threads` (30 per page, "Load

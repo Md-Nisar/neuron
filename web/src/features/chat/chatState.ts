@@ -30,6 +30,8 @@ export interface ChatMessage {
   text: string;
   toolCalls: string[];
   skipped: SkippedTool[];
+  /** The server's id for the run that wrote this reply (what a rating is filed under). */
+  runId: string | null;
   status: MessageStatus;
   failure: Failure | null;
   /** Set only from a validated `approval_required` event. */
@@ -81,7 +83,17 @@ function newMessage(
   text: string,
   status: MessageStatus,
 ): ChatMessage {
-  return { id, role, text, toolCalls: [], skipped: [], status, failure: null, approval: null };
+  return {
+    id,
+    role,
+    text,
+    toolCalls: [],
+    skipped: [],
+    runId: null,
+    status,
+    failure: null,
+    approval: null,
+  };
 }
 
 function setApproval(
@@ -131,6 +143,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           ...message,
           text: displayText(run),
           toolCalls: run.toolCalls,
+          runId: run.ids?.runId ?? message.runId,
           status: statusOf(run),
           failure,
           approval:

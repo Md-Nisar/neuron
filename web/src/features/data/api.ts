@@ -22,7 +22,7 @@ export async function call<T>(
   deps: DataDeps,
   options: {
     path: string;
-    method: "GET" | "DELETE" | "PATCH";
+    method: "GET" | "DELETE" | "PATCH" | "POST";
     body?: unknown;
     parse?: (body: unknown) => T;
     signal?: AbortSignal | undefined;
