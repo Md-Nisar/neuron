@@ -552,3 +552,27 @@ def test_an_empty_trusted_proxies_variable_is_rejected_by_settings_parsing(
     monkeypatch.setenv("APP_TRUSTED_PROXIES", "")
     with pytest.raises(Exception, match="trusted_proxies|TRUSTED_PROXIES"):
         Settings(env="test")
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1", "[::1]"])
+@pytest.mark.parametrize("env", ["development", "test"])
+def test_open_auth_on_a_loopback_bind_is_accepted(env: str, host: str) -> None:
+    assert Settings(_env_file=None, env=env, auth_mode="none", host=host).host == host  # type: ignore[call-arg, arg-type]
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.0.2.10", "api.example.test"])  # noqa: S104
+def test_open_auth_on_a_public_bind_is_refused_in_test(host: str) -> None:
+    with pytest.raises(ValidationError, match="non-loopback APP_HOST"):
+        Settings(_env_file=None, env="test", auth_mode="none", host=host)  # type: ignore[call-arg]
+
+
+def test_open_auth_on_a_public_bind_stays_allowed_in_development() -> None:
+    # The image binds 0.0.0.0 inside the container; compose publishes it on loopback only.
+    settings = Settings(_env_file=None, env="development", auth_mode="none", host="0.0.0.0")  # type: ignore[call-arg]  # noqa: S104
+    assert settings.host == "0.0.0.0"  # noqa: S104
+
+
+@_BOTH
+def test_open_auth_is_refused_in_staging_and_production_on_any_bind(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_AUTH_MODE=none"):
+        _hardened(env, auth_mode="none", host="127.0.0.1")

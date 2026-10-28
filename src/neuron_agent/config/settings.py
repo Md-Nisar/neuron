@@ -42,6 +42,16 @@ _SSLMODE_RANK = {
 }
 
 
+def _is_loopback_bind(host: str) -> bool:
+    """Whether a bind address is reachable from this machine only."""
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
 def _is_internal_host(url: str) -> bool:
     """True unless `validate_safe_url` accepts the URL's literal host as public.
 
@@ -380,6 +390,11 @@ class Settings(BaseSettings):
         if self.auth_mode == "none":
             if self.env in {"staging", "production"}:
                 raise ValueError("APP_AUTH_MODE=none is only allowed in development and test")
+            if self.env != "development" and not _is_loopback_bind(self.host):
+                raise ValueError(
+                    "APP_AUTH_MODE=none must not bind a non-loopback APP_HOST outside "
+                    "development; use APP_AUTH_MODE=jwt or APP_HOST=127.0.0.1"
+                )
             return self
 
         if not self.auth_issuer:
