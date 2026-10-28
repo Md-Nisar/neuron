@@ -78,6 +78,8 @@ def api(
             return response.status, response.read().decode()
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read().decode()
+    except OSError:  # not listening yet, or reset while starting
+        return 0, ""
 
 
 def stream(token: str, message: str, base: str = API) -> dict[str, Any]:
@@ -139,6 +141,15 @@ def main() -> int:
             "/var/lib/postgresql/backup", "-Fp", "-X", "none", "-c", "fast", "-U", "neuron_owner",
         )  # fmt: skip
         steps["backup_taken"] = datetime.now(UTC).isoformat()
+        # Segments older than the backup's first WAL file are not needed to restore from it; the
+        # reference stack's load tests leave hundreds of them (16 MB each).
+        label = run("docker", "exec", source, "cat", "/var/lib/postgresql/backup/backup_label")
+        first_wal = label.split("file ")[1].split(")")[0]
+        run(
+            "docker", "exec", source, "sh", "-c",
+            f"cd /var/lib/postgresql/wal_archive && for f in $(ls | grep -v history); do "
+            f'[ "$f" \\< "{first_wal}" ] && rm -f "$f"; done; true',
+        )  # fmt: skip
         # 2. Write more, record the point in time T, then bob erases his data after T.
         seed(alice.get(), threads=2, memories=0)
         time.sleep(2)
@@ -161,18 +172,24 @@ def main() -> int:
         run("docker", "cp", f"{source}:/var/lib/postgresql/wal_archive", str(work / "archive"))
         (work / "backup" / "recovery.signal").write_text("", encoding="utf-8")
         run("chmod", "-R", "go-rwx", str(work / "backup"))
-        run("chmod", "755", str(work / "archive"))
+        run("chmod", "-R", "a+rX", str(work / "archive"))
         run("docker", "rm", "-f", RESTORE, check=False)
         run(
             "docker", "run", "-d", "--name", RESTORE, "--network", NETWORK,
             "-v", f"{work / 'backup'}:/var/lib/postgresql/data",
             "-v", f"{work / 'archive'}:/archive:ro", POSTGRES_IMAGE,
             "postgres", "-c", "restore_command=cp /archive/%f %p",
-            "-c", f"recovery_target_time={point_in_time}+00",
+            "-c", f"recovery_target_time={point_in_time}",
             "-c", "recovery_target_action=promote", "-c", "recovery_target_inclusive=true",
         )  # fmt: skip
-        wait_for("the restored database", lambda: psql_ready(RESTORE))
+        try:
+            wait_for("the restored database", lambda: psql_ready(RESTORE), seconds=300)
+        except SystemExit:
+            print(run("sh", "-c", f"docker logs --tail 60 {RESTORE} 2>&1", check=False), file=sys.stderr)
+            raise
         steps["restore_usable_seconds"] = round(time.monotonic() - restore_started, 1)
+        # Counted before any replica touches the database: the limiter writes to this table.
+        rate_rows_restored = int(psql(RESTORE, "SELECT count(*) FROM neuron_rate_buckets"))
 
         # 4. Roles come with the cluster; run `setup` as the migrator, then a staging replica.
         env = reference_env()
@@ -200,10 +217,10 @@ def main() -> int:
             capture_output=True, text=True, check=False,
         )  # fmt: skip
         steps["smoke_test"] = (smoke.stdout + smoke.stderr).strip()
+        steps["restore_to_smoke_test_passed_seconds"] = round(time.monotonic() - restore_started, 1)
 
         # 5. Counts, the erasure replay, and the UNLOGGED table.
         restored_before_replay = thread_total(alice.get(), staging), thread_total(bob.get(), staging)
-        rate_rows_restored = int(psql(RESTORE, "SELECT count(*) FROM neuron_rate_buckets"))
         replay_status, _ = api("DELETE", "/v1/me/threads", bob.get(), base=staging)
         restored_after_replay = thread_total(alice.get(), staging), thread_total(bob.get(), staging)
         newest_restored = psql(RESTORE, "SELECT max(updated_at) FROM neuron_thread_meta")
@@ -239,6 +256,8 @@ def main() -> int:
 
 
 def psql_ready(target: str) -> bool:
+    if run("docker", "inspect", "-f", "{{.State.Running}}", target) != "true":
+        raise SystemExit("the restore container stopped")
     result = subprocess.run(  # noqa: S603  # nosec B603
         ["docker", "exec", target, "psql", "-U", "neuron_owner", "-d", "neuron", "-tAc",
          "SELECT NOT pg_is_in_recovery()"],

@@ -1,0 +1,42 @@
+{
+  "backup_taken": "2026-10-28T18:38:12.576432+00:00",
+  "erasure_after_T": {
+    "http": 200,
+    "body": {
+      "erased_count": 3,
+      "skipped_busy_count": 0,
+      "erased_memory_count": 0,
+      "complete": true
+    }
+  },
+  "restore_usable_seconds": 6.2,
+  "smoke_test": "smoke_test: passed (ready, invoke, cleanup)",
+  "restore_to_smoke_test_passed_seconds": 22.5,
+  "threads_alice_bob_before_backup": [
+    69,
+    3
+  ],
+  "threads_alice_bob_at_incident": [
+    72,
+    0
+  ],
+  "threads_alice_bob_restored_before_replay": [
+    71,
+    3
+  ],
+  "threads_alice_bob_restored_after_replay": [
+    71,
+    0
+  ],
+  "erasure_replay_http": 200,
+  "rate_bucket_rows_source": 2,
+  "rate_bucket_rows_restored": 0,
+  "newest_thread_restored": "2026-10-28 18:38:25.043254+00",
+  "newest_thread_source": "2026-10-28 18:38:35.650238+00",
+  "pitr_target": "2026-10-28 18:38:27.178309+00",
+  "incident_at": "2026-10-28T18:38:35.809892+00:00",
+  "rpo_note": "restored to T; newest write at the incident was after it (2026-10-28 18:38:27.306816+00)",
+  "result": "passed",
+  "restored_containers_deleted_at": "2026-10-28T18:39:03.482099+00:00",
+  "started_at": "2026-10-28T18:37:12.291307+00:00"
+}
