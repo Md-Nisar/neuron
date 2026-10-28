@@ -422,6 +422,12 @@ class Settings(BaseSettings):
         if self.env not in {"staging", "production"}:
             return self
         production = self.env == "production"
+        if self.memory_enabled and self.checkpointer != "postgres":
+            # Memories must outlive a restart, and the tools that write them wait for an approval,
+            # which a run can only do where its state is saved (ADR 0009).
+            raise ValueError(
+                "APP_MEMORY_ENABLED needs APP_CHECKPOINTER=postgres in staging/production"
+            )
         if not self.allowed_hosts:
             raise ValueError(
                 "APP_ALLOWED_HOSTS must list the served hostnames in staging/production"

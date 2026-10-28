@@ -588,6 +588,8 @@ With `APP_LIMITS_BACKEND=postgres` both guards are shared (ADR 0008 decision 8).
    | `identity_key_mismatch` | This process's `APP_IDENTITY_HASH_KEY` differs from the key `setup` recorded in `neuron_meta` | Fix the replica's secret. To change the key on purpose, follow the rotation steps (it orphans threads) and run `setup --rotate-identity-key`. |
    | `identity_key_unrecorded` | `neuron_meta` has no check value, or migration 12 is missing | Run `setup` with `APP_IDENTITY_HASH_KEY` set, as a deploy step before the new image starts. |
    | `identity_check_unsafe` | The function the session resolves is not the migrator's SECURITY DEFINER `neuron_identity_status` (shadowed or altered) | Run `setup` as the migration role again; investigate who created or changed the function. |
+   | `store_missing` | Memory is on (`APP_MEMORY_ENABLED=true`) and the `store` table does not exist | Run `setup` with `APP_MEMORY_ENABLED=true` as the deploy step. |
+   | `store_no_access` | The `store` table exists but this role cannot read and write it | Run `setup` as the migrator; it grants the app role DML on `store` only. |
    | `database_check_failed` | The check query itself failed (privileges, connection loss); the log has the exception class only | Check the app role's grants (`setup` re-applies them) and database availability. |
 
    The app role cannot read `neuron_meta`: the identity check calls `neuron_identity_status(text)`, a `SECURITY DEFINER` function (migration 12) that returns `match`, `mismatch` or `unset` for the check value the caller sends and never the stored one.

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.errors.base import ConfigurationError
 from neuron_agent.models.factory import create_main_agent
 from neuron_agent.tools.registry import ToolRegistry, builtin_registry
 
@@ -31,7 +32,17 @@ async def build_registry(settings: Settings) -> ToolRegistry | None:
         timeout=float(settings.tool_timeout_seconds),
         max_output_bytes=settings.mcp_max_output_bytes,
     )
-    return ToolRegistry([*builtin_registry(), *mcp_specs])
+    registry = ToolRegistry([*builtin_registry(), *mcp_specs])
+    if (
+        settings.env in {"staging", "production"}
+        and registry.mutating()
+        and settings.checkpointer != "postgres"
+    ):
+        # Without saved state a gated tool would be dropped silently: refuse instead.
+        raise ConfigurationError(
+            "MCP tools that need approval require APP_CHECKPOINTER=postgres in staging/production"
+        )
+    return registry
 
 
 def build_agent(settings: Settings, registry: ToolRegistry | None = None) -> object:
