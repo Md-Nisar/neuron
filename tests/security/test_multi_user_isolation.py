@@ -59,6 +59,7 @@ def _route_requests(
         ("POST", "/v1/agent/invoke", {"message": "probe", "thread_id": thread_id}),
         ("POST", "/v1/agent/stream", {"message": "probe", "thread_id": thread_id}),
         ("GET", f"/v1/threads/{thread_id}/messages", None),
+        ("PATCH", f"/v1/threads/{thread_id}", {"title": "taken over"}),
         ("DELETE", f"/v1/threads/{thread_id}", None),
         ("GET", f"/v1/threads/{thread_id}/approval", None),
         ("POST", f"/v1/threads/{thread_id}/approvals/{approval_id}", {"decision": "approve"}),
@@ -123,7 +124,9 @@ def test_other_user_cannot_reach_owned_thread_on_any_route(
     for (method, path, body), (_, unknown_path, unknown_body) in zip(
         _route_requests(thread_id), _route_requests(unknown), strict=True
     ):
-        if body is not None and "/approvals/" not in path:  # that body takes no identity field
+        if (
+            body is not None and "/approvals/" not in path and method != "PATCH"
+        ):  # no identity field
             body = {**body, "user_id": "alice"}
             unknown_body = {**unknown_body, "user_id": "alice"} if unknown_body else None
         response = jwt_api.client.request(method, path, json=body, headers=spoofed)
@@ -246,6 +249,7 @@ _ROUTE_PERMISSION = {
     "/v1/agent/invoke": "agent:invoke",
     "/v1/agent/stream": "agent:invoke",
     "/v1/threads/{id}/messages": "threads:read",
+    "/v1/threads/{id}:PATCH": "threads:write",
     "/v1/threads/{id}": "threads:delete",
     "/v1/me/threads:GET": "threads:read",
     "/v1/me/export": "threads:read",
@@ -258,11 +262,13 @@ def _permission(method: str, path: str, thread_id: str) -> str:
     return _ROUTE_PERMISSION.get(f"{key}:{method}", _ROUTE_PERMISSION.get(key, ""))
 
 
-@pytest.mark.parametrize("revoked", ["agent:invoke", "threads:read", "threads:delete"])
+@pytest.mark.parametrize(
+    "revoked", ["agent:invoke", "threads:read", "threads:write", "threads:delete"]
+)
 def test_revoked_permission_is_enforced_on_the_next_token(
     jwt_api: JwtApi, make_token: Callable[..., str], revoked: str
 ) -> None:
-    granted = {"agent:invoke", "threads:read", "threads:delete"}
+    granted = {"agent:invoke", "threads:read", "threads:write", "threads:delete"}
     alice = make_token("alice", scopes=" ".join(sorted(granted)))
     thread_id = _owned_thread(jwt_api, alice)
     reduced = make_token("alice", scopes=" ".join(sorted(granted - {revoked})))
@@ -276,7 +282,8 @@ def test_revoked_permission_is_enforced_on_the_next_token(
         assert response.json() == {"detail": "authorization_error"}
         assert f'scope="{revoked}"' in response.headers["www-authenticate"]
         checked += 1
-    assert checked == {"agent:invoke": 2, "threads:read": 3, "threads:delete": 2}[revoked]
+    expected = {"agent:invoke": 2, "threads:read": 3, "threads:write": 1, "threads:delete": 2}
+    assert checked == expected[revoked]
     # A denied delete or erase removed nothing.
     assert _MARKER in _history(jwt_api, thread_id, alice).text
 

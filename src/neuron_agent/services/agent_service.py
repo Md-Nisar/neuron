@@ -64,6 +64,7 @@ from neuron_agent.schemas.agent import (
     PendingAction,
     ThreadHistoryResponse,
     ThreadMessage,
+    ThreadTitleResponse,
     ToolCallRecord,
     UserDataErasureResponse,
     UserDataExportResponse,
@@ -898,6 +899,33 @@ class AgentService:
             resource_id=thread_id,
         )
         return response
+
+    async def rename_thread(
+        self,
+        thread_id: str,
+        title: str,
+        user_id: str | None,
+        *,
+        principal: Principal | None = None,
+    ) -> ThreadTitleResponse:
+        """Set an owned thread's title; another user's or a missing thread is the same `404`."""
+        owner_key = self._owner_key(user_id, principal)
+        bind_correlation_context(request_id=None, thread_id=thread_id)
+        with self._persistence_errors():
+            await self._owned_thread_state(thread_id, owner_key)
+            if owner_key is None:  # an anonymous thread is not listed, so it has no title
+                raise ThreadNotFoundError("thread not found")
+            await self._persistence.thread_titles.rename(owner_key, thread_id, title)
+        audit(
+            "thread_renamed",
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="threads:write",
+            resource_type="thread",
+            resource_id=thread_id,
+        )
+        return ThreadTitleResponse(thread_id=thread_id, title=title)
 
     async def list_user_threads(
         self,

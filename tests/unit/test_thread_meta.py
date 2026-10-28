@@ -96,6 +96,23 @@ async def test_postgres_statements_are_parameterised_and_owner_scoped() -> None:
     assert all("DROP TABLE" not in query for query, _ in pool.calls)
 
 
+async def test_postgres_rename_is_an_owner_scoped_upsert() -> None:
+    pool = _FakePool()
+    await PostgresThreadTitles(pool).rename("alice", "t1", "new")  # type: ignore[arg-type]
+
+    [(query, params)] = pool.calls
+    assert "ON CONFLICT (owner_key, thread_id) DO UPDATE SET title = EXCLUDED.title" in query
+    assert params == ("alice", "t1", "new")
+
+
+async def test_rename_replaces_a_title() -> None:
+    store = InMemoryThreadTitles()
+    await store.set_if_absent("alice", "t1", "first")
+    await store.rename("alice", "t1", "renamed")
+
+    assert await store.titles("alice", ["t1"]) == {"t1": "renamed"}
+
+
 async def test_postgres_empty_inputs_make_no_query() -> None:
     pool = _FakePool()
     store = PostgresThreadTitles(pool)  # type: ignore[arg-type]

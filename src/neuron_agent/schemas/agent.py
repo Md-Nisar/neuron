@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+import unicodedata
 import uuid
 from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+
+# The longest conversation title, set from the first message or by `PATCH /v1/threads/{id}`.
+TITLE_MAX_CHARS = 80
 
 
 class AgentRequest(BaseModel):
@@ -94,6 +98,30 @@ class ApprovalDecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     decision: Literal["approve", "reject"]
+
+
+class RenameThreadRequest(BaseModel):
+    """`PATCH /v1/threads/{thread_id}` body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def _plain_title(cls, value: str) -> str:
+        """Whitespace collapsed, 1 to 80 characters, no control or invisible characters."""
+        if any(unicodedata.category(c)[0] == "C" for c in value if c not in "\t\n\r"):
+            raise ValueError("title contains control or invisible characters")
+        title = " ".join(value.split())
+        if not 1 <= len(title) <= TITLE_MAX_CHARS:
+            raise ValueError(f"title must be 1 to {TITLE_MAX_CHARS} characters")
+        return title
+
+
+class ThreadTitleResponse(BaseModel):
+    thread_id: str
+    title: str
 
 
 class ToolCallRecord(BaseModel):

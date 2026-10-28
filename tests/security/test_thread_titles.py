@@ -157,3 +157,76 @@ def test_a_failing_title_store_does_not_fail_the_run(
     assert [log["error_type"] for log in logs if log["event"] == "thread_title_failed"] == [
         "RuntimeError"
     ]
+
+
+def _rename(api: JwtApi, token: str, thread_id: str, title: Any) -> Any:
+    return api.client.patch(
+        f"/v1/threads/{thread_id}", json={"title": title}, headers=bearer(token)
+    )
+
+
+def test_the_owner_can_rename_a_thread_and_the_list_shows_it(
+    api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    alice = make_token("alice")
+    thread = _ask(api, alice, "original")["thread_id"]
+
+    with structlog.testing.capture_logs() as logs:
+        response = _rename(api, alice, thread, "  Trip   to\nLisbon ")
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {"thread_id": thread, "title": "Trip to Lisbon"}
+    assert _titles(api, alice) == {thread: "Trip to Lisbon"}
+    [event] = [log for log in logs if log["event"] == "thread_renamed"]
+    assert (event["action"], event["resource_id"]) == ("threads:write", thread)
+    assert "Lisbon" not in repr(logs)
+
+
+def test_a_rename_by_another_user_or_of_an_unknown_thread_is_the_same_404_and_changes_nothing(
+    api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    alice, mallory = make_token("alice"), make_token("mallory")
+    thread = _ask(api, alice, "mine")["thread_id"]
+
+    stolen = _rename(api, mallory, thread, "hijacked")
+    unknown = _rename(api, mallory, "00000000-0000-4000-8000-000000000000", "hijacked")
+
+    assert stolen.status_code == unknown.status_code == 404
+    assert stolen.json() == unknown.json()
+    assert _titles(api, alice) == {thread: "mine"}
+    assert _titles(api, mallory) == {}
+
+
+def test_renaming_needs_the_write_scope(api: JwtApi, make_token: Callable[..., str]) -> None:
+    thread = _ask(api, make_token("alice"), "mine")["thread_id"]
+    read_only = make_token("alice", scopes="agent:invoke threads:read")
+
+    response = _rename(api, read_only, thread, "nope")
+
+    assert response.status_code == 403
+    assert _titles(api, read_only) == {thread: "mine"}
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["", "   \n ", "x" * 81, "bad‮title", "zero​width", "nul\x00", "tab\x1b[31m", 5, None],
+)
+def test_an_invalid_title_is_refused_and_nothing_changes(
+    api: JwtApi, make_token: Callable[..., str], title: Any
+) -> None:
+    alice = make_token("alice")
+    thread = _ask(api, alice, "mine")["thread_id"]
+
+    response = _rename(api, alice, thread, title)
+
+    assert response.status_code == 422
+    assert _titles(api, alice) == {thread: "mine"}
+
+
+def test_a_title_of_exactly_the_limit_is_accepted(
+    api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    alice = make_token("alice")
+    thread = _ask(api, alice, "mine")["thread_id"]
+
+    assert _rename(api, alice, thread, "y" * TITLE_MAX_CHARS).status_code == 200

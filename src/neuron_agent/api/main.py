@@ -67,7 +67,9 @@ from neuron_agent.schemas.agent import (
     ApprovalRequiredResponse,
     MemoriesResponse,
     MemoryErasureResponse,
+    RenameThreadRequest,
     ThreadHistoryResponse,
+    ThreadTitleResponse,
     UserDataErasureResponse,
     UserDataExportResponse,
     UserThreadsResponse,
@@ -689,6 +691,22 @@ async def get_thread_messages(
         )
     except AppError as exc:
         raise _http_error("thread_history_failed", exc) from exc
+
+
+@app.patch("/v1/threads/{thread_id}", response_model=ThreadTitleResponse)
+async def rename_thread(
+    thread_id: uuid.UUID,
+    body: RenameThreadRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("threads:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> ThreadTitleResponse:
+    """Rename a thread (ADR 0010, decision 6). Another user's thread is the same `404`."""
+    try:
+        if principal is None:
+            return await service.rename_thread(str(thread_id), body.title, user_id)
+        return await service.rename_thread(str(thread_id), body.title, user_id, principal=principal)
+    except AppError as exc:
+        raise _http_error("thread_rename_failed", exc) from exc
 
 
 @app.delete("/v1/threads/{thread_id}", status_code=204)
