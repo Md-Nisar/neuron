@@ -13,7 +13,9 @@ from langchain_core.utils.json import parse_partial_json
 
 STREAM_PROTOCOL_VERSION = "1"
 
-StreamEventType = Literal["run_started", "token", "tool_call", "final", "error", "done"]
+StreamEventType = Literal[
+    "run_started", "token", "tool_call", "final", "approval_required", "error", "done"
+]
 
 # Tool name `create_agent` uses when structured output falls back to a tool call.
 _STRUCTURED_OUTPUT_TOOL = "AgentAnswer"
