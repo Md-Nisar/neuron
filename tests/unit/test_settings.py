@@ -40,6 +40,30 @@ def test_nvidia_key_is_read_from_its_conventional_name(monkeypatch: pytest.Monke
     assert settings.nvidia_api_key.get_secret_value() == "nvapi-test"
 
 
+def test_settings_require_anthropic_key_for_anthropic_models_in_production() -> None:
+    with pytest.raises(ValidationError, match="ANTHROPIC_API_KEY"):
+        Settings(
+            env="production",
+            default_model="anthropic:example-model",
+            openai_api_key="sk-test",
+            anthropic_api_key=None,
+        )
+
+
+def test_anthropic_key_is_read_from_its_conventional_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("APP_ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    settings = Settings(env="test")
+
+    assert settings.provider_api_key("anthropic") is not None
+    assert settings.provider_api_key("anthropic").get_secret_value() == "sk-ant-test"  # type: ignore[union-attr]
+
+
+def test_empty_anthropic_key_means_no_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    assert Settings(env="test").provider_api_key("anthropic") is None
+
+
 def test_settings_allow_test_without_provider_key() -> None:
     settings = Settings(env="test", default_model="openai:gpt-5.4-mini", openai_api_key=None)
     assert settings.env == "test"
@@ -148,6 +172,7 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     conventional = {
         "APP_OPENAI_API_KEY",
         "APP_NVIDIA_API_KEY",
+        "APP_ANTHROPIC_API_KEY",
         "APP_LANGSMITH_API_KEY",
         "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
         "APP_OTEL_EXPORTER_OTLP_HEADERS",
@@ -158,6 +183,7 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     assert documented - expected == set(), "remove stale settings from .env.example"
     assert re.search(r"^OPENAI_API_KEY=", text, re.MULTILINE)
     assert re.search(r"^NVIDIA_API_KEY=", text, re.MULTILINE)
+    assert re.search(r"^ANTHROPIC_API_KEY=", text, re.MULTILINE)
     assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_ENDPOINT=", text, re.MULTILINE)
     assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_HEADERS=", text, re.MULTILINE)
 

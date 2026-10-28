@@ -25,6 +25,7 @@ from langchain.agents.middleware import (
 from langchain.agents.structured_output import (
     StructuredOutputError as LangChainStructuredOutputError,
 )
+from langchain_anthropic import ChatAnthropic
 from langchain_core.exceptions import (
     ModelAuthenticationError,
     ModelError,
@@ -185,6 +186,7 @@ def _record_model_response(span: Span, messages: list[Any]) -> tuple[int, int] |
             semconv.GEN_AI_USAGE_INPUT_TOKENS,
             semconv.GEN_AI_USAGE_OUTPUT_TOKENS,
             semconv.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+            semconv.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
             semconv.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS,
         ),
         0,
@@ -204,6 +206,9 @@ def _record_model_response(span: Span, messages: list[Any]) -> tuple[int, int] |
         usage[semconv.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] += metadata.get(
             "input_token_details", {}
         ).get("cache_read", 0)
+        usage[semconv.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] += metadata.get(
+            "input_token_details", {}
+        ).get("cache_creation", 0)
         usage[semconv.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS] += metadata.get(
             "output_token_details", {}
         ).get("reasoning", 0)
@@ -540,15 +545,24 @@ class _FakeChatModel(FakeListChatModel):
 _NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 
-def create_chat_model(settings: Settings) -> ChatOpenAI | _FakeChatModel:
+def create_chat_model(settings: Settings) -> ChatOpenAI | ChatAnthropic | _FakeChatModel:
     """Create the chat model with provider-specific runtime limits."""
     provider, model_name = _split_model_identifier(settings.default_model)
-    if provider not in {"openai", "nvidia"}:
+    if provider not in {"openai", "nvidia", "anthropic"}:
         raise ConfigurationError(f"unsupported model provider: {provider}")
 
     api_key = settings.provider_api_key(provider)
     if settings.env in {"development", "test"} and api_key is None:
         return _FakeChatModel(responses=["Local test response."])
+
+    if provider == "anthropic":
+        return ChatAnthropic(
+            model=model_name,
+            api_key=api_key,
+            timeout=settings.request_timeout_seconds,
+            max_tokens=settings.max_output_tokens,
+            max_retries=0,
+        )
 
     provider_options: dict[str, Any] = {}
     if provider == "nvidia":

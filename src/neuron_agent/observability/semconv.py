@@ -5,8 +5,8 @@
 
 Names follow the OpenTelemetry semantic conventions v1.41.0 and the GenAI conventions, which
 have moved to the `semantic-conventions-genai` repository, as of 2026-10; their status is
-Development. `gen_ai.usage.input_tokens`/`output_tokens` include the cache-read and
-reasoning counts. Upgrading the
+Development. `gen_ai.usage.input_tokens`/`output_tokens` include the cache-read,
+cache-creation and reasoning counts. Upgrading the
 conventions is a change to this module only; a test rejects these names anywhere else.
 """
 
@@ -40,6 +40,7 @@ GEN_AI_RESPONSE_MODEL = "gen_ai.response.model"
 GEN_AI_USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
 GEN_AI_USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = "gen_ai.usage.cache_creation.input_tokens"
 GEN_AI_USAGE_REASONING_OUTPUT_TOKENS = "gen_ai.usage.reasoning.output_tokens"
 GEN_AI_TOOL_NAME = "gen_ai.tool.name"
 GEN_AI_USAGE_TYPE = "gen_ai.token.type"
