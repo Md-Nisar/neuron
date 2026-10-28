@@ -16,3 +16,5 @@ v0.5.0 is designed in [ADR 0007](decisions/0007-evaluation-and-observability.md)
 v0.6.0 is designed in [ADR 0008](decisions/0008-production-deployment.md) and tracked by the issues labelled `v0.6.0`.
 
 v0.7.0 is designed in [ADR 0009](decisions/0009-extensible-agent-platform.md) and tracked by the issues labelled `v0.7.0` (tracker #253).
+
+v0.8.0 is designed in [ADR 0010](decisions/0010-user-application.md) (Accepted; issue drafts in `docs/releases/v0.8.0-issues.md`).
