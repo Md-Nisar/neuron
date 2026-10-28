@@ -17,7 +17,13 @@ from typing import Any, Literal, Protocol
 import anyio
 import psycopg
 import structlog
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langgraph.types import Command, Interrupt, StateSnapshot
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -940,15 +946,17 @@ class AgentService:
     ) -> FeedbackResponse:
         """Record the caller's rating of one answer; the first rating of a run stands.
 
-        A missing thread and another user's thread are the same `404`. The `run_id` is not
-        checked against the thread's history (an old run's ID is not kept there): it only keys
-        the caller's own rating, and a run ID already rated on another thread is refused.
+        A missing thread and another user's thread are the same `404`. The `run_id` is
+        accepted only if an answer of this thread carries it, so a rating always belongs to a
+        run of the thread it is filed under. A thread from before run IDs were stored has none.
         """
         owner_key = self._owner_key(user_id, principal)
         bind_correlation_context(request_id=None, thread_id=thread_id, run_id=run_id)
         with self._persistence_errors():
-            await self._owned_thread_state(thread_id, owner_key)
+            snapshot = await self._owned_snapshot(thread_id, owner_key)
             if owner_key is None:  # an anonymous thread has no owner to file a rating under
+                raise ThreadNotFoundError("thread not found")
+            if not _thread_has_answer(snapshot.values.get("messages", []), run_id):
                 raise ThreadNotFoundError("thread not found")
             stored = await self._persistence.feedback.record(
                 owner_key, thread_id, run_id, score, reason
@@ -1501,8 +1509,24 @@ def _public_thread_messages(
         )
         if text or calls:
             role = "user" if isinstance(message, HumanMessage) else "assistant"
-            turns.append(ThreadMessage(role=role, content=text, tool_calls=calls))
+            turns.append(
+                ThreadMessage(
+                    role=role, content=text, tool_calls=calls, run_id=_stamped_run(message)
+                )
+            )
     return turns
+
+
+def _thread_has_answer(messages: Any, run_id: str) -> bool:
+    return isinstance(messages, list) and any(
+        isinstance(m, AIMessage) and _stamped_run(m) == run_id for m in messages
+    )
+
+
+def _stamped_run(message: BaseMessage) -> str | None:
+    """The run ID the graph stamped on a stored message; threads from before it have none."""
+    value = message.additional_kwargs.get("run_id")
+    return value if isinstance(value, str) else None
 
 
 _SUMMARY_VALUE_CHARS = 60
