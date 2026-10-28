@@ -18,8 +18,8 @@ export interface RequestOptions<T> {
   baseUrl: string;
   path: string;
   token: string;
-  method: "GET" | "DELETE" | "PATCH";
-  /** A JSON request body (sent with `PATCH`). */
+  method: "GET" | "DELETE" | "PATCH" | "POST";
+  /** A JSON request body (sent with `PATCH` or `POST`). */
   body?: unknown;
   /** Turns the parsed JSON body into `T`, or throws if it has the wrong shape. */
   parse?: (body: unknown) => T;

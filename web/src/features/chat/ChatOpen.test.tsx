@@ -101,6 +101,14 @@ describe("opening a conversation", () => {
     ]);
   });
 
+  it("offers no rating on an answer from an earlier session", async () => {
+    const { open } = setup([conversation([say("user", "hi"), say("assistant", "hello")])]);
+    await open();
+
+    await screen.findByText("hello");
+    expect(screen.queryByRole("button", { name: "Helpful" })).not.toBeInTheDocument();
+  });
+
   it("shows what the server recorded for each tool call", async () => {
     const { open } = setup([
       conversation([

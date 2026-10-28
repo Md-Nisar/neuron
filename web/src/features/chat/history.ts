@@ -54,6 +54,7 @@ export function toChatMessages(history: HistoryMessage[], newId: () => string): 
       text: message.content,
       toolCalls: message.tools.filter((tool) => tool.status === "completed").map((t) => t.name),
       skipped,
+      runId: null,
       status: skipped.some((tool) => tool.why === "pending") ? "needs_approval" : "done",
       failure: null,
       approval: null,

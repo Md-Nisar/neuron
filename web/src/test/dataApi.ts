@@ -24,6 +24,8 @@ export interface FakeThread {
   updated_at: string;
   messages: FakeMessage[];
   title?: string | null;
+  /** Ratings by run id: the first one stands, like the server's. */
+  ratings?: Record<string, { score: number; reason: string | null }>;
   /** The approval a paused thread waits on. */
   pending?: FakeApproval | undefined;
 }
@@ -168,6 +170,20 @@ export function fakeApi(data: FakeData) {
           offset,
         }),
       );
+    }
+    const rate = /^\/v1\/threads\/([^/]+)\/runs\/([^/]+)\/feedback$/.exec(url.pathname);
+    if (rate !== null && method === "POST") {
+      const found = data.threads.find((t) => t.thread_id === decodeURIComponent(rate[1] ?? ""));
+      if (found === undefined)
+        return Promise.resolve(jsonResponse(404, { detail: "thread_not_found" }));
+      const sent = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as {
+        score?: number;
+        reason?: string;
+      };
+      const runId = decodeURIComponent(rate[2] ?? "");
+      found.ratings ??= {};
+      found.ratings[runId] ??= { score: sent.score ?? 0, reason: sent.reason ?? null };
+      return Promise.resolve(jsonResponse(200, { run_id: runId, ...found.ratings[runId] }));
     }
     const single = /^\/v1\/threads\/([^/]+)$/.exec(url.pathname);
     if (single !== null && (method === "PATCH" || method === "DELETE")) {
