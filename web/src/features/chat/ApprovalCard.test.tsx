@@ -126,14 +126,59 @@ describe("ApprovalCard", () => {
 });
 
 describe("displaySafe", () => {
+  const at = (...codePoints: number[]) => String.fromCodePoint(...codePoints);
+
   it("leaves ordinary text, including emoji and accents, untouched", () => {
-    expect(displaySafe("héllo 😀\n\tok")).toBe("héllo 😀\n\tok");
+    expect(displaySafe("héllo 😀\n\tok\r\n")).toBe("héllo 😀\n\tok\r\n");
   });
 
-  it("replaces control characters other than tab and newline", () => {
-    expect(displaySafe(`a${String.fromCodePoint(0)}b${String.fromCodePoint(0x1b)}c`)).toBe(
-      "a[U+0000]b[U+001B]c",
+  it("replaces control characters other than tab, newline and carriage return", () => {
+    expect(displaySafe(`a${at(0)}b${at(0x1b)}c${at(0x85)}d`)).toBe("a[U+0000]b[U+001B]c[U+0085]d");
+  });
+
+  it.each([
+    ["zero-width space", 0x200b],
+    ["zero-width joiner", 0x200d],
+    ["left-to-right mark", 0x200e],
+    ["right-to-left override", 0x202e],
+    ["left-to-right isolate", 0x2066],
+    ["word joiner", 0x2060],
+    ["soft hyphen", 0xad],
+    ["Arabic letter mark", 0x61c],
+    ["byte order mark", 0xfeff],
+    ["line separator", 0x2028],
+    ["paragraph separator", 0x2029],
+    ["Unicode tag letter A (hidden text)", 0xe0041],
+    ["tag cancel", 0xe007f],
+    ["private use", 0xe000],
+    ["no-break space", 0xa0],
+    ["em space", 0x2003],
+    ["ideographic space", 0x3000],
+    ["combining grapheme joiner", 0x34f],
+    ["Hangul filler", 0x3164],
+    ["halfwidth Hangul filler", 0xffa0],
+    ["Khmer inherent vowel", 0x17b4],
+    ["blank Braille pattern", 0x2800],
+  ])("makes the %s visible", (_name, codePoint) => {
+    const shown = displaySafe(`x${at(codePoint)}y`);
+    const marker = `[U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}]`;
+
+    expect(shown).toBe(`x${marker}y`);
+    expect(shown).not.toContain(at(codePoint));
+  });
+
+  it("makes every character of a hidden tag-character message visible, not just the first", () => {
+    const hidden = Array.from("ignore")
+      .map((letter) => at(0xe0000 + letter.charCodeAt(0)))
+      .join("");
+
+    expect(displaySafe(`ok${hidden}`)).toBe(
+      "ok[U+E0069][U+E0067][U+E006E][U+E006F][U+E0072][U+E0065]",
     );
+  });
+
+  it("keeps a plain space, which is the one space that is not a look-alike", () => {
+    expect(displaySafe("a b")).toBe("a b");
   });
 });
 
