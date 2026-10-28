@@ -18,3 +18,5 @@ v0.6.0 is designed in [ADR 0008](decisions/0008-production-deployment.md) and tr
 v0.7.0 is designed in [ADR 0009](decisions/0009-extensible-agent-platform.md) and tracked by the issues labelled `v0.7.0` (tracker #253).
 
 v0.8.0 is designed in [ADR 0010](decisions/0010-user-application.md) (Accepted; issue drafts in `docs/releases/v0.8.0-issues.md`). Thread title and feedback storage: [ADR 0011](decisions/0011-thread-metadata-storage.md). The code is merged and the version is 0.8.0, but the release gate is open: nothing ran against a real Keycloak or browser ([record](releases/v0.8.0-release-verification.md)). Nothing is tagged.
+
+v0.9.0 is proposed in [ADR 0012](decisions/0012-production-candidate.md) (research: `docs/releases/v0.9.0-research.md`; issue drafts: `docs/releases/v0.9.0-issues.md`). Everything is measured on a local reference stack; hosted deployment stays after v1.0.0.
