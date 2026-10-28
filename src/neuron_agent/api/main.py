@@ -36,6 +36,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from uvicorn.supervisors import ChangeReload
 
+from neuron_agent.agents.factory import build_registry
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import (
     AppError,
@@ -118,6 +119,8 @@ async def _watch_readiness() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     log_startup_configuration(settings)
+    if (registry := await build_registry(settings)) is not None:
+        service.use_registry(registry)
     await service.startup()
     metrics.quiet_readiness_when(lambda: service.draining)
     watcher = asyncio.create_task(_watch_readiness())

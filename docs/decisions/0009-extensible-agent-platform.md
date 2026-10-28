@@ -70,8 +70,8 @@ embeddings, no background jobs. Anything beyond it needs a new requirement and A
    that no mutating tool is registered without approval. A tool without a spec is not
    callable.
 
-5. **MCP (in scope, tightly bounded).** Through `langchain.mcp` (`MCPAdapter`, beta), a
-   new dependency tree of 28 packages (research notes, addendum). Rules:
+5. **MCP (in scope, tightly bounded).** Through the official `mcp` SDK (2.x) directly, not
+   `langchain.mcp` (see the amendment below). Rules:
    - **Transport:** Streamable HTTP only. stdio is refused: it starts a subprocess from
      configuration, which is code execution (OWASP ASI05). SSE and WebSocket are refused.
    - **Configuration:** servers come only from `APP_MCP_SERVERS` (a file path to JSON),
@@ -181,3 +181,14 @@ embeddings, no background jobs. Anything beyond it needs a new requirement and A
 - MCP over stdio, or tool lists fetched live: both turn configuration or a remote server
   into code or behaviour we did not review.
 - Prompt-injected memory: better recall, larger poisoning surface; deferred.
+
+## Amendment: the `mcp` SDK instead of `langchain.mcp` (issue #239)
+
+Decision 5 named `langchain.mcp` (`MCPAdapter`). Reading it before use showed it works against
+this ADR: it arms every client for elicitation by default, copies a tool's annotations and
+`_meta` into the tool's metadata, converts image, audio and file results instead of refusing
+them, and needs `fastmcp` (28 new packages). Calling the official `mcp` SDK directly needs
+three (`mcp`, `mcp-types`, `python-multipart`; `httpx2` was already in the tree) and ~150 lines
+of our own, which is where every rule above is enforced: no client callbacks, text only,
+size cap, no metadata, pin check before a tool exists, a fresh connection per call. `langchain.mcp`
+is beta; the SDK's client API is what it wraps. The rules in decision 5 are unchanged.

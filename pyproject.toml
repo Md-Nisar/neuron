@@ -17,6 +17,7 @@ classifiers = [
 requires-python = ">=3.13,<3.15"
 dependencies = [
     "fastapi>=0.125.0",
+    "httpx2>=2.12.0",
     "langchain>=1.4.7",
     "langchain-anthropic>=1.7.6",
     "langchain-openai>=1.7.3",
@@ -24,6 +25,7 @@ dependencies = [
     "langgraph-checkpoint-postgres>=3.1.2",
     "langgraph-sdk>=0.4.4",
     "langsmith>=0.14.13",
+    "mcp>=2.3.0",
     "openai>=3.6.0",
     "opentelemetry-api>=1.42.1",
     "opentelemetry-exporter-otlp-proto-http>=1.42.1",
@@ -47,6 +49,7 @@ eval = [
 [project.scripts]
 neuron-api = "neuron_agent.api.main:main"
 neuron-eval = "neuron_agent.evaluation:main"
+neuron-mcp-pin = "neuron_agent.tools.mcp.pin:main"
 
 [build-system]
 requires = ["uv_build>=0.8.15,<0.9.0"]
