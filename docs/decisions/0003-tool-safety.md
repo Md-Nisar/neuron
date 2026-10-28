@@ -11,7 +11,7 @@ The initial approved tool set is read-only:
 - `utc_now`: current UTC timestamp.
 - `calculator`: bounded arithmetic evaluator with AST validation and no `eval`.
 
-Tool authorization is enforced outside the model loop through `require_allowed_tool`. High-impact tool names are explicitly blocked until a human approval workflow and idempotency strategy are implemented.
+Tool authorization is enforced outside the model loop through `require_allowed_tool`. High-impact tool names are explicitly blocked until a human approval workflow and idempotency strategy are implemented. [ADR 0009](0009-extensible-agent-platform.md) (v0.7.0) defines that workflow: a tool registry with a risk class, human approval of every `mutating` tool, and MCP tools pinned and default-`mutating`.
 
 ## Consequences
 
