@@ -17,7 +17,7 @@ curl -fsS --noproxy '*' -X PUT -H "Authorization: Bearer $admin" -H 'Content-Typ
     http://127.0.0.1:8180/admin/realms/neuron
 token=$(sh scripts/reference_token.sh alice)
 status=0
-docker run --rm --network host -v "$PWD/$out:/zap/wrk:rw" "$zap_image" zap-api-scan.py \
+docker run --rm --network host -v "$(cd "$out" && pwd):/zap/wrk:rw" "$zap_image" zap-api-scan.py \
     -t http://127.0.0.1:8101/openapi.json -f openapi \
     -J zap-report.json -r zap-report.html -I \
     -z "-config replacer.full_list(0).description=auth \

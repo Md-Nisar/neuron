@@ -1,2 +1,3 @@
 # Alerts the DAST gate (scripts/dast_gate.py) does not fail on: `<ZAP plugin id><TAB><reason>`.
 # Medium or higher only; every entry needs a reason. Empty means nothing is excused.
+40018	SQL Injection on /v1/me/threads?limit: false positive (2026-10-28). The parameter is validated as an integer (422 for any payload, checked by hand) and the API has no SQL string building; ZAP compared a 200 with a rate-limited 429. Re-check when the rate limit or the route changes.

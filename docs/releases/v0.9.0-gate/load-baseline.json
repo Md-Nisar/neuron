@@ -1,5 +1,5 @@
 {
-  "image": "neuron:ref sha256:490b2636010aa145c7964c01ba5029c4fc8138769c1617fb30170a6c22a01c28 (built from 0979439 plus later commits; v0.8.0 code + #326 to #329)",
+  "image": "neuron:ref sha256:490b2636010aa145c7964c01ba5029c4fc8138769c1617fb30170a6c22a01c28 (built locally from the working tree just before the #328 commit: v0.8.0 plus the fake-model latency and remember-turn changes)",
   "host": "Linux x86_64, 4 CPUs",
   "fake_model_profile": "fake model: 800 ms to first token, 40 tokens/s, 200 tokens",
   "note": "Steps of 90 s, 30 more users each (the issue asked for 10-minute steps; shortened for the session). 300 Keycloak test users, think time 6 s, token budget raised to 10M (default 100k/h ends a run in minutes). Load generator and stack share one host, so numbers include the generator's CPU. Failure mode one step past the knee: 503 too_many_streams (APP_MAX_CONCURRENT_STREAMS=100 per replica). Not hosted capacity.",
