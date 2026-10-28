@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "@/App";
+import { maxPromptChars } from "@/features/chat/limits";
 import {
   AuthProvider,
   AuthSession,
@@ -10,6 +11,7 @@ import {
   reportFrameCallback,
   runAuthFrame,
 } from "@/lib/auth";
+import { ApiConfigError, loadApiUrl } from "@/lib/api";
 import "@/index.css";
 
 const root = document.getElementById("root");
@@ -27,12 +29,12 @@ if (!reportFrameCallback()) {
     createRoot(root).render(
       <StrictMode>
         <AuthProvider session={session}>
-          <App />
+          <App apiUrl={loadApiUrl(import.meta.env)} maxChars={maxPromptChars(import.meta.env)} />
         </AuthProvider>
       </StrictMode>,
     );
   } catch (error) {
-    if (!(error instanceof ConfigError)) throw error;
-    root.textContent = "Sign-in is not configured correctly.";
+    if (!(error instanceof ConfigError || error instanceof ApiConfigError)) throw error;
+    root.textContent = "The application is not configured correctly.";
   }
 }

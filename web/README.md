@@ -72,3 +72,30 @@ frame asks the provider's own session for a new one (`prompt=none`, no refresh t
 that works on `localhost` across browsers depends on cookie behaviour (ADR 0010, open question 2).
 It is tested here with a fake frame only. Any failure falls back to "Your session ended. Please
 sign in again", never to storing a refresh token.
+
+## Chat (`src/features/chat`)
+
+Send, stream, stop, retry and new conversation over `POST /v1/agent/stream`, using the stream
+client above. Settings (build time, both optional): `VITE_API_URL` (default `http://127.0.0.1:8000`;
+`https` required except on loopback, an origin only) and `VITE_MAX_PROMPT_CHARS` (default 12000,
+the server's `APP_MAX_PROMPT_CHARS`; the server stays authoritative).
+
+- The composer mirrors the server's rules: trimmed, at most the limit in code points, no control
+  characters except tab and line breaks. Enter sends, Shift+Enter adds a line.
+- `token` events are a preview; `final` replaces it. A stopped or broken reply keeps its partial
+  text, and Retry resends the same message without duplicating it (a failed run leaves no turn
+  on the server, ADR 0005).
+- Failures (401, 403, 404, 409 busy or approval pending, 429 with the wait, 5xx, no network, a
+  broken stream) each have fixed wording; server and model text is never used for them. A 401
+  also ends the local session.
+- Assistant text is Markdown rendered as React elements: raw HTML stays literal text, images are
+  never loaded, code is text, and only absolute `http(s)` and `mailto` links become links, each in
+  a new tab with `noopener` and its real host shown next to the label.
+- An `approval_required` reply shows a fixed notice only. The approval card is a separate issue
+  (#287); until then a pending approval cannot be decided from this page.
+
+**Dependency pins.** `package.json` holds `micromark` at 4.0.2 and `micromark-core-commonmark`
+at 2.0.3 (`overrides`). Their next releases (2026-09-26) added a new package,
+`micromark-util-edit-map`, first published 31 days before this was written, which fails the
+90-day rule. Drop the overrides once that package is older than 90 days (after 2026-12-25) and
+the gate (`scripts/check_new_npm_dependencies.py`) passes without them.

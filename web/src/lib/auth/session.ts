@@ -192,6 +192,15 @@ export class AuthSession {
     }
   }
 
+  /**
+   * The API refused the token (401) although the clock says it is valid, e.g. it was revoked:
+   * forget it and ask the user to sign in again.
+   */
+  expire(): void {
+    this.#forgetTokens();
+    this.#set({ status: "expired", displayName: null, error: null });
+  }
+
   // --- renewal ------------------------------------------------------------------------
 
   /**
@@ -363,8 +372,7 @@ export class AuthSession {
 
   async #expiring(): Promise<void> {
     if (await this.renew()) return;
-    this.#forgetTokens();
-    this.#set({ status: "expired", displayName: null, error: null });
+    this.expire();
   }
 
   #forgetTokens(): void {

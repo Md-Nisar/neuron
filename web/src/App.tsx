@@ -1,3 +1,4 @@
+import { ChatScreen } from "@/features/chat/ChatScreen";
 import { useAuth, type AuthErrorCode } from "@/lib/auth";
 
 /** Fixed wording per reason. Text from the identity provider is never shown. */
@@ -13,7 +14,12 @@ const ERROR_TEXT: Record<AuthErrorCode, string> = {
   network: "The sign-in service could not be reached. Please try again.",
 };
 
-export function App() {
+export interface AppProps {
+  apiUrl: string;
+  maxChars: number;
+}
+
+export function App({ apiUrl, maxChars }: AppProps) {
   const auth = useAuth();
   return (
     <main className="mx-auto max-w-2xl p-6">
@@ -46,6 +52,12 @@ export function App() {
           <button type="button" className="mt-2 rounded border px-3 py-1" onClick={auth.signOut}>
             Sign out
           </button>
+          <ChatScreen
+            apiUrl={apiUrl}
+            maxChars={maxChars}
+            getAccessToken={auth.getAccessToken}
+            onSessionEnded={auth.sessionEnded}
+          />
         </div>
       )}
     </main>
