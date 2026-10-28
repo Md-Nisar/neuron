@@ -39,6 +39,8 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
+from neuron_agent.memory.store import MemoryStore
+from neuron_agent.memory.tools import memory_specs
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
@@ -132,14 +134,32 @@ class AgentService:
         self._graph: Any | None = None
         # The tool set the graph was built with; None means the builtin tools.
         self._registry: ToolRegistry | None = None
+        self._memory: MemoryStore | None = None
         self._drain_started: float | None = None
         self._in_flight = 0
         if self._persistence.is_open:
-            self._graph = build_graph(settings, checkpointer=self._persistence.checkpointer)
+            self._compose_tools()
+            self._graph = build_graph(
+                settings, checkpointer=self._persistence.checkpointer, registry=self._registry
+            )
 
     def use_registry(self, registry: ToolRegistry) -> None:
         """Serve `registry` (builtin plus MCP tools) from the next `startup`."""
         self._registry = registry
+        self._memory = None
+
+    def _compose_tools(self) -> None:
+        """Add the memory tools to the registry once the store exists (ADR 0009 decision 7)."""
+        store = self._persistence.store
+        if store is None or self._memory is not None:
+            return
+        self._memory = MemoryStore(
+            store,
+            max_items=self._settings.memory_max_items,
+            max_chars=self._settings.memory_max_chars,
+            ttl_days=self._settings.memory_ttl_days,
+        )
+        self._registry = ToolRegistry([*self._tools(), *memory_specs(self._memory)])
 
     async def startup(self) -> None:
         """Open persistence resources (connection pool) and build the graph.
@@ -149,6 +169,7 @@ class AgentService:
         opened = not self._persistence.is_open
         if opened:
             await self._persistence.open(run_setup=self._settings.checkpointer_setup_on_startup)
+        self._compose_tools()
         if opened or self._registry is not None:
             self._graph = build_graph(
                 self._settings,
@@ -481,6 +502,7 @@ class AgentService:
             usage=usage or TokenUsageAccumulator(),
             actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
             issuer_id=self._settings.auth_issuer_id,
+            owner_key=owner_key,
         )
 
     async def invoke(
