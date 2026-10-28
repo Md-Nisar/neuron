@@ -287,7 +287,7 @@ describe("errors before the stream starts", () => {
 });
 
 describe("approval", () => {
-  it("shows a fixed notice, not the model's wording, and keeps what was said before", async () => {
+  it("shows the server's approval as a card, not the model's wording, and keeps what was said before", async () => {
     const { fetchMock, say } = setup();
     const approval = {
       status: "approval_required",
@@ -311,9 +311,12 @@ describe("approval", () => {
     );
     await say("remember I like tea");
 
-    expect(await screen.findByRole("status")).toHaveTextContent("waiting for your approval");
+    expect(await screen.findByRole("region", { name: "Approval required" })).toHaveTextContent(
+      "remember",
+    );
     expect(screen.getByText("I will note that.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /approve|reject/i })).toBeNull();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
   });
 });
 

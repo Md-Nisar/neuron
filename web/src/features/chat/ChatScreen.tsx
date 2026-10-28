@@ -1,12 +1,21 @@
 import { useState, type KeyboardEvent, type SubmitEvent } from "react";
 
+import type { Decision } from "@/lib/stream";
+
 import { characterCount, checkDraft, type DraftProblem } from "./limits";
+import { ApprovalCard } from "./ApprovalCard";
 import { Markdown } from "./Markdown";
-import { APPROVAL_NOTICE, draftProblemText, failureText } from "./messages";
+import { draftProblemText, failureText } from "./messages";
 import type { ChatMessage } from "./chatState";
 import { useChat, type ChatDeps } from "./useChat";
 
-function MessageView({ message }: { message: ChatMessage }) {
+function MessageView({
+  message,
+  onDecide,
+}: {
+  message: ChatMessage;
+  onDecide: (decision: Decision) => void;
+}) {
   const mine = message.role === "user";
   return (
     <li className={mine ? "ml-8 rounded border p-3" : "mr-8 rounded p-3"}>
@@ -23,10 +32,8 @@ function MessageView({ message }: { message: ChatMessage }) {
             <p className="opacity-70">Thinking…</p>
           )}
           {message.status === "stopped" && <p className="mt-1 text-xs opacity-70">Stopped.</p>}
-          {message.status === "needs_approval" && (
-            <p role="status" className="mt-1">
-              {APPROVAL_NOTICE}
-            </p>
+          {message.approval !== null && (
+            <ApprovalCard approval={message.approval} onDecide={onDecide} />
           )}
           {message.status === "failed" && message.failure !== null && (
             <p role="alert" className="mt-1">
@@ -75,7 +82,11 @@ export function ChatScreen(deps: ChatDeps) {
       </div>
       <ul role="log" aria-label="Messages" aria-live="polite" className="mt-4 space-y-3">
         {chat.messages.map((message) => (
-          <MessageView key={message.id} message={message} />
+          <MessageView
+            key={message.id}
+            message={message}
+            onDecide={(decision) => void chat.decide(message.id, decision)}
+          />
         ))}
       </ul>
       <form onSubmit={onSubmit} className="mt-4">

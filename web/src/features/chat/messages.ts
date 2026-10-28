@@ -34,6 +34,8 @@ export function failureText(failure: Failure): string {
     case "protocol_error":
     case "event_too_large":
       return "The reply could not be read.";
+    case "cancelled":
+      return "The decision was cancelled before it was confirmed. You can try again.";
     case "no_result":
       return "The reply ended without an answer.";
     default:
@@ -41,8 +43,15 @@ export function failureText(failure: Failure): string {
   }
 }
 
-export const APPROVAL_NOTICE =
-  "This reply is waiting for your approval of a tool call. Approving is not available in this version yet.";
+export const APPROVAL_TEXT = {
+  deciding: "Sending your decision…",
+  approved: "You approved this.",
+  rejected: "You rejected this.",
+  unavailable:
+    "This request is no longer available. It may have been decided in another tab, or it expired.",
+  tooLong:
+    "The details are too long to show in full, so this cannot be approved. You can reject it.",
+} as const;
 
 export function draftProblemText(
   problem: "empty" | "too_long" | "control_characters",
