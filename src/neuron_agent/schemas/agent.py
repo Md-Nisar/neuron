@@ -177,6 +177,7 @@ class ThreadMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
+    run_id: str | None = None
 
 
 class ThreadHistoryResponse(BaseModel):

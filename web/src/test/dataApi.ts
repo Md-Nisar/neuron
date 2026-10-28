@@ -11,6 +11,7 @@ export interface FakeMessage {
   role: "user" | "assistant";
   content: string;
   tool_calls?: { name: string; summary: string; status: string }[];
+  run_id?: string | null;
 }
 export interface FakeApproval {
   approval_id: string;

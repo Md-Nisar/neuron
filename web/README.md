@@ -120,8 +120,9 @@ no free text. It calls `POST /v1/threads/{id}/runs/{run_id}/feedback` and needs 
   answered with, so a rating made in another tab is shown as it is stored.
 - A failure shows a fixed message next to the buttons (permission, gone, or a server problem) and
   never blocks the chat; the buttons stay so the user can try again. Repeated clicks send once.
-- No rating is offered on a streaming, stopped or failed answer, or on answers loaded from an earlier
-  session: history does not carry run IDs, so those cannot be rated yet.
+- No rating is offered on a streaming, stopped or failed answer, or on a loaded answer without a
+  `run_id` (a thread stored before the server kept run IDs). Answers loaded from an earlier session
+  are rated by the `run_id` the history endpoint returns.
 
 ## Conversations (`src/features/threads`)
 

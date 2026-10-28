@@ -9,8 +9,14 @@ import { frame, jsonResponse, sseResponse, streamOf } from "@/test/sse";
 const ID = thread(1, 0).thread_id;
 const RLO = String.fromCodePoint(0x202e);
 
-const say = (role: "user" | "assistant", content: string, calls: FakeMessage["tool_calls"] = []) =>
-  ({ role, content, tool_calls: calls }) satisfies FakeMessage;
+const RUN = "5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6";
+
+const say = (
+  role: "user" | "assistant",
+  content: string,
+  calls: FakeMessage["tool_calls"] = [],
+  run_id: string | null = null,
+) => ({ role, content, tool_calls: calls, run_id }) satisfies FakeMessage;
 
 function conversation(messages: FakeMessage[], extra: Partial<FakeThread> = {}): FakeThread {
   return { ...thread(1, 0), title: "Past chat", messages, ...extra };
@@ -27,7 +33,7 @@ function setup(threads: FakeThread[], intercept?: Intercept) {
     const method = init?.method ?? "GET";
     const hijacked = await intercept?.(method, url, init);
     if (hijacked !== undefined) return hijacked;
-    if (method === "POST") {
+    if (method === "POST" && !url.pathname.endsWith("/feedback")) {
       posted.push({
         path: url.pathname,
         body: JSON.parse(typeof init?.body === "string" ? init.body : "{}") as unknown,
@@ -101,7 +107,19 @@ describe("opening a conversation", () => {
     ]);
   });
 
-  it("offers no rating on an answer from an earlier session", async () => {
+  it("rates an answer from an earlier session by the run ID the server reported", async () => {
+    const past = conversation([say("user", "hi"), say("assistant", "hello", [], RUN)]);
+    const { open, user } = setup([past]);
+    await open();
+
+    await screen.findByText("hello");
+    expect(screen.getAllByRole("button", { name: "Helpful" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Helpful" }));
+    expect(await screen.findByText(/Your rating: Helpful\./)).toBeInTheDocument();
+    expect(Object.keys(past.ratings ?? {})).toEqual([RUN]);
+  });
+
+  it("offers no rating on an answer without a run ID", async () => {
     const { open } = setup([conversation([say("user", "hi"), say("assistant", "hello")])]);
     await open();
 

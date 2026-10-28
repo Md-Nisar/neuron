@@ -473,7 +473,7 @@ def test_get_messages_endpoint(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "thread_id": thread_id,
-        "messages": [{"role": "user", "content": "hi", "tool_calls": []}],
+        "messages": [{"role": "user", "content": "hi", "tool_calls": [], "run_id": None}],
         "total": 2,
         "limit": 1,
         "offset": 0,

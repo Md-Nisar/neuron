@@ -37,9 +37,16 @@ def _ask(api: JwtApi, token: str, message: str = "hello") -> dict[str, Any]:
     return result
 
 
+def _run(api: JwtApi, token: str, thread_id: str) -> str:
+    """The run ID history reports for the thread's latest answer."""
+    messages = api.client.get(f"/v1/threads/{thread_id}/messages", headers=bearer(token)).json()
+    run_id: str = messages["messages"][-1]["run_id"]
+    return run_id
+
+
 def _rate(api: JwtApi, token: str, thread_id: str, run_id: str | None = None, **body: Any) -> Any:
     return api.client.post(
-        f"/v1/threads/{thread_id}/runs/{run_id or uuid.uuid4()}/feedback",
+        f"/v1/threads/{thread_id}/runs/{run_id or _run(api, token, thread_id)}/feedback",
         json=body or {"score": 1},
         headers=bearer(token),
     )
@@ -58,7 +65,7 @@ def test_the_owner_rates_an_answer_and_the_first_rating_of_a_run_stands(
 ) -> None:
     alice = make_token("alice")
     thread = _ask(api, alice)["thread_id"]
-    run = str(uuid.uuid4())
+    run = _run(api, alice, thread)
 
     with structlog.testing.capture_logs() as logs:
         first = _rate(api, alice, thread, run, score=-1, reason="inaccurate")
@@ -133,12 +140,40 @@ def test_another_users_or_an_unknown_thread_is_the_same_404_and_records_nothing(
     alice, mallory = make_token("alice"), make_token("mallory")
     thread = _ask(api, alice)["thread_id"]
 
-    stolen = _rate(api, mallory, thread)
-    unknown = _rate(api, mallory, str(uuid.uuid4()))
+    stolen = _rate(api, mallory, thread, str(uuid.uuid4()))
+    unknown = _rate(api, mallory, str(uuid.uuid4()), str(uuid.uuid4()))
 
     assert (stolen.status_code, stolen.json()) == (404, _NOT_FOUND)
     assert (unknown.status_code, unknown.json()) == (404, _NOT_FOUND)
     assert _rows(api) == {}
+
+
+def test_a_run_of_another_thread_cannot_be_rated_here(
+    api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    alice = make_token("alice")
+    first, second = _ask(api, alice)["thread_id"], _ask(api, alice)["thread_id"]
+    other = _run(api, alice, second)
+
+    moved = _rate(api, alice, first, other, score=1)
+    invented = _rate(api, alice, first, str(uuid.uuid4()), score=1)
+
+    assert [(r.status_code, r.json()) for r in (moved, invented)] == [(404, _NOT_FOUND)] * 2
+    assert _rows(api) == {}
+
+
+def test_an_earlier_answer_of_a_longer_thread_can_be_rated(
+    api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    alice = make_token("alice")
+    thread = _ask(api, alice)["thread_id"]
+    earlier = _run(api, alice, thread)
+    api.client.post(
+        "/v1/agent/invoke", json={"message": "again", "thread_id": thread}, headers=bearer(alice)
+    )
+
+    assert _run(api, alice, thread) != earlier
+    assert _rate(api, alice, thread, earlier, score=1).status_code == 200
 
 
 def test_a_run_already_rated_on_another_thread_cannot_be_reused(
@@ -146,7 +181,7 @@ def test_a_run_already_rated_on_another_thread_cannot_be_reused(
 ) -> None:
     alice = make_token("alice")
     first, second = _ask(api, alice)["thread_id"], _ask(api, alice)["thread_id"]
-    run = str(uuid.uuid4())
+    run = _run(api, alice, first)
     assert _rate(api, alice, first, run, score=1).status_code == 200
 
     moved = _rate(api, alice, second, run, score=-1)
@@ -158,10 +193,9 @@ def test_a_run_already_rated_on_another_thread_cannot_be_reused(
 def test_two_users_may_each_rate_a_run_id(api: JwtApi, make_token: Callable[..., str]) -> None:
     alice, bob = make_token("alice"), make_token("bob")
     mine, theirs = _ask(api, alice)["thread_id"], _ask(api, bob)["thread_id"]
-    run = str(uuid.uuid4())
 
-    assert _rate(api, alice, mine, run, score=1).json()["score"] == 1
-    assert _rate(api, bob, theirs, run, score=-1).json()["score"] == -1
+    assert _rate(api, alice, mine, score=1).json()["score"] == 1
+    assert _rate(api, bob, theirs, score=-1).json()["score"] == -1
 
 
 def test_rating_needs_the_feedback_scope(api: JwtApi, make_token: Callable[..., str]) -> None:
@@ -236,7 +270,7 @@ def test_a_rating_is_counted_once_by_score_and_reason_and_leaks_nothing(
     marker = "private-topic-zebra-4412"
     alice = make_token("raw-subject-feedback-77")
     thread = _ask(api, alice, f"discuss {marker}")["thread_id"]
-    run = str(uuid.uuid4())
+    run = _run(api, alice, thread)
 
     with structlog.testing.capture_logs() as logs:
         _rate(api, alice, thread, run, score=-1, reason="unsafe")

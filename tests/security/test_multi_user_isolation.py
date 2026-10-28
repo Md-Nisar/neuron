@@ -28,8 +28,7 @@ from neuron_agent.security.auth import Principal
 _MARKER = "alice-secret-7f3c"  # conversation content that must never cross users
 _APPROVAL_ID = "0123456789abcdef0123456789abcdef"  # nothing is pending under this ID
 _MEMORY_ID = "fedcba9876543210fedcba9876543210"  # no memory has this ID
-_RUN_ID = "5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6"  # a run nobody rated
-_RUN_ID = "5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6"  # a run nobody rated
+_RUN_ID = "5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6"  # a run that no thread has
 
 
 def _not_found(path: str) -> dict[str, str]:
@@ -164,6 +163,10 @@ def test_owner_reaches_own_thread_on_every_route(
         if method == "DELETE":
             continue  # Deletion is checked last, below.
         response = jwt_api.client.request(method, path, json=body, headers=bearer(alice))
+        if path.endswith("/feedback"):
+            # The thread is the owner's, but no answer of it carries this run ID.
+            assert (response.status_code, response.json()) == (404, _not_found(path))
+            continue
         if "/approvals/" in path or path.endswith("/approval"):
             # The owner reaches the route; nothing is pending under this ID (the pending case
             # is tested in test_approval_api.py).

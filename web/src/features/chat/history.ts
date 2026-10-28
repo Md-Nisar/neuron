@@ -1,4 +1,5 @@
 import { count, list, record, str } from "@/features/data/parse";
+import { SAFE_ID } from "@/lib/stream";
 
 import type { ChatMessage, SkippedTool } from "./chatState";
 
@@ -12,6 +13,7 @@ export interface HistoryMessage {
   role: "user" | "assistant";
   content: string;
   tools: { name: string; status: ToolStatus }[];
+  runId: string | null;
 }
 
 export interface HistoryPage {
@@ -24,9 +26,14 @@ function parseMessage(value: unknown): HistoryMessage {
   const role = str(item, "role");
   if (role !== "user" && role !== "assistant") throw new TypeError("shape");
   const calls = item["tool_calls"] === undefined ? [] : list(item, "tool_calls");
+  // Only an answer carries a run; the ID becomes a URL path segment when it is rated.
+  const run = item["run_id"];
+  if (run !== undefined && run !== null && (typeof run !== "string" || !SAFE_ID.test(run)))
+    throw new TypeError("shape");
   return {
     role,
     content: str(item, "content"),
+    runId: run ?? null,
     tools: calls.map((call) => {
       const entry = record(call);
       const status = str(entry, "status");
@@ -54,7 +61,7 @@ export function toChatMessages(history: HistoryMessage[], newId: () => string): 
       text: message.content,
       toolCalls: message.tools.filter((tool) => tool.status === "completed").map((t) => t.name),
       skipped,
-      runId: null,
+      runId: message.runId,
       status: skipped.some((tool) => tool.why === "pending") ? "needs_approval" : "done",
       failure: null,
       approval: null,
