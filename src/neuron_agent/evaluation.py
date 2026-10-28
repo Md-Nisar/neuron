@@ -724,6 +724,9 @@ def main(argv: Sequence[str] | None = None) -> None:
 
         raise SystemExit(compare_main(args_list[1:]))
     args = _parse_args(args_list)
+    if get_settings().fallback_models:
+        # A fallback would score a different model than the report names.
+        raise SystemExit("neuron-eval: unset APP_FALLBACK_MODELS; an eval measures one model")
     # stdout carries only the JSON report (so `neuron-eval > report.json` stays valid JSON);
     # run logs go to stderr. Importing the graph already configured stdlib-backed JSON logging
     # on stdout, so replace the processors and factory together. Compiling the graph also

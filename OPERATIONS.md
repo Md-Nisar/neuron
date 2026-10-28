@@ -284,6 +284,7 @@ are in seconds. Instruments:
 | `neuron.agent.stream.ttft` | histogram | `neuron.outcome` (the stream's termination: `completed`, `error`, `timeout`, `shutdown`, `client_disconnect`); streams that sent no token are not recorded |
 | `neuron.agent.tool.duration` | histogram | `gen_ai.operation.name` (`execute_tool`), `gen_ai.tool.name`, `neuron.outcome` (`success`, `error`, `denied`, `interrupted`), `error.type` |
 | `neuron.agent.errors` | counter | `error.type`, an `AppError` code. Counts each failed request or run once, client errors (such as `validation_error`) included; filter on the code |
+| `neuron.model.fallbacks` | counter | `neuron.fallback.from`, `neuron.fallback.to`: the configured model ids switched from and to |
 | `neuron.agent.policy.blocks` | counter | `neuron.rule`: `empty_message`, `message_too_long`, `control_characters`, `token_budget`, `concurrent_runs`, `concurrent_streams`, `request_rate`, `insufficient_scope`, `unknown_tool` |
 | `neuron.checkpoint.duration` | histogram | `neuron.outcome`, `error.type` (the exception class) |
 | `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |

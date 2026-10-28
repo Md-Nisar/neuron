@@ -113,6 +113,7 @@ class _Instruments:
     tool_duration: metrics.Histogram
     errors: metrics.Counter
     policy_blocks: metrics.Counter
+    model_fallbacks: metrics.Counter
     checkpoint_duration: metrics.Histogram
     budget_settle_failures: metrics.Counter
     service_ready: metrics.ObservableGauge
@@ -191,6 +192,11 @@ def _build(meter: metrics.Meter) -> _Instruments:
         ),
         policy_blocks=meter.create_counter(
             semconv.METRIC_POLICY_BLOCKS, unit="{block}", description="Requests blocked by rule"
+        ),
+        model_fallbacks=meter.create_counter(
+            semconv.METRIC_MODEL_FALLBACKS,
+            unit="{fallback}",
+            description="Model calls switched to a fallback model",
         ),
         checkpoint_duration=meter.create_histogram(
             semconv.METRIC_CHECKPOINT_DURATION, unit="s", description="Checkpointer operation"
@@ -285,6 +291,13 @@ def record_error(error_type: str) -> None:
 def record_policy_block(rule: str) -> None:
     """Count one request or tool call refused by `rule`."""
     _instruments().policy_blocks.add(1, {semconv.NEURON_RULE: rule})
+
+
+def record_model_fallback(source: str, target: str) -> None:
+    """Count one switch from model `source` to model `target` (configured identifiers)."""
+    _instruments().model_fallbacks.add(
+        1, {semconv.NEURON_FALLBACK_FROM: source, semconv.NEURON_FALLBACK_TO: target}
+    )
 
 
 def record_checkpoint(seconds: float, *, outcome: str, error_type: str | None) -> None:
