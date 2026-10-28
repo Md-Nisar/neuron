@@ -1,0 +1,158 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
+"""The operator's MCP server list (`APP_MCP_SERVERS`, ADR 0009 decision 5).
+
+Servers come only from this file, never from a request or the model. Anything that would run
+code or reach a server some other way is refused at load: stdio, SSE and WebSocket entries,
+unknown keys, a plain-http or non-public URL. The loader reads the file and returns validated
+data; it opens no connection.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from collections.abc import Collection
+from pathlib import Path
+from typing import Annotated, Literal
+from urllib.parse import urlparse
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
+from neuron_agent.errors.base import ConfigurationError
+from neuron_agent.security.input_policy import validate_safe_url
+from neuron_agent.tools.mcp.pins import PIN_PREFIX
+
+MAX_SERVERS = 8
+MAX_TOOLS_PER_SERVER = 32
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+_PIN = re.compile(re.escape(PIN_PREFIX) + r"[0-9a-f]{64}")
+# Names become part of a tool name and a scope (`mcp_<server>_<tool>`, `tools:mcp.<server>.<tool>`),
+# so they use one lowercase alphabet with no separator that could make two names collide.
+_Name = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,31}$")]
+_ToolName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,47}$")]
+_REFUSED_KEYS = {
+    "command": "stdio servers run a subprocess from configuration and are not supported",
+    "args": "stdio servers run a subprocess from configuration and are not supported",
+    "transport": "only Streamable HTTP is supported; do not set a transport",
+    "headers": "send a bearer token through APP_MCP_BEARER_TOKENS, not custom headers",
+}
+
+
+class McpToolConfig(BaseModel):
+    """A tool the operator exposes, with the pin of the definition they reviewed."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: _ToolName
+    pin: str
+    # Anything a server could change after review is `mutating` until the operator says otherwise.
+    risk: Literal["read", "mutating"] = "mutating"
+
+    @field_validator("pin")
+    @classmethod
+    def _pin_shape(cls, value: str) -> str:
+        if not _PIN.fullmatch(value):
+            raise ValueError("pin must be 'sha256:' and 64 lowercase hex digits")
+        return value
+
+
+class McpServerConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: _Name
+    url: str
+    auth: Literal["bearer", "none"] = "bearer"
+    tools: Annotated[list[McpToolConfig], Field(min_length=1, max_length=MAX_TOOLS_PER_SERVER)]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_other_transports(cls, data: object) -> object:
+        if isinstance(data, dict):
+            for key, reason in _REFUSED_KEYS.items():
+                if key in data:
+                    raise ValueError(f"'{key}' is refused: {reason}")
+        return data
+
+    @model_validator(mode="after")
+    def _unique_tools(self) -> McpServerConfig:
+        names = [tool.name for tool in self.tools]
+        if len(set(names)) != len(names):
+            raise ValueError(f"server {self.name} lists a tool twice")
+        return self
+
+    @property
+    def pins(self) -> dict[str, str]:
+        return {tool.name: tool.pin for tool in self.tools}
+
+
+class McpConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    servers: Annotated[list[McpServerConfig], Field(max_length=MAX_SERVERS)]
+
+    @model_validator(mode="after")
+    def _unique_servers(self) -> McpConfig:
+        names = [server.name for server in self.servers]
+        if len(set(names)) != len(names):
+            raise ValueError("a server name is used twice")
+        return self
+
+
+def validate_mcp_url(url: str, *, env: str) -> str:
+    """Accept an `https` URL that passes `validate_safe_url`; in development and test also a
+    loopback URL (the in-repo reference server). Nothing else, `http` included."""
+    parsed = urlparse(url)
+    if env in {"development", "test"} and parsed.hostname in _LOOPBACK_HOSTS:
+        if parsed.scheme not in {"http", "https"} or parsed.username or parsed.password:
+            raise ConfigurationError("MCP server URL must be http(s) without credentials")
+        return url
+    if parsed.scheme != "https":
+        raise ConfigurationError("MCP server URL must use https")
+    try:
+        return validate_safe_url(url)
+    except Exception as exc:
+        raise ConfigurationError(f"MCP server URL is not allowed: {exc}") from None
+
+
+def parse_mcp_config(text: str, *, env: str, token_names: Collection[str]) -> McpConfig:
+    """Validate the file's content for `env`, given the server names that have a bearer token.
+
+    The error names the problem, never a secret.
+    """
+    try:
+        config = McpConfig.model_validate(json.loads(text))
+    except json.JSONDecodeError:
+        raise ConfigurationError("APP_MCP_SERVERS is not valid JSON") from None
+    except ValidationError as exc:
+        problems = "; ".join(
+            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}" for err in exc.errors()
+        )
+        raise ConfigurationError(f"APP_MCP_SERVERS is invalid: {problems}") from None
+    for server in config.servers:
+        validate_mcp_url(server.url, env=env)
+        if server.auth == "bearer" and server.name not in token_names:
+            raise ConfigurationError(
+                f"MCP server {server.name} needs a token in APP_MCP_BEARER_TOKENS"
+            )
+    return config
+
+
+def load_mcp_config(path: Path | None, *, env: str, token_names: Collection[str]) -> McpConfig:
+    """The configured servers, or none when `APP_MCP_SERVERS` (`path`) is unset."""
+    if path is None:
+        return McpConfig(servers=[])
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        raise ConfigurationError("APP_MCP_SERVERS cannot be read") from None
+    return parse_mcp_config(text, env=env, token_names=token_names)
