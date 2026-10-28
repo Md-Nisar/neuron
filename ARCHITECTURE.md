@@ -252,7 +252,7 @@ Designed in [ADR 0009](docs/decisions/0009-extensible-agent-platform.md). The re
 
 - **Tool registry** (`tools/registry.py`): one `ToolSpec` per tool (scope, risk `read` or `mutating`, source `builtin` or `mcp`, optional `approval_when`). Authorization, the model-visible tool list and approval gating all read it.
 - **MCP tools** (`tools/mcp/`): pinned, text-only tools from operator-configured servers over Streamable HTTP, read once at start-up.
-- **Approvals**: `HumanInTheLoopMiddleware` pauses a run before a `mutating` tool; the service stores the LangGraph interrupt ID as the approval ID and `POST /v1/threads/{id}/approvals/{approval_id}` resumes it from the thread checkpoint (needs a persistent checkpointer).
+- **Approvals**: `HumanInTheLoopMiddleware` pauses a run before a `mutating` tool; the service stores the LangGraph interrupt ID as the approval ID and `POST /v1/threads/{id}/approvals/{approval_id}` resumes it from the thread checkpoint (needs a persistent checkpointer); `GET /v1/threads/{id}/approval` re-reads the pending interrupt for a reloaded client.
 - **Memory** (`memory/`): per-user notes in a LangGraph `Store` (in-memory, or `AsyncPostgresStore` on the shared pool) behind `recall`, `remember` and `forget` tools and `/v1/me/memories` routes.
 - **Models** (`models/factory.py`): providers `openai`, `nvidia`, `anthropic`; an ordered fallback chain on provider errors; a bounded retry for invalid structured output.
 - **Telemetry**: `neuron.approval` and `neuron.memory.*` spans and counters, names only.

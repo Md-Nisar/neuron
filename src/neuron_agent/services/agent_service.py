@@ -353,6 +353,44 @@ class AgentService:
         """Whether a run on this service can wait for an approval."""
         return self._persistence.checkpointer is not None and bool(self._tools().mutating())
 
+    async def get_pending_approval(
+        self,
+        thread_id: str,
+        *,
+        user_id: str | None = None,
+        principal: Principal | None = None,
+    ) -> ApprovalRequiredResponse:
+        """The approval a thread is waiting on, so a reloaded client can decide it.
+
+        Read-only: it records no `approval_requested` event or metric (the run that paused
+        did). A missing thread, another user's thread and a thread with nothing pending are the
+        same `ApprovalNotFoundError`.
+        """
+        owner_key = self._owner_key(user_id, principal)
+        bind_correlation_context(request_id=None, thread_id=thread_id)
+        with self._persistence_errors():
+            try:
+                snapshot = await self._owned_snapshot(thread_id, owner_key)
+            except ThreadNotFoundError:
+                raise ApprovalNotFoundError("approval not found") from None
+        interrupts = [i for task in snapshot.tasks for i in task.interrupts]
+        if not interrupts:
+            raise ApprovalNotFoundError("approval not found")
+        approval = _approval_request(interrupts[0])
+        audit(
+            "approval_read",
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="agent:approve",
+            resource_type="approval",
+            resource_id=approval.approval_id,
+            count=len(approval.actions),
+        )
+        return ApprovalRequiredResponse(
+            request_id=str(uuid.uuid4()), thread_id=thread_id, approval=approval
+        )
+
     async def _pending_interrupts(self, thread_id: str) -> list[Interrupt]:
         snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
         return [interrupt for task in snapshot.tasks for interrupt in task.interrupts]
@@ -361,13 +399,8 @@ class AgentService:
         self, run: PreparedRun, interrupt: Interrupt
     ) -> ApprovalRequiredResponse:
         """The response for a run that paused, and the `approval_requested` audit event."""
-        actions = [
-            PendingAction(name=str(action["name"]), args=dict(action["args"]))
-            for action in interrupt.value["action_requests"]
-        ]
-        approval = ApprovalRequest(
-            approval_id=interrupt.id, actions=actions, allowed_decisions=["approve", "reject"]
-        )
+        approval = _approval_request(interrupt)
+        actions = approval.actions
         known = self._tools().names()
         self._record_approval("requested", len(actions))
         logger.info(
@@ -1193,6 +1226,17 @@ class AgentService:
                 principal, self._settings.identity_hash_key.get_secret_value()
             )
         return _hash_identifier(user_id) if user_id else None
+
+
+def _approval_request(interrupt: Interrupt) -> ApprovalRequest:
+    """What the caller is asked to decide, from the interrupt a run paused on."""
+    actions = [
+        PendingAction(name=str(action["name"]), args=dict(action["args"]))
+        for action in interrupt.value["action_requests"]
+    ]
+    return ApprovalRequest(
+        approval_id=interrupt.id, actions=actions, allowed_decisions=["approve", "reject"]
+    )
 
 
 def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:

@@ -253,3 +253,68 @@ def test_a_pending_thread_is_listed_exported_and_erasable(
     assert (
         _decide(app, token, thread, paused["approval"]["approval_id"], "approve").status_code == 404
     )
+
+
+def _pending(api: JwtApi, token: str, thread_id: str) -> Any:
+    return api.client.get(f"/v1/threads/{thread_id}/approval", headers=bearer(token))
+
+
+def test_a_reloaded_client_can_read_the_pending_approval_and_then_decide_it(
+    api: Callable[..., JwtApi], make_token: Callable[..., str]
+) -> None:
+    app = api(_call("buy milk"), _final("saved"))
+    token = make_token("alice", scopes=_OWNER)
+    paused = _ask(app, token).json()
+    thread = paused["thread_id"]
+
+    with structlog.testing.capture_logs() as logs:
+        read = _pending(app, token, thread)
+
+    assert read.status_code == 200, read.text
+    body = read.json()
+    assert body["status"] == "approval_required"
+    assert body["thread_id"] == thread
+    assert body["approval"] == paused["approval"]
+    assert _ran == []
+    assert [log["event"] for log in logs if log.get("audit")] == ["approval_read"]
+    assert not [log for log in logs if log["event"] == "approval_requested"]
+    done = _decide(app, token, thread, body["approval"]["approval_id"], "approve")
+    assert done.status_code == 200, done.text
+    assert _ran == ["buy milk"]
+    assert (_pending(app, token, thread).status_code, _pending(app, token, thread).json()) == (
+        404,
+        _NOT_FOUND,
+    )
+
+
+def test_the_pending_approval_is_the_same_404_for_a_foreign_unknown_or_idle_thread(
+    api: Callable[..., JwtApi], make_token: Callable[..., str]
+) -> None:
+    app = api(_call(), _final("saved"), _final("hello"))
+    alice = make_token("alice", scopes=_OWNER)
+    mallory = make_token("mallory", scopes=_OWNER)
+    paused = _ask(app, alice).json()
+    idle = _ask(app, alice).json()  # a second thread whose run finished without a pause
+
+    responses = [
+        _pending(app, mallory, paused["thread_id"]),
+        _pending(app, mallory, str(uuid.uuid4())),
+        _pending(app, alice, str(uuid.uuid4())),
+        _pending(app, alice, idle["thread_id"]),
+    ]
+
+    assert [(r.status_code, r.json()) for r in responses] == [(404, _NOT_FOUND)] * 4
+    assert "buy milk" not in "".join(r.text for r in responses)
+
+
+def test_reading_the_pending_approval_needs_the_approve_scope(
+    api: Callable[..., JwtApi], make_token: Callable[..., str]
+) -> None:
+    app = api(_call(), _final("saved"))
+    paused = _ask(app, make_token("alice", scopes=_OWNER)).json()
+    without = make_token("alice", scopes="agent:invoke threads:read tools:note_taker")
+
+    response = _pending(app, without, paused["thread_id"])
+
+    assert response.status_code == 403
+    assert "buy milk" not in response.text
