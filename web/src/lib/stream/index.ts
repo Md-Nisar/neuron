@@ -1,6 +1,6 @@
 export { streamRun, parseRetryAfter, StreamStartError } from "./client";
 export type { StartErrorKind, StreamRequest } from "./client";
-export { StreamProtocolError } from "./events";
+export { SAFE_ID, StreamProtocolError, parseApprovalBody } from "./events";
 export type {
   ApprovalRequired,
   Decision,

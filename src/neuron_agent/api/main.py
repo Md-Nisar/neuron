@@ -65,9 +65,13 @@ from neuron_agent.schemas.agent import (
     AgentResponse,
     ApprovalDecisionRequest,
     ApprovalRequiredResponse,
+    FeedbackRequest,
+    FeedbackResponse,
     MemoriesResponse,
     MemoryErasureResponse,
+    RenameThreadRequest,
     ThreadHistoryResponse,
+    ThreadTitleResponse,
     UserDataErasureResponse,
     UserDataExportResponse,
     UserThreadsResponse,
@@ -691,6 +695,48 @@ async def get_thread_messages(
         raise _http_error("thread_history_failed", exc) from exc
 
 
+@app.patch("/v1/threads/{thread_id}", response_model=ThreadTitleResponse)
+async def rename_thread(
+    thread_id: uuid.UUID,
+    body: RenameThreadRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("threads:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> ThreadTitleResponse:
+    """Rename a thread (ADR 0010, decision 6). Another user's thread is the same `404`."""
+    try:
+        if principal is None:
+            return await service.rename_thread(str(thread_id), body.title, user_id)
+        return await service.rename_thread(str(thread_id), body.title, user_id, principal=principal)
+    except AppError as exc:
+        raise _http_error("thread_rename_failed", exc) from exc
+
+
+@app.post("/v1/threads/{thread_id}/runs/{run_id}/feedback", response_model=FeedbackResponse)
+async def rate_answer(
+    thread_id: uuid.UUID,
+    run_id: uuid.UUID,
+    body: FeedbackRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("feedback:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> FeedbackResponse:
+    """Rate one answer (ADR 0010, decision 6): a score and a fixed reason, once per run.
+
+    A repeat returns the rating that stands. Another user's or a missing thread is the same
+    `404`.
+    """
+    try:
+        return await service.submit_feedback(
+            str(thread_id),
+            str(run_id),
+            body.score,
+            body.reason,
+            user_id,
+            **({} if principal is None else {"principal": principal}),
+        )
+    except AppError as exc:
+        raise _http_error("feedback_failed", exc) from exc
+
+
 @app.delete("/v1/threads/{thread_id}", status_code=204)
 async def delete_thread(
     thread_id: uuid.UUID,
@@ -706,6 +752,25 @@ async def delete_thread(
     except AppError as exc:
         raise _http_error("thread_delete_failed", exc) from exc
     return Response(status_code=204)
+
+
+@app.get("/v1/threads/{thread_id}/approval", response_model=ApprovalRequiredResponse)
+async def get_pending_approval(
+    thread_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("agent:approve"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> ApprovalRequiredResponse:
+    """The approval a thread is paused on, for a client that reloaded (ADR 0010).
+
+    Needs `agent:approve`: only someone who can decide it may read the arguments. A missing,
+    foreign or absent approval is the same `404` as for a decision.
+    """
+    try:
+        if principal is None:
+            return await service.get_pending_approval(str(thread_id), user_id=user_id)
+        return await service.get_pending_approval(str(thread_id), principal=principal)
+    except AppError as exc:
+        raise _http_error("approval_read_failed", exc) from exc
 
 
 @app.post(

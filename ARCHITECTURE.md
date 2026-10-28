@@ -174,6 +174,8 @@ ADR 0005, decision 7.
 - **History.** `GET /v1/threads/{thread_id}/messages?limit=&offset=` returns `{thread_id, messages: [{role, content}], total, limit, offset}`, oldest first. `limit` is 1–100 (default 50). Only user and assistant turns with text are included.
 - **Deletion.** `DELETE /v1/threads/{thread_id}` returns `204` after `adelete_thread` removes every checkpoint. It returns `409 thread_busy` while a run is in flight, because that run's final write would re-create the thread.
 - **Memories** (ADR 0009): when enabled, `GET /v1/me/memories`, `DELETE /v1/me/memories/{id}` and `DELETE /v1/me/memories` list and delete the caller's own memories; `/v1/me/export` includes them on its first page and `DELETE /v1/me/threads` deletes them.
+- **Conversation titles.** `persistence/thread_meta.py` stores a per-owner title for each thread a run creates (ADR 0011): a Postgres table beside the Postgres checkpointer, process memory otherwise. The service sets it on a run's success and clears it wherever it deletes a thread.
+- **Answer ratings.** `persistence/feedback.py` keeps one rating per (owner, run) (ADR 0011): a Postgres table beside the Postgres checkpointer, process memory otherwise. `POST /v1/threads/{id}/runs/{run_id}/feedback` records it; the service clears it wherever it deletes a thread.
 - **User data rights.** `GET /v1/me/threads?limit=&offset=` lists paginated summaries (no message content); `GET /v1/me/export` returns paginated thread history, only user/assistant text, bounded by `APP_USER_DATA_EXPORT_MAX_BYTES`; `DELETE /v1/me/threads` idempotently erases the caller's threads and reports erased/busy counts. List/export require `threads:read`; bulk erase requires `threads:delete`. Export and erasure emit `user_data_exported` and `user_data_erased` audit events.
 - **Ownership.** Both endpoints apply the same owner check as conversations. In v0.3.0, GET and DELETE use `X-User-Id` as the pre-auth identity because they have no body; v0.4.0 JWT mode derives ownership from the verified principal under ADR 0006. Missing, foreign and non-persisted threads all return `404 thread_not_found`.
 - **Owner discovery.** New checkpoints carry the opaque owner key in checkpoint metadata. `persistence/thread_index.py` lists an owner's threads with their first and last root-checkpoint times, without loading any messages. On Postgres this is one paginated aggregate query served by `neuron_checkpoints_owner_idx`; the in-memory saver (development and test only) scans its checkpoints instead. List and export then load the latest checkpoint only for the threads on the returned page, export stops as soon as it exceeds `APP_USER_DATA_EXPORT_MAX_BYTES`, and bulk erase loads no messages. A thread with no tagged checkpoint is not discoverable by list/export/bulk erase until an authenticated run writes one; per-thread history and deletion remain available for a known thread ID.
@@ -252,13 +254,24 @@ Designed in [ADR 0009](docs/decisions/0009-extensible-agent-platform.md). The re
 
 - **Tool registry** (`tools/registry.py`): one `ToolSpec` per tool (scope, risk `read` or `mutating`, source `builtin` or `mcp`, optional `approval_when`). Authorization, the model-visible tool list and approval gating all read it.
 - **MCP tools** (`tools/mcp/`): pinned, text-only tools from operator-configured servers over Streamable HTTP, read once at start-up.
-- **Approvals**: `HumanInTheLoopMiddleware` pauses a run before a `mutating` tool; the service stores the LangGraph interrupt ID as the approval ID and `POST /v1/threads/{id}/approvals/{approval_id}` resumes it from the thread checkpoint (needs a persistent checkpointer).
+- **Approvals**: `HumanInTheLoopMiddleware` pauses a run before a `mutating` tool; the service stores the LangGraph interrupt ID as the approval ID and `POST /v1/threads/{id}/approvals/{approval_id}` resumes it from the thread checkpoint (needs a persistent checkpointer); `GET /v1/threads/{id}/approval` re-reads the pending interrupt for a reloaded client.
 - **Memory** (`memory/`): per-user notes in a LangGraph `Store` (in-memory, or `AsyncPostgresStore` on the shared pool) behind `recall`, `remember` and `forget` tools and `/v1/me/memories` routes.
 - **Models** (`models/factory.py`): providers `openai`, `nvidia`, `anthropic`; an ordered fallback chain on provider errors; a bounded retry for invalid structured output.
 - **Telemetry**: `neuron.approval` and `neuron.memory.*` spans and counters, names only.
 
 
 Multi-instance deployment, shared Postgres-backed limits and leases, migrations, the container image and the Render reference platform are designed in [ADR 0008](docs/decisions/0008-production-deployment.md) (v0.6.0); they are being implemented issue by issue, so this document describes the code that exists today.
+
+## Web Application (v0.8.0)
+
+Designed in [ADR 0010](docs/decisions/0010-user-application.md). `web/` is a separate single-page app (React, Vite, strict TypeScript) served from its own origin by any static host; it calls the existing API with CORS and a bearer token. The API gains no static-file route and the image does not contain `web/`. The module boundary is the HTTP contract: `web/` shares no code with the Python package, and the stream payloads are pinned to the server's models by `tests/unit/test_web_stream_contract.py`.
+
+- **`lib/stream`**: a typed reader for the seven-event stream (`POST /v1/agent/stream` and the approval stream), with runtime-checked payloads and a guaranteed `error`-then-`done` ending.
+- **`lib/auth`**: Authorization Code + PKCE against the identity provider; the token is held in memory only.
+- **`features/chat`**: send, stream, stop, retry, sanitised Markdown, and the approval card.
+- **`features/data`**: memories, export and erase, on `/v1/me/*`.
+
+Headers for hosting it are in `scripts/web_headers.py` and OPERATIONS.md ("Web Application"); the browser threat model is in SECURITY.md.
 
 ## Failure Handling
 

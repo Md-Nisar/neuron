@@ -139,7 +139,7 @@ async def call_agent(
     )
     # Only the user turn and the final answer are persisted; the agent's intermediate
     # tool-call/tool-result messages stay inside this run.
-    turn = [*new_turn, AIMessage(content=answer.answer)]
+    turn = [*new_turn, AIMessage(content=answer.answer, additional_kwargs=_run_stamp(run_id))]
     evicted = evict_oldest_turns(
         stored, incoming=len(turn), limit=resolved_settings.max_thread_messages
     )
@@ -148,6 +148,11 @@ async def call_agent(
         "answer": answer,
         "user_message": None,
     }
+
+
+def _run_stamp(run_id: object) -> dict[str, Any]:
+    """The run that produced a stored message, so history can name the run of an answer."""
+    return {"run_id": run_id} if isinstance(run_id, str) and run_id else {}
 
 
 def _guard_answer(

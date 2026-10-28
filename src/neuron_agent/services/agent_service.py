@@ -17,7 +17,13 @@ from typing import Any, Literal, Protocol
 import anyio
 import psycopg
 import structlog
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langgraph.types import Command, Interrupt, StateSnapshot
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -50,6 +56,7 @@ from neuron_agent.persistence.checkpointer import Persistence, build_persistence
 from neuron_agent.persistence.guards import build_run_guard, build_token_budget
 from neuron_agent.persistence.run_guard import PostgresRunGuard
 from neuron_agent.persistence.thread_index import OwnedThreadPage, owned_threads
+from neuron_agent.persistence.thread_meta import derive_title
 from neuron_agent.schemas.agent import (
     AgentAnswer,
     AgentRequest,
@@ -57,12 +64,14 @@ from neuron_agent.schemas.agent import (
     ApprovalRequest,
     ApprovalRequiredResponse,
     ExportedThread,
+    FeedbackResponse,
     MemoriesResponse,
     MemoryErasureResponse,
     MemoryItem,
     PendingAction,
     ThreadHistoryResponse,
     ThreadMessage,
+    ThreadTitleResponse,
     ToolCallRecord,
     UserDataErasureResponse,
     UserDataExportResponse,
@@ -114,6 +123,8 @@ class PreparedRun:
     checkpoint_owner: str | None
     created_thread: bool
     lease: RunLease
+    # Set for a run that creates its thread: stored as the thread's title once the run succeeds.
+    title: str | None = None
 
     @property
     def config(self) -> dict[str, Any]:
@@ -310,7 +321,19 @@ class AgentService:
             checkpoint_owner=owner_key,
             created_thread=request.thread_id is None,
             lease=lease,
+            title=derive_title(message) if request.thread_id is None else None,
         )
+
+    async def _name_new_thread(self, run: PreparedRun) -> None:
+        """File the first message's title under the thread; a failure never fails the run."""
+        if run.title is None or run.checkpoint_owner is None:
+            return
+        try:
+            await self._persistence.thread_titles.set_if_absent(
+                run.checkpoint_owner, run.thread_id, run.title
+            )
+        except Exception as exc:  # noqa: BLE001 - a title is a convenience, the answer stands
+            logger.warning("thread_title_failed", error_type=type(exc).__name__)
 
     def _audit_thread_created(self, run: PreparedRun) -> None:
         if run.created_thread:
@@ -353,6 +376,44 @@ class AgentService:
         """Whether a run on this service can wait for an approval."""
         return self._persistence.checkpointer is not None and bool(self._tools().mutating())
 
+    async def get_pending_approval(
+        self,
+        thread_id: str,
+        *,
+        user_id: str | None = None,
+        principal: Principal | None = None,
+    ) -> ApprovalRequiredResponse:
+        """The approval a thread is waiting on, so a reloaded client can decide it.
+
+        Read-only: it records no `approval_requested` event or metric (the run that paused
+        did). A missing thread, another user's thread and a thread with nothing pending are the
+        same `ApprovalNotFoundError`.
+        """
+        owner_key = self._owner_key(user_id, principal)
+        bind_correlation_context(request_id=None, thread_id=thread_id)
+        with self._persistence_errors():
+            try:
+                snapshot = await self._owned_snapshot(thread_id, owner_key)
+            except ThreadNotFoundError:
+                raise ApprovalNotFoundError("approval not found") from None
+        interrupts = [i for task in snapshot.tasks for i in task.interrupts]
+        if not interrupts:
+            raise ApprovalNotFoundError("approval not found")
+        approval = _approval_request(interrupts[0])
+        audit(
+            "approval_read",
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="agent:approve",
+            resource_type="approval",
+            resource_id=approval.approval_id,
+            count=len(approval.actions),
+        )
+        return ApprovalRequiredResponse(
+            request_id=str(uuid.uuid4()), thread_id=thread_id, approval=approval
+        )
+
     async def _pending_interrupts(self, thread_id: str) -> list[Interrupt]:
         snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
         return [interrupt for task in snapshot.tasks for interrupt in task.interrupts]
@@ -361,13 +422,8 @@ class AgentService:
         self, run: PreparedRun, interrupt: Interrupt
     ) -> ApprovalRequiredResponse:
         """The response for a run that paused, and the `approval_requested` audit event."""
-        actions = [
-            PendingAction(name=str(action["name"]), args=dict(action["args"]))
-            for action in interrupt.value["action_requests"]
-        ]
-        approval = ApprovalRequest(
-            approval_id=interrupt.id, actions=actions, allowed_decisions=["approve", "reject"]
-        )
+        approval = _approval_request(interrupt)
+        actions = approval.actions
         known = self._tools().names()
         self._record_approval("requested", len(actions))
         logger.info(
@@ -560,6 +616,7 @@ class AgentService:
             else _response(run, result["answer"])
         )
         self._audit_thread_created(run)
+        await self._name_new_thread(run)
         return response
 
     async def stream(
@@ -689,6 +746,7 @@ class AgentService:
                 if tail := guard.flush():
                     queue.put_nowait(StreamEvent("token", {"text": tail}))
                 self._audit_thread_created(run)
+                await self._name_new_thread(run)
                 paused = self._approval_required(run, pending)
                 queue.put_nowait(StreamEvent("approval_required", paused.model_dump()))
             elif answer is None:
@@ -700,6 +758,7 @@ class AgentService:
                 if (tail := guard.flush()) and answer.answer != SYSTEM_PROMPT_REFUSAL:
                     queue.put_nowait(StreamEvent("token", {"text": tail}))
                 self._audit_thread_created(run)
+                await self._name_new_thread(run)
                 queue.put_nowait(StreamEvent("final", _response(run, answer).model_dump()))
         finally:
             # Unbounded queue: its size is bounded by the run's own output
@@ -848,6 +907,85 @@ class AgentService:
         )
         return response
 
+    async def rename_thread(
+        self,
+        thread_id: str,
+        title: str,
+        user_id: str | None,
+        *,
+        principal: Principal | None = None,
+    ) -> ThreadTitleResponse:
+        """Set an owned thread's title; another user's or a missing thread is the same `404`."""
+        owner_key = self._owner_key(user_id, principal)
+        bind_correlation_context(request_id=None, thread_id=thread_id)
+        with self._persistence_errors():
+            await self._owned_thread_state(thread_id, owner_key)
+            if owner_key is None:  # an anonymous thread is not listed, so it has no title
+                raise ThreadNotFoundError("thread not found")
+            await self._persistence.thread_titles.rename(owner_key, thread_id, title)
+        audit(
+            "thread_renamed",
+            outcome="allowed",
+            actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
+            issuer_id=self._settings.auth_issuer_id,
+            action="threads:write",
+            resource_type="thread",
+            resource_id=thread_id,
+        )
+        return ThreadTitleResponse(thread_id=thread_id, title=title)
+
+    async def submit_feedback(
+        self,
+        thread_id: str,
+        run_id: str,
+        score: int,
+        reason: str | None,
+        user_id: str | None,
+        *,
+        principal: Principal | None = None,
+    ) -> FeedbackResponse:
+        """Record the caller's rating of one answer; the first rating of a run stands.
+
+        A missing thread and another user's thread are the same `404`. The `run_id` is
+        accepted only if an answer of this thread carries it, so a rating always belongs to a
+        run of the thread it is filed under. A thread from before run IDs were stored has none.
+        """
+        owner_key = self._owner_key(user_id, principal)
+        bind_correlation_context(request_id=None, thread_id=thread_id, run_id=run_id)
+        with self._persistence_errors():
+            snapshot = await self._owned_snapshot(thread_id, owner_key)
+            if owner_key is None:  # an anonymous thread has no owner to file a rating under
+                raise ThreadNotFoundError("thread not found")
+            if not _thread_has_answer(snapshot.values.get("messages", []), run_id):
+                raise ThreadNotFoundError("thread not found")
+            stored = await self._persistence.feedback.record(
+                owner_key, thread_id, run_id, score, reason
+            )
+        if stored.thread_id != thread_id:
+            raise ThreadNotFoundError("thread not found")
+        if stored.created:
+            label = "up" if stored.score > 0 else "down"
+            with telemetry.start_span(
+                semconv.FEEDBACK_SPAN,
+                attributes={
+                    semconv.NEURON_FEEDBACK_SCORE: label,
+                    semconv.NEURON_FEEDBACK_REASON: stored.reason or "none",
+                },
+            ):
+                metrics.record_feedback(label, stored.reason or "none")
+            logger.info("user_feedback", score=label, reason=stored.reason or "none")
+            audit(
+                "feedback_recorded",
+                outcome="allowed",
+                actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
+                issuer_id=self._settings.auth_issuer_id,
+                action="feedback:write",
+                resource_type="run",
+                resource_id=run_id,
+                reason=stored.reason,
+            )
+        return FeedbackResponse(run_id=run_id, score=stored.score, reason=stored.reason)
+
     async def list_user_threads(
         self,
         user_id: str | None,
@@ -864,6 +1002,7 @@ class AgentService:
         summaries: list[UserThreadSummary] = []
         with self._persistence_errors():
             page = await self._owned_threads(owner_key, limit=limit, offset=offset)
+            titles = await self._titles_of(owner_key, page)
             for thread in page.threads:
                 messages = await self._latest_public_messages(thread.thread_id, owner_key)
                 if messages is None:
@@ -874,6 +1013,7 @@ class AgentService:
                         created_at=thread.created_at,
                         updated_at=thread.updated_at,
                         message_count=len(messages),
+                        title=titles.get(thread.thread_id),
                     )
                 )
         return UserThreadsResponse(threads=summaries, total=page.total, limit=limit, offset=offset)
@@ -899,11 +1039,13 @@ class AgentService:
         exported_bytes = 0
         with self._persistence_errors():
             page = await self._owned_threads(owner_key, limit=limit, offset=offset)
+            titles = await self._titles_of(owner_key, page)
             for thread in page.threads:
                 messages = await self._latest_public_messages(thread.thread_id, owner_key)
                 if messages is None:
                     continue
                 item = ExportedThread(
+                    title=titles.get(thread.thread_id),
                     thread_id=thread.thread_id,
                     created_at=thread.created_at,
                     updated_at=thread.updated_at,
@@ -1061,9 +1203,12 @@ class AgentService:
                             continue
                         try:
                             await checkpointer.adelete_thread(thread_id)
+                            await self._forget_thread_content([thread_id])
                         finally:
                             await lease.release()
                         erased += 1
+                    if skipped_busy == 0 and owner_key is not None:
+                        await self._forget_owner_content(owner_key)
             if self._memory is not None:
                 with self._persistence_errors():
                     erased_memories = await self._memory.erase(owner_key)
@@ -1095,6 +1240,22 @@ class AgentService:
             erased_count=erased,
             skipped_busy_count=skipped_busy,
             erased_memory_count=erased_memories,
+        )
+
+    async def _forget_thread_content(self, thread_ids: list[str]) -> None:
+        """Remove what is kept beside a deleted thread: its title and the ratings of its runs."""
+        await self._persistence.thread_titles.forget_threads(thread_ids)
+        await self._persistence.feedback.forget_threads(thread_ids)
+
+    async def _forget_owner_content(self, owner_key: str) -> None:
+        await self._persistence.thread_titles.forget_owner(owner_key)
+        await self._persistence.feedback.forget_owner(owner_key)
+
+    async def _titles_of(self, owner_key: str | None, page: OwnedThreadPage) -> dict[str, str]:
+        if owner_key is None:
+            return {}
+        return await self._persistence.thread_titles.titles(
+            owner_key, [thread.thread_id for thread in page.threads]
         )
 
     async def _owned_threads(
@@ -1142,6 +1303,7 @@ class AgentService:
                 # _owned_thread_state already raised if there is no checkpointer.
                 assert checkpointer is not None  # nosec B101
                 await checkpointer.adelete_thread(thread_id)
+                await self._forget_thread_content([thread_id])
             finally:
                 await lease.release()
         audit(
@@ -1193,6 +1355,17 @@ class AgentService:
                 principal, self._settings.identity_hash_key.get_secret_value()
             )
         return _hash_identifier(user_id) if user_id else None
+
+
+def _approval_request(interrupt: Interrupt) -> ApprovalRequest:
+    """What the caller is asked to decide, from the interrupt a run paused on."""
+    actions = [
+        PendingAction(name=str(action["name"]), args=dict(action["args"]))
+        for action in interrupt.value["action_requests"]
+    ]
+    return ApprovalRequest(
+        approval_id=interrupt.id, actions=actions, allowed_decisions=["approve", "reject"]
+    )
 
 
 def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:
@@ -1336,8 +1509,24 @@ def _public_thread_messages(
         )
         if text or calls:
             role = "user" if isinstance(message, HumanMessage) else "assistant"
-            turns.append(ThreadMessage(role=role, content=text, tool_calls=calls))
+            turns.append(
+                ThreadMessage(
+                    role=role, content=text, tool_calls=calls, run_id=_stamped_run(message)
+                )
+            )
     return turns
+
+
+def _thread_has_answer(messages: Any, run_id: str) -> bool:
+    return isinstance(messages, list) and any(
+        isinstance(m, AIMessage) and _stamped_run(m) == run_id for m in messages
+    )
+
+
+def _stamped_run(message: BaseMessage) -> str | None:
+    """The run ID the graph stamped on a stored message; threads from before it have none."""
+    value = message.additional_kwargs.get("run_id")
+    return value if isinstance(value, str) else None
 
 
 _SUMMARY_VALUE_CHARS = 60

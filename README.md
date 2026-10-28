@@ -55,8 +55,10 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | Scope | Allows |
 | --- | --- |
 | `agent:invoke` | `POST /v1/agent/invoke`, `POST /v1/agent/stream` |
-| `agent:approve` | `POST /v1/threads/{id}/approvals/{approval_id}` (decide a tool call that needs approval) |
+| `agent:approve` | `GET /v1/threads/{id}/approval` (read the pending approval), `POST /v1/threads/{id}/approvals/{approval_id}` (decide a tool call that needs approval) |
 | `threads:read` | `GET /v1/threads/{id}/messages`, `GET /v1/me/threads`, `GET /v1/me/export` |
+| `threads:write` | `PATCH /v1/threads/{id}` (rename a conversation) |
+| `feedback:write` | `POST /v1/threads/{id}/runs/{run_id}/feedback` (rate an answer) |
 | `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads` |
 | `memories:read` | `GET /v1/me/memories` |
 | `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |
@@ -73,7 +75,7 @@ A tool whose risk is `mutating` (an MCP tool configured that way, or a future bu
               "allowed_decisions": ["approve", "reject"]}}
 ```
 
-The run has ended; nothing was done. Decide it with `POST /v1/threads/{thread_id}/approvals/{approval_id}` and `{"decision": "approve"}` or `{"decision": "reject"}` (scope `agent:approve`). That starts a new run, with its own rate limit, token budget and timeout, and returns the usual answer (or another `approval_required`). You cannot edit the call; reject and ask again. A decision is single-use: an unknown, someone else's or already-decided approval is the same `404 approval_not_found`. While a decision is pending the thread refuses new messages with `409 approval_pending`. Approvals need thread persistence (not `APP_CHECKPOINTER=none`). Over SSE, `POST /v1/agent/stream` ends with an `approval_required` event (same `approval` object) instead of `final`, and `POST /v1/threads/{thread_id}/approvals/{approval_id}/stream` decides it and streams the continuation. `tool_call` events still carry only the tool name; the arguments appear only in the approval.
+The run has ended; nothing was done. Decide it with `POST /v1/threads/{thread_id}/approvals/{approval_id}` and `{"decision": "approve"}` or `{"decision": "reject"}` (scope `agent:approve`). That starts a new run, with its own rate limit, token budget and timeout, and returns the usual answer (or another `approval_required`). You cannot edit the call; reject and ask again. A client that reloaded can read the pending approval again with `GET /v1/threads/{thread_id}/approval` (scope `agent:approve`: only someone who can decide it sees the arguments); it returns the same `approval_required` object, or the same `404 approval_not_found` when nothing is pending. A decision is single-use: an unknown, someone else's or already-decided approval is the same `404 approval_not_found`. While a decision is pending the thread refuses new messages with `409 approval_pending`. Approvals need thread persistence (not `APP_CHECKPOINTER=none`). Over SSE, `POST /v1/agent/stream` ends with an `approval_required` event (same `approval` object) instead of `final`, and `POST /v1/threads/{thread_id}/approvals/{approval_id}/stream` decides it and streams the continuation. `tool_call` events still carry only the tool name; the arguments appear only in the approval.
 
 `.env.example` starts in `APP_AUTH_MODE=none`, a development-only mode with no authentication in which every caller is the same untrusted local identity. To run locally with real tokens and no identity provider, use the development token tools (development only; they refuse to run unless `APP_ENV=development`):
 

@@ -55,6 +55,12 @@ export class StreamProtocolError extends Error {
 }
 
 const SAFE_CODE = /^[a-z0-9_]{1,64}$/;
+/**
+ * Ids from the server are put into URL paths. The same characters the API accepts for an
+ * approval id, with at least one letter or digit so an id can never be `.` or `..`, which URL
+ * normalisation would resolve out of the path.
+ */
+export const SAFE_ID = /^(?=.*[A-Za-z0-9])[A-Za-z0-9_.:-]{1,128}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -107,7 +113,13 @@ function parseApproval(name: string, p: Record<string, unknown>): ApprovalRequir
   }
   const approvalId = text(approval, "approval_id");
   const { actions, allowed_decisions } = approval;
-  if (approvalId === undefined || !Array.isArray(actions) || !Array.isArray(allowed_decisions)) {
+  if (
+    approvalId === undefined ||
+    !SAFE_ID.test(approvalId) ||
+    !SAFE_ID.test(threadId) ||
+    !Array.isArray(actions) ||
+    !Array.isArray(allowed_decisions)
+  ) {
     return invalid(name);
   }
   const parsedActions = actions.map((action: unknown): PendingAction => {
@@ -126,6 +138,12 @@ function parseApproval(name: string, p: Record<string, unknown>): ApprovalRequir
     thread_id: threadId,
     approval: { approval_id: approvalId, actions: parsedActions, allowed_decisions: decisions },
   };
+}
+
+/** The body of `GET /v1/threads/{id}/approval`: the same payload as an `approval_required` event. */
+export function parseApprovalBody(body: unknown): ApprovalRequired {
+  if (!isRecord(body)) return invalid("approval");
+  return parseApproval("approval", body);
 }
 
 /** Turn one SSE message into a typed event; `null` for an event this client does not know. */

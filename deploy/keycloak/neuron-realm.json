@@ -8,8 +8,14 @@
   "ssoSessionMaxLifespan": 36000,
   "roles": {
     "realm": [
-      { "name": "neuron-user", "description": "Full use of the assistant" },
-      { "name": "neuron-reader", "description": "Read-only: list and read own threads" }
+      {
+        "name": "neuron-user",
+        "description": "Full use of the assistant"
+      },
+      {
+        "name": "neuron-reader",
+        "description": "Read-only: list and read own threads"
+      }
     ]
   },
   "clients": [
@@ -22,13 +28,13 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "fullScopeAllowed": false,
-      "redirectUris": ["http://localhost:5173/*"],
+      "fullScopeAllowed": true,
+      "redirectUris": ["http://localhost:5173/"],
       "webOrigins": ["http://localhost:5173"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.header.type.rfc9068": "true",
-        "post.logout.redirect.uris": "http://localhost:5173/*"
+        "post.logout.redirect.uris": "http://localhost:5173/"
       },
       "protocolMappers": [
         {
@@ -63,7 +69,7 @@
       "publicClient": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
-      "fullScopeAllowed": false,
+      "fullScopeAllowed": true,
       "attributes": {
         "access.token.header.type.rfc9068": "true"
       },
@@ -102,7 +108,13 @@
       "email": "alice@neuron.invalid",
       "firstName": "Alice",
       "lastName": "Dev",
-      "credentials": [{ "type": "password", "value": "dev-only-alice", "temporary": false }],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-alice",
+          "temporary": false
+        }
+      ],
       "realmRoles": ["neuron-user"]
     },
     {
@@ -112,7 +124,13 @@
       "email": "bob@neuron.invalid",
       "firstName": "Bob",
       "lastName": "Dev",
-      "credentials": [{ "type": "password", "value": "dev-only-bob", "temporary": false }],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-bob",
+          "temporary": false
+        }
+      ],
       "realmRoles": ["neuron-reader"]
     }
   ]

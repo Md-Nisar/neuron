@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+import unicodedata
 import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+
+# The longest conversation title, set from the first message or by `PATCH /v1/threads/{id}`.
+TITLE_MAX_CHARS = 80
 
 
 class AgentRequest(BaseModel):
@@ -97,6 +101,68 @@ class ApprovalDecisionRequest(BaseModel):
     decision: Literal["approve", "reject"]
 
 
+class RenameThreadRequest(BaseModel):
+    """`PATCH /v1/threads/{thread_id}` body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def _plain_title(cls, value: str) -> str:
+        """Whitespace collapsed, 1 to 80 characters, no control or invisible characters."""
+        if any(unicodedata.category(c)[0] == "C" for c in value if c not in "\t\n\r"):
+            raise ValueError("title contains control or invisible characters")
+        title = " ".join(value.split())
+        if not 1 <= len(title) <= TITLE_MAX_CHARS:
+            raise ValueError(f"title must be 1 to {TITLE_MAX_CHARS} characters")
+        return title
+
+
+POSITIVE_REASONS = ("helpful", "accurate")
+NEGATIVE_REASONS = ("inaccurate", "unhelpful", "unsafe", "other")
+FeedbackReason = Literal["helpful", "accurate", "inaccurate", "unhelpful", "unsafe", "other"]
+
+
+class FeedbackRequest(BaseModel):
+    """`POST /v1/threads/{thread_id}/runs/{run_id}/feedback` body. A score and a fixed reason:
+    free text is not accepted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    score: Literal[-1, 1]
+    reason: FeedbackReason | None = None
+
+    @field_validator("score", mode="before")
+    @classmethod
+    def _not_a_bool(cls, value: object) -> object:
+        """`true` equals 1 in Python; a score is a number."""
+        if isinstance(value, bool):
+            raise ValueError("score must be -1 or 1")
+        return value
+
+    @model_validator(mode="after")
+    def _reason_fits_the_score(self) -> FeedbackRequest:
+        allowed = POSITIVE_REASONS if self.score > 0 else NEGATIVE_REASONS
+        if self.reason is not None and self.reason not in allowed:
+            raise ValueError("reason does not fit the score")
+        return self
+
+
+class FeedbackResponse(BaseModel):
+    """The rating that stands for the run (the first one, if it was rated before)."""
+
+    run_id: str
+    score: Literal[-1, 1]
+    reason: FeedbackReason | None = None
+
+
+class ThreadTitleResponse(BaseModel):
+    thread_id: str
+    title: str
+
+
 class ToolCallRecord(BaseModel):
     """A tool call the assistant made: its name, a bounded summary of the arguments and how it
     ended. Never the tool's output."""
@@ -112,6 +178,7 @@ class ThreadMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
+    run_id: str | None = None
 
 
 class ThreadHistoryResponse(BaseModel):
@@ -131,6 +198,7 @@ class UserThreadSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: int
+    title: str | None = None
 
 
 class UserThreadsResponse(BaseModel):
@@ -150,6 +218,7 @@ class ExportedThread(BaseModel):
     updated_at: datetime
     message_total: int
     messages: list[ThreadMessage]
+    title: str | None = None
 
 
 class MemoryItem(BaseModel):

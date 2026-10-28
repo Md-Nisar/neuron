@@ -115,6 +115,7 @@ class _Instruments:
     policy_blocks: metrics.Counter
     model_fallbacks: metrics.Counter
     approvals: metrics.Counter
+    feedback: metrics.Counter
     memory_operations: metrics.Counter
     checkpoint_duration: metrics.Histogram
     budget_settle_failures: metrics.Counter
@@ -204,6 +205,11 @@ def _build(meter: metrics.Meter) -> _Instruments:
             semconv.METRIC_APPROVALS,
             unit="{approval}",
             description="Approval requests and decisions",
+        ),
+        feedback=meter.create_counter(
+            semconv.METRIC_FEEDBACK,
+            unit="{rating}",
+            description="Answer ratings by score and reason",
         ),
         memory_operations=meter.create_counter(
             semconv.METRIC_MEMORY_OPERATIONS,
@@ -309,6 +315,13 @@ def record_model_fallback(source: str, target: str) -> None:
     """Count one switch from model `source` to model `target` (configured identifiers)."""
     _instruments().model_fallbacks.add(
         1, {semconv.NEURON_FALLBACK_FROM: source, semconv.NEURON_FALLBACK_TO: target}
+    )
+
+
+def record_feedback(score: str, reason: str) -> None:
+    """Count one recorded answer rating (`up` or `down`) with its fixed reason (or `none`)."""
+    _instruments().feedback.add(
+        1, {semconv.NEURON_FEEDBACK_SCORE: score, semconv.NEURON_FEEDBACK_REASON: reason}
     )
 
 
