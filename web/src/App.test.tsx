@@ -1,11 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "@/App";
 import { AuthProvider } from "@/lib/auth";
 import { AuthSession, type AuthErrorCode, type AuthSnapshot } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
+import { fakeApi, memory, thread } from "@/test/dataApi";
 
 const config = {
   issuer: "http://localhost:8180/realms/neuron",
@@ -20,6 +21,7 @@ function fakeSession(snapshot: AuthSnapshot) {
   const session = new AuthSession({ config });
   vi.spyOn(session, "getSnapshot").mockReturnValue(snapshot);
   vi.spyOn(session, "init").mockResolvedValue();
+  vi.spyOn(session, "getAccessToken").mockReturnValue("tok-1");
   const signIn = vi.spyOn(session, "signIn").mockResolvedValue();
   const signOut = vi.spyOn(session, "signOut").mockResolvedValue();
   return { session, signIn, signOut };
@@ -98,5 +100,45 @@ describe("App", () => {
 
     expect(screen.getByText("Loading…")).toBeInTheDocument();
     expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("App sections", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("loads the data page only when it is opened, and keeps the chat draft meanwhile", async () => {
+    const api = fakeApi({ memories: [memory(1, "likes tea")], threads: [] });
+    vi.stubGlobal("fetch", api.fetch);
+    const { signOut } = view({ status: "signed_in", displayName: "alice", error: null });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("textbox", { name: "Message" }));
+    await user.paste("a half-written question");
+
+    expect(api.calls).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "Your data" }));
+    expect(await screen.findByText("likes tea")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message", hidden: true })).toHaveValue(
+      "a half-written question",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Chat" }));
+    expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("a half-written question");
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("signs the user out after a complete erase", async () => {
+    const api = fakeApi({ memories: [memory(1)], threads: [thread(1, 2)] });
+    vi.stubGlobal("fetch", api.fetch);
+    const { signOut } = view({ status: "signed_in", displayName: "alice", error: null });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Your data" }));
+    await user.type(await screen.findByLabelText(/Type erase my data to confirm/), "erase my data");
+    await user.click(screen.getByRole("button", { name: "Erase all my data" }));
+
+    await waitFor(() => {
+      expect(signOut).toHaveBeenCalledOnce();
+    });
   });
 });

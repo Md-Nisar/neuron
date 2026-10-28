@@ -110,6 +110,24 @@ the Markdown renderer (which cannot produce a button or the card's double border
 - "You approved this" / "You rejected this" come from the user's click and the HTTP result, never
   from what the model says next.
 
+## Your data (`src/features/data`)
+
+The "Your data" page (opened from the nav; the chat stays mounted so a draft survives a visit) uses
+the existing `/v1/me/*` routes and needs the scopes `memories:read`, `memories:write`,
+`threads:read` and `threads:delete`.
+
+- **Memories:** list (paged, shown as text), and delete in two steps. If memory is off on the
+  server the page says so.
+- **Export:** builds one dated JSON file in the page and hands it to the browser. The API pages
+  threads and messages independently and refuses oversized pages, so the page sizes are halved on
+  `413`. The file is checked for completeness (every thread has all its messages) and a partial file
+  is never offered. Nothing is kept: the text lives in one click handler, the object URL is revoked
+  right after the click, and no state, storage or cookie holds it (tested). Requests use
+  `cache: "no-store"`. Past 64 MiB the export is refused.
+- **Erase:** needs the typed phrase `erase my data`. The user is signed out only if the server
+  reports the erase complete; if a conversation was busy and skipped, the page says how many
+  and stays signed in so the user can repeat it.
+
 **Dependency pins.** `package.json` holds `micromark` at 4.0.2 and `micromark-core-commonmark`
 at 2.0.3 (`overrides`). Their next releases (2026-09-26) added a new package,
 `micromark-util-edit-map`, first published 31 days before this was written, which fails the

@@ -45,7 +45,7 @@ export interface StreamRequest {
   maxEventChars?: number;
 }
 
-function resolveUrl(baseUrl: string, path: string): URL {
+export function resolveUrl(baseUrl: string, path: string): URL {
   const base = new URL(baseUrl);
   if (base.protocol !== "https:" && base.protocol !== "http:") {
     throw new TypeError("baseUrl must be http(s)");
@@ -87,7 +87,7 @@ async function errorCode(response: Response): Promise<string | null> {
   return null;
 }
 
-async function startError(response: Response): Promise<StreamStartError> {
+export async function startError(response: Response): Promise<StreamStartError> {
   const { status } = response;
   const code = await errorCode(response);
   const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
