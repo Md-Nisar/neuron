@@ -676,6 +676,54 @@ CORS allows `GET`, `POST` and `DELETE` with the `Authorization`, `Content-Type` 
 
 Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. `/v1/*` responses, including errors and streams, carry `Cache-Control: no-store`. Unhandled errors are answered as `500 {"detail": "internal_server_error"}` with the same headers. If the proxy adds security headers of its own, don't repeat these: nginx `add_header` appends rather than replaces, so clients would receive both copies. The stream's `X-Accel-Buffering: no` is consumed by nginx and is unaffected by these headers.
 
+## Web Application
+
+The browser application (`web/`, ADR 0010) is a static single-page app on its own origin. The API image does not serve it, has no static-file route, and cannot contain it (`.dockerignore` is an allowlist). To run it you build `web/dist`, serve it from any static host with the headers below, and point the API and the identity provider at its origin.
+
+### Build
+
+With the Node version in `web/.nvmrc`: `make web-install` (installs from the lockfile only) then `npm --prefix web run build`. These are read at build time (`web/README.md`):
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `VITE_API_URL` | `http://127.0.0.1:8000` | The API origin. Must be `https`, or `http` on loopback; an origin only, no path. The bearer token is sent only here. |
+| `VITE_OIDC_ISSUER` | `http://localhost:8180/realms/neuron` | The identity provider's issuer. `https`, or `http` on loopback. |
+| `VITE_OIDC_CLIENT_ID` | `neuron-web` | The public client. |
+| `VITE_MAX_PROMPT_CHARS` | `12000` | Mirrors `APP_MAX_PROMPT_CHARS`; the server stays authoritative. |
+
+### The API side
+
+- **CORS:** put the UI's exact origin in `APP_CORS_ALLOWED_ORIGINS` (for example `["https://app.example.com"]`; see HTTP Surface). The app sends only `GET`, `POST` and `DELETE` with `Authorization`, `Content-Type` and `Accept`, and reads `Retry-After`; all are already allowed or exposed. Cookies are never used.
+- **Scopes:** the UI needs `agent:invoke`, `agent:approve`, `threads:read`, `threads:delete`, `memories:read` and `memories:write`. A user with fewer sees the matching action refused, not a broken page.
+
+### The identity provider (Keycloak)
+
+`deploy/keycloak/neuron-realm.json` is the **development** realm, not a production export. What a real provider must provide, whichever it is:
+
+- A **public** client with the **authorization code** flow and **PKCE `S256`**; no implicit, password or service-account grants for the browser client.
+- **Exact** redirect and post-logout redirect URIs (the UI's origin root, for example `https://app.example.com/`), no wildcard.
+- Access tokens with `aud` containing `APP_AUTH_AUDIENCE`, and the user's roles in a top-level `roles` claim (or scopes in `scope`), mapped to permissions with `APP_AUTH_ROLE_PERMISSIONS`. In Keycloak, a client with *Full scope allowed* **off** and no scope mappings drops realm roles from the token, so `roles` arrives empty; either leave it on or map the roles.
+- Short access-token lifetimes. The UI keeps the token in memory only and does not use the refresh token.
+- The API requires `nbf` in access tokens. If your provider omits it, sign-in succeeds but every API call is a `401`; check this first.
+
+### Headers to serve
+
+`scripts/web_headers.py` prints the content security policy and the other headers for your two origins, in `json`, `nginx` or `headers` (the `_headers` file read by Netlify and Cloudflare Pages) format:
+
+```bash
+python scripts/web_headers.py --api-origin https://api.example.com \
+    --issuer https://id.example.com/realms/neuron --format nginx
+```
+
+The policy: `default-src 'none'`; scripts, styles, images and fonts from `'self'` only (no inline script or style, no `eval`, no `data:`); `connect-src` limited to the API and the identity provider; `frame-src` to the identity provider; `base-uri`, `form-action`, `object-src` and `worker-src` `'none'`; `upgrade-insecure-requests`. With it: `Referrer-Policy: no-referrer` (the sign-in callback URL carries a one-time code), `X-Content-Type-Options: nosniff`, `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` `same-origin`, a `Permissions-Policy` that turns off device APIs, and HSTS. `index.html` is `no-cache`; `/assets/*` is hashed and `immutable`.
+
+Two things to know:
+
+- **`frame-ancestors 'self'`, not `'none'` as ADR 0010 first said.** Silent renew loads this app inside a hidden frame of itself (the redirect URI is the app root), so `'none'` would block it. `'self'` still stops every other site from framing the app. If you give up silent renew, `'none'` is the stricter choice.
+- **nginx does not inherit `add_header` into a block that has its own `add_header`.** The nginx output repeats the full set in every location for that reason; if you write your own, do the same, or a cache rule will silently remove the CSP from the HTML.
+
+The headers are tested as a policy (`tests/unit/test_web_headers.py`), together with a check that the web source needs nothing the policy forbids. They have **not** been enforced by a real browser against a deployed build: no browser test (Playwright) has run, so a directive that is too strict for something the app does would show up only there.
+
 ## Conversation Retention and Deletion
 
 - **Schedule retention.** Run `make prune-threads` (`python -m neuron_agent.persistence.cli prune`) daily, for example from cron or a Kubernetes CronJob, using the same `APP_CHECKPOINTER` and `APP_POSTGRES_DSN` as the API.

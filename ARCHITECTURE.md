@@ -260,6 +260,17 @@ Designed in [ADR 0009](docs/decisions/0009-extensible-agent-platform.md). The re
 
 Multi-instance deployment, shared Postgres-backed limits and leases, migrations, the container image and the Render reference platform are designed in [ADR 0008](docs/decisions/0008-production-deployment.md) (v0.6.0); they are being implemented issue by issue, so this document describes the code that exists today.
 
+## Web Application (v0.8.0)
+
+Designed in [ADR 0010](docs/decisions/0010-user-application.md). `web/` is a separate single-page app (React, Vite, strict TypeScript) served from its own origin by any static host; it calls the existing API with CORS and a bearer token. The API gains no static-file route and the image does not contain `web/`. The module boundary is the HTTP contract: `web/` shares no code with the Python package, and the stream payloads are pinned to the server's models by `tests/unit/test_web_stream_contract.py`.
+
+- **`lib/stream`**: a typed reader for the seven-event stream (`POST /v1/agent/stream` and the approval stream), with runtime-checked payloads and a guaranteed `error`-then-`done` ending.
+- **`lib/auth`**: Authorization Code + PKCE against the identity provider; the token is held in memory only.
+- **`features/chat`**: send, stream, stop, retry, sanitised Markdown, and the approval card.
+- **`features/data`**: memories, export and erase, on `/v1/me/*`.
+
+Headers for hosting it are in `scripts/web_headers.py` and OPERATIONS.md ("Web Application"); the browser threat model is in SECURITY.md.
+
 ## Failure Handling
 
 Expected failures are classified through `AppError` subclasses (`src/neuron_agent/errors/base.py`), each carrying an `ErrorContext(code, http_status, retryable, user_visible, alert)`:
