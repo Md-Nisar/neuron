@@ -4,6 +4,18 @@ import httpx
 import openai
 import pytest
 from langchain.agents.structured_output import StructuredOutputValidationError
+from langchain_core.exceptions import (
+    ContextOverflowError,
+    ModelAPIError,
+    ModelAuthenticationError,
+    ModelConnectionError,
+    ModelError,
+    ModelInvalidRequestError,
+    ModelNotFoundError,
+    ModelPermissionDeniedError,
+    ModelRateLimitError,
+    ModelTimeoutError,
+)
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
@@ -287,3 +299,37 @@ def test_agent_invocation_config_omits_missing_run_id() -> None:
     config = agent_invocation_config(Settings(env="test"), run_id=None)
     assert "run_id" not in config
     assert config["recursion_limit"] == 16
+
+
+# Provider-neutral `langchain-core` model errors (#233): any provider integration raises these,
+# so a second provider is classified without provider-specific code.
+@pytest.mark.parametrize(
+    ("error", "expected", "retryable"),
+    [
+        (ModelRateLimitError("429"), RateLimitError, True),
+        (ModelTimeoutError("timeout"), ProviderTimeoutError, True),
+        (ModelAuthenticationError("401"), ConfigurationError, False),
+        (ModelPermissionDeniedError("403"), ConfigurationError, False),
+        (ModelNotFoundError("404"), ConfigurationError, False),
+        (ModelInvalidRequestError("400"), ProviderError, False),
+        (ContextOverflowError("too long"), ProviderError, False),
+        (ModelAPIError("500"), ProviderError, True),
+        (ModelConnectionError("down"), ProviderError, True),
+        (ModelError("other"), ProviderError, False),
+    ],
+)
+def test_neutral_model_errors_map_to_app_errors_and_retry_policy(
+    error: Exception, expected: type[Exception], retryable: bool
+) -> None:
+    assert type(classify_agent_error(error)) is expected
+    assert _is_retryable_provider_error(error) is retryable
+
+
+def test_a_neutral_error_that_is_also_an_openai_quota_error_is_still_quota() -> None:
+    class _Quota(ModelRateLimitError, openai.RateLimitError):
+        pass
+
+    response = httpx.Response(status_code=429, request=_REQUEST)
+    error = _Quota("no credit", response=response, body={"code": "insufficient_quota"})
+    assert isinstance(classify_agent_error(error), ProviderQuotaError)
+    assert _is_retryable_provider_error(error) is False
