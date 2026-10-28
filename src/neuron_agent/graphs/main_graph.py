@@ -20,6 +20,7 @@ from langchain_core.messages import (
 from langchain_core.messages.utils import count_tokens_approximately
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import get_runtime
 
@@ -106,6 +107,9 @@ async def call_agent(
             invocation["context"] = authorization
         result = await agent.ainvoke({"messages": history}, **invocation)
         answer = _final_answer(result, run_messages=result.get("messages", [])[len(history) :])
+    except GraphBubbleUp:
+        # A tool is waiting for a human decision: the run pauses, it did not fail.
+        raise
     except Exception as exc:  # noqa: BLE001
         error = classify_agent_error(exc)
         log = logger.exception if error.context.alert else logger.warning
@@ -270,6 +274,11 @@ def build_graph(
     `registry` is the tool set (the builtin tools when omitted).
     """
     resolved_settings = settings or get_settings()
+    if registry is not None and checkpointer is None and registry.mutating():
+        # A run can pause only where its state is saved: without a checkpointer (stateless
+        # deployments, Agent Server) a gated tool would be lost, so it is not offered.
+        logger.warning("approval_tools_disabled", reason="no_checkpointer")
+        registry = registry.without_mutating()
     agent = (
         build_agent(resolved_settings, registry)
         if registry is not None
@@ -291,6 +300,9 @@ def build_graph(
                 result = await call_agent(
                     state, agent=agent, settings=resolved_settings, authorization=authorization
                 )
+            except GraphBubbleUp:
+                outcome = "interrupted"
+                raise
             except AppError as exc:
                 outcome, error_type = "error", exc.context.code
                 telemetry.record_error(span, error_type)
