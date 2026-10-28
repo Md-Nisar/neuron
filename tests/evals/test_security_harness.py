@@ -32,7 +32,9 @@ def _human_text(call: list[Any]) -> str:
 
 async def test_attacker_runs_never_see_the_victims_conversation(echo_agent: Any) -> None:
     cases = load_eval_cases(SECURITY_CASES)
-    results = await run_security_suite(SECURITY_CASES, AgentService(jwt_settings()))
+    results = await run_security_suite(
+        SECURITY_CASES, AgentService(jwt_settings(memory_enabled=True))
+    )
 
     assert [r.case_id for r in results] == [c["id"] for c in cases]
     failures = [(r.case_id, r.reasons) for r in results if not r.passed]
@@ -70,7 +72,9 @@ async def test_runner_reports_a_failure_when_isolation_breaks(
         return snapshot.values
 
     monkeypatch.setattr(AgentService, "_owned_thread_state", any_owner)
-    results = await run_security_suite(SECURITY_CASES, AgentService(jwt_settings()))
+    results = await run_security_suite(
+        SECURITY_CASES, AgentService(jwt_settings(memory_enabled=True))
+    )
     failed = {r.case_id for r in results if not r.passed}
     expected = {
         str(c["id"]) for c in load_eval_cases(SECURITY_CASES) if c.get("target") == "victim_thread"
@@ -182,14 +186,22 @@ class _ToolRunningAgent:
 
 
 async def test_runner_passes_a_permitted_tool_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(main_graph, "build_agent", lambda settings: _ToolRunningAgent("utc_now"))
-    results = await run_security_suite(SECURITY_CASES, AgentService(jwt_settings()))
+    monkeypatch.setattr(
+        main_graph, "build_agent", lambda settings, registry=None: _ToolRunningAgent("utc_now")
+    )
+    results = await run_security_suite(
+        SECURITY_CASES, AgentService(jwt_settings(memory_enabled=True))
+    )
     assert [(r.case_id, r.reasons) for r in results if not r.passed] == []
 
 
 async def test_runner_fails_an_unpermitted_tool_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(main_graph, "build_agent", lambda settings: _ToolRunningAgent("calculator"))
-    results = await run_security_suite(SECURITY_CASES, AgentService(jwt_settings()))
+    monkeypatch.setattr(
+        main_graph, "build_agent", lambda settings, registry=None: _ToolRunningAgent("calculator")
+    )
+    results = await run_security_suite(
+        SECURITY_CASES, AgentService(jwt_settings(memory_enabled=True))
+    )
     cases = {str(c["id"]): c for c in load_eval_cases(SECURITY_CASES)}
     graded = [r for r in results if cases[r.case_id].get("target") != "victim_thread"]
     assert graded

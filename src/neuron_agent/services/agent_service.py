@@ -942,6 +942,15 @@ class AgentService:
         )
         return response
 
+    @property
+    def memory(self) -> MemoryStore | None:
+        """The per-user memory, or None while memory is off."""
+        return self._memory
+
+    def owner_key_for(self, principal: Principal) -> str | None:
+        """The owner key a verified principal's data is filed under."""
+        return self._owner_key(None, principal)
+
     def _require_memory(self) -> MemoryStore:
         if self._memory is None:
             raise MemoryDisabledError("memory is not enabled")

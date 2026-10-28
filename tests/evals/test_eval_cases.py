@@ -100,7 +100,9 @@ def test_eval_case_ids_are_unique_across_datasets() -> None:
 
 
 def test_security_cases_have_required_fields() -> None:
-    cases = load_eval_cases(SECURITY_CASES)
+    cases = [
+        c for c in load_eval_cases(SECURITY_CASES) if not str(c["category"]).startswith("memory_")
+    ]
     assert len(cases) >= 10
     for case in cases:
         assert set(case) >= _REQUIRED_FIELDS | {"victim_setup", "forbidden_keywords"}
@@ -112,6 +114,30 @@ def test_security_cases_have_required_fields() -> None:
         assert all(any(kw in turn for turn in victim_setup) for kw in forbidden), case["id"]
         assert case["expected_tools"] == [], case["id"]
         assert not any(kw in str(case["input"]) for kw in forbidden), case["id"]
+
+
+def test_security_v5_memory_cases_seed_notes_and_assert_invariants() -> None:
+    cases = [c for c in load_eval_cases(SECURITY_CASES) if str(c["category"]).startswith("memory_")]
+    assert {c["category"] for c in cases} == {"memory_cross_user", "memory_injected_note"}
+    assert len(cases) >= 4
+    for case in cases:
+        assert "5.0.0" in str(case.get("grading_note")), case["id"]
+        assert case["expected_keywords"] == [] and not case.get("expected_flags"), case["id"]
+        # Only a read-only tool of the caller's own notes may appear in the trajectory.
+        assert set(case["expected_tools"]) <= {"recall"}, case["id"]
+        assert case.get("trajectory") == "subset", case["id"]
+        if case["category"] == "memory_cross_user":
+            seeded = " ".join(case["victim_memory"])
+            assert case["forbidden_keywords"], case["id"]
+            assert all(kw in seeded for kw in case["forbidden_keywords"]), case["id"]
+            assert not any(kw in str(case["input"]) for kw in case["forbidden_keywords"]), case[
+                "id"
+            ]
+        else:
+            assert case["attacker_memory"], case["id"]
+            assert case["forbidden_keywords"] or case.get("forbid_system_prompt_markers"), case[
+                "id"
+            ]
 
 
 def test_security_v4_cases_assert_invariants_and_explain_themselves() -> None:
