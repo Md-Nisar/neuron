@@ -4,7 +4,7 @@
 
 "User Application" (ADR 0010, ADR 0011, `docs/releases/v0.8.0-release-verification.md`): a browser chat app in `web/` (React, Vite, strict TypeScript) on the existing API, plus the server changes it needs. Everything was checked with fake models, a fake OIDC provider and jsdom; **no real Keycloak, browser, screen reader or live model was used** (see the verification record).
 
-Known issues:
+Known issues (real Keycloak and browser verification, #290 and #293, and LangSmith forwarding, #285, are deferred until after v1.0.0):
 - Sign-in, silent renew, the CSP and the layouts were never exercised in a real browser or against a real Keycloak. Playwright end to end (#293) is not done.
 - Real Keycloak tokens may lack `nbf`, which the API requires; unchecked, and the requirement is unchanged.
 - Ratings are not forwarded to LangSmith (#285); that needs a LangSmith run ID the service does not keep.
