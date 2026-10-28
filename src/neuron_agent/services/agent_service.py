@@ -9,7 +9,7 @@ import asyncio
 import hashlib
 import time
 import uuid
-from collections.abc import AsyncGenerator, Iterator
+from collections.abc import AsyncGenerator, Iterator, Mapping
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
@@ -17,7 +17,7 @@ from typing import Any, Literal, Protocol
 import anyio
 import psycopg
 import structlog
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.types import Command, Interrupt, StateSnapshot
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -63,6 +63,7 @@ from neuron_agent.schemas.agent import (
     PendingAction,
     ThreadHistoryResponse,
     ThreadMessage,
+    ToolCallRecord,
     UserDataErasureResponse,
     UserDataExportResponse,
     UserThreadsResponse,
@@ -817,14 +818,18 @@ class AgentService:
     ) -> ThreadHistoryResponse:
         """Return a page of the thread's user/assistant turns, oldest first.
 
-        Only `HumanMessage`/`AIMessage` turns with text are exposed; system prompts, tool
-        calls and tool results are never returned.
+        Only `HumanMessage`/`AIMessage` turns are exposed. Tool calls appear as a name, a
+        bounded argument summary and a status; system prompts and tool output never do.
         """
         owner_key = self._owner_key(user_id, principal)
         bind_correlation_context(request_id=None, thread_id=thread_id)
         with self._persistence_errors():
-            values = await self._owned_thread_state(thread_id, owner_key)
-        turns = _public_thread_messages(values.get("messages", []))
+            snapshot = await self._owned_snapshot(thread_id, owner_key)
+        turns = _public_thread_messages(
+            snapshot.values.get("messages", []),
+            with_tools=True,
+            awaiting_decision=any(task.interrupts for task in snapshot.tasks),
+        )
         response = ThreadHistoryResponse(
             thread_id=thread_id,
             messages=turns[offset : offset + limit],
@@ -1305,17 +1310,62 @@ def _hash_identifier(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def _public_thread_messages(messages: Any) -> list[ThreadMessage]:
-    """Match the history API's safe user/assistant-only message projection."""
+def _public_thread_messages(
+    messages: Any, *, with_tools: bool = False, awaiting_decision: bool = False
+) -> list[ThreadMessage]:
+    """The history API's safe projection: user and assistant turns, optionally with tool calls.
+
+    A tool call has no result message while it waits for an approval (`awaiting_decision`);
+    without one and without a pending decision it never completed.
+    """
     if not isinstance(messages, list):
         return []
-    return [
-        ThreadMessage(
-            role="user" if isinstance(message, HumanMessage) else "assistant",
-            content=message.content,
+    results = {m.tool_call_id: m for m in messages if isinstance(m, ToolMessage)}
+    turns: list[ThreadMessage] = []
+    for message in messages:
+        if not isinstance(message, HumanMessage | AIMessage):
+            continue
+        text = message.content if isinstance(message.content, str) else ""
+        calls = (
+            [
+                _tool_call_record(call, results.get(str(call.get("id"))), awaiting_decision)
+                for call in message.tool_calls
+            ]
+            if with_tools and isinstance(message, AIMessage)
+            else []
         )
-        for message in messages
-        if isinstance(message, HumanMessage | AIMessage)
-        and isinstance(message.content, str)
-        and message.content
+        if text or calls:
+            role = "user" if isinstance(message, HumanMessage) else "assistant"
+            turns.append(ThreadMessage(role=role, content=text, tool_calls=calls))
+    return turns
+
+
+_SUMMARY_VALUE_CHARS = 60
+_SUMMARY_CHARS = 200
+_REJECTED_PREFIX = "User rejected the tool call"
+
+
+def _tool_call_record(
+    call: Mapping[str, Any], result: ToolMessage | None, awaiting_decision: bool
+) -> ToolCallRecord:
+    """Server-rendered, length-bounded view of one tool call. The tool's output is used only
+    for its status; a rejection is recognised by the approval middleware's fixed prefix."""
+    args = call.get("args")
+    parts = [
+        f"{key}={' '.join(str(value).split())[:_SUMMARY_VALUE_CHARS]}"
+        for key, value in (args.items() if isinstance(args, dict) else [])
     ]
+    status: Literal["pending", "completed", "failed", "rejected"]
+    if result is None:
+        status = "pending" if awaiting_decision else "failed"
+    elif result.status != "error":
+        status = "completed"
+    elif isinstance(result.content, str) and result.content.startswith(_REJECTED_PREFIX):
+        status = "rejected"
+    else:
+        status = "failed"
+    return ToolCallRecord(
+        name=str(call.get("name", ""))[:64],
+        summary=", ".join(parts)[:_SUMMARY_CHARS],
+        status=status,
+    )
