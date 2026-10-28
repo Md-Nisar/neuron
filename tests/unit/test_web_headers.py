@@ -332,3 +332,21 @@ def test_no_analytics_or_telemetry_package_is_installed() -> None:
 
     assert len(names) > 300
     assert sorted(name for name in names if _ANALYTICS.match(name)) == []
+
+
+def test_the_page_follows_the_system_colour_scheme_and_scales_to_small_screens() -> None:
+    """Dark mode follows the system and the layout fits 360 px (ADR 0010, decision 8)."""
+    html = (WEB / "index.html").read_text(encoding="utf-8")
+    css = (WEB / "src" / "index.css").read_text(encoding="utf-8")
+    app = (WEB / "src" / "App.tsx").read_text(encoding="utf-8")
+    chat = (WEB / "src" / "features" / "chat" / "ChatScreen.tsx").read_text(encoding="utf-8")
+
+    assert 'name="color-scheme" content="light dark"' in html
+    assert "color-scheme: light dark" in css
+    assert "@media (prefers-color-scheme: dark)" in css
+    # Zoom is never disabled, and the layout adapts instead of overflowing.
+    assert "maximum-scale" not in html and "user-scalable" not in html
+    assert "width=device-width, initial-scale=1.0" in html
+    assert "p-4 sm:p-6" in app
+    assert "ml-4" in chat and "sm:ml-8" in chat
+    assert "flex-wrap" in chat

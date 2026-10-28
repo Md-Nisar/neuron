@@ -26,7 +26,7 @@ export function App({ apiUrl, maxChars }: AppProps) {
   const auth = useAuth();
   const [view, setView] = useState<"chat" | "data">("chat");
   return (
-    <main className="mx-auto max-w-2xl p-6">
+    <main className="mx-auto max-w-2xl p-4 sm:p-6">
       <h1 className="text-2xl font-semibold">neuron</h1>
       {auth.status === "loading" && <p className="mt-2 opacity-80">Loading…</p>}
       {auth.status === "signed_out" && (

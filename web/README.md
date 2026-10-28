@@ -128,6 +128,29 @@ the existing `/v1/me/*` routes and needs the scopes `memories:read`, `memories:w
   reports the erase complete; if a conversation was busy and skipped, the page says how many
   and stays signed in so the user can repeat it.
 
+## Accessibility (`src/a11y`)
+
+The target is WCAG 2.2 AA for the chat and approval flows (ADR 0010, decision 8).
+
+**Checked automatically.** `axe-core` runs in Vitest on every state of the UI: loading, signed out, expired, sign-in error, the empty chat, a conversation full of markdown (lists, code, links, hostile text), a failed reply, an over-long draft, the approval card (waiting, too long to approve, decided, no longer available), and the data page (memories, none, memory off, confirming a delete, a partial erase). Every one must report no violation at all. The page's real `<title>` and `lang` are taken from `index.html`, so removing either fails the page-level rules. The first run found one real problem (`role="log"` on a `<ul>`, which orphaned the list items), now fixed.
+
+**Keyboard and focus, each pinned by a test:**
+
+- Tab order is: Sign out, Chat, Your data, New conversation, the message box. Enter sends, Shift+Enter adds a line; Approve and Reject work with Enter and Space.
+- Clicking Send keeps focus in the message box (the button disables itself while a reply streams, which would strand focus on it).
+- When a reply ends, or is stopped, and focus has fallen to the page, it returns to the message box; if the user has moved focus elsewhere it is left alone.
+- When an approval card appears it takes focus (its heading), so the user knows a decision is waiting.
+- New conversation focuses the message box. In the memories list, Delete moves focus to Confirm, Cancel returns it to Delete, and after a delete it goes to the section heading.
+- Failures and outcomes are in `role="alert"` or `role="status"` regions; the message list is a `log`.
+
+**Layout.** Margins and padding shrink below the `sm` breakpoint, button rows wrap, code blocks scroll sideways instead of widening the page, zoom is never disabled, and colours follow the system (`color-scheme: light dark` plus the `prefers-color-scheme` media query).
+
+**Not checked, and why:**
+
+- **Colour contrast.** jsdom has no layout or computed colours, so `color-contrast` is off in the axe run. It needs a browser (Playwright with axe) or a manual pass in light and dark mode.
+- **The 360 px layout and dark mode as rendered.** The classes and meta tags are tested; nobody has looked at the page at that width in a real browser.
+- **A screen-reader pass.** The issue asks for a manual pass (NVDA, VoiceOver) recorded in the release record. It has not been done. Live-region behaviour (`aria-live`, `role="status"`) is exactly what differs between screen readers and is not something jsdom can show.
+
 **Dependency pins.** `package.json` holds `micromark` at 4.0.2 and `micromark-core-commonmark`
 at 2.0.3 (`overrides`). Their next releases (2026-09-26) added a new package,
 `micromark-util-edit-map`, first published 31 days before this was written, which fails the
