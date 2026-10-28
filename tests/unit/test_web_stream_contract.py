@@ -36,7 +36,12 @@ def test_the_client_knows_the_servers_protocol_version_and_exact_event_set() -> 
 
 def test_the_final_payload_is_what_the_server_sends() -> None:
     response = AgentResponse(
-        request_id="r1", thread_id="t1", answer="57", used_tools=["calculator"], confidence=0.9
+        request_id="r1",
+        thread_id="t1",
+        run_id="5a7f2c10-1b2c-4d3e-8f90-a1b2c3d4e5f6",
+        answer="57",
+        used_tools=["calculator"],
+        confidence=0.9,
     )
 
     assert _fixture()["payloads"]["final"] == response.model_dump()  # type: ignore[index]
