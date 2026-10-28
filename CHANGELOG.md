@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.0
+
+"Production Candidate" (ADR 0012, `docs/releases/v0.9.0-release-verification.md`). Everything was measured on a local reference stack (two API replicas, Postgres, Keycloak, a fake model with latency) and the NVIDIA development model; **no hosted deployment, real browser or production model was used**. The release freeze starts at the tag (`CONTRIBUTING.md`).
+
+Known issues:
+- The live `compare` against the committed baseline is a `regression` and inconclusive: on `nemotron-3-ultra-550b-a55b` three tool-selection cases fail 3/3 (the model answers without calling the tool) and 57 trials ended in infrastructure errors (rate limits). It needs the owner's sign-off.
+- Load numbers are for one 4-CPU host that also ran the load generator, with 90-second steps instead of 10-minute ones and the per-user token budget raised. They are not hosted capacity.
+- The first failure under load is `503 too_many_streams` at 210 virtual users (`APP_MAX_CONCURRENT_STREAMS=100` per replica).
+- The fake-model profile (800 ms to first token) is much faster than the NVIDIA runs (p50 about 6.4 s).
+- The gates #160, #253 and #293 stay deferred until after v1.0.0; no hosted deployment has run.
+
+Changes:
+- Reference stack (#325). `docker-compose.reference.yml` runs two API replicas from a passed-in image with Postgres (split roles, WAL archiving), Keycloak, JWT, and Postgres limits and checkpointer; `make reference-up`, `reference-down`, `reference-digest`, `reference-token`. The development realm now adds an `nbf` claim: real Keycloak tokens lacked it and every call was a `401`.
+- Fake model with latency (#326). `APP_FAKE_MODEL_TTFT_MS`, `APP_FAKE_MODEL_TOKENS_PER_SECOND` and `APP_FAKE_MODEL_OUTPUT_TOKENS`, refused in staging and production; with the memory tool bound, a `remember: ...` turn calls it, so a load run can pause for approval.
+- A non-loopback `APP_HOST` with `APP_AUTH_MODE=none` is refused unless `APP_ENV=development` (#327, #210).
+- Load tests (#328, #329). `loadtest/` (Locust, a dev dependency): four scenarios, an SSE parser, an SLO step shape, a baseline builder and comparison; `make load`. Baseline in `docs/releases/v0.9.0-gate/load-baseline.json`.
+- Threat model (#330). `docs/security/threat-model.md` maps the OWASP Top 10 for LLM Applications 2026 and the Agentic list to controls and tests.
+- DAST (#331). A manual `dast.yml` workflow and `scripts/dast_scan.sh` run ZAP's API scan (image pinned by digest); `scripts/dast_gate.py` fails on medium or higher findings that `deploy/reference/zap-rules.tsv` does not excuse.
+- Restore drill (#332) and rollback rehearsal (#333). `scripts/dr_drill.py` and `scripts/rollback_rehearsal.sh`; results in `docs/releases/v0.9.0-gate/`.
+- Freeze policy and `vX.Y.Z-rc.N` tags (#334). `check-release` accepts them, `deploy.yml` skips production for them and publishes a pre-release.
+- Live evals (#335). A `--trials 3` baseline for `nemotron-3-ultra-550b-a55b`. The nightly `compare` had failed because the report schema lacked the `approval` suite; fixed, with a test.
+
 ## 0.8.0
 
 "User Application" (ADR 0010, ADR 0011, `docs/releases/v0.8.0-release-verification.md`): a browser chat app in `web/` (React, Vite, strict TypeScript) on the existing API, plus the server changes it needs. Everything was checked with fake models, a fake OIDC provider and jsdom; **no real Keycloak, browser, screen reader or live model was used** (see the verification record).

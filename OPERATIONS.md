@@ -962,9 +962,11 @@ Assumptions to confirm in the Render account: the PITR window of the chosen plan
   | Smoke test result | |
   | Restored instance deleted at | |
 
-  The restore has not been rehearsed (scope: ADR 0008 open question 15); rehearse it at the release gate.
+  Rehearsed on the local reference stack in v0.9.0 (`scripts/dr_drill.py`; `docs/releases/v0.9.0-release-verification.md`): database usable 6.2 s after the restore started, smoke test passed 22.5 s after, newest restored data 2 s before the target time, the `UNLOGGED` rate table empty, the erased user's threads back until the replay. A restore on Render has not been rehearsed (deferred until after v1.0.0). Keep the WAL archive readable by the restoring container, and note that segments older than the base backup's first file are not needed.
 
 ### Capacity
+
+**Measured throughput (v0.9.0, not hosted capacity).** `docs/releases/v0.9.0-gate/load-baseline.json`, from the reference stack (two replicas, Postgres, Keycloak, 4 CPUs shared with the load generator) and the fake model at 800 ms to first token, 40 tokens/s, 200 tokens: about 11 to 16 runs/s inside the SLOs (new thread 12.5, follow-up 11.2, approval 15.9, mix 12.4). The first failure is `503 too_many_streams` once about 200 streams are open (`APP_MAX_CONCURRENT_STREAMS`, 100 per process). Steps were 90 s, not 10 minutes; no CPU, database or pool metrics were recorded, so the limiting resource is unknown. Repeat with `make reference-up` and `make load`, and compare with `python -m loadtest.baseline compare` (same host and profile only). A load user needs a higher `APP_USER_TOKEN_BUDGET` than the default or its budget, not the stack, sets the rate.
 
 Table sizes against the plan's storage. Run as the owner or migrator:
 
