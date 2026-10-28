@@ -1,6 +1,6 @@
 name: codeql
 
-# Semantic security analysis (SAST) for Python and the workflows themselves.
+# Semantic security analysis (SAST) for Python, the web application and the workflows themselves.
 # Free for public repositories; private repositories need GitHub Advanced Security.
 on:
   pull_request:
@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [python, actions]
+        language: [python, javascript-typescript, actions]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0

@@ -13,3 +13,6 @@ build/
 .langgraph_api/
 .dev/
 mutants/
+web/node_modules/
+web/dist/
+web/coverage/

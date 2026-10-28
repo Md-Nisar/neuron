@@ -109,11 +109,11 @@ def test_the_pin_check_rejects_tag_and_branch_references() -> None:
     assert not _PINNED.match(f"uses: actions/checkout@{sha}")
 
 
-def test_dependabot_covers_three_ecosystems_weekly_grouped_with_cooldown() -> None:
+def test_dependabot_covers_four_ecosystems_weekly_grouped_with_cooldown() -> None:
     config = yaml.safe_load(Path(".github/dependabot.yml").read_text("utf-8"))
     assert config["version"] == 2
     updates = {u["package-ecosystem"]: u for u in config["updates"]}
-    assert set(updates) == {"uv", "github-actions", "docker"}
+    assert set(updates) == {"uv", "github-actions", "docker", "npm"}
     for update in updates.values():
         assert update["schedule"]["interval"] == "weekly"
         assert update["cooldown"]["default-days"] == 7

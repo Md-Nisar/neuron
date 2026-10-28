@@ -27,6 +27,33 @@ jobs:
       - if: runner.os == 'Linux'
         run: make security
 
+  # The web application (ADR 0010). Installs from the lockfile only; the Node version comes from
+  # web/.nvmrc and the package manager from web/package.json.
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=low
+
   # Runs the real `promtool` and `otelcol-contrib` (pinned by version and SHA-256 in the script)
   # on the alert rules and the Collector config. Standard library Python only; no secret.
   observability-config:
