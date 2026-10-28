@@ -18,11 +18,12 @@ export interface DataDeps {
 }
 
 /** Run an API call with the current token; a missing or refused token ends the session. */
-async function call<T>(
+export async function call<T>(
   deps: DataDeps,
   options: {
     path: string;
-    method: "GET" | "DELETE";
+    method: "GET" | "DELETE" | "PATCH";
+    body?: unknown;
     parse?: (body: unknown) => T;
     signal?: AbortSignal | undefined;
   },

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/App";
 import { ChatScreen } from "@/features/chat/ChatScreen";
 import { DataScreen } from "@/features/data/DataScreen";
+import { ThreadList } from "@/features/threads/ThreadList";
 import { AuthProvider } from "@/lib/auth";
 import { AuthSession, type AuthSnapshot } from "@/lib/auth/session";
 import { accessibilityViolations } from "@/test/axe";
@@ -271,6 +272,56 @@ describe("the data page has no accessibility violations", () => {
     await waitFor(() => {
       expect(screen.getByText(/could not be erased/)).toBeInTheDocument();
     });
+
+    expect(await accessibilityViolations()).toEqual([]);
+  });
+});
+
+describe("the conversation list has no accessibility violations", () => {
+  function list(fetchImpl: typeof fetch) {
+    return render(
+      <ThreadList
+        deps={{
+          apiUrl: API,
+          getAccessToken: () => "tok-1",
+          onSessionEnded: vi.fn(),
+          fetch: fetchImpl,
+        }}
+        refresh={0}
+        onDeleted={vi.fn()}
+      />,
+    );
+  }
+  const titled = (n: number, title: string | null) => ({ ...thread(n, 2), title });
+
+  it("with conversations, an untitled one and hostile titles", async () => {
+    list(
+      fakeApi({
+        memories: [],
+        threads: [titled(1, "Trip to Lisbon"), titled(2, null), titled(3, "<b>bold</b>")],
+      }).fetch,
+    );
+    await screen.findByText("Trip to Lisbon");
+
+    expect(await accessibilityViolations()).toEqual([]);
+  });
+
+  it("when empty, and when the list failed to load", async () => {
+    const view = list(fakeApi({ memories: [], threads: [] }).fetch);
+    await screen.findByText("No conversations yet.");
+    expect(await accessibilityViolations()).toEqual([]);
+    view.unmount();
+
+    list(() => Promise.resolve(jsonResponse(500, {})));
+    await screen.findByRole("alert");
+    expect(await accessibilityViolations()).toEqual([]);
+  });
+
+  it("while renaming and while confirming a delete", async () => {
+    list(fakeApi({ memories: [], threads: [titled(1, "Trip"), titled(2, "Other")] }).fetch);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Rename Trip" }));
+    await user.click(screen.getByRole("button", { name: "Delete Other" }));
 
     expect(await accessibilityViolations()).toEqual([]);
   });

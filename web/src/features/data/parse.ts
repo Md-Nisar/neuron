@@ -24,6 +24,7 @@ export interface ExportedThread {
   created_at: string;
   updated_at: string;
   message_total: number;
+  title?: string;
   messages: ExportedMessage[];
 }
 
@@ -41,26 +42,26 @@ export interface Erasure {
   complete: boolean;
 }
 
-function record(value: unknown): Record<string, unknown> {
+export function record(value: unknown): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     throw new TypeError("shape");
   return value as Record<string, unknown>;
 }
 
-function str(source: Record<string, unknown>, key: string): string {
+export function str(source: Record<string, unknown>, key: string): string {
   const value = source[key];
   if (typeof value !== "string") throw new TypeError("shape");
   return value;
 }
 
-function count(source: Record<string, unknown>, key: string): number {
+export function count(source: Record<string, unknown>, key: string): number {
   const value = source[key];
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0)
     throw new TypeError("shape");
   return value;
 }
 
-function list(source: Record<string, unknown>, key: string): unknown[] {
+export function list(source: Record<string, unknown>, key: string): unknown[] {
   const value = source[key];
   if (!Array.isArray(value)) throw new TypeError("shape");
   return value as unknown[];
@@ -86,6 +87,7 @@ function parseThread(value: unknown): ExportedThread {
     created_at: str(thread, "created_at"),
     updated_at: str(thread, "updated_at"),
     message_total: count(thread, "message_total"),
+    ...(typeof thread["title"] === "string" ? { title: thread["title"] } : {}),
     messages: list(thread, "messages").map((message): ExportedMessage => {
       const item = record(message);
       const calls = item["tool_calls"];

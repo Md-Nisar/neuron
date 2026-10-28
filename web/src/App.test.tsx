@@ -116,7 +116,8 @@ describe("App sections", () => {
     await user.click(screen.getByRole("textbox", { name: "Message" }));
     await user.paste("a half-written question");
 
-    expect(api.calls).toHaveLength(0);
+    // Only the conversation list loads up front; the data page (memories) waits until opened.
+    expect(api.calls.map((call) => call.url.pathname)).toEqual(["/v1/me/threads"]);
     await user.click(screen.getByRole("button", { name: "Your data" }));
     expect(await screen.findByText("likes tea")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message", hidden: true })).toHaveValue(

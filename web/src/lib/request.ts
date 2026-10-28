@@ -18,7 +18,9 @@ export interface RequestOptions<T> {
   baseUrl: string;
   path: string;
   token: string;
-  method: "GET" | "DELETE";
+  method: "GET" | "DELETE" | "PATCH";
+  /** A JSON request body (sent with `PATCH`). */
+  body?: unknown;
   /** Turns the parsed JSON body into `T`, or throws if it has the wrong shape. */
   parse?: (body: unknown) => T;
   signal?: AbortSignal | undefined;
@@ -37,7 +39,12 @@ export async function apiRequest<T = undefined>(options: RequestOptions<T>): Pro
   try {
     response = await doFetch(url, {
       method: options.method,
-      headers: { Authorization: `Bearer ${options.token}`, Accept: "application/json" },
+      headers: {
+        Authorization: `Bearer ${options.token}`,
+        Accept: "application/json",
+        ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
       credentials: "omit",
       cache: "no-store",
       redirect: "error",

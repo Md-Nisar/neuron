@@ -46,8 +46,14 @@ function MessageView({
   );
 }
 
+export type Chat = ReturnType<typeof useChat>;
+
+/** The conversation with its own chat state (the page owns it when other panels need it). */
 export function ChatScreen(deps: ChatDeps) {
-  const chat = useChat(deps);
+  return <ChatView chat={useChat(deps)} maxChars={deps.maxChars} />;
+}
+
+export function ChatView({ chat, maxChars }: { chat: Chat; maxChars: number }) {
   const [draft, setDraft] = useState("");
   const [problem, setProblem] = useState<DraftProblem | null>(null);
   const count = characterCount(draft.trim());
@@ -67,7 +73,7 @@ export function ChatScreen(deps: ChatDeps) {
   }, [chat.running]);
 
   async function submit(): Promise<void> {
-    const found = checkDraft(draft, deps.maxChars).problem;
+    const found = checkDraft(draft, maxChars).problem;
     setProblem(found);
     if (found !== null || chat.running) return;
     setDraft("");
@@ -131,11 +137,11 @@ export function ChatScreen(deps: ChatDeps) {
           onKeyDown={onKeyDown}
         />
         <p id="message-count" className="text-xs opacity-70">
-          {count} / {deps.maxChars}
+          {count} / {maxChars}
         </p>
         {problem !== null && (
           <p role="alert" className="mt-1">
-            {draftProblemText(problem, deps.maxChars)}
+            {draftProblemText(problem, maxChars)}
           </p>
         )}
         <div className="mt-2 flex flex-wrap gap-2">

@@ -16,6 +16,7 @@ export interface FakeThread {
   created_at: string;
   updated_at: string;
   messages: FakeMessage[];
+  title?: string | null;
 }
 
 export interface FakeData {
@@ -106,6 +107,43 @@ export function fakeApi(data: FakeData) {
           memories: offset === 0 ? data.memories : [],
         }),
       );
+    }
+    if (url.pathname === "/v1/me/threads" && method === "GET") {
+      const offset = int("offset", 0);
+      const limit = int("limit", 50);
+      return Promise.resolve(
+        jsonResponse(200, {
+          threads: data.threads.slice(offset, offset + limit).map((t) => ({
+            thread_id: t.thread_id,
+            title: t.title ?? null,
+            created_at: t.created_at,
+            updated_at: t.updated_at,
+            message_count: t.messages.length,
+          })),
+          total: data.threads.length,
+          limit,
+          offset,
+        }),
+      );
+    }
+    const single = /^\/v1\/threads\/([^/]+)$/.exec(url.pathname);
+    if (single !== null && (method === "PATCH" || method === "DELETE")) {
+      const found = data.threads.find((t) => t.thread_id === decodeURIComponent(single[1] ?? ""));
+      if (found === undefined)
+        return Promise.resolve(jsonResponse(404, { detail: "thread_not_found" }));
+      if (method === "DELETE") {
+        data.threads = data.threads.filter((t) => t !== found);
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      const sent = (
+        JSON.parse(typeof init?.body === "string" ? init.body : "{}") as { title?: unknown }
+      ).title;
+      const title = typeof sent === "string" ? sent.split(/\s+/).filter(Boolean).join(" ") : "";
+      if (title === "" || title.length > 80) {
+        return Promise.resolve(jsonResponse(422, { detail: "validation_error" }));
+      }
+      found.title = title;
+      return Promise.resolve(jsonResponse(200, { thread_id: found.thread_id, title }));
     }
     if (url.pathname === "/v1/me/threads" && method === "DELETE") {
       const skipped = data.eraseSkipsBusy ?? 0;
