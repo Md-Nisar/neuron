@@ -34,5 +34,23 @@ services:
       postgres:
         condition: service_healthy
 
+  # Development identity provider for the web application (ADR 0010, decision 5). Opt in with
+  # `docker compose --profile keycloak up keycloak`; `make dev-keycloak` prints the API settings.
+  # The realm export holds only throwaway development users; no real credentials.
+  keycloak:
+    profiles: ["keycloak"]
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-local-only}
+      # A fixed hostname keeps the token `iss` the same however the container is reached.
+      KC_HOSTNAME: http://localhost:8180
+    volumes:
+      - ./deploy/keycloak/neuron-realm.json:/opt/keycloak/data/import/neuron-realm.json:ro
+    ports:
+      # Loopback only: start-dev is not hardened.
+      - "127.0.0.1:8180:8080"
+
 volumes:
   pgdata:

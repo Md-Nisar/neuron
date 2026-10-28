@@ -78,6 +78,8 @@ Run `make api` for HTTP debugging or `make run` for LangGraph Studio-compatible 
 
 The default `APP_AUTH_MODE=none` needs no token. To exercise real JWT authentication locally, run `make dev-auth >> .env` once, keep `make dev-jwks` running, and send `Authorization: Bearer $(make -s dev-token)` (README "Authentication"). These tools refuse to run unless `APP_ENV=development`. Tests never use them: they mint tokens with the `make_token` fixture in `tests/conftest.py`.
 
+For the web application (ADR 0010) there is a development Keycloak instead: `docker compose --profile keycloak up keycloak`, then `make dev-keycloak >> .env` (use this *or* `make dev-auth`, not both). It imports the realm `neuron` from `deploy/keycloak/neuron-realm.json`: a public PKCE client `neuron-web`, tokens with `aud=neuron-api` and a top-level `roles` claim, and two throwaway users, `alice` (`neuron-user`, every development permission) and `bob` (`neuron-reader`, `threads:read` only). It listens on `127.0.0.1:8180` only and is development-only: staging and production still refuse an HTTP `APP_AUTH_JWKS_URL`. `APP_AUTH_REQUIRE_TYP` is not set by `make dev-keycloak`. `tests/integration/test_keycloak.py` (marker `integration`) checks real tokens against a running instance.
+
 ## Troubleshooting
 
 See `README.md`'s Troubleshooting section for the common local issues (missing provider key, rate limiting during manual testing, fresh-clone lint/type failures). Additionally, when developing:

@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -27,6 +27,10 @@ dev-jwks:
 
 dev-token:
 	@uv run python scripts/dev_token.py
+
+# Development only: API settings for the compose `keycloak` profile (ADR 0010).
+dev-keycloak:
+	@uv run python scripts/dev_keycloak.py
 
 format:
 	uv run python -m ruff format src tests scripts
