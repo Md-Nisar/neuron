@@ -140,6 +140,31 @@ Image ignores: none.
 
 What the pipeline does not prove: an attestation shows where and how the image was built, not that tests passed. ADR 0008 decision 6 step 1 (the `ci` gates) is not wired into `image-publish.yml`, so promotion (a later issue) must require a green `ci` for the digest. Deploy by digest only: `sha-<sha>` is a mutable tag, and a re-run of the workflow re-points it to a new digest. The Trivy binary (v0.70.0) is downloaded by tag at run time by the pinned `setup-trivy` and is not hash-pinned (accepted risk), and the SHA-pin test does not cover actions nested inside pinned composite actions. `provenance: mode=max` records build arguments and context metadata, which is fine while the repository is public; revisit it if the repository becomes private.
 
+## Browser Application (v0.8.0)
+
+The web application (`web/`, ADR 0010) puts model output, tool output and the user's own data in front of a person, in a page that holds a bearer token. The threat model:
+
+| Threat | Control | Where it is tested |
+| --- | --- | --- |
+| Script injected through model, tool or user text | Everything is rendered as React elements: raw HTML stays literal text, no `dangerouslySetInnerHTML` (lint fails on it), code is text; a strict CSP without inline script or `eval` | `Markdown.test.tsx`, `ChatScreen.test.tsx`, `test_web_headers.py` |
+| Data leaves through an image or link in model text | Images are never loaded; only absolute `http(s)` and `mailto` links become anchors, in a new tab with `noopener noreferrer nofollow` and the real host shown; `img-src 'self'` | `Markdown.test.tsx`, `security/network.test.tsx` |
+| The app calls a third party, or sends analytics | `connect-src` limits calls to the API and the identity provider; no analytics package may be installed; a test drives the whole app and records every request, beacon and resource element | `security/network.test.tsx`, `test_web_headers.py` |
+| Token theft | The access token lives in a private field only: not in storage, cookies, history, the URL or the console. The refresh token is never read. Short lifetimes | `session.test.ts` (it records every write and fails if a token appears) |
+| Sign-in attacks (CSRF, code injection, mix-up, open redirect) | PKCE `S256`, one-time `state` and `nonce`, `iss` check (RFC 9207), discovery limited to the issuer's origin, an exact redirect URI derived from the page origin, a local-path-only return target | `session.test.ts`, `config.test.ts`, `discovery.test.ts` |
+| A forged or look-alike approval | The approval card is built only from the server's validated `approval_required` event, outside the Markdown renderer; the outcome comes from the user's click and the HTTP result, never the model's words; ids are path-checked | `ChatApproval.test.tsx`, `ApprovalCard.test.tsx` |
+| The user approves something they could not read | Tool name and arguments are shown in full with every invisible, direction-override or look-alike character made visible (an allowlist); arguments too long to show cannot be approved | `ApprovalCard.test.tsx` |
+| Clickjacking | `frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` | `test_web_headers.py` |
+| Code in the callback URL leaks through `Referer` | `Referrer-Policy: no-referrer`; the URL is cleaned before anything else runs | `test_web_headers.py`, `session.test.ts` |
+| A malicious npm package | Exact versions, committed lockfile, install scripts off, a gate that checks every new package (direct or transitive) against the 90-day rule and every lockfile entry against its package name | `check_new_npm_dependencies.py`, `test_check_new_npm_dependencies.py` |
+| The user's data is kept after export | The export is built in one click handler, handed to the browser and dropped; the object URL is revoked; nothing is stored | `DataScreen.test.tsx` |
+
+Not covered, by design or by limit:
+
+- **Script that runs on the app's origin can read the token in memory** and call the API as the user. The controls above exist to stop such script running; none of them helps once it does.
+- **`sessionStorage` holds the sign-in transaction** (state, nonce, PKCE verifier) for up to ten minutes across the redirect. It is deleted when the callback arrives.
+- **No Trusted Types.** `require-trusted-types-for 'script'` is not set because it could not be tried in a real browser here.
+- **Nothing was enforced by a real browser.** The CSP is tested as a policy and the source is checked against it; no Playwright run has loaded a built page under the headers. Silent renew is likewise unproven in a browser (`web/README.md`).
+
 ## Remaining Limitations
 
 - **No token revocation.** Tokens are verified locally (no introspection), so a stolen access token works until it expires. Keep access-token lifetimes short at the IdP. A stream's token is checked once, when it starts.
