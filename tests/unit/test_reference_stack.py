@@ -56,3 +56,11 @@ def test_the_stack_is_development_only() -> None:
     # The fake model's latency settings are refused in staging/production by design.
     assert _SERVICES["api1"]["environment"]["APP_ENV"] == "development"
     assert "OPENAI_API_KEY" not in _SERVICES["api1"]["environment"]
+
+
+@pytest.mark.parametrize("name", _API)
+def test_browser_origins_are_configurable_and_closed_by_default(name: str) -> None:
+    # The web app needs this to reach the stack; with nothing set no origin is allowed.
+    assert _SERVICES[name]["environment"]["APP_CORS_ALLOWED_ORIGINS"] == (
+        "${CORS_ALLOWED_ORIGINS:-[]}"
+    )
