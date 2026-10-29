@@ -28,5 +28,5 @@ v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (resear
 | #160 v0.6.0 gate | Hosted Render deployment, pipeline, restore and rollback on Render, OpenAI production model | after v1.0.0 |
 | #253 v0.7.0 tracker | Anthropic live, production model, staging and production runs | after v1.0.0 |
 | #293 v0.8.0 gate and #290 | Playwright end to end, real browser and Keycloak sign-in, CSP and silent renew | after v1.0.0 |
-| #285 | Forwarding ratings to LangSmith | after v1.0.0 |
+| #285 | Forwarding ratings to LangSmith | after v1.0.0 (design check and proposed ADR 0013: the run ID already is the LangSmith run ID) |
 | External penetration test | ADR 0012 open question 2 | after v1.0.0 |
