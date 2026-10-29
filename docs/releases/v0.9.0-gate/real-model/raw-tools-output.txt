@@ -1,0 +1,3 @@
+# raw_tools.py against the NVIDIA catalog, model nvidia/nemotron-3-ultra-550b-a55b (2026-10-29)
+auto | tool_calls: [{'name': 'calculator', 'args': {'expression': '17 * 23'}, 'type': 'tool_call'}] | content: ''
+required | tool_calls: [] | content: '[[{"name":"calculator","parameters":{"expression":"17 * 23"}}]'
