@@ -54,6 +54,14 @@ def test_extractor_emits_only_the_growth_of_the_json_answer_field() -> None:
     assert all("{" not in delta and "confidence" not in delta for delta in deltas)
 
 
+@pytest.mark.parametrize("fence", ["```json\n", "```\n", "\n```json\n"])
+def test_extractor_strips_a_markdown_fence_around_the_json_answer(fence: str) -> None:
+    extractor = AnswerTokenExtractor()
+    deltas = [extractor.feed(chunk) for chunk in _chunks(fence + _ANSWER_JSON + "\n```")]
+    assert "".join(deltas) == "Hello there world"
+    assert all("`" not in delta and "{" not in delta for delta in deltas)
+
+
 def test_extractor_passes_plain_text_through() -> None:
     extractor = AnswerTokenExtractor()
     assert "".join(extractor.feed(c) for c in _chunks("plain answer")) == "plain answer"

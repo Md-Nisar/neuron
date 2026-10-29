@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Streaming: `AnswerTokenExtractor` now strips a Markdown code fence around the structured-answer JSON, so a model that wraps its answer in a ```json fence no longer streams as a code block.
+- Nightly eval: the development model is now `nvidia/nemotron-3.5-lightning-30b-a3b` (12 of 12 tool-selection trials, #341; `docs/releases/v0.9.0-gate/real-model/`). `nemotron-3-ultra-550b-a55b` passed none of them. No baseline exists for the new model, so only the security gate applies until one is committed.
+
 ## 0.9.0
 
 "Production Candidate" (ADR 0012, `docs/releases/v0.9.0-release-verification.md`). Everything was measured on a local reference stack (two API replicas, Postgres, Keycloak, a fake model with latency) and the NVIDIA development model; **no hosted deployment, real browser or production model was used**. The release freeze starts at the tag (`CONTRIBUTING.md`).

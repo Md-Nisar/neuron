@@ -58,11 +58,21 @@ class AnswerTokenExtractor:
             return ""
         raw = self._raw.get(key, "") + text
         self._raw[key] = raw
-        if not raw.lstrip().startswith("{"):
+        body = raw.lstrip()
+        if body.startswith("```"):
+            # Some models wrap the JSON in a Markdown fence; hold output until it opens.
+            start = body.find("{")
+            if start == -1:
+                return ""
+            body = body[start:]
+        elif not body or body in ("`", "``"):
+            return ""  # whitespace or a fence still arriving: the next characters decide
+        elif not body.startswith("{"):
+            delta = raw[len(self._emitted.get(key, "")) :]
             self._emitted[key] = raw
-            return text
+            return delta
         try:
-            parsed = parse_partial_json(raw)
+            parsed = parse_partial_json(body)
         except ValueError:
             return ""
         answer = parsed.get("answer") if isinstance(parsed, dict) else None
