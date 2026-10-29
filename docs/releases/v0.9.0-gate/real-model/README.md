@@ -37,3 +37,12 @@ model on this endpoint, not shown to be a fault of the agent code, and
 `nemotron-3-super-120b-a12b` passed the same cases. Not fixed here: the options (another
 development model, a different structured-output strategy for this provider, or accepting it)
 are the owner's call.
+
+## Eval re-run for #341 (throttled to 20 requests per minute)
+
+`eval-rerun-tool-selection.json`: `neuron-eval --suite single_turn --category calculator_tool_selection
+--category utc_tool_selection --category direct_factual --trials 3 --max-requests-per-minute 20`
+on the same model. Result: the two `direct_factual` cases pass 6/6. The four tool-selection cases ran 12 trials: 0 passed, 7 failed with "expected tools [...], got []" and 5 were infrastructure errors (`rate_limit_error`, the key's limit). So #341 reproduces without the earlier
+run's rate-limit noise, and it is not specific to one case. Together with the raw requests above
+this points at the endpoint returning forced tool calls as text, but that link is not proven by
+the eval (the eval only sees the final message).
