@@ -431,4 +431,13 @@ describe("hostile content", () => {
     expect(view.container.querySelector("img, script, iframe, a, [onerror]")).toBeNull();
     expect(view.container.textContent).toContain('<img src=x onerror="alert(1)">');
   });
+
+  it("fills the composer from a suggestion without sending it", async () => {
+    const { user, box, fetchMock } = setup();
+    await user.click(screen.getByRole("button", { name: /What is 18% of 2,450/ }));
+
+    expect(box()).toHaveValue("What is 18% of 2,450?");
+    expect(box()).toHaveFocus();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
