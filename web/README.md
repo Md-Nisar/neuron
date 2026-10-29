@@ -8,6 +8,7 @@ Needs Node from `.nvmrc` and the npm in `package.json` (`packageManager`). Run f
     make web-install   # npm ci: installs from the lockfile only
     make web-dev       # open http://localhost:5173 (the one origin the dev Keycloak allows; 127.0.0.1 is refused)
     make web           # format check, lint, typecheck, test, build, npm audit
+    make web-e2e       # browser end to end (Chromium); one-time: npx playwright install chromium
 
 Rules for this directory:
 

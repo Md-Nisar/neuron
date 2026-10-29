@@ -12,6 +12,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // Playwright specs under e2e/ run with `npm run e2e`, not here.
+    exclude: ["e2e/**", "node_modules/**"],
     // Whole-app keyboard and network tests take a few seconds each; leave room on a busy machine.
     testTimeout: 15_000,
   },
