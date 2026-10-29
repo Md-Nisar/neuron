@@ -1,4 +1,9 @@
+import { Brain, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { deleteMemory, listMemories, type DataDeps } from "./api";
 import { dataErrorText } from "./messages";
@@ -78,75 +83,102 @@ export function MemoriesSection({ deps }: { deps: DataDeps }) {
   }
 
   return (
-    <section aria-labelledby="memories-heading" className="mt-6">
-      <h2 id="memories-heading" ref={heading} tabIndex={-1} className="text-lg font-semibold">
-        Memories
-      </h2>
-      <p className="text-sm opacity-80">
-        What you asked the assistant to remember. Only you can see these.
-      </p>
-      {error !== null && (
-        <p role="alert" className="mt-2">
-          {error}
-        </p>
-      )}
-      {!loaded && <p className="mt-2 opacity-70">Loading…</p>}
-      {loaded && error === null && memories.length === 0 && (
-        <p className="mt-2 opacity-70">No memories.</p>
-      )}
-      <ul className="mt-2 space-y-2">
-        {memories.map((memory) => (
-          <li key={memory.id} className="rounded border p-2">
-            <p className="whitespace-pre-wrap break-words">{memory.text}</p>
-            <p className="text-xs opacity-70">{when(memory.created_at)}</p>
-            {confirming === memory.id ? (
-              <div className="mt-1 flex flex-wrap gap-2">
-                <button
+    <Card asSection aria-labelledby="memories-heading" className="gap-4">
+      <CardHeader>
+        <h2
+          id="memories-heading"
+          ref={heading}
+          tabIndex={-1}
+          className="flex items-center gap-2 font-semibold outline-none"
+        >
+          <Brain aria-hidden="true" className="size-4 text-muted-foreground" />
+          Memories
+        </h2>
+        <CardDescription>
+          What you asked the assistant to remember. Only you can see these.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {error !== null && (
+          <p role="alert" className="mb-3 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {!loaded && (
+          <div className="space-y-2">
+            <p className="sr-only">Loading…</p>
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
+          </div>
+        )}
+        {loaded && error === null && memories.length === 0 && (
+          <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+            No memories.
+          </p>
+        )}
+        <ul className="divide-y rounded-lg border empty:hidden">
+          {memories.map((memory) => (
+            <li key={memory.id} className="flex items-start gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm break-words whitespace-pre-wrap">{memory.text}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{when(memory.created_at)}</p>
+              </div>
+              {confirming === memory.id ? (
+                <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                  <Button
+                    type="button"
+                    autoFocus
+                    variant="destructive"
+                    size="xs"
+                    onClick={() => void remove(memory.id)}
+                  >
+                    Confirm delete
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      refocus.current = memory.id;
+                      setConfirming(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
                   type="button"
-                  autoFocus
-                  className="rounded border px-2 py-0.5"
-                  onClick={() => void remove(memory.id)}
-                >
-                  Confirm delete
-                </button>
-                <button
-                  type="button"
-                  className="rounded border px-2 py-0.5"
+                  ref={(node) => {
+                    if (node === null) deleteButtons.current.delete(memory.id);
+                    else deleteButtons.current.set(memory.id, node);
+                  }}
+                  variant="ghost"
+                  size="xs"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
                   onClick={() => {
-                    refocus.current = memory.id;
-                    setConfirming(null);
+                    setConfirming(memory.id);
                   }}
                 >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                ref={(node) => {
-                  if (node === null) deleteButtons.current.delete(memory.id);
-                  else deleteButtons.current.set(memory.id, node);
-                }}
-                className="mt-1 rounded border px-2 py-0.5"
-                onClick={() => {
-                  setConfirming(memory.id);
-                }}
-              >
-                Delete
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-      {memories.length < total && (
-        <button
-          type="button"
-          className="mt-2 rounded border px-3 py-1"
-          onClick={() => void loadMore(memories.length)}
-        >
-          Load more
-        </button>
-      )}
-    </section>
+                  <Trash2 />
+                  Delete
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {memories.length < total && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-2 w-full text-muted-foreground"
+            onClick={() => void loadMore(memories.length)}
+          >
+            Load more
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }

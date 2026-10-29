@@ -30,17 +30,17 @@ function SafeLink({ href, children }: ComponentProps<"a">) {
   const target = url.protocol === "mailto:" ? url.pathname : url.host;
   return (
     <>
-      <a href={url.href} target="_blank" rel="noopener noreferrer nofollow" className="underline">
+      <a href={url.href} target="_blank" rel="noopener noreferrer nofollow">
         {children}
       </a>
-      <span className="text-xs opacity-70"> ({target.slice(0, LABEL_LIMIT)})</span>
+      <span className="text-xs text-muted-foreground"> ({target.slice(0, LABEL_LIMIT)})</span>
     </>
   );
 }
 
 function OmittedImage({ alt }: ComponentProps<"img">) {
   return (
-    <span className="italic opacity-70">
+    <span className="text-muted-foreground italic">
       [image not shown{alt === undefined || alt === "" ? "" : `: ${alt.slice(0, LABEL_LIMIT)}`}]
     </span>
   );
@@ -48,7 +48,7 @@ function OmittedImage({ alt }: ComponentProps<"img">) {
 
 export function Markdown({ text }: { text: string }) {
   return (
-    <div className="space-y-2 break-words [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:border [&_pre]:p-2">
+    <div className="prose-chat">
       <ReactMarkdown urlTransform={urlTransform} components={{ a: SafeLink, img: OmittedImage }}>
         {text}
       </ReactMarkdown>

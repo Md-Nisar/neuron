@@ -80,10 +80,14 @@ describe("keyboard-only use", () => {
         <App apiUrl={API} maxChars={12_000} />
       </AuthProvider>,
     );
+    // Sidebar first (sections, then the account controls in its footer), then the conversation.
+    // "Open sidebar" is hidden by CSS on wide screens; jsdom applies no CSS, so it is listed.
     const expected = [
-      screen.getByRole("button", { name: "Sign out" }),
       screen.getByRole("button", { name: "Chat" }),
       screen.getByRole("button", { name: "Your data" }),
+      screen.getByRole("button", { name: /^Theme:/ }),
+      screen.getByRole("button", { name: "Sign out" }),
+      screen.getByRole("button", { name: "Open sidebar" }),
       screen.getByRole("button", { name: "New conversation" }),
       composer(),
     ];

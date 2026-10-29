@@ -1,4 +1,8 @@
+import { Download, LoaderCircle } from "lucide-react";
 import { useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 
 import type { DataDeps } from "./api";
 import { buildExport, downloadText, exportFilename } from "./exportData";
@@ -32,30 +36,40 @@ export function ExportSection({ deps }: { deps: DataDeps }) {
   }
 
   return (
-    <section aria-labelledby="export-heading" className="mt-6">
-      <h2 id="export-heading" className="text-lg font-semibold">
-        Export your data
-      </h2>
-      <p className="text-sm opacity-80">
-        Download your conversations and memories as one JSON file. It is made in this page and is
-        not kept after the download.
-      </p>
-      <button
-        type="button"
-        className="mt-2 rounded border px-3 py-1"
-        disabled={status === "working"}
-        onClick={() => void download()}
-      >
-        {status === "working" ? "Preparing…" : "Download my data"}
-      </button>
-      <p role="status" aria-live="polite" className="mt-1">
-        {status === "done" ? "Your file was downloaded." : null}
-      </p>
-      {error !== null && (
-        <p role="alert" className="mt-1">
-          {error}
+    <Card asSection aria-labelledby="export-heading" className="gap-4">
+      <CardHeader>
+        <h2 id="export-heading" className="flex items-center gap-2 font-semibold">
+          <Download aria-hidden="true" className="size-4 text-muted-foreground" />
+          Export your data
+        </h2>
+        <CardDescription>
+          Download your conversations and memories as one JSON file. It is made in this page and is
+          not kept after the download.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={status === "working"}
+          onClick={() => void download()}
+        >
+          {status === "working" ? <LoaderCircle className="animate-spin" /> : <Download />}
+          {status === "working" ? "Preparing…" : "Download my data"}
+        </Button>
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-2 text-sm text-muted-foreground empty:mt-0"
+        >
+          {status === "done" ? "Your file was downloaded." : null}
         </p>
-      )}
-    </section>
+        {error !== null && (
+          <p role="alert" className="mt-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
