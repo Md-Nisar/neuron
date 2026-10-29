@@ -46,3 +46,19 @@ on the same model. Result: the two `direct_factual` cases pass 6/6. The four too
 run's rate-limit noise, and it is not specific to one case. Together with the raw requests above
 this points at the endpoint returning forced tool calls as text, but that link is not proven by
 the eval (the eval only sees the final message).
+
+## Other models tried for #341
+
+Same catalog, same key. `deepseek-ai/deepseek-v4.1-flash` and `z-ai/glm-5.3-flash` returned no bytes
+within 40 s on a 20-token request (and DeepSeek timed out at 170 s through the agent), so they could not
+be tested. `moonshotai/kimi-k2.6` answers 404. `minimaxai/minimax-m3.1-flash` returns a structured tool
+call both with `tool_choice` unset and with `"required"` (`raw_tools.py`).
+
+`eval-rerun-minimax-m3.1-flash.json`: `neuron-eval --suite single_turn --category calculator_tool_selection
+--category utc_tool_selection --trials 3 --max-requests-per-minute 8` with
+`APP_DEFAULT_MODEL=nvidia:minimaxai/minimax-m3.1-flash`. Result: 11 of 12 trials pass, 0 quality
+failures, 1 infrastructure error (rate limit). A first run at 20 requests per minute had 0 quality failures
+too but 8 of 18 trials lost to the key's rate limit, so it is not reported. The same cases on nemotron-3-ultra:
+0 of 12. This supports the endpoint-behaviour cause for #341; MiniMax is a working development model for
+tool-calling evals on this free tier. The sample is small (12 trials) and the model's quality beyond these
+cases was not assessed.
