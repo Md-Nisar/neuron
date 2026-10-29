@@ -5,9 +5,9 @@
 | **v0.3.0** | Stateful + Streaming       | ✅ Conversations + real-time responses |
 | **v0.4.0** | Secure Multi-User          | ✅ Authentication + authorization      |
 | **v0.5.0** | Evaluation + Observability | ✅ Measure quality + production behavior |
-| **v0.6.0** | Production Deployment      | ✅ Released (gate #160 deferred until after v1.0.0) |
-| **v0.7.0** | Extensible Agent Platform  | ✅ Released (tracker #253 deferred until after v1.0.0) |
-| **v0.8.0** | User Application           | ✅ Released (gate #293 deferred until after v1.0.0) |
+| **v0.6.0** | Production Deployment      | ✅ Released (gate #160 closed 2026-10-29 without a Render deployment or OpenAI run) |
+| **v0.7.0** | Extensible Agent Platform  | ✅ Released (tracker #253 closed 2026-10-29 without an OpenAI run) |
+| **v0.8.0** | User Application           | ✅ Released (gate #293 closed 2026-10-29; the owner reports the real browser and Keycloak run is done) |
 | **v0.9.0** | Production Candidate       | 🟡 In progress (tracker #338)         |
 | **v1.0.0** | Production AI Application  | Stable production platform            |
 
@@ -25,8 +25,6 @@ v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (resear
 
 | Item | What is left | Owner release |
 | --- | --- | --- |
-| #160 v0.6.0 gate | Hosted Render deployment, pipeline, restore and rollback on Render, OpenAI production model | after v1.0.0 |
-| #253 v0.7.0 tracker | Anthropic live, production model, staging and production runs | after v1.0.0 |
-| #293 v0.8.0 gate and #290 | Playwright end to end, real browser and Keycloak sign-in, CSP and silent renew | after v1.0.0 |
+| Hosted Render deployment, pipeline, restore and rollback on Render, OpenAI production model, Anthropic live, staging and production runs | Never run; #160 and #253 were closed on 2026-10-29 without them | after v1.0.0 |
 | #285 | Forwarding ratings to LangSmith | after v1.0.0 (design check and proposed ADR 0013: the run ID already is the LangSmith run ID) |
 | External penetration test | ADR 0012 open question 2 | after v1.0.0 |
