@@ -21,7 +21,7 @@ jobs:
       - run: uv sync
       - run: uv run python -m ruff format --check src tests
       - run: uv run python -m ruff check src tests
-      - run: uv run python -m mypy src scripts/dev_token.py scripts/validate_observability.py
+      - run: uv run python -m mypy src scripts/dev_token.py scripts/validate_observability.py scripts/flow_report.py
       - run: uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/e2e tests/evals
       # The dependency audit is platform-independent and `make` isn't on Windows runners.
       - if: runner.os == 'Linux'
@@ -81,6 +81,9 @@ jobs:
         working-directory: web
         env:
           CI: "true"
+      # A report, not a gate: which flows have API and browser end-to-end tests. Always exits 0.
+      - if: always()
+        run: uv run python scripts/flow_report.py
 
   # Runs the real `promtool` and `otelcol-contrib` (pinned by version and SHA-256 in the script)
   # on the alert rules and the Collector config. Standard library Python only; no secret.

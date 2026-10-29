@@ -6,6 +6,7 @@ import uuid
 from collections.abc import Callable
 
 import httpx
+import pytest
 from tests.e2e.conftest import Api, stream_events
 
 Make = Callable[[str], httpx.Client]
@@ -36,6 +37,7 @@ def _ask_to_remember(client: httpx.Client, text: str) -> tuple[str, str]:
     return _thread_id(events), str(approval["approval_id"])
 
 
+@pytest.mark.flow("auth")
 def test_health_is_open_and_everything_else_needs_a_token(api: Api) -> None:
     assert httpx.get(f"{api.base_url}/health/live").status_code == 200
     assert httpx.get(f"{api.base_url}/health/ready").json()["status"] == "ready"
@@ -43,6 +45,7 @@ def test_health_is_open_and_everything_else_needs_a_token(api: Api) -> None:
     assert httpx.post(f"{api.base_url}/v1/agent/stream", json={"message": "hi"}).status_code == 401
 
 
+@pytest.mark.flow("chat", "resume")
 def test_chat_streams_an_answer_and_the_conversation_resumes(user: Make) -> None:
     client = user("chat")
     events = _run(client, "What is 2+2?")
@@ -62,6 +65,7 @@ def test_chat_streams_an_answer_and_the_conversation_resumes(user: Make) -> None
     assert [t["thread_id"] for t in listed["threads"]] == [thread_id]
 
 
+@pytest.mark.flow("approval", "memories")
 def test_a_remembered_note_waits_for_approval_and_is_stored_once_approved(user: Make) -> None:
     client = user("approve")
     thread_id, approval_id = _ask_to_remember(client, "I like tea")
@@ -85,6 +89,7 @@ def test_a_remembered_note_waits_for_approval_and_is_stored_once_approved(user: 
     assert client.get(f"/v1/threads/{thread_id}/approval").status_code == 404
 
 
+@pytest.mark.flow("approval")
 def test_a_rejected_note_is_not_stored(user: Make) -> None:
     client = user("reject")
     thread_id, approval_id = _ask_to_remember(client, "I dislike coffee")
@@ -95,6 +100,7 @@ def test_a_rejected_note_is_not_stored(user: Make) -> None:
     assert client.get("/v1/me/memories").json()["total"] == 0
 
 
+@pytest.mark.flow("memories")
 def test_memories_can_be_deleted_one_at_a_time_or_all_at_once(user: Make) -> None:
     client = user("memories")
     for text in ("first note", "second note"):
@@ -111,6 +117,7 @@ def test_memories_can_be_deleted_one_at_a_time_or_all_at_once(user: Make) -> Non
     assert client.get("/v1/me/memories").json()["total"] == 0
 
 
+@pytest.mark.flow("threads", "feedback")
 def test_a_thread_can_be_renamed_rated_and_deleted(user: Make) -> None:
     client = user("thread")
     events = _run(client, "Hello")
@@ -130,6 +137,7 @@ def test_a_thread_can_be_renamed_rated_and_deleted(user: Make) -> None:
     assert client.get("/v1/me/threads").json()["total"] == 0
 
 
+@pytest.mark.flow("data-rights")
 def test_a_user_can_export_and_then_erase_their_data(user: Make) -> None:
     client = user("rights")
     thread_id, approval_id = _ask_to_remember(client, "export me")
@@ -146,6 +154,7 @@ def test_a_user_can_export_and_then_erase_their_data(user: Make) -> None:
     assert client.get("/v1/me/memories").json()["total"] == 0
 
 
+@pytest.mark.flow("isolation")
 def test_users_cannot_see_or_change_each_others_conversations(api: Api, user: Make) -> None:
     alice, bob = user("alice"), user("bob")
     thread_id = _thread_id(_run(alice, "private question"))
@@ -161,6 +170,7 @@ def test_users_cannot_see_or_change_each_others_conversations(api: Api, user: Ma
     assert alice.get(f"/v1/threads/{thread_id}/messages").json()["total"] == 2
 
 
+@pytest.mark.flow("authorization")
 def test_a_token_without_the_permission_is_refused(api: Api) -> None:
     reader = api.client(f"reader-{uuid.uuid4().hex[:8]}", scope="threads:read")
     assert reader.get("/v1/me/threads").status_code == 200
@@ -169,6 +179,7 @@ def test_a_token_without_the_permission_is_refused(api: Api) -> None:
     assert reader.get("/v1/me/memories").status_code == 403
 
 
+@pytest.mark.flow("validation")
 def test_bad_requests_are_rejected_before_a_run_starts(user: Make) -> None:
     client = user("invalid")
     assert client.post("/v1/agent/stream", json={"message": ""}).status_code == 422
