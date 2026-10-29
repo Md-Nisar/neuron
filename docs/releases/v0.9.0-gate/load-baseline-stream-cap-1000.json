@@ -1,0 +1,68 @@
+{
+  "image": "neuron:ref sha256:3210018b33327c9d1661075f49ce0df33dbc99b1ca5dd1e557e0973fb79500ed (built locally from the v0.9.0/local-followups working tree)",
+  "host": "Linux x86_64, 4 CPUs",
+  "fake_model_profile": "fake model: 2000 ms to first token, 10 tokens/s, 75 tokens (about 10 s per run, measured on the NVIDIA ultra model on 2026-10-28)",
+  "note": "Same method and profile as load-baseline-real-latency.json, with APP_MAX_CONCURRENT_STREAMS raised from 100 to 1000 per replica (#339) and CPU, memory and Postgres connections recorded per step (loadtest/resources.py; *.resources.json, #340). Steps of 90 s, 30 more users each up to 600 users, 600 Keycloak test users, think time 6 s, token budget raised to 10M. Load generator and stack share one 4-CPU host. The mix scenario was run twice: the first run hit a full disk (container logs) at 270 users and is discarded; the figures here are from the second, with log rotation on. The real model was not load tested (free NVIDIA key: 40 requests per minute). Failure mode: no errors and no 503s; time to first token and run duration grow until the SLOs break. Both API replicas run at about 90 to 100 percent of one core from about 210 to 270 users on, Postgres at about 30 percent with about 2 active connections, the host at about 68 percent. Not hosted capacity.",
+  "scenarios": {
+    "approval": {
+      "sustained_runs_per_second": 27.0,
+      "knee_users": 210,
+      "steps": 16,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 450,
+        "breaches": [
+          "ttft"
+        ],
+        "errors": {}
+      },
+      "ttft_p90_ms_at_knee": 4700,
+      "run_p95_ms_at_knee": 16000
+    },
+    "follow_up": {
+      "sustained_runs_per_second": 23.03,
+      "knee_users": 270,
+      "steps": 18,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 510,
+        "breaches": [
+          "ttft"
+        ],
+        "errors": {}
+      },
+      "ttft_p90_ms_at_knee": 4500,
+      "run_p95_ms_at_knee": 13000
+    },
+    "mix": {
+      "sustained_runs_per_second": 22.49,
+      "knee_users": 240,
+      "steps": 18,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 510,
+        "breaches": [
+          "ttft"
+        ],
+        "errors": {}
+      },
+      "ttft_p90_ms_at_knee": 6200,
+      "run_p95_ms_at_knee": 14000
+    },
+    "new_thread": {
+      "sustained_runs_per_second": 18.01,
+      "knee_users": 360,
+      "steps": 18,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 510,
+        "breaches": [
+          "run_duration"
+        ],
+        "errors": {}
+      },
+      "ttft_p90_ms_at_knee": 8300,
+      "run_p95_ms_at_knee": 21000
+    }
+  }
+}

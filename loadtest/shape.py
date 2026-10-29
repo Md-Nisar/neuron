@@ -45,8 +45,10 @@ class StepShape(LoadTestShape):
         for error in self.runner.stats.errors.values():
             label = f"{error.name}: {StatsError.parse_error(error.error)}"
             errors[label] = errors.get(label, 0) + error.occurrences
+        record = {**asdict(summary), "breaches": found, "errors": errors}
+        record["ended_at"] = time.time()  # lets loadtest.resources line resource samples up
         with RESULTS.open("a", encoding="utf-8") as out:
-            out.write(json.dumps({**asdict(summary), "breaches": found, "errors": errors}) + "\n")
+            out.write(json.dumps(record) + "\n")
         if found and self._broken_at is None:
             self._broken_at = self._step
         self._step += 1

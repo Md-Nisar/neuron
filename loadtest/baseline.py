@@ -66,6 +66,7 @@ def build(
         "scenarios": {
             path.stem: scenario_result(_load_steps(path))
             for path in sorted(steps_dir.glob("*.jsonl"))
+            if not path.name.endswith(".resources.jsonl")  # raw samples of loadtest.resources
         },
     }
 

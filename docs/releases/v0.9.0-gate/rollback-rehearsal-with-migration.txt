@@ -1,0 +1,21 @@
+# Rollback rehearsal with schema changes (2026-10-29)
+# NEW image: neuron:rehearsal = this branch plus THREE THROWAWAY ADDITIVE MIGRATIONS (17: nullable column on neuron_feedback; 18: new table; 19: concurrent index), built from a scratch copy and never committed.
+# OLD image: neuron:v080 (the v0.8.0 release code, migrations 1-16). Command: sh scripts/rollback_rehearsal.sh neuron:v080 neuron:rehearsal
+01:39:57 deploy new image neuron:rehearsal
+01:40:36 migrations after new: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+smoke_test: passed (ready, invoke, cleanup)
+smoke_test: passed (ready, invoke, cleanup)
+01:40:54 created thread 305ba2a5-24b9-4231-8808-21362dde24cd run c24e5a3d-8d0f-44a9-a78d-023fff2f4ded
+01:40:55 neuron_feedback columns under the new image: owner_key,thread_id,run_id,score,reason,created_at,rehearsal_note
+01:40:55 roll back to neuron:v080 (setup runs first, then both replicas)
+01:41:19 migrations after rollback: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+01:41:19 ready on 8101
+01:41:19 ready on 8102
+smoke_test: passed (ready, invoke, cleanup)
+smoke_test: passed (ready, invoke, cleanup)
+01:41:20 old image wrote a rating over the migrated table: HTTP 200
+01:41:20 thread readable on the old image via the other replica: HTTP 200
+01:41:20 roll forward again to neuron:rehearsal
+smoke_test: passed (ready, invoke, cleanup)
+smoke_test: passed (ready, invoke, cleanup)
+01:41:54 rollback rehearsal passed
