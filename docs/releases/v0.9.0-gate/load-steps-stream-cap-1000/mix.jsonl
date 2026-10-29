@@ -1,0 +1,18 @@
+{"users": 30, "seconds": 90.05995818199972, "runs": 290, "failures": 0, "ttft_p90_ms": 4000, "run_p95_ms": 11000, "breaches": [], "errors": {}, "ended_at": 1793235172.8123903}
+{"users": 60, "seconds": 90.05955545900088, "runs": 587, "failures": 0, "ttft_p90_ms": 3600, "run_p95_ms": 11000, "breaches": [], "errors": {}, "ended_at": 1793235262.872416}
+{"users": 90, "seconds": 90.05319083099948, "runs": 893, "failures": 0, "ttft_p90_ms": 3800, "run_p95_ms": 11000, "breaches": [], "errors": {}, "ended_at": 1793235352.9260662}
+{"users": 120, "seconds": 90.05283014399993, "runs": 1184, "failures": 0, "ttft_p90_ms": 3700, "run_p95_ms": 11000, "breaches": [], "errors": {}, "ended_at": 1793235442.9794428}
+{"users": 150, "seconds": 90.04808813100044, "runs": 1436, "failures": 0, "ttft_p90_ms": 3800, "run_p95_ms": 11000, "breaches": [], "errors": {}, "ended_at": 1793235533.0280526}
+{"users": 180, "seconds": 90.04669179600023, "runs": 1717, "failures": 0, "ttft_p90_ms": 4700, "run_p95_ms": 12000, "breaches": [], "errors": {}, "ended_at": 1793235623.075869}
+{"users": 210, "seconds": 90.05188407800051, "runs": 1917, "failures": 0, "ttft_p90_ms": 5300, "run_p95_ms": 12000, "breaches": [], "errors": {}, "ended_at": 1793235713.1282527}
+{"users": 240, "seconds": 90.04526770600023, "runs": 2025, "failures": 0, "ttft_p90_ms": 6200, "run_p95_ms": 14000, "breaches": [], "errors": {}, "ended_at": 1793235803.174089}
+{"users": 270, "seconds": 90.05590194499928, "runs": 1966, "failures": 0, "ttft_p90_ms": 5900, "run_p95_ms": 15000, "breaches": [], "errors": {}, "ended_at": 1793235893.2305968}
+{"users": 300, "seconds": 90.05331371899956, "runs": 1949, "failures": 0, "ttft_p90_ms": 7300, "run_p95_ms": 17000, "breaches": [], "errors": {}, "ended_at": 1793235983.2844636}
+{"users": 330, "seconds": 90.10361730899967, "runs": 1917, "failures": 0, "ttft_p90_ms": 8300, "run_p95_ms": 19000, "breaches": [], "errors": {}, "ended_at": 1793236073.3886058}
+{"users": 360, "seconds": 90.08932744899994, "runs": 1832, "failures": 0, "ttft_p90_ms": 10000, "run_p95_ms": 21000, "breaches": [], "errors": {}, "ended_at": 1793236163.4786568}
+{"users": 390, "seconds": 90.05288302999998, "runs": 1911, "failures": 0, "ttft_p90_ms": 11000, "run_p95_ms": 23000, "breaches": [], "errors": {}, "ended_at": 1793236253.5322638}
+{"users": 420, "seconds": 90.07676886599984, "runs": 1822, "failures": 0, "ttft_p90_ms": 13000, "run_p95_ms": 25000, "breaches": [], "errors": {}, "ended_at": 1793236343.6096733}
+{"users": 450, "seconds": 90.06688948299961, "runs": 1807, "failures": 0, "ttft_p90_ms": 14000, "run_p95_ms": 28000, "breaches": [], "errors": {}, "ended_at": 1793236433.6773024}
+{"users": 480, "seconds": 90.07395344900033, "runs": 1869, "failures": 0, "ttft_p90_ms": 14000, "run_p95_ms": 28000, "breaches": [], "errors": {}, "ended_at": 1793236523.751945}
+{"users": 510, "seconds": 90.07611963700037, "runs": 1855, "failures": 0, "ttft_p90_ms": 16000, "run_p95_ms": 30000, "breaches": ["ttft"], "errors": {}, "ended_at": 1793236613.8285928}
+{"users": 540, "seconds": 90.06315083000027, "runs": 1849, "failures": 0, "ttft_p90_ms": 16000, "run_p95_ms": 32000, "breaches": ["ttft", "run_duration"], "errors": {}, "ended_at": 1793236703.8925571}

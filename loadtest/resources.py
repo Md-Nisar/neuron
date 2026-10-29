@@ -51,8 +51,8 @@ def _cpu_times() -> list[int]:
 
 
 def _docker(*args: str) -> str:
-    done = subprocess.run(  # noqa: S603  # nosec B603  (fixed argument list)
-        ["docker", *args],  # noqa: S607  # nosec B607
+    done = subprocess.run(  # noqa: S603  # nosec B603 B607  (fixed docker CLI call)
+        ["docker", *args],  # noqa: S607
         capture_output=True,
         text=True,
         timeout=30,

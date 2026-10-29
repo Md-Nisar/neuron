@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 from loadtest.slo import StepSummary, breaches, summarise_step
@@ -223,3 +224,15 @@ def test_samples_are_folded_into_the_window_of_each_step() -> None:
     assert second["series"]["host_cpu"] == {"mean": 80.0, "max": 90.0}
     assert second["series"]["pg_connections"]["max"] == 20.0
     assert second["series"]["api1.mem_mib"]["max"] == 100.0
+
+
+def test_baseline_ignores_the_raw_resource_samples_in_a_steps_directory(tmp_path: Path) -> None:
+    from loadtest.baseline import build
+
+    step = (
+        '{"users": 30, "seconds": 90.0, "runs": 90, "failures": 0, "ttft_p90_ms": 1.0, '
+        '"run_p95_ms": 2.0, "breaches": [], "errors": {}}\n'
+    )
+    (tmp_path / "mix.jsonl").write_text(step, encoding="utf-8")
+    (tmp_path / "mix.resources.jsonl").write_text('{"at": 1.0}\n', encoding="utf-8")
+    assert list(build(tmp_path, "img", "profile", "", host="h")["scenarios"]) == ["mix"]

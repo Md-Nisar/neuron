@@ -1,0 +1,802 @@
+[
+ {
+  "users": 30,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 25.7,
+    "max": 84.5
+   },
+   "api1.mem_mib": {
+    "mean": 842.5,
+    "max": 842.7
+   },
+   "api2.cpu": {
+    "mean": 20.1,
+    "max": 100.4
+   },
+   "api2.mem_mib": {
+    "mean": 840.5,
+    "max": 871.1
+   },
+   "host_cpu": {
+    "mean": 23.2,
+    "max": 54.0
+   },
+   "keycloak.cpu": {
+    "mean": 7.2,
+    "max": 121.6
+   },
+   "keycloak.mem_mib": {
+    "mean": 1225.4,
+    "max": 1226.8
+   },
+   "pg_active": {
+    "mean": 1.2,
+    "max": 2.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 7.9,
+    "max": 29.8
+   },
+   "postgres.mem_mib": {
+    "mean": 2290.6,
+    "max": 2307.1
+   }
+  }
+ },
+ {
+  "users": 60,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 38.5,
+    "max": 90.7
+   },
+   "api1.mem_mib": {
+    "mean": 844.1,
+    "max": 859.4
+   },
+   "api2.cpu": {
+    "mean": 35.7,
+    "max": 86.7
+   },
+   "api2.mem_mib": {
+    "mean": 846.4,
+    "max": 864.4
+   },
+   "host_cpu": {
+    "mean": 32.0,
+    "max": 46.4
+   },
+   "keycloak.cpu": {
+    "mean": 5.6,
+    "max": 56.2
+   },
+   "keycloak.mem_mib": {
+    "mean": 1225.6,
+    "max": 1228.8
+   },
+   "pg_active": {
+    "mean": 1.2,
+    "max": 2.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 11.4,
+    "max": 31.6
+   },
+   "postgres.mem_mib": {
+    "mean": 2343.3,
+    "max": 2374.7
+   }
+  }
+ },
+ {
+  "users": 90,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 59.7,
+    "max": 136.9
+   },
+   "api1.mem_mib": {
+    "mean": 862.8,
+    "max": 883.8
+   },
+   "api2.cpu": {
+    "mean": 62.0,
+    "max": 154.3
+   },
+   "api2.mem_mib": {
+    "mean": 861.5,
+    "max": 894.7
+   },
+   "host_cpu": {
+    "mean": 42.4,
+    "max": 56.8
+   },
+   "keycloak.cpu": {
+    "mean": 5.9,
+    "max": 96.8
+   },
+   "keycloak.mem_mib": {
+    "mean": 1226.5,
+    "max": 1228.8
+   },
+   "pg_active": {
+    "mean": 1.5,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 21.0,
+    "max": 58.0
+   },
+   "postgres.mem_mib": {
+    "mean": 2430.6,
+    "max": 2492.4
+   }
+  }
+ },
+ {
+  "users": 120,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 72.9,
+    "max": 147.2
+   },
+   "api1.mem_mib": {
+    "mean": 897.0,
+    "max": 914.3
+   },
+   "api2.cpu": {
+    "mean": 69.7,
+    "max": 119.1
+   },
+   "api2.mem_mib": {
+    "mean": 893.2,
+    "max": 924.6
+   },
+   "host_cpu": {
+    "mean": 52.8,
+    "max": 62.1
+   },
+   "keycloak.cpu": {
+    "mean": 6.9,
+    "max": 67.8
+   },
+   "keycloak.mem_mib": {
+    "mean": 956.5,
+    "max": 997.5
+   },
+   "pg_active": {
+    "mean": 1.2,
+    "max": 2.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 24.0,
+    "max": 35.1
+   },
+   "postgres.mem_mib": {
+    "mean": 2552.3,
+    "max": 2607.1
+   }
+  }
+ },
+ {
+  "users": 150,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 79.2,
+    "max": 149.5
+   },
+   "api1.mem_mib": {
+    "mean": 943.8,
+    "max": 976.2
+   },
+   "api2.cpu": {
+    "mean": 77.6,
+    "max": 103.5
+   },
+   "api2.mem_mib": {
+    "mean": 937.6,
+    "max": 955.8
+   },
+   "host_cpu": {
+    "mean": 58.6,
+    "max": 79.2
+   },
+   "keycloak.cpu": {
+    "mean": 7.9,
+    "max": 120.5
+   },
+   "keycloak.mem_mib": {
+    "mean": 996.3,
+    "max": 998.8
+   },
+   "pg_active": {
+    "mean": 1.6,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 26.2,
+    "max": 35.2
+   },
+   "postgres.mem_mib": {
+    "mean": 2678.0,
+    "max": 2740.2
+   }
+  }
+ },
+ {
+  "users": 180,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 88.6,
+    "max": 134.4
+   },
+   "api1.mem_mib": {
+    "mean": 990.5,
+    "max": 1012.0
+   },
+   "api2.cpu": {
+    "mean": 91.5,
+    "max": 166.5
+   },
+   "api2.mem_mib": {
+    "mean": 990.5,
+    "max": 1026.0
+   },
+   "host_cpu": {
+    "mean": 62.8,
+    "max": 71.9
+   },
+   "keycloak.cpu": {
+    "mean": 8.8,
+    "max": 48.8
+   },
+   "keycloak.mem_mib": {
+    "mean": 973.6,
+    "max": 975.5
+   },
+   "pg_active": {
+    "mean": 1.4,
+    "max": 4.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 29.2,
+    "max": 39.1
+   },
+   "postgres.mem_mib": {
+    "mean": 2830.2,
+    "max": 2913.3
+   }
+  }
+ },
+ {
+  "users": 210,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 95.5,
+    "max": 159.1
+   },
+   "api1.mem_mib": {
+    "mean": 1045.2,
+    "max": 1068.0
+   },
+   "api2.cpu": {
+    "mean": 92.5,
+    "max": 174.5
+   },
+   "api2.mem_mib": {
+    "mean": 1039.4,
+    "max": 1082.4
+   },
+   "host_cpu": {
+    "mean": 66.1,
+    "max": 74.1
+   },
+   "keycloak.cpu": {
+    "mean": 9.0,
+    "max": 132.2
+   },
+   "keycloak.mem_mib": {
+    "mean": 834.6,
+    "max": 835.6
+   },
+   "pg_active": {
+    "mean": 1.8,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 19.1,
+    "max": 20.0
+   },
+   "postgres.cpu": {
+    "mean": 32.0,
+    "max": 73.0
+   },
+   "postgres.mem_mib": {
+    "mean": 3068.0,
+    "max": 3266.6
+   }
+  }
+ },
+ {
+  "users": 240,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 92.8,
+    "max": 99.2
+   },
+   "api1.mem_mib": {
+    "mean": 1095.3,
+    "max": 1119.2
+   },
+   "api2.cpu": {
+    "mean": 96.5,
+    "max": 186.2
+   },
+   "api2.mem_mib": {
+    "mean": 1093.8,
+    "max": 1141.8
+   },
+   "host_cpu": {
+    "mean": 66.3,
+    "max": 77.5
+   },
+   "keycloak.cpu": {
+    "mean": 2.3,
+    "max": 20.1
+   },
+   "keycloak.mem_mib": {
+    "mean": 834.8,
+    "max": 836.0
+   },
+   "pg_active": {
+    "mean": 1.5,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 30.3,
+    "max": 36.9
+   },
+   "postgres.mem_mib": {
+    "mean": 3296.0,
+    "max": 3366.9
+   }
+  }
+ },
+ {
+  "users": 270,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 94.3,
+    "max": 163.8
+   },
+   "api1.mem_mib": {
+    "mean": 1145.3,
+    "max": 1171.5
+   },
+   "api2.cpu": {
+    "mean": 96.4,
+    "max": 164.6
+   },
+   "api2.mem_mib": {
+    "mean": 1145.1,
+    "max": 1199.1
+   },
+   "host_cpu": {
+    "mean": 66.9,
+    "max": 76.0
+   },
+   "keycloak.cpu": {
+    "mean": 3.8,
+    "max": 20.3
+   },
+   "keycloak.mem_mib": {
+    "mean": 835.4,
+    "max": 836.4
+   },
+   "pg_active": {
+    "mean": 1.5,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 30.1,
+    "max": 37.9
+   },
+   "postgres.mem_mib": {
+    "mean": 3453.7,
+    "max": 3543.0
+   }
+  }
+ },
+ {
+  "users": 300,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 94.8,
+    "max": 167.1
+   },
+   "api1.mem_mib": {
+    "mean": 1197.6,
+    "max": 1217.5
+   },
+   "api2.cpu": {
+    "mean": 91.3,
+    "max": 109.9
+   },
+   "api2.mem_mib": {
+    "mean": 1194.9,
+    "max": 1232.9
+   },
+   "host_cpu": {
+    "mean": 66.7,
+    "max": 77.5
+   },
+   "keycloak.cpu": {
+    "mean": 15.0,
+    "max": 125.3
+   },
+   "keycloak.mem_mib": {
+    "mean": 1126.6,
+    "max": 1330.2
+   },
+   "pg_active": {
+    "mean": 1.9,
+    "max": 5.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 30.0,
+    "max": 39.1
+   },
+   "postgres.mem_mib": {
+    "mean": 3629.3,
+    "max": 3710.0
+   }
+  }
+ },
+ {
+  "users": 330,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 96.6,
+    "max": 148.1
+   },
+   "api1.mem_mib": {
+    "mean": 1249.3,
+    "max": 1275.9
+   },
+   "api2.cpu": {
+    "mean": 91.4,
+    "max": 100.2
+   },
+   "api2.mem_mib": {
+    "mean": 1248.3,
+    "max": 1270.8
+   },
+   "host_cpu": {
+    "mean": 68.0,
+    "max": 85.4
+   },
+   "keycloak.cpu": {
+    "mean": 10.7,
+    "max": 108.0
+   },
+   "keycloak.mem_mib": {
+    "mean": 2073.6,
+    "max": 2125.8
+   },
+   "pg_active": {
+    "mean": 1.6,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 29.6,
+    "max": 41.2
+   },
+   "postgres.mem_mib": {
+    "mean": 3790.2,
+    "max": 3882.0
+   }
+  }
+ },
+ {
+  "users": 360,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 95.4,
+    "max": 149.9
+   },
+   "api1.mem_mib": {
+    "mean": 1300.2,
+    "max": 1322.0
+   },
+   "api2.cpu": {
+    "mean": 97.3,
+    "max": 154.8
+   },
+   "api2.mem_mib": {
+    "mean": 1306.7,
+    "max": 1338.4
+   },
+   "host_cpu": {
+    "mean": 67.7,
+    "max": 82.6
+   },
+   "keycloak.cpu": {
+    "mean": 14.3,
+    "max": 139.8
+   },
+   "keycloak.mem_mib": {
+    "mean": 2981.4,
+    "max": 3270.7
+   },
+   "pg_active": {
+    "mean": 1.8,
+    "max": 4.0
+   },
+   "pg_connections": {
+    "mean": 19.0,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 31.0,
+    "max": 37.5
+   },
+   "postgres.mem_mib": {
+    "mean": 3931.2,
+    "max": 3980.3
+   }
+  }
+ },
+ {
+  "users": 390,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 95.2,
+    "max": 150.1
+   },
+   "api1.mem_mib": {
+    "mean": 1354.9,
+    "max": 1381.4
+   },
+   "api2.cpu": {
+    "mean": 100.1,
+    "max": 167.3
+   },
+   "api2.mem_mib": {
+    "mean": 1359.8,
+    "max": 1393.7
+   },
+   "host_cpu": {
+    "mean": 66.8,
+    "max": 75.7
+   },
+   "keycloak.cpu": {
+    "mean": 15.0,
+    "max": 117.7
+   },
+   "keycloak.mem_mib": {
+    "mean": 3307.0,
+    "max": 3317.8
+   },
+   "pg_active": {
+    "mean": 1.5,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 18.5,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 29.1,
+    "max": 38.1
+   },
+   "postgres.mem_mib": {
+    "mean": 3982.7,
+    "max": 4016.1
+   }
+  }
+ },
+ {
+  "users": 420,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 94.2,
+    "max": 164.0
+   },
+   "api1.mem_mib": {
+    "mean": 1407.0,
+    "max": 1442.8
+   },
+   "api2.cpu": {
+    "mean": 95.2,
+    "max": 148.5
+   },
+   "api2.mem_mib": {
+    "mean": 1409.1,
+    "max": 1444.9
+   },
+   "host_cpu": {
+    "mean": 67.3,
+    "max": 79.1
+   },
+   "keycloak.cpu": {
+    "mean": 17.3,
+    "max": 143.1
+   },
+   "keycloak.mem_mib": {
+    "mean": 3331.1,
+    "max": 3351.6
+   },
+   "pg_active": {
+    "mean": 1.4,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 18.1,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 33.3,
+    "max": 52.2
+   },
+   "postgres.mem_mib": {
+    "mean": 4058.7,
+    "max": 4137.0
+   }
+  }
+ },
+ {
+  "users": 450,
+  "samples": 18,
+  "series": {
+   "api1.cpu": {
+    "mean": 97.2,
+    "max": 146.8
+   },
+   "api1.mem_mib": {
+    "mean": 1458.5,
+    "max": 1490.9
+   },
+   "api2.cpu": {
+    "mean": 101.9,
+    "max": 172.6
+   },
+   "api2.mem_mib": {
+    "mean": 1466.1,
+    "max": 1512.4
+   },
+   "host_cpu": {
+    "mean": 66.6,
+    "max": 76.3
+   },
+   "keycloak.cpu": {
+    "mean": 11.5,
+    "max": 134.3
+   },
+   "keycloak.mem_mib": {
+    "mean": 934.0,
+    "max": 993.8
+   },
+   "pg_active": {
+    "mean": 1.6,
+    "max": 4.0
+   },
+   "pg_connections": {
+    "mean": 18.0,
+    "max": 18.0
+   },
+   "postgres.cpu": {
+    "mean": 27.8,
+    "max": 36.8
+   },
+   "postgres.mem_mib": {
+    "mean": 4217.1,
+    "max": 4297.7
+   }
+  }
+ },
+ {
+  "users": 480,
+  "samples": 17,
+  "series": {
+   "api1.cpu": {
+    "mean": 94.8,
+    "max": 126.7
+   },
+   "api1.mem_mib": {
+    "mean": 1510.0,
+    "max": 1530.9
+   },
+   "api2.cpu": {
+    "mean": 90.7,
+    "max": 99.8
+   },
+   "api2.mem_mib": {
+    "mean": 1509.1,
+    "max": 1529.9
+   },
+   "host_cpu": {
+    "mean": 66.7,
+    "max": 78.9
+   },
+   "keycloak.cpu": {
+    "mean": 9.9,
+    "max": 61.3
+   },
+   "keycloak.mem_mib": {
+    "mean": 894.6,
+    "max": 913.9
+   },
+   "pg_active": {
+    "mean": 1.5,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 18.1,
+    "max": 19.0
+   },
+   "postgres.cpu": {
+    "mean": 29.1,
+    "max": 38.7
+   },
+   "postgres.mem_mib": {
+    "mean": 4414.9,
+    "max": 4535.3
+   }
+  }
+ }
+]
