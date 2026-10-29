@@ -20,8 +20,8 @@ for scenario in ${LOAD_SCENARIOS:-new_thread follow_up approval mix}; do
         uv run python -m locust -f loadtest/locustfile.py --headless --only-summary \
         > "$out/$scenario.log" 2>&1 || true  # Locust exits 1 when any request failed
     if [ "${LOAD_RESOURCES:-}" = 1 ]; then
-        kill -INT "$sampler" 2>/dev/null || true
-        wait "$sampler" 2>/dev/null || true
+        kill -TERM "$sampler" 2>/dev/null || true
+        wait "$sampler" 2>/dev/null || true  # SIGTERM: a background job in sh ignores SIGINT
         uv run python -m loadtest.resources summarise --samples "$out/$scenario.resources.jsonl" \
             --steps "$out/$scenario.jsonl" > "$out/$scenario.resources.json"
     fi
