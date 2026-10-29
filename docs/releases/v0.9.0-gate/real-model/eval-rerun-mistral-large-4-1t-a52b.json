@@ -1,0 +1,274 @@
+{
+  "report_version": 1,
+  "model": "nvidia:mistralai/mistral-large-4-1t-a52b",
+  "git_sha": "d78d7d54864b3185499ed3734e9679e03e677274",
+  "dataset_versions": {
+    "single_turn": "1.1.0"
+  },
+  "trials": 3,
+  "infrastructure_errors": 0,
+  "suites": {
+    "single_turn": {
+      "dataset_version": "1.1.0",
+      "cases": 4,
+      "trials": 12,
+      "passes": 12,
+      "quality_failures": 0,
+      "infrastructure_errors": 0,
+      "pass_rate": 1.0,
+      "wilson_95": {
+        "low": 0.7574992425007574,
+        "high": 0.9999999999999998
+      },
+      "pass_hat_k": 1.0,
+      "inconclusive_cases": 0,
+      "latency_ms": {
+        "p50": 2058.1,
+        "p95": 54210.9
+      },
+      "tokens": {
+        "total_tokens": 13522,
+        "input_tokens": 11850,
+        "output_tokens": 1672,
+        "cache_read_tokens": 7616,
+        "reasoning_tokens": 1579
+      },
+      "categories": {
+        "calculator_tool_selection": {
+          "cases": 2,
+          "trials": 6,
+          "passes": 6,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "pass_rate": 1.0,
+          "wilson_95": {
+            "low": 0.6096569663469354,
+            "high": 1.0
+          },
+          "pass_hat_k": 1.0,
+          "inconclusive_cases": 0
+        },
+        "utc_tool_selection": {
+          "cases": 2,
+          "trials": 6,
+          "passes": 6,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "pass_rate": 1.0,
+          "wilson_95": {
+            "low": 0.6096569663469354,
+            "high": 1.0
+          },
+          "pass_hat_k": 1.0,
+          "inconclusive_cases": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "calculator-tool-selection-001",
+          "category": "calculator_tool_selection",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 2085.2,
+              "tokens": {
+                "total_tokens": 1087,
+                "input_tokens": 978,
+                "output_tokens": 109,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 103
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 1062.5,
+              "tokens": {
+                "total_tokens": 1085,
+                "input_tokens": 978,
+                "output_tokens": 107,
+                "cache_read_tokens": 896,
+                "reasoning_tokens": 100
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 1796.1,
+              "tokens": {
+                "total_tokens": 1095,
+                "input_tokens": 978,
+                "output_tokens": 117,
+                "cache_read_tokens": 896,
+                "reasoning_tokens": 109
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "calculator-tool-selection-002",
+          "category": "calculator_tool_selection",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 1467.0,
+              "tokens": {
+                "total_tokens": 1115,
+                "input_tokens": 992,
+                "output_tokens": 123,
+                "cache_read_tokens": 448,
+                "reasoning_tokens": 114
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 55840.7,
+              "tokens": {
+                "total_tokens": 1127,
+                "input_tokens": 992,
+                "output_tokens": 135,
+                "cache_read_tokens": 896,
+                "reasoning_tokens": 126
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 3822.6,
+              "tokens": {
+                "total_tokens": 1109,
+                "input_tokens": 992,
+                "output_tokens": 117,
+                "cache_read_tokens": 448,
+                "reasoning_tokens": 108
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "utc-tool-selection-001",
+          "category": "utc_tool_selection",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 2161.1,
+              "tokens": {
+                "total_tokens": 1130,
+                "input_tokens": 987,
+                "output_tokens": 143,
+                "cache_read_tokens": 448,
+                "reasoning_tokens": 135
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 2031.0,
+              "tokens": {
+                "total_tokens": 1184,
+                "input_tokens": 987,
+                "output_tokens": 197,
+                "cache_read_tokens": 448,
+                "reasoning_tokens": 190
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 52877.4,
+              "tokens": {
+                "total_tokens": 1152,
+                "input_tokens": 987,
+                "output_tokens": 165,
+                "cache_read_tokens": 896,
+                "reasoning_tokens": 156
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "utc-tool-selection-002",
+          "category": "utc_tool_selection",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 3217.4,
+              "tokens": {
+                "total_tokens": 1143,
+                "input_tokens": 993,
+                "output_tokens": 150,
+                "cache_read_tokens": 896,
+                "reasoning_tokens": 143
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 1720.6,
+              "tokens": {
+                "total_tokens": 1145,
+                "input_tokens": 993,
+                "output_tokens": 152,
+                "cache_read_tokens": 896,
+                "reasoning_tokens": 145
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 1899.8,
+              "tokens": {
+                "total_tokens": 1150,
+                "input_tokens": 993,
+                "output_tokens": 157,
+                "cache_read_tokens": 448,
+                "reasoning_tokens": 150
+              },
+              "error_code": null
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

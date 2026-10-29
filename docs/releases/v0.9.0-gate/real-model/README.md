@@ -62,3 +62,33 @@ too but 8 of 18 trials lost to the key's rate limit, so it is not reported. The 
 0 of 12. This supports the endpoint-behaviour cause for #341; MiniMax is a working development model for
 tool-calling evals on this free tier. The sample is small (12 trials) and the model's quality beyond these
 cases was not assessed.
+
+## Agent-oriented models tried after the v0.9.0 tag
+
+Connectivity (six rounds, one 16-token streaming request per model per round, 15 s apart, so about
+20 requests per minute on the 40 per minute key) and a raw tool-call check (a calculator tool, three
+trials each with `tool_choice` `auto` and `required`), run on 2026-10-29:
+
+| Model | Connected | First byte (median) | Tool call `auto` / `required` |
+|---|---|---|---|
+| `nvidia/nemotron-3.5-lightning-30b-a3b` | 6/6 | 0.4 s | 3/3, 3/3 |
+| `mistralai/mistral-large-4-1t-a52b` | 6/6 | 0.6 s | 3/3, 3/3 |
+| `openai/gpt-oss-20b` | 6/6 | 0.5 s | 3/3, 2/3 (one plain-text reply) |
+| `poolside/laguna-xs-2.1` | 6/6 | 0.4 s | 0/3, 0/3 (HTTP 503) |
+| `nvidia/nemotron-3-super-120b-a12b` | 0/6 (HTTP 404, listed but not served) | - | - |
+| `nvidia/nemotron-3-ultra-550b-a55b` | 6/6 | 1.3 s | `required`: 0/3, plain text |
+| `minimaxai/minimax-m3.1-flash` | 5/6 (one 429) | 0.6 s | 3/3, 2/3 (one 429) |
+| `deepseek-ai/deepseek-v4.1-flash`, `z-ai/glm-5.3-flash`, `google/gemma-4-31b-it` | 0/6 (30 s timeouts) | - | - |
+
+The 429s in the last rows come from sending about 36 requests in a minute against the key's limit; the
+tool-call check is a smoke test, not a measurement.
+
+`eval-rerun-nemotron-3.5-lightning-30b-a3b.json` and `eval-rerun-mistral-large-4-1t-a52b.json`:
+`neuron-eval --suite single_turn --category calculator_tool_selection --category utc_tool_selection
+--trials 3 --max-requests-per-minute 8` with `APP_DEFAULT_MODEL=nvidia:<model>`. Both models pass 12
+of 12 trials with 0 quality failures and 0 infrastructure errors (Wilson 95% interval 0.76 to 1.00).
+The p95 latency of about 54 s in both reports comes from the 8 requests per minute throttle, not from
+the models. Compared with MiniMax (11 of 12, one rate-limit error) and nemotron-3-ultra (0 of 12) on the
+same cases, these two are working development models for tool-calling evals on this free tier. The
+sample is small and says nothing about answer quality beyond tool selection. Adopting one as the
+development model (#341) is still the owner's call.
