@@ -1,5 +1,7 @@
+import { Check, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import type { DataDeps } from "@/features/data/api";
 import { dataErrorText } from "@/features/data/messages";
 import { ApiError } from "@/lib/request";
@@ -29,6 +31,8 @@ function ratingText(rating: Rating): string {
   const label = rating.score === 1 ? "Helpful" : "Not helpful";
   return rating.reason === null ? label : `${label} (${REASON_LABEL[rating.reason]})`;
 }
+
+const PILL = "h-7 rounded-full px-3 text-xs font-normal";
 
 /**
  * Thumbs up or down for one answer, with a fixed reason for a thumbs down. One rating per run:
@@ -73,7 +77,12 @@ export function FeedbackBar({
 
   if (phase.name === "done") {
     return (
-      <p ref={result} tabIndex={-1} className="mt-1 text-xs opacity-70">
+      <p
+        ref={result}
+        tabIndex={-1}
+        className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground outline-none"
+      >
+        <Check aria-hidden="true" className="size-3.5" />
         Thanks for your feedback. Your rating: {ratingText(phase.rating)}.
       </p>
     );
@@ -81,56 +90,70 @@ export function FeedbackBar({
 
   const busy = phase.name === "sending";
   return (
-    <div className="mt-1 text-xs">
+    <div className="text-xs">
       {phase.name !== "choosing" && (
-        <div role="group" aria-label="Rate this answer" className="flex flex-wrap gap-2">
-          <span className="opacity-70">Was this answer helpful?</span>
-          <button
+        <div role="group" aria-label="Rate this answer" className="flex items-center gap-0.5">
+          <span className="sr-only">Was this answer helpful?</span>
+          <Button
             type="button"
-            className="rounded border px-2 py-0.5"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Helpful"
+            title="Helpful"
             disabled={busy}
             onClick={() => void send({ score: 1, reason: null })}
           >
-            Helpful
-          </button>
-          <button
+            <ThumbsUp />
+          </Button>
+          <Button
             type="button"
-            className="rounded border px-2 py-0.5"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Not helpful"
+            title="Not helpful"
             disabled={busy}
             onClick={() => {
               setError(null);
               setPhase({ name: "choosing" });
             }}
           >
-            Not helpful
-          </button>
+            <ThumbsDown />
+          </Button>
+          {busy && <span className="px-1.5 text-muted-foreground">Sending…</span>}
         </div>
       )}
       {phase.name === "choosing" && (
-        <fieldset ref={choosing} tabIndex={-1} className="flex flex-wrap gap-2">
-          <legend className="opacity-70">What was wrong?</legend>
+        <fieldset
+          ref={choosing}
+          tabIndex={-1}
+          className="mt-1 flex animate-in flex-wrap items-center gap-1.5 rounded-xl border bg-card p-2.5 duration-200 fade-in-0 outline-none"
+        >
+          <legend className="float-left mr-1 w-full pb-1.5 pl-0.5 text-xs font-medium text-foreground">
+            What was wrong?
+          </legend>
           {NEGATIVE_REASONS.map((reason: Reason) => (
-            <button
+            <Button
               key={reason}
               type="button"
-              className="rounded border px-2 py-0.5"
+              variant="outline"
+              className={PILL}
               onClick={() => void send({ score: -1, reason })}
             >
               {REASON_LABEL[reason]}
-            </button>
+            </Button>
           ))}
-          <button
+          <Button
             type="button"
-            className="rounded border px-2 py-0.5"
+            variant="ghost"
+            className={PILL}
             onClick={() => void send({ score: -1, reason: null })}
           >
             No reason
-          </button>
+          </Button>
         </fieldset>
       )}
-      {busy && <p className="opacity-70">Sending…</p>}
       {error !== null && (
-        <p role="alert" className="mt-1">
+        <p role="alert" className="mt-1 px-1.5 text-destructive">
           {error}
         </p>
       )}

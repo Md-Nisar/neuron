@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -80,6 +80,7 @@ function setup(threads: FakeThread[], intercept?: Intercept) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("opening a conversation", () => {
@@ -179,6 +180,40 @@ describe("opening a conversation", () => {
       "?limit=100&offset=0",
       "?limit=100&offset=50",
     ]);
+  });
+
+  it("starts at the newest message, even after scrolling up in the previous one", async () => {
+    // jsdom has no layout: give every element a tall content box and a remembered position.
+    const positions = new WeakMap<Element, number>();
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(1000);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, "scrollTop", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return positions.get(this) ?? 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollTop", "set").mockImplementation(function (
+      this: HTMLElement,
+      value: number,
+    ) {
+      positions.set(this, value);
+    });
+    const { open } = setup([
+      conversation([say("user", "first question"), say("assistant", "first answer")]),
+      { ...thread(2, 0), title: "Other chat", messages: [say("user", "second question")] },
+    ]);
+    await open();
+    await screen.findByText("first answer");
+    const scroller = screen.getByRole("log").parentElement?.parentElement;
+    if (!scroller) throw new Error("no scroller");
+    expect(scroller.scrollTop).toBe(1000);
+
+    scroller.scrollTop = 0;
+    fireEvent.scroll(scroller);
+    await open("Other chat");
+    await screen.findByText("second question");
+
+    expect(scroller.scrollTop).toBe(1000);
   });
 });
 

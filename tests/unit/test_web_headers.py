@@ -342,11 +342,12 @@ def test_the_page_follows_the_system_colour_scheme_and_scales_to_small_screens()
     chat = (WEB / "src" / "features" / "chat" / "ChatScreen.tsx").read_text(encoding="utf-8")
 
     assert 'name="color-scheme" content="light dark"' in html
-    assert "color-scheme: light dark" in css
+    # Light by default, dark when the system (or the saved choice) says so.
+    assert "color-scheme: light;" in css and "color-scheme: dark;" in css
     assert "@media (prefers-color-scheme: dark)" in css
     # Zoom is never disabled, and the layout adapts instead of overflowing.
     assert "maximum-scale" not in html and "user-scalable" not in html
     assert "width=device-width, initial-scale=1.0" in html
-    assert "p-4 sm:p-6" in app
-    assert "ml-4" in chat and "sm:ml-8" in chat
+    assert "p-4" in app
+    assert "max-w-[85%]" in chat and "min-w-0" in chat
     assert "flex-wrap" in chat

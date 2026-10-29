@@ -15,4 +15,5 @@ build/
 mutants/
 web/node_modules/
 web/dist/
+web/*.tsbuildinfo
 web/coverage/

@@ -1,4 +1,9 @@
+import { LoaderCircle, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 import { eraseAllData, type DataDeps } from "./api";
 import { dataErrorText, ERASE_PHRASE } from "./messages";
@@ -33,47 +38,55 @@ export function EraseSection({ deps, onErased }: { deps: DataDeps; onErased: () 
   }
 
   return (
-    <section aria-labelledby="erase-heading" className="mt-6 rounded border-2 p-3">
-      <h2 id="erase-heading" className="text-lg font-semibold">
-        Erase your data
-      </h2>
-      <p className="text-sm">
-        This permanently deletes all of your conversations and memories. It cannot be undone, and
-        you will be signed out.
-      </p>
-      <label htmlFor="erase-confirm" className="mt-2 block text-sm">
-        Type <strong>{ERASE_PHRASE}</strong> to confirm
-      </label>
-      <input
-        id="erase-confirm"
-        type="text"
-        autoComplete="off"
-        value={typed}
-        className="mt-1 w-full rounded border p-2"
-        onChange={(event) => {
-          setTyped(event.target.value);
-        }}
-      />
-      <button
-        type="button"
-        className="mt-2 rounded border px-3 py-1"
-        disabled={!armed || busy}
-        onClick={() => void erase()}
-      >
-        {busy ? "Erasing…" : "Erase all my data"}
-      </button>
-      {error !== null && (
-        <p role="alert" className="mt-2">
-          {error}
-        </p>
-      )}
-      {result !== null && (
-        <p role="status" aria-live="polite" className="mt-2">
-          {result.complete
-            ? `Erased ${String(result.erased_count)} conversations and ${String(result.erased_memory_count)} memories. Signing you out…`
-            : `Erased ${String(result.erased_count)} conversations. ${String(result.skipped_busy_count)} could not be erased because a reply was still running. Try again in a moment.`}
-        </p>
-      )}
-    </section>
+    <Card asSection aria-labelledby="erase-heading" className="gap-4 border-destructive/40">
+      <CardHeader>
+        <h2 id="erase-heading" className="flex items-center gap-2 font-semibold text-destructive">
+          <TriangleAlert aria-hidden="true" className="size-4" />
+          Erase your data
+        </h2>
+        <CardDescription>
+          This permanently deletes all of your conversations and memories. It cannot be undone, and
+          you will be signed out.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <label htmlFor="erase-confirm" className="block text-sm">
+          Type <strong className="font-mono">{ERASE_PHRASE}</strong> to confirm
+        </label>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="erase-confirm"
+            type="text"
+            autoComplete="off"
+            value={typed}
+            onChange={(event) => {
+              setTyped(event.target.value);
+            }}
+          />
+          <Button
+            type="button"
+            variant="destructive"
+            className="shrink-0"
+            disabled={!armed || busy}
+            onClick={() => void erase()}
+          >
+            {busy ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
+            {busy ? "Erasing…" : "Erase all my data"}
+          </Button>
+        </div>
+        {error !== null && (
+          <p role="alert" className="mt-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {result !== null && (
+          <p role="status" aria-live="polite" className="mt-2 text-sm">
+            {result.complete
+              ? `Erased ${String(result.erased_count)} conversations and ${String(result.erased_memory_count)} memories. Signing you out…`
+              : `Erased ${String(result.erased_count)} conversations. ${String(result.skipped_busy_count)} could not be erased because a reply was still running. Try again in a moment.`}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
