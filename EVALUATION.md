@@ -170,11 +170,11 @@ stdout is a JSON document: `status` (`pass`, `regression` or `inconclusive`), `b
 
 ## Baselines
 
-The committed baseline for a model lives at `evals/baselines/<name>.json`, where `<name>` is `APP_DEFAULT_MODEL` without its provider prefix and with `/` replaced by `__`. For `nvidia:nvidia/nemotron-3.5-lightning-30b-a3b` that is `evals/baselines/nvidia__nemotron-3.5-lightning-30b-a3b.json`; none is committed for it yet, so the nightly applies only the security gate until one is. A baseline is a full `neuron-eval --trials 3` report from a live run.
+The committed baseline for a model lives at `evals/baselines/<name>.json`, where `<name>` is `APP_DEFAULT_MODEL` without its provider prefix and with `/` replaced by `__`. For `nvidia:nvidia/nemotron-3-ultra-550b-a55b` that is `evals/baselines/nvidia__nemotron-3-ultra-550b-a55b.json`; none is committed for it yet, so the nightly applies only the security gate until one is. A baseline is a full `neuron-eval --trials 3` report from a live run.
 
 **Committed baseline:** `evals/baselines/nvidia__nemotron-3-super-120b-a12b.json`, from a local live run on 2026-10-16 at commit `909bea2` (#95). It departs from the review criteria below in two ways: the security suite has 6 infrastructure errors (4 `rate_limit_error` from provider-side throttling at the end of the run, 2 `run_timeout`; the regression suites have none), and security cases fail (see the v0.5.0 release notes). Neither affects the regression gate, which reads only the regression suites of the baseline; the security gate never reads the baseline. Without a baseline for a model, the nightly workflow still runs `compare`, which then applies only the security gate. To create one:
 
-1. Run the `nightly-eval` workflow from the Actions tab (or locally: `NVIDIA_API_KEY=... APP_DEFAULT_MODEL=nvidia:nvidia/nemotron-3.5-lightning-30b-a3b uv run neuron-eval --trials 3 --output report.json > /dev/null`).
+1. Run the `nightly-eval` workflow from the Actions tab (or locally: `NVIDIA_API_KEY=... APP_DEFAULT_MODEL=nvidia:nvidia/nemotron-3-ultra-550b-a55b uv run neuron-eval --trials 3 --output report.json > /dev/null`).
 2. Check that `infrastructure_errors` is `0`. Otherwise rerun.
 3. Download the `eval-report` artifact, and copy `report.json` to the baseline path above.
 4. Open a PR with only that file; the description lists the commit, the pass rates and any case below pass^k = 1.
