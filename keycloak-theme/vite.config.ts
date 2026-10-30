@@ -2,7 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { keycloakify } from "keycloakify/vite-plugin";
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -33,5 +33,11 @@ export default defineConfig({
         alias: {
             "@": path.resolve(import.meta.dirname, "./src")
         }
+    },
+    test: {
+        environment: "jsdom",
+        setupFiles: ["./src/test/setup.ts"],
+        css: false,
+        testTimeout: 15_000
     }
 });

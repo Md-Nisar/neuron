@@ -16,6 +16,7 @@ npm ci                       # Node 22, Maven and a JDK are needed for the JAR
 npm run dev                  # preview the login page with mock Keycloak context
 npm run build-keycloak-theme # writes dist_keycloak/neuron-theme.jar
 npm run typecheck
+npm test                     # Vitest + Testing Library against the Keycloak mock context
 npm run format:check
 ```
 

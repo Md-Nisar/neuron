@@ -90,8 +90,12 @@ export function TemplateContent(props: TemplateContentProps) {
                     )}
                 >
                     <div className="flex items-center gap-3 mb-4 ">
-                        <img src={logoWhiteUrl} className="size-14 dark:hidden" />
-                        <img src={logoDarkUrl} className="size-14 hidden dark:inline-block" />
+                        <img src={logoWhiteUrl} alt="" className="size-14 dark:hidden" />
+                        <img
+                            src={logoDarkUrl}
+                            alt=""
+                            className="size-14 hidden dark:inline-block"
+                        />
                         {realm.displayNameHtml ? (
                             <span
                                 className="text-xl"
