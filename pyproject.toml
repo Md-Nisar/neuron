@@ -114,6 +114,7 @@ markers = [
     "postgres: tests that need a live Postgres (APP_TEST_POSTGRES_DSN); run by the postgres-integration CI job",
     "docker: tests that need a built container image (NEURON_TEST_IMAGE, default neuron-test); skipped without Docker",
     "eval: deterministic agent quality regression checks",
+    "flow(*names): the user-facing flows a test covers; scripts/flow_report.py prints the matrix",
 ]
 
 [tool.mutmut]

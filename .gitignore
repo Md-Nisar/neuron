@@ -17,3 +17,5 @@ web/node_modules/
 web/dist/
 web/*.tsbuildinfo
 web/coverage/
+web/test-results/
+web/playwright-report/

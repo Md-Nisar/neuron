@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -60,10 +60,10 @@ lint:
 	uv run python -m ruff check src tests loadtest
 
 typecheck:
-	uv run python -m mypy src loadtest scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py scripts/validate_observability.py
+	uv run python -m mypy src loadtest scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py scripts/validate_observability.py scripts/flow_report.py
 
 test:
-	uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/evals
+	uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/e2e tests/evals
 
 test-unit:
 	uv run python -m pytest tests/unit
@@ -73,6 +73,9 @@ test-graph:
 
 test-security:
 	uv run python -m pytest tests/security
+
+test-e2e:
+	uv run python -m pytest tests/e2e
 
 test-resilience:
 	uv run python -m pytest tests/resilience
@@ -117,6 +120,12 @@ web-typecheck:
 
 web-test:
 	npm --prefix web test
+
+flows:
+	uv run python scripts/flow_report.py
+
+web-e2e:
+	npm --prefix web run e2e
 
 web-build:
 	npm --prefix web run build
