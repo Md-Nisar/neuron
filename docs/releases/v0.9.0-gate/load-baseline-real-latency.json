@@ -1,0 +1,82 @@
+{
+  "image": "neuron:ref sha256:490b2636010aa145c7964c01ba5029c4fc8138769c1617fb30170a6c22a01c28 (built locally from the working tree before the #328 commit)",
+  "host": "Linux x86_64, 4 CPUs",
+  "fake_model_profile": "fake model: 2000 ms to first token, 10 tokens/s, 75 tokens (about 10 s per run, measured on the NVIDIA ultra model on 2026-10-28)",
+  "note": "Same method as load-baseline.json but with latency near the NVIDIA development model: first token 0.9 to 16 s (typically 1.4 to 2 s), 5 to 25 chunks/s, a typical 150-word answer in 7 to 17 s. Steps of 90 s, 30 more users each, 300 Keycloak test users, think time 6 s, token budget raised to 10M. Load generator and stack share one 4-CPU host. The real model was not load tested: the free NVIDIA key allows 40 requests per minute (about 0.67 runs/s), so it would have measured the key, not the platform. Real-model results may differ in either direction. Failure mode: 503 too_many_streams (APP_MAX_CONCURRENT_STREAMS=100 per replica). Not hosted capacity.",
+  "scenarios": {
+    "approval": {
+      "sustained_runs_per_second": 21.63,
+      "knee_users": 180,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:approval_pause: RuntimeError('http_503')": 98,
+          "run:approval: RuntimeError('http_503')": 94
+        }
+      },
+      "ttft_p90_ms_at_knee": 5700,
+      "run_p95_ms_at_knee": 15000
+    },
+    "follow_up": {
+      "sustained_runs_per_second": 15.6,
+      "knee_users": 180,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:follow_up: RuntimeError('http_503')": 110,
+          "run:follow_up_seed: RuntimeError('http_503')": 25
+        }
+      },
+      "ttft_p90_ms_at_knee": 4500,
+      "run_p95_ms_at_knee": 14000
+    },
+    "mix": {
+      "sustained_runs_per_second": 16.11,
+      "knee_users": 180,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:follow_up: RuntimeError('http_503')": 71,
+          "run:new_thread: RuntimeError('http_503')": 53,
+          "run:follow_up_seed: RuntimeError('http_503')": 3,
+          "run:approval: RuntimeError('http_503')": 16,
+          "run:approval_pause: RuntimeError('http_503')": 14
+        }
+      },
+      "ttft_p90_ms_at_knee": 4700,
+      "run_p95_ms_at_knee": 16000
+    },
+    "new_thread": {
+      "sustained_runs_per_second": 16.91,
+      "knee_users": 180,
+      "steps": 8,
+      "slo_broken": true,
+      "first_breach": {
+        "users": 210,
+        "breaches": [
+          "availability"
+        ],
+        "errors": {
+          "run:new_thread: RuntimeError('http_503')": 150
+        }
+      },
+      "ttft_p90_ms_at_knee": 3700,
+      "run_p95_ms_at_knee": 12000
+    }
+  }
+}

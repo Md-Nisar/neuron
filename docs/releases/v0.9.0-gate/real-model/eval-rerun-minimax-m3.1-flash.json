@@ -1,0 +1,278 @@
+{
+  "report_version": 1,
+  "model": "nvidia:minimaxai/minimax-m3.1-flash",
+  "git_sha": "1991f48a4c31c5217440ded6c86dbe35c4f9cbf6",
+  "dataset_versions": {
+    "single_turn": "1.1.0"
+  },
+  "trials": 3,
+  "infrastructure_errors": 1,
+  "suites": {
+    "single_turn": {
+      "dataset_version": "1.1.0",
+      "cases": 4,
+      "trials": 12,
+      "passes": 11,
+      "quality_failures": 0,
+      "infrastructure_errors": 1,
+      "pass_rate": 1.0,
+      "wilson_95": {
+        "low": 0.7411599827511859,
+        "high": 1.0
+      },
+      "pass_hat_k": 1.0,
+      "inconclusive_cases": 1,
+      "latency_ms": {
+        "p50": 9191.4,
+        "p95": 58342.7
+      },
+      "tokens": {
+        "total_tokens": 20649,
+        "input_tokens": 19655,
+        "output_tokens": 994,
+        "cache_read_tokens": 17792,
+        "reasoning_tokens": 0
+      },
+      "categories": {
+        "calculator_tool_selection": {
+          "cases": 2,
+          "trials": 6,
+          "passes": 5,
+          "quality_failures": 0,
+          "infrastructure_errors": 1,
+          "pass_rate": 1.0,
+          "wilson_95": {
+            "low": 0.565508505247919,
+            "high": 1.0
+          },
+          "pass_hat_k": 1.0,
+          "inconclusive_cases": 1
+        },
+        "utc_tool_selection": {
+          "cases": 2,
+          "trials": 6,
+          "passes": 6,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "pass_rate": 1.0,
+          "wilson_95": {
+            "low": 0.6096569663469354,
+            "high": 1.0
+          },
+          "pass_hat_k": 1.0,
+          "inconclusive_cases": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "calculator-tool-selection-001",
+          "category": "calculator_tool_selection",
+          "passed": false,
+          "reasons": [
+            "run failed: rate_limit_error"
+          ],
+          "trials": 3,
+          "passes": 2,
+          "quality_failures": 0,
+          "infrastructure_errors": 1,
+          "trial_results": [
+            {
+              "outcome": "infrastructure_error",
+              "reasons": [
+                "run failed: rate_limit_error"
+              ],
+              "duration_ms": 6570.0,
+              "tokens": {
+                "total_tokens": 821,
+                "input_tokens": 790,
+                "output_tokens": 31,
+                "cache_read_tokens": 768,
+                "reasoning_tokens": 0
+              },
+              "error_code": "rate_limit_error"
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 3195.7,
+              "tokens": {
+                "total_tokens": 1688,
+                "input_tokens": 1626,
+                "output_tokens": 62,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 52805.0,
+              "tokens": {
+                "total_tokens": 1688,
+                "input_tokens": 1626,
+                "output_tokens": 62,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "calculator-tool-selection-002",
+          "category": "calculator_tool_selection",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 5342.7,
+              "tokens": {
+                "total_tokens": 1723,
+                "input_tokens": 1640,
+                "output_tokens": 83,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 3806.1,
+              "tokens": {
+                "total_tokens": 1703,
+                "input_tokens": 1640,
+                "output_tokens": 63,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 54023.4,
+              "tokens": {
+                "total_tokens": 1713,
+                "input_tokens": 1640,
+                "output_tokens": 73,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "utc-tool-selection-001",
+          "category": "utc_tool_selection",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 62661.9,
+              "tokens": {
+                "total_tokens": 2642,
+                "input_tokens": 2526,
+                "output_tokens": 116,
+                "cache_read_tokens": 2304,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 5474.5,
+              "tokens": {
+                "total_tokens": 1739,
+                "input_tokens": 1631,
+                "output_tokens": 108,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 50231.4,
+              "tokens": {
+                "total_tokens": 1721,
+                "input_tokens": 1631,
+                "output_tokens": 90,
+                "cache_read_tokens": 896,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "utc-tool-selection-002",
+          "category": "utc_tool_selection",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 8147.1,
+              "tokens": {
+                "total_tokens": 1744,
+                "input_tokens": 1635,
+                "output_tokens": 109,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 9191.4,
+              "tokens": {
+                "total_tokens": 1729,
+                "input_tokens": 1635,
+                "output_tokens": 94,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 47963.2,
+              "tokens": {
+                "total_tokens": 1738,
+                "input_tokens": 1635,
+                "output_tokens": 103,
+                "cache_read_tokens": 1536,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

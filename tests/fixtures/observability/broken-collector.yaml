@@ -1,0 +1,15 @@
+# Deliberately invalid: the pipeline names a processor that is not defined. `otelcol-contrib
+# validate` must reject it (scripts/validate_observability.py reject-broken).
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: localhost:4318
+exporters:
+  debug: {}
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [no_such_processor]
+      exporters: [debug]

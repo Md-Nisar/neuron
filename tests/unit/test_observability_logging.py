@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import importlib
+from typing import Any
+
+import pytest
 import structlog
 import structlog.testing
 
+from neuron_agent.config.settings import get_settings
+from neuron_agent.graphs import main_graph
+from neuron_agent.observability import logging as logging_module
+from neuron_agent.observability.audit import audit
 from neuron_agent.observability.logging import bind_correlation_context
 
 
@@ -37,3 +45,52 @@ def test_bind_correlation_context_skips_unset_identifiers() -> None:
     assert "request_id" not in logs[0]
     assert "run_id" not in logs[0]
     assert logs[0]["thread_id"] == "thread-1"
+
+
+def test_audit_emits_fixed_schema_through_dedicated_logger() -> None:
+    with structlog.testing.capture_logs() as logs:
+        audit(
+            "authorization_denied",
+            outcome="denied",
+            actor="0123456789ab",
+            issuer_id="primary",
+            action="threads:read",
+            resource_type="thread",
+            resource_id="00000000-0000-0000-0000-000000000001",
+            reason="insufficient_scope",
+        )
+
+    assert len(logs) == 1
+    assert logs[0]["event"] == "authorization_denied"
+    assert logs[0]["audit"] is True
+    assert logs[0]["outcome"] == "denied"
+    assert logs[0]["actor"] == "0123456789ab"
+    assert logs[0]["issuer_id"] == "primary"
+    assert logs[0]["action"] == "threads:read"
+    assert logs[0]["resource_type"] == "thread"
+    assert logs[0]["resource_id"] == "00000000-0000-0000-0000-000000000001"
+    assert logs[0]["reason"] == "insufficient_scope"
+    assert "timestamp" in logs[0]
+    assert "sub" not in logs[0]
+
+
+def test_loading_graph_module_configures_logging_once_alongside_the_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Agent Server loads only the graph module; the API's own call must not reconfigure."""
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(structlog, "configure", lambda **kw: calls.append(kw))
+    monkeypatch.setattr(logging_module, "_configured", False)
+
+    importlib.reload(main_graph)
+    importlib.reload(main_graph)
+    settings = get_settings()
+    logging_module.configure_logging(
+        level=settings.log_level,
+        service=settings.name,
+        version=settings.version,
+        environment=settings.env,
+    )
+
+    assert len(calls) == 1
+    assert isinstance(calls[0]["processors"][-1], structlog.processors.JSONRenderer)

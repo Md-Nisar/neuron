@@ -1,0 +1,13 @@
+# Allowlist: nothing enters the build context unless it is listed here.
+*
+!pyproject.toml
+!uv.lock
+# Named by pyproject.toml (readme, license-files); the package build reads them.
+!README.md
+!LICENSE
+!NOTICE
+!src/
+# Even inside an allowed directory:
+**/__pycache__/
+**/*.pyc
+**/.env*

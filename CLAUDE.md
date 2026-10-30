@@ -26,6 +26,9 @@ make eval                   # agent quality regression checks (pytest -m eval)
 make security                # bandit -r src
 make build                  # uv build
 make api                    # run FastAPI app (uvicorn) on 127.0.0.1:8000
+make dev-auth >> .env       # development only: local JWT signing key + jwt settings
+make dev-jwks               # development only: serve that key's JWKS on 127.0.0.1:8765
+make dev-token              # development only: print a bearer token for the local API
 make run                    # run via `langgraph dev` (LangGraph Studio-compatible)
 ```
 
@@ -45,17 +48,22 @@ Module boundaries (enforced, see `AGENTS.md`):
 - `agents/` — agent composition and approved-tool wiring (`agents/factory.py`).
 - `models/` — the `create_agent`/provider boundary (`models/factory.py`).
 - `tools/` — bounded, read-only tool implementations.
-- `security/` — input, URL, and tool-allowlist policy (`security/input_policy.py`).
+- `security/` — authentication and authorization, plus input, URL, and tool-allowlist policy (`security/input_policy.py`). `auth.py` owns JWT verification (`TokenVerifier`), the `Principal`, the owner-key HMAC and the single `/v1` route dependency `require_permission`; `authorization.py` owns permissions and the per-run `AuthorizationContext`; `agent_server.py` holds the Agent Server auth handlers. Routes never parse tokens themselves, and the principal reaches graphs and tools only through the runtime `context` (ADR 0006).
 - `config/` — the only place environment variables are read (`config/settings.py`, `APP_*` prefixed, see `Settings`).
 - `prompts/` — versioned prompt assets (`prompts/system/main.md`), loaded via `prompts/loader.py`.
-- `observability/` — structlog JSON logging setup.
+- `observability/` — structlog JSON logging, audit events and OpenTelemetry setup (`telemetry.py`; names only in `semconv.py`).
 - `schemas/` — public API contracts and the `AgentAnswer` structured-output schema.
 
-Do not add retrieval, queues, custom persistence, subgraphs, or multi-agent orchestration without a concrete product requirement **and** a new/updated ADR in `docs/decisions/` — this is a deliberate constraint, not an oversight (see ADR 0001, 0002). There is currently no checkpointer for local invocation; durable thread state is deferred to LangGraph Agent Server persistence when deployed.
+Do not add retrieval, queues, custom persistence, subgraphs, or multi-agent orchestration without a concrete product requirement **and** a new or updated ADR in `docs/decisions/`. This is a deliberate constraint, not an oversight (see ADR 0001, 0002, 0005).
+
+Thread persistence follows ADR 0005:
+- `persistence/` selects a LangGraph checkpointer from `APP_CHECKPOINTER`: `auto`, `memory`, `postgres` or `none`.
+- `AgentService` owns thread rules, run leases and streaming (`POST /v1/agent/stream`).
+- The `langgraph.json` graph is compiled without a checkpointer, because Agent Server supplies its own.
 
 ## Security model
 
-The model is never trusted as a security boundary — enforcement lives in code (`security/input_policy.py`), not the system prompt. Tools are currently read-only and explicitly allow-listed; high-impact/mutating tool names are deny-listed until an authorization + idempotency + audit-log story exists (ADR 0003, `SECURITY.md`). User input, tool output, and any external/retrieved content are all untrusted. User IDs are hashed before entering graph state. No `eval`/shell-executing tools.
+The model is never trusted as a security boundary — enforcement lives in code (`security/input_policy.py`), not the system prompt. Tools are currently read-only and explicitly allow-listed; high-impact/mutating tool names are deny-listed until an authorization + idempotency + audit-log story exists (ADR 0003, `SECURITY.md`). User input, tool output, and any external/retrieved content are all untrusted. Identity comes only from a verified bearer token in `APP_AUTH_MODE=jwt` (required in staging/production); it enters graph state only as an HMAC owner key, and request `user_id`/`X-User-Id` are ignored. No `eval`/shell-executing tools.
 
 ## Extending the codebase
 
@@ -65,4 +73,12 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-Currently v0.2.0 ("Reliable Agent Runtime") per `docs/ROADMAP.md` — error taxonomy, enforced runtime limits, provider retry/backoff, hardened tool/input boundaries, rate limiting, an expanded failure-path test suite, eval dataset v1, and structured logging/telemetry are all implemented (see `CHANGELOG.md`). v0.3.0 ("Stateful + Streaming") is the active target. Check `docs/ROADMAP.md` and open issues/milestones before assuming a not-yet-released feature already exists.
+The latest tagged release is v0.9.0 ("Production Candidate", ADR 0012): a local reference stack (`docker-compose.reference.yml`, `make reference-up`), Locust load tests (`loadtest/`, `make load`), a threat model, a DAST workflow, a restore drill and a rollback rehearsal, with evidence in `docs/releases/v0.9.0-gate/`. The release freeze (`CONTRIBUTING.md`) started at the tag and holds until v1.0.0: `main` takes only bug fixes, documentation, tests, dependency and security updates, and compatible changes.
+
+v0.8.0 ("User Application", ADR 0010 and 0011) added the `web/` single-page app with Keycloak sign-in (PKCE), streaming chat, approvals, memories, data rights, conversation titles and feedback. v0.6.0 ("Production Deployment", ADR 0008) and v0.7.0 ("Extensible Agent Platform", ADR 0009) were tagged on 2026-10-28 as well. Their release gates (#160, #253, #293) were closed by the owner on 2026-10-29: #293 on the owner's report that the real browser and Keycloak run is done, #160 and #253 without a Render deployment or an OpenAI production-model run, which have never run. The v0.9.0 evidence is local: a Docker Compose stack, a fake model for load, and the NVIDIA free tier for the small real-model checks.
+
+Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.md`. Check `docs/ROADMAP.md` and open issues before assuming a not-yet-released feature already exists.
+
+## AI code verification
+
+Every PR passes the gates in `docs/AI_CODE_VERIFICATION.md` (`ci`, `ai-code-verification`, `codeql`, advisory `ai-review` on NVIDIA's free API catalog). Before opening a PR: keep it under 400 changed lines, add tests that fail without the change, justify any new dependency (the `new-dependencies` job rejects packages missing from PyPI or under 90 days old), and fill in `.github/pull_request_template.md`. Run the `security-reviewer` agent for critical-tier paths. Never claim the work is verified unless `make format lint typecheck test security` passed.

@@ -4,16 +4,99 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
       - run: uv python install 3.13
       - run: uv sync
       - run: uv run python -m ruff format --check src tests
       - run: uv run python -m ruff check src tests
-      - run: uv run python -m mypy src
-      - run: uv run python -m pytest tests/unit tests/graph tests/security tests/evals
-      - run: uv run python -m bandit -q -r src
+      - run: uv run python -m mypy src scripts/dev_token.py scripts/validate_observability.py scripts/flow_report.py
+      - run: uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/e2e tests/evals
+      # The dependency audit is platform-independent and `make` isn't on Windows runners.
+      - if: runner.os == 'Linux'
+        run: make security
+
+  # The web application (ADR 0010). Installs from the lockfile only; the Node version comes from
+  # web/.nvmrc and the package manager from web/package.json.
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=low
+
+  # Browser end to end (Chromium): the built web app, a real API process on the fake model and a
+  # stand-in sign-in provider, all on loopback. No secret, no provider call.
+  web-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - run: uv python install 3.13
+      - run: uv sync
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run e2e
+        working-directory: web
+        env:
+          CI: "true"
+      # A report, not a gate: which flows have API and browser end-to-end tests. Always exits 0.
+      - if: always()
+        run: uv run python scripts/flow_report.py
+
+  # Runs the real `promtool` and `otelcol-contrib` (pinned by version and SHA-256 in the script)
+  # on the alert rules and the Collector config. Standard library Python only; no secret.
+  observability-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate alert rules and Collector config
+        run: python3 scripts/validate_observability.py check --bin-dir "$RUNNER_TEMP/validators"
+      - name: Both validators reject a broken file
+        run: python3 scripts/validate_observability.py reject-broken --bin-dir "$RUNNER_TEMP/validators"

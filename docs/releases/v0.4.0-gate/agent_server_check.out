@@ -1,0 +1,9 @@
+[PASS] unauthenticated thread creation: 401
+[PASS] alice creates a thread; owner metadata is an opaque key, not the subject: owner=d528e70d2589...
+[PASS] alice runs the graph on her thread: answer=Local test response.
+[PASS] a run with forged context permissions completes (the context is ignored, not trusted): completed
+[PASS] bob reads, inspects, runs on, updates or deletes alice's thread: {'read': 404, 'state': 404, 'run': 404, 'update': 404, 'delete': 404}
+[PASS] bob's thread search excludes alice's thread: 0 threads visible to bob
+[PASS] alice still sees her thread: 200
+[PASS] a token without agent:invoke cannot create threads: 403
+8/8 checks passed

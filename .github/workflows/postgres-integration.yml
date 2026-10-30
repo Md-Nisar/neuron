@@ -1,0 +1,68 @@
+name: postgres-integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postgres-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Pinned by digest of the multi-arch index for the `16` tag. To refresh, read the
+      # `docker-content-digest` header of the index manifest (see docs/AI_CODE_VERIFICATION.md).
+      POSTGRES_IMAGE: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+      APP_TEST_POSTGRES_DSN: postgresql://postgres:ci-only-throwaway@localhost:5432/postgres
+      # The TLS success path of the start-up check (#139) must run here, not be skipped.
+      APP_TEST_POSTGRES_REQUIRE_TLS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A service container cannot mount a certificate, so the server is started here with TLS on
+      # and a throwaway self-signed certificate that is discarded with the job. The password is
+      # the same CI-only value as in the DSN above. The wait uses TCP (`-h 127.0.0.1`): the
+      # image's temporary initialisation server listens on the socket only.
+      - name: Start Postgres with TLS
+        run: |
+          set -euo pipefail
+          certs="$(mktemp -d)"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=localhost" \
+            -keyout "$certs/server.key" -out "$certs/server.crt"
+          # `mktemp -d` is 0700 and owned by the runner; the container's postgres user (uid 999)
+          # must be able to enter the directory and must own the key (Postgres insists on 0600).
+          chmod 755 "$certs"
+          sudo chown 999:999 "$certs/server.key" "$certs/server.crt"
+          sudo chmod 600 "$certs/server.key"
+          docker run -d --name postgres -p 5432:5432 \
+            -e POSTGRES_PASSWORD=ci-only-throwaway -v "$certs:/certs:ro" "$POSTGRES_IMAGE" \
+            -c ssl=on -c ssl_cert_file=/certs/server.crt -c ssl_key_file=/certs/server.key
+          for _ in $(seq 30); do
+            docker exec postgres pg_isready -h 127.0.0.1 -U postgres && exit 0
+            sleep 2
+          done
+          docker logs postgres >&2
+          exit 1
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - run: uv python install 3.13
+      - run: uv sync
+      # No provider key is mapped into this job; refuse to run if one appears in the environment.
+      - name: Refuse to run with a provider key
+        run: |
+          if [ -n "${OPENAI_API_KEY:-}" ] || [ -n "${APP_OPENAI_API_KEY:-}" ]; then
+            echo "A provider key is set; this job must not hold one." >&2
+            exit 1
+          fi
+      # `-m postgres` replaces the default `-m 'not integration'`, so only Postgres tests are
+      # selected; the live-model tests carry no `postgres` marker and cannot run here.
+      - name: Run the Postgres tests
+        run: uv run python -m pytest -m postgres -rs --junitxml=postgres-junit.xml
+      # A skipped test exits 0, and an unset DSN skips every test, so count outcomes.
+      - name: Require executed Postgres tests
+        run: uv run python scripts/require_postgres_tests.py postgres-junit.xml

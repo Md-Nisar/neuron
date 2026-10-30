@@ -1,24 +1,35 @@
 from __future__ import annotations
 
+import uuid
+
 import pytest
 import structlog.testing
 from fastapi.testclient import TestClient
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
+from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     AuthorizationError,
+    CapacityError,
     ConfigurationError,
+    PersistenceError,
     ProviderError,
     ProviderTimeoutError,
     RateLimitError,
+    RunTimeoutError,
     StructuredOutputError,
+    ThreadBusyError,
+    ThreadNotFoundError,
     ToolExecutionError,
     ValidationAppError,
 )
-from neuron_agent.schemas.agent import AgentResponse
+from neuron_agent.observability.logging import log_startup_configuration
+from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from neuron_agent.services.agent_service import AgentService
 
 
 def test_live_health_endpoint() -> None:
@@ -40,6 +51,18 @@ def test_agent_invoke_rejects_unexpected_fields() -> None:
     response = client.post("/v1/agent/invoke", json={"message": "hi", "unexpected_field": "value"})
     assert response.status_code == 422
     assert response.json() == {"detail": "validation_error"}
+
+
+def test_validation_failure_log_omits_the_rejected_input() -> None:
+    client = TestClient(app)
+    with structlog.testing.capture_logs() as logs:
+        response = client.post(
+            "/v1/agent/invoke", json={"message": "hi", "unexpected_field": "SECRET-MARKER-42"}
+        )
+    assert response.status_code == 422
+    [event] = [log for log in logs if log["event"] == "agent_request_validation_failed"]
+    assert event["errors"] == [{"type": "extra_forbidden", "loc": ("body", "unexpected_field")}]
+    assert "SECRET-MARKER-42" not in repr(logs)
 
 
 def test_agent_invoke_rejects_malformed_json() -> None:
@@ -76,7 +99,13 @@ def test_agent_invoke_rejects_oversized_body_via_content_length() -> None:
         (ProviderError("upstream failed"), 502, "internal_server_error"),
         (ToolExecutionError("tool failed"), 502, "internal_server_error"),
         (StructuredOutputError("bad structured output"), 502, "internal_server_error"),
+        (AgentStepLimitError("looped"), 422, "agent_step_limit_exceeded"),
         (AgentExecutionError("agent failed"), 500, "internal_server_error"),
+        (PersistenceError("db down"), 503, "internal_server_error"),
+        (ThreadNotFoundError("missing"), 404, "thread_not_found"),
+        (ThreadBusyError("busy"), 409, "thread_busy"),
+        (CapacityError("full"), 503, "too_many_streams"),
+        (RunTimeoutError("slow"), 504, "run_timeout"),
     ],
 )
 def test_agent_invoke_maps_app_errors_to_http(
@@ -115,7 +144,7 @@ def test_agent_invoke_returns_429_when_rate_limited(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     client = TestClient(app)
@@ -168,10 +197,201 @@ def test_agent_invoke_logs_error_type_and_duration_on_failure(
 def test_health_endpoints_are_not_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     client = TestClient(app)
     for _ in range(3):
         response = client.get("/health/live")
         assert response.status_code == 200
+
+
+def test_ready_endpoint_reports_ready_when_dependencies_reachable() -> None:
+    client = TestClient(app)
+    response = client.get("/health/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+
+
+def test_ready_endpoint_returns_503_when_checkpointer_unreachable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def not_ready(self: object) -> bool:
+        return False
+
+    monkeypatch.setattr(api_main.AgentService, "is_ready", not_ready)
+    client = TestClient(app)
+    response = client.get("/health/ready")
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready"}
+
+
+def test_ready_endpoint_consults_the_jwks_probe_without_a_model_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    probes: list[str] = []
+
+    async def verifier_ready() -> bool:
+        probes.append("jwks")
+        return False
+
+    async def no_model(*args: object, **kwargs: object) -> None:
+        raise AssertionError("readiness must not call the model")
+
+    monkeypatch.setattr(api_main.auth_verifier, "ready", verifier_ready)
+    monkeypatch.setattr(api_main.AgentService, "invoke", no_model, raising=False)
+    response = TestClient(app).get("/health/ready")
+    assert response.status_code == 503
+    assert probes == ["jwks"]
+
+
+def test_lifespan_opens_and_closes_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def startup(self: object) -> None:
+        calls.append("startup")
+
+    async def shutdown(self: object) -> None:
+        calls.append("shutdown")
+
+    monkeypatch.setattr(api_main.AgentService, "startup", startup)
+    monkeypatch.setattr(api_main.AgentService, "shutdown", shutdown)
+    with TestClient(app) as client:
+        assert client.get("/health/live").status_code == 200
+        assert calls == ["startup"]
+    assert calls == ["startup", "shutdown"]
+
+
+@pytest.mark.parametrize("thread_id", ["thread-1", "not-a-uuid", "", "1234"])
+def test_agent_invoke_rejects_malformed_thread_id(thread_id: str) -> None:
+    client = TestClient(app)
+    response = client.post("/v1/agent/invoke", json={"message": "hi", "thread_id": thread_id})
+    assert response.status_code == 422
+    assert response.json() == {"detail": "validation_error"}
+
+
+def test_agent_request_normalizes_thread_id_to_canonical_uuid() -> None:
+    upper = "6F9619FF-8B86-D011-B42D-00C04FC964FF"
+    assert AgentRequest(message="hi", thread_id=upper).thread_id == upper.lower()
+
+
+def test_agent_invoke_returns_404_for_unknown_or_foreign_thread(
+    monkeypatch: pytest.MonkeyPatch, echo_agent: object
+) -> None:
+    monkeypatch.setattr(
+        api_main,
+        "service",
+        AgentService(Settings(env="test", openai_api_key=None)),
+    )
+    client = TestClient(app)
+    created = client.post("/v1/agent/invoke", json={"message": "hi", "user_id": "alice"})
+    assert created.status_code == 200
+    thread_id = created.json()["thread_id"]
+
+    unknown = client.post(
+        "/v1/agent/invoke", json={"message": "hi", "thread_id": str(uuid.uuid4())}
+    )
+    foreign = client.post(
+        "/v1/agent/invoke", json={"message": "hi", "thread_id": thread_id, "user_id": "bob"}
+    )
+    assert unknown.status_code == foreign.status_code == 404
+    assert unknown.json() == foreign.json() == {"detail": "thread_not_found"}
+
+    owner = client.post(
+        "/v1/agent/invoke", json={"message": "again", "thread_id": thread_id, "user_id": "alice"}
+    )
+    assert owner.status_code == 200
+    assert owner.json()["thread_id"] == thread_id
+
+
+def test_startup_logs_the_effective_limits_once_without_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(
+        env="test",
+        rate_limit_requests_per_window=7,
+        rate_limit_burst=3,
+        max_concurrent_streams=11,
+        max_concurrent_runs_per_user=4,
+        user_token_budget=12_345,
+        request_timeout_seconds=33,
+        tool_timeout_seconds=9,
+        run_timeout_seconds=77,
+        postgres_dsn="postgresql://svc:pw-secret-1@db.example.test/neuron",
+        identity_hash_key="k" * 32,
+    )
+
+    async def startup(self: object) -> None:
+        return None
+
+    async def shutdown(self: object) -> None:
+        return None
+
+    monkeypatch.setattr(api_main, "settings", settings)
+    monkeypatch.setattr(api_main.AgentService, "startup", startup)
+    monkeypatch.setattr(api_main.AgentService, "shutdown", shutdown)
+    with structlog.testing.capture_logs() as logs:
+        with TestClient(app):
+            pass
+    lines = [line for line in logs if line["event"] == "effective_limits"]
+
+    assert len(lines) == 1
+    assert lines[0] == {
+        "event": "effective_limits",
+        "log_level": "info",
+        "limits_backend": "memory",
+        "rate_limit_enabled": True,
+        "rate_limit_requests_per_window": 7,
+        "rate_limit_window_seconds": 60,
+        "rate_limit_burst": 3,
+        "max_concurrent_streams": 11,
+        "max_concurrent_runs_per_user": 4,
+        "user_token_budget": 12_345,
+        "user_token_budget_window_seconds": 3600,
+        "request_timeout_seconds": 33,
+        "tool_timeout_seconds": 9,
+        "run_timeout_seconds": 77,
+        "shutdown_drain_seconds": 5.0,
+    }
+    assert "pw-secret-1" not in str(logs) and "k" * 32 not in str(logs)
+
+
+@pytest.mark.parametrize(
+    ("env", "warned"), [("production", True), ("staging", True), ("test", False)]
+)
+def test_stateless_checkpointer_is_logged_as_a_warning_in_deployed_environments(
+    env: str, warned: bool
+) -> None:
+    settings = Settings.model_construct(env=env, checkpointer="none", limits_backend="memory")
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(settings)
+    stateless = [line for line in logs if line["event"] == "stateless_deployment"]
+
+    assert [line["log_level"] for line in stateless] == (["warning"] if warned else [])
+
+
+def test_approved_langsmith_content_capture_is_logged_with_its_record_only() -> None:
+    settings = Settings.model_construct(
+        env="production",
+        checkpointer="postgres",
+        limits_backend="postgres",
+        langsmith_content_approved=True,
+        langsmith_content_approval_record="ticket-42",
+        langsmith_api_key="lsv2-secret-key",
+        postgres_dsn="postgresql://svc:pw-secret-1@h/n",
+    )
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(settings)
+    lines = [line for line in logs if line["event"] == "langsmith_content_capture_approved"]
+
+    assert lines == [
+        {
+            "event": "langsmith_content_capture_approved",
+            "log_level": "warning",
+            "approval_record": "ticket-42",
+        }
+    ]
+    assert "lsv2-secret-key" not in str(logs) and "pw-secret-1" not in str(logs)
+    with structlog.testing.capture_logs() as logs:
+        log_startup_configuration(Settings(env="test"))
+    assert not [x for x in logs if x["event"] == "langsmith_content_capture_approved"]

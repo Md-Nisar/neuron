@@ -1,0 +1,429 @@
+{
+  "report_version": 1,
+  "model": "nvidia:nvidia/nemotron-3-ultra-550b-a55b",
+  "git_sha": "102fec8a797535e6d5c0a04332b96299bcf76411",
+  "dataset_versions": {
+    "single_turn": "1.1.0"
+  },
+  "trials": 3,
+  "infrastructure_errors": 5,
+  "suites": {
+    "single_turn": {
+      "dataset_version": "1.1.0",
+      "cases": 6,
+      "trials": 18,
+      "passes": 6,
+      "quality_failures": 7,
+      "infrastructure_errors": 5,
+      "pass_rate": 0.46153846153846156,
+      "wilson_95": {
+        "low": 0.23205754301488138,
+        "high": 0.7085656756816795
+      },
+      "pass_hat_k": 0.6666666666666666,
+      "inconclusive_cases": 3,
+      "latency_ms": {
+        "p50": 5494.3,
+        "p95": 27070.6
+      },
+      "tokens": {
+        "total_tokens": 10746,
+        "input_tokens": 9472,
+        "output_tokens": 1274,
+        "cache_read_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "categories": {
+        "calculator_tool_selection": {
+          "cases": 2,
+          "trials": 6,
+          "passes": 0,
+          "quality_failures": 4,
+          "infrastructure_errors": 2,
+          "pass_rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.48990002040399916
+          },
+          "pass_hat_k": 0.0,
+          "inconclusive_cases": 1
+        },
+        "direct_factual": {
+          "cases": 2,
+          "trials": 6,
+          "passes": 6,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "pass_rate": 1.0,
+          "wilson_95": {
+            "low": 0.6096569663469354,
+            "high": 1.0
+          },
+          "pass_hat_k": 1.0,
+          "inconclusive_cases": 0
+        },
+        "utc_tool_selection": {
+          "cases": 2,
+          "trials": 6,
+          "passes": 0,
+          "quality_failures": 3,
+          "infrastructure_errors": 3,
+          "pass_rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.5615060804490177
+          },
+          "pass_hat_k": null,
+          "inconclusive_cases": 2
+        }
+      },
+      "results": [
+        {
+          "case_id": "direct-factual-001",
+          "category": "direct_factual",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 2289.0,
+              "tokens": {
+                "total_tokens": 828,
+                "input_tokens": 727,
+                "output_tokens": 101,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 2374.3,
+              "tokens": {
+                "total_tokens": 806,
+                "input_tokens": 727,
+                "output_tokens": 79,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 37039.1,
+              "tokens": {
+                "total_tokens": 816,
+                "input_tokens": 727,
+                "output_tokens": 89,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "direct-factual-002",
+          "category": "direct_factual",
+          "passed": true,
+          "reasons": [],
+          "trials": 3,
+          "passes": 3,
+          "quality_failures": 0,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 20425.0,
+              "tokens": {
+                "total_tokens": 929,
+                "input_tokens": 728,
+                "output_tokens": 201,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 2966.0,
+              "tokens": {
+                "total_tokens": 919,
+                "input_tokens": 728,
+                "output_tokens": 191,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "pass",
+              "reasons": [],
+              "duration_ms": 10563.0,
+              "tokens": {
+                "total_tokens": 914,
+                "input_tokens": 728,
+                "output_tokens": 186,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "calculator-tool-selection-001",
+          "category": "calculator_tool_selection",
+          "passed": false,
+          "reasons": [
+            "expected tools ['calculator'], got []",
+            "answer has no number equal to 57"
+          ],
+          "trials": 3,
+          "passes": 0,
+          "quality_failures": 3,
+          "infrastructure_errors": 0,
+          "trial_results": [
+            {
+              "outcome": "fail",
+              "reasons": [
+                "expected tools ['calculator'], got []",
+                "answer has no number equal to 57"
+              ],
+              "duration_ms": 9577.9,
+              "tokens": {
+                "total_tokens": 781,
+                "input_tokens": 729,
+                "output_tokens": 52,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "fail",
+              "reasons": [
+                "expected tools ['calculator'], got []",
+                "answer has no number equal to 57"
+              ],
+              "duration_ms": 5494.3,
+              "tokens": {
+                "total_tokens": 795,
+                "input_tokens": 729,
+                "output_tokens": 66,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "fail",
+              "reasons": [
+                "expected tools ['calculator'], got []",
+                "answer has no number equal to 57"
+              ],
+              "duration_ms": 3361.9,
+              "tokens": {
+                "total_tokens": 787,
+                "input_tokens": 729,
+                "output_tokens": 58,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "calculator-tool-selection-002",
+          "category": "calculator_tool_selection",
+          "passed": false,
+          "reasons": [
+            "expected tools ['calculator'], got []",
+            "run failed: rate_limit_error"
+          ],
+          "trials": 3,
+          "passes": 0,
+          "quality_failures": 1,
+          "infrastructure_errors": 2,
+          "trial_results": [
+            {
+              "outcome": "fail",
+              "reasons": [
+                "expected tools ['calculator'], got []"
+              ],
+              "duration_ms": 4436.1,
+              "tokens": {
+                "total_tokens": 833,
+                "input_tokens": 733,
+                "output_tokens": 100,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "infrastructure_error",
+              "reasons": [
+                "run failed: rate_limit_error"
+              ],
+              "duration_ms": 3147.2,
+              "tokens": {
+                "total_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": "rate_limit_error"
+            },
+            {
+              "outcome": "infrastructure_error",
+              "reasons": [
+                "run failed: rate_limit_error"
+              ],
+              "duration_ms": 2659.0,
+              "tokens": {
+                "total_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": "rate_limit_error"
+            }
+          ]
+        },
+        {
+          "case_id": "utc-tool-selection-001",
+          "category": "utc_tool_selection",
+          "passed": false,
+          "reasons": [
+            "run failed: rate_limit_error",
+            "expected tools ['utc_now'], got []"
+          ],
+          "trials": 3,
+          "passes": 0,
+          "quality_failures": 1,
+          "infrastructure_errors": 2,
+          "trial_results": [
+            {
+              "outcome": "infrastructure_error",
+              "reasons": [
+                "run failed: rate_limit_error"
+              ],
+              "duration_ms": 2593.2,
+              "tokens": {
+                "total_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": "rate_limit_error"
+            },
+            {
+              "outcome": "infrastructure_error",
+              "reasons": [
+                "run failed: rate_limit_error"
+              ],
+              "duration_ms": 15559.6,
+              "tokens": {
+                "total_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": "rate_limit_error"
+            },
+            {
+              "outcome": "fail",
+              "reasons": [
+                "expected tools ['utc_now'], got []"
+              ],
+              "duration_ms": 14732.6,
+              "tokens": {
+                "total_tokens": 788,
+                "input_tokens": 727,
+                "output_tokens": 61,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        },
+        {
+          "case_id": "utc-tool-selection-002",
+          "category": "utc_tool_selection",
+          "passed": false,
+          "reasons": [
+            "run failed: rate_limit_error",
+            "expected tools ['utc_now'], got []"
+          ],
+          "trials": 3,
+          "passes": 0,
+          "quality_failures": 2,
+          "infrastructure_errors": 1,
+          "trial_results": [
+            {
+              "outcome": "infrastructure_error",
+              "reasons": [
+                "run failed: rate_limit_error"
+              ],
+              "duration_ms": 13566.2,
+              "tokens": {
+                "total_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": "rate_limit_error"
+            },
+            {
+              "outcome": "fail",
+              "reasons": [
+                "expected tools ['utc_now'], got []"
+              ],
+              "duration_ms": 20270.8,
+              "tokens": {
+                "total_tokens": 775,
+                "input_tokens": 730,
+                "output_tokens": 45,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            },
+            {
+              "outcome": "fail",
+              "reasons": [
+                "expected tools ['utc_now'], got []"
+              ],
+              "duration_ms": 5211.7,
+              "tokens": {
+                "total_tokens": 775,
+                "input_tokens": 730,
+                "output_tokens": 45,
+                "cache_read_tokens": 0,
+                "reasoning_tokens": 0
+              },
+              "error_code": null
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

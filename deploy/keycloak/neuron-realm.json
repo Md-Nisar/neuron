@@ -1,0 +1,171 @@
+{
+  "realm": "neuron",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "neuron-user",
+        "description": "Full use of the assistant"
+      },
+      {
+        "name": "neuron-reader",
+        "description": "Read-only: list and read own threads"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "neuron-web",
+      "name": "neuron web application (development)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:5173/"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.header.type.rfc9068": "true",
+        "post.logout.redirect.uris": "http://localhost:5173/"
+      },
+      "protocolMappers": [
+        {
+          "name": "neuron-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "neuron-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "roles-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "nbf-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "nbf",
+            "claim.value": "0",
+            "jsonType.label": "long",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "neuron-dev-test",
+      "name": "neuron integration test client (development; password grant)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": true,
+      "attributes": {
+        "access.token.header.type.rfc9068": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "neuron-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "neuron-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "roles-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "nbf-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "nbf",
+            "claim.value": "0",
+            "jsonType.label": "long",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "alice@neuron.invalid",
+      "firstName": "Alice",
+      "lastName": "Dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-alice",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "neuron-user"
+      ]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "bob@neuron.invalid",
+      "firstName": "Bob",
+      "lastName": "Dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-only-bob",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "neuron-reader"
+      ]
+    }
+  ]
+}

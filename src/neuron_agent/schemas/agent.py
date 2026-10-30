@@ -1,8 +1,19 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Typed API and structured-output schemas."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+import unicodedata
+import uuid
+from datetime import datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+
+# The longest conversation title, set from the first message or by `PATCH /v1/threads/{id}`.
+TITLE_MAX_CHARS = 80
 
 
 class AgentRequest(BaseModel):
@@ -16,6 +27,17 @@ class AgentRequest(BaseModel):
     thread_id: str | None = Field(default=None, max_length=255)
     user_id: str | None = Field(default=None, max_length=128)
 
+    @field_validator("thread_id")
+    @classmethod
+    def require_uuid_thread_id(cls, value: str | None) -> str | None:
+        """Thread IDs are server-minted UUIDs; normalize to the canonical lowercase form."""
+        if value is None:
+            return None
+        try:
+            return str(uuid.UUID(value))
+        except ValueError as exc:
+            raise ValueError("thread_id must be a UUID") from exc
+
 
 class AgentAnswer(BaseModel):
     """Structured response contract for application consumers."""
@@ -23,13 +45,232 @@ class AgentAnswer(BaseModel):
     answer: str = Field(min_length=1)
     used_tools: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
+    refused: bool = Field(
+        default=False,
+        description="True when the request was declined or the data is not available to you.",
+    )
+    clarification_needed: bool = Field(
+        default=False,
+        description="True when the answer asks the user for missing detail instead of answering.",
+    )
 
 
 class AgentResponse(BaseModel):
-    """HTTP response payload."""
+    """HTTP response payload for a run that finished."""
 
+    status: Literal["completed"] = "completed"
     request_id: str
     thread_id: str
+    run_id: str | None = None
     answer: str
     used_tools: list[str]
     confidence: float
+    refused: bool = False
+    clarification_needed: bool = False
+
+
+class PendingAction(BaseModel):
+    """A tool call waiting for a decision, exactly as the model made it."""
+
+    name: str
+    args: dict[str, Any]
+
+
+class ApprovalRequest(BaseModel):
+    """What the caller is asked to decide. One decision covers every action listed."""
+
+    approval_id: str
+    actions: list[PendingAction]
+    allowed_decisions: list[Literal["approve", "reject"]]
+
+
+class ApprovalRequiredResponse(BaseModel):
+    """HTTP response payload for a run that paused before a tool that needs approval."""
+
+    status: Literal["approval_required"] = "approval_required"
+    request_id: str
+    thread_id: str
+    approval: ApprovalRequest
+
+
+class ApprovalDecisionRequest(BaseModel):
+    """`POST /v1/threads/{thread_id}/approvals/{approval_id}` body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["approve", "reject"]
+
+
+class RenameThreadRequest(BaseModel):
+    """`PATCH /v1/threads/{thread_id}` body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def _plain_title(cls, value: str) -> str:
+        """Whitespace collapsed, 1 to 80 characters, no control or invisible characters."""
+        if any(unicodedata.category(c)[0] == "C" for c in value if c not in "\t\n\r"):
+            raise ValueError("title contains control or invisible characters")
+        title = " ".join(value.split())
+        if not 1 <= len(title) <= TITLE_MAX_CHARS:
+            raise ValueError(f"title must be 1 to {TITLE_MAX_CHARS} characters")
+        return title
+
+
+POSITIVE_REASONS = ("helpful", "accurate")
+NEGATIVE_REASONS = ("inaccurate", "unhelpful", "unsafe", "other")
+FeedbackReason = Literal["helpful", "accurate", "inaccurate", "unhelpful", "unsafe", "other"]
+
+
+class FeedbackRequest(BaseModel):
+    """`POST /v1/threads/{thread_id}/runs/{run_id}/feedback` body. A score and a fixed reason:
+    free text is not accepted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    score: Literal[-1, 1]
+    reason: FeedbackReason | None = None
+
+    @field_validator("score", mode="before")
+    @classmethod
+    def _not_a_bool(cls, value: object) -> object:
+        """`true` equals 1 in Python; a score is a number."""
+        if isinstance(value, bool):
+            raise ValueError("score must be -1 or 1")
+        return value
+
+    @model_validator(mode="after")
+    def _reason_fits_the_score(self) -> FeedbackRequest:
+        allowed = POSITIVE_REASONS if self.score > 0 else NEGATIVE_REASONS
+        if self.reason is not None and self.reason not in allowed:
+            raise ValueError("reason does not fit the score")
+        return self
+
+
+class FeedbackResponse(BaseModel):
+    """The rating that stands for the run (the first one, if it was rated before)."""
+
+    run_id: str
+    score: Literal[-1, 1]
+    reason: FeedbackReason | None = None
+
+
+class ThreadTitleResponse(BaseModel):
+    thread_id: str
+    title: str
+
+
+class ToolCallRecord(BaseModel):
+    """A tool call the assistant made: its name, a bounded summary of the arguments and how it
+    ended. Never the tool's output."""
+
+    name: str
+    summary: str
+    status: Literal["pending", "completed", "failed", "rejected"]
+
+
+class ThreadMessage(BaseModel):
+    """One conversation turn as exposed to clients."""
+
+    role: Literal["user", "assistant"]
+    content: str
+    tool_calls: list[ToolCallRecord] = Field(default_factory=list)
+    run_id: str | None = None
+
+
+class ThreadHistoryResponse(BaseModel):
+    """A page of a thread's conversation, oldest first."""
+
+    thread_id: str
+    messages: list[ThreadMessage]
+    total: int
+    limit: int
+    offset: int
+
+
+class UserThreadSummary(BaseModel):
+    """Privacy-safe thread listing item without conversation content."""
+
+    thread_id: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+    title: str | None = None
+
+
+class UserThreadsResponse(BaseModel):
+    """One page of the authenticated caller's thread summaries."""
+
+    threads: list[UserThreadSummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class ExportedThread(BaseModel):
+    """A thread page in a caller's data export."""
+
+    thread_id: str
+    created_at: datetime
+    updated_at: datetime
+    message_total: int
+    messages: list[ThreadMessage]
+    title: str | None = None
+
+
+class MemoryItem(BaseModel):
+    """One of the user's memories (what they asked the assistant to remember)."""
+
+    id: str
+    text: str
+    created_at: datetime
+
+
+class MemoriesResponse(BaseModel):
+    """A page of the caller's memories, oldest first."""
+
+    memories: list[MemoryItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class MemoryErasureResponse(BaseModel):
+    """Result of deleting all of the caller's memories."""
+
+    erased_count: int
+
+
+class UserDataExportResponse(BaseModel):
+    """Paginated conversation export, with independent thread/message offsets."""
+
+    threads: list[ExportedThread]
+    total_threads: int
+    limit: int
+    offset: int
+    message_limit: int
+    message_offset: int
+    has_more_messages: bool
+    # The caller's memories, whole, on the first page only (offset 0); empty when memory is off.
+    memories: list[MemoryItem] = Field(default_factory=list)
+
+
+class UserDataErasureResponse(BaseModel):
+    """Result of an idempotent erase-all request.
+
+    `complete` is false while any owned thread was skipped because a run was active on it: the
+    caller has not erased everything and should repeat the request once the run has ended.
+    """
+
+    erased_count: int
+    skipped_busy_count: int
+    # How many memories were deleted with the threads (0 when memory is off).
+    erased_memory_count: int = 0
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def complete(self) -> bool:
+        return self.skipped_busy_count == 0

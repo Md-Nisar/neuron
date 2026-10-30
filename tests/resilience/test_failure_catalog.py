@@ -20,7 +20,7 @@ from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
-    AgentExecutionError,
+    AgentStepLimitError,
     ConfigurationError,
     ProviderError,
     ProviderTimeoutError,
@@ -38,14 +38,14 @@ _SECRET_MARKER = "sk-test-secret-should-never-leak"  # noqa: S105 -- leakage-det
 def _generous_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     """Neutralize the shared token bucket so unrelated failure tests never hit it.
 
-    `api_main.rate_limiter` is a module-level singleton reused for every request
+    `api_main.ip_rate_limiter` is a module-level singleton reused for every request
     in the process, keyed by client host ("testclient" for every TestClient call
     in the whole suite). Without this, the many real requests this file issues
     would exhaust the same bucket other test files already draw from.
     """
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1000, requests_per_window=1000, window_seconds=60),
     )
 
@@ -89,9 +89,9 @@ def _generous_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
             "internal_server_error",
         ),
         (
-            AgentExecutionError(f"agent execution failed: {_SECRET_MARKER}"),
-            500,
-            "internal_server_error",
+            AgentStepLimitError(f"Recursion limit of 16 reached: {_SECRET_MARKER}"),
+            422,
+            "agent_step_limit_exceeded",
         ),
     ],
     ids=[
@@ -189,7 +189,7 @@ def test_agent_invoke_returns_429_when_client_rate_limited(
     monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
     monkeypatch.setattr(
         api_main,
-        "rate_limiter",
+        "ip_rate_limiter",
         InMemoryTokenBucketRateLimiter(capacity=1, requests_per_window=1, window_seconds=60),
     )
     client = TestClient(app)

@@ -49,6 +49,28 @@ Enforcement is a new `app.middleware("http")` in `api/main.py`, scoped to `reque
 
 Default configuration values are chosen so the existing test suite (which issues a modest number of sequential requests against a shared `TestClient`/app instance) is not incidentally throttled; tests targeting rate-limit behavior construct or substitute a limiter with a small capacity explicitly.
 
+## v0.4.0 Resource Limits
+
+In JWT mode, request buckets are keyed by the principal's keyed-HMAC owner key
+from ADR 0006. IP buckets are used only in local `AUTH_MODE=none` and after
+failed bearer authentication (to slow token guessing). Forwarded client IPs are
+accepted only when the immediate peer matches `APP_TRUSTED_PROXIES`; otherwise
+proxy headers are ignored. `_client_ip` is the only place proxy headers are
+parsed: `neuron-api` turns Uvicorn's proxy-header rewriting off (ADR 0008,
+decision 3), so there is no second trusted set to configure.
+
+`APP_MAX_CONCURRENT_RUNS_PER_USER` caps invoke and stream runs together per
+principal, while `APP_MAX_CONCURRENT_STREAMS` remains the process-wide stream
+cap. `APP_USER_TOKEN_BUDGET` and `APP_USER_TOKEN_BUDGET_WINDOW_SECONDS` define a
+rolling, per-principal provider-token budget charged from model `usage_metadata`
+after each run. Since v0.6.0 a run reserves `APP_MAX_OUTPUT_TOKENS` plus a prompt
+estimate at admission and settles to the real usage, or to the whole reservation when
+usage metadata is unavailable (ADR 0008 decision 8). With `APP_LIMITS_BACKEND=memory`
+budgets reset on restart and each replica enforces its own limits; with `postgres`
+the budget is a shared, durable ledger (`persistence/token_budget.py`). Limit-exceeded
+telemetry logs only the limit type and an opaque owner-key prefix, never a raw
+subject or IP address.
+
 ## Consequences
 
-Callers are protected from a single high-volume source at the cost of only IP-granularity limiting (shared IPs — NAT, proxies — share a bucket). The limiter is process-local: it resets on restart and does not coordinate across multiple worker processes or instances, which is an explicit, documented limitation rather than a hidden one. Moving to a multi-instance deployment requires implementing `RateLimiter` against a shared backend (e.g. Redis) and swapping the instance constructed in `api/main.py` — no other call site changes.
+Callers are protected from a single high-volume source at the cost of only IP-granularity limiting (shared IPs — NAT, proxies — share a bucket). The limiter is process-local: it resets on restart and does not coordinate across multiple worker processes or instances, which is an explicit, documented limitation rather than a hidden one. Moving to a multi-instance deployment requires implementing `RateLimiter` against a shared backend and selecting it with `APP_LIMITS_BACKEND` (ADR 0008 decision 8); #148 did so with Postgres (`persistence/rate_limiter.py`): an `UNLOGGED` token-bucket table, one atomic upsert per rate-limited request with database-clock timestamps, so a burst split across replicas is limited to the burst in total. Its accepted trade-offs: every rate-limited request costs one database write (an in-memory IP limiter in front sheds unauthenticated floods first), and an `UNLOGGED` table is empty after a crash, an unclean shutdown, a failover or a point-in-time restore, which grants every caller a fresh burst until the buckets refill. A database error fails the request closed (`503 persistence_error`). IP keys become HMACs under a key derived from `APP_IDENTITY_HASH_KEY` (HKDF, its own label), so the table holds pseudonyms, which are still personal data. The earlier note that no other call site would change no longer holds: a shared backend needs I/O, so `RateLimiter`, `TokenBudget` and the new `RunGuard` are async Protocols in `security/`, and every call site awaits them (`api/main.py`, `security/auth.py`, `services/agent_service.py`). The in-memory implementations behave as before.

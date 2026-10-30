@@ -23,3 +23,32 @@ def test_calculator_rejects_huge_result() -> None:
 def test_calculator_rejects_oversized_expression() -> None:
     with pytest.raises(ValidationAppError):
         calculator.invoke({"expression": "1" + "+1" * 200})
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "7 // 2",  # floor division is not on the allow-list
+        "1 << 2",
+        "5 & 3",
+        "~5",  # unsupported unary operator
+        "not 1",
+        "x + 1",  # names are not evaluated
+        "'a' + 'b'",  # strings are not numbers
+        "[1, 2][0]",
+        "1 if 1 else 2",
+        "1 / 0",
+        "(-8) ** 0.5",  # the result is complex, not a number
+    ],
+)
+def test_calculator_rejects_everything_outside_plain_arithmetic(expression: str) -> None:
+    with pytest.raises(ValidationAppError):
+        calculator.invoke({"expression": expression})
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [("-3 + 5", "2"), ("+4", "4"), ("7 % 4", "3"), ("2 ** 10", "1024"), ("9 / 2", "4.5")],
+)
+def test_calculator_supports_the_documented_operators(expression: str, expected: str) -> None:
+    assert calculator.invoke({"expression": expression}) == expected

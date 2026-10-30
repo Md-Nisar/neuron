@@ -1,0 +1,101 @@
+name: nightly-eval
+
+# Live agent evals against the NVIDIA free-tier development model (ADR 0007 section 6).
+# One scheduled run a night plus manual runs: see "Automated runs" in EVALUATION.md before
+# changing the schedule, the trial count or the request throttle.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      trials:
+        description: Runs per eval case (at least 3, for the security gate)
+        default: "3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-eval
+  cancel-in-progress: false
+
+env:
+  APP_DEFAULT_MODEL: nvidia:nvidia/nemotron-3-ultra-550b-a55b
+
+jobs:
+  live-eval:
+    runs-on: ubuntu-latest
+    # 3 trials of every suite take about 74 minutes (run 39225629460) at the default 30 model
+    # calls per minute (EVALUATION.md). The cap leaves 36 minutes over that; a 75 minute cap
+    # cut a run off before the compare step. ai-review skips 03:00 to 05:30 UTC, which covers
+    # the 03:17 start plus this cap, so keep the two in step (tests/unit/test_workflows.py).
+    timeout-minutes: 110
+    steps:
+      - name: Check the provider secret
+        id: provider
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          if [ -n "$NVIDIA_API_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::NVIDIA_API_KEY is not configured; skipping the live evals."
+          fi
+      - name: Check the model is reachable
+        if: steps.provider.outputs.configured == 'true'
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          # One tiny call before the long run. Only the status is printed: 401/403 is a bad
+          # key, 404 is an account without access to this model, 410 a retired model.
+          model="${APP_DEFAULT_MODEL#*:}"
+          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+            https://integrate.api.nvidia.com/v1/chat/completions \
+            -H "Authorization: Bearer $NVIDIA_API_KEY" -H 'content-type: application/json' \
+            -d "{\"model\":\"$model\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}")
+          if [ "$status" != "200" ]; then
+            echo "::error::$model returned HTTP $status; check NVIDIA_API_KEY and the model (EVALUATION.md, Automated runs)."
+            exit 1
+          fi
+      - if: steps.provider.outputs.configured == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.provider.outputs.configured == 'true'
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - if: steps.provider.outputs.configured == 'true'
+        run: |
+          uv python install 3.13
+          uv sync
+      - name: Run the live evals
+        if: steps.provider.outputs.configured == 'true'
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          TRIALS: ${{ inputs.trials || '3' }}
+        run: |
+          case "$TRIALS" in ''|*[!0-9]*) echo "::error::trials must be a positive integer"; exit 1;; esac
+          # The security gate is pass^k = 100% with k >= 3 (ADR 0007 section 6); compare also enforces it.
+          if [ "$TRIALS" -lt 3 ]; then echo "::error::trials must be at least 3 for the security gate"; exit 1; fi
+          uv run neuron-eval --trials "$TRIALS" --output report.json > /dev/null
+      - name: Compare with the committed baseline
+        if: steps.provider.outputs.configured == 'true'
+        run: |
+          # evals/baselines/<model id without provider, "/" as "__">.json
+          model="${APP_DEFAULT_MODEL#*:}"
+          baseline="evals/baselines/${model//\//__}.json"
+          if [ ! -f "$baseline" ]; then
+            echo "::notice::No baseline at $baseline; only the security gate applies. Review the uploaded report and commit it as the first baseline."
+          fi
+          # Exit 1: a gate failed. Exit 2: inconclusive (infrastructure errors).
+          status=0
+          uv run neuron-eval compare "$baseline" report.json > comparison.json || status=$?
+          cat comparison.json
+          exit "$status"
+      - name: Upload the report
+        if: always() && steps.provider.outputs.configured == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eval-report
+          path: |
+            report.json
+            comparison.json
+          if-no-files-found: warn
+          retention-days: 90

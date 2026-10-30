@@ -1,0 +1,5 @@
+/tmp/claude-0/-home-user-neuron/618af0b4-bc3f-5955-8ef4-c2ecd1a71b5a/scratchpad/ls_stub.py:25: LangSmithWarning: Creating feedback for a run without session_id is deprecated and will stop working in a future release. See https://docs.langchain.com/langsmith/smithdb-sdk-migration-feedback#feedback-create
+  client.create_feedback(str(rid), key="user_score", score=1.0, comment=None, extra={"reason": "helpful"})
+our run id: e04bc484-12e9-49fc-81be-d3106be31718
+/runs/multipart 1855 contains run id: True
+/feedback 327 contains run id: True

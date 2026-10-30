@@ -1,0 +1,130 @@
+[
+ {
+  "step": "new thread",
+  "status": 200,
+  "host": "8101",
+  "events": [
+   "done",
+   "final",
+   "run_started",
+   "token"
+  ],
+  "ttft_s": 27.97,
+  "duration_s": 28.0,
+  "thread_id": "2fca5d74-fe31-41d9-93e5-050e26c728ca",
+  "run_id": "5c78c0bc-6db3-4ab1-a76f-b1a6108c9837",
+  "answer": "[\n[{\"name\": \"AgentAnswer\", \"parameters\": {\"answer\": \"Hello there, how are you\", \"confidence\": 1.0, \"refused\": false, \"clarification_needed\": false}}]",
+  "final": "completed"
+ },
+ {
+  "step": "follow-up, other replica",
+  "status": 200,
+  "host": "8102",
+  "events": [
+   "done",
+   "final",
+   "run_started",
+   "token"
+  ],
+  "ttft_s": 2.82,
+  "duration_s": 2.88,
+  "thread_id": "2fca5d74-fe31-41d9-93e5-050e26c728ca",
+  "run_id": "e059d0cf-8061-4475-9af4-c127d7f01c96",
+  "answer": "You asked me to say hello in exactly five words.",
+  "final": "completed"
+ },
+ {
+  "step": "calculator tool",
+  "status": 200,
+  "host": "8101",
+  "events": [
+   "done",
+   "final",
+   "run_started",
+   "token"
+  ],
+  "ttft_s": 2.49,
+  "duration_s": 2.51,
+  "thread_id": "846335ef-aafc-4730-9a0f-db755150edc6",
+  "run_id": "40d75193-3162-47c9-a2ed-aaf07f4662f4",
+  "answer": "[[{\"name\":\"calculator\",\"parameters\":{\"expression\":\"17 * 23\"}}]",
+  "final": "completed",
+  "contains_expected": false
+ },
+ {
+  "step": "utc tool",
+  "status": 200,
+  "host": "8101",
+  "events": [
+   "done",
+   "final",
+   "run_started",
+   "token"
+  ],
+  "ttft_s": 12.22,
+  "duration_s": 12.24,
+  "thread_id": "6714c074-d15c-407d-a4dc-92bdb112a1c1",
+  "run_id": "d700086b-6a94-484c-823d-35bee27d401f",
+  "answer": "[[{\"name\":\"utc_now\",\"parameters\":{}}]",
+  "final": "completed"
+ },
+ {
+  "step": "remember pauses for approval",
+  "status": 200,
+  "host": "8101",
+  "events": [
+   "done",
+   "final",
+   "run_started",
+   "token"
+  ],
+  "ttft_s": 1.62,
+  "duration_s": 1.64,
+  "thread_id": "22ecc616-2573-47eb-9d1b-558f7cfb6f24",
+  "run_id": "18585f4a-0ca8-4abe-acec-ab461e31e1e7",
+  "answer": "[[{ \"name\": \"remember\", \"parameters\": { \"text\": \"my favourite colour is teal\" } }]",
+  "final": "completed"
+ },
+ {
+  "step": "recall in a new thread",
+  "status": 200,
+  "host": "8101",
+  "events": [
+   "done",
+   "final",
+   "run_started",
+   "token"
+  ],
+  "ttft_s": 2.06,
+  "duration_s": 2.07,
+  "thread_id": "7a6aed9e-4dd3-4a89-bad9-afeb345dbbd7",
+  "run_id": "598d58a8-e193-435e-a067-a0be0e55b793",
+  "answer": "[[{\"name\": \"recall\", \"parameters\": {}}]",
+  "final": "completed",
+  "contains_expected": false
+ },
+ {
+  "step": "history on the other replica",
+  "status": 200
+ },
+ {
+  "step": "feedback on the answer",
+  "status": 200
+ },
+ {
+  "step": "another user cannot read it (404)",
+  "status": 404
+ },
+ {
+  "step": "rate limits and reads stay healthy",
+  "status": 200
+ },
+ {
+  "step": "delete thread",
+  "status": 204
+ },
+ {
+  "step": "deleted thread is gone (404)",
+  "status": 404
+ }
+]

@@ -1,22 +1,27 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import openai
 import pytest
 import structlog.testing
 from langchain.agents.structured_output import StructuredOutputValidationError
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphRecursionError
 
+from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     ConfigurationError,
     ProviderError,
     ProviderTimeoutError,
     RateLimitError,
 )
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
-from neuron_agent.graphs.main_graph import call_agent
+from neuron_agent.graphs.main_graph import build_graph, call_agent, graph
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.state.main import MainGraphState
 
@@ -29,14 +34,33 @@ class FakeAgent:
     async def ainvoke(
         self, _: dict[str, object], *, config: dict[str, object]
     ) -> dict[str, object]:
-        assert config["recursion_limit"] == 5
+        assert config["recursion_limit"] == 16
         assert str(config["run_id"]) == "12345678-1234-5678-1234-567812345678"
         return {
-            "messages": [AIMessage(content="4")],
+            "messages": [
+                *_state()["messages"],
+                AIMessage(content="", tool_calls=[_call("calculator", "call-1")]),
+                ToolMessage(content="4", tool_call_id="call-1"),
+                AIMessage(content="4"),
+            ],
             "structured_response": AgentAnswer(
                 answer="4", used_tools=["calculator"], confidence=1.0
             ),
         }
+
+
+def _call(name: str, call_id: str) -> dict[str, Any]:
+    return {"name": name, "args": {}, "id": call_id}
+
+
+class ScriptedAgent:
+    def __init__(self, result: dict[str, object]) -> None:
+        self._result = result
+
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, object]
+    ) -> dict[str, object]:
+        return {**self._result, "messages": [*inputs["messages"], *self._result["messages"]]}
 
 
 class RawTextAgent:
@@ -78,6 +102,65 @@ async def test_call_agent_falls_back_to_raw_text_when_structured_response_missin
     assert result["answer"].confidence == 0.5
 
 
+async def test_refusal_and_clarification_flags_survive_and_default_to_false() -> None:
+    flagged = AgentAnswer(
+        answer="No.", confidence=0.4, refused=True, clarification_needed=True, used_tools=["x"]
+    )
+    agent = ScriptedAgent({"messages": [AIMessage(content="No.")], "structured_response": flagged})
+    answer = (await call_agent(_state(), agent=agent))["answer"]
+    assert (answer.refused, answer.clarification_needed, answer.used_tools) == (True, True, [])
+
+    # A model that omits the flags, or raw text without structured output, means "not set".
+    assert AgentAnswer.model_validate({"answer": "a", "confidence": 0.5}).refused is False
+    raw = (await call_agent(_state(), agent=RawTextAgent()))["answer"]
+    assert (raw.refused, raw.clarification_needed) == (False, False)
+
+
+@pytest.mark.parametrize("content", ["", "   "])
+async def test_call_agent_rejects_an_empty_raw_text_answer(content: str) -> None:
+    agent = ScriptedAgent({"messages": [AIMessage(content=content)]})
+    with pytest.raises(AppStructuredOutputError):
+        await call_agent(_state(), agent=agent)
+
+
+async def test_used_tools_come_from_the_tool_calls_that_ran_not_the_model() -> None:
+    agent = ScriptedAgent(
+        {
+            "messages": [
+                AIMessage(
+                    content="",
+                    tool_calls=[_call("calculator", "c1"), _call("utc_now", "c2")],
+                ),
+                ToolMessage(content="4", tool_call_id="c1"),
+                ToolMessage(content="denied", tool_call_id="c2", status="error"),
+                AIMessage(content="", tool_calls=[_call("calculator", "c3")]),
+                ToolMessage(content="9", tool_call_id="c3"),
+                AIMessage(content="", tool_calls=[_call("AgentAnswer", "c4")]),
+                ToolMessage(content="Returning structured response", tool_call_id="c4"),
+            ],
+            "structured_response": AgentAnswer(
+                answer="4", used_tools=["AgentAnswer", "utc_now"], confidence=1.0
+            ),
+        }
+    )
+    result = await call_agent(_state(), agent=agent)
+    assert result["answer"].used_tools == ["calculator"]
+
+
+async def test_used_tools_ignore_tool_calls_from_earlier_turns() -> None:
+    state = _state()
+    state["messages"] = [
+        HumanMessage(content="first"),
+        AIMessage(content="", tool_calls=[_call("calculator", "old")]),
+        ToolMessage(content="2", tool_call_id="old"),
+        AIMessage(content="2"),
+        HumanMessage(content="thanks"),
+    ]
+    agent = ScriptedAgent({"messages": [AIMessage(content="You're welcome.")]})
+    result = await call_agent(state, agent=agent)
+    assert result["answer"].used_tools == []
+
+
 async def test_call_agent_wraps_rate_limit_error() -> None:
     response = httpx.Response(status_code=429, request=_REQUEST)
     error = openai.RateLimitError("rate limited", response=response, body=None)
@@ -106,7 +189,7 @@ async def test_call_agent_wraps_generic_provider_error() -> None:
 
 async def test_call_agent_wraps_recursion_limit_error() -> None:
     error = GraphRecursionError("Recursion limit of 5 reached")
-    with pytest.raises(AgentExecutionError):
+    with pytest.raises(AgentStepLimitError):
         await call_agent(_state(), agent=FailingAgent(error))
 
 
@@ -151,3 +234,57 @@ async def test_call_agent_logs_correlation_ids_error_type_and_retry_count_on_fai
 async def test_call_agent_wraps_unexpected_error() -> None:
     with pytest.raises(AgentExecutionError):
         await call_agent(_state(), agent=FailingAgent(RuntimeError("boom")))
+
+
+def test_exported_agent_server_graph_has_no_checkpointer() -> None:
+    assert graph.checkpointer is None
+
+
+async def test_build_graph_with_checkpointer_persists_state() -> None:
+    saver = InMemorySaver()
+    compiled = build_graph(Settings(env="test", openai_api_key=None), checkpointer=saver)
+    config = {"configurable": {"thread_id": "thread-1"}}
+    await compiled.ainvoke(_state(), config=config)
+    snapshot = await compiled.aget_state(config)
+    assert snapshot.values["answer"].answer
+    assert len(snapshot.values["messages"]) == 2
+
+
+async def test_user_message_and_answer_are_committed_together(echo_agent: Any) -> None:
+    compiled = build_graph(Settings(env="test"), checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "thread-1"}}
+    turn = {**_state(), "messages": [], "user_message": "hello"}
+    result = await compiled.ainvoke(turn, config=config)
+
+    assert [type(m) for m in result["messages"]] == [HumanMessage, AIMessage]
+    assert result["user_message"] is None
+    # The agent saw the new user turn even though it was not yet in persisted history.
+    assert [m.content for m in echo_agent.calls[0]] == ["hello"]
+
+
+async def test_failed_run_does_not_commit_user_message(echo_agent: Any) -> None:
+    compiled = build_graph(Settings(env="test"), checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "thread-1"}}
+    echo_agent.fail_next = True
+    with pytest.raises(AgentExecutionError):
+        await compiled.ainvoke({**_state(), "messages": [], "user_message": "lost"}, config=config)
+
+    snapshot = await compiled.aget_state(config)
+    assert snapshot.values["messages"] == []
+
+
+async def test_messages_input_without_user_message_still_supported(echo_agent: Any) -> None:
+    # Agent Server / LangGraph Studio send the user turn inside `messages`.
+    compiled = build_graph(Settings(env="test"))
+    result = await compiled.ainvoke(_state())
+
+    assert [type(m) for m in result["messages"]] == [HumanMessage, AIMessage]
+    assert result["answer"].answer == "2+2"
+
+
+async def test_agent_server_input_without_correlation_ids_runs(echo_agent: Any) -> None:
+    # Regression: Agent Server / LangGraph Studio send only `messages`. A missing run_id
+    # crashed agent_invocation_config (uuid.UUID(None)), failing every Agent Server run.
+    compiled = build_graph(Settings(env="test"))
+    result = await compiled.ainvoke({"messages": [HumanMessage(content="hi")]})
+    assert result["answer"].answer == "hi"

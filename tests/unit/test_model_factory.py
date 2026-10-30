@@ -4,21 +4,39 @@ import httpx
 import openai
 import pytest
 from langchain.agents.structured_output import StructuredOutputValidationError
+from langchain_anthropic import ChatAnthropic
+from langchain_core.exceptions import (
+    ContextOverflowError,
+    ModelAPIError,
+    ModelAuthenticationError,
+    ModelConnectionError,
+    ModelError,
+    ModelInvalidRequestError,
+    ModelNotFoundError,
+    ModelPermissionDeniedError,
+    ModelRateLimitError,
+    ModelTimeoutError,
+)
 from langchain_core.messages import AIMessage
+from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 from pydantic import SecretStr
+from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     AgentExecutionError,
+    AgentStepLimitError,
     ConfigurationError,
     ProviderError,
+    ProviderQuotaError,
     ProviderTimeoutError,
     RateLimitError,
     ToolExecutionError,
 )
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.models.factory import (
+    _FakeChatModel,
     _is_retryable_provider_error,
     agent_invocation_config,
     classify_agent_error,
@@ -27,19 +45,31 @@ from neuron_agent.models.factory import (
     get_retry_attempts,
     reset_retry_attempts,
 )
-from neuron_agent.tools import calculator, utc_now
+from neuron_agent.tools.registry import builtin_registry
 
 _REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
 
 
-def test_create_chat_model_configures_openai_model_limits() -> None:
-    settings = Settings(
+def _production_settings(**overrides: object) -> Settings:
+    """Build production-valid settings without depending on developer env vars."""
+    return Settings(
         env="production",
+        auth_mode="jwt",
+        auth_issuer="https://issuer.example.test",
+        auth_audience="neuron-api",
+        auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
+        identity_hash_key="x" * 32,
+        openai_api_key=SecretStr("test-key"),
+        **{**PRODUCTION_PROFILE, **overrides},
+    )
+
+
+def test_create_chat_model_configures_openai_model_limits() -> None:
+    settings = _production_settings(
         default_model="openai:gpt-5.4-mini",
         request_timeout_seconds=60,
         tool_timeout_seconds=20,
         max_output_tokens=2000,
-        openai_api_key=SecretStr("test-key"),
     )
     model = create_chat_model(settings)
     assert model.model_name == "gpt-5.4-mini"
@@ -48,16 +78,66 @@ def test_create_chat_model_configures_openai_model_limits() -> None:
 
 
 def test_create_chat_model_disables_sdk_level_retries() -> None:
-    settings = Settings(env="production", openai_api_key=SecretStr("test-key"))
+    settings = _production_settings()
     model = create_chat_model(settings)
     assert model.max_retries == 0
+
+
+def test_create_chat_model_targets_the_nvidia_openai_compatible_endpoint() -> None:
+    settings = _production_settings(
+        default_model="nvidia:example/chat-model", nvidia_api_key=SecretStr("nvapi-test")
+    )
+    model = create_chat_model(settings)
+
+    assert isinstance(model, ChatOpenAI)
+    assert model.model_name == "example/chat-model"
+    assert model.openai_api_base == "https://integrate.api.nvidia.com/v1"
+    assert model.openai_api_key is not None
+    assert model.openai_api_key.get_secret_value() == "nvapi-test"
+    # Per-user token budgets need usage on streamed responses too.
+    assert model.stream_usage is True
+    assert model.max_retries == 0
+    assert model.request_timeout == 60
+
+
+def test_create_chat_model_builds_anthropic_with_the_same_limits() -> None:
+    settings = _production_settings(
+        default_model="anthropic:example-model",
+        anthropic_api_key=SecretStr("sk-ant-test"),
+        request_timeout_seconds=45,
+        max_output_tokens=1234,
+    )
+    model = create_chat_model(settings)
+
+    assert isinstance(model, ChatAnthropic)
+    assert model.model == "example-model"
+    assert model.anthropic_api_key.get_secret_value() == "sk-ant-test"
+    # Retries belong to the retry middleware, not the SDK, as for the other providers.
+    assert model.max_retries == 0
+    assert model.default_request_timeout == 45
+    assert model.max_tokens == 1234
+
+
+def test_anthropic_without_a_key_uses_the_fake_model_in_development() -> None:
+    settings = Settings(env="development", default_model="anthropic:example-model")
+    assert isinstance(create_chat_model(settings), _FakeChatModel)
+
+
+def test_create_chat_model_falls_back_without_the_selected_providers_key() -> None:
+    settings = Settings(
+        env="development",
+        default_model="nvidia:example/chat-model",
+        openai_api_key=SecretStr("sk-test"),
+        nvidia_api_key=None,
+    )
+    assert isinstance(create_chat_model(settings), _FakeChatModel)
 
 
 def test_agent_invocation_config_uses_max_agent_iterations_and_run_id() -> None:
     settings = Settings(env="test", max_agent_iterations=5, openai_api_key=None)
     run_id = "12345678-1234-5678-1234-567812345678"
     config = agent_invocation_config(settings, run_id=run_id)
-    assert config["recursion_limit"] == 5
+    assert config["recursion_limit"] == 10
     assert str(config["run_id"]) == run_id
 
 
@@ -67,23 +147,46 @@ def test_classify_agent_error_passes_through_app_errors() -> None:
 
 
 def test_create_chat_model_rejects_unsupported_provider() -> None:
-    settings = Settings(
-        env="production",
-        default_model="anthropic:claude",
-        openai_api_key=SecretStr("test-key"),
+    settings = _production_settings(
+        default_model="mistral:large",
     )
     with pytest.raises(ConfigurationError):
         create_chat_model(settings)
 
 
 def test_create_chat_model_rejects_malformed_model_identifier() -> None:
-    settings = Settings(
-        env="production",
+    settings = _production_settings(
         default_model="not-a-valid-identifier",
-        openai_api_key=SecretStr("test-key"),
     )
     with pytest.raises(ConfigurationError):
         create_chat_model(settings)
+
+
+def _quota_error(**body: str) -> openai.RateLimitError:
+    response = httpx.Response(status_code=429, request=_REQUEST)
+    return openai.RateLimitError("no credits remaining", response=response, body=body)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"type": "insufficient_quota", "code": "credit_balance_exhausted"},
+        {"type": "insufficient_quota", "code": "insufficient_quota"},
+    ],
+)
+def test_quota_errors_are_not_retried_and_classified_distinctly(body: dict[str, str]) -> None:
+    error = _quota_error(**body)
+    assert _is_retryable_provider_error(error) is False
+    classified = classify_agent_error(error)
+    assert isinstance(classified, ProviderQuotaError)
+    assert classified.context.retryable is False
+    assert "no API credit" in str(classified)
+
+
+def test_rate_limit_without_quota_marker_is_still_retried() -> None:
+    error = _quota_error(type="requests", code="rate_limit_exceeded")
+    assert _is_retryable_provider_error(error) is True
+    assert isinstance(classify_agent_error(error), RateLimitError)
 
 
 def test_classify_agent_error_maps_rate_limit() -> None:
@@ -101,6 +204,15 @@ def test_classify_agent_error_maps_authentication_failure() -> None:
     response = httpx.Response(status_code=401, request=_REQUEST)
     error = openai.AuthenticationError("bad key", response=response, body=None)
     assert isinstance(classify_agent_error(error), ConfigurationError)
+
+
+def test_classify_agent_error_maps_unknown_model_to_configuration_error() -> None:
+    response = httpx.Response(status_code=404, request=_REQUEST)
+    error = openai.NotFoundError("model not found for account", response=response, body=None)
+    assert _is_retryable_provider_error(error) is False
+    classified = classify_agent_error(error)
+    assert isinstance(classified, ConfigurationError)
+    assert classified.context.retryable is False
 
 
 def test_classify_agent_error_maps_generic_provider_error() -> None:
@@ -129,7 +241,7 @@ def test_classify_agent_error_falls_back_to_agent_execution_error() -> None:
 
 def test_classify_agent_error_maps_recursion_limit_exceeded() -> None:
     error = GraphRecursionError("Recursion limit of 5 reached")
-    assert isinstance(classify_agent_error(error), AgentExecutionError)
+    assert isinstance(classify_agent_error(error), AgentStepLimitError)
 
 
 @pytest.mark.parametrize(
@@ -198,10 +310,50 @@ async def test_fake_chat_model_tolerates_create_agent_tool_binding() -> None:
     The base fake model's `bind_tools` raises `NotImplementedError`, which previously
     crashed every `/v1/agent/invoke` call made without credentials configured."""
     settings = Settings(env="test", openai_api_key=None)
-    agent = create_main_agent(settings, tools=[utc_now, calculator])
+    agent = create_main_agent(settings, builtin_registry())
 
     result = await agent.ainvoke(
         {"messages": [AIMessage(content="hi")]}, config={"recursion_limit": 5}
     )
 
     assert result["messages"][-1].content == "Local test response."
+
+
+def test_agent_invocation_config_omits_missing_run_id() -> None:
+    config = agent_invocation_config(Settings(env="test"), run_id=None)
+    assert "run_id" not in config
+    assert config["recursion_limit"] == 16
+
+
+# Provider-neutral `langchain-core` model errors (#233): any provider integration raises these,
+# so a second provider is classified without provider-specific code.
+@pytest.mark.parametrize(
+    ("error", "expected", "retryable"),
+    [
+        (ModelRateLimitError("429"), RateLimitError, True),
+        (ModelTimeoutError("timeout"), ProviderTimeoutError, True),
+        (ModelAuthenticationError("401"), ConfigurationError, False),
+        (ModelPermissionDeniedError("403"), ConfigurationError, False),
+        (ModelNotFoundError("404"), ConfigurationError, False),
+        (ModelInvalidRequestError("400"), ProviderError, False),
+        (ContextOverflowError("too long"), ProviderError, False),
+        (ModelAPIError("500"), ProviderError, True),
+        (ModelConnectionError("down"), ProviderError, True),
+        (ModelError("other"), ProviderError, False),
+    ],
+)
+def test_neutral_model_errors_map_to_app_errors_and_retry_policy(
+    error: Exception, expected: type[Exception], retryable: bool
+) -> None:
+    assert type(classify_agent_error(error)) is expected
+    assert _is_retryable_provider_error(error) is retryable
+
+
+def test_a_neutral_error_that_is_also_an_openai_quota_error_is_still_quota() -> None:
+    class _Quota(ModelRateLimitError, openai.RateLimitError):
+        pass
+
+    response = httpx.Response(status_code=429, request=_REQUEST)
+    error = _Quota("no credit", response=response, body={"code": "insufficient_quota"})
+    assert isinstance(classify_agent_error(error), ProviderQuotaError)
+    assert _is_retryable_provider_error(error) is False

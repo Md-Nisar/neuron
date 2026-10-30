@@ -1,0 +1,70 @@
+name: ai-review
+
+# AI review layer (docs/AI_CODE_VERIFICATION.md): a frontier model from NVIDIA's free API
+# catalog reviews every non-draft PR against this repository's own checklists
+# (.claude/agents/*.md, AGENTS.md, SECURITY.md), a second call verifies each finding, and the
+# survivors are posted as one review. It only comments: it never approves, and it is
+# advisory: a provider outage or timeout logs a warning and exits 0 (set the repository
+# variable AI_REVIEW_FAIL_ON_ERROR=true to make that fail the job). Uses the same NVIDIA_API_KEY secret as nightly-eval, so it skips itself during the nightly
+# eval window (EVALUATION.md, "Automated runs"); set the
+# optional AI_REVIEW_MODELS repository variable (comma-separated ids from build.nvidia.com) to choose
+# models. Fork PRs get no secrets, so they are skipped.
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # nightly-eval shares this key's rate limit. A shared concurrency group is not used: it
+      # holds one pending run and replaces it, so it could drop a review or the nightly.
+      # Instead, a review started inside the nightly window exits advisory-success.
+      - name: Skip during the nightly eval window
+        id: window
+        env:
+          NIGHTLY_WINDOW_START_UTC: "03:00"
+          NIGHTLY_WINDOW_END_UTC: "05:30"
+        run: |
+          now=$(date -u +%H:%M)
+          if [[ ! "$now" < "$NIGHTLY_WINDOW_START_UTC" && "$now" < "$NIGHTLY_WINDOW_END_UTC" ]]; then
+            echo "::notice::Skipped: the nightly eval uses the shared NVIDIA key from $NIGHTLY_WINDOW_START_UTC to $NIGHTLY_WINDOW_END_UTC UTC. Push a commit or re-run this job after the window for a review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.window.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - if: steps.window.outputs.skip != 'true'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Review the pull request
+        if: steps.window.outputs.skip != 'true'
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          AI_REVIEW_MODELS: ${{ vars.AI_REVIEW_MODELS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          NVIDIA_TIMEOUT_SECONDS: "180"
+          NVIDIA_READ_TIMEOUT: "180"
+          NVIDIA_CONNECT_TIMEOUT: "30"
+          AI_REVIEW_FAIL_ON_PARTIAL: ${{ vars.AI_REVIEW_FAIL_ON_PARTIAL || 'false' }}
+          AI_REVIEW_FAIL_ON_ERROR: ${{ vars.AI_REVIEW_FAIL_ON_ERROR || 'false' }}
+          AI_REVIEW_DEADLINE_SECONDS: "1200"
+        run: python scripts/ai_review.py

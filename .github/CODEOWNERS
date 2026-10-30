@@ -1,0 +1,22 @@
+# Critical-tier paths (docs/AI_CODE_VERIFICATION.md): changes here need a code owner's review.
+# Replace @Md-Nisar with a team (e.g. @entomo/neuron-security) once there is more than one
+# maintainer; GitHub does not let authors approve their own pull requests.
+
+/src/neuron_agent/security/     @Md-Nisar
+/src/neuron_agent/config/       @Md-Nisar
+/src/neuron_agent/tools/        @Md-Nisar
+/src/neuron_agent/prompts/      @Md-Nisar
+/src/neuron_agent/persistence/  @Md-Nisar
+/src/neuron_agent/api/          @Md-Nisar
+/tests/security/                @Md-Nisar
+/docs/decisions/                @Md-Nisar
+/SECURITY.md                    @Md-Nisar
+/AGENTS.md                      @Md-Nisar
+/CLAUDE.md                      @Md-Nisar
+/.claude/                       @Md-Nisar
+/.github/                       @Md-Nisar
+/Dockerfile                     @Md-Nisar
+/.trivyignore.yaml              @Md-Nisar
+/deploy/                        @Md-Nisar
+/pyproject.toml                 @Md-Nisar
+/uv.lock                        @Md-Nisar

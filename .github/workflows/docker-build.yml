@@ -1,0 +1,61 @@
+name: docker-build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - uv.lock
+      - src/**
+      - tests/integration/test_image_layout.py
+      - .github/workflows/docker-build.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Build once; every later step reuses this image. Nothing is pushed, there is no registry
+      # login, and the build arguments are labels only (revision, version), never a secret.
+      - name: Build image
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          VERSION="$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+          docker build --build-arg "GIT_SHA=$GIT_SHA" --build-arg "VERSION=$VERSION" -t neuron-test .
+      # The venv's interpreter must resolve in the runtime stage; the defaults need no env.
+      - name: Import smoke
+        run: docker run --rm --entrypoint python neuron-test -c "import neuron_agent, neuron_agent.api.main; from neuron_agent.prompts.loader import load_prompt; assert load_prompt('system/main.md'); print(neuron_agent.__version__)"
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - run: uv python install 3.13
+      - run: uv sync
+      - name: Image layout test
+        run: uv run python -m pytest tests/integration/test_image_layout.py -m docker -rs
+      # A lockfile that no longer matches pyproject.toml must fail the build (uv sync --locked).
+      - name: Build fails on a stale uv.lock
+        run: |
+          scratch="$RUNNER_TEMP/stale-lock"
+          mkdir "$scratch"
+          git archive HEAD | tar -x -C "$scratch"
+          # A real, satisfiable dependency that uv.lock does not contain.
+          sed -i 's/^    "uvicorn\[standard\]>=0.38.0",$/    "uvicorn[standard]>=0.38.0",\n    "cowsay>=6.0",/' "$scratch/pyproject.toml"
+          grep -q '"cowsay>=6.0"' "$scratch/pyproject.toml"
+          if docker build --progress=plain -t neuron-stale "$scratch" > "$RUNNER_TEMP/stale.log" 2>&1; then
+            echo "docker build succeeded with a stale uv.lock" >&2
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/stale.log"
+          grep -q "needs to be updated" "$RUNNER_TEMP/stale.log"

@@ -72,6 +72,24 @@ async def test_provider_retry_middleware_raises_immediately_on_non_retryable_err
     assert attempts == 1
 
 
+async def test_provider_retry_middleware_does_not_retry_quota_errors() -> None:
+    middleware = _fast_retry_middleware(max_retries=2)
+    attempts = 0
+
+    async def handler(request: object) -> str:
+        nonlocal attempts
+        attempts += 1
+        raise openai.RateLimitError(
+            "no credits remaining",
+            response=httpx.Response(status_code=429, request=_REQUEST),
+            body={"type": "insufficient_quota", "code": "credit_balance_exhausted"},
+        )
+
+    with pytest.raises(openai.RateLimitError):
+        await middleware.awrap_model_call(_FakeRequest(), handler)
+    assert attempts == 1
+
+
 async def test_provider_retry_middleware_raises_after_exhausting_retries() -> None:
     middleware = _fast_retry_middleware(max_retries=1)
     attempts = 0

@@ -11,3 +11,11 @@ build/
 *.egg-info/
 *.pyc
 .langgraph_api/
+.dev/
+mutants/
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+web/coverage/
+web/test-results/
+web/playwright-report/

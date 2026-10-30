@@ -14,11 +14,11 @@ Neuron Agent tools are bounded, and every new one must go through the same check
    - Bound its side effects explicitly. Read-only tools are the default; anything else needs step 2's checklist.
    - No raw `eval`/`exec`/shell execution — see the existing calculator tool (`src/neuron_agent/tools/time.py` for the read-only pattern) for the AST-based style this project uses instead.
 
-2. **Add authorization** in `src/neuron_agent/security/input_policy.py`:
-   - Add the tool to the allow-list helper.
-   - If it's high-impact or mutating, add it to the deny-list gate and work through the full "Future Mutating Tools" checklist in `SECURITY.md`: authorization checks outside the model, human approval if impact is high, idempotency keys, retry policy, audit logs.
+2. **Register it** in `src/neuron_agent/tools/registry.py` (`builtin_registry`) with a `ToolSpec`: scope `tools:<name>` (none only for a public, read-only builtin) and risk `read` or `mutating`. The allow-list, scope checks and audit/span names derive from it; a tool without a spec is not callable.
+   - A `mutating` tool needs human approval (ADR 0009 decision 6): work through the full "Future Mutating Tools" checklist in `SECURITY.md` (authorization outside the model, idempotency keys, retry policy, audit logs). Names on `HIGH_RISK_TOOL_NAMES` in `security/input_policy.py` are refused whatever the spec says.
+   - Add the scope to `DEV_PERMISSIONS` if development should grant it.
 
-3. **Wire it** into `src/neuron_agent/agents/factory.py` as an approved tool.
+3. **Wiring** is automatic: `agents/factory.py` builds the agent from the registry.
 
 4. **Add tests**:
    - Unit test for the happy path (`tests/unit/`).
@@ -34,6 +34,6 @@ Neuron Agent tools are bounded, and every new one must go through the same check
 
 ## Common mistakes
 
-- Wiring a tool into `agents/factory.py` before it has authorization checks in `input_policy.py`.
+- Registering a tool with a broader scope or a lower risk class than it deserves; `read` means it changes nothing outside the run.
 - Treating tool *output* as trusted downstream — it isn't (`SECURITY.md` trust boundaries).
 - Skipping the security test because "it's read-only" — read-only tools still need an unauthorized-call test if they accept any input the model controls.

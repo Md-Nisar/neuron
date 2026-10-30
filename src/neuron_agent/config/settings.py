@@ -1,14 +1,68 @@
+# Copyright 2026 Md Nisar Ahmed
+# SPDX-License-Identifier: Apache-2.0
+
 """Typed application settings."""
 
 from __future__ import annotations
 
+import ipaddress
+import re
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
-from pydantic import AliasChoices, Field, SecretStr, model_validator
+from psycopg.conninfo import conninfo_to_dict
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from neuron_agent import __version__
+from neuron_agent.errors.base import AuthorizationError, ValidationAppError
+from neuron_agent.security.input_policy import validate_safe_url
+
 Environment = Literal["development", "staging", "production", "test"]
+CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
+LimitsBackend = Literal["auto", "memory", "postgres"]
+AuthMode = Literal["none", "jwt"]
+# Browsers send origins as lowercase `scheme://host[:port]`; CORS matching is exact.
+# Starlette compares hostnames without the port, so entries can't carry ports or schemes.
+# Model identifier prefixes `create_chat_model` can build.
+SUPPORTED_PROVIDERS = frozenset({"openai", "nvidia", "anthropic"})
+_HOST_PATTERN = re.compile(r"^(\*|(\*\.)?[a-z0-9.-]+)$")
+_ORIGIN_PATTERN = re.compile(r"^https?://([a-z0-9.-]+|\[[0-9a-f:]+\])(:[0-9]{1,5})?$")
+
+
+_SSLMODE_RANK = {
+    "disable": 0,
+    "allow": 1,
+    "prefer": 2,
+    "require": 3,
+    "verify-ca": 4,
+    "verify-full": 5,
+}
+
+
+def _is_loopback_bind(host: str) -> bool:
+    """Whether a bind address is reachable from this machine only."""
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
+def _is_internal_host(url: str) -> bool:
+    """True unless `validate_safe_url` accepts the URL's literal host as public.
+
+    Names are not resolved and redirects are not followed, so a public name that resolves to a
+    private address passes (an accepted gap, see SECURITY.md).
+    """
+    try:
+        validate_safe_url(url)
+    except (AuthorizationError, ValidationAppError):
+        return True
+    return False
 
 
 class Settings(BaseSettings):
@@ -19,16 +73,37 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        # A validation error must never echo the raw input: it holds DSNs and keys.
+        hide_input_in_errors=True,
     )
 
     name: str = "neuron-agent"
-    version: str = "0.2.0"
+    version: str = __version__
     env: Environment = "development"
+    # Loopback unless set; `neuron-api` refuses a public bind without an explicit APP_ENV.
+    host: str = "127.0.0.1"
+    # Render sets a bare PORT, which must beat the image's APP_PORT default, so it is first.
+    port: int = Field(
+        default=8000, ge=1, le=65_535, validation_alias=AliasChoices("PORT", "APP_PORT")
+    )
     log_level: str = "INFO"
     default_model: str = "openai:gpt-5.4-mini"
+    # Tried in order when the default model's call fails after its retries (ADR 0009). A JSON
+    # list such as ["anthropic:<model>", "openai:<model>"]; empty means no fallback.
+    fallback_models: list[str] = Field(default_factory=list, max_length=3)
     request_timeout_seconds: int = Field(default=60, ge=1, le=300)
+    # MCP servers the operator exposes (ADR 0009): a JSON file, read at start-up.
+    mcp_servers: Path | None = None
+    # Bearer token per server name, a JSON object. Never the caller's token.
+    mcp_bearer_tokens: dict[str, SecretStr] = Field(default_factory=dict)
+    mcp_max_output_bytes: int = Field(default=16_384, ge=1024, le=262_144)
+    # Per-user memory (ADR 0009): off unless enabled. The limits are per user.
+    memory_enabled: bool = False
+    memory_max_items: int = Field(default=50, ge=1, le=1000)
+    memory_max_chars: int = Field(default=500, ge=20, le=2000)
+    memory_ttl_days: int | None = Field(default=None, ge=1, le=3650)
     tool_timeout_seconds: int = Field(default=20, ge=1, le=60)
-    max_agent_iterations: int = Field(default=5, ge=1, le=25)
+    max_agent_iterations: int = Field(default=8, ge=1, le=25)
     provider_max_retries: int = Field(default=2, ge=0, le=5)
     max_output_tokens: int = Field(default=2000, ge=1, le=16_384)
     max_prompt_chars: int = Field(default=12_000, ge=100, le=200_000)
@@ -37,7 +112,88 @@ class Settings(BaseSettings):
     rate_limit_requests_per_window: int = Field(default=60, ge=1, le=10_000)
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
+    trusted_proxies: list[str] = Field(default_factory=list)
     enable_langsmith: bool = False
+    # Outside development, LangSmith traces carry no prompts or answers unless this is true.
+    langsmith_content_approved: bool = False
+    # Production only: names the record (ticket, ADR, review) that approved content capture.
+    langsmith_content_approval_record: str | None = Field(default=None, max_length=200)
+    otel_enabled: bool = False
+    # None uses APP_NAME.
+    otel_service_name: str | None = None
+    # Head sampling for new traces; an incoming `traceparent` keeps its sampled flag.
+    otel_traces_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
+    otel_export_timeout_seconds: float = Field(default=10.0, gt=0.0, le=60.0)
+    # Read under the standard OpenTelemetry names; the exporter appends /v1/traces etc.
+    otel_exporter_otlp_endpoint: str = Field(
+        default="http://localhost:4318",
+        pattern=r"^https?://",
+        validation_alias=AliasChoices(
+            "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+    )
+    # `key=value` pairs, comma-separated and URL-encoded, such as an auth header.
+    otel_exporter_otlp_headers: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_OTEL_EXPORTER_OTLP_HEADERS",
+            "OTEL_EXPORTER_OTLP_HEADERS",
+        ),
+    )
+    # "auto" resolves to memory in development/test; staging/production must choose explicitly.
+    checkpointer: CheckpointerBackend = "auto"
+    checkpointer_setup_on_startup: bool = False
+    # Development/test fake model only (ADR 0012 decision 4); 0 and None keep the instant answer.
+    fake_model_ttft_ms: int = Field(default=0, ge=0, le=10_000)
+    fake_model_tokens_per_second: int = Field(default=0, ge=0, le=1_000)
+    fake_model_output_tokens: int | None = Field(default=None, ge=1, le=2_000)
+    # Where the rate limit, token budget and run guards live. "auto" resolves to memory in
+    # development/test; staging/production must choose explicitly (production: postgres).
+    limits_backend: LimitsBackend = "auto"
+    postgres_dsn: SecretStr | None = None
+    # Direct, non-pooled DSN of the migrator role; read only by `persistence.cli` (ADR 0008).
+    postgres_migration_dsn: SecretStr | None = None
+    # The runtime role `setup` grants DML to (ADR 0008 decision 15); a plain role name.
+    postgres_app_role: str = Field(default="neuron_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
+    postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
+    max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
+    max_thread_messages: int = Field(default=200, ge=2, le=10_000)
+    stream_heartbeat_seconds: int = Field(default=15, ge=1, le=120)
+    run_timeout_seconds: int = Field(default=120, ge=1, le=900)
+    shutdown_drain_seconds: float = Field(default=5.0, ge=0, le=60)
+    max_concurrent_streams: int = Field(default=100, ge=1, le=10_000)
+    max_concurrent_runs_per_user: int = Field(default=2, ge=1, le=1000)
+    user_token_budget: int = Field(default=100_000, ge=1, le=10_000_000)
+    user_token_budget_window_seconds: int = Field(default=3600, ge=1, le=86_400)
+    thread_retention_days: int = Field(default=30, ge=1, le=3650)
+    user_data_export_max_bytes: int = Field(default=5_000_000, ge=65_536, le=50_000_000)
+    auth_mode: AuthMode = "none"
+    auth_issuer: str | None = None
+    auth_issuer_id: str = Field(
+        default="default", min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$"
+    )
+    auth_audit_success_enabled: bool = False
+    auth_audience: str | None = None
+    auth_jwks_url: str | None = None
+    auth_algorithms: list[str] = Field(default_factory=lambda: ["RS256", "ES256"])
+    auth_leeway_seconds: int = Field(default=30, ge=0, le=300)
+    auth_jwks_cache_seconds: int = Field(default=300, ge=1, le=86_400)
+    auth_jwks_timeout_seconds: int = Field(default=5, ge=1, le=30)
+    auth_token_max_bytes: int = Field(default=16_384, ge=1024, le=131_072)
+    auth_require_typ: bool = False
+    auth_scope_claim: str = "scope"
+    auth_roles_claim: str | None = "roles"
+    auth_role_permissions: dict[str, list[str]] = Field(default_factory=dict)
+    identity_hash_key: SecretStr | None = None
+    cors_allowed_origins: list[str] = Field(default_factory=list)
+    # None resolves to exposed in development/test and hidden in staging/production.
+    expose_api_docs: bool | None = None
+    # Empty disables the Host check; `/health/*` is always exempt for platform probes.
+    allowed_hosts: list[str] = Field(default_factory=list)
+    # 0 disables HSTS; set it only when every client reaches the API over TLS.
+    hsts_max_age_seconds: int = Field(default=0, ge=0, le=63_072_000)
     openai_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices(
@@ -46,14 +202,342 @@ class Settings(BaseSettings):
         ),
     )
 
+    nvidia_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_NVIDIA_API_KEY",
+            "NVIDIA_API_KEY",
+        ),
+    )
+
+    anthropic_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_ANTHROPIC_API_KEY",
+            "ANTHROPIC_API_KEY",
+        ),
+    )
+
+    # Only the name LangSmith itself reads: an `APP_`-prefixed copy would pass validation
+    # here and still leave the client without a key.
+    langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
+
+    @field_validator("postgres_app_role")
+    @classmethod
+    def reject_reserved_role_names(cls, value: str) -> str:
+        """`pg_` names are reserved for Postgres' predefined roles."""
+        if value.startswith("pg_"):
+            raise ValueError("postgres_app_role must not start with pg_")
+        return value
+
+    @field_validator(
+        "openai_api_key",
+        "nvidia_api_key",
+        "anthropic_api_key",
+        "langsmith_api_key",
+        mode="before",
+    )
+    @classmethod
+    def empty_provider_key_is_unset(cls, value: object) -> object:
+        """`OPENAI_API_KEY=` (as copied from `.env.example`) means no key, not an empty one."""
+        return None if value == "" else value
+
+    def provider_api_key(self, provider: str) -> SecretStr | None:
+        """Return the API key for a `default_model` provider prefix, if one is configured."""
+        key = {
+            "openai": self.openai_api_key,
+            "nvidia": self.nvidia_api_key,
+            "anthropic": self.anthropic_api_key,
+        }.get(provider)
+        return key if key is not None and key.get_secret_value() else None
+
+    @model_validator(mode="after")
+    def validate_fallback_models(self) -> Settings:
+        """Refuse a fallback that could not be built, or that repeats a model."""
+        seen = {self.default_model}
+        for identifier in self.fallback_models:
+            provider, separator, name = identifier.partition(":")
+            if provider not in SUPPORTED_PROVIDERS or not separator or not name:
+                raise ValueError(
+                    "APP_FALLBACK_MODELS entries must be provider:model with provider one of "
+                    + ", ".join(sorted(SUPPORTED_PROVIDERS))
+                )
+            if identifier in seen:
+                raise ValueError("APP_FALLBACK_MODELS must not repeat a model")
+            seen.add(identifier)
+        return self
+
     @model_validator(mode="after")
     def require_provider_key_outside_tests(self) -> Settings:
         """Fail early for live model execution in production-like environments."""
-        if self.env in {"staging", "production"} and self.default_model.startswith("openai:"):
-            if self.openai_api_key is None or not self.openai_api_key.get_secret_value():
+        if self.env not in {"staging", "production"}:
+            return self
+        for identifier in (self.default_model, *self.fallback_models):
+            provider = identifier.partition(":")[0]
+            if provider in SUPPORTED_PROVIDERS and self.provider_api_key(provider) is None:
                 raise ValueError(
-                    "OPENAI_API_KEY is required for OpenAI models in staging/production"
+                    f"{provider.upper()}_API_KEY is required for {provider} models "
+                    "in staging/production"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def require_langsmith_key_when_enabled(self) -> Settings:
+        """Fail early rather than silently dropping traces in production-like environments."""
+        if (
+            self.enable_langsmith
+            and self.env in {"staging", "production"}
+            and (self.langsmith_api_key is None or not self.langsmith_api_key.get_secret_value())
+        ):
+            raise ValueError(
+                "LANGSMITH_API_KEY is required when APP_ENABLE_LANGSMITH=true in staging/production"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_checkpointer(self) -> Settings:
+        """Resolve `auto` and reject backends that cannot work in the configured environment."""
+        if self.checkpointer == "auto":
+            if self.env in {"staging", "production"}:
+                raise ValueError(
+                    "APP_CHECKPOINTER=auto is refused in staging/production; "
+                    "set postgres, or none for a deliberately stateless deployment"
+                )
+            self.checkpointer = "memory"
+        if self.checkpointer == "memory" and self.env in {"staging", "production"}:
+            raise ValueError(
+                "APP_CHECKPOINTER=memory is not durable; use postgres or none in staging/production"
+            )
+        if self.checkpointer == "postgres" and (
+            self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
+        ):
+            raise ValueError("APP_POSTGRES_DSN is required when APP_CHECKPOINTER=postgres")
+        if self.checkpointer_setup_on_startup and self.env in {"staging", "production"}:
+            raise ValueError(
+                "APP_CHECKPOINTER_SETUP_ON_STARTUP is refused in staging/production; "
+                "run `python -m neuron_agent.persistence.cli setup` as a deploy step"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_fake_model_settings(self) -> Settings:
+        """The fake model's latency settings exist for load tests, never for a deployment."""
+        if self.env in {"staging", "production"} and (
+            self.fake_model_ttft_ms
+            or self.fake_model_tokens_per_second
+            or self.fake_model_output_tokens is not None
+        ):
+            raise ValueError("APP_FAKE_MODEL_* settings are refused in staging/production")
+        return self
+
+    @model_validator(mode="after")
+    def validate_limits_backend(self) -> Settings:
+        """Resolve `auto`; a Postgres guard store needs a DSN whatever the checkpointer is."""
+        if self.limits_backend == "auto":
+            if self.env in {"staging", "production"}:
+                raise ValueError(
+                    "APP_LIMITS_BACKEND=auto is refused in staging/production; "
+                    "set postgres or memory explicitly"
+                )
+            self.limits_backend = "memory"
+        if self.limits_backend == "memory" and self.env == "production":
+            raise ValueError(
+                "APP_LIMITS_BACKEND=memory is refused in production: per-process guards "
+                "are not shared across replicas; use postgres"
+            )
+        if self.limits_backend == "postgres" and (
+            self.postgres_dsn is None or not self.postgres_dsn.get_secret_value()
+        ):
+            raise ValueError("APP_POSTGRES_DSN is required when APP_LIMITS_BACKEND=postgres")
+        if (
+            self.limits_backend == "postgres"
+            and self.user_token_budget_window_seconds < self.run_timeout_seconds + 15
+        ):
+            raise ValueError(
+                "APP_USER_TOKEN_BUDGET_WINDOW_SECONDS must be at least "
+                "APP_RUN_TIMEOUT_SECONDS + 15 when APP_LIMITS_BACKEND=postgres"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_database_roles(self) -> Settings:
+        """Production runs the web process and `setup` as different database users.
+
+        Staging may use one role (ADR 0008 decision 17, free plans); production may not. The
+        error never carries a DSN or a user name.
+        """
+        if self.env != "production" or not self.postgres_dsn or not self.postgres_migration_dsn:
+            return self
+        try:
+            users = [
+                conninfo_to_dict(dsn.get_secret_value()).get("user")
+                for dsn in (self.postgres_dsn, self.postgres_migration_dsn)
+            ]
+        except Exception:  # noqa: BLE001 - driver messages can echo the DSN
+            raise ValueError(
+                "APP_POSTGRES_DSN or APP_POSTGRES_MIGRATION_DSN is not valid"
+            ) from None
+        if users[0] == users[1]:
+            raise ValueError(
+                "APP_POSTGRES_DSN and APP_POSTGRES_MIGRATION_DSN must use different database "
+                "users in production (the runtime user must not own the schema)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_authentication(self) -> Settings:
+        """Require a complete and safe JWT configuration outside local mode."""
+        if self.auth_mode == "none":
+            if self.env in {"staging", "production"}:
+                raise ValueError("APP_AUTH_MODE=none is only allowed in development and test")
+            if self.env != "development" and not _is_loopback_bind(self.host):
+                raise ValueError(
+                    "APP_AUTH_MODE=none must not bind a non-loopback APP_HOST outside "
+                    "development; use APP_AUTH_MODE=jwt or APP_HOST=127.0.0.1"
+                )
+            return self
+
+        if not self.auth_issuer:
+            raise ValueError("APP_AUTH_ISSUER is required when APP_AUTH_MODE=jwt")
+        if not self.auth_audience:
+            raise ValueError("APP_AUTH_AUDIENCE is required when APP_AUTH_MODE=jwt")
+        if not self.auth_jwks_url:
+            raise ValueError("APP_AUTH_JWKS_URL is required when APP_AUTH_MODE=jwt")
+        if self.env != "development" and not self.auth_jwks_url.startswith("https://"):
+            raise ValueError("APP_AUTH_JWKS_URL must use HTTPS outside development")
+        if self.env in {"staging", "production"} and _is_internal_host(self.auth_jwks_url):
+            raise ValueError(
+                "APP_AUTH_JWKS_URL must not point at a local, private or otherwise "
+                "non-public host in staging/production"
+            )
+        if not self.auth_algorithms or any(
+            algorithm not in {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
+            for algorithm in self.auth_algorithms
+        ):
+            raise ValueError("APP_AUTH_ALGORITHMS must contain only allowed asymmetric algorithms")
+        if self.identity_hash_key is None or len(self.identity_hash_key.get_secret_value()) < 32:
+            raise ValueError("APP_IDENTITY_HASH_KEY must be at least 32 characters in JWT mode")
+        return self
+
+    @model_validator(mode="after")
+    def validate_http_surface(self) -> Settings:
+        """Resolve the docs default and reject origins and hosts that can't be safe or match."""
+        if self.expose_api_docs is None:
+            self.expose_api_docs = self.env in {"development", "test"}
+        for origin in self.cors_allowed_origins:
+            if origin == "*":
+                raise ValueError(
+                    "APP_CORS_ALLOWED_ORIGINS must not contain '*': requests carry credentials "
+                    "in the Authorization header, so list each trusted origin explicitly"
+                )
+            if not _ORIGIN_PATTERN.fullmatch(origin):
+                raise ValueError(
+                    f"APP_CORS_ALLOWED_ORIGINS entry {origin!r} must be a lowercase "
+                    "scheme://host[:port] origin with no path or trailing slash"
+                )
+        for host in self.allowed_hosts:
+            if not _HOST_PATTERN.fullmatch(host):
+                raise ValueError(
+                    f"APP_ALLOWED_HOSTS entry {host!r} must be a lowercase hostname with no "
+                    "scheme or port, optionally starting with '*.'"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_profile(self) -> Settings:
+        """Refuse the remaining unsafe staging/production settings (ADR 0008 decision 9).
+
+        Errors name settings, never values: a DSN or an approval record is not echoed.
+        """
+        if self.env not in {"staging", "production"}:
+            return self
+        production = self.env == "production"
+        if self.memory_enabled and self.checkpointer != "postgres":
+            # Memories must outlive a restart, and the tools that write them wait for an approval,
+            # which a run can only do where its state is saved (ADR 0009).
+            raise ValueError(
+                "APP_MEMORY_ENABLED needs APP_CHECKPOINTER=postgres in staging/production"
+            )
+        if not self.allowed_hosts:
+            raise ValueError(
+                "APP_ALLOWED_HOSTS must list the served hostnames in staging/production"
+            )
+        if "trusted_proxies" not in self.model_fields_set:
+            raise ValueError(
+                "APP_TRUSTED_PROXIES must be set in staging/production "
+                "(an explicit [] means no trusted proxy)"
+            )
+        for proxy in self.trusted_proxies:
+            try:
+                network = ipaddress.ip_network(proxy.strip(), strict=False)
+            except ValueError:
+                raise ValueError(
+                    "APP_TRUSTED_PROXIES contains an entry that is not an IP address or CIDR range"
+                ) from None
+            if network.prefixlen < (8 if network.version == 4 else 16):
+                raise ValueError(
+                    "APP_TRUSTED_PROXIES must not contain a range broader than "
+                    "/8 (IPv4) or /16 (IPv6)"
+                )
+        for host in self.allowed_hosts:
+            if host == "*" or (host.startswith("*.") and host.count(".") < 2):
+                raise ValueError(
+                    "APP_ALLOWED_HOSTS must not contain '*' or a wildcard over a whole "
+                    "top-level domain in staging/production"
+                )
+        if not self.rate_limit_enabled:
+            raise ValueError("APP_RATE_LIMIT_ENABLED=false is refused in staging/production")
+        # Staging may use `require` (ADR 0008 decision 17, free-plan Render); production may not.
+        required_sslmode = "verify-full" if production else "require"
+        for name, dsn in (
+            ("APP_POSTGRES_DSN", self.postgres_dsn),
+            ("APP_POSTGRES_MIGRATION_DSN", self.postgres_migration_dsn),
+        ):
+            if dsn is not None and dsn.get_secret_value():
+                self._require_sslmode(name, dsn, required_sslmode)
+        if production and self.expose_api_docs:
+            raise ValueError("APP_EXPOSE_API_DOCS=true is refused in production")
+        if production and not self.hsts_max_age_seconds:
+            raise ValueError(
+                "APP_HSTS_MAX_AGE_SECONDS must be greater than 0 in production "
+                "(the API is served over TLS only)"
+            )
+        if (
+            production
+            and self.langsmith_content_approved
+            and not (self.langsmith_content_approval_record or "").strip()
+        ):
+            raise ValueError(
+                "APP_LANGSMITH_CONTENT_APPROVED=true in production needs "
+                "APP_LANGSMITH_CONTENT_APPROVAL_RECORD naming the approval record"
+            )
+        return self
+
+    @staticmethod
+    def _require_sslmode(name: str, dsn: SecretStr, minimum: str) -> None:
+        try:
+            # libpq's default when the DSN says nothing is `prefer`, which allows plaintext.
+            sslmode = conninfo_to_dict(dsn.get_secret_value()).get("sslmode") or "prefer"
+        except Exception:  # noqa: BLE001 - driver messages can echo the DSN
+            raise ValueError(f"{name} is not valid") from None
+        if _SSLMODE_RANK.get(str(sslmode), -1) < _SSLMODE_RANK[minimum]:
+            raise ValueError(f"{name} must set sslmode={minimum} or stronger in this environment")
+
+    @model_validator(mode="after")
+    def validate_telemetry_transport(self) -> Settings:
+        """OTLP credentials must not leave the host in clear text outside development/test."""
+        endpoint = self.otel_exporter_otlp_endpoint
+        if (
+            self.env in {"staging", "production"}
+            and self.otel_exporter_otlp_headers is not None
+            and self.otel_exporter_otlp_headers.get_secret_value()
+            and not endpoint.startswith("https://")
+            and urlsplit(endpoint).hostname not in {"localhost", "127.0.0.1", "::1"}
+        ):
+            raise ValueError(
+                "OTEL_EXPORTER_OTLP_ENDPOINT must use HTTPS when OTEL_EXPORTER_OTLP_HEADERS "
+                "is set in staging/production, unless the Collector is on loopback"
+            )
         return self
 
 

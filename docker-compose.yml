@@ -1,6 +1,56 @@
+# Local development stack: the API with Postgres-backed thread persistence (ADR 0005).
+# Credentials here are for local use only; production injects APP_POSTGRES_DSN from a
+# secret manager (see OPERATIONS.md#thread-persistence-postgres).
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: neuron
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-neuron-local-only}
+      POSTGRES_DB: neuron
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuron -d neuron"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   api:
     build: .
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: development
+      APP_CHECKPOINTER: postgres
+      APP_POSTGRES_DSN: postgresql://neuron:${POSTGRES_PASSWORD:-neuron-local-only}@postgres:5432/neuron
+      # Development only: refused when APP_ENV is staging or production.
+      APP_CHECKPOINTER_SETUP_ON_STARTUP: "true"
     ports:
-      - "8000:8000"
+      # Loopback only: APP_ENV=development serves without authentication.
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Development identity provider for the web application (ADR 0010, decision 5). Opt in with
+  # `docker compose --profile keycloak up keycloak`; `make dev-keycloak` prints the API settings.
+  # The realm export holds only throwaway development users; no real credentials.
+  keycloak:
+    profiles: ["keycloak"]
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-local-only}
+      # A fixed hostname keeps the token `iss` the same however the container is reached.
+      KC_HOSTNAME: http://localhost:8180
+    volumes:
+      - ./deploy/keycloak/neuron-realm.json:/opt/keycloak/data/import/neuron-realm.json:ro
+    ports:
+      # Loopback only: start-dev is not hardened.
+      - "127.0.0.1:8180:8080"
+
+volumes:
+  pgdata:

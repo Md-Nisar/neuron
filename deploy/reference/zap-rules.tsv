@@ -1,0 +1,3 @@
+# Alerts the DAST gate (scripts/dast_gate.py) does not fail on: `<ZAP plugin id><TAB><reason>`.
+# Medium or higher only; every entry needs a reason. Empty means nothing is excused.
+40018	SQL Injection on /v1/me/threads?limit: false positive (2026-10-28). `limit` is `Query(ge=1, le=100)` (src/neuron_agent/api/main.py, list_my_threads), so ZAP's `50 AND 1=1 -- ` payloads get 422 (tests/security/test_threads_limit_validation.py), and the API has no SQL string building; ZAP compared a 200 with a rate-limited 429. Re-check when the rate limit or the route changes.
