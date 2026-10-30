@@ -5,7 +5,7 @@ import { getKcContextMock } from "./login/mocks/getKcContextMock";
 
 const kcContext = getKcContextMock({
     pageId: "login.ftl",
-    overrides: {}
+    overrides: { realm: { name: "neuron", displayName: "neuron", displayNameHtml: "neuron" } }
 });
 
 createRoot(document.getElementById("root")!).render(
