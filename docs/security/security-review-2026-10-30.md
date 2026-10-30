@@ -277,3 +277,22 @@ What a hijacked model **can** still do:
 - Least-privilege DB role check.
 - Production-profile fail-closed settings.
 - Prompt-leak output guard.
+
+---
+
+## Remediation status (branch `ccr-72300b62-medmo8`)
+
+| Item | Status | Change |
+| --- | --- | --- |
+| R1: enforce MCP input schemas | ✅ Fixed | Arguments are validated against the pinned schema before a connection opens; undeclared arguments are refused unless the schema allows them. Follow-up from the automated review: only local `$ref`s are allowed, `patternProperties` is refused and `pattern` is left to the server, so the validator never fetches a URL or runs a server-written regex. `tests/security/test_mcp_abuse.py`, `tests/unit/test_mcp_client.py`. |
+| R2: close the ungated egress path | ✅ Fixed (deterministic gate) | `ToolSpec.taints_run` (every MCP tool, `recall`). Once a thread has read such a result, any `read` MCP call needs approval; without a checkpointer it is refused (`untrusted_context`). The taint is carried across turns on the stored answer. ADR 0009 amendment, `tests/security/test_tainted_egress.py`. Spotlighting MCP output with a provenance wrapper was not added: it is a prompt-level aid, and the gate does not depend on the model. |
+| R4: plan/sequence policy | ✅ Covered by R2 | The dangerous sequence (untrusted or private read, then egress) is the one R2 gates. A general policy engine is not warranted for one agent with a handful of tools. |
+| R8: tool metadata review | ✅ Fixed (review step) | `neuron-mcp-pin` now prints the input schema as well as the description, so everything the pin covers is reviewed. Runtime re-pinning was not added: definitions are read once at start-up and never refreshed, so a later change cannot reach the model. |
+| R3: OBO token exchange for MCP | ⏸ Deferred | Needs an IdP token-exchange design and an ADR (ADR 0006 owns identity). R2 limits what a hijacked model can send with the static credential. |
+| R5: database RLS | ⏸ Deferred | Defence in depth only: the model has no data-query tool, and every owner-scoped read uses the HMAC owner key from the verified token. LangGraph's checkpoint tables are not owner-keyed, so RLS needs a schema design and an ADR. |
+| R6: approval token hash and expiry | ⏸ Not changed | The approval already resumes the exact checkpointed call with approve/reject only, scoped to owner and thread. A hash token would duplicate that binding. Expiry is low value: the user sees the exact arguments when deciding. |
+| R7: memory provenance and rollback | ⏸ Not changed | Notes are only the user's own words and need approval; forget-by-id and erase-all exist. |
+| R9: kill switch, WORM audit | ⏸ Deferred | Deployment concern (log sink with object lock, a feature-flag store). Removing a tool from `APP_MCP_SERVERS` and restarting disables it today. |
+| R10: DNS re-check for MCP hosts | ⏸ Not changed | Hosts come only from the operator's file, and a response must be a valid MCP reply to be used. |
+| R11: MCP mutation rate caps and idempotency | ⏸ Not changed | Every mutating call already needs a human click; per-user run, token and concurrency limits apply. |
+| R12: AIBOM | ⏸ Deferred | Supply-chain documentation, not a code control; the image SBOM is published already. |
