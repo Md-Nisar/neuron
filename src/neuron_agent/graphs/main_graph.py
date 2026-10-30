@@ -29,9 +29,11 @@ from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
 from neuron_agent.models.factory import (
+    TAINT_KEY,
     agent_invocation_config,
     classify_agent_error,
     get_retry_attempts,
+    is_tainted,
     reset_retry_attempts,
 )
 from neuron_agent.observability import metrics, semconv, telemetry
@@ -58,6 +60,7 @@ async def call_agent(
     agent: Any,
     settings: Settings | None = None,
     authorization: AuthorizationContext | None = None,
+    tainting: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     """Invoke the LangChain agent and normalize its output into application state.
 
@@ -107,6 +110,7 @@ async def call_agent(
             invocation["context"] = authorization
         result = await agent.ainvoke({"messages": history}, **invocation)
         answer = _final_answer(result, run_messages=result.get("messages", [])[len(history) :])
+        tainted = is_tainted(result.get("messages", []), tainting)
     except GraphBubbleUp:
         # A tool is waiting for a human decision: the run pauses, it did not fail.
         raise
@@ -139,7 +143,10 @@ async def call_agent(
     )
     # Only the user turn and the final answer are persisted; the agent's intermediate
     # tool-call/tool-result messages stay inside this run.
-    turn = [*new_turn, AIMessage(content=answer.answer, additional_kwargs=_run_stamp(run_id))]
+    # A run that read untrusted or private data marks its answer, so later turns that see the
+    # answer stay tainted (see `is_tainted`).
+    stamp = {**_run_stamp(run_id), **({TAINT_KEY: True} if tainted else {})}
+    turn = [*new_turn, AIMessage(content=answer.answer, additional_kwargs=stamp)]
     evicted = evict_oldest_turns(
         stored, incoming=len(turn), limit=resolved_settings.max_thread_messages
     )
@@ -286,6 +293,7 @@ def build_graph(
         if registry.mutating():
             logger.warning("approval_tools_disabled", reason="no_checkpointer")
         registry = registry.without_mutating()
+    tainting = registry.tainting() if registry is not None else frozenset()
     agent = (
         build_agent(resolved_settings, registry)
         if registry is not None
@@ -305,7 +313,11 @@ def build_graph(
         with telemetry.start_span(name, attributes=attributes) as span:
             try:
                 result = await call_agent(
-                    state, agent=agent, settings=resolved_settings, authorization=authorization
+                    state,
+                    agent=agent,
+                    settings=resolved_settings,
+                    authorization=authorization,
+                    tainting=tainting,
                 )
             except GraphBubbleUp:
                 outcome = "interrupted"

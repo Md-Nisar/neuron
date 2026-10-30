@@ -202,5 +202,7 @@ data out through a read tool's arguments with nobody looking. Tools whose result
 are marked `taints_run`. After such a result has arrived in the run, any `read` MCP tool
 needs approval: `when` is the taint check, so a run that read nothing untrusted is not asked.
 Where a run cannot pause (no checkpointer), the call is refused with reason
-`untrusted_context` instead. The taint is per run: thread history keeps no tool messages
-(ADR 0005).
+`untrusted_context` instead. Thread history keeps no tool messages (ADR 0005) but does keep
+answers, which may quote what was read, so the answer of a tainted run is stored with
+`tainted: true` in its `additional_kwargs`, and a run that sees such an answer in its history
+is tainted too. The mark leaves with the answer when old turns are evicted.

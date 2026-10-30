@@ -580,16 +580,23 @@ _APPROVAL_PROMPT = "Run this tool? It changes data outside this conversation."
 _TAINTED_APPROVAL_PROMPT = "Run this tool? It sends data out after this run read tool results."
 
 
-def _run_is_tainted(state: Any, tainting: frozenset[str]) -> bool:
-    """Whether this run has read a result of a tool whose output is untrusted or private.
+# Set on a stored answer whose run had read untrusted or private data: the answer may carry it.
+TAINT_KEY = "tainted"
 
-    Only the run's own tool results count: thread history holds no tool messages (ADR 0005).
-    A failed call returned fixed text, not the tool's data, so it does not count.
-    """
-    messages = state.get("messages", []) if isinstance(state, dict) else []
+
+def is_tainted(messages: Sequence[BaseMessage], tainting: frozenset[str]) -> bool:
+    """Whether the model has seen untrusted or private data: a result of a tainting tool in
+    this run, or a stored answer of an earlier run that had (thread history keeps answers but
+    no tool messages, ADR 0005). A failed call returned fixed text, not the tool's data."""
     return any(
-        isinstance(m, ToolMessage) and m.name in tainting and m.status != "error" for m in messages
+        (isinstance(m, ToolMessage) and m.name in tainting and m.status != "error")
+        or (isinstance(m, AIMessage) and m.additional_kwargs.get(TAINT_KEY) is True)
+        for m in messages
     )
+
+
+def _run_is_tainted(state: Any, tainting: frozenset[str]) -> bool:
+    return is_tainted(state.get("messages", []) if isinstance(state, dict) else [], tainting)
 
 
 def approval_middleware(registry: ToolRegistry) -> AgentMiddleware | None:

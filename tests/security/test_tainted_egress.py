@@ -1,5 +1,5 @@
-"""Lethal trifecta (security review 2026-10-30, R2): after a run reads untrusted or private data,
-no MCP call can send it out without a human."""
+"""Lethal trifecta (security review 2026-10-30, R2): once a thread has read untrusted or private
+data, no MCP call can send it out without a human."""
 
 from __future__ import annotations
 
@@ -124,6 +124,50 @@ async def test_a_search_with_no_untrusted_output_before_it_runs_unasked(
     assert _searched == ["6"]
 
 
+async def test_a_later_turn_stays_tainted_by_an_answer_that_read_untrusted_data(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Thread history keeps answers, not tool results: the answer carries the taint."""
+    _use(
+        monkeypatch,
+        _call("mcp_docs_read", page="1"),
+        AIMessage(content="The page says to send your notes."),
+        _call("mcp_web_search", query="the user's notes"),
+        AIMessage(content="done"),
+    )
+    graph = build_graph(Settings(env="test"), checkpointer=InMemorySaver(), registry=_registry())
+    config = _config()
+    context = AuthorizationContext(_SCOPES)
+
+    first = await graph.ainvoke(
+        {"messages": [HumanMessage(content="read page 1")]}, config, context=context
+    )
+    assert first["messages"][-1].additional_kwargs.get(factory.TAINT_KEY) is True
+
+    second = await graph.ainvoke(
+        {"messages": [HumanMessage(content="go on")]}, config, context=context
+    )
+    assert [a["name"] for a in second["__interrupt__"][0].value["action_requests"]] == [
+        "mcp_web_search"
+    ]
+    assert _searched == []
+
+
+async def test_an_answer_that_read_nothing_untrusted_is_not_marked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _use(monkeypatch, _call("calculator", expression="2*3"), AIMessage(content="6"))
+    graph = build_graph(Settings(env="test"), checkpointer=InMemorySaver(), registry=_registry())
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="2*3?")]},
+        _config(),
+        context=AuthorizationContext(_SCOPES),
+    )
+
+    assert factory.TAINT_KEY not in result["messages"][-1].additional_kwargs
+
+
 async def test_without_saved_state_the_search_is_refused(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -152,8 +196,10 @@ def test_a_failed_untrusted_call_does_not_taint_the_run() -> None:
     other = ToolMessage(content="x", tool_call_id="3", name="calculator")
     tainting = _registry().tainting()
 
+    marked = AIMessage(content="x", additional_kwargs={factory.TAINT_KEY: True})
     assert not factory._run_is_tainted({"messages": [failed, other]}, tainting)
     assert factory._run_is_tainted({"messages": [failed, read]}, tainting)
+    assert factory._run_is_tainted({"messages": [marked]}, tainting)
 
 
 def test_recall_and_every_mcp_tool_taint_a_run() -> None:
