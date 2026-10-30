@@ -8,7 +8,8 @@ once; a tool that is unlisted or no longer matches its pin is not registered, an
 `list_changed` notifications are never read because no connection is held open. A call opens a
 connection, sends the configured bearer token for that server (never the caller's), reads the
 reply and closes. The client declares no sampling, roots or elicitation handler, so a server
-cannot ask for any of them. A reply is text only and capped; anything else is an error.
+cannot ask for any of them. Arguments must match the pinned input schema before a call is sent.
+A reply is text only and capped; anything else is an error.
 """
 
 from __future__ import annotations
@@ -20,12 +21,16 @@ from typing import Any, cast
 
 import httpx2
 import structlog
+from jsonschema import Draft202012Validator, validators
+from jsonschema.exceptions import SchemaError
 from langchain_core.tools import StructuredTool, ToolException
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from mcp_types import CallToolResult, TextContent
 from pydantic import SecretStr
+from referencing import Registry
 
+from neuron_agent.errors.base import ValidationAppError
 from neuron_agent.security.input_policy import audit_tool_name, validate_safe_url
 from neuron_agent.tools.mcp.config import McpConfig, McpServerConfig, McpToolConfig
 from neuron_agent.tools.mcp.pins import FetchedTool, check_pins
@@ -135,6 +140,35 @@ def _text_of(result: CallToolResult, max_bytes: int) -> str:
     return text
 
 
+_REF_KEYWORDS = frozenset({"$ref", "$dynamicRef"})
+
+
+def _local_validator_for(schema: dict[str, Any]) -> Any:
+    """A validator for a pinned input schema that never leaves the process.
+
+    The operator pins a schema without reading it, so it is untrusted: a `$ref` outside the
+    schema would be fetched, and a regex runs on text the model chose. Only local references
+    are allowed, `patternProperties` is refused and `pattern` is not checked here (the server
+    checks its own patterns), so no server-written regex runs in this process.
+    """
+    pending: list[object] = [schema]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in _REF_KEYWORDS and not (isinstance(value, str) and value.startswith("#")):
+                    raise SchemaError("only local references are allowed")
+                if key == "patternProperties":
+                    raise SchemaError("patternProperties is not supported")
+            pending.extend(node.values())
+        elif isinstance(node, list):
+            pending.extend(node)
+    validator_class = validators.validator_for(schema, default=Draft202012Validator)
+    validator_class.check_schema(schema)
+    local_class = validators.extend(validator_class, {"pattern": None})  # type: ignore[no-untyped-call]
+    return local_class({"additionalProperties": False, **schema}, registry=Registry())
+
+
 def _langchain_tool(
     server: McpServerConfig,
     remote_name: str,
@@ -146,7 +180,16 @@ def _langchain_tool(
     timeout: float,
     max_output_bytes: int,
 ) -> StructuredTool:
+    # The schema is only advertised to the model; nothing else checks what the model sends, so
+    # it is enforced here, outside the model, before anything reaches the server. An argument
+    # the schema does not name is refused unless the schema itself allows it.
+    validator = _local_validator_for(schema)
+
     async def call(**arguments: Any) -> str:
+        if not validator.is_valid(arguments):
+            # A fixed message: the model chose the input and may correct it, but the schema
+            # error would echo it.
+            raise ValidationAppError("the arguments do not match the tool's input schema")
         async with _connect(
             server.url,
             token=token,
@@ -220,22 +263,28 @@ async def _discover_server(
     specs: list[ToolSpec] = []
     for name in result.accepted:
         definition, configured = by_name[name], wanted[name]
-        tool = _langchain_tool(
-            server,
-            name,
-            definition.description or "",
-            dict(definition.input_schema),
-            token=token,
-            env=env,
-            timeout=timeout,
-            max_output_bytes=max_output_bytes,
-        )
+        try:
+            tool = _langchain_tool(
+                server,
+                name,
+                definition.description or "",
+                dict(definition.input_schema),
+                token=token,
+                env=env,
+                timeout=timeout,
+                max_output_bytes=max_output_bytes,
+            )
+        except SchemaError:
+            # A schema that cannot be checked cannot bound what the model sends.
+            logger.warning("mcp_tool_rejected", server=server.name, tool=name, reason="schema")
+            continue
         specs.append(
             ToolSpec(
                 tool,
                 scope=f"tools:mcp.{server.name}.{name}",
                 risk=configured.risk,
                 source="mcp",
+                taints_run=True,
             )
         )
     return specs

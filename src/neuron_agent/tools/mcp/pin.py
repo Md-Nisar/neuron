@@ -3,9 +3,10 @@
 
 """`neuron-mcp-pin`: print the `APP_MCP_SERVERS` entry for a server, to review and commit.
 
-It connects once, lists the server's tools and prints each tool's description (stderr, for you
-to read) and its pin (stdout, as a config entry with the safe default risk `mutating`). Pinning
-is the review step: read the descriptions before you keep a tool in the file.
+It connects once, lists the server's tools and prints each tool's description and input schema
+(stderr, for you to read) and its pin (stdout, as a config entry with the safe default risk
+`mutating`). Pinning is the review step: read the descriptions and schemas before you keep a
+tool in the file.
 """
 
 from __future__ import annotations
@@ -65,8 +66,11 @@ def main(argv: list[str] | None = None) -> None:
             print(
                 f"!!! {name}: control characters were escaped below; look closely", file=sys.stderr
             )
+        # The input schema is pinned and read by the model too (its property descriptions are
+        # prompt text), so it is reviewed as well. ASCII-only JSON escapes every control character.
+        schema = json.dumps(definition.input_schema, indent=2, sort_keys=True, ensure_ascii=True)
         print(
-            f"--- {name}\n{description}",
+            f"--- {name}\n{description}\ninput schema:\n{schema}",
             file=sys.stderr,
         )
         tools.append({"name": definition.name, "pin": tool_pin(definition), "risk": "mutating"})

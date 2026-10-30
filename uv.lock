@@ -1696,6 +1696,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx2" },
+    { name = "jsonschema" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "langchain-openai" },
@@ -1729,7 +1730,6 @@ dev = [
     { name = "anyio" },
     { name = "bandit" },
     { name = "httpx" },
-    { name = "jsonschema" },
     { name = "langgraph-api" },
     { name = "langgraph-cli", extra = ["inmem"] },
     { name = "locust" },
@@ -1739,6 +1739,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pyyaml" },
     { name = "ruff" },
+    { name = "types-jsonschema" },
     { name = "types-requests" },
 ]
 
@@ -1746,6 +1747,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.125.0" },
     { name = "httpx2", specifier = ">=2.12.0" },
+    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "langchain", specifier = ">=1.4.7" },
     { name = "langchain-anthropic", specifier = ">=1.7.6" },
     { name = "langchain-openai", specifier = ">=1.7.3" },
@@ -1776,7 +1778,6 @@ dev = [
     { name = "anyio", specifier = ">=4.12.0" },
     { name = "bandit", specifier = ">=1.9.2" },
     { name = "httpx", specifier = ">=0.28.0" },
-    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "langgraph-api", specifier = ">=0.15.4" },
     { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.33" },
     { name = "locust", specifier = ">=2.47.0" },
@@ -1786,6 +1787,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", specifier = ">=0.14.0" },
+    { name = "types-jsonschema", specifier = ">=4.26.0" },
     { name = "types-requests", specifier = ">=2.32.0" },
 ]
 
@@ -2962,6 +2964,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/a3/1585216310e344e8102c22482f6060c7a6ea0322b63e026372e6dcefcfd6/truststore-0.10.4.tar.gz", hash = "sha256:9d91bd436463ad5e4ee4aba766628dd6cd7010cf3e2461756b3303710eebc301", size = 26169, upload-time = "2025-08-12T18:49:02.73Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/19/97/56608b2249fe206a67cd573bc93cd9896e1efb9e98bce9c163bcdc704b88/truststore-0.10.4-py3-none-any.whl", hash = "sha256:adaeaecf1cbb5f4de3b1959b42d41f6fab57b2b1666adb59e89cb0b53361d981", size = 18660, upload-time = "2025-08-12T18:49:01.46Z" },
+]
+
+[[package]]
+name = "types-jsonschema"
+version = "4.26.0.20261006"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "referencing" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/29/d2/1f742605f5a6d39f993134885b8de41c98af606871d3ebddaf3e776bd1eb/types_jsonschema-4.26.0.20261006.tar.gz", hash = "sha256:3eb7db61b6819d40addfdaac7173e749071a7d4a9a4394f0c844598ec84b2500", size = 16843, upload-time = "2026-10-06T08:16:07.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/a0/4f2e3c0dc3d5cad958006f2e0307065cc8fe4fbf0393ff0b69d55ee9bbe5/types_jsonschema-4.26.0.20261006-py3-none-any.whl", hash = "sha256:29301f4e65e3928540cdf5e23ad716e38bb0c0b416a48dada213edd3d70206ec", size = 16113, upload-time = "2026-10-06T08:16:06.355Z" },
 ]
 
 [[package]]

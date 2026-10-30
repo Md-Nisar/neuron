@@ -44,7 +44,7 @@ class InvalidReportError(Exception):
 
 def load_report(path: Path) -> dict[str, Any]:
     """Read a report and validate it against the report schema (which also pins its version)."""
-    import jsonschema  # type: ignore[import-untyped]
+    import jsonschema
 
     try:
         report = json.loads(path.read_text(encoding="utf-8"))

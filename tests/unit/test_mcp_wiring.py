@@ -21,6 +21,7 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.models import factory
 from neuron_agent.services.agent_service import AgentService
 from neuron_agent.tools.mcp import pin as pin_command
+from neuron_agent.tools.mcp.pins import FetchedTool
 
 pytestmark = pytest.mark.anyio
 
@@ -101,6 +102,8 @@ async def test_the_pin_command_prints_a_reviewable_entry(
         {"name": "convert_units", "pin": expected["convert_units"], "risk": "mutating"}
     ]
     assert "Convert a number between units" in captured.err
+    # The schema is pinned and read by the model, so the operator reviews it too.
+    assert '"from_unit"' in captured.err
 
 
 def test_a_server_cannot_rewrite_the_operators_terminal() -> None:
@@ -112,3 +115,19 @@ def test_a_server_cannot_rewrite_the_operators_terminal() -> None:
     assert "​" not in shown
     assert "\\x1b" in shown
     assert pin_command._printable("line one\n\tline two") == "line one\n\tline two"
+
+
+def test_a_schema_cannot_rewrite_the_operators_terminal(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    hostile = FetchedTool(
+        "t", "ok", {"type": "object", "properties": {"a": {"description": "x\x1b[2J\u202e"}}}
+    )
+    monkeypatch.setattr(pin_command, "fetch_definitions_blocking", lambda *_, **__: [hostile])
+
+    pin_command.main(["http://127.0.0.1:9/mcp"])
+
+    err = capsys.readouterr().err
+    assert "\x1b" not in err
+    assert "\u202e" not in err
+    assert "\\u001b[2J\\u202e" in err
