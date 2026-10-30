@@ -25,7 +25,7 @@ from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.tools.mcp import client as mcp_client
 from neuron_agent.tools.mcp.client import discover_mcp_specs, fetch_definitions
 from neuron_agent.tools.mcp.config import McpConfig, McpServerConfig, McpToolConfig
-from neuron_agent.tools.mcp.pins import tool_pin
+from neuron_agent.tools.mcp.pins import FetchedTool, tool_pin
 from neuron_agent.tools.registry import ToolRegistry, builtin_registry
 
 pytestmark = pytest.mark.anyio
@@ -280,3 +280,23 @@ async def test_without_its_scope_the_tool_is_not_run(
     )
 
     assert result["answer"].used_tools == []
+
+
+async def test_a_tool_whose_schema_cannot_be_checked_is_rejected_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    good = FetchedTool("good", "Fine.", {"type": "object", "properties": {}})
+    bad = FetchedTool("bad", "Broken.", {"type": "object", "properties": 5})
+
+    async def fetched(*_: Any, **__: Any) -> list[FetchedTool]:
+        return [good, bad]
+
+    monkeypatch.setattr(mcp_client, "fetch_definitions", fetched)
+    pins = {tool.name: tool_pin(tool) for tool in (good, bad)}
+    with structlog.testing.capture_logs() as logs:
+        specs = await _discover(_config("http://127.0.0.1:1/mcp", pins))
+
+    assert [spec.name for spec in specs] == ["mcp_units_good"]
+    assert [
+        (log["tool"], log["reason"]) for log in logs if log["event"] == "mcp_tool_rejected"
+    ] == [("bad", "schema")]
