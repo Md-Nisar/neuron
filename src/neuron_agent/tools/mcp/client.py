@@ -284,6 +284,7 @@ async def _discover_server(
                 scope=f"tools:mcp.{server.name}.{name}",
                 risk=configured.risk,
                 source="mcp",
+                taints_run=True,
             )
         )
     return specs

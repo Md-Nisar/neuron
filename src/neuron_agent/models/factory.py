@@ -302,6 +302,25 @@ class _ToolAuthorizationMiddleware(AgentMiddleware[Any, Any]):
                 reason="unknown_tool",
             )
             return _denied_tool_call(request, tool_name)
+        if (
+            spec is not None
+            and not self._registry.can_pause
+            and spec in self._registry.gated_after_taint()
+            and _run_is_tainted(request.state, self._registry.tainting())
+        ):
+            # Where no run can wait for a human, the call that would need one is refused.
+            metrics.record_policy_block("untrusted_context")
+            audit(
+                "authorization_denied",
+                outcome="denied",
+                actor=context.actor if isinstance(context, AuthorizationContext) else None,
+                issuer_id=context.issuer_id if isinstance(context, AuthorizationContext) else None,
+                action=permission or "none",
+                resource_type="tool",
+                resource_id=audit_name,
+                reason="untrusted_context",
+            )
+            return _denied_tool_call(request, tool_name)
         return await handler(request)
 
 
@@ -558,6 +577,19 @@ def _is_empty_message(reply: Any) -> bool:
 
 
 _APPROVAL_PROMPT = "Run this tool? It changes data outside this conversation."
+_TAINTED_APPROVAL_PROMPT = "Run this tool? It sends data out after this run read tool results."
+
+
+def _run_is_tainted(state: Any, tainting: frozenset[str]) -> bool:
+    """Whether this run has read a result of a tool whose output is untrusted or private.
+
+    Only the run's own tool results count: thread history holds no tool messages (ADR 0005).
+    A failed call returned fixed text, not the tool's data, so it does not count.
+    """
+    messages = state.get("messages", []) if isinstance(state, dict) else []
+    return any(
+        isinstance(m, ToolMessage) and m.name in tainting and m.status != "error" for m in messages
+    )
 
 
 def approval_middleware(registry: ToolRegistry) -> AgentMiddleware | None:
@@ -576,6 +608,16 @@ def approval_middleware(registry: ToolRegistry) -> AgentMiddleware | None:
         if spec.approval_when is not None:
             config["when"] = spec.approval_when
         gated[spec.name] = config
+    if registry.can_pause:
+        # The lethal trifecta: after untrusted or private data entered the run, a read tool's
+        # arguments can carry it out. Injected text must not be able to do that unseen.
+        tainting = registry.tainting()
+        for spec in registry.gated_after_taint():
+            gated[spec.name] = InterruptOnConfig(
+                allowed_decisions=["approve", "reject"],
+                description=_TAINTED_APPROVAL_PROMPT,
+                when=lambda request: _run_is_tainted(request.state, tainting),
+            )
     if not gated:
         return None
     return HumanInTheLoopMiddleware(interrupt_on=dict(gated), interrupt_mode="batched")
@@ -615,7 +657,7 @@ def create_main_agent(settings: Settings, registry: ToolRegistry) -> Any:
         # turns and final answers (ADR 0005), so without gated tools its internal state (tool
         # calls and results) is not checkpointed. With them it must inherit the main graph's
         # checkpointer (`None`), or an approved call would be lost on resume (ADR 0009).
-        checkpointer=None if registry.mutating() else False,
+        checkpointer=None if registry.gated() else False,
     )
 
 

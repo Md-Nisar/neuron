@@ -65,7 +65,7 @@ How the OWASP agentic risks that v0.7.0 touches are handled:
 
 | Risk | Where it shows up | Control | Tests |
 | ---- | ----------------- | ------- | ----- |
-| ASI02 tool misuse | MCP and memory tools | scope per tool, `mutating` default for MCP tools, MCP arguments checked against the pinned schema, approval, size and timeout caps, `approval_when` refuses calls that cannot be valid | `test_mcp_abuse`, `test_approval_api`, `test_memory_tools` |
+| ASI02 tool misuse | MCP and memory tools | scope per tool, `mutating` default for MCP tools, MCP arguments checked against the pinned schema, approval (also for a `read` MCP tool once the run has read an MCP result or the user's notes; refused where no run can pause), size and timeout caps, `approval_when` refuses calls that cannot be valid | `test_mcp_abuse`, `test_approval_api`, `test_memory_tools` |
 | ASI04 supply chain | MCP servers | operator-only server list, https to public hosts, SHA-256 pin of each tool definition, no stdio, no sampling, roots or elicitation, no redirects off origin, no proxy or compression | `test_mcp_abuse`, `test_mcp_pins` |
 | ASI06 memory poisoning | per-user memory | `remember` saves only text the user wrote, approval before writing, owner from trusted context, notes returned as escaped data, per-user limits, user can list and delete | `test_memory_tools`, `test_memory_api`, `approval` and security evals |
 | ASI09 trust in the agent | approvals | the user decides on the exact arguments that will run; the model cannot edit them or answer in the tool's place | `test_approval_api`, `test_approval_stream`, `approval` eval |

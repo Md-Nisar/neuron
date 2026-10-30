@@ -279,10 +279,12 @@ def build_graph(
     `registry` is the tool set (the builtin tools when omitted).
     """
     resolved_settings = settings or get_settings()
-    if registry is not None and checkpointer is None and registry.mutating():
+    if registry is not None and checkpointer is None and registry.gated():
         # A run can pause only where its state is saved: without a checkpointer (stateless
-        # deployments, Agent Server) a gated tool would be lost, so it is not offered.
-        logger.warning("approval_tools_disabled", reason="no_checkpointer")
+        # deployments, Agent Server) a gated tool would be lost, so it is not offered, and a
+        # call that would need approval after untrusted data is refused.
+        if registry.mutating():
+            logger.warning("approval_tools_disabled", reason="no_checkpointer")
         registry = registry.without_mutating()
     agent = (
         build_agent(resolved_settings, registry)
