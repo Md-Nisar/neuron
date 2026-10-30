@@ -282,11 +282,23 @@ async def test_without_its_scope_the_tool_is_not_run(
     assert result["answer"].used_tools == []
 
 
+@pytest.mark.parametrize(
+    "schema",
+    [
+        pytest.param({"type": "object", "properties": 5}, id="invalid"),
+        pytest.param({"$ref": "https://evil.example/schema.json"}, id="remote-ref"),
+        pytest.param(
+            {"type": "object", "properties": {"a": {"$dynamicRef": "file:///etc/passwd"}}},
+            id="file-dynamic-ref",
+        ),
+        pytest.param({"type": "object", "patternProperties": {"^(a+)+$": {}}}, id="regex-keys"),
+    ],
+)
 async def test_a_tool_whose_schema_cannot_be_checked_is_rejected_alone(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, schema: dict[str, Any]
 ) -> None:
     good = FetchedTool("good", "Fine.", {"type": "object", "properties": {}})
-    bad = FetchedTool("bad", "Broken.", {"type": "object", "properties": 5})
+    bad = FetchedTool("bad", "Broken.", schema)
 
     async def fetched(*_: Any, **__: Any) -> list[FetchedTool]:
         return [good, bad]
@@ -300,3 +312,23 @@ async def test_a_tool_whose_schema_cannot_be_checked_is_rejected_alone(
     assert [
         (log["tool"], log["reason"]) for log in logs if log["event"] == "mcp_tool_rejected"
     ] == [("bad", "schema")]
+
+
+def test_a_server_written_pattern_never_runs_here() -> None:
+    """A catastrophic regex in a pinned schema cannot stall the process on model input."""
+    validator = mcp_client._local_validator_for(
+        {
+            "type": "object",
+            "properties": {
+                "a": {"type": "string", "pattern": "^(a+)+$"},
+                "b": {"$ref": "#/$defs/n"},
+            },
+            "$defs": {"n": {"type": "integer"}},
+        }
+    )
+
+    started = time.monotonic()
+    assert validator.is_valid({"a": "a" * 64 + "!", "b": 1})
+    assert time.monotonic() - started < 1
+    assert not validator.is_valid({"b": "x"})
+    assert not validator.is_valid({"c": 1})

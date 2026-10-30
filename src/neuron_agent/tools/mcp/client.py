@@ -28,6 +28,7 @@ from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from mcp_types import CallToolResult, TextContent
 from pydantic import SecretStr
+from referencing import Registry
 
 from neuron_agent.errors.base import ValidationAppError
 from neuron_agent.security.input_policy import audit_tool_name, validate_safe_url
@@ -139,6 +140,35 @@ def _text_of(result: CallToolResult, max_bytes: int) -> str:
     return text
 
 
+_REF_KEYWORDS = frozenset({"$ref", "$dynamicRef"})
+
+
+def _local_validator_for(schema: dict[str, Any]) -> Any:
+    """A validator for a pinned input schema that never leaves the process.
+
+    The operator pins a schema without reading it, so it is untrusted: a `$ref` outside the
+    schema would be fetched, and a regex runs on text the model chose. Only local references
+    are allowed, `patternProperties` is refused and `pattern` is not checked here (the server
+    checks its own patterns), so no server-written regex runs in this process.
+    """
+    pending: list[object] = [schema]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in _REF_KEYWORDS and not (isinstance(value, str) and value.startswith("#")):
+                    raise SchemaError("only local references are allowed")
+                if key == "patternProperties":
+                    raise SchemaError("patternProperties is not supported")
+            pending.extend(node.values())
+        elif isinstance(node, list):
+            pending.extend(node)
+    validator_class = validators.validator_for(schema, default=Draft202012Validator)
+    validator_class.check_schema(schema)
+    local_class = validators.extend(validator_class, {"pattern": None})  # type: ignore[no-untyped-call]
+    return local_class({"additionalProperties": False, **schema}, registry=Registry())
+
+
 def _langchain_tool(
     server: McpServerConfig,
     remote_name: str,
@@ -153,9 +183,7 @@ def _langchain_tool(
     # The schema is only advertised to the model; nothing else checks what the model sends, so
     # it is enforced here, outside the model, before anything reaches the server. An argument
     # the schema does not name is refused unless the schema itself allows it.
-    validator_class = validators.validator_for(schema, default=Draft202012Validator)
-    validator_class.check_schema(schema)
-    validator = validator_class({"additionalProperties": False, **schema})
+    validator = _local_validator_for(schema)
 
     async def call(**arguments: Any) -> str:
         if not validator.is_valid(arguments):
