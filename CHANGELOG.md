@@ -7,7 +7,7 @@
 - Tests for the calculator's rejected operators and syntax and for the `utc_now` tool, which were not covered.
 - Release gates #160 (v0.6.0), #253 (v0.7.0) and #293 (v0.8.0) were closed by the owner on 2026-10-29. #293 is closed on the owner's report that the real browser and Keycloak run is done; #160 and #253 are closed without a Render deployment or an OpenAI production-model run, which have never run.
 - Streaming: `AnswerTokenExtractor` now strips a Markdown code fence around the structured-answer JSON, so a model that wraps its answer in a ```json fence no longer streams as a code block.
-- Nightly eval: the development model is now `nvidia/nemotron-3.5-lightning-30b-a3b` (12 of 12 tool-selection trials, #341; `docs/releases/v0.9.0-gate/real-model/`). `nemotron-3-ultra-550b-a55b` passed none of them. No baseline exists for the new model, so only the security gate applies until one is committed.
+- Nightly eval: back on `nvidia/nemotron-3-ultra-550b-a55b`. The 2026-10-29 run on `nvidia/nemotron-3.5-lightning-30b-a3b` failed the approval security gate (4 quality failures in 39 trials, in `approval_readonly`, `approval_limits` and `approval_tool_output`), and the earlier 12 of 12 result covered tool selection only. Lightning stays the model for local development. No baseline exists for ultra, so only the security gate applies until one is committed.
 
 ## 0.9.0
 

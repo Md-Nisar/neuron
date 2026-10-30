@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_DEFAULT_MODEL: nvidia:nvidia/nemotron-3.5-lightning-30b-a3b
+  APP_DEFAULT_MODEL: nvidia:nvidia/nemotron-3-ultra-550b-a55b
 
 jobs:
   live-eval:
