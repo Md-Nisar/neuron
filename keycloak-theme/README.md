@@ -36,3 +36,10 @@ Set these environment variables on the Keycloak server (defaults are in `vite.co
 `SHADCN_THEME_LAYOUT` (`two-column`, `centered-card`, `image-aside`), `SHADCN_THEME_PRESET`,
 `SHADCN_THEME_BASE`, `SHADCN_THEME_RADIUS`, `SHADCN_THEME_FONT`, `SHADCN_THEME_PLACEHOLDER`,
 `SHADCN_THEME_LOGO_WHITE_URL`, `SHADCN_THEME_LOGO_DARK_URL`, `SHADCN_THEME_SIDE_IMAGE_URL`.
+
+## License
+
+Most of `src/login/` and `src/components/` is copied from keycloakify-shadcn-starter (MIT,
+Copyright (c) 2026 Oussema Sahbeni); its licence is in `LICENSE-keycloakify-shadcn-starter`.
+Local changes: the theme name and mock realm name, the home link (client `baseUrl` only), the theme
+toggle, logo `alt` text and the tests in `src/test/`.
