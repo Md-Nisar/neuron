@@ -39,6 +39,10 @@ def test_staging_follows_a_successful_main_build_and_production_follows_a_tag() 
     staging = _JOBS["staging"]
     assert "workflow_run.conclusion == 'success'" in staging["if"]
     assert "head_branch == 'main'" in staging["if"]
+    # Name and branch are fork-controlled: bind the run to a push here by image-publish.yml.
+    assert "workflow_run.event == 'push'" in staging["if"]
+    assert "head_repository.full_name == github.repository" in staging["if"]
+    assert "workflow_run.path == '.github/workflows/image-publish.yml'" in staging["if"]
     assert staging["environment"] == "staging"
     production = _JOBS["production"]
     assert "startsWith(github.ref, 'refs/tags/v')" in production["if"]
@@ -79,6 +83,7 @@ def test_production_never_rebuilds_and_takes_the_recorded_digest_not_a_tag() -> 
         check = _index(job, "check-image")
         assert read <= check < _index(job, "gh attestation verify")
         assert "-n image-digest" in _steps(job)[read]["run"]
+        assert '-D "$dir"' in _steps(job)[read]["run"], f"{job}: download outside the checkout"
         trigger = _steps(job)[_index(job, "deploy_tools.py trigger")]
         assert trigger["env"]["IMAGE"] == "${{ steps.image.outputs.ref }}"
     publish = (WORKFLOWS / "image-publish.yml").read_text("utf-8")
