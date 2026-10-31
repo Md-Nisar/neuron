@@ -43,6 +43,9 @@ class ToolSpec:
     # For a `mutating` tool: return False for a call the tool will refuse by itself, so the user
     # is not asked to approve something that cannot happen. True (or None) asks as usual.
     approval_when: Callable[[Any], bool] | None = None
+    # The tool returns untrusted or private data (MCP output, the user's notes). Once a run has
+    # read such a result, a call that sends data out (any MCP tool) needs a human.
+    taints_run: bool = False
 
     def __post_init__(self) -> None:
         if self.name in HIGH_RISK_TOOL_NAMES:
@@ -58,15 +61,20 @@ class ToolSpec:
 
 
 class ToolRegistry:
-    """An immutable set of `ToolSpec`s, unique by tool name."""
+    """An immutable set of `ToolSpec`s, unique by tool name.
 
-    def __init__(self, specs: Iterable[ToolSpec]) -> None:
+    `can_pause` is False where a run cannot wait for a human (no saved state): there a call
+    that would need approval after untrusted data is refused instead.
+    """
+
+    def __init__(self, specs: Iterable[ToolSpec], *, can_pause: bool = True) -> None:
         by_name: dict[str, ToolSpec] = {}
         for spec in specs:
             if spec.name in by_name:
                 raise ValueError(f"duplicate tool name: {spec.name}")
             by_name[spec.name] = spec
         self._specs = by_name
+        self.can_pause = can_pause
 
     def __iter__(self) -> Iterator[ToolSpec]:
         return iter(self._specs.values())
@@ -84,9 +92,23 @@ class ToolRegistry:
     def mutating(self) -> list[ToolSpec]:
         return [spec for spec in self._specs.values() if spec.risk == "mutating"]
 
+    def gated_after_taint(self) -> list[ToolSpec]:
+        """Read tools that need approval once the run has read untrusted or private data."""
+        return [s for s in self._specs.values() if s.source == "mcp" and s.risk == "read"]
+
+    def gated(self) -> list[ToolSpec]:
+        """Every tool a run may pause on: the `mutating` ones, and the rest that can need it."""
+        return [*self.mutating(), *self.gated_after_taint()] if self.can_pause else []
+
+    def tainting(self) -> frozenset[str]:
+        """Names of the tools whose results taint a run (see `ToolSpec.taints_run`)."""
+        return frozenset(spec.name for spec in self._specs.values() if spec.taints_run)
+
     def without_mutating(self) -> ToolRegistry:
         """The same registry without the tools that need approval (no run can pause)."""
-        return ToolRegistry(spec for spec in self._specs.values() if spec.risk != "mutating")
+        return ToolRegistry(
+            (spec for spec in self._specs.values() if spec.risk != "mutating"), can_pause=False
+        )
 
     def scope_for(self, name: str) -> str | None:
         spec = self._specs.get(name)

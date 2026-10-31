@@ -194,6 +194,36 @@ async def test_without_its_scope_the_server_is_never_contacted(
     )
 
 
+@pytest.mark.parametrize(
+    "args",
+    [
+        pytest.param({**_CONVERT, "path": "../../etc/passwd"}, id="undeclared-argument"),
+        pytest.param({**_CONVERT, "value": "lots"}, id="wrong-type"),
+        pytest.param({"value": 1, "from_unit": "m"}, id="missing-argument"),
+    ],
+)
+async def test_arguments_outside_the_pinned_schema_never_reach_the_server(
+    monkeypatch: pytest.MonkeyPatch, args: dict[str, Any]
+) -> None:
+    calls: list[str] = []
+    with serve(_units_server(calls).streamable_http_app()) as url:
+        registry = ToolRegistry(
+            [*builtin_registry(), *await _discover(_config(url, await _pins(url)))]
+        )
+        model = _model(
+            monkeypatch,
+            _call("mcp_units_convert_units", **args),
+            AIMessage(content="could not"),
+        )
+        result = await _run(registry, _GRANT)
+
+    assert calls == []
+    assert result["answer"].used_tools == []
+    [tool_message] = [m for m in model.seen[-1] if isinstance(m, ToolMessage)]
+    assert tool_message.status == "error"
+    assert tool_message.content == factory._TOOL_INPUT_ERROR
+
+
 async def test_a_redirect_off_the_servers_origin_is_not_followed() -> None:
     """A server cannot bounce the client (and its bearer token) to another host or port."""
     hits: list[str] = []

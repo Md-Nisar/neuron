@@ -107,7 +107,7 @@ def memory_specs(memory: MemoryStore) -> list[ToolSpec]:
         return "Forgotten."
 
     return [
-        ToolSpec(_report_errors(recall), MEMORY_TOOL_SCOPES["recall"], "read"),
+        ToolSpec(_report_errors(recall), MEMORY_TOOL_SCOPES["recall"], "read", taints_run=True),
         ToolSpec(
             _report_errors(remember),
             MEMORY_TOOL_SCOPES["remember"],

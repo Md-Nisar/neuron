@@ -192,3 +192,17 @@ three (`mcp`, `mcp-types`, `python-multipart`; `httpx2` was already in the tree)
 of our own, which is where every rule above is enforced: no client callbacks, text only,
 size cap, no metadata, pin check before a tool exists, a fresh connection per call. `langchain.mcp`
 is beta; the SDK's client API is what it wraps. The rules in decision 5 are unchanged.
+
+## Amendment: approval after untrusted data (security review 2026-10-30, R2)
+
+Decision 6 asked for approval before `mutating` tools only. A `read` MCP tool still sends its
+arguments to a third-party server, so once a run has read untrusted or private data (any MCP
+result, or the user's notes through `recall`), injected text could have the model carry that
+data out through a read tool's arguments with nobody looking. Tools whose results taint a run
+are marked `taints_run`. After such a result has arrived in the run, any `read` MCP tool
+needs approval: `when` is the taint check, so a run that read nothing untrusted is not asked.
+Where a run cannot pause (no checkpointer), the call is refused with reason
+`untrusted_context` instead. Thread history keeps no tool messages (ADR 0005) but does keep
+answers, which may quote what was read, so the answer of a tainted run is stored with
+`tainted: true` in its `additional_kwargs`, and a run that sees such an answer in its history
+is tainted too. The mark leaves with the answer when old turns are evicted.

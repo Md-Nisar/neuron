@@ -374,7 +374,7 @@ class AgentService:
 
     def _can_pause(self) -> bool:
         """Whether a run on this service can wait for an approval."""
-        return self._persistence.checkpointer is not None and bool(self._tools().mutating())
+        return self._persistence.checkpointer is not None and bool(self._tools().gated())
 
     async def get_pending_approval(
         self,

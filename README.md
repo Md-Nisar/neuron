@@ -206,7 +206,7 @@ With `APP_MEMORY_ENABLED=true` the assistant can keep notes for each user, only 
 The agent can use read-only tools from an [MCP](https://modelcontextprotocol.io) server you run or trust (ADR 0009). Nothing is loaded unless you set `APP_MCP_SERVERS`.
 
 1. Start a server. For a local try-out: `uv run python scripts/mcp_reference_server.py` (a unit converter on `http://127.0.0.1:8765/mcp`).
-2. Pin it: `uv run neuron-mcp-pin http://127.0.0.1:8765/mcp --name units`. It prints each tool's description (read it) and a config entry with a SHA-256 pin of the tool's name, description and input schema.
+2. Pin it: `uv run neuron-mcp-pin http://127.0.0.1:8765/mcp --name units`. It prints each tool's description and input schema (read both: the model reads them) and a config entry with a SHA-256 pin of the tool's name, description and input schema.
 3. Save the entry in a file as `{"servers": [ ... ]}`, set `"risk": "read"` for tools that change nothing, and point `APP_MCP_SERVERS` at it. A remote server must be `https`; give it a token with `APP_MCP_BEARER_TOKENS='{"units": "<token>"}'` (or `"auth": "none"`).
 4. Grant the scope `tools:mcp.<server>.<tool>` to the users who may use it (development with `APP_AUTH_MODE=none` grants all).
 
