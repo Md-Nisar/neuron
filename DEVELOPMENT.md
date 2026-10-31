@@ -75,6 +75,10 @@ It sums input, output, cache-read and cache-write tokens per agent, grouped by i
 
 Prompts live under `src/neuron_agent/prompts/`. Prompt changes should include eval cases for the intended behavior and security regression cases for injection resistance.
 
+## SonarQube Cloud MCP
+
+`.mcp.json` registers SonarSource's SonarQube MCP server (the `mcp/sonarqube` image, pinned by digest) so Claude Code can read the project's issues, quality gate and coverage. It needs Docker and a SonarQube Cloud user token in `SONAR_READ_TOKEN` (My Account, Security). The server runs with `SONARQUBE_READ_ONLY=true`, which removes the two tools that change an issue or hotspot status (16 of its 18 tools remain), so an agent cannot mark findings accepted or false positive. Keep the token browse-only as well. Without the variable the server fails to start and nothing else is affected. To update the image, check the new digest on Docker Hub (`mcp/sonarqube`) and replace it in `.mcp.json`.
+
 ## Debugging
 
 Run `make api` for HTTP debugging or `make run` for LangGraph Studio-compatible local development. Do not add provider secrets to source control.
