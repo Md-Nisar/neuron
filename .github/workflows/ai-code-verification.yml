@@ -66,6 +66,17 @@ jobs:
           python scripts/check_new_npm_dependencies.py \
             "$RUNNER_TEMP/base-package.json" web/package.json \
             "$RUNNER_TEMP/base-lock.json" web/package-lock.json
+      - name: Check npm packages added to keycloak-theme/ (manifest and lockfile)
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          ALLOW_YOUNG_PACKAGES: ${{ contains(github.event.pull_request.labels.*.name, 'new-dependency-approved') }}
+        run: |
+          # The base may not have keycloak-theme/ yet (the PR that creates it): an empty manifest then.
+          git show "origin/${BASE_REF}:keycloak-theme/package.json" > "$RUNNER_TEMP/base-theme-package.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/base-theme-package.json"
+          git show "origin/${BASE_REF}:keycloak-theme/package-lock.json" > "$RUNNER_TEMP/base-theme-lock.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/base-theme-lock.json"
+          python scripts/check_new_npm_dependencies.py \
+            "$RUNNER_TEMP/base-theme-package.json" keycloak-theme/package.json \
+            "$RUNNER_TEMP/base-theme-lock.json" keycloak-theme/package-lock.json
 
   pr-hygiene:
     # Small batches and an honest PR description keep human review meaningful.
@@ -80,7 +91,7 @@ jobs:
           LARGE_OK: ${{ contains(github.event.pull_request.labels.*.name, 'large-pr-approved') }}
         run: |
           # Lockfiles and recorded eval baselines are generated, so they do not count.
-          changed=$(git diff --numstat "origin/${BASE_REF}...HEAD" -- . ':(exclude)uv.lock' ':(exclude)web/package-lock.json' ':(exclude)evals/baselines/**' \
+          changed=$(git diff --numstat "origin/${BASE_REF}...HEAD" -- . ':(exclude)uv.lock' ':(exclude)web/package-lock.json' ':(exclude)keycloak-theme/package-lock.json' ':(exclude)evals/baselines/**' \
             | awk '{ added += ($1 == "-" ? 0 : $1); removed += ($2 == "-" ? 0 : $2) } END { print added + removed + 0 }')
           echo "Changed lines (excluding generated files): $changed"
           echo "Changed lines (excluding generated files): $changed" >> "$GITHUB_STEP_SUMMARY"

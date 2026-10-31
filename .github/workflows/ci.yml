@@ -54,6 +54,32 @@ jobs:
       - run: npm run build
       - run: npm audit --audit-level=low
 
+  # The Keycloak login theme (keycloak-theme/). Builds the real theme JAR, so a broken theme cannot
+  # reach the sign-in page unnoticed. Needs Maven and a JDK, which ubuntu-latest provides.
+  keycloak-theme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: keycloak-theme
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: keycloak-theme/.nvmrc
+          cache: npm
+          cache-dependency-path: keycloak-theme/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build-keycloak-theme
+      - run: npm audit --audit-level=low
+
   # Browser end to end (Chromium): the built web app, a real API process on the fake model and a
   # stand-in sign-in provider, all on loopback. No secret, no provider call.
   web-e2e:

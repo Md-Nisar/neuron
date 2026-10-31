@@ -14,13 +14,11 @@ from __future__ import annotations
 
 SEMCONV_VERSION = "1.41.0"
 
-# Resource attributes.
 SERVICE_NAME = "service.name"
 SERVICE_VERSION = "service.version"
 DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name"
 SERVICE_INSTANCE_ID = "service.instance.id"
 
-# Service attributes.
 NEURON_CORRELATION_ID = "neuron.correlation_id"
 
 # Span names: `{operation} {target}` for GenAI spans, as the conventions require.
@@ -36,7 +34,6 @@ APPROVAL_SPAN = "neuron.approval"
 FEEDBACK_SPAN = "neuron.feedback"
 MEMORY_SPAN_PREFIX = "neuron.memory"
 
-# GenAI attributes.
 GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
 GEN_AI_AGENT_NAME = "gen_ai.agent.name"
 GEN_AI_CONVERSATION_ID = "gen_ai.conversation.id"

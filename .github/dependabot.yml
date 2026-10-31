@@ -42,3 +42,13 @@ updates:
       web-dependencies:
         patterns:
           - "*"
+  - package-ecosystem: npm
+    directory: /keycloak-theme
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      keycloak-theme-dependencies:
+        patterns:
+          - "*"
