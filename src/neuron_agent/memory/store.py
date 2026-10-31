@@ -119,19 +119,25 @@ class MemoryStore:
             result["items"] = len(found)
             return found
 
-    async def _all(self, owner_key: str | None) -> _Memories:
-        namespace = self._namespace(owner_key)
+    async def _scan_and_cleanup(self, namespace: tuple[str, ...]) -> tuple[_Memories, int]:
         found: _Memories = []
+        expired_keys: list[str] = []
         for page in range(_MAX_PAGES):
             items = await self._store.asearch(namespace, limit=_PAGE, offset=page * _PAGE)
             for item in items:
                 if self._expired(item.value):
-                    await self._store.adelete(namespace, item.key)
+                    expired_keys.append(item.key)
                 else:
                     found.append(_memory(item.key, item.value))
             if len(items) < _PAGE:
                 break
-        return sorted(found, key=lambda memory: memory.created_at)
+        for key in expired_keys:
+            await self._store.adelete(namespace, key)
+        return sorted(found, key=lambda memory: memory.created_at), len(expired_keys)
+
+    async def _all(self, owner_key: str | None) -> _Memories:
+        found, _ = await self._scan_and_cleanup(self._namespace(owner_key))
+        return found
 
     async def forget(self, owner_key: str | None, memory_id: str) -> bool:
         """Delete one of the user's memories; False if they have none with this ID."""
@@ -167,9 +173,8 @@ class MemoryStore:
             return 0
         removed = 0
         for namespace in await self._store.alist_namespaces(prefix=(_ROOT,), max_depth=2):
-            before = len(await self._store.asearch(namespace, limit=_PAGE))
-            await self._all(namespace[1])
-            removed += before - len(await self._store.asearch(namespace, limit=_PAGE))
+            _, purged = await self._scan_and_cleanup(namespace)
+            removed += purged
         return removed
 
     def _expired(self, value: Mapping[str, object]) -> bool:

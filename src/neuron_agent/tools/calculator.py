@@ -16,20 +16,29 @@ from neuron_agent.errors.base import ValidationAppError
 
 Number = int | float
 
+_MAX_ABS_RESULT = 10**12
+_MAX_EXPRESSION_LENGTH = 200
+_MAX_EXPONENT = 100
+
+
+def _safe_pow(base: Number, exp: Number) -> Number:
+    if abs(exp) > _MAX_EXPONENT:
+        raise ValueError(f"exponent exceeds safety limit of {_MAX_EXPONENT}")
+    return _coerce_number(operator.pow(base, exp))
+
+
 _BINARY_OPERATORS: dict[type[ast.operator], Callable[[Number, Number], Number]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
     ast.Div: operator.truediv,
     ast.Mod: operator.mod,
-    ast.Pow: operator.pow,
+    ast.Pow: _safe_pow,
 }
 _UNARY_OPERATORS: dict[type[ast.unaryop], Callable[[Number], Number]] = {
     ast.UAdd: operator.pos,
     ast.USub: operator.neg,
 }
-_MAX_ABS_RESULT = 10**12
-_MAX_EXPRESSION_LENGTH = 200
 
 
 @tool

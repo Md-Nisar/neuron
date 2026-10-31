@@ -25,6 +25,14 @@ def test_calculator_rejects_oversized_expression() -> None:
         calculator.invoke({"expression": "1" + "+1" * 200})
 
 
+def test_calculator_rejects_dangerous_exponentiation() -> None:
+    # Large exponent or nested exponentiation that would cause CPU/GIL starvation
+    with pytest.raises(ValidationAppError, match="exponent exceeds safety limit"):
+        calculator.invoke({"expression": "9 ** 9 ** 9"})
+    with pytest.raises(ValidationAppError, match="exponent exceeds safety limit"):
+        calculator.invoke({"expression": "2 ** 1000000"})
+
+
 @pytest.mark.parametrize(
     "expression",
     [

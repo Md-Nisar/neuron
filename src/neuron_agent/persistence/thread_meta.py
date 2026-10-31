@@ -18,6 +18,8 @@ from psycopg_pool import AsyncConnectionPool
 
 from neuron_agent.schemas.agent import TITLE_MAX_CHARS
 
+_BATCH_SIZE = 500
+
 
 def derive_title(message: str) -> str | None:
     """The first line of thought of a conversation: whitespace collapsed, cut to 80 characters."""
@@ -93,9 +95,11 @@ class PostgresThreadTitles:
         if not thread_ids:
             return
         async with self._pool.connection() as conn:
-            await conn.execute(
-                "DELETE FROM neuron_thread_meta WHERE thread_id = ANY(%s)", (list(thread_ids),)
-            )
+            for i in range(0, len(thread_ids), _BATCH_SIZE):
+                chunk = list(thread_ids[i : i + _BATCH_SIZE])
+                await conn.execute(
+                    "DELETE FROM neuron_thread_meta WHERE thread_id = ANY(%s)", (chunk,)
+                )
 
     async def forget_owner(self, owner_key: str) -> None:
         async with self._pool.connection() as conn:

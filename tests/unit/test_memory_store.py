@@ -224,3 +224,39 @@ async def test_operations_leave_a_span_and_a_count_with_no_text(
     ]
     assert sum(p.value for p in points) == 5
     assert "private" not in str([dict(p.attributes) for p in points])
+
+
+async def test_pagination_with_expired_items_does_not_skip_active_memories(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import neuron_agent.memory.store as store_mod
+
+    monkeypatch.setattr(store_mod, "_PAGE", 2)
+    memory, _, clock = _memory(max_items=10, ttl_days=10)
+    start = clock.now
+    for i in range(4):
+        clock.now = start + timedelta(days=i * 2)  # d0, d2, d4, d6
+        await memory.remember(_ALICE, f"item {i}")
+    # At d11: item 0 (created d0) is 11 days old (expired)
+    # items 1, 2, 3 (created d2, d4, d6) are 9, 7, 5 days old (active)
+    clock.now = start + timedelta(days=11)
+    listed = await memory.list(_ALICE)
+    assert [m.text for m in listed] == ["item 1", "item 2", "item 3"]
+
+
+async def test_purge_expired_counts_accurately_beyond_page_size(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import neuron_agent.memory.store as store_mod
+
+    monkeypatch.setattr(store_mod, "_PAGE", 2)
+    memory, store, clock = _memory(max_items=10, ttl_days=10)
+    start = clock.now
+    for i in range(4):
+        clock.now = start + timedelta(days=i)  # d0, d1, d2, d3
+        await memory.remember(_ALICE, f"item {i}")
+    # Advance to d11.5: item 0 (11.5d) and item 1 (10.5d) are expired; items 2 and 3 are active
+    clock.now = start + timedelta(days=11, hours=12)
+    purged = await memory.purge_expired()
+    assert purged == 2
+    assert len(await store.asearch(("memories", _ALICE))) == 2

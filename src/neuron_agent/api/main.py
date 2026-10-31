@@ -116,6 +116,7 @@ async def _watch_readiness() -> None:
     while True:
         try:
             metrics.record_readiness(await service.is_ready() and await auth_verifier.ready())
+            failed.clear()
         except Exception as exc:  # the loop must outlive any one failure
             name = type(exc).__name__
             if name not in failed:

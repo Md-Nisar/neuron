@@ -449,6 +449,35 @@ async def test_prune_without_persistence_is_a_no_op() -> None:
     assert await prune_threads(persistence, older_than=timedelta(days=1)) == 0
 
 
+@pytest.mark.usefixtures("echo_agent")
+async def test_prune_threads_batches_thread_deletions(monkeypatch: pytest.MonkeyPatch) -> None:
+    from collections.abc import Sequence
+    from datetime import UTC
+
+    import neuron_agent.persistence.retention as retention_mod
+
+    monkeypatch.setattr(retention_mod, "_BATCH_SIZE", 2)
+    service = _service()
+    chunk_calls: list[list[str]] = []
+
+    original_forget = service._persistence.thread_titles.forget_threads
+
+    async def mock_forget(batch: Sequence[str]) -> None:
+        chunk_calls.append(list(batch))
+        await original_forget(batch)
+
+    monkeypatch.setattr(service._persistence.thread_titles, "forget_threads", mock_forget)
+
+    await _thread(service, "m1", user_id="alice")
+    await _thread(service, "m2", user_id="alice")
+    await _thread(service, "m3", user_id="alice")
+    cutoff = datetime.now(UTC) + timedelta(minutes=5)
+
+    pruned = await prune_threads(service._persistence, older_than=timedelta(0), now=cutoff)
+    assert pruned == 3
+    assert [len(chunk) for chunk in chunk_calls] == [2, 1]
+
+
 def test_prune_cli_rejects_non_positive_retention() -> None:
     with pytest.raises(SystemExit):
         cli.main(["prune", "--older-than-days", "0"])
