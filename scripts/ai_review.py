@@ -81,7 +81,6 @@ MAX_CONTEXT_CHARS = 12_000
 MAX_FINDINGS = 15
 SEVERITIES = ("critical", "high", "medium", "low")
 
-# Transient & permanent error definitions for retry handling
 TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504}
 PERMANENT_STATUS_CODES = {400, 401, 403, 404}
 DEFAULT_MAX_ATTEMPTS = 4
@@ -256,7 +255,6 @@ def is_transient_error(exc: Exception) -> tuple[bool, int | None, float | None]:
             return False, code, None
         return True, code, retry_after
 
-    # Network / socket / connection errors
     retryable_network_exceptions = (
         urllib.error.URLError,
         TimeoutError,
@@ -332,7 +330,6 @@ def request_with_retry(
                     f"Exhausted {max_attempts} attempts. Last error: {sanitized_msg}",
                 ) from exc
 
-            # Calculate backoff delay
             if retry_after is not None and retry_after > 0:
                 delay = retry_after
             else:
@@ -583,7 +580,6 @@ def review_with_model(
     """
     total_retries = 0
 
-    # Pass 1: Review generation
     reply, r1 = chat_completion(
         model,
         REVIEW_PROMPT + project_ctx,
@@ -600,7 +596,6 @@ def review_with_model(
     verified_count = 0
     unverified_count = len(findings)
 
-    # Pass 2: Verification of findings
     if findings:
         listed = json.dumps([f.__dict__ for f in findings], indent=1)
         verify_input = f"FINDINGS:\n{listed}\n\nDIFF:\n{diff}"
@@ -654,7 +649,6 @@ def check_duplicate_review(
         "Accept": "application/vnd.github+json",
     }
 
-    # Fetch existing inline comments on PR
     existing_comment_keys: set[tuple[str, int, str]] = set()
     try:
         url = f"{GITHUB_API}/repos/{repo}/pulls/{pr_number}/comments"
@@ -672,7 +666,6 @@ def check_duplicate_review(
             "proceeding without duplicate comment filtering."
         )
 
-    # Fetch existing reviews on PR
     existing_reviews_bodies: set[str] = set()
     try:
         url = f"{GITHUB_API}/repos/{repo}/pulls/{pr_number}/reviews"
@@ -688,7 +681,6 @@ def check_duplicate_review(
             "proceeding without duplicate review filtering."
         )
 
-    # Filter out duplicate inline comments
     filtered_comments = [
         c
         for c in comments
@@ -830,7 +822,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
     raw_models = [m.strip() for m in env.get("AI_REVIEW_MODELS", "").split(",") if m.strip()]
     configured_models = raw_models or list(DEFAULT_MODELS)
 
-    # Git diff validation
     base_sha = env.get("BASE_SHA", "")
     head_sha = env.get("HEAD_SHA", "")
     if not base_sha or not head_sha:
@@ -853,7 +844,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
     shown_diff = diff[:MAX_DIFF_CHARS] + ("\n[diff truncated]" if truncated else "")
     project_ctx = project_context(Path.cwd())
 
-    # Step 1: Catalog verification
     catalog_models, models_to_attempt, skipped_models = verify_catalog(
         api_key,
         configured_models,
@@ -871,7 +861,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
         catalog_models_found=len(catalog_models) if catalog_models is not None else 0,
     )
 
-    # Step 2: Model review execution with fallback
     for model in models_to_attempt:
         if time.monotonic() >= deadline:
             summary.skipped_models[model] = BUDGET_EXHAUSTED
@@ -908,7 +897,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
             summary.retry_counts[model] = summary.retry_counts.get(model, 0)
             print(f"::warning::Model '{model}' failed review: {redacted}")
 
-    # Determine status
     if not summary.successful_reviews:
         summary.status = "FAILED"
     elif summary.failed_models or summary.skipped_models:
@@ -916,7 +904,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
     else:
         summary.status = "COMPLETE"
 
-    # Determine exit code policy
     if summary.status == "FAILED":
         reasons = "; ".join(
             f"{m}: {e}" for m, e in {**skipped_models, **summary.failed_models}.items()
@@ -949,14 +936,12 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
             {"path": f.file, "line": f.line, "side": "RIGHT", "body": f.body()} for f in inline
         ]
 
-    # Write GITHUB_STEP_SUMMARY
     write_step_summary(
         env,
         (review_output_text + "\n\n" if review_output_text else "")
         + format_summary_markdown(summary),
     )
 
-    # Post or dry-run review
     if env.get("AI_REVIEW_DRY_RUN", "").lower() == "true":
         if review_output_text:
             print(review_output_text)
@@ -964,7 +949,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
         print_terminal_summary(summary, exit_code)
         return exit_code
 
-    # Post to GitHub PR if we have a successful review and credentials
     if summary.successful_reviews and review_output_text:
         repo = env.get("GITHUB_REPOSITORY", "")
         pr_number_raw = env.get("PR_NUMBER", "")
@@ -973,7 +957,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
         if repo and pr_number_raw and github_token:
             pr_number = int(pr_number_raw)
 
-            # Check duplicate comments / review
             is_duplicate, filtered_comments = check_duplicate_review(
                 repo, pr_number, github_token, head_sha, review_output_text, comments, timeout=30.0
             )
@@ -1050,7 +1033,6 @@ def main(sleep_fn: Callable[[float], None] = time.sleep) -> int:
                 except Exception as post_err:
                     print(f"::warning::Failed to post PR review: {post_err}")
 
-    # Print terminal diagnostics summary
     print_terminal_summary(summary, exit_code)
     return exit_code
 
