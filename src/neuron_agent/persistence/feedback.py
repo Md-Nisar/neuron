@@ -16,8 +16,6 @@ from typing import Any, Protocol
 
 from psycopg_pool import AsyncConnectionPool
 
-_BATCH_SIZE = 500
-
 
 @dataclass(frozen=True)
 class StoredFeedback:
@@ -89,11 +87,9 @@ class PostgresFeedback:
         if not thread_ids:
             return
         async with self._pool.connection() as conn:
-            for i in range(0, len(thread_ids), _BATCH_SIZE):
-                chunk = list(thread_ids[i : i + _BATCH_SIZE])
-                await conn.execute(
-                    "DELETE FROM neuron_feedback WHERE thread_id = ANY(%s)", (chunk,)
-                )
+            await conn.execute(
+                "DELETE FROM neuron_feedback WHERE thread_id = ANY(%s)", (list(thread_ids),)
+            )
 
     async def forget_owner(self, owner_key: str) -> None:
         async with self._pool.connection() as conn:

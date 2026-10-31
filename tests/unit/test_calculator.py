@@ -31,6 +31,9 @@ def test_calculator_rejects_dangerous_exponentiation() -> None:
         calculator.invoke({"expression": "9 ** 9 ** 9"})
     with pytest.raises(ValidationAppError, match="exponent exceeds safety limit"):
         calculator.invoke({"expression": "2 ** 1000000"})
+    # Each step stays under the exponent limit; the growing intermediate must still be rejected.
+    with pytest.raises(ValidationAppError, match="power result exceeds"):
+        calculator.invoke({"expression": "(((9 ** 99) ** 99) ** 99) ** 99"})
 
 
 @pytest.mark.parametrize(

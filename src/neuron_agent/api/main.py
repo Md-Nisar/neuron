@@ -109,8 +109,8 @@ async def _watch_readiness() -> None:
     """Evaluate readiness every interval for the `neuron.service.ready` gauge; never raises.
 
     The probe endpoint records nothing, so no external prober is needed and a flood of probe
-    requests cannot move the gauge. A failing evaluation is logged once per error type and
-    records nothing, so the gauge goes stale and its series disappears.
+    requests cannot move the gauge. A failing evaluation is logged once per error type until
+    readiness next succeeds, and records nothing, so the gauge goes stale and its series disappears.
     """
     failed: set[str] = set()
     while True:

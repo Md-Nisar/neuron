@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import ast
+import math
 import operator
 from collections.abc import Callable
 from typing import Any
@@ -24,6 +25,8 @@ _MAX_EXPONENT = 100
 def _safe_pow(base: Number, exp: Number) -> Number:
     if abs(exp) > _MAX_EXPONENT:
         raise ValueError(f"exponent exceeds safety limit of {_MAX_EXPONENT}")
+    if abs(base) > 1 and abs(exp) * math.log10(abs(base)) > math.log10(_MAX_ABS_RESULT):
+        raise ValueError("power result exceeds configured bound")
     return _coerce_number(operator.pow(base, exp))
 
 
