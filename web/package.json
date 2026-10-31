@@ -55,6 +55,7 @@
   },
   "overrides": {
     "micromark": "4.0.2",
-    "micromark-core-commonmark": "2.0.3"
+    "micromark-core-commonmark": "2.0.3",
+    "minimatch": "11.0.3"
   }
 }
