@@ -11,6 +11,7 @@ export async function renderPage<T extends Params["pageId"]>(
 ) {
     const kcContext = getKcContextMock({ pageId, overrides } as Params);
     const result = render(<KcPage kcContext={kcContext} />);
-    await screen.findByRole("button", { name: /switch to/i });
+    // The first render of a cold run loads the page and translation chunks, which can be slow in CI.
+    await screen.findByRole("button", { name: /switch to/i }, { timeout: 10_000 });
     return { kcContext, ...result };
 }
