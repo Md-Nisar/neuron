@@ -93,6 +93,8 @@ services:
       KC_HEALTH_ENABLED: "true"
     volumes:
       - ./deploy/keycloak/neuron-realm.json:/opt/keycloak/data/import/neuron-realm.json:ro
+      # The realm's `neuron` login theme; build it first (keycloak-theme/README.md).
+      - ./keycloak-theme/dist_keycloak:/opt/keycloak/providers:ro
     ports:
       - "127.0.0.1:8180:8080"
     healthcheck:

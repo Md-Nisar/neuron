@@ -18,6 +18,9 @@ Copy-Item .env.example .env
 
 Use Python 3.13. The local machine may have newer Python versions, but CI and deployment metadata target 3.13 for framework compatibility.
 
+To run the API in Docker with the web app and the development Keycloak, see
+[docs/operations/local-docker-web.md](docs/operations/local-docker-web.md).
+
 ## Commands
 
 ```bash
