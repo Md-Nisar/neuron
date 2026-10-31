@@ -176,6 +176,8 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
         "APP_LANGSMITH_API_KEY",
         "APP_OTEL_EXPORTER_OTLP_ENDPOINT",
         "APP_OTEL_EXPORTER_OTLP_HEADERS",
+        "APP_OTEL_EXPORTER_OTLP_TRACES_HEADERS",
+        "APP_OTEL_EXPORTER_OTLP_METRICS_HEADERS",
     }
     expected = {f"APP_{name.upper()}" for name in Settings.model_fields} - conventional
 
@@ -186,6 +188,8 @@ def test_env_example_documents_every_setting_and_nothing_else() -> None:
     assert re.search(r"^ANTHROPIC_API_KEY=", text, re.MULTILINE)
     assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_ENDPOINT=", text, re.MULTILINE)
     assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_HEADERS=", text, re.MULTILINE)
+    assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_TRACES_HEADERS=", text, re.MULTILINE)
+    assert re.search(r"^#?\s*OTEL_EXPORTER_OTLP_METRICS_HEADERS=", text, re.MULTILINE)
 
 
 def test_empty_provider_key_from_env_example_means_no_key(
@@ -212,11 +216,20 @@ def _production(**overrides: object) -> Settings:
     )
 
 
-def test_otlp_credentials_require_https_off_loopback_in_production() -> None:
+@pytest.mark.parametrize(
+    "variable",
+    [
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        # The exporters merge these in from the environment on their own.
+        "OTEL_EXPORTER_OTLP_TRACES_HEADERS",
+        "OTEL_EXPORTER_OTLP_METRICS_HEADERS",
+    ],
+)
+def test_otlp_credentials_require_https_off_loopback_in_production(variable: str) -> None:
     with pytest.raises(ValidationError, match="must use HTTPS"):
         _production(
             OTEL_EXPORTER_OTLP_ENDPOINT="http://collector.internal:4318",
-            OTEL_EXPORTER_OTLP_HEADERS="authorization=Bearer%20t",
+            **{variable: "authorization=Bearer%20t"},
         )
 
 

@@ -37,11 +37,16 @@ env:
   ATTESTATION_PREDICATE: https://slsa.dev/provenance/v1
 
 jobs:
+  # A run is matched by workflow name and branch name only, both of which a fork pull request
+  # controls, so also require a push to this repository by image-publish.yml itself.
   staging:
     if: >-
       github.event_name == 'workflow_run'
       && github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && github.event.workflow_run.path == '.github/workflows/image-publish.yml'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: staging
@@ -84,8 +89,10 @@ jobs:
       - name: Read the digest recorded by the build run
         id: image
         run: |
-          gh run download "$BUILD_RUN_ID" -R "$GITHUB_REPOSITORY" -n image-digest
-          image="$(cat image-digest.txt)"
+          # Outside the checkout, so nothing in the artifact can shadow a script or module.
+          dir="$(mktemp -d "$RUNNER_TEMP/image-digest.XXXXXX")"
+          gh run download "$BUILD_RUN_ID" -R "$GITHUB_REPOSITORY" -n image-digest -D "$dir"
+          image="$(cat "$dir/image-digest.txt")"
           python3 scripts/deploy_tools.py check-image --image "$image"
           echo "ref=$image" >> "$GITHUB_OUTPUT"
       # A digest whose attestation fails (wrong signer workflow or source ref) never deploys.
@@ -145,7 +152,8 @@ jobs:
         id: build
         run: |
           id="$(gh run list -R "$GITHUB_REPOSITORY" --workflow image-publish.yml --branch main \
-            --commit "$GITHUB_SHA" --status success --json databaseId --jq '.[0].databaseId // empty')"
+            --event push --commit "$GITHUB_SHA" --status success \
+            --json databaseId --jq '.[0].databaseId // empty')"
           test -n "$id" || { echo "no successful image-publish run on main for this commit" >&2; exit 1; }
           echo "id=$id" >> "$GITHUB_OUTPUT"
       # The staging run is titled "staging <build run id>" (run-name above), so this ties the
@@ -182,8 +190,10 @@ jobs:
         env:
           BUILD_RUN_ID: ${{ steps.build.outputs.id }}
         run: |
-          gh run download "$BUILD_RUN_ID" -R "$GITHUB_REPOSITORY" -n image-digest
-          image="$(cat image-digest.txt)"
+          # Outside the checkout, so nothing in the artifact can shadow a script or module.
+          dir="$(mktemp -d "$RUNNER_TEMP/image-digest.XXXXXX")"
+          gh run download "$BUILD_RUN_ID" -R "$GITHUB_REPOSITORY" -n image-digest -D "$dir"
+          image="$(cat "$dir/image-digest.txt")"
           python3 scripts/deploy_tools.py check-image --image "$image"
           echo "ref=$image" >> "$GITHUB_OUTPUT"
       - name: Verify the attestation again

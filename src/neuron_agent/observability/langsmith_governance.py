@@ -18,10 +18,11 @@ own LangSmith switches, to report that they were overridden.
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, cast
 
 import structlog
-from langsmith import run_trees
+from langsmith import Client, run_trees
 from langsmith import utils as ls_utils
 
 from neuron_agent.config.settings import Settings
@@ -43,6 +44,17 @@ _HIDE_VARS = (
     "LANGCHAIN_HIDE_OUTPUTS",
 )
 _TRUTHY = {"true", "1", "yes", "on"}
+# A run's `error` is `repr(exc)` plus a traceback, so it can carry content (a rejected tool
+# argument, say). The hide switches cover only inputs and outputs; the client sends `error`
+# through its anonymizer, so that is where it is cut down to the exception's type.
+_EXCEPTION_NAME = re.compile(r"[A-Za-z_][\w.]*")
+
+
+def _hide_error_text(data: Any) -> Any:
+    if isinstance(data, dict) and set(data) == {"error"} and isinstance(data["error"], str):
+        name = _EXCEPTION_NAME.match(data["error"])
+        return {"error": f"{name.group(0) if name else 'Error'} (details hidden)"}
+    return data
 
 
 def configure_langsmith(settings: Settings) -> None:
@@ -70,7 +82,13 @@ def configure_langsmith(settings: Settings) -> None:
 
     # Drop cached lookups and any client built before this ran, so both see the new values.
     cast(Any, ls_utils.get_env_var).cache_clear()
-    run_trees.configure(client=None)
+    client = None
+    if settings.enable_langsmith and hide_content:
+        key = settings.langsmith_api_key
+        client = Client(
+            api_key=key.get_secret_value() if key else None, anonymizer=_hide_error_text
+        )
+    run_trees.configure(client=client)
 
     if overridden:
         logger.warning("langsmith_tracing_overridden", variables=overridden)

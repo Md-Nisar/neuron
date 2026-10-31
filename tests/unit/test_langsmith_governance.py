@@ -192,6 +192,29 @@ def test_content_is_hidden_even_when_langsmith_is_disabled_outside_development()
     assert _hidden() == (True, True)
 
 
+_ERROR = "ValidationAppError('invalid arithmetic expression: 1 +* my secret')\nTraceback ..."
+
+
+def _sent_error() -> str:
+    """The `error` field the client built now would upload for a failed run."""
+    run = run_trees.get_cached_client()._run_transform({"error": _ERROR})
+    return cast(str, run["error"])
+
+
+def test_error_text_is_hidden_with_content_outside_development() -> None:
+    configure_langsmith(_settings("staging", enable_langsmith=True))
+
+    assert _sent_error() == "ValidationAppError (details hidden)"
+
+
+def test_error_text_is_kept_when_content_is_approved() -> None:
+    configure_langsmith(
+        _settings("staging", enable_langsmith=True, langsmith_content_approved=True)
+    )
+
+    assert _sent_error() == _ERROR
+
+
 @pytest.mark.parametrize("env", ["staging", "production"])
 def test_enabled_langsmith_requires_api_key_in_staging_and_production(env: str) -> None:
     with pytest.raises(ValueError, match="LANGSMITH_API_KEY"):

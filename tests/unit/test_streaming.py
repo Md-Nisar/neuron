@@ -62,6 +62,33 @@ def test_extractor_strips_a_markdown_fence_around_the_json_answer(fence: str) ->
     assert all("`" not in delta and "{" not in delta for delta in deltas)
 
 
+def test_extractor_decodes_escapes_split_across_chunks() -> None:
+    text = 'Say \\"hi\\"\\n caf\\u00e9 \\ud83d\\ude00 \\\\ done'
+    document = '{"confidence": 0.9, "answer": "' + text + '", "used_tools": []}'
+    for size in (1, 2, 5):
+        extractor = AnswerTokenExtractor()
+        deltas = [extractor.feed(chunk) for chunk in _chunks(document, size=size)]
+        assert "".join(deltas) == json.loads(document)["answer"], size
+
+
+def test_extractor_work_does_not_grow_with_the_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Malformed output after the answer must not be re-read on every chunk (CWE-407)."""
+    decoded: list[int] = []
+    real_loads = json.loads
+
+    def counting_loads(text: str, **kwargs: Any) -> Any:
+        decoded.append(len(text))
+        return real_loads(text, **kwargs)
+
+    monkeypatch.setattr("neuron_agent.services.streaming.json.loads", counting_loads)
+    document = '{"answer": "Hello", "confidence": ' + "]" * 20_000
+    extractor = AnswerTokenExtractor()
+    deltas = [extractor.feed(chunk) for chunk in _chunks(document, size=4)]
+
+    assert "".join(deltas) == "Hello"
+    assert sum(decoded) < 100
+
+
 def test_extractor_passes_plain_text_through() -> None:
     extractor = AnswerTokenExtractor()
     assert "".join(extractor.feed(c) for c in _chunks("plain answer")) == "plain answer"
