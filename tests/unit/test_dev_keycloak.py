@@ -137,3 +137,16 @@ def test_realm_roles_can_reach_the_token(realm: dict[str, Any], client_id: str) 
     }
 
     assert client["fullScopeAllowed"] is True or mapped >= set(dev_keycloak.ROLE_PERMISSIONS)
+
+
+@pytest.mark.parametrize("compose_file", ["docker-compose.yml", "docker-compose.reference.yml"])
+def test_realm_uses_the_neuron_login_theme_that_keycloak_loads(
+    realm: dict[str, Any], compose_file: str
+) -> None:
+    root = REALM_PATH.parents[2]
+    theme_config = (root / "keycloak-theme" / "vite.config.ts").read_text(encoding="utf-8")
+
+    assert realm["loginTheme"] == "neuron"
+    assert 'themeName: "neuron"' in theme_config
+    compose = (root / compose_file).read_text(encoding="utf-8")
+    assert "./keycloak-theme/dist_keycloak:/opt/keycloak/providers:ro" in compose
