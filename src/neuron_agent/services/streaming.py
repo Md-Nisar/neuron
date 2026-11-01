@@ -71,10 +71,18 @@ class AnswerTokenExtractor:
     _cursor: dict[str, int] = field(default_factory=dict)
     # Only the first chunk of a tool call carries its name; later chunks share its index.
     _tool_names: dict[tuple[str, int | None], str] = field(default_factory=dict)
+    _active_anon_id: str | None = None
+    _anon_counter: int = 0
 
     def feed(self, chunk: AIMessageChunk) -> str:
         """Return the new answer text contributed by `chunk` (possibly empty)."""
-        key = chunk.id or ""
+        if chunk.id:
+            key = chunk.id
+        else:
+            if self._active_anon_id is None or self._cursor.get(self._active_anon_id) == _DONE:
+                self._anon_counter += 1
+                self._active_anon_id = f"__anon_{self._anon_counter}"
+            key = self._active_anon_id
         text = chunk.content if isinstance(chunk.content, str) else ""
         for tool_chunk in chunk.tool_call_chunks:
             slot = (key, tool_chunk.get("index"))

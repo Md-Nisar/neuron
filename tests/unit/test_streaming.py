@@ -130,6 +130,23 @@ def test_tool_call_names_exclude_structured_output_and_continuations() -> None:
     assert tool_call_names(chunk) == ["calculator"]
 
 
+def test_extractor_handles_sequential_messages_without_chunk_ids() -> None:
+    extractor = AnswerTokenExtractor()
+    m1_c1 = AIMessageChunk(content='{"answer": "first', id=None)
+    m1_c2 = AIMessageChunk(content=' answer"}', id=None)
+    m2_c1 = AIMessageChunk(content='{"answer": "second', id=None)
+    m2_c2 = AIMessageChunk(content=' answer"}', id=None)
+
+    deltas = [
+        extractor.feed(m1_c1),
+        extractor.feed(m1_c2),
+        extractor.feed(m2_c1),
+        extractor.feed(m2_c2),
+    ]
+    assert deltas[0] + deltas[1] == "first answer"
+    assert deltas[2] + deltas[3] == "second answer"
+
+
 # --- service event sequence -------------------------------------------------------
 
 
@@ -318,3 +335,47 @@ def test_stream_endpoint_enforces_body_size_limit() -> None:
         "/v1/agent/stream", content=b"x" * oversized, headers={"Content-Type": "application/json"}
     )
     assert response.status_code == 413
+
+
+def test_stream_endpoint_client_disconnect_releases_lease() -> None:
+    client = TestClient(app)
+    thread_id: str | None = None
+    with client.stream("POST", "/v1/agent/stream", json={"message": "hi"}) as response:
+        assert response.status_code == 200
+        for line in response.iter_lines():
+            if line.startswith("data:"):
+                payload = json.loads(line[len("data:") :].strip())
+                if "thread_id" in payload:
+                    thread_id = payload["thread_id"]
+                    break
+    assert thread_id is not None
+    # Client disconnected mid-stream; subsequent run on the thread succeeds without 409 thread_busy
+    follow_up = client.post(
+        "/v1/agent/stream", json={"message": "follow up", "thread_id": thread_id}
+    )
+    assert follow_up.status_code == 200
+
+
+async def test_cleanup_event_source_response_on_close_called_once() -> None:
+    calls = []
+
+    async def on_close() -> None:
+        calls.append(1)
+
+    async def generator():
+        yield {"event": "ping", "data": "1"}
+
+    resp = api_main._CleanupEventSourceResponse(generator(), on_close=on_close)
+
+    async def dummy_receive():
+        return {"type": "http.disconnect"}
+
+    async def dummy_send(message):
+        pass
+
+    scope = {"type": "http", "method": "GET", "path": "/", "headers": []}
+    await resp(scope, dummy_receive, dummy_send)
+    assert len(calls) == 1
+    # Calling again is idempotent
+    await resp(scope, dummy_receive, dummy_send)
+    assert len(calls) == 1

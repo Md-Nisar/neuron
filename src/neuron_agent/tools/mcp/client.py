@@ -190,15 +190,28 @@ def _langchain_tool(
             # A fixed message: the model chose the input and may correct it, but the schema
             # error would echo it.
             raise ValidationAppError("the arguments do not match the tool's input schema")
-        async with _connect(
-            server.url,
-            token=token,
-            env=env,
-            timeout=timeout,
-            max_response_bytes=max_output_bytes * _JSON_EXPANSION + _ENVELOPE_BYTES,
-        ) as client:
-            result = await client.call_tool(remote_name, arguments)
-        return _text_of(result, max_output_bytes)
+        try:
+            async with _connect(
+                server.url,
+                token=token,
+                env=env,
+                timeout=timeout,
+                max_response_bytes=max_output_bytes * _JSON_EXPANSION + _ENVELOPE_BYTES,
+            ) as client:
+                result = await client.call_tool(remote_name, arguments)
+            return _text_of(result, max_output_bytes)
+        except (ValidationAppError, ToolException):
+            raise
+        except Exception as exc:
+            # Wire-limit breach aborts the call; transport drops are isolated as tool errors
+            if isinstance(exc, ResponseTooLargeError) or (
+                hasattr(exc, "exceptions")
+                and any(
+                    isinstance(e, ResponseTooLargeError) for e in getattr(exc, "exceptions", [])
+                )
+            ):
+                raise
+            raise McpResultError("the MCP tool connection failed") from exc
 
     return StructuredTool(
         # Prefixed, so a server can never shadow a builtin or another server's tool.
