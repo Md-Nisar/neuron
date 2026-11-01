@@ -19,3 +19,4 @@ web/*.tsbuildinfo
 web/coverage/
 web/test-results/
 web/playwright-report/
+.claude/worktrees/

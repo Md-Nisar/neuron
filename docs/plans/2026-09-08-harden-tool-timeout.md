@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, LangChain `create_agent` + `AgentMiddleware`/`wrap_tool_call`, LangGraph, pytest (`anyio` mode), pydantic-settings.
 
-**Spec:** GitHub issue #2, "Harden Configuration and Runtime Limits" (v0.2.0 milestone; body sourced from `scripts/create-v020-issues.ps1` key `02`, since `gh` auth was unavailable in this session). Acceptance criteria:
+**Spec:** GitHub issue #2, "Harden Configuration and Runtime Limits" (v0.2.0 milestone; body sourced from `scripts/create-v020-issues.ps1` key `02`, a one-off script since removed (see git history), since `gh` auth was unavailable in this session). Acceptance criteria:
 - Every configured limit is actually enforced.
 - Limits have unit/integration coverage.
 - Exceeding a limit produces a predictable error.
