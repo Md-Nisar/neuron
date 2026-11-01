@@ -179,12 +179,15 @@ class _CleanupEventSourceResponse(EventSourceResponse):
     def __init__(self, *args: Any, on_close: Callable[[], Awaitable[None]], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._on_close = on_close
+        self._closed = False
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         try:
             await super().__call__(scope, receive, send)
         finally:
-            await self._on_close()
+            if not self._closed:
+                self._closed = True
+                await self._on_close()
 
 
 class _RequestBodyLimitMiddleware:
@@ -651,7 +654,13 @@ async def _stream_prepared(
         async for event in stream:
             yield {"event": event.event, "data": json.dumps(event.data)}
 
+    _closed = False
+
     async def close() -> None:
+        nonlocal _closed
+        if _closed:
+            return
+        _closed = True
         # Closing the generator cancels its run if still active; the lease is released even
         # if the generator never started.
         try:

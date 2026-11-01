@@ -332,3 +332,37 @@ def test_a_server_written_pattern_never_runs_here() -> None:
     assert time.monotonic() - started < 1
     assert not validator.is_valid({"b": "x"})
     assert not validator.is_valid({"c": 1})
+
+
+def test_response_too_large_error_is_exception() -> None:
+    from neuron_agent.tools.mcp.client import ResponseTooLargeError
+
+    assert issubclass(ResponseTooLargeError, Exception)
+
+
+async def test_mcp_tool_transport_failure_returns_unusable_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Connection errors and drops return _UNUSABLE_RESULT rather than crashing the run."""
+    import httpx2
+
+    async def mock_connect_network_drop(*args: Any, **kwargs: Any) -> Any:
+        raise httpx2.ConnectError("connection refused")
+        yield  # pragma: no cover
+
+    tools = [McpToolConfig(name="test_tool", pin="sha256:" + "0" * 64, risk="read")]  # type: ignore[arg-type]
+    tool_spec = mcp_client._langchain_tool(
+        McpServerConfig(name="srv", url="http://127.0.0.1:1/mcp", auth="none", tools=tools),  # type: ignore[arg-type]
+        "test_tool",
+        "description",
+        {"type": "object", "properties": {}},
+        token=None,
+        env="test",
+        timeout=5.0,
+        max_output_bytes=1024,
+    )
+
+    monkeypatch.setattr(mcp_client, "_connect", mock_connect_network_drop)
+    res = await tool_spec.ainvoke({"name": "test_tool", "args": {}, "id": "1", "type": "tool_call"})
+    assert res.status == "error"
+    assert res.content == mcp_client._UNUSABLE_RESULT
