@@ -46,7 +46,10 @@ _UNARY_OPERATORS: dict[type[ast.unaryop], Callable[[Number], Number]] = {
 
 @tool
 def calculator(expression: str) -> str:
-    """Evaluate a simple arithmetic expression with no names, calls, or attributes."""
+    """Evaluate an arithmetic expression and return the result as text. Supports numbers with
+    + - * / % ** and unary + or -; no names, calls or attributes. Expressions over 200
+    characters, exponents above 100 and results above 10**12 are rejected, as are syntax
+    errors and division by zero."""
     if len(expression) > _MAX_EXPRESSION_LENGTH:
         raise ValidationAppError(f"expression exceeds {_MAX_EXPRESSION_LENGTH} character limit")
     try:
