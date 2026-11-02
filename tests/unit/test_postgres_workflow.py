@@ -92,3 +92,16 @@ def test_postgres_runs_with_tls_and_the_tests_require_it() -> None:
     assert job["env"]["APP_TEST_POSTGRES_REQUIRE_TLS"] == "1"
     tls_test = Path("tests/integration/test_postgres_roles.py").read_text("utf-8")
     assert "APP_TEST_POSTGRES_REQUIRE_TLS" in tls_test
+
+
+def test_local_runner_matches_the_ci_job() -> None:
+    # #374: `make test-postgres` runs the same tests against the same pinned image as CI.
+    assert "test-postgres:\n\tscripts/postgres_tests.sh" in Path("Makefile").read_text("utf-8")
+    script = Path("scripts/postgres_tests.sh").read_text("utf-8")
+    assert "set -euo pipefail" in script
+    assert "postgres-integration.yml" in script and "POSTGRES_IMAGE" in script  # no second pin
+    assert "-p 127.0.0.1::5432" in script  # loopback only, random port
+    assert "trap cleanup EXIT" in script and "docker rm -f" in script
+    assert "pg_isready -h 127.0.0.1" in script
+    assert "pytest -m postgres" in script and "--junitxml" in script
+    assert "scripts/require_postgres_tests.py" in script

@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration test-postgres eval security build
 
 install:
 	uv sync --no-dev
@@ -82,6 +82,10 @@ test-resilience:
 
 test-integration:
 	uv run python -m pytest tests/integration -m integration
+
+# Postgres tests against a throwaway Docker container, or APP_TEST_POSTGRES_DSN if set (#374).
+test-postgres:
+	scripts/postgres_tests.sh
 
 eval:
 	uv run python -m pytest tests/evals -m eval
