@@ -118,6 +118,69 @@ def test_extractor_reads_structured_output_tool_arguments_only() -> None:
     assert extractor.feed(answer) == "4"
 
 
+def test_extractor_emits_deltas_for_multiple_sequential_messages_with_falsy_id() -> None:
+    for size in (1, 2, 4, 10):
+        extractor = AnswerTokenExtractor()
+        doc1 = '{"answer": "first answer", "confidence": 0.9}'
+        doc2 = '{"answer": "second answer", "confidence": 0.9}'
+        m1 = list(_chunks(doc1, size=size, message_id=None))
+        m2 = list(_chunks(doc2, size=size, message_id=None))
+        res1 = "".join(extractor.feed(c) for c in m1)
+        res2 = "".join(extractor.feed(c) for c in m2)
+        assert res1 == "first answer", f"size {size}: {res1}"
+        assert res2 == "second answer", f"size {size}: {res2}"
+
+
+def test_extractor_handles_reused_message_id_across_boundaries() -> None:
+    extractor = AnswerTokenExtractor()
+    doc1 = '{"answer": "first reply", "confidence": 0.9}'
+    doc2 = '{"answer": "second reply", "confidence": 0.9}'
+    m1 = list(_chunks(doc1, size=3, message_id="same_id"))
+    m2 = list(_chunks(doc2, size=3, message_id="same_id"))
+    res1 = "".join(extractor.feed(c) for c in m1)
+    res2 = "".join(extractor.feed(c) for c in m2)
+    assert res1 == "first reply"
+    assert res2 == "second reply"
+
+
+def test_extractor_structured_output_multiple_messages_with_falsy_id() -> None:
+    extractor = AnswerTokenExtractor()
+    c1 = AIMessageChunk(
+        content="",
+        tool_call_chunks=[
+            {"name": "AgentAnswer", "args": '{"answer": "first"}', "id": "1", "index": 0}
+        ],
+        id=None,
+    )
+    c2 = AIMessageChunk(
+        content="",
+        tool_call_chunks=[
+            {"name": "AgentAnswer", "args": '{"answer": "second"}', "id": "2", "index": 0}
+        ],
+        id=None,
+    )
+    assert extractor.feed(c1) == "first"
+    assert extractor.feed(c2) == "second"
+
+
+def test_extractor_tool_call_followed_by_answer_with_falsy_id() -> None:
+    extractor = AnswerTokenExtractor()
+    c_tool = AIMessageChunk(
+        content="",
+        tool_call_chunks=[{"name": "calculator", "args": '{"x": 1}', "id": "c1", "index": 0}],
+        id=None,
+    )
+    c_ans = AIMessageChunk(
+        content="",
+        tool_call_chunks=[
+            {"name": "AgentAnswer", "args": '{"answer": "result is 42"}', "id": "c2", "index": 0}
+        ],
+        id=None,
+    )
+    assert extractor.feed(c_tool) == ""
+    assert extractor.feed(c_ans) == "result is 42"
+
+
 def test_tool_call_names_exclude_structured_output_and_continuations() -> None:
     chunk = AIMessageChunk(
         content="",

@@ -71,10 +71,48 @@ class AnswerTokenExtractor:
     _cursor: dict[str, int] = field(default_factory=dict)
     # Only the first chunk of a tool call carries its name; later chunks share its index.
     _tool_names: dict[tuple[str, int | None], str] = field(default_factory=dict)
+    _active_fallback_key: str = ""
+    _fallback_seq: int = 0
+
+    def _resolve_key(self, chunk: AIMessageChunk, raw_chunk_text: str) -> str:
+        key = chunk.id or self._active_fallback_key
+        if not key:
+            self._fallback_seq += 1
+            self._active_fallback_key = f"__fallback_{self._fallback_seq}__"
+            return self._active_fallback_key
+        has_new_tool = any(tc.get("name") for tc in chunk.tool_call_chunks)
+        has_restarted_tool = any(
+            tc.get("index") == 0 and tc.get("name") and (key, 0) in self._tool_names
+            for tc in chunk.tool_call_chunks
+        )
+        stripped = raw_chunk_text.lstrip()
+        is_new_doc = stripped.startswith(("{", "```", "`")) or bool(
+            _ANSWER_START.search(raw_chunk_text)
+        )
+        is_done = self._cursor.get(key) == _DONE
+
+        if has_restarted_tool or (is_done and (has_new_tool or is_new_doc)):
+            if not chunk.id:
+                self._fallback_seq += 1
+                self._active_fallback_key = f"__fallback_{self._fallback_seq}__"
+                return self._active_fallback_key
+            self._raw.pop(key, None)
+            self._emitted.pop(key, None)
+            self._cursor.pop(key, None)
+            return key
+        return key
 
     def feed(self, chunk: AIMessageChunk) -> str:
         """Return the new answer text contributed by `chunk` (possibly empty)."""
-        key = chunk.id or ""
+        key_pre = chunk.id or self._active_fallback_key
+        raw_chunk_text = chunk.content if isinstance(chunk.content, str) else ""
+        for tool_chunk in chunk.tool_call_chunks:
+            slot = (key_pre, tool_chunk.get("index"))
+            name = tool_chunk.get("name") or self._tool_names.get(slot)
+            if name == _STRUCTURED_OUTPUT_TOOL:
+                raw_chunk_text += tool_chunk.get("args") or ""
+
+        key = self._resolve_key(chunk, raw_chunk_text)
         text = chunk.content if isinstance(chunk.content, str) else ""
         for tool_chunk in chunk.tool_call_chunks:
             slot = (key, tool_chunk.get("index"))
