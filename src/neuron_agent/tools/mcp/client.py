@@ -24,7 +24,7 @@ import structlog
 from jsonschema import Draft202012Validator, validators
 from jsonschema.exceptions import SchemaError
 from langchain_core.tools import StructuredTool, ToolException
-from mcp import Client
+from mcp import Client, MCPError
 from mcp.client.streamable_http import streamable_http_client
 from mcp_types import CallToolResult, TextContent
 from pydantic import SecretStr
@@ -55,7 +55,7 @@ class McpResultError(ToolException):
     """A reply that is an error, holds more than text, or is larger than allowed."""
 
 
-class ResponseTooLargeError(Exception):
+class ResponseTooLargeError(McpResultError):
     """A server sent more bytes than the client reads; the connection is dropped."""
 
 
@@ -190,15 +190,20 @@ def _langchain_tool(
             # A fixed message: the model chose the input and may correct it, but the schema
             # error would echo it.
             raise ValidationAppError("the arguments do not match the tool's input schema")
-        async with _connect(
-            server.url,
-            token=token,
-            env=env,
-            timeout=timeout,
-            max_response_bytes=max_output_bytes * _JSON_EXPANSION + _ENVELOPE_BYTES,
-        ) as client:
-            result = await client.call_tool(remote_name, arguments)
-        return _text_of(result, max_output_bytes)
+        try:
+            async with _connect(
+                server.url,
+                token=token,
+                env=env,
+                timeout=timeout,
+                max_response_bytes=max_output_bytes * _JSON_EXPANSION + _ENVELOPE_BYTES,
+            ) as client:
+                result = await client.call_tool(remote_name, arguments)
+            return _text_of(result, max_output_bytes)
+        except (ValidationAppError, McpResultError):
+            raise
+        except (httpx2.HTTPError, MCPError, TimeoutError, ExceptionGroup) as exc:
+            raise McpResultError("the MCP tool call failed") from exc
 
     return StructuredTool(
         # Prefixed, so a server can never shadow a builtin or another server's tool.

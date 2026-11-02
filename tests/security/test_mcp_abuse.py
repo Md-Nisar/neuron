@@ -322,7 +322,7 @@ async def test_a_response_beyond_the_limit_is_dropped_while_it_is_read(
     assert 0 < sum(read) <= 10_000  # nothing past the limit was handed on
 
 
-async def test_a_tool_result_over_the_wire_limit_raises_instead_of_returning() -> None:
+async def test_a_tool_result_over_the_wire_limit_returns_unusable_result() -> None:
     server = MCPServer("units")
 
     @server.tool()
@@ -332,10 +332,10 @@ async def test_a_tool_result_over_the_wire_limit_raises_instead_of_returning() -
 
     with serve(server.streamable_http_app()) as url:
         [spec] = await _discover(_config(url, await _pins(url)))
-        with pytest.raises(BaseException) as raised:  # noqa: PT011 - any failure but a result
-            await spec.tool.ainvoke(_CONVERT)
+        result = await spec.tool.ainvoke(_CONVERT)
 
-    assert "x" * 100 not in str(raised.value)
+    assert result == mcp_client._UNUSABLE_RESULT
+    assert "x" * 100 not in result
 
 
 async def test_a_compressed_response_is_refused_not_expanded() -> None:
