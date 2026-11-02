@@ -126,7 +126,10 @@ async def test_tokens_refill_with_the_database_clock(database: str) -> None:
 async def test_a_burst_split_across_two_replicas_is_limited_to_the_burst_in_total(
     database: str,
 ) -> None:
-    async with limiter_on(database, capacity=10) as one, limiter_on(database, capacity=10) as two:
+    async with (
+        limiter_on(database, capacity=10, slot_wait_seconds=2.0) as one,
+        limiter_on(database, capacity=10, slot_wait_seconds=2.0) as two,
+    ):
         granted = await asyncio.gather(_allowed(one, "shared", 30), _allowed(two, "shared", 30))
         assert sum(granted) == 10
         assert await bucket_count(database) == 1
@@ -142,12 +145,13 @@ async def test_a_burst_split_across_two_replicas_is_limited_to_the_burst_in_tota
 async def test_idle_rows_are_deleted_opportunistically_so_the_table_stays_bounded(
     database: str,
 ) -> None:
-    options = {"capacity": 1, "requests_per_window": 1, "window_seconds": 1}  # idle after 1 s
-    async with limiter_on(database, cleanup_every=5, cleanup_batch=50, **options) as limiter:
+    options = {"capacity": 1, "requests_per_window": 1, "window_seconds": 3}  # idle after 3 s
+    async with limiter_on(database, cleanup_every=1000, cleanup_batch=50, **options) as limiter:
         for n in range(400):
             await limiter.check(f"old:{n}")
         assert await bucket_count(database) == 400
-        await asyncio.sleep(1.2)  # every bucket has refilled completely
+        limiter._cleanup_every = 5
+        await asyncio.sleep(3.2)  # every bucket has refilled completely
         await limiter.check("hot")
         for n in range(100):  # 20 cleanups of up to 50 rows each
             await limiter.check(f"new:{n}")

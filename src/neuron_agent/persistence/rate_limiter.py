@@ -115,6 +115,7 @@ class PostgresRateLimiter:
         statement_timeout_ms: int = DEFAULT_STATEMENT_TIMEOUT_MS,
         cleanup_every: int = CLEANUP_EVERY,
         cleanup_batch: int = CLEANUP_BATCH,
+        slot_wait_seconds: float = SLOT_WAIT_SECONDS,
     ) -> None:
         if capacity < 1 or requests_per_window < 1 or window_seconds < 1:
             raise ValueError("capacity, requests_per_window and window_seconds must be >= 1")
@@ -127,6 +128,7 @@ class PostgresRateLimiter:
         self._timeouts = (f"{lock_timeout_ms}ms", f"{statement_timeout_ms}ms")
         self._cleanup_every = cleanup_every
         self._cleanup_batch = cleanup_batch
+        self._slot_wait_seconds = slot_wait_seconds
         self._checks = 0
         # Slots well below the pool, so a hot key's queue on one row lock cannot drain the
         # pool the checkpointer and the other guards share.
@@ -159,7 +161,7 @@ class PostgresRateLimiter:
         """A limiter transaction. A database failure of any kind fails closed."""
         try:
             try:
-                async with asyncio.timeout(SLOT_WAIT_SECONDS):
+                async with asyncio.timeout(self._slot_wait_seconds):
                     await self._slots.acquire()
             except TimeoutError:
                 raise PersistenceError("rate limiter unavailable") from None

@@ -121,6 +121,12 @@ async def _prune(older_than_days: int) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     """Run a persistence maintenance command."""
+    if sys.platform == "win32":
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     parser = argparse.ArgumentParser(prog="neuron-persistence")
     parser.add_argument(
         "command",

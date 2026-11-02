@@ -9,7 +9,6 @@ the token budget (#147, #148): start two `AppProcess`es on one `database`, and d
 from __future__ import annotations
 
 import os
-import signal
 import socket
 import subprocess  # nosec B404 - runs this repo's own app
 import sys
@@ -50,11 +49,13 @@ class AppProcess:
             APP_RATE_LIMIT_ENABLED="false",
             APP_OTEL_ENABLED="false",
             APP_ENABLE_LANGSMITH="false",
+            APP_DEFAULT_MODEL="openai:gpt-5.4-mini",
             APP_MAX_CONCURRENT_RUNS_PER_USER="1000",
             PYTHONPATH=os.pathsep.join([str(HERE), env.get("PYTHONPATH", "")]),
         )
         env.update({f"APP_{key.upper()}": str(value) for key, value in settings.items()})
         self._log = (log_dir / f"{name}.log").open("wb")
+        loop_args = ["--loop", "asyncio:SelectorEventLoop"] if sys.platform == "win32" else []
         self._process = subprocess.Popen(  # noqa: S603  # nosec B603
             [
                 sys.executable,
@@ -67,6 +68,7 @@ class AppProcess:
                 str(self.port),
                 "--log-level",
                 "warning",
+                *loop_args,
             ],
             env=env,
             stdout=self._log,
@@ -96,13 +98,13 @@ class AppProcess:
 
     def kill(self) -> None:
         """SIGKILL: the process gets no chance to release its leases."""
-        self._process.send_signal(signal.SIGKILL)
+        self._process.kill()
         self._process.wait(timeout=10)
 
     def stop_now(self) -> None:
         """Stop the process and close its log without an event loop; safe to call again."""
         if self._process.poll() is None:
-            self._process.send_signal(signal.SIGTERM)
+            self._process.terminate()
             try:
                 self._process.wait(timeout=20)
             except subprocess.TimeoutExpired:
