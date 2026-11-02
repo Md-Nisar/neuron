@@ -250,9 +250,9 @@ so that the API image stays free of parser and ML weight.
 - Given the plan is accepted, when RAG-01.01 and RAG-02.01 start, then they use the pinned versions and digests.
 
 **Technical tasks**
-- [ ] Resolve the dependency set on a branch; record sizes.
-- [ ] Record licences and release dates.
-- [ ] Record image digests.
+- [x] Resolve the dependency set on a branch; record sizes.
+- [x] Record licences and release dates.
+- [x] Record image digests.
 
 **Changes.** None on `main` except documentation.
 
@@ -285,6 +285,7 @@ database without it fails clearly at startup instead of at the first search.
 - Readiness and the startup checks (`persistence/startup_checks.py`) fail with a stable error code when knowledge is enabled and the extension is missing.
 - The feature is behind a setting (`APP_KNOWLEDGE_ENABLED`, default off) until v1.1.0 is released.
 - `docker-compose.reference.yml` and CI service containers use the pinned `pgvector/pgvector:pg16` image.
+  - Pinned by RAG-00.04: `pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f` (extension 0.8.7) and `pgvector` 0.5.1 in the `worker` extra (ADR 0014, "Dependencies and images").
 
 **Acceptance criteria**
 - Given a Postgres with pgvector, when `neuron-agent setup` (migrate) runs, then the `vector` extension and `knowledge` schema exist and the migration is recorded once.
@@ -396,6 +397,7 @@ long parsing work never blocks the API and survives restarts.
 
 **Requirements**
 - Console script `neuron-worker` in the same image; the chosen queue library's schema installed by Neuron's migrations.
+  - RAG-00.04: "same image" is the same Dockerfile and lock with a `worker` build target that installs the `neuron-agent[worker]` extra (`procrastinate` 3.10.0, `pgvector` 0.5.1, `docling-core[chunking-openai]` 2.105.0, `obstore` 0.12.1); the API target stays without it. Procrastinate needs the stalled-job sweep from RAG-00.02.
 - Tasks are registered by name; the document row stays the public status (no public job resource).
 - Graceful drain on SIGTERM; health endpoint or file for container health checks.
 - A separate DB pool and role for the worker.
