@@ -43,7 +43,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 
 | Epic | Title | Phase | Release | Total | Done | In progress | Blocked | Pending | Next story |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 1 | 1 | 0 | 2 | RAG-00.03 |
+| RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 0 | 2 | 0 | 2 | RAG-00.02 (after RAG-00.01 and RAG-00.03 merge) |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-01.01 (after E00) |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-02.03 (after E00) |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (after RAG-01.02) |
@@ -56,9 +56,9 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **1** | **1** | **0** | **54** | **RAG-00.03** |
+| **Total** | | | | **56** | **0** | **2** | **0** | **54** | **RAG-00.02** |
 
-v1.1.0 scope (E00–E08): 33 stories, 1 done.
+v1.1.0 scope (E00–E08): 33 stories, 0 done (2 with every acceptance criterion met, awaiting merge).
 
 **Recommended next action:** the owner reviews and approves the backlog (scope, IDs, release
 mapping). Then create the labels, issues and Project board, and start **RAG-00.01 ADR 0014**.
@@ -86,16 +86,16 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E00 Readiness and decisions
 
-- **Stories:** 4 total · 1 done · 1 in progress (RAG-00.03) · 0 blocked · 2 pending
-- **Implemented functionality:** ADR 0014 Accepted 2026-11-02, amending ADR 0001, 0002 and 0005; v1.1.0 in `docs/ROADMAP.md` (RAG-00.01).
-- **Outstanding work:** spike (RAG-00.02); eval corpus and security dataset (RAG-00.03); dependency and image plan (RAG-00.04).
+- **Stories:** 4 total · 0 done · 2 in progress (RAG-00.01, RAG-00.03: criteria met, not yet merged to `main`) · 0 blocked · 2 pending
+- **Implemented functionality:** ADR 0014 Accepted 2026-11-02, amending ADR 0001, 0002 and 0005; v1.1.0 in `docs/ROADMAP.md` (RAG-00.01). Labelled corpus and security dataset: 31 documents, 64 answerable, 12 unanswerable, 5 ACL and 4 injection cases, schema-checked in `make test` (RAG-00.03).
+- **Outstanding work:** merge RAG-00.01 and RAG-00.03; spike (RAG-00.02); eval corpus and security dataset (RAG-00.03); dependency and image plan (RAG-00.04).
 - **Blockers and decisions:**
   - 2026-11-02: the owner accepted ADR 0014, including the v1.1.0 scope (E00–E08).
   - Decision 2026-11-02: the research's security prerequisites are not all done. #370 is fixed
     in v1.0.0; #364 (SSRF) and #366 (HTTPS-only) are fixed for MCP by #395 (unreleased, on `main`);
     ingestion fetchers must still reuse that control (RAG-10.01), which blocks web ingestion and `research_web` but not Phase 1 (Phase 1 makes no
     outbound fetches of user URLs).
-- **Next recommended story:** RAG-00.03 (in progress), which depends only on RAG-00.01. RAG-00.02 needs RAG-00.03's corpus; RAG-00.04 needs RAG-00.02.
+- **Next recommended story:** RAG-00.02 (spike, on a branch never merged), which needs RAG-00.01 and RAG-00.03. RAG-00.02 needs RAG-00.03's corpus; RAG-00.04 needs RAG-00.02.
 
 ### RAG-E01 Knowledge storage foundation
 
@@ -197,9 +197,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | ID | Title | Phase | Pri | Status | Issue | PR | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Done | #399 | — | `docs/decisions/0014-knowledge-engine.md` Accepted 2026-11-02 (AC1); ADR 0001/0002/0005 say "Amended by ADR 0014" (AC2); spike questions listed with working defaults (AC3) |
+| RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | In progress (criteria met; merge pending) | #399 | — | `docs/decisions/0014-knowledge-engine.md` Accepted 2026-11-02 (AC1); ADR 0001/0002/0005 say "Amended by ADR 0014" (AC2); spike questions listed with working defaults (AC3) |
 | RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Pending | #400 | — | — |
-| RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | In progress | #401 | — | — |
+| RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | In progress (criteria met; merge pending) | #401 | — | `tests/unit/test_knowledge_cases.py`: schema and references (AC1), counts (AC2), licence and source per document (AC3) |
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Pending | #402 | — | — |
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Pending | — | — | — |
 | RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Pending | — | — | — |
@@ -258,7 +258,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
-| 2026-11-02 | Owner accepted ADR 0014: RAG-00.01 Done; RAG-00.03 started | Claude session |
+| 2026-11-02 | RAG-00.03: corpus, schema and test written; all criteria met. RAG-00.01 set back from Done to In progress: Done needs the merge to `main` | Claude session |
+| 2026-11-02 | Owner accepted ADR 0014; RAG-00.03 started | Claude session |
 | 2026-11-02 | RAG-00.01: ADR 0014 written as Proposed; amendment notes in ADR 0001/0002/0005; v1.1.0 in the roadmap. Status Partial until the owner accepts | Claude session |
 | 2026-11-03 | E00 review: #364/#366 are fixed (#395), not closed as not planned; eval fixture path moved to `tests/fixtures/`; E00 approved for issue creation | Claude session |
 | 2026-11-02 | Backlog drafted from the three research reports; tracker created; all stories Pending; repository checked at `4d5a6b5` | Claude session |
