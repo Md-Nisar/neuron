@@ -5,6 +5,7 @@
 Upgrade note: `validate_safe_url` now accepts `https` only unless called with `allow_http=True` (#366). Staging and production already required `https` for MCP servers and the JWKS URL, so no setting changes.
 
 Changes:
+- Docs: ADR 0014 "Knowledge Engine" proposed for v1.1.0 (RAG-00.01, #399), with amendment notes in ADR 0001, 0002 and 0005 and v1.1.0 in `docs/ROADMAP.md`. It awaits the owner's acceptance; no code changes.
 - SSRF: MCP connections resolve the server's host once, are refused unless every resolved address is public, connect to the checked address (no DNS rebinding), and check every redirect's host the same way (`security/egress.py`, #364). The development loopback `http` exception is logged (#366).
 
 ## 1.0.0
