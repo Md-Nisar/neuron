@@ -145,10 +145,10 @@ or new persistence are added.
 - Given the spike (RAG-00.02) is not finished, when the ADR is accepted, then the open questions are listed with "decided by the spike" and RAG-00.02 updates them.
 
 **Technical tasks**
-- [ ] Write `docs/decisions/0014-knowledge-engine.md` from the research.
-- [ ] Add amendment notes to ADR 0001, 0002, 0005.
-- [ ] Add v1.1.0 to `docs/ROADMAP.md`.
-- [ ] Owner review and acceptance.
+- [x] Write `docs/decisions/0014-knowledge-engine.md` from the research.
+- [x] Add amendment notes to ADR 0001, 0002, 0005.
+- [x] Add v1.1.0 to `docs/ROADMAP.md`.
+- [x] Owner review and acceptance.
 
 **Changes.** API: none. Database: none. UI: none. Docs: ADR 0014, ADR amendments, `docs/ROADMAP.md`.
 
