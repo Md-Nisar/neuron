@@ -49,7 +49,7 @@ async def _checkpoint_count(service: AgentService, thread_id: str) -> int:
 # --- history ----------------------------------------------------------------------
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_history_returns_turns_in_order_with_pagination() -> None:
     service = _service()
     thread_id = await _thread(service, "one", "two", "three", user_id="alice")
@@ -65,7 +65,7 @@ async def test_history_returns_turns_in_order_with_pagination() -> None:
     assert [m.role for m in everything.messages] == ["user", "assistant"] * 3
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_history_hides_system_and_tool_messages() -> None:
     service = _service()
     thread_id = await _thread(service, "hi")
@@ -130,7 +130,7 @@ def test_tool_call_summary_is_bounded_and_single_line() -> None:
     assert summary.startswith("text=a b zzz")
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_history_is_not_readable_by_others() -> None:
     service = _service()
     owned = await _thread(service, "secret", user_id="alice")
@@ -139,7 +139,7 @@ async def test_history_is_not_readable_by_others() -> None:
             await service.get_history(thread_id, user_id, limit=10, offset=0)
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_bola_denial_is_audited_once_without_identity_or_network_data() -> None:
     service = _service()
     thread_id = await _thread(service, "private", user_id="victim@example.test")
@@ -168,7 +168,7 @@ async def test_history_without_persistence_is_not_found() -> None:
 # --- delete -----------------------------------------------------------------------
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_delete_removes_every_checkpoint() -> None:
     service = _service()
     thread_id = await _thread(service, "one", "two", user_id="alice")
@@ -183,7 +183,7 @@ async def test_delete_removes_every_checkpoint() -> None:
         await service.invoke(AgentRequest(message="x", thread_id=thread_id, user_id="alice"))
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_delete_by_non_owner_is_not_found_and_keeps_thread() -> None:
     service = _service()
     thread_id = await _thread(service, "keep", user_id="alice")
@@ -192,7 +192,7 @@ async def test_delete_by_non_owner_is_not_found_and_keeps_thread() -> None:
     assert (await service.get_history(thread_id, "alice", limit=10, offset=0)).total == 2
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_delete_is_rejected_while_a_run_is_in_flight() -> None:
     service = _service()
     thread_id = await _thread(service, "hi")
@@ -202,7 +202,7 @@ async def test_delete_is_rejected_while_a_run_is_in_flight() -> None:
     assert await _checkpoint_count(service, thread_id) > 0
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_list_user_threads_is_owner_scoped_and_paginated() -> None:
     service = _service()
     alice_old = await _thread(service, "old", user_id="alice")
@@ -230,7 +230,7 @@ async def test_list_user_threads_is_owner_scoped_and_paginated() -> None:
     assert all(item.metadata["owner"] == owner for item in indexed)
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_user_export_contains_only_public_messages_and_paginates() -> None:
     service = _service()
     alice_thread = await _thread(service, "alice prompt", user_id="alice")
@@ -254,7 +254,7 @@ async def test_user_export_contains_only_public_messages_and_paginates() -> None
     assert not any("system" in content or "tool" in content for content in contents)
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_erase_all_is_owner_scoped_busy_aware_and_idempotent() -> None:
     service = _service()
     alice_busy = await _thread(service, "busy", user_id="alice")
@@ -278,7 +278,7 @@ async def test_erase_all_is_owner_scoped_busy_aware_and_idempotent() -> None:
     assert (await service.get_history(bob_thread, "bob", limit=10, offset=0)).total == 2
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_export_page_honors_configured_size_cap() -> None:
     service = _service()
     service._settings.user_data_export_max_bytes = 65_536
@@ -306,7 +306,7 @@ def _count_state_loads(service: AgentService) -> list[str]:
     return loaded
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_user_data_endpoints_load_state_only_for_returned_threads() -> None:
     """#76: work tracks the page, not the caller's whole checkpoint history."""
     service = _service()
@@ -337,7 +337,7 @@ async def test_user_data_endpoints_load_state_only_for_returned_threads() -> Non
     assert loaded == []
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_export_stops_reading_once_the_size_cap_is_exceeded() -> None:
     service = _service()
     service._settings.user_data_export_max_bytes = 65_536
@@ -354,7 +354,7 @@ async def test_export_stops_reading_once_the_size_cap_is_exceeded() -> None:
     assert len(loaded) == 4
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_state_is_owner_checked_even_if_the_index_returns_a_foreign_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -375,7 +375,7 @@ async def test_state_is_owner_checked_even_if_the_index_returns_a_foreign_thread
     assert exported.threads == []
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_thread_deleted_after_indexing_is_left_out_of_the_page() -> None:
     service = _service()
     kept = await _thread(service, "kept", user_id="alice")
@@ -406,7 +406,7 @@ async def _last_activity(service: AgentService, thread_id: str) -> datetime:
     return datetime.fromisoformat(latest.checkpoint["ts"])
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_prune_deletes_only_stale_threads_and_is_idempotent() -> None:
     service = _service()
     old = await _thread(service, "old")
@@ -430,7 +430,7 @@ async def test_prune_deletes_only_stale_threads_and_is_idempotent() -> None:
     assert await _checkpoint_count(service, recent) > 0
 
 
-@pytest.mark.usefixtures("echo_agent")
+@pytest.mark.usefixtures("echo_model")
 async def test_thread_lifecycle_emits_each_audit_event_once() -> None:
     service = _service()
     with structlog.testing.capture_logs() as logs:
@@ -458,7 +458,7 @@ def test_prune_cli_rejects_non_positive_retention() -> None:
 
 
 @pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch, echo_agent: Any) -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch, echo_model: Any) -> TestClient:
     monkeypatch.setattr(api_main, "service", _service())
     return TestClient(app)
 
