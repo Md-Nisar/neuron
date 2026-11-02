@@ -99,11 +99,11 @@ _MALFORMED = [
 ]
 _ALLOWED = [
     "https://example.com/",
-    "http://example.com:8080/path?q=1#frag",
+    "https://example.com:8080/path?q=1#frag",
     "https://sub.example.co.uk/a/b",
     "https://example.com./",  # trailing dot on a public name is the same host
     "https://8.8.8.8/",
-    "http://1.1.1.1:443/",
+    "https://1.1.1.1:443/",
     "https://[2606:4700:4700::1111]/",
     "https://[2001:4860:4860::8888]/",
     "https://localhost.example.com/",

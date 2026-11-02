@@ -18,7 +18,8 @@ _PACKAGE = "neuron_agent"
 # A tripwire, not a proof: a tool that imports any of these, directly or through
 # a package module it imports, must call the SSRF helper.
 _NETWORK_MODULES = {
-    "httpx", "httpcore", "requests", "aiohttp", "urllib3", "urllib", "http", "socket", "ssl",
+    "httpx", "httpx2", "httpcore", "httpcore2", "requests", "aiohttp", "urllib3", "urllib", "http",
+    "socket", "ssl",
     "socketserver", "selectors", "asyncio", "ftplib", "smtplib", "imaplib", "poplib", "nntplib",
     "telnetlib", "xmlrpc", "websockets", "websocket", "grpc", "paramiko", "asyncssh", "pycurl",
     "niquests", "anyio", "trio", "webbrowser", "boto3", "botocore", "playwright", "selenium",
@@ -35,7 +36,8 @@ _PROCESS_OS_CALLS = {
     "posix_spawnp",
 }
 _HELPER = "validate_safe_url"
-_HELPER_FILE = ("security", "input_policy.py")
+# The SSRF controls themselves: the URL check and the connect-time address check (#364).
+_HELPER_FILES = (("security", "input_policy.py"), ("security", "egress.py"))
 _URL_WORDS = ("url", "uri", "href", "link", "endpoint", "host")
 
 
@@ -119,13 +121,13 @@ def _local_imports(tree: ast.AST, path: Path, src_root: Path, package: str) -> s
 
 
 def _closure(path: Path, src_root: Path, package: str) -> dict[Path, ast.AST]:
-    """The file plus every package module it reaches; the helper's own module is not followed."""
-    helper_file = src_root.joinpath(package, *_HELPER_FILE)
+    """The file plus every package module it reaches; the helpers' own modules are not followed."""
+    helper_files = {src_root.joinpath(package, *parts) for parts in _HELPER_FILES}
     trees: dict[Path, ast.AST] = {}
     pending = [path]
     while pending:
         current = pending.pop()
-        if current in trees or current == helper_file:
+        if current in trees or current in helper_files:
             continue
         trees[current] = ast.parse(current.read_text())
         pending += _local_imports(trees[current], current, src_root, package)

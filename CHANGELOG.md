@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+Upgrade note: `validate_safe_url` now accepts `https` only unless called with `allow_http=True` (#366). Staging and production already required `https` for MCP servers and the JWKS URL, so no setting changes.
+
+Changes:
+- SSRF: MCP connections resolve the server's host once, are refused unless every resolved address is public, connect to the checked address (no DNS rebinding), and check every redirect's host the same way (`security/egress.py`, #364). The development loopback `http` exception is logged (#366).
+
 ## 1.0.0
 
 "Production AI Application". The first stable release, and the end of the release freeze that started at v0.9.0 (`CONTRIBUTING.md`). It is the v0.9.0 candidate plus the fixes, tests and the login theme below, with no contract change: the `/v1` API, stream protocol version 1, the existing `APP_*` setting names and the migrations are as in 0.9.0, and no migration was added.

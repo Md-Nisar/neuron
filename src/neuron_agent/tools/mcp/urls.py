@@ -7,8 +7,12 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
+import structlog
+
 from neuron_agent.errors.base import ConfigurationError
 from neuron_agent.security.input_policy import validate_safe_url
+
+logger = structlog.get_logger(__name__)
 
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 
@@ -25,6 +29,9 @@ def validate_mcp_url(url: str, *, env: str) -> str:
     if is_local_test_server(url, env=env):
         if parsed.scheme not in {"http", "https"} or parsed.username or parsed.password:
             raise ConfigurationError("MCP server URL must be http(s) without credentials")
+        if parsed.scheme == "http":
+            # The only plain-http exception (#366): the loopback reference server.
+            logger.warning("mcp_plain_http_allowed", env=env)
         return url
     if parsed.scheme != "https":
         raise ConfigurationError("MCP server URL must use https")
