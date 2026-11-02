@@ -24,7 +24,7 @@ The graph in `src/neuron_agent/graphs/` is intentionally simple (`ARCHITECTURE.m
 
 6. **Check for architectural creep**: if this change introduces retrieval, a queue, custom persistence, or a subgraph, stop — `AGENTS.md` requires a concrete requirement and an ADR update under `docs/decisions/` before adding any of those, not just a graph change.
 
-7. **Run the quality gates**: `make format lint typecheck test`.
+7. **Run the quality gates**: `make format lint typecheck test security`.
 
 ## Common mistakes
 

@@ -38,6 +38,7 @@
     "feature-dev@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "langchain-skills@langchain-skills": true
+    "langchain-skills@langchain-skills": true,
+    "ponytail@ponytail": true
   }
 }

@@ -12,7 +12,8 @@ You are a security reviewer for the Neuron Agent codebase (LangChain/LangGraph a
 Read these first if not already in context:
 - `SECURITY.md` — threat model, trust boundaries, current controls
 - `AGENTS.md` — forbidden patterns
-- `src/neuron_agent/security/input_policy.py` — existing authorization/deny-list mechanics
+- `src/neuron_agent/security/input_policy.py` — input, URL and tool allow/deny-list policy
+- `src/neuron_agent/security/auth.py`, `authorization.py` — JWT verification, permissions and the per-run authorization context (ADR 0006)
 
 ## What to flag
 
