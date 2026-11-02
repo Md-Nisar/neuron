@@ -43,7 +43,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 
 | Epic | Title | Phase | Release | Total | Done | In progress | Blocked | Pending | Next story |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 1 | 1 | 0 | 2 | RAG-00.03 |
+| RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 1 | 0 | 0 | 3 | RAG-00.03 |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-01.01 (after E00) |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-02.03 (after E00) |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (after RAG-01.02) |
@@ -56,7 +56,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **1** | **1** | **0** | **54** | **RAG-00.03** |
+| **Total** | | | | **56** | **1** | **0** | **0** | **55** | **RAG-00.03** |
 
 v1.1.0 scope (E00–E08): 33 stories, 1 done.
 
@@ -86,7 +86,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E00 Readiness and decisions
 
-- **Stories:** 4 total · 1 done · 1 in progress (RAG-00.03) · 0 blocked · 2 pending
+- **Stories:** 4 total · 1 done · 0 in progress · 0 blocked · 3 pending
 - **Implemented functionality:** ADR 0014 Accepted 2026-11-02, amending ADR 0001, 0002 and 0005; v1.1.0 in `docs/ROADMAP.md` (RAG-00.01).
 - **Outstanding work:** spike (RAG-00.02); eval corpus and security dataset (RAG-00.03); dependency and image plan (RAG-00.04).
 - **Blockers and decisions:**
@@ -95,7 +95,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
     in v1.0.0; #364 (SSRF) and #366 (HTTPS-only) are fixed for MCP by #395 (unreleased, on `main`);
     ingestion fetchers must still reuse that control (RAG-10.01), which blocks web ingestion and `research_web` but not Phase 1 (Phase 1 makes no
     outbound fetches of user URLs).
-- **Next recommended story:** RAG-00.03 (in progress), which depends only on RAG-00.01. RAG-00.02 needs RAG-00.03's corpus; RAG-00.04 needs RAG-00.02.
+- **Next recommended story:** RAG-00.03, which depends only on RAG-00.01. RAG-00.02 needs RAG-00.03's corpus; RAG-00.04 needs RAG-00.02.
 
 ### RAG-E01 Knowledge storage foundation
 
@@ -199,7 +199,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Done | #399 | — | `docs/decisions/0014-knowledge-engine.md` Accepted 2026-11-02 (AC1); ADR 0001/0002/0005 say "Amended by ADR 0014" (AC2); spike questions listed with working defaults (AC3) |
 | RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Pending | #400 | — | — |
-| RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | In progress | #401 | — | — |
+| RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Pending | #401 | — | — |
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Pending | #402 | — | — |
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Pending | — | — | — |
 | RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Pending | — | — | — |
@@ -258,7 +258,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
-| 2026-11-02 | Owner accepted ADR 0014: RAG-00.01 Done; RAG-00.03 started | Claude session |
+| 2026-11-02 | Owner accepted ADR 0014: RAG-00.01 Done when its PR (branch `RAG-00.01`) merges | Claude session |
 | 2026-11-02 | RAG-00.01: ADR 0014 written as Proposed; amendment notes in ADR 0001/0002/0005; v1.1.0 in the roadmap. Status Partial until the owner accepts | Claude session |
 | 2026-11-03 | E00 review: #364/#366 are fixed (#395), not closed as not planned; eval fixture path moved to `tests/fixtures/`; E00 approved for issue creation | Claude session |
 | 2026-11-02 | Backlog drafted from the three research reports; tracker created; all stories Pending; repository checked at `4d5a6b5` | Claude session |
