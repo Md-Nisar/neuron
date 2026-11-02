@@ -1,2 +1,5 @@
 # Shell scripts run inside Linux containers; CRLF breaks the shebang on Windows checkouts.
 *.sh text eol=lf
+# Knowledge eval fixtures are checked by SHA-256 and size (tests/unit/test_knowledge_cases.py);
+# never convert their line endings, or Windows checkouts change the bytes.
+tests/fixtures/knowledge/** -text
