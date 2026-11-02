@@ -29,8 +29,9 @@ from langchain_core.messages import (
 )
 from langchain_core.messages.tool import tool_call_chunk
 from langchain_core.outputs import ChatGenerationChunk
-from langchain_core.runnables import Runnable
+from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_core.tools import BaseTool
+from pydantic import Field
 
 # Must run before importing neuron_agent: settings and the exported graph build at import.
 os.environ.setdefault("APP_ENV", "test")
@@ -199,6 +200,61 @@ class StreamingFakeModel(GenericFakeChatModel):
         **kwargs: Any,
     ) -> Runnable[LanguageModelInput, AIMessage]:
         return self
+
+
+class EchoChatModel(StreamingFakeModel):
+    """Deterministic chat model: answers with user turns through the real create_main_agent.
+
+    Unlike HistoryEchoAgent, this model goes through the actual LangChain ReAct agent
+    graph, structured output normalization, and middleware.
+    """
+
+    calls: list[list[BaseMessage]] = Field(default_factory=list)
+    fail_next: bool = False
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(messages=iter([]), **kwargs)
+
+    async def ainvoke(
+        self,
+        input: LanguageModelInput,
+        config: RunnableConfig | None = None,
+        *,
+        stop: list[str] | None = None,
+        **kwargs: Any,
+    ) -> AIMessage:
+        if self.fail_next:
+            self.fail_next = False
+            raise RuntimeError("agent failed")
+        messages = input if isinstance(input, list) else [input]
+        self.calls.append(list(messages))
+        human_contents = [m.content for m in messages if isinstance(m, HumanMessage)]
+        answer = " | ".join(str(c) for c in human_contents) if human_contents else "ok"
+        return AIMessage(content=answer)
+
+    def _stream(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> Iterator[ChatGenerationChunk]:
+        if self.fail_next:
+            self.fail_next = False
+            raise RuntimeError("agent failed")
+        self.calls.append(list(messages))
+        human_contents = [m.content for m in messages if isinstance(m, HumanMessage)]
+        answer = " | ".join(str(c) for c in human_contents) if human_contents else "ok"
+        self.messages = iter([AIMessage(content=answer)])
+        yield from super()._stream(messages, stop=stop, run_manager=run_manager, **kwargs)
+
+
+@pytest.fixture
+def echo_model(monkeypatch: pytest.MonkeyPatch) -> EchoChatModel:
+    """Make create_chat_model return an EchoChatModel through the real create_main_agent."""
+    model = EchoChatModel()
+    monkeypatch.setattr(factory, "create_chat_model", lambda s: model)
+    return model
 
 
 def _content_chunks(
