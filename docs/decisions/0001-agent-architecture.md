@@ -4,7 +4,7 @@
 
 Accepted.
 
-> **Amendment proposed by [ADR 0014](0014-knowledge-engine.md)** (Knowledge Engine, pending the owner's acceptance). Once accepted, retrieval over users' knowledge bases and a background worker with a Postgres job queue for ingestion are in scope, as ADR 0014 defines them. Until then this ADR stands unchanged.
+> **Amended by [ADR 0014](0014-knowledge-engine.md)** (Knowledge Engine, accepted 2026-11-02). Retrieval over users' knowledge bases and a background worker with a Postgres job queue for ingestion are in scope, as ADR 0014 defines them.
 
 ## Problem
 
