@@ -60,7 +60,7 @@ lint:
 	uv run python -m ruff check src tests loadtest
 
 typecheck:
-	uv run python -m mypy src loadtest scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py scripts/validate_observability.py scripts/flow_report.py
+	uv run python -m mypy src loadtest scripts/dev_token.py scripts/smoke_test.py scripts/token_report.py scripts/validate_observability.py scripts/flow_report.py tests/conftest.py tests/graph tests/resilience tests/e2e tests/evals
 
 test:
 	uv run python -m pytest tests/unit tests/graph tests/security tests/resilience tests/e2e tests/evals

@@ -13,6 +13,7 @@ import pytest
 import structlog.testing
 import uvicorn
 from langchain_core.messages import AIMessage, HumanMessage
+from mcp import Client
 from mcp.server.mcpserver import Image, MCPServer
 from pydantic import SecretStr
 from scripts import mcp_reference_server as reference
@@ -61,8 +62,8 @@ async def _pins(url: str, token: SecretStr | None = None) -> dict[str, str]:
 
 
 def _config(url: str, pins: dict[str, str], *, auth: str = "none", risk: str = "read") -> McpConfig:
-    tools = [McpToolConfig(name=name, pin=pin, risk=risk) for name, pin in pins.items()]  # type: ignore[arg-type]
-    return McpConfig(servers=[McpServerConfig(name="units", url=url, auth=auth, tools=tools)])  # type: ignore[arg-type]
+    tools = [McpToolConfig(name=name, pin=pin, risk=risk) for name, pin in pins.items()]
+    return McpConfig(servers=[McpServerConfig(name="units", url=url, auth=auth, tools=tools)])
 
 
 async def _discover(config: McpConfig, tokens: dict[str, SecretStr] | None = None) -> list[Any]:
@@ -172,7 +173,7 @@ async def test_the_client_declares_no_callbacks(
 ) -> None:
     """Sampling, roots, elicitation and logging are never offered to a server."""
     created: list[dict[str, Any]] = []
-    real = mcp_client.Client
+    real = Client
 
     def spy(*args: Any, **kwargs: Any) -> Any:
         created.append(kwargs)

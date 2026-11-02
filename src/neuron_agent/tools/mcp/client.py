@@ -19,6 +19,7 @@ from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
+import httpcore2
 import httpx2
 import structlog
 from jsonschema import Draft202012Validator, validators
@@ -31,6 +32,7 @@ from pydantic import SecretStr
 from referencing import Registry
 
 from neuron_agent.errors.base import ValidationAppError
+from neuron_agent.security.egress import PublicOnlyBackend
 from neuron_agent.security.input_policy import audit_tool_name, validate_safe_url
 from neuron_agent.tools.mcp.config import McpConfig, McpServerConfig, McpToolConfig
 from neuron_agent.tools.mcp.pins import FetchedTool, check_pins
@@ -77,14 +79,27 @@ class _CountingStream(httpx2.AsyncByteStream):
 
 
 class _LimitedTransport(httpx2.AsyncHTTPTransport):
-    """Stops reading a response once it passes `limit` bytes, before it is held in memory."""
+    """Stops reading a response once it passes `limit` bytes, before it is held in memory.
 
-    def __init__(self, limit: int) -> None:
+    With `public_only`, every connection, a redirect's included, goes to a resolved and
+    checked public address (`security/egress.py`).
+    """
+
+    def __init__(self, limit: int, *, public_only: bool) -> None:
         # No proxy from the environment: the bearer token goes to the configured server only.
         super().__init__(trust_env=False)
+        if public_only:
+            self._pool = httpcore2.AsyncConnectionPool(
+                ssl_context=httpx2.create_ssl_context(trust_env=False),
+                network_backend=PublicOnlyBackend(),
+            )
+        self._public_only = public_only
         self._limit = limit
 
     async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        if self._public_only and request.url.scheme != "https":
+            # A redirect must not downgrade a public connection to plain http (#366).
+            raise httpx2.ConnectError("only https is allowed", request=request)
         # The count is of the bytes received. A compressed body would expand past it when it is
         # decoded, so no compression is asked for or accepted.
         request.headers["Accept-Encoding"] = "identity"
@@ -108,13 +123,14 @@ class _LimitedTransport(httpx2.AsyncHTTPTransport):
 async def _connect(
     url: str, *, token: SecretStr | None, env: str, timeout: float, max_response_bytes: int
 ) -> AsyncIterator[Client]:
-    if not is_local_test_server(url, env=env):
+    public_only = not is_local_test_server(url, env=env)
+    if public_only:
         validate_safe_url(url)
     headers = {"Authorization": f"Bearer {token.get_secret_value()}"} if token else None
     async with httpx2.AsyncClient(
         headers=headers,
         timeout=httpx2.Timeout(timeout),
-        transport=_LimitedTransport(max_response_bytes),
+        transport=_LimitedTransport(max_response_bytes, public_only=public_only),
         trust_env=False,
     ) as http:
         transport = streamable_http_client(

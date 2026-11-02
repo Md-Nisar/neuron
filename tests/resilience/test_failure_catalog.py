@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
+import httpx2
 import openai
 import psycopg
 import psycopg_pool
@@ -32,11 +32,11 @@ from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
 
 _SECRET_MARKER = "sk-test-secret-should-never-leak"  # noqa: S105 -- leakage-detection fixture, not a real secret
-_REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
-_429_RESPONSE = httpx.Response(status_code=429, request=_REQUEST)
-_401_RESPONSE = httpx.Response(status_code=401, request=_REQUEST)
-_404_RESPONSE = httpx.Response(status_code=404, request=_REQUEST)
-_500_RESPONSE = httpx.Response(status_code=500, request=_REQUEST)
+_REQUEST = httpx2.Request("POST", "https://api.openai.com/v1/chat/completions")
+_429_RESPONSE = httpx2.Response(status_code=429, request=_REQUEST)
+_401_RESPONSE = httpx2.Response(status_code=401, request=_REQUEST)
+_404_RESPONSE = httpx2.Response(status_code=404, request=_REQUEST)
+_500_RESPONSE = httpx2.Response(status_code=500, request=_REQUEST)
 
 
 class _RealisticErrorModel(GenericFakeChatModel):
@@ -278,7 +278,7 @@ def test_agent_invoke_returns_429_when_client_rate_limited(
             confidence=1.0,
         )
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
+    monkeypatch.setattr(AgentService, "invoke", fast_invoke)
     monkeypatch.setattr(
         api_main,
         "ip_rate_limiter",

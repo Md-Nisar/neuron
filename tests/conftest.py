@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import jwt
 import jwt.api_jwt
@@ -226,7 +226,7 @@ class EchoChatModel(StreamingFakeModel):
         if self.fail_next:
             self.fail_next = False
             raise RuntimeError("agent failed")
-        messages = input if isinstance(input, list) else [input]
+        messages = cast("list[BaseMessage]", input if isinstance(input, list) else [input])
         self.calls.append(list(messages))
         human_contents = [m.content for m in messages if isinstance(m, HumanMessage)]
         answer = " | ".join(str(c) for c in human_contents) if human_contents else "ok"
@@ -258,10 +258,11 @@ def echo_model(monkeypatch: pytest.MonkeyPatch) -> EchoChatModel:
 
 
 def _content_chunks(
-    reply: BaseMessage, run_manager: CallbackManagerForLLMRun | None
+    reply: BaseMessage | str, run_manager: CallbackManagerForLLMRun | None
 ) -> Iterator[ChatGenerationChunk]:
     message_id = f"run-{uuid.uuid4()}"
-    for token in re.split(r"(\s)", str(reply.content)):
+    content = reply.content if isinstance(reply, BaseMessage) else reply
+    for token in re.split(r"(\s)", str(content)):
         chunk = ChatGenerationChunk(message=AIMessageChunk(content=token, id=message_id))
         if run_manager:
             run_manager.on_llm_new_token(token, chunk=chunk)

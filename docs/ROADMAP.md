@@ -8,8 +8,8 @@
 | **v0.6.0** | Production Deployment      | ✅ Released (gate #160 closed 2026-10-29 without a Render deployment or OpenAI run) |
 | **v0.7.0** | Extensible Agent Platform  | ✅ Released (tracker #253 closed 2026-10-29 without an OpenAI run) |
 | **v0.8.0** | User Application           | ✅ Released (gate #293 closed 2026-10-29; the owner reports the real browser and Keycloak run is done) |
-| **v0.9.0** | Production Candidate       | 🟡 In progress (tracker #338)         |
-| **v1.0.0** | Production AI Application  | Stable production platform            |
+| **v0.9.0** | Production Candidate       | ✅ Released (local reference stack only) |
+| **v1.0.0** | Production AI Application  | ✅ Released 2026-11-02 without a production environment ([record](releases/v1.0.0-release-verification.md)) |
 
 v0.5.0 is designed in [ADR 0007](decisions/0007-evaluation-and-observability.md) and tracked by the issues labelled `v0.5.0`.
 
@@ -20,6 +20,8 @@ v0.7.0 is designed in [ADR 0009](decisions/0009-extensible-agent-platform.md) an
 v0.8.0 is designed in [ADR 0010](decisions/0010-user-application.md) (Accepted; issue drafts in `docs/releases/v0.8.0-issues.md`). Thread title and feedback storage: [ADR 0011](decisions/0011-thread-metadata-storage.md). The code is merged and the version is 0.8.0, but the release gate is open: nothing ran against a real Keycloak or browser ([record](releases/v0.8.0-release-verification.md)). Tagged as v0.8.0 on 2026-10-28 with the gate deferred.
 
 v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (research: `docs/releases/v0.9.0-research.md`; issue drafts: `docs/releases/v0.9.0-issues.md`), Accepted 2026-10-28, and tracked by the issues labelled `v0.9.0` (tracker #338). Everything is measured on a local reference stack; hosted deployment stays after v1.0.0.
+
+v1.0.0 is the v0.9.0 candidate plus fixes, tests and the login theme, with no contract change. The owner released it directly, without the `v1.0.0-rc.N` candidates of ADR 0012 decision 12, because no production environment exists; the load re-run against the v0.9.0 baseline is still to be done ([record](releases/v1.0.0-release-verification.md)).
 
 ## Deferred until after v1.0.0
 

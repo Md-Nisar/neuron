@@ -1,6 +1,6 @@
 [project]
 name = "neuron-agent"
-version = "0.9.0"
+version = "1.0.0"
 description = "Production-oriented LangChain/LangGraph agent service baseline"
 readme = "README.md"
 license = "Apache-2.0"
@@ -104,6 +104,9 @@ python_version = "3.13"
 strict = true
 packages = ["neuron_agent"]
 plugins = ["pydantic.mypy"]
+# Tests import `tests.*` from the repository root and `neuron_agent` from src (#376).
+mypy_path = "src"
+explicit_package_bases = true
 
 [tool.pytest.ini_options]
 # Live suites (`integration`) run only when selected explicitly (`make test-integration`,

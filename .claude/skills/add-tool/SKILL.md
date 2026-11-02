@@ -12,7 +12,7 @@ Neuron Agent tools are bounded, and every new one must go through the same check
 1. **Implement** the tool under `src/neuron_agent/tools/`.
    - Give it a narrow, typed input contract (Pydantic model or equivalent) — no untyped dict passthrough.
    - Bound its side effects explicitly. Read-only tools are the default; anything else needs step 2's checklist.
-   - No raw `eval`/`exec`/shell execution — see the existing calculator tool (`src/neuron_agent/tools/time.py` for the read-only pattern) for the AST-based style this project uses instead.
+   - No raw `eval`/`exec`/shell execution — `src/neuron_agent/tools/calculator.py` shows the AST-based style this project uses instead, and `src/neuron_agent/tools/time.py` the read-only pattern.
 
 2. **Register it** in `src/neuron_agent/tools/registry.py` (`builtin_registry`) with a `ToolSpec`: scope `tools:<name>` (none only for a public, read-only builtin) and risk `read` or `mutating`. The allow-list, scope checks and audit/span names derive from it; a tool without a spec is not callable.
    - A `mutating` tool needs human approval (ADR 0009 decision 6): work through the full "Future Mutating Tools" checklist in `SECURITY.md` (authorization outside the model, idempotency keys, retry policy, audit logs). Names on `HIGH_RISK_TOOL_NAMES` in `security/input_policy.py` are refused whatever the spec says.

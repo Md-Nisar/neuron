@@ -4,12 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Behavioral guidelines
 
-Adapted from [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills).
+Adapted from [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills). These bias toward caution over speed; for trivial tasks, use judgment.
 
-1. **Think before coding.** Don't assume, don't hide confusion. State assumptions explicitly; if multiple interpretations exist, present them instead of picking silently; if something is unclear, stop and ask.
-2. **Simplicity first.** Minimum code that solves the problem — no features beyond what was asked, no speculative abstractions or configurability, no error handling for scenarios that can't happen. If it could be half the size, rewrite it.
-3. **Surgical changes.** Touch only what the request requires. Don't refactor or restyle adjacent code. Remove imports/vars/functions your own change orphaned; leave pre-existing dead code alone unless asked. Every changed line should trace to the request.
-4. **Goal-driven execution.** Turn vague tasks into verifiable success criteria (e.g. "fix the bug" → "write a failing test reproducing it, then make it pass") and verify against them before declaring done.
+1. **Think before coding.** Don't assume, don't hide confusion, surface tradeoffs. State assumptions explicitly; if multiple interpretations exist, present them instead of picking silently; if a simpler approach exists, say so and push back when warranted; if something is unclear, stop, name what's confusing, and ask.
+2. **Simplicity first.** Minimum code that solves the problem — no features beyond what was asked, no abstractions for single-use code, no speculative configurability, no error handling for scenarios that can't happen. If it could be a quarter of the size, rewrite it. Ask: "Would a senior engineer say this is overcomplicated?"
+3. **Surgical changes.** Touch only what the request requires. Don't improve adjacent code, comments or formatting; don't refactor what isn't broken; match existing style. Remove imports/vars/functions your own change orphaned; if you notice unrelated dead code, mention it — don't delete it. Every changed line should trace to the request.
+4. **Goal-driven execution.** Define success criteria and loop until verified: "add validation" → write tests for invalid inputs, then make them pass; "fix the bug" → write a test that reproduces it, then make it pass; "refactor X" → tests pass before and after. For multi-step tasks, state a brief plan with a check per step (`1. [step] → verify: [check]`). Weak criteria ("make it work") need constant clarification.
+
+These are working if diffs have fewer unnecessary changes, fewer rewrites come from overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
 ## Commands
 
@@ -49,7 +51,7 @@ Module boundaries (enforced, see `AGENTS.md`):
 - `models/` — the `create_agent`/provider boundary (`models/factory.py`).
 - `tools/` — bounded, read-only tool implementations.
 - `security/` — authentication and authorization, plus input, URL, and tool-allowlist policy (`security/input_policy.py`). `auth.py` owns JWT verification (`TokenVerifier`), the `Principal`, the owner-key HMAC and the single `/v1` route dependency `require_permission`; `authorization.py` owns permissions and the per-run `AuthorizationContext`; `agent_server.py` holds the Agent Server auth handlers. Routes never parse tokens themselves, and the principal reaches graphs and tools only through the runtime `context` (ADR 0006).
-- `config/` — the only place environment variables are read (`config/settings.py`, `APP_*` prefixed, see `Settings`).
+- `config/` — where environment variables are read (`config/settings.py`, `APP_*` prefixed, see `Settings`). The only exceptions are `observability/langsmith_governance.py` and `observability/telemetry.py` (`AGENTS.md`; `tests/unit/test_entrypoint.py` enforces it).
 - `prompts/` — versioned prompt assets (`prompts/system/main.md`), loaded via `prompts/loader.py`.
 - `observability/` — structlog JSON logging, audit events and OpenTelemetry setup (`telemetry.py`; names only in `semconv.py`).
 - `schemas/` — public API contracts and the `AgentAnswer` structured-output schema.
@@ -73,11 +75,13 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-The latest tagged release is v0.9.0 ("Production Candidate", ADR 0012): a local reference stack (`docker-compose.reference.yml`, `make reference-up`), Locust load tests (`loadtest/`, `make load`), a threat model, a DAST workflow, a restore drill and a rollback rehearsal, with evidence in `docs/releases/v0.9.0-gate/`. The release freeze (`CONTRIBUTING.md`) started at the tag and holds until v1.0.0: `main` takes only bug fixes, documentation, tests, dependency and security updates, and compatible changes.
-
-v0.8.0 ("User Application", ADR 0010 and 0011) added the `web/` single-page app with Keycloak sign-in (PKCE), streaming chat, approvals, memories, data rights, conversation titles and feedback. v0.6.0 ("Production Deployment", ADR 0008) and v0.7.0 ("Extensible Agent Platform", ADR 0009) were tagged on 2026-10-28 as well. Their release gates (#160, #253, #293) were closed by the owner on 2026-10-29: #293 on the owner's report that the real browser and Keycloak run is done, #160 and #253 without a Render deployment or an OpenAI production-model run, which have never run. The v0.9.0 evidence is local: a Docker Compose stack, a fake model for load, and the NVIDIA free tier for the small real-model checks.
+The latest release is v1.0.0 (2026-11-02, `docs/releases/v1.0.0-release-verification.md`). It shipped without a production environment: no hosted deployment has ever run, and the evidence is local (a Docker Compose reference stack, a fake model for load, the NVIDIA free tier for small real-model checks). Release history, ADR mapping and deferred work are in `docs/ROADMAP.md`, `CHANGELOG.md` and `docs/releases/`.
 
 Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.md`. Check `docs/ROADMAP.md` and open issues before assuming a not-yet-released feature already exists.
+
+## RAG / Knowledge Engine work (planned for v1.1.0)
+
+Research is in `docs/research/rag/`; the backlog is `docs/product/NEURON_RAG_PRODUCT_BACKLOG.md` (IDs `RAG-Enn` for epics, `RAG-nn.mm` for stories); progress is in `docs/product/RAG_IMPLEMENTATION_TRACKER.md`. Before working on any `RAG-` story, follow the tracker's "New session protocol": read both files, check the `rag` issues, linked PRs, recent commits and the code, verify acceptance criteria against tests, and summarise status and the next unblocked story before coding. A story is Done only when every acceptance criterion has a passing test or recorded evidence. Afterwards, update the issue checklist, the Project status and the tracker together.
 
 ## AI code verification
 

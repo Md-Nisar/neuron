@@ -25,7 +25,7 @@ Read these first if not already in context:
 | `agents/` | high-level agent composition, approved tool wiring | environment reads |
 | `tools/` | bounded tool implementations | — |
 | `state/` | graph state type definitions | — |
-| `security/` | input/URL/tool policy checks | — |
+| `security/` | authentication, authorization, input/URL/tool policy | — |
 | `config/` | environment reads (centralized) | — |
 | `prompts/` | versionable prompt assets | — |
 
