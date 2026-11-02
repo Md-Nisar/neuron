@@ -19,13 +19,14 @@ reranking off until evals show a gain). The research IDs `KE-xxx` (Claude) and `
 (ChatGPT, Gemini) collide and mean different things, so this backlog uses its own IDs and
 lists the research ID each story came from.
 
-Facts checked against the repository on 2026-11-02 (`main` at `4d5a6b5`, v1.0.0):
+Facts checked against the repository on 2026-11-03 (`main` at `89a3020`, after v1.0.0):
 
 - `src/neuron_agent/knowledge/` does not exist; no RAG code has been written.
 - #370 (MCP transport errors) is **fixed** in v1.0.0 (`CHANGELOG.md`). The research's KE-003 is done.
-- #364 (SSRF: DNS resolution and redirect re-validation) and #366 (HTTPS-only fetch) were
-  **closed as not planned**, not fixed. The research's KE-002 is therefore still open. It
-  becomes story RAG-10.01 and blocks every story that fetches a URL.
+- #364 (SSRF: DNS resolution and redirect re-validation) and #366 (HTTPS-only fetch) are
+  **fixed** on `main` by #395 (`89a3020`, listed under Unreleased in `CHANGELOG.md`) for MCP
+  connections (`security/egress.py`). The research's KE-002 is only partly open: ingestion
+  fetchers must reuse that control. That is story RAG-10.01, which blocks every story that fetches a URL.
 - The reference stack uses `postgres:16` without pgvector (`docker-compose.reference.yml`).
 - Permissions in `security/authorization.py` have no `knowledge:*` or `tools:search_knowledge` entry yet.
 
@@ -207,7 +208,7 @@ so that retrieval quality and isolation can be measured from the first ingestion
 **Requirements**
 - 30–100 public, licence-compatible documents (PDF, DOCX, Markdown, text), including tables and at least one scanned PDF.
 - At least 50 answerable questions with the expected document and page, at least 10 unanswerable questions, ACL cases (two users), and prompt-injection documents (hidden text, alt text, table cell, fake `cite_id`).
-- A JSON format that follows `evals/eval_cases.json` conventions and has a JSON schema.
+- A JSON format that follows the `tests/fixtures/eval_cases.json` conventions and has a JSON schema.
 - Licence and source recorded for each document.
 
 **Acceptance criteria**
@@ -217,11 +218,11 @@ so that retrieval quality and isolation can be measured from the first ingestion
 
 **Technical tasks**
 - [ ] Select documents; record licence, source URL and SHA-256.
-- [ ] Write `evals/knowledge_cases.json` and `evals/knowledge_cases.schema.json`.
+- [ ] Write `tests/fixtures/knowledge_cases.json` and `tests/fixtures/knowledge_cases.schema.json`.
 - [ ] Write injection and ACL fixtures.
 - [ ] Add the schema validation test.
 
-**Changes.** API, database, UI: none. Files: `evals/knowledge_cases*.json`, `tests/fixtures/knowledge/`.
+**Changes.** API, database, UI: none. Files: `tests/fixtures/knowledge_cases*.json`, `tests/fixtures/knowledge/`.
 
 **Security.** Injection documents are inert data; they must never be ingested by a live environment's default KB.
 
@@ -1514,7 +1515,7 @@ Goal: knowledge from external sources with versioned provenance and safe egress.
 Exit gate (Claude report §12): every chunk maps to a source version; private-range URLs are refused.
 Start condition: a product requirement for each source, and RAG-10.01 done.
 
-### RAG-10.01 Outbound URL safety (reopens #364 and #366)
+### RAG-10.01 Outbound URL safety for ingestion fetchers (extends #364 and #366)
 
 - **Epic:** RAG-E10 · **Phase:** 3 · **Priority:** P0 (for this phase) · **Estimate:** 1 w · **Research:** KE-002, KN-002
 - **Depends on:** none
@@ -1522,9 +1523,9 @@ Start condition: a product requirement for each source, and RAG-10.01 done.
 **Story.** As the owner, I want every outbound fetch to resolve and re-check its destination and to use HTTPS, so that ingestion cannot reach internal services.
 
 **Requirements**
-- `validate_safe_url` (`security/input_policy.py`) resolves hostnames and refuses private, loopback, link-local and metadata addresses; re-validates on every redirect; pins the resolved address for the connection (DNS rebinding).
+- Reuse the egress control from #395 (`security/egress.py`): it resolves hostnames, refuses private, loopback, link-local and metadata addresses, re-validates every redirect and pins the resolved address (DNS rebinding). Extend it to the ingestion fetchers; do not write a second one.
 - HTTPS-only for fetch tools and connectors; development exceptions as for MCP (`tools/mcp/urls.py`).
-- #364 and #366 were closed as not planned on 2026-11-01; this story carries their scope.
+- #364 and #366 are closed (fixed for MCP by #395); this story covers the new fetch paths.
 
 **Acceptance criteria**
 - Given a hostname that resolves to `10.0.0.1` or `169.254.169.254`, when it is validated, then it is refused.
@@ -1543,7 +1544,7 @@ Start condition: a product requirement for each source, and RAG-10.01 done.
 
 **Tests.** Security tests per criterion.
 
-**Definition of Done (additions).** `SECURITY.md` updated; #364 and #366 referenced.
+**Definition of Done (additions).** `SECURITY.md` updated; #364, #366 and #395 referenced.
 
 ### RAG-10.02 Web page ingestion
 
