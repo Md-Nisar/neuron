@@ -177,5 +177,6 @@ def test_integrity_check_reports_broken_references(
 def test_schema_rejects_an_answerable_case_without_a_source(dataset: dict[str, Any]) -> None:
     broken = copy.deepcopy(dataset)
     del broken["cases"][0]["expected_sources"]
+    validator = jsonschema.Draft202012Validator(_load(_SCHEMA))
     with pytest.raises(jsonschema.ValidationError):
-        jsonschema.Draft202012Validator(_load(_SCHEMA)).validate(broken)
+        validator.validate(broken)
