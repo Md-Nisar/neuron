@@ -12,18 +12,28 @@ import pytest
 import structlog
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
+from langchain_core.tools import tool
+from tests.conftest import StreamingFakeModel
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import ExportTooLargeError, ThreadBusyError, ThreadNotFoundError
+from neuron_agent.errors.base import (
+    ApprovalNotFoundError,
+    ExportTooLargeError,
+    ThreadBusyError,
+    ThreadNotFoundError,
+)
+from neuron_agent.models import factory
 from neuron_agent.persistence import cli
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from neuron_agent.security.run_guard import RunClaimDenied
 from neuron_agent.services import agent_service
 from neuron_agent.services.agent_service import AgentService
+from neuron_agent.tools.registry import ToolRegistry, ToolSpec, builtin_registry
 
 pytestmark = pytest.mark.anyio
 
@@ -645,3 +655,145 @@ def test_only_a_stamped_answer_counts_as_a_run_of_the_thread() -> None:
     ]
 
     assert [_thread_has_answer(messages, run) for run in ("r1", "r2", "r3")] == [False, True, False]
+
+
+# --- approval rollback & busy-thread erasure (#378) -------------------------------
+
+
+@tool
+def _mutating_sample(text: str) -> str:
+    """Sample mutating tool requiring approval."""
+    return f"mutated: {text}"
+
+
+async def _paused_approval_thread(
+    service: AgentService, user_id: str, monkeypatch: pytest.MonkeyPatch
+) -> tuple[str, str]:
+    call = {"name": "_mutating_sample", "args": {"text": "hello"}, "id": "call-1"}
+    model = StreamingFakeModel(messages=iter([AIMessage(content="", tool_calls=[call])]))
+    monkeypatch.setattr(factory, "create_chat_model", lambda s: model)
+    service.use_registry(
+        ToolRegistry(
+            [*builtin_registry(), ToolSpec(_mutating_sample, "tools:_mutating_sample", "mutating")]
+        )
+    )
+    await service.startup()
+    response = await service.invoke(AgentRequest(message="test action", user_id=user_id))
+    assert response.status == "approval_required"
+    assert response.approval is not None
+    return response.thread_id, response.approval.approval_id
+
+
+async def test_prepare_decision_rolls_back_token_budget_when_claim_is_denied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    thread_id, approval_id = await _paused_approval_thread(service, "alice", monkeypatch)
+
+    owner_key = service._owner_key("alice", None)
+    budget_key = owner_key or "anonymous"
+    tokens_before = sum(e.tokens for e in service._token_budget._events.get(budget_key, []))  # type: ignore[attr-defined]
+    assert tokens_before > 0
+
+    hold = await service._run_guard.hold_thread(
+        thread_id=thread_id, owner_key=owner_key or "anonymous"
+    )
+    try:
+        with pytest.raises(ThreadBusyError):
+            await service.prepare_decision(thread_id, approval_id, "approve", user_id="alice")
+    finally:
+        await hold.release()
+
+    tokens_after = sum(e.tokens for e in service._token_budget._events.get(budget_key, []))  # type: ignore[attr-defined]
+    assert tokens_after == tokens_before
+
+
+async def test_prepare_decision_rolls_back_lease_and_budget_when_interrupt_disappears(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    thread_id, approval_id = await _paused_approval_thread(service, "alice", monkeypatch)
+
+    owner_key = service._owner_key("alice", None)
+    budget_key = owner_key or "anonymous"
+    tokens_before = sum(e.tokens for e in service._token_budget._events.get(budget_key, []))  # type: ignore[attr-defined]
+
+    calls = 0
+    real_matching_interrupt = service._matching_interrupt
+
+    async def disappearing_interrupt(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise ApprovalNotFoundError("approval disappeared")
+        return await real_matching_interrupt(*args, **kwargs)
+
+    monkeypatch.setattr(service, "_matching_interrupt", disappearing_interrupt)
+
+    with pytest.raises(ApprovalNotFoundError):
+        await service.prepare_decision(thread_id, approval_id, "approve", user_id="alice")
+
+    assert await service._run_guard.is_thread_active(thread_id) is False
+    assert service._in_flight == 0
+    tokens_after = sum(e.tokens for e in service._token_budget._events.get(budget_key, []))  # type: ignore[attr-defined]
+    assert tokens_after == tokens_before
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_erase_user_data_skips_busy_threads_idempotently() -> None:
+    service = _service()
+    t1 = await _thread(service, "msg1", user_id="alice")
+    t2 = await _thread(service, "msg2", user_id="alice")
+
+    owner_key = service._owner_key("alice", None)
+    hold = await service._run_guard.hold_thread(thread_id=t1, owner_key=owner_key or "anonymous")
+    try:
+        erased = await service.erase_user_data("alice")
+        assert erased.erased_count == 1
+        assert erased.skipped_busy_count == 1
+        assert erased.complete is False
+
+        # t1 remains untouched with history
+        history = await service.get_history(t1, "alice", limit=100, offset=0)
+        assert len(history.messages) == 2
+        assert history.messages[0].content == "msg1"
+
+        # t2 was deleted
+        with pytest.raises(ThreadNotFoundError):
+            await service.get_history(t2, "alice", limit=100, offset=0)
+    finally:
+        await hold.release()
+
+    # Re-running erasure after release deletes t1 completely
+    erased_again = await service.erase_user_data("alice")
+    assert erased_again.erased_count == 1
+    assert erased_again.skipped_busy_count == 0
+    assert erased_again.complete is True
+
+    with pytest.raises(ThreadNotFoundError):
+        await service.get_history(t1, "alice", limit=100, offset=0)
+
+
+@pytest.mark.usefixtures("echo_agent")
+async def test_erase_user_data_handles_concurrent_hold_thread_denial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    t1 = await _thread(service, "msg1", user_id="bob")
+
+    real_hold = service._run_guard.hold_thread
+
+    async def fail_hold(*, thread_id: str, owner_key: str) -> Any:
+        if thread_id == t1:
+            raise RunClaimDenied("thread_busy")
+        return await real_hold(thread_id=thread_id, owner_key=owner_key)
+
+    monkeypatch.setattr(service._run_guard, "hold_thread", fail_hold)
+
+    erased = await service.erase_user_data("bob")
+    assert erased.erased_count == 0
+    assert erased.skipped_busy_count == 1
+    assert erased.complete is False
+
+    history = await service.get_history(t1, "bob", limit=100, offset=0)
+    assert len(history.messages) == 2
