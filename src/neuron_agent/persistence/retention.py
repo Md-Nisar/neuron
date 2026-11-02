@@ -15,6 +15,7 @@ from neuron_agent.persistence.checkpointer import Persistence
 from neuron_agent.persistence.rate_limiter import delete_idle_buckets
 from neuron_agent.persistence.run_guard import delete_expired_leases
 from neuron_agent.persistence.token_budget import delete_ledger_outside_window
+from neuron_agent.security.run_guard import RunClaimDenied, RunGuard
 
 logger = structlog.get_logger(__name__)
 
@@ -80,6 +81,7 @@ async def prune_threads(
     delete_leases: bool = False,
     ledger_window_seconds: int | None = None,
     rate_bucket_idle_seconds: float | None = None,
+    run_guard: RunGuard | None = None,
 ) -> int:
     """Delete every thread whose last activity is older than `older_than`. Idempotent.
 
@@ -124,16 +126,39 @@ async def prune_threads(
             ts = datetime.fromisoformat(checkpoint.checkpoint["ts"])
             last_activity[thread_id] = max(ts, last_activity.get(thread_id, ts))
         stale = [thread_id for thread_id, ts in last_activity.items() if ts < cutoff]
+    stale_to_delete: list[str] = []
+    skipped_busy = 0
     for thread_id in stale:
-        await checkpointer.adelete_thread(thread_id)
-    await persistence.thread_titles.forget_threads(stale)
-    await persistence.feedback.forget_threads(stale)
+        if run_guard is not None:
+            if await run_guard.is_thread_active(thread_id):
+                logger.warning("retention_prune_skipped_busy", thread_id=thread_id)
+                skipped_busy += 1
+                continue
+            try:
+                lease = await run_guard.hold_thread(
+                    thread_id=thread_id, owner_key="retention_prune"
+                )
+            except RunClaimDenied:
+                logger.warning("retention_prune_skipped_busy", thread_id=thread_id)
+                skipped_busy += 1
+                continue
+            try:
+                await checkpointer.adelete_thread(thread_id)
+                stale_to_delete.append(thread_id)
+            finally:
+                await lease.release()
+        else:
+            await checkpointer.adelete_thread(thread_id)
+            stale_to_delete.append(thread_id)
+    await persistence.thread_titles.forget_threads(stale_to_delete)
+    await persistence.feedback.forget_threads(stale_to_delete)
     expired_leases = await _prune_leases(persistence) if delete_leases else 0
     ledger_minutes = await _ledger(persistence, ledger_window_seconds)
     idle_buckets = await _buckets(persistence, rate_bucket_idle_seconds)
     logger.info(
         "thread_prune_job_completed",
-        count=len(stale),
+        count=len(stale_to_delete),
+        skipped_busy=skipped_busy,
         retention_days=older_than.days,
         expired_leases=expired_leases,
         expired_ledger_minutes=ledger_minutes,
@@ -144,6 +169,6 @@ async def prune_threads(
         outcome="allowed",
         action="threads:prune",
         resource_type="thread",
-        count=len(stale),
+        count=len(stale_to_delete),
     )
-    return len(stale)
+    return len(stale_to_delete)

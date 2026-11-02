@@ -444,6 +444,42 @@ async def test_thread_lifecycle_emits_each_audit_event_once() -> None:
     assert events.count("thread_deleted") == 1
 
 
+async def test_prune_skips_active_threads_with_run_guard() -> None:
+    service = _service()
+    old = await _thread(service, "old")
+    cutoff = await _last_activity(service, old) + timedelta(seconds=1)
+
+    # Claim an active lease on the thread
+    lease = await service._run_guard.hold_thread(thread_id=old, owner_key="test_user")
+    try:
+        with structlog.testing.capture_logs() as logs:
+            pruned = await prune_threads(
+                service._persistence,
+                older_than=timedelta(0),
+                now=cutoff,
+                run_guard=service._run_guard,
+            )
+        assert pruned == 0
+        assert await _checkpoint_count(service, old) > 0
+        skipped_events = [
+            entry for entry in logs if entry.get("event") == "retention_prune_skipped_busy"
+        ]
+        assert len(skipped_events) == 1
+        assert skipped_events[0]["thread_id"] == old
+    finally:
+        await lease.release()
+
+    # Now that the lease is released, pruning succeeds
+    pruned_after = await prune_threads(
+        service._persistence,
+        older_than=timedelta(0),
+        now=cutoff,
+        run_guard=service._run_guard,
+    )
+    assert pruned_after == 1
+    assert await _checkpoint_count(service, old) == 0
+
+
 async def test_prune_without_persistence_is_a_no_op() -> None:
     persistence = build_persistence(Settings(env="test", checkpointer="none"))
     assert await prune_threads(persistence, older_than=timedelta(days=1)) == 0

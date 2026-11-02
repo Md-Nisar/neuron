@@ -98,6 +98,16 @@ async def _prune(older_than_days: int) -> None:
                 max_chars=settings.memory_max_chars,
                 ttl_days=settings.memory_ttl_days,
             ).purge_expired()
+        run_guard = None
+        if persistence.pool is not None and settings.limits_backend == "postgres":
+            from neuron_agent.persistence.run_guard import PostgresRunGuard
+
+            run_guard = PostgresRunGuard(
+                persistence.pool,
+                max_concurrent_streams=settings.max_concurrent_streams,
+                max_concurrent_runs_per_user=settings.max_concurrent_runs_per_user,
+                run_timeout_seconds=settings.run_timeout_seconds,
+            )
         await prune_threads(
             persistence,
             older_than=timedelta(days=older_than_days),
@@ -114,6 +124,7 @@ async def _prune(older_than_days: int) -> None:
                 if settings.limits_backend == "postgres"
                 else None
             ),
+            run_guard=run_guard,
         )
     finally:
         await persistence.close()
