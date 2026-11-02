@@ -201,7 +201,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | ID | Title | Phase | Pri | Status | Issue | PR | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Done | #399 | #403 | `docs/decisions/0014-knowledge-engine.md` Accepted 2026-11-02 (AC1); ADR 0001/0002/0005 say "Amended by ADR 0014" (AC2); spike questions listed with working defaults (AC3) |
-| RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Done | #400 | PR_TBD | `docs/releases/v1.1.0-spike.md`: one measured answer per question (AC1); kill-worker test, exactly one completion per job (AC2); exact-scan threshold 10,000 as the RAG-04.01 default (AC3) |
+| RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Done | #400 | #405 | `docs/releases/v1.1.0-spike.md`: one measured answer per question (AC1); kill-worker test, exactly one completion per job (AC2); exact-scan threshold 10,000 as the RAG-04.01 default (AC3) |
 | RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Done | #401 | #404 | `tests/unit/test_knowledge_cases.py`: schema and references (AC1), counts (AC2), licence and source per document (AC3) |
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Pending | #402 | — | — |
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Pending | — | — | — |
@@ -261,7 +261,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
-| 2026-11-02 | RAG-00.02: spike record and ADR 0014 answers; Done when PR_TBD merges | Claude session |
+| 2026-11-02 | RAG-00.02: spike record and ADR 0014 answers; Done when #405 merges | Claude session |
 | 2026-11-02 | RAG-00.03: corpus, schema and test; Done when #404 merges | Claude session |
 | 2026-11-02 | Owner accepted ADR 0014: RAG-00.01 Done when #403 merges | Claude session |
 | 2026-11-02 | RAG-00.01: ADR 0014 written as Proposed; amendment notes in ADR 0001/0002/0005; v1.1.0 in the roadmap. Status Partial until the owner accepts | Claude session |
