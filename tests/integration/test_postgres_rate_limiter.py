@@ -20,7 +20,6 @@ from typing import Any
 import psycopg
 import pytest
 import structlog.testing
-from pg_harness import AppProcess
 from psycopg.conninfo import make_conninfo
 from pydantic import SecretStr
 
@@ -32,17 +31,18 @@ from neuron_agent.persistence.rate_limiter import PostgresRateLimiter, delete_id
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.security.auth import ip_rate_key
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter, RateLimiter
+from tests.integration.pg_harness import AppProcess
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
 _ADMIN_DSN = os.environ.get("APP_TEST_POSTGRES_DSN", "")
 KEY = "k" * 32
-SLOW = {"requests_per_window": 1, "window_seconds": 3600}  # no refill within a test
+SLOW: dict[str, Any] = {"requests_per_window": 1, "window_seconds": 3600}  # no refill within a test
 
 
 async def rows(dsn: str, query: str, *params: object) -> list[tuple[Any, ...]]:
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        cursor = await conn.execute(query, params)  # type: ignore[call-overload]
+        cursor = await conn.execute(query, params)
         return await cursor.fetchall() if cursor.description else []
 
 
@@ -322,7 +322,7 @@ async def test_an_unreachable_database_is_a_503_over_http_and_recovers(
 
 
 async def _serves(app: AppProcess) -> bool:
-    return (await app.invoke()).status_code == 200
+    return bool((await app.invoke()).status_code == 200)
 
 
 async def _eventually(check: Callable[[], Awaitable[bool]], *, timeout: float = 15.0) -> None:

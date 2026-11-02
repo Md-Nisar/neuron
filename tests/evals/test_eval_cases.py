@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -117,7 +117,11 @@ def test_security_cases_have_required_fields() -> None:
 
 
 def test_security_v5_memory_cases_seed_notes_and_assert_invariants() -> None:
-    cases = [c for c in load_eval_cases(SECURITY_CASES) if str(c["category"]).startswith("memory_")]
+    cases = [
+        cast(dict[str, Any], c)
+        for c in load_eval_cases(SECURITY_CASES)
+        if str(c["category"]).startswith("memory_")
+    ]
     assert {c["category"] for c in cases} == {"memory_cross_user", "memory_injected_note"}
     assert len(cases) >= 4
     for case in cases:

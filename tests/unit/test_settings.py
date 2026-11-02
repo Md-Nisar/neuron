@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any, Literal
 
 import pytest
 from pydantic import ValidationError
-from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.models.factory import _FakeChatModel, create_chat_model
+from tests.conftest import PRODUCTION_PROFILE
 
 
 def test_settings_require_openai_key_in_production() -> None:
@@ -111,7 +112,7 @@ def test_settings_rejects_rate_limit_burst_out_of_bounds() -> None:
     ],
 )
 def test_settings_rejects_resource_limits_out_of_bounds(
-    overrides: dict[str, int],
+    overrides: dict[str, Any],
 ) -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", openai_api_key=None, **overrides)
@@ -159,7 +160,7 @@ def test_settings_reject_postgres_pool_size_out_of_bounds() -> None:
         {"max_thread_messages": 10_001},
     ],
 )
-def test_settings_reject_history_limits_out_of_bounds(overrides: dict[str, int]) -> None:
+def test_settings_reject_history_limits_out_of_bounds(overrides: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", **overrides)
 
@@ -266,9 +267,9 @@ def test_settings_reject_unknown_limits_backend() -> None:
 # --- Production settings validation (ADR 0008 decision 9) -------------------------------
 
 
-def _hardened(env: str, **overrides: object) -> Settings:
+def _hardened(env: str, **overrides: Any) -> Settings:
     """Valid staging/production settings; `overrides` replace, and `None` removes, a key."""
-    values: dict[str, object] = {
+    values: dict[str, Any] = {
         "env": env,
         "auth_mode": "jwt",
         "auth_issuer": "https://issuer.example.test",
@@ -569,19 +570,21 @@ def test_an_empty_trusted_proxies_variable_is_rejected_by_settings_parsing(
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1", "[::1]"])
 @pytest.mark.parametrize("env", ["development", "test"])
-def test_open_auth_on_a_loopback_bind_is_accepted(env: str, host: str) -> None:
-    assert Settings(_env_file=None, env=env, auth_mode="none", host=host).host == host  # type: ignore[call-arg, arg-type]
+def test_open_auth_on_a_loopback_bind_is_accepted(
+    env: Literal["development", "test"], host: str
+) -> None:
+    assert Settings(_env_file=None, env=env, auth_mode="none", host=host).host == host
 
 
 @pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.0.2.10", "api.example.test"])  # noqa: S104
 def test_open_auth_on_a_public_bind_is_refused_in_test(host: str) -> None:
     with pytest.raises(ValidationError, match="non-loopback APP_HOST"):
-        Settings(_env_file=None, env="test", auth_mode="none", host=host)  # type: ignore[call-arg]
+        Settings(_env_file=None, env="test", auth_mode="none", host=host)
 
 
 def test_open_auth_on_a_public_bind_stays_allowed_in_development() -> None:
     # The image binds 0.0.0.0 inside the container; compose publishes it on loopback only.
-    settings = Settings(_env_file=None, env="development", auth_mode="none", host="0.0.0.0")  # type: ignore[call-arg]  # noqa: S104
+    settings = Settings(_env_file=None, env="development", auth_mode="none", host="0.0.0.0")  # noqa: S104
     assert settings.host == "0.0.0.0"  # noqa: S104
 
 

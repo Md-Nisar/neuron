@@ -11,8 +11,6 @@ from typing import Any
 
 import pytest
 from pydantic import SecretStr, ValidationError
-from tests.conftest import jwt_settings as _jwt_settings
-from tests.unit.test_startup_checks import _Conn
 
 from neuron_agent.agents.factory import build_registry
 from neuron_agent.errors.base import ConfigurationError
@@ -24,6 +22,8 @@ from neuron_agent.persistence.startup_checks import (
     verify_store,
 )
 from neuron_agent.tools.registry import ToolSpec
+from tests.conftest import jwt_settings as _jwt_settings
+from tests.unit.test_startup_checks import _Conn
 
 pytestmark = pytest.mark.anyio
 

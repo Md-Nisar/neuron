@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import time
+from typing import Any, Literal
 
 import pytest
-from pydantic import ValidationError
-from tests.conftest import PRODUCTION_PROFILE
+from pydantic import SecretStr, ValidationError
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.models.factory import create_chat_model
+from tests.conftest import PRODUCTION_PROFILE
 
 pytestmark = pytest.mark.anyio
 
 
-def _fake(**overrides: object) -> Settings:
-    return Settings(_env_file=None, env="test", **overrides)  # type: ignore[call-arg, arg-type]
+def _fake(**overrides: Any) -> Settings:
+    return Settings(_env_file=None, env="test", **overrides)
 
 
 async def _stream(settings: Settings) -> tuple[float, int, float]:
@@ -64,17 +65,17 @@ def test_invoke_waits_for_the_whole_answer() -> None:
     ],
 )
 def test_latency_settings_are_refused_in_staging_and_production(
-    env: str, override: dict[str, int]
+    env: Literal["staging", "production"], override: dict[str, Any]
 ) -> None:
     with pytest.raises(ValidationError, match="APP_FAKE_MODEL"):
         Settings(
-            env=env,  # type: ignore[arg-type]
+            env=env,
             auth_mode="jwt",
             auth_issuer="https://issuer.example.test",
             auth_audience="neuron-api",
             auth_jwks_url="https://issuer.example.test/.well-known/jwks.json",
             identity_hash_key="x" * 32,
-            openai_api_key="sk-test",  # type: ignore[arg-type]
+            openai_api_key=SecretStr("sk-test"),
             **PRODUCTION_PROFILE,
             **override,
         )
@@ -89,7 +90,7 @@ def test_latency_settings_are_refused_in_staging_and_production(
         {"fake_model_output_tokens": 2_001},
     ],
 )
-def test_latency_settings_are_bounded(override: dict[str, int]) -> None:
+def test_latency_settings_are_bounded(override: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         _fake(**override)
 

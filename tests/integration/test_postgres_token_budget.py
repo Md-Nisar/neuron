@@ -13,14 +13,13 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import psycopg
 import pytest
 import structlog.testing
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
-from pg_harness import AppProcess
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader, NumberDataPoint
 from psycopg.conninfo import make_conninfo
 from pydantic import SecretStr
 
@@ -31,7 +30,7 @@ from neuron_agent.observability import metrics, semconv
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.persistence.token_budget import PostgresTokenBudget
-from neuron_agent.schemas.agent import AgentAnswer, AgentRequest
+from neuron_agent.schemas.agent import AgentAnswer, AgentRequest, AgentResponse
 from neuron_agent.security.usage_budget import (
     BudgetDecision,
     BudgetReservation,
@@ -39,6 +38,7 @@ from neuron_agent.security.usage_budget import (
     TokenBudget,
 )
 from neuron_agent.services.agent_service import AgentService
+from tests.integration.pg_harness import AppProcess
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -48,7 +48,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
 async def rows(dsn: str, query: str, *params: object) -> list[tuple[Any, ...]]:
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        cursor = await conn.execute(query, params)  # type: ignore[call-overload]
+        cursor = await conn.execute(query, params)
         return await cursor.fetchall() if cursor.description else []
 
 
@@ -413,7 +413,7 @@ async def test_one_owner_cannot_hold_more_pool_connections_than_its_gate(databas
     assert persistence.pool is not None
     counting = CountingPool(persistence.pool)
     budget = PostgresTokenBudget(
-        counting,  # type: ignore[arg-type]
+        cast(Any, counting),
         token_limit=1_000_000,
         window_seconds=3600,
         lock_timeout_ms=2_000,
@@ -539,6 +539,7 @@ async def test_a_failed_settlement_delivers_the_answer_and_blocks_the_next_admis
         with structlog.testing.capture_logs() as logs:
             response = await service.invoke(AgentRequest(message="answer anyway"))
         agent.before_answer = None
+        assert isinstance(response, AgentResponse)
         assert response.answer == "ok"
         assert any(log["event"] == "token_budget_settle_failed" for log in logs)
         data = reader.get_metrics_data()
@@ -550,7 +551,8 @@ async def test_a_failed_settlement_delivers_the_answer_and_blocks_the_next_admis
             for m in s.metrics
             if m.name == semconv.METRIC_BUDGET_SETTLE_FAILURES
         ]
-        assert point.value == 1  # type: ignore[union-attr]
+        assert isinstance(point, NumberDataPoint)
+        assert point.value == 1
 
         calls = agent.calls
         with pytest.raises(PersistenceError):  # the store still does not answer

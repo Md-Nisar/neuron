@@ -11,7 +11,7 @@ import json
 import uuid
 from collections.abc import Callable
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 import anyio
 import httpx
@@ -19,11 +19,11 @@ import pytest
 import structlog.testing
 from fastapi.routing import APIRoute
 from langchain_core.messages import HumanMessage
-from tests.conftest import JWT_ISSUER, HistoryEchoAgent, JwtApi, JwtClock, bearer
 
 from neuron_agent.api import main as api_main
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.auth import Principal
+from tests.conftest import JWT_ISSUER, HistoryEchoAgent, JwtApi, JwtClock, bearer
 
 _MARKER = "alice-secret-7f3c"  # conversation content that must never cross users
 _APPROVAL_ID = "0123456789abcdef0123456789abcdef"  # nothing is pending under this ID
@@ -86,7 +86,7 @@ def test_matrix_covers_every_v1_route() -> None:
     declared = {
         (method, route.path)
         for route in api_main.app.routes
-        if isinstance(route, APIRoute) and route.path.startswith("/v1/")
+        if isinstance(route, APIRoute) and route.path.startswith("/v1/") and route.methods
         for method in route.methods
     }
     probe = "{thread_id}"
@@ -106,7 +106,9 @@ def _owned_thread(api: JwtApi, token: str) -> str:
 
 
 def _history(api: JwtApi, thread_id: str, token: str) -> httpx.Response:
-    return api.client.get(f"/v1/threads/{thread_id}/messages", headers=bearer(token))
+    return cast(
+        httpx.Response, api.client.get(f"/v1/threads/{thread_id}/messages", headers=bearer(token))
+    )
 
 
 @pytest.mark.parametrize(
@@ -369,14 +371,14 @@ async def test_parallel_users_never_observe_each_others_streams_or_tokens(
 
     assert agent.peak >= 2, "runs did not overlap; the test proves nothing"
     for key, body in bodies.items():
-        name, turn = key.split("-")
+        name, turn_str = key.split("-")
         other = next(n for n in users if n != name)
         events = _parse_sse(body)
         assert [event for event, _ in events][0] == "run_started"
         assert [event for event, _ in events][-2:] == ["final", "done"]
-        assert events[0][1]["thread_id"] == threads[name][int(turn)]
+        assert events[0][1]["thread_id"] == threads[name][int(turn_str)]
         final = events[-2][1]
-        assert final["thread_id"] == threads[name][int(turn)]
+        assert final["thread_id"] == threads[name][int(turn_str)]
         assert markers[name] in final["answer"]
         assert markers[other] not in body, f"{key} observed {other}'s conversation"
         assert not any(thread_id in body for thread_id in threads[other])

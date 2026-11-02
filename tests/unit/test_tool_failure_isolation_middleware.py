@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from langchain_core.messages import ToolMessage
 
@@ -20,7 +22,8 @@ async def test_tool_failure_isolation_middleware_allows_success() -> None:
     async def ok_handler(request: object) -> ToolMessage:
         return ToolMessage(content="ok", tool_call_id="call-1")
 
-    result = await middleware.awrap_tool_call(_FakeRequest("calculator"), ok_handler)
+    result = await middleware.awrap_tool_call(cast(Any, _FakeRequest("calculator")), ok_handler)
+    assert isinstance(result, ToolMessage)
     assert result.content == "ok"
 
 
@@ -31,7 +34,7 @@ async def test_tool_failure_isolation_middleware_passes_through_app_errors() -> 
         raise ToolExecutionError("tool 'calculator' exceeded 1s timeout")
 
     with pytest.raises(ToolExecutionError):
-        await middleware.awrap_tool_call(_FakeRequest("calculator"), denied_handler)
+        await middleware.awrap_tool_call(cast(Any, _FakeRequest("calculator")), denied_handler)
 
 
 async def test_tool_failure_isolation_middleware_wraps_unexpected_exceptions() -> None:
@@ -41,4 +44,4 @@ async def test_tool_failure_isolation_middleware_wraps_unexpected_exceptions() -
         raise RuntimeError("boom")
 
     with pytest.raises(ToolExecutionError):
-        await middleware.awrap_tool_call(_FakeRequest("calculator"), broken_handler)
+        await middleware.awrap_tool_call(cast(Any, _FakeRequest("calculator")), broken_handler)

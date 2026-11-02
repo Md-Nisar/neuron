@@ -12,13 +12,13 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
-from tests.conftest import StreamingFakeModel
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.models import factory
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.tools.registry import ToolRegistry, ToolSpec, builtin_registry
+from tests.conftest import StreamingFakeModel
 
 pytestmark = pytest.mark.anyio
 

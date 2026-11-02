@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import MutableMapping
 from typing import Any
 
 import anyio
@@ -13,7 +14,7 @@ from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import CapacityError, RunTimeoutError, ThreadBusyError
 from neuron_agent.graphs import main_graph
-from neuron_agent.schemas.agent import AgentAnswer, AgentRequest
+from neuron_agent.schemas.agent import AgentAnswer, AgentRequest, AgentResponse
 from neuron_agent.security.run_guard import InMemoryRunGuard, RunClaimDenied, RunGuard, RunLease
 from neuron_agent.services.agent_service import AgentService
 from neuron_agent.services.streaming import StreamEvent
@@ -72,7 +73,9 @@ async def _messages(service: AgentService, thread_id: str) -> list[str]:
 
 
 def _idle(service: AgentService) -> bool:
-    return not service._run_guard._active_threads and service._run_guard._open_streams == 0
+    guard = service._run_guard
+    assert isinstance(guard, InMemoryRunGuard)
+    return not guard._active_threads and guard._open_streams == 0
 
 
 async def test_closing_the_stream_cancels_the_run_and_keeps_history(gated: GatedAgent) -> None:
@@ -97,6 +100,7 @@ async def test_closing_the_stream_cancels_the_run_and_keeps_history(gated: Gated
 
     gated.gate.set()
     retried = await service.invoke(AgentRequest(message="again", thread_id=thread_id))
+    assert isinstance(retried, AgentResponse)
     assert await _messages(service, thread_id) == ["first", "answer 1", "again", retried.answer]
 
 
@@ -131,7 +135,9 @@ async def test_concurrent_run_on_busy_thread_is_rejected(gated: GatedAgent) -> N
         await service.prepare(AgentRequest(message="second", thread_id=thread_id), streaming=True)
 
     gated.gate.set()
-    assert (await first).answer == "answer 2"  # the first run is unaffected
+    first_res = await first
+    assert isinstance(first_res, AgentResponse)
+    assert first_res.answer == "answer 2"  # the first run is unaffected
     assert _idle(service)
     await service.invoke(AgentRequest(message="third", thread_id=thread_id))
 
@@ -245,6 +251,9 @@ class _SlowReleaseGuard:
 
         return RunLease(release)
 
+    async def hold_thread(self, *, thread_id: str, owner_key: str) -> RunLease:
+        return await self._inner.hold_thread(thread_id=thread_id, owner_key=owner_key)
+
     async def is_thread_active(self, thread_id: str) -> bool:
         return await self._inner.is_thread_active(thread_id)
 
@@ -284,6 +293,7 @@ def test_invoke_returns_409_for_busy_thread(
     client = TestClient(app)
     thread_id = client.post("/v1/agent/invoke", json={"message": "hi"}).json()["thread_id"]
 
+    assert isinstance(service._run_guard, InMemoryRunGuard)
     service._run_guard._active_threads.add(thread_id)
     for path in ("/v1/agent/invoke", "/v1/agent/stream"):
         response = client.post(path, json={"message": "hi", "thread_id": thread_id})
@@ -294,6 +304,7 @@ def test_invoke_returns_409_for_busy_thread(
 def test_stream_returns_503_when_at_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
     service = AgentService(Settings(env="test", max_concurrent_streams=1))
     monkeypatch.setattr(api_main, "service", service)
+    assert isinstance(service._run_guard, InMemoryRunGuard)
     service._run_guard._open_streams = 1
     response = TestClient(app).post("/v1/agent/stream", json={"message": "hi"})
     assert response.status_code == 503
@@ -356,16 +367,22 @@ async def test_lease_released_when_response_fails_before_streaming(
     service = AgentService(Settings(env="test"))
     monkeypatch.setattr(api_main, "service", service)
     response = await api_main.stream_agent(AgentRequest(message="hi"))
+    assert isinstance(service._run_guard, InMemoryRunGuard)
     assert service._run_guard._open_streams == 1
 
     async def receive() -> dict[str, Any]:
         await anyio.sleep_forever()
         return {}  # pragma: no cover
 
-    async def send(message: dict[str, Any]) -> None:
+    async def send(message: MutableMapping[str, Any]) -> None:
         raise OSError("client went away")
 
-    scope = {"type": "http", "method": "POST", "path": "/v1/agent/stream", "headers": []}
+    scope: MutableMapping[str, Any] = {
+        "type": "http",
+        "method": "POST",
+        "path": "/v1/agent/stream",
+        "headers": [],
+    }
     with pytest.raises(BaseException):  # noqa: B017 - sse-starlette may wrap it in a group
         await response(scope, receive, send)
     assert _idle(service)

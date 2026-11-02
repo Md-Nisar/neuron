@@ -19,6 +19,7 @@ from typing import Any
 from neuron_agent.api import main as api_main
 from neuron_agent.graphs import main_graph
 from neuron_agent.schemas.agent import AgentAnswer
+from neuron_agent.services.agent_service import AgentService
 
 MARKERS = Path(os.environ["NEURON_TEST_MARKER_DIR"])
 RUN_SECONDS = float(os.environ["NEURON_TEST_RUN_SECONDS"])
@@ -35,8 +36,8 @@ class DelayedAgent:
         return {"messages": [], "structured_response": answer}
 
 
-main_graph.build_agent = lambda settings: DelayedAgent()  # type: ignore[assignment]
-api_main.service = api_main.AgentService(api_main.settings)
+setattr(main_graph, "build_agent", lambda settings: DelayedAgent())  # noqa: B010
+api_main.service = AgentService(api_main.settings)
 
 if __name__ == "__main__":
     api_main.main()

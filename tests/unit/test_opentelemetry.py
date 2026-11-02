@@ -19,12 +19,12 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.sdk.trace.sampling import ParentBased
 
-from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import semconv, telemetry
 from neuron_agent.observability.logging import add_trace_context
 from neuron_agent.schemas.agent import AgentResponse
+from neuron_agent.services.agent_service import AgentService
 
 _TRACE_ID = "0af7651916cd43dd8448eb211c80319c"
 _TRACEPARENT = f"00-{_TRACE_ID}-b7ad6b7169203331-01"
@@ -70,7 +70,7 @@ def fast_invoke(monkeypatch: pytest.MonkeyPatch) -> None:
             request_id="request-1", thread_id="thread-1", answer="ok", used_tools=[], confidence=1.0
         )
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", invoke)
+    monkeypatch.setattr(AgentService, "invoke", invoke)
 
 
 def test_disabled_telemetry_creates_no_exporter_and_keeps_no_op_providers(
@@ -100,8 +100,16 @@ def test_enabled_telemetry_sets_resource_sampler_and_exporter_targets(
 
         return build
 
-    monkeypatch.setattr(telemetry, "OTLPSpanExporter", recording(telemetry.OTLPSpanExporter))
-    monkeypatch.setattr(telemetry, "OTLPMetricExporter", recording(telemetry.OTLPMetricExporter))
+    monkeypatch.setattr(
+        telemetry,
+        "OTLPSpanExporter",
+        recording(getattr(telemetry, "OTLPSpanExporter")),  # noqa: B009
+    )
+    monkeypatch.setattr(
+        telemetry,
+        "OTLPMetricExporter",
+        recording(getattr(telemetry, "OTLPMetricExporter")),  # noqa: B009
+    )
     settings = Settings(
         env="test",
         otel_enabled=True,

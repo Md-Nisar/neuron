@@ -87,12 +87,12 @@ async def test_postgres_delete_and_prune_threads() -> None:
 
         checkpointer = service._persistence.checkpointer
         assert checkpointer is not None
-        old_ts = (await checkpointer.aget_tuple({"configurable": {"thread_id": old}})).checkpoint[
-            "ts"
-        ]
-        recent_ts = (
-            await checkpointer.aget_tuple({"configurable": {"thread_id": recent}})
-        ).checkpoint["ts"]
+        old_tuple = await checkpointer.aget_tuple({"configurable": {"thread_id": old}})
+        assert old_tuple is not None
+        old_ts = old_tuple.checkpoint["ts"]
+        recent_tuple = await checkpointer.aget_tuple({"configurable": {"thread_id": recent}})
+        assert recent_tuple is not None
+        recent_ts = recent_tuple.checkpoint["ts"]
         old_at, recent_at = datetime.fromisoformat(old_ts), datetime.fromisoformat(recent_ts)
         cutoff = old_at + (recent_at - old_at) / 2
 
@@ -133,7 +133,7 @@ async def test_postgres_owner_metadata_listing_and_bulk_erasure() -> None:
             if item.config["configurable"].get("checkpoint_ns", "") == ""
         ]
         assert owner_checkpoints
-        assert all(item.metadata["owner"] == alice_owner for item in owner_checkpoints)
+        assert all((item.metadata or {}).get("owner") == alice_owner for item in owner_checkpoints)
 
         erased = await service.erase_user_data("alice")
         assert erased.erased_count == 1

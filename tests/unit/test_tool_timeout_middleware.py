@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any, cast
 
 import pytest
 from langchain_core.messages import ToolMessage
@@ -22,7 +23,8 @@ async def test_tool_timeout_middleware_allows_fast_tool() -> None:
     async def fast_handler(request: object) -> ToolMessage:
         return ToolMessage(content="ok", tool_call_id="call-1")
 
-    result = await middleware.awrap_tool_call(_FakeRequest("fast_tool"), fast_handler)
+    result = await middleware.awrap_tool_call(cast(Any, _FakeRequest("fast_tool")), fast_handler)
+    assert isinstance(result, ToolMessage)
     assert result.content == "ok"
 
 
@@ -34,4 +36,4 @@ async def test_tool_timeout_middleware_raises_on_slow_tool() -> None:
         return ToolMessage(content="too late", tool_call_id="call-1")
 
     with pytest.raises(ToolExecutionError):
-        await middleware.awrap_tool_call(_FakeRequest("slow_tool"), slow_handler)
+        await middleware.awrap_tool_call(cast(Any, _FakeRequest("slow_tool")), slow_handler)

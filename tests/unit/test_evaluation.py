@@ -521,6 +521,7 @@ async def test_service_response_carries_the_answer_flags(monkeypatch: pytest.Mon
         response = await service.invoke(AgentRequest(message="Fix it."))
     finally:
         await service.shutdown()
+    assert isinstance(response, AgentResponse)
     assert (response.refused, response.clarification_needed) == (False, True)
 
 

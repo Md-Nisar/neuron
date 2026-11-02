@@ -9,12 +9,12 @@ from typing import Any
 
 import pytest
 from langchain_core.messages import AIMessage, BaseMessage
-from tests.conftest import JwtApi, StreamingFakeModel, _content_chunks, bearer
-from tests.security.test_approval_api import _OWNER, _ran, note_taker
-from tests.security.test_multi_user_isolation import _parse_sse
 
 from neuron_agent.models import factory
 from neuron_agent.tools.registry import ToolRegistry, ToolSpec, builtin_registry
+from tests.conftest import JwtApi, StreamingFakeModel, _content_chunks, bearer
+from tests.security.test_approval_api import _OWNER, _ran, note_taker
+from tests.security.test_multi_user_isolation import _parse_sse
 
 _NOT_FOUND = {"detail": "approval_not_found"}
 
@@ -25,6 +25,7 @@ class _TextThenToolModel(StreamingFakeModel):
     def _stream(self, messages: list[BaseMessage], *args: Any, **kwargs: Any) -> Any:
         reply = next(self.messages)
         run_manager = kwargs.get("run_manager") or (args[1] if len(args) > 1 else None)
+        assert isinstance(reply, AIMessage)
         if reply.content:
             yield from _content_chunks(AIMessage(content=reply.content), run_manager)
         rest = self.messages

@@ -13,6 +13,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import Any
 
 import anyio
 import pytest
@@ -49,7 +50,7 @@ def _password_grant(username: str) -> str:
     return token
 
 
-def _settings(**overrides: object) -> Settings:
+def _settings(**overrides: Any) -> Settings:
     return Settings(
         **{
             "env": "development",

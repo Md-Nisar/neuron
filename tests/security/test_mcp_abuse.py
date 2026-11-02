@@ -13,13 +13,11 @@ import pytest
 import structlog.testing
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from mcp.server.mcpserver import MCPServer
-from pydantic import Field
+from pydantic import Field, SecretStr
 from scripts import mcp_reference_server as reference
 from starlette.applications import Starlette
 from starlette.responses import RedirectResponse, Response, StreamingResponse
 from starlette.routing import Route
-from tests.conftest import StreamingFakeModel
-from tests.unit.test_mcp_client import _config, _discover, _pins, serve
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.graphs.main_graph import build_graph
@@ -27,6 +25,8 @@ from neuron_agent.models import factory
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.tools.mcp import client as mcp_client
 from neuron_agent.tools.registry import ToolRegistry, builtin_registry
+from tests.conftest import StreamingFakeModel
+from tests.unit.test_mcp_client import _config, _discover, _pins, serve
 
 pytestmark = pytest.mark.anyio
 
@@ -241,7 +241,7 @@ async def test_a_redirect_off_the_servers_origin_is_not_followed() -> None:
         with serve(app) as url:
             specs = await _discover(
                 _config(url, {"convert_units": "sha256:" + "a" * 64}, auth="bearer"),
-                {"units": mcp_client.SecretStr("s3cret")},
+                {"units": SecretStr("s3cret")},
             )
 
     assert specs == []

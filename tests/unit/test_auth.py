@@ -15,12 +15,13 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWKClientError
-from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import AuthenticationError, AuthenticationUnavailableError
 from neuron_agent.security.auth import TokenVerifier
+from neuron_agent.services.agent_service import AgentService
+from tests.conftest import PRODUCTION_PROFILE
 
 
 class FakeJWKClient:
@@ -140,7 +141,11 @@ async def test_verify_rejects_wrong_issuer_audience_and_oversized_token() -> Non
     verifier = TokenVerifier(_settings())
     verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
 
-    for claims in [{"iss": "https://other.example.test"}, {"aud": "other-api"}]:
+    claims_list: list[dict[str, Any]] = [
+        {"iss": "https://other.example.test"},
+        {"aud": "other-api"},
+    ]
+    for claims in claims_list:
         with pytest.raises(AuthenticationError):
             await verifier.verify(f"Bearer {_token(private, **claims)}")
     with pytest.raises(AuthenticationError):
@@ -461,7 +466,7 @@ async def test_health_ready_alone_recovers_after_a_jwks_outage(
     async def persistence_ready(self: object) -> bool:
         return True
 
-    monkeypatch.setattr(api_main.AgentService, "is_ready", persistence_ready)
+    monkeypatch.setattr(AgentService, "is_ready", persistence_ready)
     http = TestClient(api_main.app)
 
     with pytest.raises(AuthenticationUnavailableError):  # the outage is noticed once

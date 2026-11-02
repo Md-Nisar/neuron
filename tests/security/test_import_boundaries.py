@@ -20,7 +20,7 @@ def _security_imports_of(package: str) -> list[str]:
                 module = node.module or ""
                 names = [module, *(f"{module}.{alias.name}" for alias in node.names)]
             if any(f".{package}" in f".{name}" for name in names):
-                offenders.append(f"{path.name}:{node.lineno}")
+                offenders.append(f"{path.name}:{getattr(node, 'lineno', 0)}")
     return offenders
 
 

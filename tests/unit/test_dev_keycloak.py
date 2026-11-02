@@ -9,9 +9,9 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 from scripts import dev_keycloak
-from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
+from tests.conftest import PRODUCTION_PROFILE
 
 REALM_PATH = Path(__file__).resolve().parents[2] / "deploy" / "keycloak" / "neuron-realm.json"
 _FORBIDDEN_KEYS = ("secret", "privatekey", "certificate", "keystore", "smtp")

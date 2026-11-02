@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import structlog.testing
@@ -54,7 +54,7 @@ async def test_validation_failure_becomes_a_safe_error_message() -> None:
     async def handler(request: object) -> ToolMessage:
         raise ValidationAppError(f"invalid arithmetic expression: {_BAD_INPUT}")
 
-    result = await middleware.awrap_tool_call(_Request(), handler)
+    result = await middleware.awrap_tool_call(cast(Any, _Request()), handler)
 
     assert isinstance(result, ToolMessage)
     assert result.status == "error"
@@ -70,7 +70,7 @@ async def test_other_failures_still_raise() -> None:
         raise RuntimeError("boom")
 
     with pytest.raises(ToolExecutionError):
-        await middleware.awrap_tool_call(_Request(), broken)
+        await middleware.awrap_tool_call(cast(Any, _Request()), broken)
 
 
 def test_tool_span_records_the_validation_error_code(

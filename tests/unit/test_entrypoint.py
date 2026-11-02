@@ -49,7 +49,7 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
 
 def _settings(**values: Any) -> Settings:
     """Settings from the process environment and `values` only, never a developer's `.env`."""
-    return Settings(_env_file=None, **values)  # type: ignore[call-arg]
+    return Settings(_env_file=None, **values)
 
 
 def test_no_environment_access_outside_the_documented_files() -> None:
@@ -254,5 +254,5 @@ def test_untrusted_peer_is_keyed_by_the_peer_and_a_forged_header_leaks_nowhere(
     seen = [str(logs), *access.lines]
     for span in spans:
         seen.append(span.name)
-        seen.extend(f"{key}={value}" for key, value in (span.attributes or {}).items())
+        seen.extend(f"{key}={value!r}" for key, value in (span.attributes or {}).items())
     assert not [text for text in seen if FORGED in text]

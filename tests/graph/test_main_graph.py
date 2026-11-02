@@ -27,7 +27,7 @@ from neuron_agent.state.main import MainGraphState
 
 pytestmark = pytest.mark.anyio
 
-_REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+_REQUEST: Any = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
 
 
 class FakeAgent:
@@ -54,7 +54,7 @@ def _call(name: str, call_id: str) -> dict[str, Any]:
 
 
 class ScriptedAgent:
-    def __init__(self, result: dict[str, object]) -> None:
+    def __init__(self, result: dict[str, Any]) -> None:
         self._result = result
 
     async def ainvoke(
@@ -162,7 +162,7 @@ async def test_used_tools_ignore_tool_calls_from_earlier_turns() -> None:
 
 
 async def test_call_agent_wraps_rate_limit_error() -> None:
-    response = httpx.Response(status_code=429, request=_REQUEST)
+    response: Any = httpx.Response(status_code=429, request=_REQUEST)
     error = openai.RateLimitError("rate limited", response=response, body=None)
     with pytest.raises(RateLimitError):
         await call_agent(_state(), agent=FailingAgent(error))
@@ -175,7 +175,7 @@ async def test_call_agent_wraps_timeout_error() -> None:
 
 
 async def test_call_agent_wraps_authentication_error() -> None:
-    response = httpx.Response(status_code=401, request=_REQUEST)
+    response: Any = httpx.Response(status_code=401, request=_REQUEST)
     error = openai.AuthenticationError("bad key", response=response, body=None)
     with pytest.raises(ConfigurationError):
         await call_agent(_state(), agent=FailingAgent(error))

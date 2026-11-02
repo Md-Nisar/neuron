@@ -218,7 +218,7 @@ def test_blueprint_values_pass_settings_validation(
             values.update(migration)  # the pre-deploy command shares this environment
         for key, value in values.items():
             monkeypatch.setenv(key, value)
-        settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        settings = Settings(_env_file=None)
         assert settings.env == env
         assert settings.limits_backend == "postgres"
         assert settings.checkpointer == "postgres"

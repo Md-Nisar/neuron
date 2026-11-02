@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import structlog.testing
@@ -27,7 +27,7 @@ def _answer(text: str, confidence: float, call_id: str) -> AIMessage:
         "args": {"answer": text, "used_tools": [], "confidence": confidence},
         "id": call_id,
     }
-    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)  # type: ignore[arg-type]
+    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)
 
 
 def _invalid(n: int) -> AIMessage:
@@ -101,7 +101,7 @@ async def test_a_provider_schema_that_fails_to_parse_is_retried_twice_and_charge
         messages=[],
         runtime=SimpleNamespace(context=AuthorizationContext(frozenset(), usage=usage)),
     )
-    bad = AIMessage(content="not json", usage_metadata=_USAGE)  # type: ignore[arg-type]
+    bad = AIMessage(content="not json", usage_metadata=_USAGE)
     calls = 0
 
     async def handler(_: object) -> Any:
@@ -110,7 +110,9 @@ async def test_a_provider_schema_that_fails_to_parse_is_retried_twice_and_charge
         raise StructuredOutputValidationError("AgentAnswer", ValueError("bad"), bad)
 
     with pytest.raises(StructuredOutputValidationError):
-        await structured_output_retry_middleware().awrap_model_call(request, handler)
+        await structured_output_retry_middleware().awrap_model_call(
+            cast(Any, request), cast(Any, handler)
+        )
 
     assert calls == 3
     # The two retried attempts were charged here; the third raised to the caller.
@@ -133,6 +135,6 @@ async def test_an_empty_reply_is_left_to_the_empty_reply_retry() -> None:
 
     with pytest.raises(StructuredOutputValidationError):
         await structured_output_retry_middleware().awrap_model_call(
-            SimpleNamespace(messages=[]), handler
+            cast(Any, SimpleNamespace(messages=[])), cast(Any, handler)
         )
     assert calls == 1

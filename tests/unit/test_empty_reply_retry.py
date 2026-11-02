@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import structlog.testing
@@ -95,7 +95,7 @@ async def test_only_a_reply_without_text_or_tool_calls_is_retried() -> None:
             calls += 1
             return SimpleNamespace(result=[reply])
 
-        await middleware.awrap_model_call(object(), handler)
+        await middleware.awrap_model_call(cast(Any, object()), cast(Any, handler))
         assert calls == 1, name
 
 
@@ -126,8 +126,8 @@ async def test_an_empty_reply_that_fails_to_parse_is_retried_too() -> None:
             raise outcome
         return outcome
 
-    response = await middleware.awrap_model_call(request, handler)
-    assert response.result[0].tool_calls[0]["args"]["answer"] == "Paris."
+    response = await middleware.awrap_model_call(cast(Any, request), cast(Any, handler))
+    assert cast(Any, response).result[0].tool_calls[0]["args"]["answer"] == "Paris."
     assert outcomes == []
     # The discarded, unparsable attempt is charged even though no response came back.
     assert usage.total_tokens == 2100
@@ -147,7 +147,9 @@ async def test_a_parse_error_on_a_reply_with_content_is_not_retried() -> None:
         raise StructuredOutputValidationError("AgentAnswer", ValueError("bad"), bad)
 
     with pytest.raises(StructuredOutputValidationError):
-        await empty_reply_retry_middleware().awrap_model_call(object(), handler)
+        await empty_reply_retry_middleware().awrap_model_call(
+            cast(Any, object()), cast(Any, handler)
+        )
     assert calls == 1
 
 
@@ -166,6 +168,6 @@ async def test_parse_errors_on_empty_replies_stop_after_the_retry_limit() -> Non
 
     with pytest.raises(StructuredOutputValidationError):
         await empty_reply_retry_middleware().awrap_model_call(
-            SimpleNamespace(runtime=SimpleNamespace(context=None)), handler
+            cast(Any, SimpleNamespace(runtime=SimpleNamespace(context=None))), cast(Any, handler)
         )
     assert calls == 3  # the first call and two retries

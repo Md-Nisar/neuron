@@ -174,7 +174,7 @@ async def test_operations_leave_a_span_and_a_count_with_no_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader, NumberDataPoint
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -221,9 +221,10 @@ async def test_operations_leave_a_span_and_a_count_with_no_text(
         for m in s.metrics
         if m.name == "neuron.memory.operations"
         for p in m.data.data_points
+        if isinstance(p, NumberDataPoint)
     ]
     assert sum(p.value for p in points) == 5
-    assert "private" not in str([dict(p.attributes) for p in points])
+    assert "private" not in str([dict(p.attributes or {}) for p in points])
 
 
 async def test_pagination_with_expired_items_does_not_skip_active_memories(

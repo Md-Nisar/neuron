@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from pydantic import SecretStr
-from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.persistence import cli, migrations
 from neuron_agent.persistence.migrations import MIGRATIONS, Migration
+from tests.conftest import PRODUCTION_PROFILE
 
 _RELEASE = re.compile(r"\d+\.\d+\.\d+")
 _IDENT = r'(?:"[^"]+"|\w+)'
@@ -151,7 +152,7 @@ def test_setup_requires_the_migration_dsn_outside_development(
     _use(
         monkeypatch,
         Settings.model_construct(
-            env=env, postgres_dsn=SecretStr(runtime), postgres_migration_dsn=None
+            env=cast(Any, env), postgres_dsn=SecretStr(runtime), postgres_migration_dsn=None
         ),
     )
     with pytest.raises(SystemExit) as exit_info:
@@ -203,7 +204,7 @@ def test_cli_errors_never_print_the_dsn_or_password(
 def test_startup_setup_is_refused_in_staging_and_production(env: str) -> None:
     with pytest.raises(ValueError, match="SETUP_ON_STARTUP"):
         Settings(
-            env=env,
+            env=cast(Any, env),
             checkpointer="none",
             checkpointer_setup_on_startup=True,
             openai_api_key=SecretStr("k"),
@@ -263,7 +264,7 @@ def test_setup_passes_the_role_and_key_and_requires_the_split_in_production(
     _use(
         monkeypatch,
         Settings.model_construct(
-            env=env,
+            env=cast(Any, env),
             postgres_dsn=None,
             postgres_migration_dsn=SecretStr("postgresql://m:p@h/d"),
             postgres_app_role="neuron_app",

@@ -45,7 +45,7 @@ async def dsn() -> AsyncIterator[str]:
 
 async def _scalar(dsn: str, sql: str) -> object:
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        cursor = await conn.execute(sql)  # type: ignore[call-overload]
+        cursor = await conn.execute(sql)
         row = await cursor.fetchone()
         return row[0] if row else None
 
@@ -87,7 +87,7 @@ async def test_concurrent_setup_processes_both_succeed(dsn: str) -> None:
 async def _hold_exclusive_lock(dsn: str) -> psycopg.AsyncConnection[object]:
     blocker = await psycopg.AsyncConnection.connect(dsn)
     await blocker.execute("LOCK TABLE checkpoints IN ACCESS EXCLUSIVE MODE")
-    return blocker  # type: ignore[return-value]
+    return blocker
 
 
 async def _unapply_owner_index(dsn: str) -> None:

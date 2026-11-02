@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from langchain.agents.middleware import ModelRequest, ModelResponse
@@ -119,7 +119,7 @@ async def test_a_tool_without_a_spec_is_neither_offered_nor_callable() -> None:
     offered: list[str] = []
 
     async def model_handler(filtered: ModelRequest[Any]) -> ModelResponse:
-        offered.extend(t.name for t in filtered.tools)
+        offered.extend(t.name if not isinstance(t, dict) else t["name"] for t in filtered.tools)
         return ModelResponse(result=[AIMessage(content="ok")])
 
     await middleware.awrap_model_call(_request([utc_now, calculator], permissions), model_handler)
@@ -136,7 +136,7 @@ async def test_a_tool_without_a_spec_is_neither_offered_nor_callable() -> None:
         tool_call={"name": "calculator", "args": {"expression": "1+1"}, "id": "c1"},
         runtime=SimpleNamespace(context=AuthorizationContext(permissions)),
     )
-    result = await middleware.awrap_tool_call(call, tool_handler)
+    result = await middleware.awrap_tool_call(cast(Any, call), cast(Any, tool_handler))
     assert isinstance(result, ToolMessage)
     assert result.status == "error"
     assert not ran

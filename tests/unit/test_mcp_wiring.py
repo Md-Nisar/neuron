@@ -11,8 +11,6 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 from scripts import mcp_reference_server as reference
-from tests.conftest import StreamingFakeModel
-from tests.unit.test_mcp_client import _pins, serve
 
 from neuron_agent.agents.factory import build_registry
 from neuron_agent.api import main as api_main
@@ -22,6 +20,8 @@ from neuron_agent.models import factory
 from neuron_agent.services.agent_service import AgentService
 from neuron_agent.tools.mcp import pin as pin_command
 from neuron_agent.tools.mcp.pins import FetchedTool
+from tests.conftest import StreamingFakeModel
+from tests.unit.test_mcp_client import _pins, serve
 
 pytestmark = pytest.mark.anyio
 

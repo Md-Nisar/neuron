@@ -227,7 +227,7 @@ def test_the_scan_flags_egress_paths_a_tool_could_use(
     assert _violations(tmp_path / "fake" / "tools", tmp_path, "fake") == expected
 
 
-@pytest.mark.parametrize("tool", _REGISTERED, ids=lambda t: t.name)  # type: ignore[attr-defined]
+@pytest.mark.parametrize("tool", _REGISTERED, ids=lambda t: t.name)
 def test_registered_tools_take_no_url_argument(tool: object) -> None:
     args = tool.args  # type: ignore[attr-defined]
     offenders = [

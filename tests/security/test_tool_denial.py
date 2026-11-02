@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import Any
 
 import pytest
@@ -11,11 +11,11 @@ import structlog.testing
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from pydantic import Field
-from tests.conftest import JwtApi, StreamingFakeModel, bearer
 
 from neuron_agent.graphs import main_graph
 from neuron_agent.models import factory
 from neuron_agent.observability import metrics
+from tests.conftest import JwtApi, StreamingFakeModel, bearer
 
 _ANSWER = "I can't use that tool, so here is my answer without it."
 _DENIED_TEXT = "Error: this tool call was denied. Answer without the tool."
@@ -63,7 +63,11 @@ def policy_blocks(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 
 def _assert_denied_and_recovered(
-    recording: _RecordingModel, logs: list[dict[str, Any]], blocked: list[str], tool: str, rule: str
+    recording: _RecordingModel,
+    logs: Sequence[Mapping[str, Any]],
+    blocked: list[str],
+    tool: str,
+    rule: str,
 ) -> None:
     # The tool never ran: the isolation middleware inside the check logs every executed call.
     assert not [log for log in logs if log["event"].startswith("tool_call_")]

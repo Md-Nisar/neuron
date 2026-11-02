@@ -10,7 +10,7 @@ import asyncio
 import contextlib
 import os
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, MutableMapping
 from contextlib import asynccontextmanager, contextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -20,7 +20,6 @@ import anyio
 import psycopg
 import pytest
 import structlog.testing
-from pg_harness import AppProcess
 from psycopg.conninfo import make_conninfo
 from pydantic import SecretStr
 
@@ -39,9 +38,10 @@ from neuron_agent.persistence import run_guard
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.persistence.run_guard import PostgresRunGuard
-from neuron_agent.schemas.agent import AgentAnswer, AgentRequest
-from neuron_agent.security.run_guard import RunClaimDenied
+from neuron_agent.schemas.agent import AgentAnswer, AgentRequest, AgentResponse
+from neuron_agent.security.run_guard import RunClaimDenied, RunLease
 from neuron_agent.services.agent_service import AgentService
+from tests.integration.pg_harness import AppProcess
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -53,7 +53,7 @@ _ADMIN_DSN = os.environ.get("APP_TEST_POSTGRES_DSN", "")
 
 async def rows(dsn: str, query: str, *params: object) -> list[tuple[Any, ...]]:
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        cursor = await conn.execute(query, params)  # type: ignore[call-overload]
+        cursor = await conn.execute(query, params)
         return await cursor.fetchall() if cursor.description else []
 
 
@@ -277,7 +277,7 @@ async def test_barrier_exactly_one_claim_succeeds_per_thread_never_a_500(databas
             same_owner = [_claim([one, two][i % 2], "shared", owner="a") for i in range(40)]
             results = await asyncio.gather(*same_owner, return_exceptions=True)
             assert _reasons(results) == ["RunLease"] + ["thread_busy"] * 39
-            await asyncio.gather(*(r.release() for r in results if not isinstance(r, Exception)))
+            await asyncio.gather(*(r.release() for r in results if isinstance(r, RunLease)))
 
             # Different owners are not serialised by the advisory lock, so the unique
             # constraint itself decides; its violation is `thread_busy`, not an error.
@@ -376,7 +376,7 @@ async def test_database_unavailable_fails_closed_without_a_model_call(
 ) -> None:
     agent = ScriptedAgent()
     async with replica(database, monkeypatch, agent, postgres_pool_timeout_seconds=1) as service:
-        assert (await service.invoke(AgentRequest(message="warm up"))).answer == "ok"
+        assert (await _invoke(service, AgentRequest(message="warm up"))).answer == "ok"
         calls = agent.calls
         name = make_conninfo(database).split("dbname=")[1].split()[0]
         async with await psycopg.AsyncConnection.connect(_ADMIN_DSN, autocommit=True) as admin:
@@ -392,6 +392,12 @@ async def test_database_unavailable_fails_closed_without_a_model_call(
             assert agent.calls == calls
             await admin.execute(f'ALTER DATABASE "{name}" ALLOW_CONNECTIONS true')  # nosec B608
         await eventually(lambda: _serves(service))
+
+
+async def _invoke(service: AgentService, req: AgentRequest) -> AgentResponse:
+    res = await service.invoke(req)
+    assert isinstance(res, AgentResponse)
+    return res
 
 
 async def _serves(service: AgentService) -> bool:
@@ -417,7 +423,7 @@ async def test_owner_lock_held_past_lock_timeout_fails_closed(
                 await service.invoke(AgentRequest(message="blocked"))
             assert 0.25 <= time.monotonic() - started < 5
             assert agent.calls == 0
-        assert (await service.invoke(AgentRequest(message="free again"))).answer == "ok"
+        assert (await _invoke(service, AgentRequest(message="free again"))).answer == "ok"
         assert agent.calls == 1
 
 
@@ -438,7 +444,7 @@ async def test_pool_exhausted_fails_closed_without_a_model_call(
                 await service.invoke(AgentRequest(message="no connection"))
             assert 0.9 <= time.monotonic() - started < 5
         assert agent.calls == 0
-        assert (await service.invoke(AgentRequest(message="free again"))).answer == "ok"
+        assert (await _invoke(service, AgentRequest(message="free again"))).answer == "ok"
 
 
 async def test_unreachable_database_is_a_503_over_http(database: str, tmp_path: Path) -> None:
@@ -724,10 +730,15 @@ async def test_leases_are_released_when_a_stream_is_closed_or_its_client_goes_aw
         await anyio.sleep_forever()
         return {}  # pragma: no cover
 
-    async def send(message: dict[str, Any]) -> None:
+    async def send(message: MutableMapping[str, Any]) -> None:
         raise OSError("client went away")
 
-    scope = {"type": "http", "method": "POST", "path": "/v1/agent/stream", "headers": []}
+    scope: MutableMapping[str, Any] = {
+        "type": "http",
+        "method": "POST",
+        "path": "/v1/agent/stream",
+        "headers": [],
+    }
     with pytest.raises(BaseException):  # noqa: B017 - sse-starlette may wrap it in a group
         await response(scope, receive, send)
     await _settled(idle, service)

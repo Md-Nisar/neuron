@@ -7,11 +7,11 @@ from typing import Any
 import pytest
 
 from neuron_agent.persistence.thread_meta import (
-    TITLE_MAX_CHARS,
     InMemoryThreadTitles,
     PostgresThreadTitles,
     derive_title,
 )
+from neuron_agent.schemas.agent import TITLE_MAX_CHARS
 
 pytestmark = pytest.mark.anyio
 

@@ -6,7 +6,7 @@ import asyncio
 import time
 from collections.abc import Callable, Iterator
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import structlog.testing
@@ -17,7 +17,6 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.metrics.export import Metric as SdkMetric
 from pydantic import SecretStr
-from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
@@ -27,6 +26,7 @@ from neuron_agent.models.factory import tracing_middleware
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.services.agent_service import AgentService, PreparedRun
+from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
 _SUB = "raw-subject-7f3a"
 _EXPRESSION = "987654321*3"
@@ -158,7 +158,7 @@ def test_every_instrument_is_emitted_with_only_allow_listed_labels(
     assert len(collected.identifiers) > 5
     for name, metric in found.items():
         for point in metric.data.data_points:
-            attributes = dict(point.attributes)
+            attributes = dict(point.attributes or {})
             assert set(attributes) <= semconv.METRIC_ATTRIBUTE_ALLOW_LIST, name
             for value in attributes.values():
                 assert not any(
@@ -179,7 +179,7 @@ async def test_token_usage_is_recorded_by_type_for_each_model_call(
         return SimpleNamespace(result=[message])
 
     middleware = tracing_middleware(Settings(env="test"))
-    await middleware.awrap_model_call(object(), handler)
+    await middleware.awrap_model_call(cast(Any, object()), cast(Any, handler))
 
     points = {
         point.attributes[semconv.GEN_AI_USAGE_TYPE]: point
@@ -202,7 +202,7 @@ async def test_failed_model_call_is_labelled_with_its_error_code(collected: Coll
 
     middleware = tracing_middleware(Settings(env="test"))
     with pytest.raises(RuntimeError):
-        await middleware.awrap_model_call(object(), handler)
+        await middleware.awrap_model_call(cast(Any, object()), cast(Any, handler))
 
     [operation] = collected.points(semconv.METRIC_OPERATION_DURATION)
     assert operation.attributes[semconv.ERROR_TYPE] == "agent_execution_error"

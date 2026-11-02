@@ -30,6 +30,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.schemas.agent import AgentResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from neuron_agent.services.agent_service import AgentService
 
 _SECRET_MARKER = "sk-test-secret-should-never-leak"  # noqa: S105 -- leakage-detection fixture, not a real secret
 
@@ -114,7 +115,7 @@ def test_agent_invoke_fails_safely_without_leaking_detail(
     async def raise_error(self: object, request: object) -> None:
         raise error
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    monkeypatch.setattr(AgentService, "invoke", raise_error)
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": "hi"})
     assert response.status_code == expected_status
@@ -137,7 +138,7 @@ def test_agent_invoke_hides_unexpected_exceptions(
     async def raise_error(self: object, request: object) -> None:
         raise error
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    monkeypatch.setattr(AgentService, "invoke", raise_error)
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": "hi"})
     assert response.status_code == 500
@@ -186,7 +187,7 @@ def test_agent_invoke_returns_429_when_client_rate_limited(
             confidence=1.0,
         )
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
+    monkeypatch.setattr(AgentService, "invoke", fast_invoke)
     monkeypatch.setattr(
         api_main,
         "ip_rate_limiter",

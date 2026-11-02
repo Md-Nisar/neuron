@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
-from tests.conftest import StreamingFakeModel
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import AgentStepLimitError
@@ -16,6 +16,7 @@ from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.models import factory
 from neuron_agent.models.factory import agent_invocation_config, classify_agent_error
 from neuron_agent.security.authorization import AuthorizationContext
+from tests.conftest import StreamingFakeModel
 
 pytestmark = pytest.mark.anyio
 
@@ -42,7 +43,7 @@ class _Script:
         return next(self._replies)
 
 
-def _graph(monkeypatch: pytest.MonkeyPatch, script: _Script, **settings: int) -> object:
+def _graph(monkeypatch: pytest.MonkeyPatch, script: _Script, **settings: Any) -> object:
     monkeypatch.setattr(factory, "create_chat_model", lambda _: StreamingFakeModel(messages=script))
     return build_graph(Settings(env="test", **settings))
 

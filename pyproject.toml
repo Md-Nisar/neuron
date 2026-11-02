@@ -102,8 +102,21 @@ ignore = ["S101"]
 [tool.mypy]
 python_version = "3.13"
 strict = true
+mypy_path = "src"
+explicit_package_bases = true
 packages = ["neuron_agent"]
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["yaml.*", "changelog_section.*", "langgraph_api.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = true
+disallow_untyped_calls = false
+no_implicit_reexport = false
 
 [tool.pytest.ini_options]
 # Live suites (`integration`) run only when selected explicitly (`make test-integration`,

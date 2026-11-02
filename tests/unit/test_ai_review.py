@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import io
 import json
+import time
 import urllib.error
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,7 +36,7 @@ deleted file mode 100644
 
 
 def _mock_response(
-    data: dict[str, Any], status: int = 200, headers: dict[str, str] | None = None
+    data: Any, status: int = 200, headers: dict[str, str] | None = None
 ) -> MagicMock:
     resp = MagicMock()
     resp.read.return_value = json.dumps(data).encode("utf-8")
@@ -546,7 +547,7 @@ def test_main_deadline_exhausted_makes_no_further_attempts(
 ) -> None:
     _main_env(monkeypatch, AI_REVIEW_DEADLINE_SECONDS="50")
     clock = iter([0.0] + [1000.0] * 50)  # main() starts at 0, then the budget is long gone
-    monkeypatch.setattr(ai_review.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(time, "monotonic", lambda: next(clock))
     with patch("urllib.request.urlopen") as mock_open:
         assert ai_review.main(sleep_fn=lambda _: None) == 0
     out = capsys.readouterr().out
@@ -614,7 +615,7 @@ def test_review_with_model_reports_unverified_when_verify_pass_fails() -> None:
         value = next(calls)
         if isinstance(value, Exception):
             raise value
-        return value
+        return cast(tuple[str, list[Any]], value)
 
     with patch("scripts.ai_review.chat_completion", side_effect=fake_chat):
         _, findings, verified, unverified, _ = ai_review.review_with_model(

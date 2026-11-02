@@ -38,6 +38,7 @@ from neuron_agent.persistence.migrations import (
 )
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.persistence.roles import AppRoleError
+from neuron_agent.persistence.run_guard import PostgresRunGuard
 from neuron_agent.persistence.startup_checks import StartupCheckError
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.run_guard import RunClaimDenied
@@ -151,7 +152,7 @@ async def _setup(db: RoleDatabase, **kwargs: Any) -> list[int]:
 
 async def _rows(dsn: str, query: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        cursor = await conn.execute(query, params)  # type: ignore[call-overload]
+        cursor = await conn.execute(query, params)
         return await cursor.fetchall()
 
 
@@ -159,7 +160,7 @@ async def _denied(dsn: str, statement: str) -> str:
     """Run `statement` and return the error text; it must fail with insufficient_privilege."""
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
         with pytest.raises(psycopg.errors.InsufficientPrivilege) as caught:
-            await conn.execute(statement)  # type: ignore[call-overload]
+            await conn.execute(statement)
     return str(caught.value)
 
 
@@ -210,6 +211,7 @@ async def test_app_role_runs_every_service_and_prune_query(role_db: RoleDatabase
     await persistence.open()
     try:
         guard = build_run_guard(settings, persistence)
+        assert isinstance(guard, PostgresRunGuard)
         lease = await guard.claim(
             thread_id="t1", owner_key="owner", streaming=False, guard_thread=True
         )
@@ -477,7 +479,7 @@ async def _app_dml_on_bookkeeping(db: RoleDatabase) -> dict[str, list[str]]:
 async def test_a_failed_setup_never_leaves_app_dml_on_the_bookkeeping_tables(
     role_db: RoleDatabase,
 ) -> None:
-    nothing = {table: [] for table in _BOOKKEEPING}
+    nothing: dict[str, list[Any]] = {table: [] for table in _BOOKKEEPING}
     broken = Migration(
         version=max(m.version for m in MIGRATIONS) + 1, name="broken", sql="SELECT 1/0"
     )
@@ -507,9 +509,10 @@ async def test_production_setup_verifies_the_role_and_the_privilege_matrix(
     assert any(entry["event"] == "app_role_grants_applied" for entry in logs)
 
     # A GRANT by a role that does not own the table only warns; verification catches it.
+    assert _DSN is not None
     async with await psycopg.AsyncConnection.connect(
         _DSN, dbname=role_db.name, autocommit=True
-    ) as su:  # type: ignore[arg-type]
+    ) as su:
         await su.execute(f"REVOKE ALL ON checkpoint_blobs FROM {role_db.roles.app}")  # nosec B608
         await su.execute("ALTER TABLE checkpoint_blobs OWNER TO postgres")
         await su.execute(f"GRANT ALL ON checkpoint_blobs TO {role_db.roles.migrator}")  # nosec B608
@@ -528,8 +531,9 @@ async def test_production_setup_verifies_the_role_and_the_privilege_matrix(
 
 
 async def _admin(db: RoleDatabase, statement: str) -> None:
-    async with await psycopg.AsyncConnection.connect(_DSN, dbname=db.name, autocommit=True) as conn:  # type: ignore[arg-type]
-        await conn.execute(statement)  # type: ignore[call-overload]
+    assert _DSN is not None
+    async with await psycopg.AsyncConnection.connect(_DSN, dbname=db.name, autocommit=True) as conn:
+        await conn.execute(statement)
 
 
 @pytest.mark.parametrize(

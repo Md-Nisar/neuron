@@ -202,10 +202,11 @@ class StreamingFakeModel(GenericFakeChatModel):
 
 
 def _content_chunks(
-    reply: BaseMessage, run_manager: CallbackManagerForLLMRun | None
+    reply: BaseMessage | str, run_manager: CallbackManagerForLLMRun | None
 ) -> Iterator[ChatGenerationChunk]:
     message_id = f"run-{uuid.uuid4()}"
-    for token in re.split(r"(\s)", str(reply.content)):
+    content = reply.content if isinstance(reply, BaseMessage) else reply
+    for token in re.split(r"(\s)", str(content)):
         chunk = ChatGenerationChunk(message=AIMessageChunk(content=token, id=message_id))
         if run_manager:
             run_manager.on_llm_new_token(token, chunk=chunk)

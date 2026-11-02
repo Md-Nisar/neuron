@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Literal, cast
+
 import psycopg
 import pytest
 import structlog.testing
@@ -13,7 +15,7 @@ from neuron_agent.errors.base import PersistenceError
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.run_guard import PostgresRunGuard
 from neuron_agent.persistence.token_budget import PostgresTokenBudget
-from neuron_agent.schemas.agent import AgentRequest
+from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 from neuron_agent.services.agent_service import AgentService
 
 pytestmark = pytest.mark.anyio
@@ -100,6 +102,7 @@ async def test_postgres_readiness_fails_without_leaking_dsn() -> None:
 async def test_memory_checkpointer_persists_thread_state() -> None:
     service = AgentService(Settings(env="test", checkpointer="memory", openai_api_key=None))
     response = await service.invoke(AgentRequest(message="hello"))
+    assert isinstance(response, AgentResponse)
     state = await service.graph.aget_state({"configurable": {"thread_id": response.thread_id}})
     assert [type(m) for m in state.values["messages"]][0] is HumanMessage
     assert state.values["answer"].answer == response.answer
@@ -121,10 +124,10 @@ async def test_service_maps_checkpointer_failure_to_persistence_error(
     assert failed["error_type"] == "OperationalError"
 
 
-def _guards_settings(checkpointer: str = "none") -> Settings:
+def _guards_settings(checkpointer: Literal["none", "memory", "postgres"] = "none") -> Settings:
     return Settings(
         env="test",
-        checkpointer=checkpointer,  # type: ignore[arg-type]
+        checkpointer=checkpointer,
         limits_backend="postgres",
         postgres_dsn=SecretStr(_UNREACHABLE_DSN),
         postgres_pool_timeout_seconds=1,
@@ -159,7 +162,7 @@ async def test_limits_postgres_opens_a_pool_without_a_checkpointer() -> None:
     assert persistence.pool.closed is True and persistence.is_open is False
 
 
-def _fake_pool(missing: list[str]) -> object:
+def _fake_pool(missing: list[str]) -> Any:
     """A pool whose database lacks the given guard tables (as `to_regclass` would report)."""
     queries: list[tuple[str, object]] = []
 
@@ -180,27 +183,30 @@ def _fake_pool(missing: list[str]) -> object:
             return None
 
     class _Pool:
+        queries: list[tuple[str, Any]]
+
         def connection(self) -> _Connection:
             return _Connection()
 
     pool = _Pool()
-    pool.queries = queries  # type: ignore[attr-defined]
+    pool.queries = queries
     return pool
 
 
 async def test_limits_postgres_readiness_is_true_when_the_guard_tables_exist() -> None:
     persistence = build_persistence(_guards_settings())
-    persistence.pool = _fake_pool([])  # type: ignore[assignment]
+    fake_pool = _fake_pool([])
+    persistence.pool = fake_pool
     persistence._opened = True
     assert await persistence.is_ready() is True
-    _, params = persistence.pool.queries[0]  # type: ignore[attr-defined]
-    assert "neuron_rate_buckets" in params[0]  # type: ignore[index]
+    _, params = fake_pool.queries[0]
+    assert "neuron_rate_buckets" in params[0]
 
 
 async def test_limits_postgres_readiness_is_false_when_setup_was_not_run() -> None:
     # Issue #207: migrations 10/11 missing means every guarded request fails closed.
     persistence = build_persistence(_guards_settings())
-    persistence.pool = _fake_pool(["neuron_rate_buckets"])  # type: ignore[assignment]
+    persistence.pool = _fake_pool(["neuron_rate_buckets"])
     persistence._opened = True
     with structlog.testing.capture_logs() as logs:
         assert await persistence.is_ready() is False
@@ -212,16 +218,17 @@ async def test_limits_postgres_readiness_is_false_when_setup_was_not_run() -> No
 async def test_guard_tables_are_not_checked_without_the_postgres_limits_backend() -> None:
     persistence = build_persistence(_postgres_settings())  # checkpointer only
     assert persistence.check_guard_tables is False
-    persistence.pool = _fake_pool([])  # type: ignore[assignment]
+    fake_pool = _fake_pool([])
+    persistence.pool = fake_pool
     persistence._opened = True
     assert await persistence.is_ready() is True
-    _, params = persistence.pool.queries[0]  # type: ignore[attr-defined]
-    assert params[0] == ["neuron_thread_meta", "neuron_feedback"]  # type: ignore[index]
+    _, params = fake_pool.queries[0]
+    assert params[0] == ["neuron_thread_meta", "neuron_feedback"]
 
 
 async def test_postgres_readiness_is_false_when_the_thread_meta_migration_was_not_run() -> None:
     persistence = build_persistence(_postgres_settings())
-    persistence.pool = _fake_pool(["neuron_feedback"])  # type: ignore[assignment]
+    persistence.pool = _fake_pool(["neuron_feedback"])
     persistence._opened = True
     assert await persistence.is_ready() is False
 
@@ -291,8 +298,8 @@ async def test_open_closes_the_pool_when_the_role_check_is_cancelled(
 
     monkeypatch.setattr(module, "verify_runtime_role", cancelled)
     pool = _Pool()
-    persistence = module.Persistence(  # type: ignore[call-overload,arg-type]
-        backend="postgres", checkpointer=None, pool=pool, app_role="neuron_app"
+    persistence = module.Persistence(
+        backend="postgres", checkpointer=None, pool=cast(Any, pool), app_role="neuron_app"
     )
     with pytest.raises(asyncio.CancelledError):
         await persistence.open()

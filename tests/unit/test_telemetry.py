@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import psycopg
@@ -17,6 +18,7 @@ from neuron_agent.graphs import main_graph
 from neuron_agent.persistence import checkpointer as checkpointer_module
 from neuron_agent.persistence.checkpointer import instrument_checkpointer
 from neuron_agent.schemas.agent import AgentAnswer, AgentRequest
+from neuron_agent.security.run_guard import InMemoryRunGuard
 from neuron_agent.services.agent_service import AgentService
 
 pytestmark = pytest.mark.anyio
@@ -24,7 +26,7 @@ pytestmark = pytest.mark.anyio
 _PRIVATE_PROMPT = "my-private-prompt"
 
 
-def _logs_named(logs: list[dict[str, Any]], name: str) -> list[dict[str, Any]]:
+def _logs_named(logs: Sequence[Mapping[str, Any]], name: str) -> list[Mapping[str, Any]]:
     return [log for log in logs if log["event"] == name]
 
 
@@ -135,6 +137,7 @@ def test_rejected_stream_logs_termination(monkeypatch: pytest.MonkeyPatch, echo_
     monkeypatch.setattr(api_main, "service", service)
     client = TestClient(app)
     thread_id = client.post("/v1/agent/invoke", json={"message": "hi"}).json()["thread_id"]
+    assert isinstance(service._run_guard, InMemoryRunGuard)
     service._run_guard._active_threads.add(thread_id)
     with structlog.testing.capture_logs() as logs:
         response = client.post("/v1/agent/stream", json={"message": "hi", "thread_id": thread_id})

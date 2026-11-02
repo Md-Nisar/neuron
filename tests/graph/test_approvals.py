@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import structlog.testing
@@ -11,7 +11,6 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
-from tests.conftest import StreamingFakeModel
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.graphs import main_graph
@@ -19,6 +18,7 @@ from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.models import factory
 from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
 from neuron_agent.tools.registry import ToolRegistry, ToolSpec, builtin_registry
+from tests.conftest import StreamingFakeModel
 
 pytestmark = pytest.mark.anyio
 
@@ -49,11 +49,11 @@ def _replies(*messages: AIMessage) -> StreamingFakeModel:
 
 def _call(text: str = "buy milk") -> AIMessage:
     call = {"name": "note_taker", "args": {"text": text}, "id": f"call-{uuid.uuid4().hex[:6]}"}
-    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)  # type: ignore[arg-type]
+    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)
 
 
 def _final(text: str) -> AIMessage:
-    return AIMessage(content=text, usage_metadata=_USAGE)  # type: ignore[arg-type]
+    return AIMessage(content=text, usage_metadata=_USAGE)
 
 
 def _use(monkeypatch: pytest.MonkeyPatch, model: StreamingFakeModel) -> None:
@@ -215,5 +215,7 @@ async def test_a_run_without_gated_tools_does_not_checkpoint_its_inner_state(
 
     await graph.ainvoke(_input("t-plain"), config=config, context=context)
 
-    namespaces = {item.config["configurable"]["checkpoint_ns"] for item in saver.list(config)}
+    namespaces = {
+        item.config["configurable"]["checkpoint_ns"] for item in saver.list(cast(Any, config))
+    }
     assert namespaces == {""}

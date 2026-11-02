@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import openai
 import pytest
@@ -21,7 +23,6 @@ from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 from pydantic import SecretStr
-from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
@@ -46,8 +47,13 @@ from neuron_agent.models.factory import (
     reset_retry_attempts,
 )
 from neuron_agent.tools.registry import builtin_registry
+from tests.conftest import PRODUCTION_PROFILE
 
-_REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+_REQUEST: Any = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+
+
+def _res(status_code: int = 429) -> Any:
+    return httpx.Response(status_code=status_code, request=_REQUEST)
 
 
 def _production_settings(**overrides: object) -> Settings:
@@ -72,6 +78,7 @@ def test_create_chat_model_configures_openai_model_limits() -> None:
         max_output_tokens=2000,
     )
     model = create_chat_model(settings)
+    assert isinstance(model, ChatOpenAI)
     assert model.model_name == "gpt-5.4-mini"
     assert model.request_timeout == 60
     assert model.max_tokens == 2000
@@ -80,6 +87,7 @@ def test_create_chat_model_configures_openai_model_limits() -> None:
 def test_create_chat_model_disables_sdk_level_retries() -> None:
     settings = _production_settings()
     model = create_chat_model(settings)
+    assert isinstance(model, ChatOpenAI)
     assert model.max_retries == 0
 
 
@@ -92,7 +100,7 @@ def test_create_chat_model_targets_the_nvidia_openai_compatible_endpoint() -> No
     assert isinstance(model, ChatOpenAI)
     assert model.model_name == "example/chat-model"
     assert model.openai_api_base == "https://integrate.api.nvidia.com/v1"
-    assert model.openai_api_key is not None
+    assert isinstance(model.openai_api_key, SecretStr)
     assert model.openai_api_key.get_secret_value() == "nvapi-test"
     # Per-user token budgets need usage on streamed responses too.
     assert model.stream_usage is True
@@ -163,7 +171,7 @@ def test_create_chat_model_rejects_malformed_model_identifier() -> None:
 
 
 def _quota_error(**body: str) -> openai.RateLimitError:
-    response = httpx.Response(status_code=429, request=_REQUEST)
+    response = _res(429)
     return openai.RateLimitError("no credits remaining", response=response, body=body)
 
 
@@ -190,7 +198,7 @@ def test_rate_limit_without_quota_marker_is_still_retried() -> None:
 
 
 def test_classify_agent_error_maps_rate_limit() -> None:
-    response = httpx.Response(status_code=429, request=_REQUEST)
+    response = _res(429)
     error = openai.RateLimitError("rate limited", response=response, body=None)
     assert isinstance(classify_agent_error(error), RateLimitError)
 
@@ -201,13 +209,13 @@ def test_classify_agent_error_maps_timeout() -> None:
 
 
 def test_classify_agent_error_maps_authentication_failure() -> None:
-    response = httpx.Response(status_code=401, request=_REQUEST)
+    response = _res(401)
     error = openai.AuthenticationError("bad key", response=response, body=None)
     assert isinstance(classify_agent_error(error), ConfigurationError)
 
 
 def test_classify_agent_error_maps_unknown_model_to_configuration_error() -> None:
-    response = httpx.Response(status_code=404, request=_REQUEST)
+    response = _res(404)
     error = openai.NotFoundError("model not found for account", response=response, body=None)
     assert _is_retryable_provider_error(error) is False
     classified = classify_agent_error(error)
@@ -221,7 +229,7 @@ def test_classify_agent_error_maps_generic_provider_error() -> None:
 
 
 def test_classify_agent_error_maps_internal_server_error() -> None:
-    response = httpx.Response(status_code=500, request=_REQUEST)
+    response = _res(500)
     error = openai.InternalServerError("internal error", response=response, body=None)
     assert isinstance(classify_agent_error(error), ProviderError)
 
@@ -251,12 +259,12 @@ def test_classify_agent_error_maps_recursion_limit_exceeded() -> None:
         openai.APITimeoutError(request=_REQUEST),
         openai.RateLimitError(
             "rate limited",
-            response=httpx.Response(status_code=429, request=_REQUEST),
+            response=_res(429),
             body=None,
         ),
         openai.InternalServerError(
             "internal error",
-            response=httpx.Response(status_code=500, request=_REQUEST),
+            response=_res(500),
             body=None,
         ),
     ],
@@ -270,12 +278,12 @@ def test_is_retryable_provider_error_accepts_transient_failures(error: Exception
     [
         openai.AuthenticationError(
             "bad key",
-            response=httpx.Response(status_code=401, request=_REQUEST),
+            response=_res(401),
             body=None,
         ),
         openai.BadRequestError(
             "bad request",
-            response=httpx.Response(status_code=400, request=_REQUEST),
+            response=_res(400),
             body=None,
         ),
         ConfigurationError("malformed config"),
@@ -353,7 +361,7 @@ def test_a_neutral_error_that_is_also_an_openai_quota_error_is_still_quota() -> 
     class _Quota(ModelRateLimitError, openai.RateLimitError):
         pass
 
-    response = httpx.Response(status_code=429, request=_REQUEST)
+    response = _res(429)
     error = _Quota("no credit", response=response, body={"code": "insufficient_quota"})
     assert isinstance(classify_agent_error(error), ProviderQuotaError)
     assert _is_retryable_provider_error(error) is False

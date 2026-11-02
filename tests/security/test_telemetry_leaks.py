@@ -19,11 +19,11 @@ from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+from neuron_agent.observability import metrics, semconv, telemetry
 from tests.conftest import JwtApi, bearer
 from tests.security.test_mcp_abuse import _call, _model
 from tests.security.test_memory_tools import _SCOPES
-
-from neuron_agent.observability import metrics, semconv, telemetry
 
 _NOTE = "my-safe-deposit-box-is-number-88231-vega"
 _SUBJECT = "raw-subject-leak-check-2291"

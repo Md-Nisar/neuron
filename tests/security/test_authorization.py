@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from fastapi.routing import APIRoute
@@ -123,7 +125,7 @@ def test_each_route_succeeds_with_its_required_permission(
             lease=RunLease(_noop_release),
         )
 
-    async def stream(*_: object, **__: object):
+    async def stream(*_: object, **__: object) -> AsyncIterator[StreamEvent]:
         yield StreamEvent("done")
 
     async def history(*_: object, **__: object) -> ThreadHistoryResponse:
@@ -226,8 +228,10 @@ async def test_model_only_sees_tools_granted_to_the_run() -> None:
     )
     offered: list[str] = []
 
-    async def handler(filtered: ModelRequest[object]) -> ModelResponse:
-        offered.extend(tool.name for tool in filtered.tools)
+    async def handler(filtered: Any) -> Any:
+        offered.extend(
+            tool.name if hasattr(tool, "name") else tool["name"] for tool in filtered.tools
+        )
         return ModelResponse(
             result=[
                 AIMessage(
@@ -241,7 +245,7 @@ async def test_model_only_sees_tools_granted_to_the_run() -> None:
             ]
         )
 
-    await middleware.awrap_model_call(request, handler)
+    await middleware.awrap_model_call(cast(Any, request), cast(Any, handler))
     assert offered == ["utc_now"]
     assert usage.total_tokens == 3
 
@@ -262,7 +266,7 @@ async def test_forced_tool_call_is_rechecked_at_execution() -> None:
         return "executed"
 
     # Denied: the tool never runs, and the model gets a tool error instead (#99).
-    result = await middleware.awrap_tool_call(request, handler)
+    result = await middleware.awrap_tool_call(cast(Any, request), cast(Any, handler))
     assert isinstance(result, ToolMessage)
     assert result.status == "error"
     assert result.additional_kwargs["error_code"] == "authorization_error"

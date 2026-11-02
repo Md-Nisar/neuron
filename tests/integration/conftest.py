@@ -4,12 +4,12 @@ import os
 import uuid
 from collections.abc import AsyncIterator, Iterator
 
-import pg_harness
 import psycopg
 import pytest
 from psycopg.conninfo import make_conninfo
 
 from neuron_agent.persistence.migrations import run_setup
+from tests.integration import pg_harness
 
 _DSN = os.environ.get("APP_TEST_POSTGRES_DSN")
 

@@ -11,12 +11,17 @@ from typing import Any
 import psycopg
 import pytest
 from pydantic import SecretStr
-from test_postgres_roles import RoleDatabase, _denied, _rows, _setup, role_db, roles  # noqa: F401
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.memory.store import MemoryStore
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.migrations import run_setup
+from tests.integration.test_postgres_roles import (
+    RoleDatabase,
+    _denied,
+    _rows,
+    _setup,
+)  # noqa: F401
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -26,7 +31,7 @@ _BOB = "b" * 64
 
 async def _run(dsn: str, statement: str) -> None:
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        await conn.execute(statement)  # type: ignore[call-overload]
+        await conn.execute(statement)
 
 
 def _settings(db: RoleDatabase, **overrides: Any) -> Settings:
@@ -145,16 +150,16 @@ async def test_cli_setup_flag_follows_the_setting(
     role_db: RoleDatabase,  # noqa: F811
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from neuron_agent.persistence import cli
+    from neuron_agent.persistence import cli, migrations
 
     migrated: list[bool] = []
-    real = cli.migrations.run_setup
+    real = migrations.run_setup
 
     async def spy(*args: Any, **kwargs: Any) -> list[int]:
         migrated.append(kwargs["memory_store"])
         return await real(*args, **kwargs)
 
-    monkeypatch.setattr(cli.migrations, "run_setup", spy)
+    monkeypatch.setattr(migrations, "run_setup", spy)
     settings = Settings(
         env="test", postgres_migration_dsn=SecretStr(role_db.migrator_dsn), memory_enabled=True
     )

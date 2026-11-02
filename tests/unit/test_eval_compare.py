@@ -9,7 +9,6 @@ from typing import Any
 
 import pytest
 from langchain_core.messages import AIMessage
-from tests.conftest import StreamingFakeModel
 
 from neuron_agent import evaluation
 from neuron_agent.config.settings import Settings
@@ -30,6 +29,7 @@ from neuron_agent.evaluation import (
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.authorization import TokenUsageAccumulator
 from neuron_agent.services.agent_service import AgentService
+from tests.conftest import StreamingFakeModel
 
 pytestmark = pytest.mark.anyio
 
@@ -196,7 +196,7 @@ def test_missing_baseline_applies_only_the_security_gate(
 def test_invalid_reports_are_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     good = _report(single_turn=[_case("a", *P3)])
     bad = {**good, "report_version": 2}
-    code, _ = _run(tmp_path, good, bad, capsys)  # type: ignore[arg-type]
+    code, _ = _run(tmp_path, good, bad, capsys)
     assert code == EXIT_INVALID_INPUT
 
 

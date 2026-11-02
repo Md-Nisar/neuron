@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import httpx
 import openai
 import pytest
@@ -10,7 +12,7 @@ from neuron_agent.models.factory import _is_retryable_provider_error, provider_r
 
 pytestmark = pytest.mark.anyio
 
-_REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+_REQUEST: Any = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
 
 
 class _FakeRequest:
@@ -20,7 +22,7 @@ class _FakeRequest:
 def _rate_limit_error() -> openai.RateLimitError:
     return openai.RateLimitError(
         "rate limited",
-        response=httpx.Response(status_code=429, request=_REQUEST),
+        response=cast(Any, httpx.Response(status_code=429, request=_REQUEST)),
         body=None,
     )
 
@@ -28,7 +30,7 @@ def _rate_limit_error() -> openai.RateLimitError:
 def _authentication_error() -> openai.AuthenticationError:
     return openai.AuthenticationError(
         "bad key",
-        response=httpx.Response(status_code=401, request=_REQUEST),
+        response=cast(Any, httpx.Response(status_code=401, request=_REQUEST)),
         body=None,
     )
 
@@ -53,8 +55,8 @@ async def test_provider_retry_middleware_succeeds_after_transient_failures() -> 
             raise openai.APIConnectionError(request=_REQUEST)
         return "ok"
 
-    result = await middleware.awrap_model_call(_FakeRequest(), handler)
-    assert result == "ok"
+    result = await middleware.awrap_model_call(cast(Any, _FakeRequest()), cast(Any, handler))
+    assert cast(Any, result) == "ok"
     assert attempts == 3
 
 
@@ -68,7 +70,7 @@ async def test_provider_retry_middleware_raises_immediately_on_non_retryable_err
         raise _authentication_error()
 
     with pytest.raises(openai.AuthenticationError):
-        await middleware.awrap_model_call(_FakeRequest(), handler)
+        await middleware.awrap_model_call(cast(Any, _FakeRequest()), cast(Any, handler))
     assert attempts == 1
 
 
@@ -81,12 +83,12 @@ async def test_provider_retry_middleware_does_not_retry_quota_errors() -> None:
         attempts += 1
         raise openai.RateLimitError(
             "no credits remaining",
-            response=httpx.Response(status_code=429, request=_REQUEST),
+            response=cast(Any, httpx.Response(status_code=429, request=_REQUEST)),
             body={"type": "insufficient_quota", "code": "credit_balance_exhausted"},
         )
 
     with pytest.raises(openai.RateLimitError):
-        await middleware.awrap_model_call(_FakeRequest(), handler)
+        await middleware.awrap_model_call(cast(Any, _FakeRequest()), cast(Any, handler))
     assert attempts == 1
 
 
@@ -100,12 +102,13 @@ async def test_provider_retry_middleware_raises_after_exhausting_retries() -> No
         raise _rate_limit_error()
 
     with pytest.raises(openai.RateLimitError):
-        await middleware.awrap_model_call(_FakeRequest(), handler)
+        await middleware.awrap_model_call(cast(Any, _FakeRequest()), cast(Any, handler))
     assert attempts == 2
 
 
 def test_provider_retry_middleware_uses_settings_max_retries() -> None:
     settings = Settings(env="test", provider_max_retries=4, openai_api_key=None)
     middleware = provider_retry_middleware(settings)
+    assert isinstance(middleware, ModelRetryMiddleware)
     assert middleware.max_retries == 4
     assert middleware.on_failure == "error"

@@ -9,10 +9,10 @@ from typing import Any
 
 import pytest
 import structlog.testing
-from tests.conftest import JWT_ISSUER, HistoryEchoAgent, JwtApi, bearer
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.security.auth import Principal, principal_owner_key
+from tests.conftest import JWT_ISSUER, HistoryEchoAgent, JwtApi, bearer
 
 _READ = "agent:invoke threads:read memories:read"
 _WRITE = "agent:invoke threads:read threads:delete memories:write"
@@ -176,7 +176,9 @@ def test_audit_events_carry_counts_and_ids_never_the_text(
         api.client.delete("/v1/me/memories", headers=bearer(alice))
 
     events: dict[str, dict[str, Any]] = {
-        log["event"]: log for log in logs if log.get("audit") and log["event"].startswith("memor")
+        log["event"]: dict(log)
+        for log in logs
+        if log.get("audit") and log["event"].startswith("memor")
     }
     assert events["memories_read"]["count"] == 2
     assert events["memory_deleted"]["resource_id"] == note

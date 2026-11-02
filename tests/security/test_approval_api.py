@@ -11,11 +11,11 @@ import pytest
 import structlog.testing
 from langchain_core.messages import AIMessage
 from langchain_core.tools import tool
-from tests.conftest import JwtApi, StreamingFakeModel, bearer
 
 from neuron_agent.api import main as api_main
 from neuron_agent.models import factory
 from neuron_agent.tools.registry import ToolRegistry, ToolSpec, builtin_registry
+from tests.conftest import JwtApi, StreamingFakeModel, bearer
 
 _ran: list[str] = []
 _USAGE = {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
@@ -37,11 +37,11 @@ def _reset() -> None:
 
 def _call(text: str = "buy milk") -> AIMessage:
     call = {"name": "note_taker", "args": {"text": text}, "id": f"call-{uuid.uuid4().hex[:6]}"}
-    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)  # type: ignore[arg-type]
+    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)
 
 
 def _final(text: str) -> AIMessage:
-    return AIMessage(content=text, usage_metadata=_USAGE)  # type: ignore[arg-type]
+    return AIMessage(content=text, usage_metadata=_USAGE)
 
 
 @pytest.fixture

@@ -6,7 +6,6 @@ from typing import Any, cast
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-from tests.conftest import jwt_settings
 
 from neuron_agent.errors.base import ThreadNotFoundError
 from neuron_agent.evaluation import (
@@ -22,6 +21,7 @@ from neuron_agent.graphs import main_graph
 from neuron_agent.prompts.loader import load_prompt
 from neuron_agent.schemas.agent import AgentAnswer
 from neuron_agent.services.agent_service import AgentService
+from tests.conftest import jwt_settings
 
 pytestmark = [pytest.mark.eval, pytest.mark.anyio]
 
@@ -152,8 +152,10 @@ async def test_permitted_tools_match_what_the_agent_lets_run(permissions: frozen
 
     offered: list[str] = []
 
-    async def handler(filtered: ModelRequest[object]) -> ModelResponse:
-        offered.extend(tool.name for tool in filtered.tools)
+    async def handler(filtered: Any) -> Any:
+        offered.extend(
+            tool.name if hasattr(tool, "name") else tool["name"] for tool in filtered.tools
+        )
         return ModelResponse(result=[AIMessage(content="ok")])
 
     request = ModelRequest(
@@ -162,7 +164,7 @@ async def test_permitted_tools_match_what_the_agent_lets_run(permissions: frozen
         tools=[utc_now, calculator],
         runtime=Runtime(context=AuthorizationContext(permissions)),
     )
-    await tool_authorization_middleware().awrap_model_call(request, handler)
+    await tool_authorization_middleware().awrap_model_call(cast(Any, request), cast(Any, handler))
     assert sorted(offered) == _permitted_tools(permissions)
 
 

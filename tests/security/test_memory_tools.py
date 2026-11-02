@@ -14,12 +14,12 @@ from langgraph.store.memory import InMemoryStore
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from tests.conftest import JwtApi, bearer, jwt_settings
-from tests.security.test_mcp_abuse import _call, _model, _RecordingModel
-from tests.security.test_memory_api import _owner_key
 
 from neuron_agent.memory.store import MemoryStore, memory_id_key
 from neuron_agent.observability import telemetry
+from tests.conftest import JwtApi, bearer, jwt_settings
+from tests.security.test_mcp_abuse import _call, _model, _RecordingModel
+from tests.security.test_memory_api import _owner_key
 
 _SCOPES = "agent:invoke agent:approve threads:read tools:remember tools:recall tools:forget"
 _SECRET = "my-locker-code-is-7731-kappa"  # noqa: S105 - test text, not a credential

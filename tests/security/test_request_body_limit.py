@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, MutableMapping
 from typing import Any
 
 import pytest
 import structlog.testing
-from tests.conftest import JwtApi, bearer
 
 from neuron_agent.api import main as api_main
+from tests.conftest import JwtApi, bearer
 
 _LIMIT = 1024
 _CHUNK = 100
@@ -95,7 +95,7 @@ async def _run_asgi(
     """Drive the app directly; return the status and how many body chunks it consumed."""
     consumed = 0
     pending = list(body_chunks)
-    sent: list[dict[str, Any]] = []
+    sent: list[MutableMapping[str, Any]] = []
 
     async def receive() -> dict[str, Any]:
         nonlocal consumed
@@ -104,7 +104,7 @@ async def _run_asgi(
         consumed += 1
         return {"type": "http.request", "body": pending.pop(0), "more_body": bool(pending)}
 
-    async def send(message: dict[str, Any]) -> None:
+    async def send(message: MutableMapping[str, Any]) -> None:
         sent.append(message)
 
     scope = {
@@ -121,7 +121,7 @@ async def _run_asgi(
         "client": ("127.0.0.1", 1234),
         "server": ("testserver", 80),
     }
-    await api_main.app(scope, receive, send)  # type: ignore[arg-type]
+    await api_main.app(scope, receive, send)
     start = next(m for m in sent if m["type"] == "http.response.start")
     return start["status"], consumed
 
@@ -176,7 +176,7 @@ async def test_many_small_chunks_are_replayed_as_one_message(api: JwtApi) -> Non
             "more_body": served < len(pending),
         }
 
-    async def send(message: dict[str, Any]) -> None:
+    async def send(message: MutableMapping[str, Any]) -> None:
         raise AssertionError("the app must be reached")
 
     middleware = api_main._RequestBodyLimitMiddleware(inner)

@@ -12,7 +12,6 @@ from langchain_core.messages import AIMessage, HumanMessage
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from pydantic import SecretStr, ValidationError
-from tests.conftest import StreamingFakeModel
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import ConfigurationError
@@ -21,6 +20,7 @@ from neuron_agent.models import factory
 from neuron_agent.observability import metrics, semconv
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.tools.registry import builtin_registry
+from tests.conftest import StreamingFakeModel
 
 pytestmark = pytest.mark.anyio
 

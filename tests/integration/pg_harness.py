@@ -96,7 +96,10 @@ class AppProcess:
 
     def kill(self) -> None:
         """SIGKILL: the process gets no chance to release its leases."""
-        self._process.send_signal(signal.SIGKILL)
+        if hasattr(signal, "SIGKILL"):
+            self._process.send_signal(signal.SIGKILL)
+        else:
+            self._process.kill()
         self._process.wait(timeout=10)
 
     def stop_now(self) -> None:

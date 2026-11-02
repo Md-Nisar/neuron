@@ -8,18 +8,18 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal, cast
 
 import pytest
 import structlog.testing
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 from pydantic import ValidationError
-from tests.conftest import JwtApi, bearer
 
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from tests.conftest import JwtApi, bearer
 
 _APP_ORIGIN = "https://app.example.com"
 _DOCS_PATHS = ["/docs", "/redoc", "/openapi.json"]
@@ -74,8 +74,11 @@ def test_cors_origins_accept_ports_and_ipv6() -> None:
     ("env", "exposed"),
     [("development", True), ("test", True), ("staging", False), ("production", False)],
 )
-def test_api_docs_are_hidden_outside_development_by_default(env: str, exposed: bool) -> None:
-    settings = Settings.model_construct(env=env, expose_api_docs=None).validate_http_surface()
+def test_api_docs_are_hidden_outside_development_by_default(
+    env: Literal["development", "staging", "production", "test"], exposed: bool
+) -> None:
+    settings = Settings.model_construct(env=env, expose_api_docs=None)
+    cast(Any, settings).validate_http_surface()
     assert settings.expose_api_docs is exposed
 
 
@@ -257,7 +260,9 @@ def test_openapi_schema_declares_bearer_auth_on_v1_routes(
     }
     for path, operations in schema["paths"].items():
         for operation in operations.values():
-            expected = [{"bearerAuth": []}] if path.startswith("/v1/") else None
+            expected: list[dict[str, list[str]]] | None = (
+                [{"bearerAuth": []}] if path.startswith("/v1/") else None
+            )
             assert operation.get("security") == expected, path
 
 

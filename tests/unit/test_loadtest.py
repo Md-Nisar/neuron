@@ -218,7 +218,7 @@ def test_samples_are_folded_into_the_window_of_each_step() -> None:
         {"users": 30, "seconds": 100.0, "ended_at": 100.0},
         {"users": 60, "seconds": 100.0, "ended_at": 200.0},
     ]
-    first, second = summarise_steps(samples, steps)  # type: ignore[arg-type]
+    first, second = summarise_steps(samples, steps)
     assert first["samples"] == 2 and second["samples"] == 2
     assert first["series"]["api1.cpu"] == {"mean": 60.0, "max": 100.0}
     assert second["series"]["host_cpu"] == {"mean": 80.0, "max": 90.0}

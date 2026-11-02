@@ -13,14 +13,14 @@ from typing import Any
 import pytest
 import structlog.testing
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader, NumberDataPoint
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.persistence.retention import prune_threads
+from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
 _NOT_FOUND = {"detail": "thread_not_found"}
 
@@ -285,8 +285,9 @@ def test_a_rating_is_counted_once_by_score_and_reason_and_leaks_nothing(
         for metric in scope.metrics
         if metric.name == semconv.METRIC_FEEDBACK
         for point in metric.data.data_points
+        if isinstance(point, NumberDataPoint)
     ]
-    assert [(dict(p.attributes), p.value) for p in points] == [
+    assert [(dict(p.attributes or {}), p.value) for p in points] == [
         ({semconv.NEURON_FEEDBACK_SCORE: "down", semconv.NEURON_FEEDBACK_REASON: "unsafe"}, 1)
     ]
     [span] = [s for s in spans.get_finished_spans() if s.name == semconv.FEEDBACK_SPAN]

@@ -9,6 +9,8 @@ import re
 import subprocess
 import sys
 import tarfile
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -192,7 +194,7 @@ def test_the_download_is_capped_in_size(tmp_path: Path, monkeypatch: pytest.Monk
         def open(self, request: object, timeout: float) -> _Response:
             return _Response(b"x" * (2 << 20))
 
-    monkeypatch.setattr(vo.urllib.request, "build_opener", lambda *_: Opener())
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *_: Opener())
     monkeypatch.setattr(vo, "MAX_ARCHIVE_BYTES", 1 << 20)
     with pytest.raises(ValueError, match="exceeds"):
         vo._download("https://example.test/x", tmp_path / "a")
@@ -205,15 +207,15 @@ def test_the_download_is_capped_in_size(tmp_path: Path, monkeypatch: pytest.Monk
 
 def test_redirects_are_followed_only_over_https() -> None:
     handler = vo._HttpsOnlyRedirects()
-    request = vo.urllib.request.Request("https://github.com/a")  # noqa: S310
-    with pytest.raises(vo.urllib.error.URLError, match="non-https"):
-        handler.redirect_request(request, io.BytesIO(), 302, "Found", {}, "http://evil.test/a")  # type: ignore[arg-type]
+    request = urllib.request.Request("https://github.com/a")  # noqa: S310
+    with pytest.raises(urllib.error.URLError, match="non-https"):
+        handler.redirect_request(request, io.BytesIO(), 302, "Found", {}, "http://evil.test/a")
     followed = handler.redirect_request(
         request,
-        io.BytesIO(),  # type: ignore[arg-type]
+        io.BytesIO(),
         302,
         "Found",
-        vo.urllib.request.Request("https://x").headers,  # type: ignore[arg-type]
+        urllib.request.Request("https://x").headers,
         "https://objects.example.test/a",
     )
     assert followed is not None and followed.full_url == "https://objects.example.test/a"
@@ -229,7 +231,12 @@ def test_main_exits_2_without_running_anything_on_a_checksum_mismatch(
 ) -> None:
     _serve(monkeypatch, b"not the pinned archive")
     ran: list[object] = []
-    monkeypatch.setattr(vo, "run", lambda command: ran.append(command) or True)
+
+    def fake_log_run(command: object) -> bool:
+        ran.append(command)
+        return True
+
+    monkeypatch.setattr(vo, "run", fake_log_run)
     assert vo.main(["check", "--bin-dir", str(tmp_path)]) == 2
     assert ran == [] and "cannot obtain the validators" in capsys.readouterr().err
 
@@ -254,7 +261,7 @@ def _fake_tools(monkeypatch: pytest.MonkeyPatch, rejects: set[str]) -> list[str]
         failed = Path(command[-1].removeprefix("--config=")).name in rejects
         return subprocess.CompletedProcess(command, 1 if failed else 0, "", "boom" * failed)
 
-    monkeypatch.setattr(vo.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     return seen
 
 
@@ -296,7 +303,7 @@ def test_the_collector_check_gets_a_placeholder_backend_endpoint(
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.delenv("OTEL_BACKEND_ENDPOINT", raising=False)
-    monkeypatch.setattr(vo.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     assert vo.run(["otelcol-contrib", "validate"]) is True
     assert captured["OTEL_BACKEND_ENDPOINT"] == vo.PLACEHOLDER_ENV["OTEL_BACKEND_ENDPOINT"]
 

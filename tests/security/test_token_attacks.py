@@ -22,6 +22,7 @@ import structlog.testing
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pydantic import ValidationError
+
 from tests.conftest import JWKS_URL, JwksServer, JwtApi, JwtClock, JwtKeys, bearer, jwt_settings
 
 _PROTECTED = "/v1/me/threads"

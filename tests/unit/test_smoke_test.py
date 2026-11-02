@@ -20,9 +20,9 @@ from typing import Any
 import pytest
 import uvicorn
 from scripts import smoke_test
-from tests.conftest import HistoryEchoAgent, JwtApi
 
 from neuron_agent.api import main as api_main
+from tests.conftest import HistoryEchoAgent, JwtApi
 
 ENV_NAME = smoke_test.TOKEN_ENV
 _REAL_BUILD_OPENER = urllib.request.build_opener  # the jwks_server fixture replaces it

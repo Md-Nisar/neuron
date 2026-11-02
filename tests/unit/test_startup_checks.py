@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from pydantic import SecretStr
@@ -78,7 +78,7 @@ def test_checks_are_set_for_staging_and_production_only(
     key = "k" * 40
     persistence = build_persistence(
         Settings.model_construct(
-            env=env,
+            env=cast(Any, env),
             checkpointer="postgres",
             limits_backend="memory",
             postgres_dsn=SecretStr("postgresql://app@localhost/db"),

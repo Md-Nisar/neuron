@@ -9,10 +9,10 @@ from typing import Any
 
 import pytest
 import structlog.testing
-from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
 from neuron_agent.persistence.retention import prune_threads
-from neuron_agent.persistence.thread_meta import TITLE_MAX_CHARS
+from neuron_agent.schemas.agent import TITLE_MAX_CHARS
+from tests.conftest import HistoryEchoAgent, JwtApi, bearer
 
 _FIRST = "  plan   my\n trip to Lisbon  "
 

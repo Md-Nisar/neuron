@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph_sdk import Auth
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
@@ -76,7 +78,7 @@ async def test_invalid_token_is_rejected(monkeypatch: pytest.MonkeyPatch) -> Non
     )
     monkeypatch.setattr(agent_server, "token_verifier", Verifier())
 
-    with pytest.raises(agent_server.Auth.exceptions.HTTPException) as error:
+    with pytest.raises(Auth.exceptions.HTTPException) as error:
         await agent_server.authenticate("Bearer invalid")
 
     assert error.value.status_code == 401
@@ -85,7 +87,7 @@ async def test_invalid_token_is_rejected(monkeypatch: pytest.MonkeyPatch) -> Non
 async def test_development_studio_access_is_explicit() -> None:
     original_settings = agent_server.settings
     try:
-        agent_server.settings = SimpleNamespace(auth_mode="none", env="development")
+        agent_server.settings = cast(Any, SimpleNamespace(auth_mode="none", env="development"))
         user = await agent_server.authenticate(None)
     finally:
         agent_server.settings = original_settings
@@ -97,7 +99,7 @@ async def test_development_studio_access_is_explicit() -> None:
 async def test_thread_create_stamps_authenticated_owner() -> None:
     value = {"metadata": {"client_field": "kept", "owner": "forged"}}
 
-    filters = await agent_server.create_thread(
+    filters = await cast(Any, agent_server.create_thread)(
         _context(permissions=frozenset({"agent:invoke"})), value
     )
 
@@ -107,15 +109,13 @@ async def test_thread_create_stamps_authenticated_owner() -> None:
 
 @pytest.mark.parametrize("handler", [agent_server.read_thread, agent_server.search_threads])
 async def test_thread_read_and_search_are_owner_filtered(handler: object) -> None:
-    result = await handler(  # type: ignore[operator]
-        _context(permissions=frozenset({"threads:read"})), {}
-    )
+    result = await cast(Any, handler)(_context(permissions=frozenset({"threads:read"})), {})
 
     assert result == {"owner": "opaque-owner-a"}
 
 
 async def test_thread_run_requires_invoke_and_is_owner_filtered() -> None:
-    result = await agent_server.create_thread_run(
+    result = await cast(Any, agent_server.create_thread_run)(
         _context(permissions=frozenset({"agent:invoke"})), {"thread_id": "thread"}
     )
 
@@ -125,7 +125,7 @@ async def test_thread_run_requires_invoke_and_is_owner_filtered() -> None:
 async def test_assistant_creation_requires_write_and_stamps_owner() -> None:
     value = {"metadata": None}
 
-    result = await agent_server.create_assistant(
+    result = await cast(Any, agent_server.create_assistant)(
         _context(permissions=frozenset({"assistants:write"})), value
     )
 
@@ -134,14 +134,14 @@ async def test_assistant_creation_requires_write_and_stamps_owner() -> None:
 
 
 async def test_missing_permission_is_denied() -> None:
-    with pytest.raises(agent_server.Auth.exceptions.HTTPException) as error:
-        await agent_server.create_thread(_context(), {})
+    with pytest.raises(Auth.exceptions.HTTPException) as error:
+        await cast(Any, agent_server.create_thread)(_context(), {})
 
     assert error.value.status_code == 403
 
 
 async def test_unregistered_action_is_denied_by_global_handler() -> None:
-    assert await agent_server.deny_unregistered_actions(_context(), {}) is False
+    assert await cast(Any, agent_server.deny_unregistered_actions)(_context(), {}) is False
 
 
 def test_langgraph_json_registers_custom_auth() -> None:
@@ -163,7 +163,9 @@ class _ContextRecordingAgent:
     def __init__(self) -> None:
         self.contexts: list[object] = []
 
-    async def ainvoke(self, inputs: dict, *, config: dict, context: object = None) -> dict:
+    async def ainvoke(
+        self, inputs: dict[str, Any], *, config: dict[str, Any], context: object = None
+    ) -> dict[str, Any]:
         self.contexts.append(context)
         return {
             "messages": [*inputs["messages"], AIMessage(content="ok")],
@@ -190,7 +192,7 @@ _INPUT = {"messages": [HumanMessage(content="hi")]}
     ],
 )
 async def test_client_run_context_cannot_grant_permissions(
-    recording_agent: _ContextRecordingAgent, run_kwargs: dict
+    recording_agent: _ContextRecordingAgent, run_kwargs: dict[str, Any]
 ) -> None:
     """Agent Server passes the client's `context` to the graph; it must carry no authority."""
     graph = main_graph.build_graph(Settings(env="test"))
@@ -280,6 +282,6 @@ async def test_tool_middleware_grants_nothing_to_a_plain_dict_context() -> None:
     async def handler(_: object) -> str:
         raise AssertionError("the tool must not run")
 
-    result = await middleware.awrap_tool_call(request, handler)
+    result = await middleware.awrap_tool_call(cast(Any, request), cast(Any, handler))
     assert isinstance(result, ToolMessage)
     assert result.status == "error"

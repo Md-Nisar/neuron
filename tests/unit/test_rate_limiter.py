@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
@@ -67,7 +69,7 @@ async def test_tracks_keys_independently() -> None:
         {"capacity": 1, "requests_per_window": 1, "window_seconds": 0},
     ],
 )
-def test_rejects_invalid_configuration(kwargs: dict[str, int]) -> None:
+def test_rejects_invalid_configuration(kwargs: dict[str, Any]) -> None:
     with pytest.raises(ValueError):
         InMemoryTokenBucketRateLimiter(**kwargs)
 

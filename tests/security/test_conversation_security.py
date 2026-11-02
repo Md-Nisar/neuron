@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import AuthenticationError, ThreadNotFoundError
-from neuron_agent.schemas.agent import AgentRequest
+from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 from neuron_agent.security.auth import Principal, principal_owner_key, require_principal
 from neuron_agent.services.agent_service import AgentService
 
@@ -97,6 +97,7 @@ async def test_jwt_thread_owner_is_hmac_of_issuer_and_subject(echo_agent: Any) -
         AgentRequest(message="again", thread_id=response.thread_id, user_id="different"),
         principal=principal,
     )
+    assert isinstance(continued, AgentResponse)
     assert continued.answer == "secret | again"
 
     foreign = Principal(

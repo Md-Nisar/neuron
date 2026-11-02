@@ -13,7 +13,7 @@ from typing import Any
 import psycopg
 import pytest
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader, NumberDataPoint
 from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
@@ -63,7 +63,7 @@ def test_every_guard_is_postgres_with_the_postgres_backend() -> None:
     assert isinstance(build_rate_limiter(settings, persistence), PostgresRateLimiter)
     for build in (build_token_budget, build_rate_limiter):
         with pytest.raises(ValueError, match="connection pool"):
-            build(settings)  # type: ignore[operator]
+            build(settings)
 
 
 def test_the_postgres_rate_limiter_needs_the_identity_key_for_its_ip_keys() -> None:
@@ -215,6 +215,7 @@ def test_expired_lease_gauge_reports_the_sampled_value(monkeypatch: pytest.Monke
             for m in s.metrics
             if m.name == semconv.METRIC_RUN_LEASES_EXPIRED
         ]
+        assert isinstance(point, NumberDataPoint)
         return int(point.value)
 
     assert value() == 3

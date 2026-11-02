@@ -11,12 +11,8 @@ from pydantic import SecretStr
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import ConfigurationError
-from neuron_agent.tools.mcp.config import (
-    MAX_SERVERS,
-    load_mcp_config,
-    parse_mcp_config,
-    validate_mcp_url,
-)
+from neuron_agent.tools.mcp.config import MAX_SERVERS, load_mcp_config, parse_mcp_config
+from neuron_agent.tools.mcp.urls import validate_mcp_url
 
 _PIN = "sha256:" + "a" * 64
 _TOKENS = {"units": SecretStr("s3cret-token")}

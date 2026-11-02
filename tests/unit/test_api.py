@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 import pytest
 import structlog.testing
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
@@ -117,7 +119,7 @@ def test_agent_invoke_maps_app_errors_to_http(
     async def raise_error(self: object, request: object) -> None:
         raise error
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    monkeypatch.setattr(AgentService, "invoke", raise_error)
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": "hi"})
     assert response.status_code == expected_status
@@ -128,7 +130,7 @@ def test_agent_invoke_maps_unexpected_exception_to_500(monkeypatch: pytest.Monke
     async def raise_error(self: object, request: object) -> None:
         raise RuntimeError("unexpected")
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    monkeypatch.setattr(AgentService, "invoke", raise_error)
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": "hi"})
     assert response.status_code == 500
@@ -141,7 +143,7 @@ def test_agent_invoke_returns_429_when_rate_limited(monkeypatch: pytest.MonkeyPa
             request_id="request-1", thread_id="thread-1", answer="ok", used_tools=[], confidence=1.0
         )
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
+    monkeypatch.setattr(AgentService, "invoke", fast_invoke)
     monkeypatch.setattr(
         api_main,
         "ip_rate_limiter",
@@ -165,7 +167,7 @@ def test_agent_invoke_logs_request_id_thread_id_and_duration_on_success(
             request_id="request-1", thread_id="thread-1", answer="ok", used_tools=[], confidence=1.0
         )
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", fast_invoke)
+    monkeypatch.setattr(AgentService, "invoke", fast_invoke)
     client = TestClient(app)
     with structlog.testing.capture_logs() as logs:
         response = client.post("/v1/agent/invoke", json={"message": "hi"})
@@ -183,7 +185,7 @@ def test_agent_invoke_logs_error_type_and_duration_on_failure(
     async def raise_error(self: object, request: object) -> None:
         raise RateLimitError("slow down")
 
-    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    monkeypatch.setattr(AgentService, "invoke", raise_error)
     client = TestClient(app)
     with structlog.testing.capture_logs() as logs:
         response = client.post("/v1/agent/invoke", json={"message": "hi"})
@@ -219,7 +221,7 @@ def test_ready_endpoint_returns_503_when_checkpointer_unreachable(
     async def not_ready(self: object) -> bool:
         return False
 
-    monkeypatch.setattr(api_main.AgentService, "is_ready", not_ready)
+    monkeypatch.setattr(AgentService, "is_ready", not_ready)
     client = TestClient(app)
     response = client.get("/health/ready")
     assert response.status_code == 503
@@ -239,7 +241,7 @@ def test_ready_endpoint_consults_the_jwks_probe_without_a_model_call(
         raise AssertionError("readiness must not call the model")
 
     monkeypatch.setattr(api_main.auth_verifier, "ready", verifier_ready)
-    monkeypatch.setattr(api_main.AgentService, "invoke", no_model, raising=False)
+    monkeypatch.setattr(AgentService, "invoke", no_model, raising=False)
     response = TestClient(app).get("/health/ready")
     assert response.status_code == 503
     assert probes == ["jwks"]
@@ -254,8 +256,8 @@ def test_lifespan_opens_and_closes_service(monkeypatch: pytest.MonkeyPatch) -> N
     async def shutdown(self: object) -> None:
         calls.append("shutdown")
 
-    monkeypatch.setattr(api_main.AgentService, "startup", startup)
-    monkeypatch.setattr(api_main.AgentService, "shutdown", shutdown)
+    monkeypatch.setattr(AgentService, "startup", startup)
+    monkeypatch.setattr(AgentService, "shutdown", shutdown)
     with TestClient(app) as client:
         assert client.get("/health/live").status_code == 200
         assert calls == ["startup"]
@@ -328,8 +330,8 @@ def test_startup_logs_the_effective_limits_once_without_secrets(
         return None
 
     monkeypatch.setattr(api_main, "settings", settings)
-    monkeypatch.setattr(api_main.AgentService, "startup", startup)
-    monkeypatch.setattr(api_main.AgentService, "shutdown", shutdown)
+    monkeypatch.setattr(AgentService, "startup", startup)
+    monkeypatch.setattr(AgentService, "shutdown", shutdown)
     with structlog.testing.capture_logs() as logs:
         with TestClient(app):
             pass
@@ -360,7 +362,7 @@ def test_startup_logs_the_effective_limits_once_without_secrets(
     ("env", "warned"), [("production", True), ("staging", True), ("test", False)]
 )
 def test_stateless_checkpointer_is_logged_as_a_warning_in_deployed_environments(
-    env: str, warned: bool
+    env: Literal["production", "staging", "test"], warned: bool
 ) -> None:
     settings = Settings.model_construct(env=env, checkpointer="none", limits_backend="memory")
     with structlog.testing.capture_logs() as logs:
@@ -377,8 +379,8 @@ def test_approved_langsmith_content_capture_is_logged_with_its_record_only() -> 
         limits_backend="postgres",
         langsmith_content_approved=True,
         langsmith_content_approval_record="ticket-42",
-        langsmith_api_key="lsv2-secret-key",
-        postgres_dsn="postgresql://svc:pw-secret-1@h/n",
+        langsmith_api_key=SecretStr("lsv2-secret-key"),
+        postgres_dsn=SecretStr("postgresql://svc:pw-secret-1@h/n"),
     )
     with structlog.testing.capture_logs() as logs:
         log_startup_configuration(settings)

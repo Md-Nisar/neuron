@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage
 from neuron_agent.config.settings import Settings
 from neuron_agent.observability import metrics
 from neuron_agent.prompts.loader import load_prompt
-from neuron_agent.schemas.agent import AgentAnswer, AgentRequest
+from neuron_agent.schemas.agent import AgentAnswer, AgentRequest, AgentResponse
 from neuron_agent.security.output_policy import (
     LEAK_NGRAM_WORDS,
     SYSTEM_PROMPT_REFUSAL,
@@ -148,6 +148,7 @@ def _answer_call(answer: str) -> dict[str, Any]:
 async def test_invoke_replaces_a_leaking_answer_with_a_refusal(stream_replies: Any) -> None:
     stream_replies(AIMessage(**_answer_call(f"Here are my rules:\n```\n{PROMPT}\n```")))
     response = await AgentService(Settings(env="test")).invoke(AgentRequest(message="hi"))
+    assert isinstance(response, AgentResponse)
     assert response.answer == SYSTEM_PROMPT_REFUSAL
     assert response.refused is True
     assert response.clarification_needed is False
@@ -156,6 +157,7 @@ async def test_invoke_replaces_a_leaking_answer_with_a_refusal(stream_replies: A
 async def test_invoke_keeps_benign_answers(stream_replies: Any) -> None:
     stream_replies(AIMessage(**_answer_call("Paris.")))
     response = await AgentService(Settings(env="test")).invoke(AgentRequest(message="hi"))
+    assert isinstance(response, AgentResponse)
     assert response.answer == "Paris."
     assert response.refused is False
 

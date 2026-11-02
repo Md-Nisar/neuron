@@ -6,7 +6,7 @@ import json
 import re
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import structlog
@@ -22,6 +22,7 @@ from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from neuron_agent.security.run_guard import InMemoryRunGuard
 from neuron_agent.services import agent_service
 from neuron_agent.services.agent_service import AgentService
 
@@ -43,7 +44,7 @@ async def _checkpoint_count(service: AgentService, thread_id: str) -> int:
     checkpointer = service._persistence.checkpointer
     assert checkpointer is not None
     config = {"configurable": {"thread_id": thread_id}}
-    return len([c async for c in checkpointer.alist(config)])
+    return len([c async for c in checkpointer.alist(cast(Any, config))])
 
 
 # --- history ----------------------------------------------------------------------
@@ -196,6 +197,7 @@ async def test_delete_by_non_owner_is_not_found_and_keeps_thread() -> None:
 async def test_delete_is_rejected_while_a_run_is_in_flight() -> None:
     service = _service()
     thread_id = await _thread(service, "hi")
+    assert isinstance(service._run_guard, InMemoryRunGuard)
     service._run_guard._active_threads.add(thread_id)
     with pytest.raises(ThreadBusyError):
         await service.delete_thread(thread_id, None)
@@ -227,7 +229,7 @@ async def test_list_user_threads_is_owner_scoped_and_paginated() -> None:
         if item.config["configurable"].get("checkpoint_ns", "") == ""
     ]
     assert indexed
-    assert all(item.metadata["owner"] == owner for item in indexed)
+    assert all((item.metadata or {}).get("owner") == owner for item in indexed)
 
 
 @pytest.mark.usefixtures("echo_agent")
@@ -260,6 +262,7 @@ async def test_erase_all_is_owner_scoped_busy_aware_and_idempotent() -> None:
     alice_busy = await _thread(service, "busy", user_id="alice")
     alice_delete = await _thread(service, "delete", user_id="alice")
     bob_thread = await _thread(service, "keep", user_id="bob")
+    assert isinstance(service._run_guard, InMemoryRunGuard)
     service._run_guard._active_threads.add(alice_busy)
     service._run_guard._active_thread_owners[alice_busy] = hashlib.sha256(b"alice").hexdigest()
 

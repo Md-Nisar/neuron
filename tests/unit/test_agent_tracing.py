@@ -17,7 +17,6 @@ from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import SpanKind, StatusCode
-from tests.conftest import JwtApi, StreamingFakeModel, bearer
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
@@ -27,6 +26,7 @@ from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.models import factory
 from neuron_agent.observability import semconv, telemetry
 from neuron_agent.services.agent_service import AgentService
+from tests.conftest import JwtApi, StreamingFakeModel, bearer
 
 _PROMPT = "private-prompt-text"
 _ANSWER = "private-answer-text"
@@ -70,7 +70,7 @@ def _parent_id(span: ReadableSpan) -> int | None:
 
 def _span_id(span: ReadableSpan) -> int:
     assert span.context is not None
-    return span.context.span_id
+    return int(span.context.span_id)
 
 
 def _attributes(span: ReadableSpan) -> dict[str, Any]:
@@ -307,7 +307,8 @@ class _FlakyModel(StreamingFakeModel):
     def _generate(self, *args: Any, **kwargs: Any) -> Any:
         self.calls += 1
         if self.calls == 1:
-            raise openai.APIConnectionError(request=httpx.Request("POST", "https://x.test"))
+            req: Any = httpx.Request("POST", "https://x.test")
+            raise openai.APIConnectionError(request=req)
         return super()._generate(*args, **kwargs)
 
 

@@ -8,13 +8,13 @@ import pytest
 import structlog.testing
 from langsmith import run_trees
 from langsmith import utils as ls_utils
-from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.api import main as api_main
 from neuron_agent.config.settings import Settings
 from neuron_agent.graphs import main_graph
 from neuron_agent.observability import langsmith_governance
 from neuron_agent.observability.langsmith_governance import configure_langsmith
+from tests.conftest import PRODUCTION_PROFILE
 
 _TRACING_ALIASES = (
     "LANGSMITH_TRACING",
@@ -266,7 +266,7 @@ def test_graph_module_and_api_both_apply_governance(monkeypatch: pytest.MonkeyPa
         importlib.reload(main_graph)
 
     assert len(calls) == 1
-    assert api_main.configure_langsmith is configure_langsmith
+    assert getattr(api_main, "configure_langsmith") is configure_langsmith  # noqa: B009
 
 
 def test_enabling_never_turns_on_the_removed_v1_tracer(monkeypatch: pytest.MonkeyPatch) -> None:

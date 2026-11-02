@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import structlog.testing
@@ -78,7 +78,7 @@ async def test_middleware_records_the_response_model() -> None:
         runtime=Runtime(context=AuthorizationContext(frozenset(), usage=usage)),
     )
 
-    async def handler(_: ModelRequest[object]) -> ModelResponse:
+    async def handler(_: Any) -> Any:
         return ModelResponse(
             result=[
                 AIMessage(
@@ -87,7 +87,7 @@ async def test_middleware_records_the_response_model() -> None:
             ]
         )
 
-    await tool_authorization_middleware().awrap_model_call(request, handler)
+    await tool_authorization_middleware().awrap_model_call(cast(Any, request), cast(Any, handler))
     assert usage.by_model == {"m-1": TokenCounts(150, 120, 30, 100, 12)}
 
 

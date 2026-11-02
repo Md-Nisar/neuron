@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from neuron_agent.tools.mcp.pins import FetchedTool, PinProblem, check_pins, tool_pin
 
-_SCHEMA = {"type": "object", "properties": {"value": {"type": "number"}}, "required": ["value"]}
+_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {"value": {"type": "number"}},
+    "required": ["value"],
+}
 
 
-def _tool(name: str = "convert_units", description: str | None = "Convert a unit.", **kw: object):
+def _tool(
+    name: str = "convert_units", description: str | None = "Convert a unit.", **kw: object
+) -> FetchedTool:
     return FetchedTool(name, description, kw.get("schema", _SCHEMA))  # type: ignore[arg-type]
 
 

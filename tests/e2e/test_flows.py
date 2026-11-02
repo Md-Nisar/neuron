@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from typing import Any
 
 import httpx
 import pytest
+
 from tests.e2e.conftest import Api, stream_events
 
 Make = Callable[[str], httpx.Client]
@@ -14,7 +16,7 @@ Make = Callable[[str], httpx.Client]
 
 def _run(
     client: httpx.Client, message: str, thread_id: str | None = None
-) -> list[tuple[str, dict]]:
+) -> list[tuple[str, dict[str, Any]]]:
     body: dict[str, str] = {"message": message}
     if thread_id:
         body["thread_id"] = thread_id
@@ -23,7 +25,7 @@ def _run(
     return stream_events(response)
 
 
-def _thread_id(events: list[tuple[str, dict]]) -> str:
+def _thread_id(events: list[tuple[str, dict[str, Any]]]) -> str:
     return str(events[0][1]["thread_id"])
 
 

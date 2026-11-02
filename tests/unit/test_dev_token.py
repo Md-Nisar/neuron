@@ -11,7 +11,7 @@ import urllib.request
 from collections.abc import Iterator
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import anyio
 import pytest
@@ -123,7 +123,7 @@ def test_every_command_refuses_outside_development(
     command: list[str],
 ) -> None:
     monkeypatch.setattr(
-        dev_token, "Settings", lambda: Settings.model_construct(env=env, auth_mode="jwt")
+        dev_token, "Settings", lambda: Settings.model_construct(env=cast(Any, env), auth_mode="jwt")
     )
 
     assert dev_token.main(command, directory=tmp_path) == 2

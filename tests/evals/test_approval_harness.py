@@ -8,11 +8,10 @@ then break the gate or the rules and check that the cases notice.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
-from tests.conftest import StreamingFakeModel
 
 from neuron_agent.evaluation import (
     APPROVAL_CASES,
@@ -29,6 +28,7 @@ from neuron_agent.memory import tools as memory_tools
 from neuron_agent.memory.store import MemoryStore
 from neuron_agent.models import factory
 from neuron_agent.services.agent_service import AgentService
+from tests.conftest import StreamingFakeModel
 
 pytestmark = [pytest.mark.eval, pytest.mark.anyio]
 
@@ -97,7 +97,7 @@ def test_the_approval_dataset_is_well_formed() -> None:
     for case in cases:
         assert set(case) <= allowed, case["id"]
         assert case["expected_behavior"], case["id"]
-        assert set(case.get("decisions", [])) <= {"approve", "reject"}, case["id"]
+        assert set(cast(list[str], case.get("decisions", []))) <= {"approve", "reject"}, case["id"]
         # Invariants and state only, never wording.
         assert "expected_keywords" not in case, case["id"]
     rejects = [c for c in cases if c["category"] == "approval_reject"]
