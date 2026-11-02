@@ -67,9 +67,9 @@ mapping). Then create the labels, issues and Project board, and start **RAG-00.0
 
 | Item | State |
 | --- | --- |
-| Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Not created |
-| Epic issues (13) | Not created; waiting for backlog approval |
-| Story issues (56) | Not created; waiting for backlog approval |
+| Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
+| Epic issues (13) | RAG-E00 created (#398); E01–E12 not created |
+| Story issues (56) | RAG-00.01–00.04 created (#399–#402); the rest not created |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
 ### Issue map
@@ -78,7 +78,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | ID | Issue | Project status |
 | --- | --- | --- |
-| RAG-E00 … RAG-E12 | — | — |
+| RAG-E00 | #398 | Not on a board |
+| RAG-00.01 … RAG-00.04 | #399–#402 | Not on a board |
+| RAG-E01 … RAG-E12 | — | — |
 
 ## Epic detail
 
@@ -195,10 +197,10 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | ID | Title | Phase | Pri | Status | Issue | PR | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Pending | — | — | — |
-| RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Pending | — | — | — |
-| RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Pending | — | — | — |
-| RAG-00.04 | Dependency and image plan | 0 | P0 | Pending | — | — | — |
+| RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Pending | #399 | — | — |
+| RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Pending | #400 | — | — |
+| RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Pending | #401 | — | — |
+| RAG-00.04 | Dependency and image plan | 0 | P0 | Pending | #402 | — | — |
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Pending | — | — | — |
 | RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Pending | — | — | — |
 | RAG-01.03 | BlobStore for original files | 1 | P0 | Pending | — | — | — |
