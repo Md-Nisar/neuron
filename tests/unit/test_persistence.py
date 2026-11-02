@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import time
+from typing import Any
+
 import psycopg
+import psycopg_pool
 import pytest
 import structlog.testing
 from langchain_core.messages import HumanMessage
@@ -297,3 +301,139 @@ async def test_open_closes_the_pool_when_the_role_check_is_cancelled(
     with pytest.raises(asyncio.CancelledError):
         await persistence.open()
     assert pool.closed
+
+
+# --- connection pool exhaustion and timeout tests (#377) -------------------------
+
+
+class _FakeCursor:
+    async def __aenter__(self) -> _FakeCursor:
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        pass
+
+    async def execute(self, query: str, params: object = None, **kwargs: object) -> None:
+        pass
+
+    async def fetchone(self) -> dict[str, Any] | None:
+        return None
+
+    async def fetchall(self) -> list[dict[str, Any]]:
+        return []
+
+
+class _FakePgConn:
+    transaction_status = psycopg.pq.TransactionStatus.IDLE
+
+
+class _FakeAsyncConn:
+    def __init__(self) -> None:
+        self.closed = False
+        self.autocommit = True
+        self.pgconn = _FakePgConn()
+
+    @classmethod
+    async def connect(cls, conninfo: str, **kwargs: object) -> _FakeAsyncConn:
+        return cls()
+
+    async def close(self) -> None:
+        self.closed = True
+
+    async def __aenter__(self) -> _FakeAsyncConn:
+        return self
+
+    async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        pass
+
+    def cursor(self, *args: object, **kwargs: object) -> _FakeCursor:
+        return _FakeCursor()
+
+    async def execute(self, query: str, params: object = None, **kwargs: object) -> _FakeCursor:
+        cur = self.cursor()
+        await cur.execute(query, params, **kwargs)
+        return cur
+
+
+async def test_postgres_pool_exhaustion_raises_persistence_error_within_timeout() -> None:
+    settings = _postgres_settings().model_copy(
+        update={
+            "postgres_pool_max_size": 2,
+            "postgres_pool_timeout_seconds": 0.1,
+        }
+    )
+    persistence = build_persistence(settings)
+    assert persistence.pool is not None
+    persistence.pool.connection_class = _FakeAsyncConn  # type: ignore[assignment]
+    await persistence.open()
+    try:
+        assert persistence.checkpointer is not None
+        service = AgentService(settings, persistence=persistence)
+
+        # 1. Exhaust all connections in the pool
+        c1 = await persistence.pool.getconn()
+        c2 = await persistence.pool.getconn()
+        assert persistence.pool.get_stats()["requests_waiting"] == 0
+
+        # 2. Checkpointer operation must timeout within postgres_pool_timeout_seconds
+        # and raise PersistenceError
+        started = time.monotonic()
+        with pytest.raises(PersistenceError) as failure:
+            with service._persistence_errors():
+                await persistence.checkpointer.aget_tuple(
+                    {"configurable": {"thread_id": "thread-1"}}
+                )
+        elapsed = time.monotonic() - started
+
+        assert isinstance(failure.value.__cause__, psycopg_pool.PoolTimeout)
+        assert 0.08 <= elapsed < 1.0
+
+        # Also verify that a service operation fails with PersistenceError caused by PoolTimeout
+        started_svc = time.monotonic()
+        with pytest.raises(PersistenceError) as svc_failure:
+            await service.get_history("thread-1", "alice", limit=10, offset=0)
+        elapsed_svc = time.monotonic() - started_svc
+
+        assert isinstance(svc_failure.value.__cause__, psycopg_pool.PoolTimeout)
+        assert 0.08 <= elapsed_svc < 1.0
+
+        # 3. Returning a connection allows subsequent operations to succeed immediately
+        await persistence.pool.putconn(c1)
+        with service._persistence_errors():
+            result = await persistence.checkpointer.aget_tuple(
+                {"configurable": {"thread_id": "thread-1"}}
+            )
+            assert result is None
+    finally:
+        await persistence.pool.putconn(c2)
+        await persistence.close()
+
+
+async def test_postgres_readiness_reflects_pool_exhaustion_and_recovery() -> None:
+    settings = _postgres_settings().model_copy(
+        update={
+            "postgres_pool_max_size": 1,
+            "postgres_pool_timeout_seconds": 0.1,
+        }
+    )
+    persistence = build_persistence(settings)
+    assert persistence.pool is not None
+    persistence.pool.connection_class = _FakeAsyncConn  # type: ignore[assignment]
+    persistence.ping_timeout_seconds = 1.0  # Allow pool.timeout (0.1s) to trigger PoolTimeout
+    await persistence.open()
+    try:
+        # Healthy when pool has available connection
+        assert await persistence.is_ready() is True
+
+        # Starve the pool
+        conn = await persistence.pool.getconn()
+        with structlog.testing.capture_logs() as logs:
+            assert await persistence.is_ready() is False
+        unreachable = next(log for log in logs if log["event"] == "checkpointer_unreachable")
+        assert unreachable["error_type"] == "PoolTimeout"
+
+        # Recover upon returning the connection
+        await persistence.pool.putconn(conn)
+        assert await persistence.is_ready() is True
+    finally:
+        await persistence.close()
