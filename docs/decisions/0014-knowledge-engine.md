@@ -2,10 +2,11 @@
 
 ## Status
 
-**Proposed, 2026-11-02. Awaiting the owner's acceptance.** Not implemented: no code depends on it
-yet. When the owner accepts it, this section records "Accepted (date, owner)". Until then, ADR
-0001, 0002 and 0005 still forbid retrieval, queues and new persistence, and no Phase 1 story
-(`docs/product/NEURON_RAG_PRODUCT_BACKLOG.md`, RAG-E01 to RAG-E08) may merge code.
+Accepted (2026-11-02, owner approval). Proposed the same day. Not implemented yet. It amends
+ADR 0001, 0002 and 0005 (see Amendments), so Phase 1 stories
+(`docs/product/NEURON_RAG_PRODUCT_BACKLOG.md`, RAG-E01 to RAG-E08) may now add retrieval, a job
+queue and the `knowledge` schema as defined here. The open questions below stay open until the
+spike (RAG-00.02) records its numbers.
 
 Inputs: the three research reports in `docs/research/rag/`. Where they disagree, this ADR follows
 the resolutions in §4 of `claude_neuron_consolidated_rag_research.md` ("the research" below).
@@ -235,7 +236,7 @@ Dependency versions, licences and image digests are recorded here by RAG-00.04.
 
 ## Amendments
 
-On acceptance this ADR amends:
+This ADR amends:
 
 - **ADR 0001**: retrieval and a background worker with a job queue are now in scope, as defined
   above.

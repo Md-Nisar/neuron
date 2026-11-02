@@ -4,7 +4,7 @@
 
 Accepted. Partially supersedes ADR 0002 (the "local invocation has no checkpointer" decision).
 
-> **Amendment proposed by [ADR 0014](0014-knowledge-engine.md)** (Knowledge Engine, pending the owner's acceptance). Once accepted, a Postgres job queue runs ingestion jobs in a separate worker. It does not queue agent runs: the reject-on-busy policy and the rejection of run queues in decision 5 are unchanged.
+> **Amended by [ADR 0014](0014-knowledge-engine.md)** (Knowledge Engine, accepted 2026-11-02). A Postgres job queue runs ingestion jobs in a separate worker. It does not queue agent runs: the reject-on-busy policy and the rejection of run queues in decision 5 are unchanged.
 
 ## Problem
 

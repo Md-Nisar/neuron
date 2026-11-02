@@ -4,7 +4,7 @@
 
 Accepted. The local-invocation checkpointer decision is superseded by ADR 0005 (`0005-conversation-state-and-streaming.md`), which adds configurable thread persistence for the self-hosted API. The three-way state distinction and the Agent Server delegation below still apply.
 
-> **Amendment proposed by [ADR 0014](0014-knowledge-engine.md)** (Knowledge Engine, pending the owner's acceptance). Once accepted, Neuron owns domain persistence for knowledge: a `knowledge` schema in its Postgres and a blob store for original files. Until then "long-term memory/domain persistence: not implemented" below stands.
+> **Amended by [ADR 0014](0014-knowledge-engine.md)** (Knowledge Engine, accepted 2026-11-02). Neuron owns domain persistence for knowledge: a `knowledge` schema in its Postgres and a blob store for original files. "Long-term memory/domain persistence: not implemented" below no longer applies to knowledge.
 
 ## Decision
 
