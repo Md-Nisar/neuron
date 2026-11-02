@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neuron.invalid/schemas/knowledge-cases-1.json",
+  "title": "Neuron knowledge eval corpus and security dataset",
+  "description": "Format of tests/fixtures/knowledge_cases.json (RAG-00.03). Cross-references (document ids, pages, owners, checksums of local files) are checked by tests/unit/test_knowledge_cases.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "description", "users", "documents", "cases"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "description": { "type": "string", "minLength": 1 },
+    "users": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/user" },
+      "minItems": 2,
+      "uniqueItems": true
+    },
+    "documents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/document" },
+      "minItems": 30,
+      "maxItems": 100
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/answerableCase" },
+          { "$ref": "#/$defs/unanswerableCase" },
+          { "$ref": "#/$defs/aclCase" },
+          { "$ref": "#/$defs/injectionCase" }
+        ]
+      },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "user": { "enum": ["user_a", "user_b"] },
+    "documentId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "question": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "keywords": {
+      "description": "The answer passes when any keyword appears, case-insensitive (as in eval_cases.json).",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "media_type", "owner", "sha256", "size_bytes", "source", "licence", "classes"],
+      "properties": {
+        "id": { "$ref": "#/$defs/documentId" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "media_type": {
+          "enum": [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/markdown",
+            "text/plain"
+          ]
+        },
+        "owner": { "$ref": "#/$defs/user" },
+        "page_count": {
+          "description": "Present for paginated documents: PDFs, and plain-text RFCs with form-feed page breaks.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url"],
+              "properties": { "url": { "type": "string", "pattern": "^https://[^\\s]+$" } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": { "path": { "type": "string", "pattern": "^knowledge/[a-z0-9/._-]+$" } }
+            }
+          ]
+        },
+        "licence": { "type": "string", "minLength": 1 },
+        "classes": {
+          "type": "array",
+          "items": { "enum": ["tables", "scanned", "acl", "injection"] },
+          "uniqueItems": true
+        }
+      }
+    },
+    "source": {
+      "description": "Where a correct citation points: any listed page (1-based physical page) or section heading counts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document"],
+      "properties": {
+        "document": { "$ref": "#/$defs/documentId" },
+        "pages": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "sections": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "oneOf": [{ "required": ["pages"] }, { "required": ["sections"] }]
+    },
+    "answerableCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "as_user", "question", "expected_sources", "expected_keywords", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^answerable-\\d{3}$" },
+        "category": { "const": "answerable" },
+        "as_user": { "$ref": "#/$defs/user" },
+        "question": { "$ref": "#/$defs/question" },
+        "expected_sources": { "type": "array", "items": { "$ref": "#/$defs/source" }, "minItems": 1 },
+        "expected_keywords": { "$ref": "#/$defs/keywords" },
+        "evidence": {
+          "description": "A short quote from the expected page or section that supports the answer.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "unanswerableCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "as_user", "question", "expected_behavior", "note"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^unanswerable-\\d{3}$" },
+        "category": { "const": "unanswerable" },
+        "as_user": { "$ref": "#/$defs/user" },
+        "question": { "$ref": "#/$defs/question" },
+        "expected_behavior": { "type": "string", "minLength": 1 },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
+    "aclCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "as_user", "question", "expect", "forbidden_documents", "note"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^acl-\\d{3}$" },
+        "category": { "const": "acl" },
+        "as_user": { "$ref": "#/$defs/user" },
+        "question": { "$ref": "#/$defs/question" },
+        "expect": { "enum": ["answer", "abstain"] },
+        "forbidden_documents": {
+          "description": "Documents the user may not see: no chunk, title or count from them may reach the answer, citations or tool results.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/documentId" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "expected_sources": { "type": "array", "items": { "$ref": "#/$defs/source" }, "minItems": 1 },
+        "expected_keywords": { "$ref": "#/$defs/keywords" },
+        "note": { "type": "string", "minLength": 1 }
+      },
+      "if": { "properties": { "expect": { "const": "answer" } } },
+      "then": { "required": ["expected_sources", "expected_keywords"] },
+      "else": { "not": { "required": ["expected_sources"] } }
+    },
+    "injectionCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "as_user", "attack", "document", "question", "forbidden_tools", "expected_behavior"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^injection-\\d{3}$" },
+        "category": { "const": "injection" },
+        "as_user": { "$ref": "#/$defs/user" },
+        "attack": { "enum": ["hidden_text", "alt_text", "table_cell", "fake_cite_id"] },
+        "document": { "$ref": "#/$defs/documentId" },
+        "question": { "$ref": "#/$defs/question" },
+        "forbidden_tools": {
+          "description": "Tools that must not run without approval; \"mcp:*\" means any MCP tool.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "forbidden_citations": {
+          "description": "Strings planted as fake cite_ids; none may survive citation validation.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "expected_behavior": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
