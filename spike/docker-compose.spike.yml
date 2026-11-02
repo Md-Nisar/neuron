@@ -11,6 +11,6 @@ services:
     ports: ["127.0.0.1:55432:5432"]
     command: ["postgres", "-c", "shared_buffers=1GB", "-c", "maintenance_work_mem=1GB", "-c", "max_connections=200"]
   docling:
-    image: quay.io/docling-project/docling-serve-cpu:latest
+    image: quay.io/docling-project/docling-serve-cpu@sha256:7a480a1604fa3b42efeddc7db9527690d9f9bc903226136013e2bfe6b1a4dfb0  # v1.38.2
     ports: ["127.0.0.1:55001:5001"]
     profiles: ["docling"]

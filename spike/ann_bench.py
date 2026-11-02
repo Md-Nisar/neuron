@@ -47,10 +47,13 @@ with psycopg.connect(APP) as conn:
                          .fetchone()[0].strip("[]").split(","), dtype=np.float32)
             q = v + 0.5 * rng.standard_normal(DIM).astype(np.float32) / np.sqrt(DIM)
             params = {"kbs": [kb], "q": HalfVector(q / np.linalg.norm(q)), "n": CANDIDATES}
-            te, exact = timed(conn, EXACT, params, ["SET LOCAL enable_indexscan = off"])
+            te, exact = timed(conn, EXACT, params, ["SET LOCAL jit = off", "SET LOCAL enable_indexscan = off"])
             th, hnsw = timed(conn, HNSW, params, ["SET LOCAL hnsw.iterative_scan = relaxed_order",
                                                   f"SET LOCAL hnsw.ef_search = {EF_SEARCH}",
-                                                  "SET LOCAL enable_seqscan = off"])
+                                                  "SET LOCAL enable_seqscan = off",
+                                                  # the planner prefers the btree + sort; force the HNSW scan
+                                                  "SET LOCAL enable_bitmapscan = off", "SET LOCAL enable_sort = off",
+                                                  "SET LOCAL jit = off"])
             ex_t.append(te); hn_t.append(th); returned.append(len(hnsw))
             recalls.append(len(set(exact[:K]) & set(hnsw[:K])) / K)
         p95 = lambda xs: sorted(xs)[int(0.95 * (len(xs) - 1))]
