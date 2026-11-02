@@ -21,7 +21,10 @@ Every Claude session that works on this backlog does this **before writing code*
 5. Pick the next unblocked story: lowest phase first, then P0 before P1 before P2, then the
    order in the epic, and only when all its "Depends on" stories are Done.
 6. Tell the user the current epic status and the recommended next action, and wait for the go-ahead before coding.
-7. After implementing: tick the issue checklist, move the Project item, update this tracker
+7. Work each story on its own branch named after the story ID (for example `RAG-00.01`), cut
+   from `main`, or from the branch of a story it depends on that is not merged yet. Open one PR per
+   story titled `[RAG-nn.mm] <title>`, with `Closes #<issue>` and the story issue's labels.
+8. After implementing: tick the issue checklist, move the Project item, update this tracker
    (story table, epic counts, implemented functionality, outstanding work, change log).
 
 Never mark a story Done because code exists. Done means every acceptance criterion has a
