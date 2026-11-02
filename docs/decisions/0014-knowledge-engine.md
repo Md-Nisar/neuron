@@ -1,0 +1,255 @@
+# ADR 0014: Knowledge Engine (v1.1.0)
+
+## Status
+
+**Proposed, 2026-11-02. Awaiting the owner's acceptance.** Not implemented: no code depends on it
+yet. When the owner accepts it, this section records "Accepted (date, owner)". Until then, ADR
+0001, 0002 and 0005 still forbid retrieval, queues and new persistence, and no Phase 1 story
+(`docs/product/NEURON_RAG_PRODUCT_BACKLOG.md`, RAG-E01 to RAG-E08) may merge code.
+
+Inputs: the three research reports in `docs/research/rag/`. Where they disagree, this ADR follows
+the resolutions in §4 of `claude_neuron_consolidated_rag_research.md` ("the research" below).
+Backlog story: RAG-00.01 (#399).
+
+## Context
+
+Neuron has no retrieval. `AGENTS.md` and ADR 0001 forbid retrieval, queues, custom persistence
+and subgraphs without a concrete requirement and an ADR. The requirement is the v1.1.0 release
+"Personal Knowledge": a signed-in user creates private knowledge bases (KBs), uploads documents,
+and gets answers that cite pages of those documents, with no way to read another user's content.
+
+What exists and is reused (checked against `main` at `e3bc153`):
+
+- Identity reaches tools only through the run's `context`, an `AuthorizationContext` with
+  `permissions` and the HMAC `owner_key` (`security/authorization.py`); `memory/tools.py` reads it
+  from `runtime.context`. `AuthorizationContext` has no roles today: roles are mapped to scopes
+  and dropped (`security/auth.py`).
+- `ToolSpec.taints_run` (`tools/registry.py`): after a tainting tool runs, gated tools need
+  approval (security review amendment R2, ADR 0009).
+- `_final_answer` (`graphs/main_graph.py`) recomputes `used_tools` from the tool calls that ran.
+- Versioned SQL migrations (`persistence/migrations.py`), a migrator/app role split
+  (`persistence/roles.py`, ADR 0008 decision 15), stable start-up check codes
+  (`persistence/startup_checks.py`), a token ledger (`persistence/token_budget.py`).
+- Outbound URL safety for MCP (`security/egress.py`, #364, #366); no ingestion fetcher uses it yet.
+- The reference stack runs `postgres:16` without pgvector.
+
+## Decisions
+
+### K1. The engine runs inside Neuron, on Neuron's Postgres
+
+A `knowledge` schema in Neuron's existing database holds KBs, documents, chunks and embeddings.
+Code lives in `src/neuron_agent/knowledge/` (`service.py`, `authorization.py`, `blobs.py`,
+`parsing.py`, `providers.py`, `chunking.py`, `retrieval.py`, `citations.py`, `jobs.py`,
+`tools.py`). Routes stay in `api/`, migrations in `persistence/migrations.py`, settings in
+`config/settings.py`. Retrieval combines pgvector similarity and Postgres full-text search,
+fused with reciprocal rank fusion, in one SQL transaction. Row-level security on `chunks` and
+`embeddings`, keyed on a transaction-scoped `SET LOCAL neuron.kb_ids`, repeats the SQL filter;
+it works because the app role does not own the tables. Original files go to a `BlobStore`
+(local volume or private S3-compatible bucket) under write-once random keys.
+
+Rejected: the NVIDIA RAG Blueprint as a service or an in-process import (its servers have no user
+identity, its jobs are in memory, and it pins `openai<2.0` while Neuron needs `openai>=3.6.0`); a
+dedicated vector database first (Qdrant, Milvus and others: a second datastore and ACL model
+without a measured need; revisit only on a benchmark, RAG-12.04).
+
+### K2. Parsing runs out of process, behind `DocumentParser`
+
+The default parser is a docling-serve container (CPU) reachable only from the worker, with no
+network egress. The worker sends bytes, never URLs, with a timeout, and validates the parser's
+output against a schema. Plain text and Markdown are parsed in the worker. NV-Ingest is an
+optional GPU parser behind the same interface.
+
+Rejected: Docling inside the API process (ML models and memory in the request path, and the
+image-layout tests); Unstructured as the default; MinerU and Marker (licence and weight terms
+need review; Docling covers the need); PyMuPDF (AGPL).
+
+### K3. Embeddings are `halfvec` rows per index profile
+
+`knowledge.embeddings(chunk_id, profile_id, kb_id, embedding halfvec)` with one partial HNSW
+expression index per profile. A KB uses one active profile; changing model or dimensions is a
+re-index to a new profile (RAG-09.04), never a schema change, and one search never mixes
+profiles. Small allowed sets use an exact scan through the `(profile_id, kb_id)` index; large
+ones use HNSW with `hnsw.iterative_scan = relaxed_order`. The threshold is a setting whose
+default the spike decides.
+
+Rejected: a `vector(2048)` column (pgvector HNSW indexes `vector` only up to 2,000 dimensions;
+`halfvec` indexes up to 4,000 and halves storage); mixed profiles in one search.
+
+Embeddings go through Neuron's `EmbeddingProvider`, built on LangChain `Embeddings` (NVIDIA for
+development, TEI or OpenAI-compatible for self-hosting, a fake for tests), like the chat model
+factory. Rejected: LiteLLM (a second routing layer beside `models/factory.py`). Reranking is off
+until evals show a gain (RAG-09.01).
+
+### K4. Durable jobs on Postgres; the document row is the public status
+
+A `neuron-worker` console script (same image, new entrypoint) runs ingestion, delete, re-index and
+sweep jobs with Procrastinate, subject to the spike; PGQueuer is the named fallback, and an own
+lease table only if both fail. The upload inserts the document (`queued`) and defers the job in
+the same transaction. Each step is idempotent per `(doc_id, profile_id)`. There is no public job
+resource: `knowledge.documents.status` is what the API reports. Delete is tombstone-first:
+retrieval joins only `status = 'ready' AND deleted_at IS NULL`, then a job purges chunks,
+embeddings and the blob.
+
+Rejected: an own job table first (rebuilds retries, backoff and scheduling); Celery with Redis;
+Temporal, Prefect, Airflow (new infrastructure); a separate `/v1/ingestion-jobs` resource (a
+second ACL surface).
+
+### K5. Identity comes only from the runtime `AuthorizationContext`
+
+Knowledge tools read the owner key and permissions from `ToolRuntime.context`, as
+`memory/tools.py` does. The model sees only `query`, optional `kb_ids` and `limit`. Allowed KBs
+are resolved server-side and any requested ids are intersected with them; a foreign id behaves as
+not found. The tools need `tools:search_knowledge`; the routes need `knowledge:read`,
+`knowledge:write` and (Phase 2) `knowledge:admin`. Phase 1 KBs are owner-only. Role grants come
+in Phase 2, after `Principal` keeps verified roles (RAG-09.02).
+
+Rejected: `RunnableConfig.configurable` with `InjectedToolArg` (on the Agent Server path
+`configurable` is client-influenced); identity as a tool argument.
+
+**Agent Server limitation.** Knowledge tools are offered on the FastAPI path only, like memory
+(ADR 0009). The graph exported to `langgraph.json` does not get them.
+
+### K6. Citations are minted by the server and validated per run
+
+`search_knowledge` returns results with server-minted `cite_id`s. `AgentAnswer` gains
+`citations: list[str]`; `_final_answer` keeps only ids a knowledge tool returned in this run, as
+it already does for `used_tools`, and counts the rejected ones. Validated citations (document id,
+chunk id, title, page range, optional bounding box; no excerpt text) are stamped on the final
+`AIMessage.additional_kwargs`, so history keeps them. `AgentResponse`, the SSE `final` event and
+`ThreadMessage` gain an optional `citations` array with `citation_schema_version: 1` and a
+`grounded` flag; old clients ignore it. The chunk endpoint re-checks access on every call.
+
+Rejected: sources written by the model; a separate citation table.
+
+### K7. Retrieved content taints the run
+
+`search_knowledge` and `get_document_excerpt` set `taints_run=True`, so any gated tool after them
+needs approval. Results are framed as data in a delimited JSON block with `<` escaped, reusing
+the pattern of `render_notes()`. Below a score floor the tool returns `no_relevant_results`, and
+the system prompt requires the answer to say so (abstention). Upload is a user action, never a
+model tool.
+
+Rejected: LLM-Guard or any classifier as the security boundary (bypassable; LLM-Guard's last
+release is 2025-05). A scanner may be added later as a logged signal only.
+
+### K8. Processing locality is a KB setting
+
+Each KB has `processing = hosted | self_hosted`. Operators can forbid `hosted`; staging and
+production settings validation refuses a hosted embedding provider when policy is self-hosted
+only. The UI states where content is processed. Embedding tokens are recorded in the existing
+token ledger under a separate kind, and ingestion quotas (bytes, pages, documents, concurrent
+jobs) are checked before work is queued.
+
+Rejected: implicit hosted processing (every chunk would leave Neuron's boundary without a
+decision).
+
+### Also rejected
+
+LangMem, Mem0, Letta (model-extracted memories conflict with ADR 0009 decision 7); Phoenix,
+OpenInference, Langfuse (licence or a second telemetry vocabulary beside
+`observability/semconv.py`); a second agent framework; the Blueprint frontend, Dify and Open WebUI
+(duplicate UI, licence clauses). The full list with reasons is §11 of the research.
+
+## Product scope of v1.1.0
+
+In: private KBs; upload of PDF, DOCX, Markdown and text; durable ingestion; hybrid retrieval;
+`list_knowledge_bases`, `search_knowledge` and `get_document_excerpt` tools; validated citations
+in the API, stream and history; tombstone delete; erase and export include knowledge; the
+Knowledge screen with citation chips; the processing locality setting. The feature is behind
+`APP_KNOWLEDGE_ENABLED` (default off) until v1.1.0 is released.
+
+Out: sharing and role grants, reranking, re-index (v1.2.0, RAG-E09); web, GitHub and MCP
+sources (RAG-E10, blocked on RAG-10.01 reusing `security/egress.py`); mutating knowledge tools,
+`query_table`, `research_web`, a retrieval subgraph (RAG-E11, each needs its own requirement, and
+mutating tools an ADR 0003 amendment); GraphRAG, an external vector store, organisation spaces
+(RAG-E12).
+
+## Release gate targets (measured by RAG-08.01, RAG-08.02 and RAG-08.05)
+
+- Zero cross-user results in the knowledge security suite.
+- At least 90% of answerable eval questions cite a correct page (citation precision against
+  the labelled corpus of RAG-00.03). Recall@5 is recorded as the baseline v1.2.0 must not
+  regress.
+- Unanswerable eval questions abstain.
+- A job whose worker is killed mid-run completes exactly once.
+- All existing tests stay green; `make format lint typecheck test security` passes.
+
+## Security boundary
+
+Strongest first: authorisation inside the retrieval query, with RLS repeating it (K1, K5); taint
+and approval (K7); citation validation (K6); framing (K7); ingestion hardening (MIME sniffing;
+size, page and decompression limits; no archives or macros; encrypted PDFs rejected; parser
+without egress); processing locality (K8); telemetry hygiene (ids, counts, stages and timings
+only, never queries, chunk text, file names or vectors). Originals are served only as
+`Content-Disposition: attachment` with `X-Content-Type-Options: nosniff`.
+
+Requirements the Phase 1 stories must meet (from the security review of this ADR):
+
+1. **Roles and RLS.** No runtime role has `BYPASSRLS`: `persistence/roles.py` already refuses
+   one. The worker uses the app role, or a third role that passes the same `role_problems`
+   checks, and sets `neuron.kb_ids` per job. Policies have `WITH CHECK` as well as `USING`.
+   An unset `neuron.kb_ids` (`current_setting('neuron.kb_ids', true)` is NULL) returns no rows.
+2. **Owner predicate everywhere.** Every query on `bases`, `grants` and `documents` filters on
+   the caller's `owner_key` (or, from Phase 2, a grant). RLS is defence in depth on `chunks` and
+   `embeddings` only, where the volume is. RAG-01.02 records whether `bases` and `documents` get
+   RLS too.
+3. **Citations.** A `cite_id` is bound to the run and the owner that minted it, by
+   `search_knowledge` or `get_document_excerpt`. `grounded` is computed by the server from the
+   validated citations, never taken from the model. Titles and file names are user-controlled,
+   so the API, the stream and the web app treat them as plain text. The chunk endpoint returns
+   404 for tombstoned documents.
+4. **Fixed endpoints, not `egress.py`.** `security/egress.py` refuses private addresses and
+   is for user-influenced URLs (RAG-E10). The parser and self-hosted embedding endpoints are
+   operator-configured, validated when settings load, and not routed through it.
+5. **Audit.** Knowledge base create and delete, document upload and delete, and knowledge erase
+   and export emit audit events through `observability/audit.py`, with ids and counts only.
+6. **Downloads.** Originals are served with `Content-Type: application/octet-stream` (never the
+   uploaded MIME type), a sanitised `filename*`, `Content-Disposition: attachment`,
+   `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`.
+7. **Quotas.** Limits per `owner_key` are enforced in code: number of KBs, total stored bytes,
+   documents, pages and concurrent ingestion jobs. Search routes are rate-limited like the agent
+   routes.
+8. **Permissions.** `knowledge:read`, `knowledge:write` and `tools:search_knowledge` are added
+   to `DEV_PERMISSIONS` and to the role-to-scope defaults with the routes that need them.
+   Production grants them only through configured scopes.
+
+Threat model additions (`docs/security/threat-model.md`, with RAG-08.02): cross-user retrieval,
+poisoned documents, fabricated citations, stored XSS through originals, parser exploits and
+resource exhaustion, data egress to hosted model APIs, blob and database drift after a restore.
+The required tests are the table in §10 of the research.
+
+## Open questions, decided by the spike (RAG-00.02)
+
+Each answer is recorded here, with numbers, by RAG-00.02. Until then the defaults in brackets
+are working assumptions, not decisions.
+
+1. Docling CPU quality on tables and scanned pages, or a GPU parser needed? (CPU)
+2. Embedding dimensions for `llama-nemotron-embed-1b-v2`: 2,048 or 1,024, by recall@5? (2,048)
+3. The allowed-chunk count above which HNSW with iterative scan beats an exact scan. (20,000)
+4. Procrastinate or PGQueuer: exactly-once completion after a killed worker, under Neuron's pool
+   settings and roles? (Procrastinate)
+5. NVIDIA API catalog terms, data handling and pricing for production document processing, or
+   TEI as the production default? (NVIDIA for development only)
+
+Dependency versions, licences and image digests are recorded here by RAG-00.04.
+
+## Amendments
+
+On acceptance this ADR amends:
+
+- **ADR 0001**: retrieval and a background worker with a job queue are now in scope, as defined
+  above.
+- **ADR 0002**: Neuron owns domain persistence for knowledge (the `knowledge` schema and blobs).
+- **ADR 0005**: rejected run queues stay rejected; the job queue here is for ingestion only and
+  does not queue agent runs.
+
+## Consequences
+
+- One more process (`neuron-worker`) and one or two more containers (docling-serve; an embedding
+  server in self-hosted profiles) to deploy, monitor and back up. Restore must cover blobs.
+- The reference stack and CI move to the `pgvector/pgvector:pg16` image. Without
+  `APP_KNOWLEDGE_ENABLED`, Neuron still runs on plain `postgres:16` as in v1.0.0.
+- New public contracts are additive: `/v1/knowledge/*` routes, an optional `knowledge_base_ids`
+  on `AgentRequest` (narrows, never widens) and optional `citations` fields. Stream protocol
+  version 1 is unchanged.
+- Estimated effort (not measured): Phase 1 7–10 engineer-weeks, Phases 0–2 13–18.

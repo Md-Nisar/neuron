@@ -4,6 +4,8 @@
 
 Accepted.
 
+> **Amendment proposed by [ADR 0014](0014-knowledge-engine.md)** (Knowledge Engine, pending the owner's acceptance). Once accepted, retrieval over users' knowledge bases and a background worker with a Postgres job queue for ingestion are in scope, as ADR 0014 defines them. Until then this ADR stands unchanged.
+
 ## Problem
 
 This repository needed a production-grade LangChain/LangGraph agent baseline without a domain-specific requirement for retrieval, multiple agents, durable custom persistence, or high-impact side effects.
