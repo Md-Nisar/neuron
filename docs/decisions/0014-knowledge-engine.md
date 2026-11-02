@@ -221,16 +221,41 @@ The required tests are the table in §10 of the research.
 
 ## Open questions, decided by the spike (RAG-00.02)
 
-Each answer is recorded here, with numbers, by RAG-00.02. Until then the defaults in brackets
-are working assumptions, not decisions.
+Answered on 2026-11-02 with the numbers, hardware and commands in
+[the spike record](../releases/v1.1.0-spike.md). The working default before the spike is in
+brackets.
 
-1. Docling CPU quality on tables and scanned pages, or a GPU parser needed? (CPU)
+1. Docling CPU quality on tables and scanned pages, or a GPU parser needed? (CPU) **CPU.**
+   docling-serve-cpu v1.38.2 parsed 0.61 PDF pages/s on 4 vCPU with a 4.7 GiB peak, offline
+   (`--network none`). All 43 evidence passages were extracted, including OCR of the scanned
+   page; 39 were on the expected page. Plain text has no page provenance, so the worker splits
+   RFC-style `.txt` on form feeds itself.
 2. Embedding dimensions for `llama-nemotron-embed-1b-v2`: 2,048 or 1,024, by recall@5? (2,048)
+   **1,024.** That model is retired from the NVIDIA API catalog (HTTP 410); its successor
+   `nvidia/nemotron-3.5-embed-1b` scored recall@5 0.918 at both 1,024 and 2,048 on the eval
+   corpus, so the default profile is `nemotron-3.5-embed-1b` at 1,024.
 3. The allowed-chunk count above which HNSW with iterative scan beats an exact scan. (20,000)
+   **10,000**, the default for an exact-scan threshold setting in RAG-04.01, with
+   `hnsw.ef_search = 100`. HNSW is faster from about 2,000 chunks, but below about 5,000 it can
+   return too few rows for off-topic queries; the exact scan costs at most about 51 ms p95 at
+   10,000. The planner does not pick HNSW for the filtered query by itself, so retrieval chooses
+   and forces the path.
 4. Procrastinate or PGQueuer: exactly-once completion after a killed worker, under Neuron's pool
-   settings and roles? (Procrastinate)
+   settings and roles? (Procrastinate) **Procrastinate**, with a periodic stalled-job sweep
+   (`get_stalled_jobs` + `retry_job`), which 3.10.0 does not run by itself. After `SIGKILL`
+   each job completed exactly once and `SIGTERM` drained cleanly. PGQueuer also passed. Both are
+   at-least-once, so ingest steps stay idempotent (K4). The lease-table fallback is not needed.
 5. NVIDIA API catalog terms, data handling and pricing for production document processing, or
-   TEI as the production default? (NVIDIA for development only)
+   TEI as the production default? (NVIDIA for development only) **NVIDIA for development only.**
+   The trial terms (§1.2) forbid production use without a separate subscription and publish no
+   per-token price. TEI (Apache-2.0) is the production default.
+
+The spike also found:
+
+- pgvector is not a trusted extension: `neuron_migrator` cannot run `CREATE EXTENSION vector`.
+  A superuser or the platform operator creates it before migrations (RAG-01.01).
+- Parallel HNSW builds need more than Docker's default 64 MB `/dev/shm` (`shm_size`), or
+  `max_parallel_maintenance_workers = 0` (RAG-01.01).
 
 Dependency versions, licences and image digests are recorded here by RAG-00.04.
 
