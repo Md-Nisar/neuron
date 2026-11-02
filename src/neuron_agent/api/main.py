@@ -184,7 +184,8 @@ class _CleanupEventSourceResponse(EventSourceResponse):
         try:
             await super().__call__(scope, receive, send)
         finally:
-            await self._on_close()
+            with anyio.CancelScope(shield=True):
+                await self._on_close()
 
 
 class _RequestBodyLimitMiddleware:
@@ -654,10 +655,11 @@ async def _stream_prepared(
     async def close() -> None:
         # Closing the generator cancels its run if still active; the lease is released even
         # if the generator never started.
-        try:
-            await stream.aclose()
-        finally:
-            await run.lease.release()
+        with anyio.CancelScope(shield=True):
+            try:
+                await stream.aclose()
+            finally:
+                await run.lease.release()
 
     return _CleanupEventSourceResponse(
         events(),
