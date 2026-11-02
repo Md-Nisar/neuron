@@ -56,10 +56,11 @@ def _is_internal_host(url: str) -> bool:
     """True unless `validate_safe_url` accepts the URL's literal host as public.
 
     Names are not resolved and redirects are not followed, so a public name that resolves to a
-    private address passes (an accepted gap, see SECURITY.md).
+    private address passes (an accepted gap, see SECURITY.md). The scheme is checked by the
+    callers, so `http` is classified like `https` here.
     """
     try:
-        validate_safe_url(url)
+        validate_safe_url(url, allow_http=True)
     except (AuthorizationError, ValidationAppError):
         return True
     return False

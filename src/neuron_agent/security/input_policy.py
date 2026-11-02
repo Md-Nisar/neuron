@@ -91,7 +91,8 @@ def _parse_ipv4_label_form(host: str) -> ipaddress.IPv4Address | None:
     return ipaddress.IPv4Address(value)
 
 
-def _reject_non_public(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> None:
+def reject_non_public_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> None:
+    """Raise `AuthorizationError` unless `address` is a public unicast address."""
     if isinstance(address, ipaddress.IPv6Address):
         if address.ipv4_mapped is not None:
             address = address.ipv4_mapped
@@ -111,10 +112,11 @@ def _reject_non_public(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -
         raise AuthorizationError("non-public network URLs are not allowed")
 
 
-def validate_safe_url(url: str) -> str:
+def validate_safe_url(url: str, *, allow_http: bool = False) -> str:
     """Reject URLs whose literal host is local, private or otherwise non-public.
 
-    Checks the text of the URL only: scheme http or https, no userinfo, no
+    Checks the text of the URL only: scheme https (http too only with ``allow_http``, for a
+    caller that classifies a host and fetches nothing), no userinfo, no
     non-ASCII or percent-escaped host (IDN hosts must be passed as ``xn--``
     A-labels; nothing is normalised), no
     whitespace, control characters or backslashes, and a host that is not
@@ -131,7 +133,8 @@ def validate_safe_url(url: str) -> str:
     A tool that fetches a URL must therefore, after calling it: resolve once,
     reject any resolved address that fails the same checks, connect to the checked
     IP (not the name again), and re-validate every redirect target the same way,
-    or not follow redirects at all. See SECURITY.md.
+    or not follow redirects at all. `security/egress.py` does this for every
+    connection an HTTP client opens. See SECURITY.md.
     """
     if any(char.isspace() or char == "\\" or unicodedata.category(char) == "Cc" for char in url):
         raise ValidationAppError("URL contains disallowed characters")
@@ -142,7 +145,7 @@ def validate_safe_url(url: str) -> str:
     except ValueError:
         raise ValidationAppError("URL is malformed") from None
     if parsed.scheme not in {"https", "http"}:
-        raise ValidationAppError("URL scheme must be http or https")
+        raise ValidationAppError("URL scheme must be https")
     if "@" in parsed.netloc:
         raise ValidationAppError("URL must not include userinfo")
     if not hostname:
@@ -163,5 +166,7 @@ def validate_safe_url(url: str) -> str:
     else:
         address = _parse_ipv4_label_form(host)
     if address is not None:
-        _reject_non_public(address)
+        reject_non_public_address(address)
+    if parsed.scheme != "https" and not allow_http:
+        raise ValidationAppError("URL scheme must be https")
     return url
