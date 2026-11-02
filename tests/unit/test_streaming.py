@@ -5,17 +5,22 @@ import uuid
 from collections.abc import Iterator
 from typing import Any
 
+import anyio
+import httpx
 import pytest
 import structlog.testing
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, AIMessageChunk
+from langchain_core.outputs import ChatGenerationChunk
 from langgraph.errors import GraphRecursionError
+from tests.conftest import StreamingFakeModel
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import RateLimitError
 from neuron_agent.graphs import main_graph
+from neuron_agent.models import factory
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.services.agent_service import AgentService
@@ -318,3 +323,128 @@ def test_stream_endpoint_enforces_body_size_limit() -> None:
         "/v1/agent/stream", content=b"x" * oversized, headers={"Content-Type": "application/json"}
     )
     assert response.status_code == 413
+
+
+async def test_stream_client_disconnect_releases_thread_lease(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import threading
+
+    started = threading.Event()
+    paused = threading.Event()
+
+    class _PausableStreamingModel(StreamingFakeModel):
+        """A fake model that pauses mid-generation in its worker thread."""
+
+        def _stream(
+            self,
+            messages: list[Any],
+            stop: list[str] | None = None,
+            run_manager: Any = None,
+            **kwargs: Any,
+        ) -> Any:
+            next(self.messages)
+            message_id = f"run-{uuid.uuid4()}"
+            words = (
+                "one two three four five six seven eight nine ten eleven twelve thirteen".split()
+            )
+            for i, word in enumerate(words):
+                chunk = ChatGenerationChunk(
+                    message=AIMessageChunk(content=word + " ", id=message_id)
+                )
+                if run_manager:
+                    run_manager.on_llm_new_token(word + " ", chunk=chunk)
+                yield chunk
+                if i == 9:
+                    started.set()
+                    paused.wait(timeout=2.0)
+
+    model = _PausableStreamingModel(
+        messages=iter(
+            [
+                AIMessage(content="initial setup turn"),
+                AIMessage(content="placeholder"),
+            ]
+        )
+    )
+    monkeypatch.setattr(factory, "create_chat_model", lambda settings: model)
+    service = AgentService(Settings(env="test"))
+    monkeypatch.setattr(api_main, "service", service)
+
+    # Establish an existing thread
+    thread_id = (await service.invoke(AgentRequest(message="setup"))).thread_id
+    token_seen = False
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        async with client.stream(
+            "POST",
+            "/v1/agent/stream",
+            json={"message": "stream", "thread_id": thread_id},
+        ) as response:
+            assert response.status_code == 200
+            async for line in response.aiter_lines():
+                if line.startswith("event: token"):
+                    token_seen = True
+                    # Disconnect client abruptly while stream is active
+                    break
+
+    assert token_seen is True
+
+    # Assert that service._run_guard.is_thread_active(thread_id) returns False within 500ms
+    freed = False
+    with anyio.move_on_after(0.5):
+        while not freed:
+            if not await service._run_guard.is_thread_active(thread_id):
+                freed = True
+                break
+            await anyio.sleep(0.01)
+
+    assert freed is True
+    assert await service._run_guard.is_thread_active(thread_id) is False
+    assert getattr(service._run_guard, "_open_streams", 0) == 0
+
+    paused.set()
+
+
+async def test_stream_send_timeout_releases_thread_lease(
+    monkeypatch: pytest.MonkeyPatch, stream_replies: Any
+) -> None:
+    stream_replies(
+        AIMessage(content="setup answer"),
+        AIMessage(content="word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11"),
+    )
+    service = AgentService(Settings(env="test"))
+    monkeypatch.setattr(api_main, "service", service)
+    monkeypatch.setattr(api_main, "_STREAM_SEND_TIMEOUT_SECONDS", 0.05)
+
+    thread_id = (await service.invoke(AgentRequest(message="setup"))).thread_id
+    req = AgentRequest(message="stream", thread_id=thread_id)
+    response = await api_main.stream_agent(req)
+
+    assert await service._run_guard.is_thread_active(thread_id) is True
+
+    async def slow_send(message: dict[str, Any]) -> None:
+        if message.get("type") == "http.response.body" and message.get("body"):
+            await anyio.sleep(0.15)
+
+    async def dummy_receive() -> dict[str, Any]:
+        await anyio.sleep(5)
+        return {"type": "http.disconnect"}
+
+    scope = {"type": "http", "method": "POST", "path": "/v1/agent/stream", "headers": []}
+    with pytest.raises(BaseException):  # noqa: B017 - sse-starlette wraps it in a task group
+        await response(scope, dummy_receive, slow_send)
+
+    freed = False
+    with anyio.move_on_after(0.5):
+        while not freed:
+            if not await service._run_guard.is_thread_active(thread_id):
+                freed = True
+                break
+            await anyio.sleep(0.01)
+
+    assert freed is True
+    assert await service._run_guard.is_thread_active(thread_id) is False
+    assert getattr(service._run_guard, "_open_streams", 0) == 0
