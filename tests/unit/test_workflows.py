@@ -334,3 +334,13 @@ def test_ci_validates_alert_rules_and_collector_config_with_the_pinned_script() 
         s["run"] for s in workflow["jobs"]["checks"]["steps"] if "mypy" in s.get("run", "")
     ]
     assert len(typecheck) == 1 and "scripts/validate_observability.py" in typecheck[0]
+
+
+def test_typecheck_covers_the_typed_test_directories() -> None:
+    # #376: these test paths are type-checked in CI and `make typecheck`; the rest follow.
+    typed = ("tests/conftest.py", "tests/graph", "tests/resilience", "tests/e2e", "tests/evals")
+    workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text("utf-8"))
+    ci = next(s["run"] for s in workflow["jobs"]["checks"]["steps"] if "mypy" in s.get("run", ""))
+    make = Path("Makefile").read_text("utf-8").split("typecheck:\n", 1)[1].split("\n", 1)[0]
+    for path in typed:
+        assert path in ci.split() and path in make.split(), path
