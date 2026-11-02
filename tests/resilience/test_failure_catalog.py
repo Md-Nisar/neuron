@@ -1,37 +1,66 @@
-"""Deterministic failure-and-resilience regression suite (issue #7).
+"""Deterministic failure-and-resilience regression suite (issues #7, #375).
 
-Each test forces a failure at the same boundary the production code already
-classifies it at (AgentService.invoke, the rate limiter, or Settings
-construction) and asserts the HTTP contract plus the absence of leaked
-internal detail. Deeper unit-level coverage for each error's classification
-lives alongside the module that owns it: `tests/unit/test_model_factory.py`,
-`tests/graph/test_main_graph.py`, `tests/unit/test_tool_timeout_middleware.py`,
-`tests/unit/test_tool_failure_isolation_middleware.py`,
-`tests/unit/test_rate_limiter.py`, `tests/unit/test_settings.py`.
+Each test forces a realistic failure at the model, provider, database, or network
+boundary through unmocked AgentService execution, asserting that internal error
+classification (classify_agent_error, _persistence_errors) correctly categorizes
+failures into expected AppError types and HTTP status codes without leaking secrets.
 """
 
 from __future__ import annotations
 
+from typing import Any
+
+import httpx
+import openai
+import psycopg
+import psycopg_pool
 import pytest
 from fastapi.testclient import TestClient
+from langchain.agents.structured_output import StructuredOutputValidationError
+from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+from langchain_core.messages import AIMessage
+from langgraph.errors import GraphRecursionError
 from pydantic import ValidationError
 
 from neuron_agent.api import main as api_main
 from neuron_agent.api.main import app
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import (
-    AgentStepLimitError,
-    ConfigurationError,
-    ProviderError,
-    ProviderTimeoutError,
-    RateLimitError,
-    StructuredOutputError,
-    ToolExecutionError,
-)
+from neuron_agent.errors.base import ToolExecutionError
+from neuron_agent.models import factory
 from neuron_agent.schemas.agent import AgentResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
+from neuron_agent.services.agent_service import AgentService
 
 _SECRET_MARKER = "sk-test-secret-should-never-leak"  # noqa: S105 -- leakage-detection fixture, not a real secret
+_REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+_429_RESPONSE = httpx.Response(status_code=429, request=_REQUEST)
+_401_RESPONSE = httpx.Response(status_code=401, request=_REQUEST)
+_404_RESPONSE = httpx.Response(status_code=404, request=_REQUEST)
+_500_RESPONSE = httpx.Response(status_code=500, request=_REQUEST)
+
+
+class _RealisticErrorModel(GenericFakeChatModel):
+    error: Exception
+
+    async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
+        raise self.error
+
+    def bind_tools(self, *args: Any, **kwargs: Any) -> Any:
+        return self
+
+    def with_structured_output(self, *args: Any, **kwargs: Any) -> Any:
+        return self
+
+
+def _setup_service_with_model_error(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+) -> None:
+    mock_model = _RealisticErrorModel(error=error, messages=iter([]))
+    monkeypatch.setattr(factory, "create_chat_model", lambda s: mock_model)
+    settings = api_main.settings.model_copy(update={"provider_max_retries": 0})
+    service = AgentService(settings)
+    monkeypatch.setattr(api_main, "service", service)
 
 
 @pytest.fixture(autouse=True)
@@ -54,27 +83,66 @@ def _generous_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     ("error", "expected_status", "expected_detail"),
     [
         (
-            ProviderTimeoutError(f"model provider timed out: {_SECRET_MARKER}"),
+            openai.APITimeoutError(request=_REQUEST),
             504,
             "provider_timeout_error",
         ),
         (
-            RateLimitError(f"model provider rate limit exceeded: {_SECRET_MARKER}"),
+            openai.RateLimitError(
+                message=f"rate limit exceeded: {_SECRET_MARKER}",
+                response=_429_RESPONSE,
+                body=None,
+            ),
             429,
             "rate_limit_error",
         ),
         (
-            ProviderError(f"model provider request failed: {_SECRET_MARKER}"),
+            openai.RateLimitError(
+                message=f"quota exceeded: {_SECRET_MARKER}",
+                response=_429_RESPONSE,
+                body={"code": "insufficient_quota"},
+            ),
+            503,
+            "internal_server_error",
+        ),
+        (
+            openai.APIConnectionError(request=_REQUEST),
             502,
             "internal_server_error",
         ),
         (
-            ConfigurationError(f"model provider authentication failed: {_SECRET_MARKER}"),
+            openai.InternalServerError(
+                message=f"upstream 500 error: {_SECRET_MARKER}",
+                response=_500_RESPONSE,
+                body=None,
+            ),
+            502,
+            "internal_server_error",
+        ),
+        (
+            openai.AuthenticationError(
+                message=f"invalid api key: {_SECRET_MARKER}",
+                response=_401_RESPONSE,
+                body=None,
+            ),
             500,
             "internal_server_error",
         ),
         (
-            StructuredOutputError(f"agent produced invalid structured output: {_SECRET_MARKER}"),
+            openai.NotFoundError(
+                message=f"model not found: {_SECRET_MARKER}",
+                response=_404_RESPONSE,
+                body=None,
+            ),
+            500,
+            "internal_server_error",
+        ),
+        (
+            StructuredOutputValidationError(
+                tool_name="AgentAnswer",
+                source=ValueError(f"invalid structured output: {_SECRET_MARKER}"),
+                ai_message=AIMessage(content="not valid json"),
+            ),
             502,
             "internal_server_error",
         ),
@@ -89,17 +157,20 @@ def _generous_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
             "internal_server_error",
         ),
         (
-            AgentStepLimitError(f"Recursion limit of 16 reached: {_SECRET_MARKER}"),
+            GraphRecursionError(f"Recursion limit of 16 reached: {_SECRET_MARKER}"),
             422,
             "agent_step_limit_exceeded",
         ),
     ],
     ids=[
-        "provider-timeout",
-        "provider-rate-limit-429",
-        "provider-5xx",
-        "provider-authentication-failure",
-        "malformed-structured-output",
+        "openai-timeout-504",
+        "openai-rate-limit-429",
+        "openai-quota-503",
+        "openai-connection-error-502",
+        "openai-internal-server-error-502",
+        "openai-auth-error-500",
+        "openai-model-not-found-500",
+        "structured-output-parse-error",
         "tool-timeout",
         "tool-failure",
         "agent-iteration-limit-exceeded",
@@ -111,14 +182,38 @@ def test_agent_invoke_fails_safely_without_leaking_detail(
     expected_status: int,
     expected_detail: str,
 ) -> None:
-    async def raise_error(self: object, request: object) -> None:
-        raise error
-
-    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    _setup_service_with_model_error(monkeypatch, error)
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": "hi"})
     assert response.status_code == expected_status
     assert response.json() == {"detail": expected_detail}
+    assert _SECRET_MARKER not in response.text
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        psycopg.OperationalError(f"connection refused: {_SECRET_MARKER}"),
+        psycopg_pool.PoolTimeout(f"pool timeout: {_SECRET_MARKER}"),
+    ],
+    ids=["psycopg-operational-error", "psycopg-pool-timeout"],
+)
+def test_agent_invoke_classifies_persistence_failure_safely(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    settings = api_main.settings.model_copy(update={"provider_max_retries": 0})
+    service = AgentService(settings)
+
+    async def fail_resolve(*args: object, **kwargs: object) -> str:
+        raise error
+
+    monkeypatch.setattr(service, "_resolve_thread", fail_resolve)
+    monkeypatch.setattr(api_main, "service", service)
+
+    client = TestClient(app)
+    response = client.post("/v1/agent/invoke", json={"message": "hi"})
+    assert response.status_code == 503
+    assert response.json() == {"detail": "internal_server_error"}
     assert _SECRET_MARKER not in response.text
 
 
@@ -134,10 +229,7 @@ def test_agent_invoke_fails_safely_without_leaking_detail(
 def test_agent_invoke_hides_unexpected_exceptions(
     monkeypatch: pytest.MonkeyPatch, error: Exception
 ) -> None:
-    async def raise_error(self: object, request: object) -> None:
-        raise error
-
-    monkeypatch.setattr(api_main.AgentService, "invoke", raise_error)
+    _setup_service_with_model_error(monkeypatch, error)
     client = TestClient(app)
     response = client.post("/v1/agent/invoke", json={"message": "hi"})
     assert response.status_code == 500
