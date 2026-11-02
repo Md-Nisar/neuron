@@ -7,6 +7,7 @@ Upgrade note: `validate_safe_url` now accepts `https` only unless called with `a
 Changes:
 - Docs: ADR 0014 "Knowledge Engine" accepted for v1.1.0 (RAG-00.01, #399). It amends ADR 0001, 0002 and 0005 to allow retrieval, an ingestion job queue and the `knowledge` schema; v1.1.0 is in `docs/ROADMAP.md`. No code changes.
 - Tests: labelled knowledge eval corpus and security dataset (RAG-00.03, #401): `tests/fixtures/knowledge_cases.json` with its JSON schema, 31 documents (public ones as URL and SHA-256), 64 answerable, 12 unanswerable, 5 ACL and 4 prompt-injection cases, validated in `make test`.
+- Docs: Phase 0 spike record for v1.1.0 (RAG-00.02, #400) in `docs/releases/v1.1.0-spike.md`, with ADR 0014's open questions answered: Docling on CPU, 1,024-dimension embeddings with `nvidia/nemotron-3.5-embed-1b`, an exact scan up to 10,000 allowed chunks, Procrastinate with a stalled-job sweep, and TEI as the production embedding provider. No code changes.
 - SSRF: MCP connections resolve the server's host once, are refused unless every resolved address is public, connect to the checked address (no DNS rebinding), and check every redirect's host the same way (`security/egress.py`, #364). The development loopback `http` exception is logged (#366).
 
 ## 1.0.0

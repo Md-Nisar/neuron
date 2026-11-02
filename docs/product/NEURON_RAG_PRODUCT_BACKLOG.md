@@ -181,13 +181,13 @@ schema, index and queue choices are not guesses.
 - Given the exact-versus-HNSW measurement, when the threshold is chosen, then it is written as a default setting value for RAG-04.01.
 
 **Technical tasks**
-- [ ] Spike branch with a throwaway docker compose (pgvector, docling-serve, worker).
-- [ ] Ingest the corpus; record parse quality per document class.
-- [ ] Recall@5 at 2,048 and 1,024 dimensions.
-- [ ] Exact versus HNSW latency and recall by allowed-set size.
-- [ ] Queue fault-injection tests for both libraries.
-- [ ] Review provider terms; record the default production embedding provider.
-- [ ] Update ADR 0014's open questions.
+- [x] Spike branch with a throwaway docker compose (pgvector, docling-serve, worker).
+- [x] Ingest the corpus; record parse quality per document class.
+- [x] Recall@5 at 2,048 and 1,024 dimensions.
+- [x] Exact versus HNSW latency and recall by allowed-set size.
+- [x] Queue fault-injection tests for both libraries.
+- [x] Review provider terms; record the default production embedding provider.
+- [x] Update ADR 0014's open questions.
 
 **Changes.** API, database, UI: none on `main`. Docs: ADR 0014 updated; spike record in `docs/releases/v1.1.0-spike.md`.
 
@@ -281,6 +281,7 @@ database without it fails clearly at startup instead of at the first search.
 
 **Requirements**
 - A versioned migration in `persistence/migrations.py` creates the `vector` extension and the `knowledge` schema (run by the migrator role).
+  - Spike finding (RAG-00.02): pgvector is not a trusted extension, so `neuron_migrator` gets "permission denied to create extension vector". A superuser or the operator creates it first (the reference stack's init script); the migration uses `IF NOT EXISTS` and the startup check names the missing extension. Parallel HNSW builds need `shm_size` above Docker's 64 MB default.
 - Readiness and the startup checks (`persistence/startup_checks.py`) fail with a stable error code when knowledge is enabled and the extension is missing.
 - The feature is behind a setting (`APP_KNOWLEDGE_ENABLED`, default off) until v1.1.0 is released.
 - `docker-compose.reference.yml` and CI service containers use the pinned `pgvector/pgvector:pg16` image.
@@ -745,7 +746,7 @@ words, and never from anyone else's.
 
 **Requirements**
 - One transaction: `SET LOCAL neuron.kb_ids`, dense candidates (top 80) and FTS candidates (`websearch_to_tsquery`, top 80), both filtered by allowed KBs; fused with RRF (k = 60); joined to live documents (`status = 'ready' AND deleted_at IS NULL`).
-- Exact scan when the allowed set is below the spike threshold, HNSW with `iterative_scan = relaxed_order` above it.
+- Exact scan when the allowed set is at or below the spike threshold (default 10,000 chunks, RAG-00.02), HNSW with `iterative_scan = relaxed_order` and `hnsw.ef_search = 100` above it. The planner does not choose HNSW for the filtered query by itself, so the code forces the chosen path and an `EXPLAIN` test checks it.
 - Only the KB's active index profile is searched.
 - Score floor below which the result is `no_relevant_results`.
 - FTS config per KB (`simple` by default).
