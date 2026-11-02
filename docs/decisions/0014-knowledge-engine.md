@@ -299,10 +299,12 @@ recorded with versions and dates in the RAG-00.04 PR.
 - **Chunking.** `HybridChunker` needs a tokenizer. The `chunking-openai` extra uses `tiktoken`,
   already in the lock, instead of `chunking`, which pulls `transformers`. tiktoken counts are an
   approximation of the embedding model's tokens, so the token limit keeps a margin (RAG-02.03),
-  and the image must ship its encoding file because the worker has no general egress. Some
-  transitive packages of this extra were last released before 2026 (`mpire` 2024-05, `semchunk`
-  2025-10, two tree-sitter grammars); if that is not acceptable, the fallback is docling-core's
-  `HierarchicalChunker` with Neuron's own token split, which drops those 10 packages.
+  and the image must ship its encoding file because the worker has no general egress. Of the 10
+  packages this extra adds, five were last released before 2026 (`mpire` 2024-05, `semchunk`
+  2025-10 and three tree-sitter grammars); if that is not acceptable, the fallback is
+  docling-core's `HierarchicalChunker` with Neuron's own token split, which drops all 10. Other
+  transitive packages released before 2026 are small, stable libraries (`six`, `defusedxml`,
+  `python-dateutil`, `colorama`, `jsonref`, `mdurl`, `shellingham`).
 
 | Image | Pin (multi-arch index digest) | Notes |
 | --- | --- | --- |
