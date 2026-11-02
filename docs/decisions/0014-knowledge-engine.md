@@ -83,7 +83,7 @@ until evals show a gain (RAG-09.01).
 
 ### K4. Durable jobs on Postgres; the document row is the public status
 
-A `neuron-worker` console script (same image, new entrypoint) runs ingestion, delete, re-index and
+A `neuron-worker` console script (same Dockerfile and lock, a `worker` build target with the `worker` extra; see [Dependencies and images](#dependencies-and-images-rag-0004)) runs ingestion, delete, re-index and
 sweep jobs with Procrastinate, subject to the spike; PGQueuer is the named fallback, and an own
 lease table only if both fail. The upload inserts the document (`queued`) and defers the job in
 the same transaction. Each step is idempotent per `(doc_id, profile_id)`. There is no public job
@@ -257,7 +257,58 @@ The spike also found:
 - Parallel HNSW builds need more than Docker's default 64 MB `/dev/shm` (`shm_size`), or
   `max_parallel_maintenance_workers = 0` (RAG-01.01).
 
-Dependency versions, licences and image digests are recorded here by RAG-00.04.
+## Dependencies and images (RAG-00.04)
+
+Decided on 2026-11-02. RAG-01.01 and later stories add these exact versions and digests; a newer
+version needs the same checks recorded in its PR.
+
+**Worker dependencies are an optional extra, `neuron-agent[worker]`, in the same `uv.lock`.**
+The API image keeps `uv sync --no-dev` without the extra; the worker is a second build target of
+the same Dockerfile that adds `--extra worker` and the `neuron-worker` entrypoint. With the extra
+in the lock, the API's runtime environment has exactly the same files (141.3 MB); the worker's is 308.4 MB
+(+167.1 MB: pandas 43 MB, numpy 56 MB, obstore 16 MB, pillow 20 MB, lxml 12 MB). Rejected: one
+image with lazy imports, which would add those 167 MB and the parser libraries' attack surface to
+the API image (about 378 MB for the v1.0.0 image). The resolution is on the unmerged branch `RAG-00.04-lock`:
+`uv lock` resolves 197 packages with no conflict with `openai>=3.6.0`, and
+`uv export --no-dev` is unchanged from the base branch.
+
+| Package | Version (released) | First release | Licence | Role |
+| --- | --- | --- | --- | --- |
+| `procrastinate` | 3.10.0 (2026-09-23) | 2019-08-15 | MIT | Job queue (K4), worker and migrations |
+| `pgvector` | 0.5.1 (2026-10-09) | 2021-06-12 | MIT | psycopg types for `halfvec` |
+| `docling-core[chunking-openai]` | 2.105.0 (2026-10-27) | 2024-07-12 | MIT | `DoclingDocument` validation and `HybridChunker` |
+| `obstore` | 0.12.1 (2026-10-27) | 2024-10-24 | MIT | `BlobStore` for S3-compatible and local storage |
+| `langchain-openai` (already a dependency) | 1.7.3 | 2024-01-05 | MIT | `EmbeddingProvider` for the NVIDIA API catalog and TEI |
+
+Every direct package was released in 2026 and is older than the 90-day `new-dependencies` rule.
+The extra brings 29 more transitive packages; none is GPL or AGPL. The licences are BSD, MIT,
+ISC, PSF, Apache-2.0, MIT-CMU (pillow), 0BSD, Zlib and CC0 parts (numpy) and MPL-2.0 AND MIT
+(tqdm, file-level copyleft, unmodified),
+recorded with versions and dates in the RAG-00.04 PR.
+
+- **Embedding client.** No new package. `langchain-openai`'s `OpenAIEmbeddings` called the NVIDIA
+  API catalog with `dimensions=1024`, `check_embedding_ctx_length=False` and
+  `input_type` passed in `extra_body` (the API rejects a request without it, so it is honoured);
+  TEI documents the same OpenAI-compatible `/v1/embeddings` route; it was not run here, so the
+  TEI profile story checks it, including `dimensions`. Rejected: `langchain-nvidia-ai-endpoints` 1.5.0
+  (MIT), a second client with its own `aiohttp` stack for what one client already does.
+- **S3 client.** `obstore`: one small Rust-backed package with async calls and local-filesystem
+  and S3 stores, so `LocalBlobStore` and `S3BlobStore` share one API and no `botocore` is needed.
+  Rejected: `boto3` (heavier, sync), and `minio` 7.2.20 and `aioboto3` 15.5.0, whose last
+  releases are from 2025.
+- **Chunking.** `HybridChunker` needs a tokenizer. The `chunking-openai` extra uses `tiktoken`,
+  already in the lock, instead of `chunking`, which pulls `transformers`. tiktoken counts are an
+  approximation of the embedding model's tokens, so the token limit keeps a margin (RAG-02.03),
+  and the image must ship its encoding file because the worker has no general egress. Some
+  transitive packages of this extra were last released before 2026 (`mpire` 2024-05, `semchunk`
+  2025-10, two tree-sitter grammars); if that is not acceptable, the fallback is docling-core's
+  `HierarchicalChunker` with Neuron's own token split, which drops those 10 packages.
+
+| Image | Pin (multi-arch index digest) | Notes |
+| --- | --- | --- |
+| `pgvector/pgvector:pg16` | `sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f` | PostgreSQL 16.15, extension `vector` 0.8.7 (`iterative_scan` needs 0.8.0) |
+| `quay.io/docling-project/docling-serve-cpu:v1.38.2` | `sha256:7a480a1604fa3b42efeddc7db9527690d9f9bc903226136013e2bfe6b1a4dfb0` | 7.57 GB with models, the image the spike measured |
+
 
 ## Amendments
 
