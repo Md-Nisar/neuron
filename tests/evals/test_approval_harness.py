@@ -84,7 +84,7 @@ def _failures(results: list[Any]) -> list[tuple[str, list[str]]]:
 
 
 def test_the_approval_dataset_is_well_formed() -> None:
-    cases = load_eval_cases(APPROVAL_CASES)
+    cases: list[dict[str, Any]] = load_eval_cases(APPROVAL_CASES)
     assert load_dataset_version(APPROVAL_CASES) == "1.0.0"
     ids = [str(c["id"]) for c in cases]
     assert len(ids) == len(set(ids)) >= 10

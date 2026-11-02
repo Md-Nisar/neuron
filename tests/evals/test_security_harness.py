@@ -142,8 +142,9 @@ def test_a_leak_still_fails_with_a_permitted_tool_run() -> None:
 )
 async def test_permitted_tools_match_what_the_agent_lets_run(permissions: frozenset[str]) -> None:
     """The grading's permitted set is the set the tool authorization middleware offers."""
-    from langchain.agents.middleware import ModelRequest, ModelResponse
+    from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
     from langchain_core.language_models.fake_chat_models import FakeListChatModel
+    from langchain_core.tools import BaseTool
     from langgraph.runtime import Runtime
 
     from neuron_agent.models.factory import tool_authorization_middleware
@@ -152,8 +153,8 @@ async def test_permitted_tools_match_what_the_agent_lets_run(permissions: frozen
 
     offered: list[str] = []
 
-    async def handler(filtered: ModelRequest[object]) -> ModelResponse:
-        offered.extend(tool.name for tool in filtered.tools)
+    async def handler(filtered: ModelRequest[Any]) -> ModelResponse:
+        offered.extend(t.name if isinstance(t, BaseTool) else t["name"] for t in filtered.tools)
         return ModelResponse(result=[AIMessage(content="ok")])
 
     request = ModelRequest(
@@ -162,7 +163,8 @@ async def test_permitted_tools_match_what_the_agent_lets_run(permissions: frozen
         tools=[utc_now, calculator],
         runtime=Runtime(context=AuthorizationContext(permissions)),
     )
-    await tool_authorization_middleware().awrap_model_call(request, handler)
+    middleware: AgentMiddleware[Any, Any] = tool_authorization_middleware()
+    await middleware.awrap_model_call(request, handler)
     assert sorted(offered) == _permitted_tools(permissions)
 
 

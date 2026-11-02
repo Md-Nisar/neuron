@@ -104,6 +104,9 @@ python_version = "3.13"
 strict = true
 packages = ["neuron_agent"]
 plugins = ["pydantic.mypy"]
+# Tests import `tests.*` from the repository root and `neuron_agent` from src (#376).
+mypy_path = "src"
+explicit_package_bases = true
 
 [tool.pytest.ini_options]
 # Live suites (`integration`) run only when selected explicitly (`make test-integration`,

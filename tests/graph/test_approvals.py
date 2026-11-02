@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 import structlog.testing
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -49,11 +50,11 @@ def _replies(*messages: AIMessage) -> StreamingFakeModel:
 
 def _call(text: str = "buy milk") -> AIMessage:
     call = {"name": "note_taker", "args": {"text": text}, "id": f"call-{uuid.uuid4().hex[:6]}"}
-    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)  # type: ignore[arg-type]
+    return AIMessage(content="", tool_calls=[call], usage_metadata=_USAGE)
 
 
 def _final(text: str) -> AIMessage:
-    return AIMessage(content=text, usage_metadata=_USAGE)  # type: ignore[arg-type]
+    return AIMessage(content=text, usage_metadata=_USAGE)
 
 
 def _use(monkeypatch: pytest.MonkeyPatch, model: StreamingFakeModel) -> None:
@@ -211,7 +212,7 @@ async def test_a_run_without_gated_tools_does_not_checkpoint_its_inner_state(
     saver = InMemorySaver()
     graph = build_graph(Settings(env="test"), checkpointer=saver)
     context, _ = _context()
-    config = {"configurable": {"thread_id": "t-plain"}}
+    config: RunnableConfig = {"configurable": {"thread_id": "t-plain"}}
 
     await graph.ainvoke(_input("t-plain"), config=config, context=context)
 

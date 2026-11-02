@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
-import httpx
+import httpx2
 import openai
 import pytest
 import structlog.testing
@@ -27,7 +27,7 @@ from neuron_agent.state.main import MainGraphState
 
 pytestmark = pytest.mark.anyio
 
-_REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+_REQUEST = httpx2.Request("POST", "https://api.openai.com/v1/chat/completions")
 
 
 class FakeAgent:
@@ -60,7 +60,10 @@ class ScriptedAgent:
     async def ainvoke(
         self, inputs: dict[str, Any], *, config: dict[str, object]
     ) -> dict[str, object]:
-        return {**self._result, "messages": [*inputs["messages"], *self._result["messages"]]}
+        return {
+            **self._result,
+            "messages": [*inputs["messages"], *cast("list[Any]", self._result["messages"])],
+        }
 
 
 class RawTextAgent:
@@ -162,7 +165,7 @@ async def test_used_tools_ignore_tool_calls_from_earlier_turns() -> None:
 
 
 async def test_call_agent_wraps_rate_limit_error() -> None:
-    response = httpx.Response(status_code=429, request=_REQUEST)
+    response = httpx2.Response(status_code=429, request=_REQUEST)
     error = openai.RateLimitError("rate limited", response=response, body=None)
     with pytest.raises(RateLimitError):
         await call_agent(_state(), agent=FailingAgent(error))
@@ -175,7 +178,7 @@ async def test_call_agent_wraps_timeout_error() -> None:
 
 
 async def test_call_agent_wraps_authentication_error() -> None:
-    response = httpx.Response(status_code=401, request=_REQUEST)
+    response = httpx2.Response(status_code=401, request=_REQUEST)
     error = openai.AuthenticationError("bad key", response=response, body=None)
     with pytest.raises(ConfigurationError):
         await call_agent(_state(), agent=FailingAgent(error))
