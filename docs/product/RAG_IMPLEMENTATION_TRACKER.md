@@ -46,7 +46,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 
 | Epic | Title | Phase | Release | Total | Done | In progress | Blocked | Pending | Next story |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 3 | 0 | 0 | 1 | RAG-00.04 |
+| RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-01.01 (after E00) |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-02.03 (after E00) |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (after RAG-01.02) |
@@ -59,7 +59,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **3** | **0** | **0** | **53** | **RAG-00.04** |
+| **Total** | | | | **56** | **4** | **0** | **0** | **52** | **RAG-01.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 2 done.
 
@@ -89,16 +89,16 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E00 Readiness and decisions
 
-- **Stories:** 4 total · 3 done · 0 in progress · 0 blocked · 1 pending
-- **Implemented functionality:** ADR 0014 Accepted 2026-11-02, amending ADR 0001, 0002 and 0005; v1.1.0 in `docs/ROADMAP.md` (RAG-00.01). Labelled corpus and security dataset: 31 documents, 64 answerable, 12 unanswerable, 5 ACL and 4 injection cases, schema-checked in `make test` (RAG-00.03). Spike answers to ADR 0014's five open questions in `docs/releases/v1.1.0-spike.md` (RAG-00.02): Docling on CPU, 1,024 dimensions with `nemotron-3.5-embed-1b`, exact scan up to 10,000 chunks, Procrastinate with a stalled-job sweep, TEI for production.
-- **Outstanding work:** dependency and image plan (RAG-00.04).
+- **Stories:** 4 total · 4 done · 0 in progress · 0 blocked · 0 pending
+- **Implemented functionality:** ADR 0014 Accepted 2026-11-02, amending ADR 0001, 0002 and 0005; v1.1.0 in `docs/ROADMAP.md` (RAG-00.01). Labelled corpus and security dataset: 31 documents, 64 answerable, 12 unanswerable, 5 ACL and 4 injection cases, schema-checked in `make test` (RAG-00.03). Spike answers to ADR 0014's five open questions in `docs/releases/v1.1.0-spike.md` (RAG-00.02): Docling on CPU, 1,024 dimensions with `nemotron-3.5-embed-1b`, exact scan up to 10,000 chunks, Procrastinate with a stalled-job sweep, TEI for production. Dependency and image plan in ADR 0014 "Dependencies and images" (RAG-00.04): a `neuron-agent[worker]` extra (+167 MB, API environment unchanged), versions, licences and digests.
+- **Outstanding work:** none; Phase 0 is complete once #403–#406 merge.
 - **Blockers and decisions:**
   - 2026-11-02: the owner accepted ADR 0014, including the v1.1.0 scope (E00–E08).
   - Decision 2026-11-02: the research's security prerequisites are not all done. #370 is fixed
     in v1.0.0; #364 (SSRF) and #366 (HTTPS-only) are fixed for MCP by #395 (unreleased, on `main`);
     ingestion fetchers must still reuse that control (RAG-10.01), which blocks web ingestion and `research_web` but not Phase 1 (Phase 1 makes no
     outbound fetches of user URLs).
-- **Next recommended story:** RAG-00.04 (dependency and image plan), which needs RAG-00.02's answers. The spike scripts stay on the unmerged branch `RAG-00.02-spike`.
+- **Next recommended story:** RAG-01.01 (pgvector image, extension and startup check). The spike scripts stay on `RAG-00.02-spike` and the lock evidence on `RAG-00.04-lock`, both unmerged.
 
 ### RAG-E01 Knowledge storage foundation
 
@@ -203,7 +203,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Done | #399 | #403 | `docs/decisions/0014-knowledge-engine.md` Accepted 2026-11-02 (AC1); ADR 0001/0002/0005 say "Amended by ADR 0014" (AC2); spike questions listed with working defaults (AC3) |
 | RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Done | #400 | #405 | `docs/releases/v1.1.0-spike.md`: one measured answer per question (AC1); kill-worker test, exactly one completion per job (AC2); exact-scan threshold 10,000 as the RAG-04.01 default (AC3) |
 | RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Done | #401 | #404 | `tests/unit/test_knowledge_cases.py`: schema and references (AC1), counts (AC2), licence and source per document (AC3) |
-| RAG-00.04 | Dependency and image plan | 0 | P0 | Pending | #402 | — | — |
+| RAG-00.04 | Dependency and image plan | 0 | P0 | Done | #402 | PR_TBD | ADR 0014 "Dependencies and images": `uv lock` resolves beside `openai>=3.6.0`, API environment unchanged, worker +167.1 MB (AC1); licence and first release per package (AC2); versions and digests named in RAG-01.01 and RAG-02.01 (AC3) |
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Pending | — | — | — |
 | RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Pending | — | — | — |
 | RAG-01.03 | BlobStore for original files | 1 | P0 | Pending | — | — | — |
@@ -261,6 +261,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-02 | RAG-00.04: dependency and image plan in ADR 0014; Done when PR_TBD merges | Claude session |
 | 2026-11-02 | RAG-00.02: spike record and ADR 0014 answers; Done when #405 merges | Claude session |
 | 2026-11-02 | RAG-00.03: corpus, schema and test; Done when #404 merges | Claude session |
 | 2026-11-02 | Owner accepted ADR 0014: RAG-00.01 Done when #403 merges | Claude session |
