@@ -81,6 +81,10 @@ v0.8.0 ("User Application", ADR 0010 and 0011) added the `web/` single-page app 
 
 Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.md`. Check `docs/ROADMAP.md` and open issues before assuming a not-yet-released feature already exists.
 
+## RAG / Knowledge Engine work (planned for v1.1.0)
+
+Research is in `docs/research/rag/`; the backlog is `docs/product/NEURON_RAG_PRODUCT_BACKLOG.md` (IDs `RAG-Enn` for epics, `RAG-nn.mm` for stories); progress is in `docs/product/RAG_IMPLEMENTATION_TRACKER.md`. Before working on any `RAG-` story, follow the tracker's "New session protocol": read both files, check the `rag` issues, linked PRs, recent commits and the code, verify acceptance criteria against tests, and summarise status and the next unblocked story before coding. A story is Done only when every acceptance criterion has a passing test or recorded evidence. Afterwards, update the issue checklist, the Project status and the tracker together.
+
 ## AI code verification
 
 Every PR passes the gates in `docs/AI_CODE_VERIFICATION.md` (`ci`, `ai-code-verification`, `codeql`, advisory `ai-review` on NVIDIA's free API catalog). Before opening a PR: keep it under 400 changed lines, add tests that fail without the change, justify any new dependency (the `new-dependencies` job rejects packages missing from PyPI or under 90 days old), and fill in `.github/pull_request_template.md`. Run the `security-reviewer` agent for critical-tier paths. Never claim the work is verified unless `make format lint typecheck test security` passed.
