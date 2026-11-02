@@ -197,7 +197,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | ID | Title | Phase | Pri | Status | Issue | PR | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Done | #399 | — | `docs/decisions/0014-knowledge-engine.md` Accepted 2026-11-02 (AC1); ADR 0001/0002/0005 say "Amended by ADR 0014" (AC2); spike questions listed with working defaults (AC3) |
+| RAG-00.01 | ADR 0014: Knowledge Engine | 0 | P0 | Done | #399 | #403 | `docs/decisions/0014-knowledge-engine.md` Accepted 2026-11-02 (AC1); ADR 0001/0002/0005 say "Amended by ADR 0014" (AC2); spike questions listed with working defaults (AC3) |
 | RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Pending | #400 | — | — |
 | RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Pending | #401 | — | — |
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Pending | #402 | — | — |
@@ -258,7 +258,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
-| 2026-11-02 | Owner accepted ADR 0014: RAG-00.01 Done when its PR (branch `RAG-00.01`) merges | Claude session |
+| 2026-11-02 | Owner accepted ADR 0014: RAG-00.01 Done when #403 merges | Claude session |
 | 2026-11-02 | RAG-00.01: ADR 0014 written as Proposed; amendment notes in ADR 0001/0002/0005; v1.1.0 in the roadmap. Status Partial until the owner accepts | Claude session |
 | 2026-11-03 | E00 review: #364/#366 are fixed (#395), not closed as not planned; eval fixture path moved to `tests/fixtures/`; E00 approved for issue creation | Claude session |
 | 2026-11-02 | Backlog drafted from the three research reports; tracker created; all stories Pending; repository checked at `4d5a6b5` | Claude session |
