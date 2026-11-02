@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-02, against `main` at `4d5a6b5` (v1.0.0).
+**Last verified:** 2026-11-03, against `main` at `89a3020` (after v1.0.0).
 **Backlog status:** Draft, awaiting owner review. GitHub issues and the Project board have not been created.
 
 ## New session protocol
@@ -90,8 +90,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 - **Blockers and decisions:**
   - Waiting for the owner to approve this backlog and the v1.1.0 scope (E00–E08).
   - Decision 2026-11-02: the research's security prerequisites are not all done. #370 is fixed
-    in v1.0.0; #364 (SSRF) and #366 (HTTPS-only) were closed as not planned, so their scope moved
-    to RAG-10.01, which blocks web ingestion and `research_web` but not Phase 1 (Phase 1 makes no
+    in v1.0.0; #364 (SSRF) and #366 (HTTPS-only) are fixed for MCP by #395 (unreleased, on `main`);
+    ingestion fetchers must still reuse that control (RAG-10.01), which blocks web ingestion and `research_web` but not Phase 1 (Phase 1 makes no
     outbound fetches of user URLs).
 - **Next recommended story:** RAG-00.01.
 
@@ -170,7 +170,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 ### RAG-E10 External knowledge sources
 
 - **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
-- **Implemented functionality:** none. `validate_safe_url` rejects literal private addresses but does not resolve hostnames or re-check redirects (#364, closed as not planned).
+- **Implemented functionality:** none. `security/egress.py` (#395) resolves, pins and re-checks redirects for MCP only; no ingestion fetcher exists yet.
 - **Outstanding work:** RAG-10.01 to RAG-10.05.
 - **Blockers and decisions:** evidence-gated; needs a product requirement per source. RAG-10.01 blocks RAG-10.02, RAG-10.03 and RAG-11.02.
 - **Next recommended story:** RAG-10.01.
@@ -236,7 +236,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-09.06 | Load test for ingestion and search | 2 | P1 | Pending | — | — | — |
 | RAG-09.07 | Link feedback to citations | 2 | P2 | Pending | — | — | — |
 | RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Pending | — | — | — |
-| RAG-10.01 | Outbound URL safety (reopens #364 and #366) | 3 | P0 | Pending | — | — | — |
+| RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Pending | — | — | — |
 | RAG-10.02 | Web page ingestion | 3 | P2 | Pending | — | — | — |
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | — | — | — |
 | RAG-10.04 | MCP document connectors | 3 | P2 | Pending | — | — | — |
@@ -256,4 +256,5 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-03 | E00 review: #364/#366 are fixed (#395), not closed as not planned; eval fixture path moved to `tests/fixtures/`; E00 approved for issue creation | Claude session |
 | 2026-11-02 | Backlog drafted from the three research reports; tracker created; all stories Pending; repository checked at `4d5a6b5` | Claude session |
