@@ -11,7 +11,7 @@ import urllib.request
 import uuid
 
 API = "http://127.0.0.1:5001/v1/convert/file"
-OUT = pathlib.Path("/spike/docling_results.json")
+OUT = pathlib.Path("/tmp/docling_results.json")  # the image runs as a non-root user
 
 
 def convert(path: pathlib.Path) -> dict:

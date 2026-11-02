@@ -1,4 +1,5 @@
-"""Load synthetic clustered halfvec(2048) embeddings for the exact-vs-HNSW benchmark (question 3)."""
+"""Load synthetic clustered halfvec({DIM}) embeddings for the exact-vs-HNSW benchmark (question 3)."""
+import os
 import time
 
 import numpy as np
@@ -7,7 +8,7 @@ from pgvector import HalfVector
 from pgvector.psycopg import register_vector
 
 SU = "postgresql://postgres:spike-superuser@127.0.0.1:55432/neuron"
-DIM = 2048
+DIM = int(os.environ.get("SPIKE_DIM", "1024"))
 # kb_id -> chunk count. The measured sizes, plus 25 filler KBs of 500 (200,000 rows in total).
 SIZES = {1: 500, 2: 2_000, 3: 5_000, 4: 10_000, 5: 20_000, 6: 50_000, 7: 100_000}
 SIZES |= {100 + i: 500 for i in range(25)}
@@ -38,8 +39,8 @@ with psycopg.connect(SU, autocommit=True) as conn:
     conn.execute("SET maintenance_work_mem = '3GB'")
     conn.execute("SET max_parallel_maintenance_workers = 3")
     t = time.monotonic()
-    conn.execute("CREATE INDEX spike_emb_hnsw ON spike_emb USING hnsw"
-                 " ((embedding::halfvec(2048)) halfvec_cosine_ops) WHERE profile_id = 1")
+    conn.execute(f"CREATE INDEX spike_emb_hnsw ON spike_emb USING hnsw"
+                 f" ((embedding::halfvec({DIM})) halfvec_cosine_ops) WHERE profile_id = 1")
     print(f"HNSW build (m=16, ef_construction=64, 4 workers) {time.monotonic() - t:.0f}s")
     conn.execute("VACUUM ANALYZE spike_emb")
     print(conn.execute("SELECT pg_size_pretty(pg_relation_size('spike_emb')),"

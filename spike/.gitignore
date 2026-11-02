@@ -2,3 +2,4 @@
 *.log
 docling_results.json
 __pycache__/
+*.npy
