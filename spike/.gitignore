@@ -1,0 +1,4 @@
+.venv/
+*.log
+docling_results.json
+__pycache__/
