@@ -1,6 +1,31 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
+
+"Production AI Application". The first stable release, and the end of the release freeze that started at v0.9.0 (`CONTRIBUTING.md`). It is the v0.9.0 candidate plus the fixes, tests and the login theme below, with no contract change: the `/v1` API, stream protocol version 1, the existing `APP_*` setting names and the migrations are as in 0.9.0, and no migration was added.
+
+Upgrade note: in staging and production, `OTEL_EXPORTER_OTLP_TRACES_HEADERS` or `OTEL_EXPORTER_OTLP_METRICS_HEADERS` with a non-HTTPS, non-loopback `OTEL_EXPORTER_OTLP_ENDPOINT` now stops startup, as `OTEL_EXPORTER_OTLP_HEADERS` already did (#362). Verification: `docs/releases/v1.0.0-release-verification.md`.
+
+Known issues:
+- **No production environment exists.** The owner released 1.0.0 directly, without the `v1.0.0-rc.N` tags ADR 0012 (decision 12) planned, because there is no environment for a candidate to be checked in. No hosted deployment (Render), staging run, OpenAI production-model run, Anthropic live run or external penetration test has run; #160 and #253 were closed without them. The `production` job in `deploy.yml` cannot succeed without that environment, so the GitHub Release for this tag is published by hand rather than by the `release` job.
+- **The load re-run ADR 0012 asks for was not done.** v1.0.0 is meant not to regress the v0.9.0 sustained figure by more than 10% on the same host and profile (`docs/releases/v0.9.0-gate/load-baseline.json`). That needs `make reference-up` and `make load` on the baseline host; it is left to the owner. No change since 0.9.0 is meant to affect throughput, but none was measured.
+- #374 (an automated local runner for the Postgres integration tests) is open.
+- #376 (mypy on the tests) is partly done: `tests/conftest.py`, `tests/graph`, the resilience, e2e and eval tests are checked; `tests/security`, `tests/integration` and `tests/unit` are not yet.
+- The v0.9.0 known issues about the NVIDIA development models and load capacity still hold: load figures are for one local host, not hosted capacity, and `nemotron-3-ultra-550b-a55b` returns forced tool calls as text (#341).
+
+Changes:
+- Web app rebuilt on shadcn/ui with a sidebar layout and a light/dark theme toggle (#347).
+- Login theme (#354, #355, #357). `keycloak-theme/` is a Keycloakify login theme (shadcn/ui and Tailwind) with its own CI job; the development and reference Keycloak mount its JAR and the realm selects it (`docs/operations/local-docker-web.md`). Without the JAR Keycloak still imports the realm and issues tokens.
+- Calculator: exponents are capped and a power's result is bounded, so `9**9**9` and nested powers are refused instead of hanging the worker (#361).
+- Memory: expired notes are deleted after the whole scan, so paging no longer skips live notes, and `purge_expired()` returns the exact count (#361).
+- Readiness: a failing check is logged again after it has recovered once (#361).
+- Security fixes from a deep scan (#362): the staging deploy runs only for a push to this repository by `image-publish.yml`, the production build lookup takes push events only, and the digest artifact is downloaded outside the checkout; `OTEL_EXPORTER_OTLP_{TRACES,METRICS}_HEADERS` follow the HTTPS rule; with content hidden, LangSmith run errors are cut to the exception type; streaming decodes only the new part of the answer string instead of re-parsing the whole document on every chunk.
+- MCP: transport errors, task-group errors and oversized or bad compressed responses become a tool error the model sees, instead of failing the run (#370).
+- Retention: `prune` skips a thread that has an active run and holds a deletion lease while it deletes (#372).
+- Streaming: cleanup and lease release are shielded from cancellation, so a client that disconnects or stops reading no longer leaves a thread lease or a stream slot held (#369).
+- Tests: approval rollback and busy-thread erasure (#378), connection pool exhaustion and timeouts (#377), error classification through the real `AgentService` (#375), lifecycle suites through the real agent graph (#373), and mypy on part of `tests/` (#376).
+- Dependencies: `minimatch` is overridden to 11.0.3 (GHSA-g3hv-75wg-m249, dev only), and web, Keycloak theme and GitHub Actions bumps (#356, #358, #359, #360).
+- RAG research reports in `docs/research/rag/` (research only; nothing is built).
 
 - Security review of 2026-10-30 (`docs/security/security-review-2026-10-30.md`), OWASP ASI 2026 and MAESTRO.
 - `neuron-mcp-pin` now prints each tool's input schema next to its description (review R8). The schema is pinned and its property descriptions are read by the model, so it needs the same review; it is printed as ASCII-only JSON, so it cannot rewrite the terminal.

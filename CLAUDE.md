@@ -73,7 +73,9 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-The latest tagged release is v0.9.0 ("Production Candidate", ADR 0012): a local reference stack (`docker-compose.reference.yml`, `make reference-up`), Locust load tests (`loadtest/`, `make load`), a threat model, a DAST workflow, a restore drill and a rollback rehearsal, with evidence in `docs/releases/v0.9.0-gate/`. The release freeze (`CONTRIBUTING.md`) started at the tag and holds until v1.0.0: `main` takes only bug fixes, documentation, tests, dependency and security updates, and compatible changes.
+The latest release is v1.0.0 ("Production AI Application", 2026-11-02, `docs/releases/v1.0.0-release-verification.md`): the v0.9.0 candidate plus fixes, tests and the Keycloak login theme, with no contract change. It was released without `-rc` candidates and without any production environment; no hosted deployment has ever run. The v0.9.0 release freeze (`CONTRIBUTING.md`) ended at v1.0.0.
+
+v0.9.0 ("Production Candidate", ADR 0012) added a local reference stack (`docker-compose.reference.yml`, `make reference-up`), Locust load tests (`loadtest/`, `make load`), a threat model, a DAST workflow, a restore drill and a rollback rehearsal, with evidence in `docs/releases/v0.9.0-gate/`.
 
 v0.8.0 ("User Application", ADR 0010 and 0011) added the `web/` single-page app with Keycloak sign-in (PKCE), streaming chat, approvals, memories, data rights, conversation titles and feedback. v0.6.0 ("Production Deployment", ADR 0008) and v0.7.0 ("Extensible Agent Platform", ADR 0009) were tagged on 2026-10-28 as well. Their release gates (#160, #253, #293) were closed by the owner on 2026-10-29: #293 on the owner's report that the real browser and Keycloak run is done, #160 and #253 without a Render deployment or an OpenAI production-model run, which have never run. The v0.9.0 evidence is local: a Docker Compose stack, a fake model for load, and the NVIDIA free tier for the small real-model checks.
 
