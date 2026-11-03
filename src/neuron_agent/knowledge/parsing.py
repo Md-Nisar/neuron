@@ -338,25 +338,28 @@ def _heading(line: str) -> dict[str, object] | None:
     return {"kind": "heading", "text": title, "level": len(match[1])} if match and title else None
 
 
+def _code(opening: str, lines: Iterator[str]) -> Iterator[dict[str, object]]:
+    """A fenced block, up to its closing fence or the end of the page."""
+    code = [opening]
+    for line in lines:
+        code.append(line)
+        if _FENCE.match(line):
+            break
+    yield from _flush(code, "code")
+
+
 def _blocks(page: str, *, markdown: bool) -> Iterator[dict[str, object]]:
     paragraph: list[str] = []
-    fenced = False
-    for line in page.split("\n"):
+    lines = iter(page.split("\n"))
+    for line in lines:
         if markdown and _FENCE.match(line):
-            # An opening fence ends the paragraph before it; a closing one ends the code block.
-            if fenced:
-                paragraph.append(line)
-            yield from _flush(paragraph, "code" if fenced else "text")
-            if not fenced:
-                paragraph.append(line)
-            fenced = not fenced
-        elif fenced:
-            paragraph.append(line)
+            yield from _flush(paragraph)
+            yield from _code(line, lines)
         elif markdown and (heading := _heading(line)):
             yield from _flush(paragraph)
             yield heading
-        elif not line.strip():
-            yield from _flush(paragraph)
-        else:
+        elif line.strip():
             paragraph.append(line)
-    yield from _flush(paragraph, "code" if fenced else "text")
+        else:
+            yield from _flush(paragraph)
+    yield from _flush(paragraph)
