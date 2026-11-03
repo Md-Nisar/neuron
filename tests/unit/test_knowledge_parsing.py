@@ -52,6 +52,15 @@ _MAIN = DOCX + ".main+xml"
 _DOCX = {"[Content_Types].xml": _types(_MAIN), "word/document.xml": b"<w:document/>"}
 
 
+def _dupes() -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, content in _DOCX.items():
+            archive.writestr(name, content)
+        archive.writestr("Word/Document.xml", b"<w:document/>")
+    return buffer.getvalue()
+
+
 _VBA = "application/vnd.ms-office.vbaProject"
 _DOCM = "application/vnd.ms-word.document.macroEnabled.main+xml"
 _DOTX = "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml"
@@ -101,6 +110,28 @@ def test_supported_files_pass_as_the_type_their_content_shows() -> None:
         (_zip({**_DOCX, "word/activeX/activeX1.xml": b"<ax/>"}), DOCX, "macro_refused"),
         (_zip({**_DOCX, "word/vbaProjec%74.bin": b"\x00"}), DOCX, "macro_refused"),
         (_zip({**_DOCX, "[Content_Types].xml": _types(_DOTX)}), DOCX, "media_type_mismatch"),
+        # Character references or UTF-16 could hide a content type from the byte checks.
+        (
+            _zip(
+                {
+                    **_DOCX,
+                    "[Content_Types].xml": _types(_MAIN).replace(
+                        b"<Types>",
+                        b'<Types><Default Extension="bin" ContentType="&#x61;pplication/x"/>',
+                    ),
+                }
+            ),
+            DOCX,
+            "archive_refused",
+        ),
+        (
+            _zip({**_DOCX, "[Content_Types].xml": _types(_MAIN).decode().encode("utf-16")}),
+            DOCX,
+            "archive_refused",
+        ),
+        # Two names one reader may treat as one part.
+        (_dupes(), DOCX, "archive_refused"),
+        (b"%PDF-1.7\ntrailer\n<< /Encrypt\x005 0 R >>", PDF, "encrypted_pdf"),
         # PDF names may spell any character as #xx.
         (b"%PDF-1.7\ntrailer\n<< /#45ncrypt 5 0 R >>", PDF, "encrypted_pdf"),
         (b"%PDF-1.7\ntrailer\n<< /En#63rypt 5 0 R >>", PDF, "encrypted_pdf"),
@@ -206,8 +237,9 @@ async def test_markdown_headings_but_not_fenced_code() -> None:
     ],
 )
 async def test_page_and_block_bombs_are_refused(data: bytes, code: str) -> None:
+    parser = PlainTextParser()
     with pytest.raises(ParseError, match=code):
-        await PlainTextParser().parse(data, TEXT, _LIMITS)
+        await parser.parse(data, TEXT, _LIMITS)
 
 
 async def test_a_hostile_heading_line_parses_in_linear_time() -> None:
