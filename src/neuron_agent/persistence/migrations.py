@@ -775,7 +775,9 @@ async def _resolve_app_role(
             name=app_role,
             migrator=str(row["migrator"]),
             schema=str(row["schema"]),
-            worker=await _resolve_worker_role(conn, worker_role, str(row["migrator"]), app_role),
+            worker=await _resolve_worker_role(
+                conn, worker_role, str(row["migrator"]), app_role, required=required
+            ),
         )
     if required:
         raise AppRoleError(f"cannot grant to the app role: {reason}")
@@ -788,8 +790,13 @@ async def _resolve_worker_role(
     worker_role: str | None,
     migrator: str,
     app_role: str,
+    *,
+    required: bool = False,
 ) -> str | None:
-    """The worker role to grant knowledge rights to, or None (logged) when it does not exist."""
+    """The worker role to grant knowledge rights to, or None (logged) when it does not exist.
+
+    Production (`required`) needs it: the worker must not fall back to the app role (RAG-02.01).
+    """
     if worker_role is None:
         return None
     if worker_role in {migrator, app_role}:
@@ -807,6 +814,8 @@ async def _resolve_worker_role(
         raise AppRoleError("the worker role must not be a member of the app role, or the reverse")
     if row is not None and row["found"]:
         return worker_role
+    if required:
+        raise AppRoleError("cannot grant to the worker role: the worker role does not exist")
     logger.warning("worker_role_grants_skipped", reason="the worker role does not exist")
     return None
 

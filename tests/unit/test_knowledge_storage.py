@@ -252,6 +252,9 @@ async def test_a_missing_worker_role_is_skipped_and_a_shared_one_refused() -> No
     assert await resolve(_Conn({"found": False, "shared": False}), "w", "m", "a") is None
     assert await resolve(_Conn({"found": True, "shared": False}), "w", "m", "a") == "w"
     assert await resolve(_Conn(None), None, "m", "a") is None
+    # Production setup (`required`) refuses to go on without it.
+    with pytest.raises(AppRoleError, match="worker role does not exist"):
+        await resolve(_Conn({"found": False, "shared": False}), "w", "m", "a", required=True)
     # A worker that is a member of the app role (or the reverse) would share its rights.
     shared_role = _Conn({"found": True, "shared": True})
     with pytest.raises(AppRoleError, match="member"):

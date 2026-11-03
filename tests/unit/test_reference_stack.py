@@ -64,3 +64,17 @@ def test_browser_origins_are_configurable_and_closed_by_default(name: str) -> No
     assert _SERVICES[name]["environment"]["APP_CORS_ALLOWED_ORIGINS"] == (
         "${CORS_ALLOWED_ORIGINS:-[]}"
     )
+
+
+def test_the_worker_runs_as_its_own_role_only_with_knowledge() -> None:
+    worker = _SERVICES["worker"]
+    assert worker["profiles"] == ["knowledge"]
+    assert worker["command"] == ["neuron-worker"]
+    assert worker["healthcheck"]["test"] == ["CMD", "neuron-worker", "health"]
+    assert "neuron_worker:" in worker["environment"]["APP_POSTGRES_WORKER_DSN"]
+    assert worker["depends_on"]["setup"]["condition"] == "service_completed_successfully"
+    # Docker's stop timeout outlasts the 30 s drain, so SIGKILL never cuts a drain short.
+    assert int(worker["stop_grace_period"].rstrip("s")) > 30
+    assert "ports" not in worker
+    assert set(worker["environment"]) == {"APP_ENV", "APP_POSTGRES_WORKER_DSN"}
+    assert "neuron_worker" in (_ROOT / "deploy/reference/init-roles.sql").read_text("utf-8")
