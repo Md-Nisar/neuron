@@ -32,6 +32,7 @@ from psycopg.rows import dict_row
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.roles import AppRoleError, role_problems
 from neuron_agent.persistence.startup_checks import (
+    KNOWLEDGE_PROFILE_MISMATCH,
     KNOWLEDGE_SCHEMA_MISSING,
     KNOWLEDGE_SCHEMA_UNTRUSTED,
     VECTOR_EXTENSION_MISSING,
@@ -390,10 +391,200 @@ $do$
 """,
         feature="knowledge",
     ),
+    Migration(
+        version=18,
+        name="knowledge_tables",
+        # Knowledge Engine tables (ADR 0014; RAG-01.02; the research report's section 8). Every
+        # owner column holds the HMAC owner key (64 hex characters), never a raw subject. `kb_id`
+        # is copied onto chunks and embeddings for filters and row-level security; composite
+        # foreign keys keep each copy equal to its parent's. The RLS policy repeats the SQL
+        # filters (RAG-04.01) and reads `neuron.kb_ids`, which callers set with `SET LOCAL`:
+        # unset (NULL) or reset to '' after an earlier transaction, it matches no row. The
+        # migrator owns the tables, so RLS binds the app and worker roles; foreign-key cascades
+        # bypass it. `bases`, `grants` and `documents` have no RLS: the API finds them by owner
+        # and grant before it knows the allowed KB ids. The HNSW index per profile is built by
+        # `run_setup` once the profile's dimension is known.
+        sql="""
+CREATE TABLE IF NOT EXISTS knowledge.index_profiles (
+    profile_id smallint PRIMARY KEY,
+    provider text NOT NULL,
+    model text NOT NULL,
+    dimensions integer NOT NULL CHECK (dimensions BETWEEN 1 AND 4000),
+    chunker text NOT NULL,
+    status text NOT NULL CHECK (status IN ('building', 'active', 'retired')),
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS knowledge.bases (
+    kb_id uuid PRIMARY KEY,
+    owner_key text NOT NULL CHECK (owner_key ~ '^[0-9a-f]{64}$'),
+    name text NOT NULL CHECK (char_length(name) BETWEEN 1 AND 80),
+    processing text NOT NULL DEFAULT 'hosted' CHECK (processing IN ('hosted', 'self_hosted')),
+    ts_config regconfig NOT NULL DEFAULT 'simple',
+    profile_id smallint NOT NULL REFERENCES knowledge.index_profiles,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    deleted_at timestamptz
+);
+CREATE TABLE IF NOT EXISTS knowledge.grants (
+    kb_id uuid NOT NULL REFERENCES knowledge.bases ON DELETE CASCADE,
+    subject_type text NOT NULL CHECK (subject_type IN ('owner', 'role')),
+    subject text NOT NULL CHECK (
+        char_length(subject) BETWEEN 1 AND 200
+        AND (subject_type <> 'owner' OR subject ~ '^[0-9a-f]{64}$')
+    ),
+    access text NOT NULL CHECK (access IN ('read', 'write', 'admin')),
+    granted_by text NOT NULL CHECK (granted_by ~ '^[0-9a-f]{64}$'),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (kb_id, subject_type, subject)
+);
+CREATE TABLE IF NOT EXISTS knowledge.documents (
+    doc_id uuid PRIMARY KEY,
+    kb_id uuid NOT NULL REFERENCES knowledge.bases ON DELETE CASCADE,
+    uploaded_by text NOT NULL CHECK (uploaded_by ~ '^[0-9a-f]{64}$'),
+    title text NOT NULL CHECK (char_length(title) BETWEEN 1 AND 300),
+    mime_type text NOT NULL,
+    size_bytes bigint NOT NULL CHECK (size_bytes >= 0),
+    page_count integer,
+    sha256 text NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+    blob_key text NOT NULL,
+    source_type text NOT NULL DEFAULT 'upload' CHECK (source_type IN ('upload', 'github', 'web')),
+    source_ref text,
+    idempotency_key text CHECK (char_length(idempotency_key) BETWEEN 1 AND 200),
+    status text NOT NULL CHECK (
+        status IN ('queued', 'parsing', 'embedding', 'ready', 'failed', 'deleting')
+    ),
+    error_code text,
+    parser_version text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    deleted_at timestamptz,
+    UNIQUE (doc_id, kb_id)
+);
+CREATE TABLE IF NOT EXISTS knowledge.chunks (
+    chunk_id uuid PRIMARY KEY,
+    doc_id uuid NOT NULL,
+    kb_id uuid NOT NULL,
+    ordinal integer NOT NULL CHECK (ordinal >= 0),
+    text text NOT NULL,
+    headings text[] NOT NULL DEFAULT '{}',
+    page_start integer,
+    page_end integer,
+    bbox jsonb,
+    token_count integer NOT NULL CHECK (token_count >= 0),
+    ts_config regconfig NOT NULL,
+    tsv tsvector GENERATED ALWAYS AS (to_tsvector(ts_config, text)) STORED,
+    UNIQUE (chunk_id, kb_id),
+    FOREIGN KEY (doc_id, kb_id) REFERENCES knowledge.documents (doc_id, kb_id)
+        ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS knowledge.embeddings (
+    chunk_id uuid NOT NULL,
+    profile_id smallint NOT NULL REFERENCES knowledge.index_profiles,
+    kb_id uuid NOT NULL,
+    embedding halfvec NOT NULL,
+    PRIMARY KEY (chunk_id, profile_id),
+    FOREIGN KEY (chunk_id, kb_id) REFERENCES knowledge.chunks (chunk_id, kb_id)
+        ON DELETE CASCADE
+);
+ALTER TABLE knowledge.chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge.embeddings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY kb_scope ON knowledge.chunks
+    USING (kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[]))
+    WITH CHECK (
+        kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[])
+    );
+CREATE POLICY kb_scope ON knowledge.embeddings
+    USING (kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[]))
+    WITH CHECK (
+        kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[])
+    )
+""",
+        feature="knowledge",
+    ),
+    *(
+        Migration(
+            version=version,
+            name=name,
+            sql=f"CREATE {unique}INDEX CONCURRENTLY IF NOT EXISTS {index} ON knowledge.{on}",
+            concurrent=True,
+            index=f"knowledge.{index}",
+            feature="knowledge",
+        )
+        for version, name, unique, index, on in (
+            # One live copy of a file per KB; a deleted one can be uploaded again.
+            (
+                19,
+                "documents_sha_idx",
+                "UNIQUE ",
+                "documents_live_sha_idx",
+                "documents (kb_id, sha256) WHERE deleted_at IS NULL",
+            ),
+            # Upload retries with the same key return the first document.
+            (
+                20,
+                "documents_idempotency_idx",
+                "UNIQUE ",
+                "documents_idempotency_idx",
+                "documents (uploaded_by, idempotency_key) WHERE idempotency_key IS NOT NULL",
+            ),
+            (21, "chunks_tsv_idx", "", "chunks_tsv_idx", "chunks USING gin (tsv)"),
+            (22, "chunks_kb_idx", "", "chunks_kb_idx", "chunks (kb_id)"),
+            # Serves the cascade when a document is deleted.
+            (23, "chunks_doc_idx", "", "chunks_doc_idx", "chunks (doc_id)"),
+            (
+                24,
+                "embeddings_profile_kb_idx",
+                "",
+                "embeddings_profile_kb_idx",
+                "embeddings (profile_id, kb_id)",
+            ),
+        )
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"
 VECTOR_EXTENSION = "vector"
+# What each runtime role may do on the knowledge tables (RAG-01.02). The API manages bases,
+# grants and documents and only reads chunks and embeddings; the worker (RAG-02.01) reads a
+# document's metadata, records its progress and writes its chunks and embeddings. Both are also
+# bound by the `kb_scope` policy on chunks and embeddings.
+_READ = frozenset({"SELECT"})
+_KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
+    "app": {
+        "index_profiles": _READ,
+        "bases": _DML,
+        "grants": _DML,
+        "documents": _DML,
+        "chunks": _READ,
+        "embeddings": _READ,
+    },
+    "worker": {
+        "index_profiles": _READ,
+        "bases": _READ,
+        "grants": frozenset(),
+        # Plus UPDATE on `_WORKER_DOCUMENT_COLUMNS` only: never `kb_id`, `blob_key` or the owner.
+        "documents": _READ,
+        "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
+        "embeddings": frozenset({"SELECT", "INSERT", "DELETE"}),
+    },
+}
+_WORKER_DOCUMENT_COLUMNS = ("status", "error_code", "parser_version", "page_count", "updated_at")
+# Recorded in `index_profiles.chunker` (the E02 decision on #408: Docling's hierarchical
+# chunker with Neuron's own token split).
+CHUNKER = "docling-hierarchical"
+KNOWLEDGE_PROFILE_ID = 1
+
+
+@dataclass(frozen=True)
+class KnowledgeProfile:
+    """The embedding model of index profile 1, seeded from settings by the first knowledge setup.
+
+    A different model or dimension later needs a re-index into a new profile, so setup refuses
+    one that differs from the stored row.
+    """
+
+    provider: str = "nvidia"
+    model: str = "nvidia/nemotron-3.5-embed-1b"
+    dimensions: int = 1024
 
 
 async def run_setup(
@@ -409,6 +600,8 @@ async def run_setup(
     rotate_identity_key: bool = False,
     memory_store: bool = False,
     knowledge: bool = False,
+    knowledge_profile: KnowledgeProfile | None = None,
+    worker_role: str | None = None,
 ) -> list[int]:
     """Run LangGraph's `setup()`, then every unapplied migration. Returns the versions applied.
 
@@ -426,7 +619,9 @@ async def run_setup(
     (per-user memory, ADR 0009); without it a database that never enabled memory gets none.
     With `knowledge`, the `knowledge` migrations run too, after checking that the `vector`
     extension and schema exist or this role can create them (`StartupCheckError` with a
-    stable code).
+    stable code); index profile 1 is seeded from `knowledge_profile` and its HNSW index built.
+    `worker_role`, when it exists, gets the worker's knowledge-table rights (skipped with a log
+    line otherwise: the worker arrives in RAG-02.01).
     """
     timeout_ms = DEFAULT_LOCK_TIMEOUT_MS if lock_timeout_ms is None else lock_timeout_ms
     concurrent_ms = (
@@ -440,7 +635,9 @@ async def run_setup(
     try:
         await _acquire_lock(conn, lock_wait_seconds)
         await _set_lock_timeout(conn, timeout_ms)
-        target = await _resolve_app_role(conn, app_role, require_app_role)
+        target = await _resolve_app_role(
+            conn, app_role, require_app_role, worker_role if knowledge else None
+        )
         await AsyncPostgresSaver(conn).setup()
         if memory_store:
             await AsyncPostgresStore(conn).setup()
@@ -448,6 +645,13 @@ async def run_setup(
         features = {"knowledge"} if knowledge else set()
         if knowledge:
             await _check_knowledge_prerequisites(conn)
+            # Before the tables go in, too: an untrusted schema would otherwise fail them first.
+            await _verify_knowledge_schema(conn, _runtime_roles(target), missing_ok=True)
+            if target is None:
+                logger.warning(
+                    "knowledge_rls_not_enforced",
+                    reason="no separate app role: the runtime role owns the knowledge tables",
+                )
         # Tables made so far had no default privileges (first run) or are tightened here.
         # Later tables are tightened in the transaction that creates them.
         after_ddl = (lambda c: _grant(c, target)) if target is not None else None
@@ -462,7 +666,11 @@ async def run_setup(
             features,
         )
         if knowledge:
-            await _verify_knowledge_schema(conn, target.name if target is not None else None)
+            await _verify_knowledge_schema(conn, _runtime_roles(target))
+            await _verify_row_security(conn)
+            await _seed_profile(
+                conn, knowledge_profile or KnowledgeProfile(), timeout_ms, concurrent_ms
+            )
         if identity_hash_key:
             await _check_identity(conn, identity_hash_key, rotate_identity_key)
         else:
@@ -481,10 +689,14 @@ class _AppRole:
     name: str
     migrator: str
     schema: str
+    worker: str | None = None
 
 
 async def _resolve_app_role(
-    conn: psycopg.AsyncConnection[dict[str, object]], app_role: str | None, required: bool
+    conn: psycopg.AsyncConnection[dict[str, object]],
+    app_role: str | None,
+    required: bool,
+    worker_role: str | None = None,
 ) -> _AppRole | None:
     """The role to grant to, or None to skip (logged) when there is none or it is the migrator."""
     if app_role is None:
@@ -502,11 +714,71 @@ async def _resolve_app_role(
     elif not row["found"]:
         reason = "the app role does not exist"
     else:
-        return _AppRole(name=app_role, migrator=str(row["migrator"]), schema=str(row["schema"]))
+        return _AppRole(
+            name=app_role,
+            migrator=str(row["migrator"]),
+            schema=str(row["schema"]),
+            worker=await _resolve_worker_role(conn, worker_role, str(row["migrator"]), app_role),
+        )
     if required:
         raise AppRoleError(f"cannot grant to the app role: {reason}")
     logger.warning("app_role_grants_skipped", reason=reason)
     return None
+
+
+async def _resolve_worker_role(
+    conn: psycopg.AsyncConnection[dict[str, object]],
+    worker_role: str | None,
+    migrator: str,
+    app_role: str,
+) -> str | None:
+    """The worker role to grant knowledge rights to, or None (logged) when it does not exist."""
+    if worker_role is None:
+        return None
+    if worker_role in {migrator, app_role}:
+        raise AppRoleError("the worker role must differ from the app and migration roles")
+    cursor = await conn.execute(
+        "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %s) AS found", (worker_role,)
+    )
+    row = await cursor.fetchone()
+    if row is not None and row["found"]:
+        return worker_role
+    logger.warning("worker_role_grants_skipped", reason="the worker role does not exist")
+    return None
+
+
+def knowledge_grant_statements(
+    roles: dict[str, str], present: Collection[str] | None = None
+) -> list[sql.Composed]:
+    """Exact rights on the knowledge tables for each runtime role (`{"app": name, ...}`).
+
+    REVOKE ALL first, so a right granted by hand is taken back on the next setup.
+    """
+    schema = sql.Identifier(KNOWLEDGE_SCHEMA)
+    statements: list[sql.Composed] = []
+    for kind, name in roles.items():
+        role = sql.Identifier(name)
+        statements.append(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, role))
+        for table, privileges in _KNOWLEDGE_PRIVILEGES[kind].items():
+            if present is not None and table not in present:
+                continue
+            target = sql.Identifier(KNOWLEDGE_SCHEMA, table)
+            statements.append(sql.SQL("REVOKE ALL ON {} FROM {}").format(target, role))
+            if privileges:
+                statements.append(
+                    sql.SQL("GRANT {} ON {} TO {}").format(
+                        sql.SQL(", ").join(sql.SQL(p) for p in sorted(privileges)), target, role
+                    )
+                )
+            if kind == "worker" and table == "documents":
+                statements.append(
+                    sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
+                        sql.SQL(", ").join(map(sql.Identifier, _WORKER_DOCUMENT_COLUMNS)),
+                        target,
+                        role,
+                    )
+                )
+    return statements
 
 
 def default_privilege_statements(migrator: str, schema: str, app: str) -> list[sql.Composed]:
@@ -588,9 +860,16 @@ async def _grant(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRol
         present = {str(row["name"]) for row in await cursor.fetchall()}
         if await _identity_function_exists(conn, role.schema):
             present.add(_IDENTITY_FUNCTION)
+        cursor = await conn.execute(
+            "SELECT tablename::text AS name FROM pg_tables WHERE schemaname = %s",
+            (KNOWLEDGE_SCHEMA,),
+        )
+        knowledge = {str(row["name"]) for row in await cursor.fetchall()}
+        runtime = {"app": role.name} | ({"worker": role.worker} if role.worker else {})
         statements = [
             *default_privilege_statements(role.migrator, role.schema, role.name),
             *table_grant_statements(role.schema, role.name, present),
+            *(knowledge_grant_statements(runtime, knowledge) if knowledge else []),
         ]
         for statement in statements:
             await conn.execute(statement)
@@ -612,29 +891,16 @@ async def _verify_grants(
 ) -> bool:
     """Check the privilege matrix with `has_table_privilege`: a GRANT by a role that does not
     own the table only warns, so success of the statement proves nothing."""
+    checks = [(role.name, role.schema, _APP_PRIVILEGES)]
+    checks.append((role.name, KNOWLEDGE_SCHEMA, _KNOWLEDGE_PRIVILEGES["app"]))
+    if role.worker is not None:
+        checks.append((role.worker, KNOWLEDGE_SCHEMA, _KNOWLEDGE_PRIVILEGES["worker"]))
     wrong: list[str] = []
-    for table, expected in _APP_PRIVILEGES.items():
-        cursor = await conn.execute(
-            "SELECT p AS priv FROM unnest(%(privs)s::text[]) AS p"
-            " WHERE to_regclass(format('%%I.%%I', %(schema)s::text, %(table)s::text)) IS NOT NULL"
-            " AND has_table_privilege(%(role)s, format('%%I.%%I', %(schema)s::text,"
-            " %(table)s::text), p)",
-            {
-                "privs": list(_CHECKED_PRIVILEGES),
-                "schema": role.schema,
-                "table": table,
-                "role": role.name,
-            },
-        )
-        granted = {str(row["priv"]) for row in await cursor.fetchall()}
-        exists = await conn.execute(
-            "SELECT to_regclass(format('%%I.%%I', %(schema)s::text, %(table)s::text)) IS NOT NULL"
-            " AS found",
-            {"schema": role.schema, "table": table},
-        )
-        found = await exists.fetchone()
-        if found and found["found"] and granted != expected:
-            wrong.append(table)
+    for grantee, schema, matrix in checks:
+        for table, expected in matrix.items():
+            granted = await _table_privileges(conn, grantee, schema, table)
+            if granted is not None and granted != expected:
+                wrong.append(table if schema == role.schema else f"{schema}.{table}")
     if await _identity_function_exists(conn, role.schema):
         cursor = await conn.execute(
             "SELECT has_function_privilege(%s, to_regprocedure(format('%%I.%%I(text)',"
@@ -666,6 +932,27 @@ async def _verify_grants(
     return True
 
 
+async def _table_privileges(
+    conn: psycopg.AsyncConnection[dict[str, object]], role: str, schema: str, table: str
+) -> set[str] | None:
+    """What `role` holds on `schema.table` of the checked privileges; None when it is absent."""
+    cursor = await conn.execute(
+        "SELECT p AS priv FROM unnest(%(privs)s::text[]) AS p"
+        " WHERE to_regclass(format('%%I.%%I', %(schema)s::text, %(table)s::text)) IS NOT NULL"
+        " AND has_table_privilege(%(role)s, format('%%I.%%I', %(schema)s::text,"
+        " %(table)s::text), p)",
+        {"privs": list(_CHECKED_PRIVILEGES), "schema": schema, "table": table, "role": role},
+    )
+    granted = {str(row["priv"]) for row in await cursor.fetchall()}
+    exists = await conn.execute(
+        "SELECT to_regclass(format('%%I.%%I', %(schema)s::text, %(table)s::text)) IS NOT NULL"
+        " AS found",
+        {"schema": schema, "table": table},
+    )
+    found = await exists.fetchone()
+    return granted if found and found["found"] else None
+
+
 async def _verify_role(
     conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRole, *, required: bool
 ) -> None:
@@ -675,6 +962,10 @@ async def _verify_role(
     problems = await role_problems(conn, role.name, migrator=role.migrator)
     if problems:
         raise AppRoleError("the app role is too privileged: " + "; ".join(problems))
+    if role.worker is not None:
+        problems = await role_problems(conn, role.worker, migrator=role.migrator)
+        if problems:
+            raise AppRoleError("the worker role is too privileged: " + "; ".join(problems))
 
 
 async def _check_identity(
@@ -758,8 +1049,17 @@ async def _check_knowledge_prerequisites(
         )
 
 
+def _runtime_roles(target: _AppRole | None) -> list[str]:
+    if target is None:
+        return []
+    return [target.name] + ([target.worker] if target.worker else [])
+
+
 async def _verify_knowledge_schema(
-    conn: psycopg.AsyncConnection[dict[str, object]], app_role: str | None
+    conn: psycopg.AsyncConnection[dict[str, object]],
+    runtime_roles: Sequence[str],
+    *,
+    missing_ok: bool = False,
 ) -> None:
     """On every knowledge setup: the schema is this role's, and nobody else may create in it.
 
@@ -770,12 +1070,14 @@ async def _verify_knowledge_schema(
         "SELECT n.nspowner = (SELECT oid FROM pg_roles WHERE rolname = current_user) AS owned,"
         " EXISTS (SELECT 1 FROM aclexplode(coalesce(n.nspacl, acldefault('n', n.nspowner))) a"
         " WHERE a.grantee = 0 AND a.privilege_type = 'CREATE') AS public_create,"
-        " (%(app)s::text IS NOT NULL AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %(app)s)"
-        " AND has_schema_privilege(%(app)s::text, n.oid, 'CREATE')) AS app_create"
+        " EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname = ANY(%(roles)s::text[])"
+        " AND has_schema_privilege(r.oid, n.oid, 'CREATE')) AS app_create"
         " FROM pg_namespace n WHERE n.nspname = %(schema)s",
-        {"schema": KNOWLEDGE_SCHEMA, "app": app_role},
+        {"schema": KNOWLEDGE_SCHEMA, "roles": list(runtime_roles)},
     )
     row = await cursor.fetchone()
+    if row is None and missing_ok:
+        return
     if row is None or not row["owned"] or row["public_create"] or row["app_create"]:
         raise StartupCheckError(
             "the knowledge schema must be owned by the migration role, and no other role may "
@@ -783,6 +1085,99 @@ async def _verify_knowledge_schema(
             "REVOKE CREATE ON SCHEMA knowledge FROM PUBLIC as a superuser",
             KNOWLEDGE_SCHEMA_UNTRUSTED,
         )
+
+
+_RLS_TABLES = ("chunks", "embeddings")
+
+
+async def _verify_row_security(conn: psycopg.AsyncConnection[dict[str, object]]) -> None:
+    """RLS is on, the migrator owns the table and `kb_scope` has USING and WITH CHECK.
+
+    A table made by hand before migration 18 (skipped by `IF NOT EXISTS`) or RLS disabled later
+    would otherwise let every knowledge base be read.
+    """
+    cursor = await conn.execute(
+        "SELECT count(*) AS ok FROM pg_class c"
+        " JOIN pg_policy p ON p.polrelid = c.oid AND p.polname = 'kb_scope'"
+        " WHERE c.relnamespace = to_regnamespace(%(schema)s) AND c.relname = ANY(%(tables)s)"
+        " AND c.relrowsecurity AND c.relowner = (SELECT oid FROM pg_roles"
+        " WHERE rolname = current_user) AND p.polcmd = '*' AND p.polpermissive"
+        " AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL",
+        {"schema": KNOWLEDGE_SCHEMA, "tables": list(_RLS_TABLES)},
+    )
+    row = await cursor.fetchone()
+    if row is None or row["ok"] != len(_RLS_TABLES):
+        raise StartupCheckError(
+            "row-level security on knowledge.chunks and knowledge.embeddings is not as setup "
+            "made it (enabled, owned by the migration role, policy kb_scope)",
+            KNOWLEDGE_SCHEMA_UNTRUSTED,
+        )
+
+
+async def _seed_profile(
+    conn: psycopg.AsyncConnection[dict[str, object]],
+    profile: KnowledgeProfile,
+    timeout_ms: int,
+    concurrent_ms: int,
+) -> None:
+    """Record index profile 1 once, refuse a different one, and build its HNSW index.
+
+    The index casts to the profile's dimension (`halfvec` has no typmod in the table), so it is
+    built here rather than in a migration. Concurrently: a rebuild after a failed build must not
+    block writers.
+    """
+    cursor = await conn.execute(
+        "INSERT INTO knowledge.index_profiles"
+        " (profile_id, provider, model, dimensions, chunker, status)"
+        " VALUES (%(id)s, %(provider)s, %(model)s, %(dimensions)s, %(chunker)s, 'active')"
+        " ON CONFLICT (profile_id) DO NOTHING",
+        {
+            "id": KNOWLEDGE_PROFILE_ID,
+            "provider": profile.provider,
+            "model": profile.model,
+            "dimensions": profile.dimensions,
+            "chunker": CHUNKER,
+        },
+    )
+    if cursor.rowcount:
+        logger.info("knowledge_profile_seeded", profile_id=KNOWLEDGE_PROFILE_ID)
+    cursor = await conn.execute(
+        "SELECT provider, model, dimensions FROM knowledge.index_profiles WHERE profile_id = %s",
+        (KNOWLEDGE_PROFILE_ID,),
+    )
+    row = await cursor.fetchone()
+    assert row is not None  # nosec B101
+    stored = KnowledgeProfile(str(row["provider"]), str(row["model"]), int(str(row["dimensions"])))
+    if stored != profile:
+        raise StartupCheckError(
+            "the embedding provider, model or dimensions differ from index profile 1, which "
+            "this database was set up with; changing them needs a re-index",
+            KNOWLEDGE_PROFILE_MISMATCH,
+        )
+    index = f"embeddings_p{KNOWLEDGE_PROFILE_ID}_hnsw"
+    await _set_lock_timeout(conn, concurrent_ms)
+    try:
+        if await _index_is_invalid(conn, f"{KNOWLEDGE_SCHEMA}.{index}"):
+            logger.warning("invalid_index_rebuilt", index=index)
+            await conn.execute(
+                sql.SQL("DROP INDEX CONCURRENTLY IF EXISTS {}").format(
+                    sql.Identifier(KNOWLEDGE_SCHEMA, index)
+                )
+            )
+        await conn.execute(
+            sql.SQL(
+                "CREATE INDEX CONCURRENTLY IF NOT EXISTS {index} ON {table}"
+                " USING hnsw ((embedding::halfvec({dims})) halfvec_cosine_ops)"
+                " WHERE profile_id = {id}"
+            ).format(
+                index=sql.Identifier(index),
+                table=sql.Identifier(KNOWLEDGE_SCHEMA, "embeddings"),
+                dims=sql.Literal(stored.dimensions),
+                id=sql.Literal(KNOWLEDGE_PROFILE_ID),
+            )
+        )
+    finally:
+        await _set_lock_timeout(conn, timeout_ms)
 
 
 async def _acquire_lock(conn: psycopg.AsyncConnection[dict[str, object]], wait: float) -> None:
@@ -825,7 +1220,7 @@ async def _apply(
             try:
                 await conn.execute(
                     sql.SQL("DROP INDEX CONCURRENTLY IF EXISTS {}").format(
-                        sql.Identifier(migration.index)
+                        sql.Identifier(*migration.index.split("."))
                     )
                 )
             finally:

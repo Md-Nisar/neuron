@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-03, against `main` at `7457b9d` (RAG-02.03 merged via #414).
+**Last verified:** 2026-11-03, against `main` at `d31a86f` (RAG-01.01 merged via #419).
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00 and RAG-E02; the Project board has not been created.
 
 ## New session protocol
@@ -47,7 +47,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | Epic | Title | Phase | Release | Total | Done | In progress | Blocked | Pending | Next story |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
-| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 0 | 1 | 1 | 1 | RAG-01.01 (in progress); RAG-01.03 ready |
+| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 1 | 1 | 0 | 1 | RAG-01.02 (in progress); RAG-01.03 ready |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 1 | 0 | 4 | 0 | RAG-02.01 (after RAG-01.02) |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (after RAG-01.02) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (after RAG-01.02, RAG-02.03) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **5** | **1** | **5** | **45** | **RAG-01.01** |
+| **Total** | | | | **56** | **6** | **1** | **4** | **45** | **RAG-01.02** |
 
-v1.1.0 scope (E00–E08): 33 stories, 5 done.
+v1.1.0 scope (E00–E08): 33 stories, 6 done.
 
-**Recommended next action:** merge RAG-01.01 (#416), then **RAG-01.02** (#417), which unblocks RAG-02.01; RAG-01.03 (#418) can run in parallel.
+**Recommended next action:** merge **RAG-01.02** (#417), which unblocks RAG-02.01, RAG-03.01 and RAG-04.01; RAG-01.03 (#418) can run in parallel.
 
 ## GitHub synchronisation
 
@@ -105,15 +105,23 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E01 Knowledge storage foundation
 
-- **Stories:** 3 total · 0 done · 1 in progress · 1 blocked · 1 pending
-- **Implemented functionality:** RAG-01.01 on its branch: `APP_KNOWLEDGE_ENABLED` (default off); feature-gated migration 17 (`knowledge_schema`: `vector` extension and migrator-owned `knowledge` schema); a `setup` pre-check and schema-trust check; staging/production start-up and readiness checks with stable codes (`vector_extension_missing`, `knowledge_schema_missing`, `knowledge_schema_untrusted`); `pgvector/pgvector:pg16` pinned in CI, `docker-compose.yml` and the reference stack (with `shm_size` and an init script).
-- **Outstanding work:** RAG-01.01 merge; RAG-01.02 (blocked on RAG-01.01); RAG-01.03 (ready).
+- **Stories:** 3 total · 1 done · 1 in progress · 0 blocked · 1 pending
+- **Implemented functionality:** RAG-01.01 (#419): `APP_KNOWLEDGE_ENABLED` (default off); feature-gated migration 17 (`knowledge_schema`: `vector` extension and migrator-owned `knowledge` schema); a `setup` pre-check and schema-trust check; staging/production start-up and readiness checks with stable codes (`vector_extension_missing`, `knowledge_schema_missing`, `knowledge_schema_untrusted`); `pgvector/pgvector:pg16` pinned in CI, `docker-compose.yml` and the reference stack (with `shm_size` and an init script).
+  RAG-01.02 on its branch: migrations 18–24 (six `knowledge` tables, unique, GIN and B-tree indexes), RLS policy `kb_scope` on `chunks` and `embeddings`, exact grants for the app role and `APP_POSTGRES_WORKER_ROLE`, index profile 1 seeded from settings with its HNSW index, `knowledge_profile_mismatch`; schema in `ARCHITECTURE.md`.
+- **Outstanding work:** RAG-01.02 merge; RAG-01.03 (ready).
 - **Blockers and decisions:**
   - Decision (RAG-01.01, #416): the migrator has only `CONNECT` on the database, and `CREATE SCHEMA IF NOT EXISTS` checks the database privilege even when the schema exists, so the operator's superuser step creates the extension and `CREATE SCHEMA knowledge AUTHORIZATION neuron_migrator`; the migrator gets no database `CREATE`. `setup` refuses a schema owned by another role or creatable by `PUBLIC` or the app role (security review finding).
   - Assumption (RAG-01.01): "`/health/ready` reports the failing check" is a 503 plus a `knowledge_check_failed` log with the code; the unauthenticated body stays `{"status": "not_ready"}`.
   - Decision (#408): the worker gets its own `neuron_worker` role, whose grants RAG-01.02 adds.
+  - Decision (RAG-01.02, ADR 0014 security requirement 2): `bases`, `grants` and `documents` get no RLS. The API reads them to find the allowed KB ids before it can set `neuron.kb_ids`, and every query on them filters on the owner key (RAG-04.01); RLS stays on `chunks` and `embeddings`.
+  - Decision (RAG-01.02): the worker gets no RLS bypass. It sets `neuron.kb_ids` to the job's KB, so the same policy binds it (ADR 0014 requirement 1). It gets `SELECT` on `documents` plus `UPDATE` on its progress columns only (not `kb_id`, `blob_key` or the owner), and `SELECT, INSERT, DELETE` on `chunks` and `embeddings`; the app role only reads `chunks` and `embeddings` (cascades delete them).
+  - Decision (RAG-01.02): composite foreign keys keep the copied `kb_id` on `chunks` and `embeddings` equal to the parent's, since it is the RLS key. Owner columns have a `CHECK` for the 64-hex HMAC owner key.
+  - Decision (RAG-01.02): the migration policy forbids non-concurrent `CREATE INDEX`, so each index is its own concurrent migration (19–24). The HNSW index needs the profile's dimension, so `setup` builds it (concurrently, rebuilt if invalid) after seeding profile 1, not a migration. A later change of provider, model or dimension fails `setup` with `knowledge_profile_mismatch` until a re-index story exists.
+  - Assumption (RAG-01.02): while the worker role does not exist, `setup` skips its grants with `worker_role_grants_skipped`, also in production; RAG-02.01, which adds the worker, should make it required there. `chunker` is recorded as `docling-hierarchical`.
+  - Security review (RAG-01.02): no high findings. Fixed: `setup` now verifies RLS state (enabled, migrator-owned, `kb_scope` with `USING` and `WITH CHECK`) and refuses drift with `knowledge_schema_untrusted`; the worker is included in the schema `CREATE` check; the worker's `documents` UPDATE is column-level; single-role setups log `knowledge_rls_not_enforced`. Left for later stories: every query on `bases`, `grants` and `documents` must filter on the owner key, with cross-owner tests (RAG-03, RAG-04); callers must use `SET LOCAL`, never a session `SET` (RAG-04.01 test); the worker's reads of `bases` and `documents` are unscoped by design (requirement 2); worker grants are not revoked when knowledge is turned off; role-membership between app and worker is not checked.
+  - Not done (RAG-01.02): mutation testing does not apply. The RLS policy is SQL, and `mutmut` mutates only `security/` and `tools/` (`pyproject.toml`), not `persistence/`. The policy and grants are covered by the Postgres integration tests, which fail when `USING`, `WITH CHECK` or a grant changes.
   - Open (RAG-01.03): whether the API image needs `obstore`, and fail-or-warn for a local store in staging/production (proposed: fail without an explicit opt-in).
-- **Next recommended story:** RAG-01.02 after RAG-01.01 merges; RAG-01.03 can run in parallel.
+- **Next recommended story:** RAG-01.03 (or RAG-02.01 once RAG-01.02 merges).
 
 ### RAG-E02 Durable ingestion pipeline
 
@@ -214,8 +222,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Done | #400 | #405 | `docs/releases/v1.1.0-spike.md`: one measured answer per question (AC1); kill-worker test, exactly one completion per job (AC2); exact-scan threshold 10,000 as the RAG-04.01 default (AC3) |
 | RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Done | #401 | #404 | `tests/unit/test_knowledge_cases.py`: schema and references (AC1), counts (AC2), licence and source per document (AC3) |
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Done | #402 | #406 | ADR 0014 "Dependencies and images": `uv lock` resolves beside `openai>=3.6.0`, API environment unchanged, worker +167.1 MB (AC1); licence and first release per package (AC2); versions and digests named in RAG-01.01 and RAG-02.01 (AC3) |
-| RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | In progress | #416 | branch `RAG-01.01` | `tests/integration/test_postgres_knowledge.py` on pgvector: extension and schema created, migration recorded once (AC1); start-up refused with `vector_extension_missing`, readiness false (AC2); without knowledge, migration 17 not applied and the full Postgres suite passes on plain `postgres:16` (AC3, run locally 2026-11-03) |
-| RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Blocked | #417 | — | — |
+| RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Done | #416 | #419 | `tests/integration/test_postgres_knowledge.py` on pgvector: extension and schema created, migration recorded once (AC1); start-up refused with `vector_extension_missing`, readiness false (AC2); without knowledge, migration 17 not applied and the full Postgres suite passes on plain `postgres:16` (AC3, run locally 2026-11-03) |
+| RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | In progress | #417 | branch `RAG-01.02` | `tests/integration/test_postgres_knowledge_tables.py` on pgvector: only KB A's rows with `neuron.kb_ids = A` (AC1); none when unset or empty (AC2); none in the next transaction on the same connection (AC3); app and worker roles cannot `DROP`, `ALTER`, `TRUNCATE`, disable RLS or drop the policy, and hold exactly the documented grants (AC4); the v1.0.0 schema's columns, indexes, constraints and ACLs are identical after knowledge setup (AC5) |
 | RAG-01.03 | BlobStore for original files | 1 | P0 | Pending | #418 | — | — |
 | RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Blocked | #409 | — | — |
 | RAG-02.02 | Document parser adapters | 1 | P0 | Blocked | #410 | — | — |
@@ -271,6 +279,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-03 | RAG-01.01 Done (#419). RAG-01.02 In progress; decisions on RLS scope, worker rights, profile seeding recorded | Claude session |
 | 2026-11-03 | RAG-02.03 Done (#414). RAG-E01 analysed; issues #415–#418 created; #408 decisions recorded; RAG-01.01 In progress; RAG-01.02 Blocked on it | Claude session |
 | 2026-11-03 | E00 confirmed on `main`, #398–#402 closed. RAG-E02 analysed; issues #408–#413 created; RAG-02.01, 02.02, 02.04, 02.05 Blocked on E01; RAG-02.03 In progress | Claude session |
 | 2026-11-02 | RAG-00.04: dependency and image plan in ADR 0014; Done when #406 merges | Claude session |

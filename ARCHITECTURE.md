@@ -142,6 +142,21 @@ History bounds (`graphs/main_graph.py`, ADR 0005 decision 3):
 - **Storage:** after each successful turn, `evict_oldest_turns` removes the oldest whole turns, through `RemoveMessage`, so a thread holds at most `APP_MAX_THREAD_MESSAGES` messages (default `200`).
 - **No summarization:** `SummarizationMiddleware` is deliberately not used (ADR 0005), so no model-written summaries are persisted. Long-term memory (LangGraph `Store`) and domain persistence are not implemented because there is no product requirement yet.
 
+### Knowledge storage
+
+The Knowledge Engine (ADR 0014; RAG-01.02) keeps its tables in the `knowledge` schema, owned by the migrator, created by migrations 17–24 only when `APP_KNOWLEDGE_ENABLED=true`. Queries schema-qualify their tables: the schema is not on any role's `search_path`.
+
+| Table | Holds | Keys and constraints |
+| --- | --- | --- |
+| `index_profiles` | One row per embedding model: provider, model, dimensions (1–4,000), chunker, status (`building`, `active`, `retired`) | `profile_id`. `setup` seeds profile 1 from settings and refuses a change to it. |
+| `bases` | A knowledge base: owner, name, processing locality (`hosted`, `self_hosted`, RAG-02.03), text-search configuration, profile | `kb_id`; `owner_key` is the HMAC owner key (64 hex characters), never a raw subject. |
+| `grants` | Who may use a base: the owner row at creation; role rows from Phase 2 | (`kb_id`, `subject_type`, `subject`); an owner subject and `granted_by` are owner keys. |
+| `documents` | One uploaded file: title, type, size, SHA-256, blob key, source, status, error code | `doc_id`; unique live (`kb_id`, `sha256`) and (`uploaded_by`, `idempotency_key`). |
+| `chunks` | Chunk text, headings, pages, Docling bounding boxes, token count, a generated `tsvector` | `chunk_id`; (`doc_id`, `kb_id`) references `documents`, so the copied `kb_id` always matches. GIN on `tsv`; indexes on `kb_id` and `doc_id`. |
+| `embeddings` | One `halfvec` per chunk and profile | (`chunk_id`, `profile_id`); (`chunk_id`, `kb_id`) references `chunks`. Index on (`profile_id`, `kb_id`) and, per profile, a partial HNSW index on `embedding::halfvec(<dimensions>)` (`embeddings_p1_hnsw`). |
+
+Deleting a base or document cascades to its grants, documents, chunks and embeddings. Authorisation is SQL first: every query on `bases`, `grants` and `documents` filters on the caller's owner key or grant (RAG-04.01). Row-level security repeats it where the content is: the `kb_scope` policy on `chunks` and `embeddings` (`USING` and `WITH CHECK`) admits only rows whose `kb_id` is in `neuron.kb_ids`, which each transaction sets with `SET LOCAL`. Unset, or reset to an empty string after an earlier transaction on a pooled connection, it matches nothing. `bases`, `grants` and `documents` have no RLS: the API reads them to find the allowed KB ids, before it can set `neuron.kb_ids`. The policy binds the app role and the worker role (`neuron_worker`, which sets `neuron.kb_ids` per job), because neither owns the tables or has `BYPASSRLS`. The migrator, as owner, is not bound, and neither are foreign-key cascades. Grants per role are in `OPERATIONS.md`, "Database roles".
+
 ## Streaming
 
 `POST /v1/agent/stream` takes the same `AgentRequest` body as `/v1/agent/invoke` and returns `text/event-stream` (ADR 0005, decision 4). It is rate-limited and body-size-limited like `/invoke`.

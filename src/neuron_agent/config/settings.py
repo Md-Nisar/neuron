@@ -200,6 +200,9 @@ class Settings(BaseSettings):
     postgres_migration_dsn: SecretStr | None = None
     # The runtime role `setup` grants DML to (ADR 0008 decision 15); a plain role name.
     postgres_app_role: str = Field(default="neuron_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    # The ingestion worker's role (ADR 0014; RAG-01.02): with knowledge on, `setup` grants it the
+    # knowledge-table rights it needs, when it exists.
+    postgres_worker_role: str = Field(default="neuron_worker", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
@@ -266,12 +269,12 @@ class Settings(BaseSettings):
     # here and still leave the client without a key.
     langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
 
-    @field_validator("postgres_app_role")
+    @field_validator("postgres_app_role", "postgres_worker_role")
     @classmethod
     def reject_reserved_role_names(cls, value: str) -> str:
         """`pg_` names are reserved for Postgres' predefined roles."""
         if value.startswith("pg_"):
-            raise ValueError("postgres_app_role must not start with pg_")
+            raise ValueError("postgres role names must not start with pg_")
         return value
 
     @field_validator(

@@ -29,7 +29,7 @@ from neuron_agent.observability import metrics
 from neuron_agent.persistence import migrations
 from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
 from neuron_agent.persistence.feedback import FeedbackStore, InMemoryFeedback, PostgresFeedback
-from neuron_agent.persistence.migrations import identity_check_value
+from neuron_agent.persistence.migrations import KnowledgeProfile, identity_check_value
 from neuron_agent.persistence.roles import verify_runtime_role
 from neuron_agent.persistence.startup_checks import (
     DATABASE_CHECK_FAILED,
@@ -142,6 +142,7 @@ class Persistence:
     # schema; in staging and production `open()` refuses a database without them.
     knowledge_enabled: bool = False
     check_knowledge: bool = False
+    knowledge_profile: KnowledgeProfile | None = None
     # Set with `APP_LIMITS_BACKEND=postgres`: readiness also needs the guard tables, because the
     # guards fail closed on every request when `setup` has not created them.
     check_guard_tables: bool = False
@@ -291,6 +292,15 @@ class Persistence:
         return True
 
 
+def knowledge_profile(settings: Settings) -> KnowledgeProfile:
+    """Index profile 1 as settings describe it; `setup` seeds it and refuses a change."""
+    return KnowledgeProfile(
+        provider=settings.knowledge_embedding_provider,
+        model=settings.knowledge_embedding_model,
+        dimensions=settings.knowledge_embedding_dimensions,
+    )
+
+
 def build_persistence(settings: Settings) -> Persistence:
     """Build (but do not open) the checkpointer selected by settings."""
     serde = JsonPlusSerializer(allowed_msgpack_modules=_ALLOWED_MSGPACK_MODULES)
@@ -335,6 +345,7 @@ def build_persistence(settings: Settings) -> Persistence:
         check_store=hardened and settings.memory_enabled,
         knowledge_enabled=settings.knowledge_enabled,
         check_knowledge=hardened and settings.knowledge_enabled,
+        knowledge_profile=knowledge_profile(settings),
         serde=serde,
         app_role=settings.postgres_app_role if settings.env == "production" else None,
         require_tls=hardened,
@@ -362,6 +373,7 @@ async def setup_schema(persistence: Persistence) -> None:
                 conninfo,
                 memory_store=persistence.memory_enabled,
                 knowledge=persistence.knowledge_enabled,
+                knowledge_profile=persistence.knowledge_profile,
             )
         except Exception as exc:
             # Driver messages can echo DSN fragments; keep only the class name. Raised
