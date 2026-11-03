@@ -5,6 +5,7 @@ No database here; `tests/integration/test_postgres_knowledge.py` runs the same p
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -29,6 +30,8 @@ from neuron_agent.persistence.startup_checks import (
 pytestmark = pytest.mark.anyio
 
 _DSN = SecretStr("postgresql://app@localhost/n")
+# Settings only check the path; nothing is created there.
+_ABSOLUTE_BLOB_ROOT = str(Path.cwd().resolve() / "var" / "knowledge-blobs")
 
 
 def test_knowledge_is_off_by_default() -> None:
@@ -49,6 +52,7 @@ def test_knowledge_with_nvidia_needs_its_key_in_staging_and_production(env: str)
         "checkpointer": "postgres",
         "postgres_dsn": SecretStr("postgresql://app@db.example.test/n?sslmode=verify-full"),
         "knowledge_blob_local_allowed": True,
+        "knowledge_blob_root": _ABSOLUTE_BLOB_ROOT,
     }
     with pytest.raises(ValidationError, match="needs NVIDIA_API_KEY"):
         jwt_settings(knowledge_enabled=True, **hardened)
@@ -82,6 +86,7 @@ def test_the_start_up_check_runs_in_staging_and_production_with_knowledge_only(
         knowledge_enabled=knowledge,
         nvidia_api_key=SecretStr("nv-test"),
         knowledge_blob_local_allowed=True,
+        knowledge_blob_root=_ABSOLUTE_BLOB_ROOT,
     )
     persistence = build_persistence(settings)
     assert persistence.check_knowledge is check

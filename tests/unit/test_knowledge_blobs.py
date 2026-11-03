@@ -206,8 +206,12 @@ def test_local_store_is_refused_in_production_without_opt_in() -> None:
         _production(knowledge_enabled=True)
 
 
-def test_local_store_is_accepted_in_production_with_opt_in() -> None:
-    settings = _production(knowledge_enabled=True, knowledge_blob_local_allowed=True)
+def test_local_store_is_accepted_in_production_with_opt_in(tmp_path: Path) -> None:
+    settings = _production(
+        knowledge_enabled=True,
+        knowledge_blob_local_allowed=True,
+        knowledge_blob_root=str(tmp_path / "kb"),
+    )
     assert settings.knowledge_blob_backend == "local"
 
 
@@ -249,6 +253,54 @@ def test_s3_endpoint_must_be_a_plain_http_url(endpoint: str) -> None:
             knowledge_blob_bucket="neuron-kb",
             knowledge_blob_endpoint=endpoint,
         )
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://169.254.169.254",
+        "https://169.254.170.2:443",
+        "http://[fd00:ec2::254]",
+        "http://[fe80::1]:9000",
+        "http://metadata.google.internal",
+    ],
+)
+def test_s3_endpoint_refuses_metadata_addresses(endpoint: str) -> None:
+    with pytest.raises(ValidationError, match="cloud metadata"):
+        Settings(
+            env="test",
+            knowledge_blob_backend="s3",
+            knowledge_blob_bucket="neuron-kb",
+            knowledge_blob_endpoint=endpoint,
+        )
+
+
+@pytest.mark.parametrize("endpoint", ["http://minio:9000", "http://10.0.0.5:9000"])
+def test_s3_endpoint_allows_private_self_hosted_servers(endpoint: str) -> None:
+    settings = Settings(
+        env="test",
+        knowledge_blob_backend="s3",
+        knowledge_blob_bucket="neuron-kb",
+        knowledge_blob_endpoint=endpoint,
+    )
+    assert settings.knowledge_blob_endpoint == endpoint
+
+
+@pytest.mark.parametrize("bucket", ["Neuron", "a/b", "ab", "-bucket", "bucket."])
+def test_s3_bucket_must_be_a_valid_bucket_name(bucket: str) -> None:
+    with pytest.raises(ValidationError, match="knowledge_blob_bucket"):
+        Settings(env="test", knowledge_blob_backend="s3", knowledge_blob_bucket=bucket)
+
+
+def test_local_root_must_be_absolute_in_production(tmp_path: Path) -> None:
+    with pytest.raises(ValidationError, match="ROOT must be an absolute path"):
+        _production(knowledge_enabled=True, knowledge_blob_local_allowed=True)
+    settings = _production(
+        knowledge_enabled=True,
+        knowledge_blob_local_allowed=True,
+        knowledge_blob_root=str(tmp_path / "kb"),
+    )
+    assert Path(settings.knowledge_blob_root).is_absolute()
 
 
 def test_s3_endpoint_must_use_https_in_production() -> None:
