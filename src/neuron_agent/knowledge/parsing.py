@@ -172,9 +172,11 @@ def check_input(data: bytes, declared: str, limits: Limits) -> str:
         raise ParseError("unsupported_media_type")
     sniffed = sniff(data)
     if sniffed == PDF and declared == PDF:
-        # An encrypted PDF names an Encrypt dictionary; with an empty user password a parser
-        # could still read it, so any spelling of the name refuses the file (it may also be
-        # inside a stream, which refuses a readable file: failing closed).
+        # The trailer, or a cross-reference stream's dictionary (never compressed), names the
+        # Encrypt dictionary, which may not sit in an object stream (ISO 32000-1 7.5.7, 7.5.8),
+        # so a conforming encrypted PDF shows the name in its raw bytes, in some spelling. With
+        # an empty user password a parser could still read it, so the file is refused. The same
+        # bytes inside a content stream refuse a readable file: failing closed.
         if _ENCRYPT.search(data):
             raise ParseError("encrypted_pdf")
         return PDF
