@@ -264,6 +264,11 @@ def test_s3_endpoint_must_be_a_plain_http_url(endpoint: str) -> None:
         "http://[fe80::1]:9000",
         "http://[fe80::1%25eth0]:9000",
         "http://metadata.google.internal",
+        # Integer, hex, short and octal IPv4 forms that HTTP clients read as 169.254.169.254.
+        "http://2852039166",
+        "http://0xa9fea9fe",
+        "http://169.254.43518",
+        "http://0251.0376.0251.0376",
     ],
 )
 def test_s3_endpoint_refuses_metadata_addresses(endpoint: str) -> None:

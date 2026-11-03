@@ -32,6 +32,7 @@ from neuron_agent.persistence.guards import build_rate_limiter, build_run_guard
 from neuron_agent.persistence.migrations import (
     MIGRATIONS,
     IdentityKeyMismatch,
+    KnowledgeProfile,
     Migration,
     identity_check_value,
     run_setup,
@@ -146,6 +147,8 @@ async def role_db(roles: Roles) -> AsyncIterator[RoleDatabase]:
 
 async def _setup(db: RoleDatabase, **kwargs: Any) -> list[int]:
     kwargs.setdefault("app_role", db.roles.app)
+    if kwargs.get("knowledge"):
+        kwargs.setdefault("knowledge_profile", KnowledgeProfile())
     return await run_setup(db.migrator_dsn, **kwargs)
 
 

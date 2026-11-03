@@ -619,10 +619,14 @@ async def run_setup(
     (per-user memory, ADR 0009); without it a database that never enabled memory gets none.
     With `knowledge`, the `knowledge` migrations run too, after checking that the `vector`
     extension and schema exist or this role can create them (`StartupCheckError` with a
-    stable code); index profile 1 is seeded from `knowledge_profile` and its HNSW index built.
+    stable code); index profile 1 is seeded from `knowledge_profile` (required) and its HNSW index
+    built.
     `worker_role`, when it exists, gets the worker's knowledge-table rights (skipped with a log
     line otherwise: the worker arrives in RAG-02.01).
     """
+    if knowledge and knowledge_profile is None:
+        # Seeded once and fixed afterwards, so it must come from settings, never a default here.
+        raise ValueError("knowledge setup needs the knowledge_profile from settings")
     timeout_ms = DEFAULT_LOCK_TIMEOUT_MS if lock_timeout_ms is None else lock_timeout_ms
     concurrent_ms = (
         CONCURRENT_LOCK_TIMEOUT_MS
@@ -665,12 +669,10 @@ async def run_setup(
             after_ddl,
             features,
         )
-        if knowledge:
+        if knowledge and knowledge_profile is not None:
             await _verify_knowledge_schema(conn, _runtime_roles(target))
             await _verify_row_security(conn)
-            await _seed_profile(
-                conn, knowledge_profile or KnowledgeProfile(), timeout_ms, concurrent_ms
-            )
+            await _seed_profile(conn, knowledge_profile, timeout_ms, concurrent_ms)
         if identity_hash_key:
             await _check_identity(conn, identity_hash_key, rotate_identity_key)
         else:
@@ -1088,28 +1090,39 @@ async def _verify_knowledge_schema(
 
 
 _RLS_TABLES = ("chunks", "embeddings")
+# Migration 18's `kb_scope` expression as PostgreSQL 16 deparses it (`pg_get_expr`); a Postgres
+# major upgrade that deparses it differently fails the integration tests, not silently here.
+_KB_SCOPE_EXPR = (
+    "(kb_id = ANY ((string_to_array(current_setting('neuron.kb_ids'::text, true),"
+    " ','::text))::uuid[]))"
+)
 
 
 async def _verify_row_security(conn: psycopg.AsyncConnection[dict[str, object]]) -> None:
-    """RLS is on, the migrator owns the table and `kb_scope` has USING and WITH CHECK.
+    """RLS is on, the migrator owns the table, and its only permissive policy is `kb_scope`
+    with migration 18's USING and WITH CHECK expressions.
 
-    A table made by hand before migration 18 (skipped by `IF NOT EXISTS`) or RLS disabled later
-    would otherwise let every knowledge base be read.
+    A table made by hand before migration 18 (skipped by `IF NOT EXISTS`), RLS disabled later,
+    `kb_scope` rewritten, or another permissive policy (ORed with `kb_scope`) would otherwise let
+    every knowledge base be read.
     """
     cursor = await conn.execute(
         "SELECT count(*) AS ok FROM pg_class c"
-        " JOIN pg_policy p ON p.polrelid = c.oid AND p.polname = 'kb_scope'"
         " WHERE c.relnamespace = to_regnamespace(%(schema)s) AND c.relname = ANY(%(tables)s)"
         " AND c.relrowsecurity AND c.relowner = (SELECT oid FROM pg_roles"
-        " WHERE rolname = current_user) AND p.polcmd = '*' AND p.polpermissive"
-        " AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL",
-        {"schema": KNOWLEDGE_SCHEMA, "tables": list(_RLS_TABLES)},
+        " WHERE rolname = current_user)"
+        " AND (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid AND p.polpermissive) = 1"
+        " AND EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid"
+        " AND p.polname = 'kb_scope' AND p.polcmd = '*' AND p.polpermissive"
+        " AND pg_get_expr(p.polqual, p.polrelid) = %(expr)s"
+        " AND pg_get_expr(p.polwithcheck, p.polrelid) = %(expr)s)",
+        {"schema": KNOWLEDGE_SCHEMA, "tables": list(_RLS_TABLES), "expr": _KB_SCOPE_EXPR},
     )
     row = await cursor.fetchone()
     if row is None or row["ok"] != len(_RLS_TABLES):
         raise StartupCheckError(
             "row-level security on knowledge.chunks and knowledge.embeddings is not as setup "
-            "made it (enabled, owned by the migration role, policy kb_scope)",
+            "made it (enabled, owned by the migration role, kb_scope its only permissive policy)",
             KNOWLEDGE_SCHEMA_UNTRUSTED,
         )
 

@@ -361,6 +361,9 @@ async def test_upgrading_a_v1_0_0_database_leaves_its_tables_unchanged(
     [
         "ALTER TABLE knowledge.chunks DISABLE ROW LEVEL SECURITY",
         "DROP POLICY kb_scope ON knowledge.embeddings",
+        # A second permissive policy is ORed with kb_scope.
+        "CREATE POLICY open ON knowledge.chunks USING (true)",
+        "ALTER POLICY kb_scope ON knowledge.embeddings USING (true) WITH CHECK (true)",
         "GRANT CREATE ON SCHEMA knowledge TO {worker}",
     ],
 )
