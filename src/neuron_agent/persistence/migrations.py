@@ -824,33 +824,34 @@ def knowledge_grant_statements(
         role = sql.Identifier(name)
         statements.append(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, role))
         for table, privileges in _KNOWLEDGE_PRIVILEGES[kind].items():
-            if present is not None and table not in present:
-                continue
-            target = sql.Identifier(KNOWLEDGE_SCHEMA, table)
-            statements.append(sql.SQL("REVOKE ALL ON {} FROM {}").format(target, role))
-            if privileges:
-                statements.append(
-                    sql.SQL("GRANT {} ON {} TO {}").format(
-                        sql.SQL(", ").join(sql.SQL(p) for p in sorted(privileges)), target, role
-                    )
-                )
-            if table in _SERIAL_TABLES:
-                sequence = sql.Identifier(KNOWLEDGE_SCHEMA, f"{table}_id_seq")
-                statements.append(
-                    sql.SQL("REVOKE ALL ON SEQUENCE {} FROM {}").format(sequence, role)
-                )
-                if "INSERT" in privileges:
-                    statements.append(
-                        sql.SQL("GRANT USAGE ON SEQUENCE {} TO {}").format(sequence, role)
-                    )
-            if kind == "worker" and table == "documents":
-                statements.append(
-                    sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
-                        sql.SQL(", ").join(map(sql.Identifier, _WORKER_DOCUMENT_COLUMNS)),
-                        target,
-                        role,
-                    )
-                )
+            if present is None or table in present:
+                statements.extend(_table_grants(kind, table, privileges, role))
+    return statements
+
+
+def _table_grants(
+    kind: str, table: str, privileges: frozenset[str], role: sql.Identifier
+) -> list[sql.Composed]:
+    """One knowledge table's grants for one role, its id sequence's and its column grants."""
+    target = sql.Identifier(KNOWLEDGE_SCHEMA, table)
+    statements = [sql.SQL("REVOKE ALL ON {} FROM {}").format(target, role)]
+    if privileges:
+        statements.append(
+            sql.SQL("GRANT {} ON {} TO {}").format(
+                sql.SQL(", ").join(sql.SQL(p) for p in sorted(privileges)), target, role
+            )
+        )
+    if table in _SERIAL_TABLES:
+        sequence = sql.Identifier(KNOWLEDGE_SCHEMA, f"{table}_id_seq")
+        statements.append(sql.SQL("REVOKE ALL ON SEQUENCE {} FROM {}").format(sequence, role))
+        if "INSERT" in privileges:
+            statements.append(sql.SQL("GRANT USAGE ON SEQUENCE {} TO {}").format(sequence, role))
+    if kind == "worker" and table == "documents":
+        statements.append(
+            sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
+                sql.SQL(", ").join(map(sql.Identifier, _WORKER_DOCUMENT_COLUMNS)), target, role
+            )
+        )
     return statements
 
 

@@ -248,22 +248,14 @@ def test_the_worker_role_name_is_a_plain_unreserved_name() -> None:
 
 
 async def test_a_missing_worker_role_is_skipped_and_a_shared_one_refused() -> None:
-    assert (
-        await migrations._resolve_worker_role(
-            _Conn({"found": False, "shared": False}), "w", "m", "a"
-        )
-        is None
-    )  # type: ignore[arg-type]
-    assert (
-        await migrations._resolve_worker_role(
-            _Conn({"found": True, "shared": False}), "w", "m", "a"
-        )
-        == "w"
-    )  # type: ignore[arg-type]
-    assert await migrations._resolve_worker_role(_Conn(None), None, "m", "a") is None  # type: ignore[arg-type]
+    resolve: Any = migrations._resolve_worker_role
+    assert await resolve(_Conn({"found": False, "shared": False}), "w", "m", "a") is None
+    assert await resolve(_Conn({"found": True, "shared": False}), "w", "m", "a") == "w"
+    assert await resolve(_Conn(None), None, "m", "a") is None
     # A worker that is a member of the app role (or the reverse) would share its rights.
+    shared_role = _Conn({"found": True, "shared": True})
     with pytest.raises(AppRoleError, match="member"):
-        await migrations._resolve_worker_role(_Conn({"found": True, "shared": True}), "w", "m", "a")  # type: ignore[arg-type]
+        await resolve(shared_role, "w", "m", "a")
     for shared in ("m", "a"):
         with pytest.raises(AppRoleError):
             await migrations._resolve_worker_role(_Conn(None), shared, "m", "a")  # type: ignore[arg-type]
