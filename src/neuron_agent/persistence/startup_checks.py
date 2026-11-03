@@ -130,8 +130,15 @@ KNOWLEDGE_CHECK_SQL = (
 
 async def knowledge_problem(conn: psycopg.AsyncConnection[Any]) -> str | None:
     """The stable code of what knowledge is missing (extension first), or None."""
+    return _knowledge_code(await _knowledge_row(conn))
+
+
+async def _knowledge_row(conn: psycopg.AsyncConnection[Any]) -> Any:
     cursor = await conn.execute(KNOWLEDGE_CHECK_SQL)
-    row = await cursor.fetchone()
+    return await cursor.fetchone()
+
+
+def _knowledge_code(row: Any) -> str | None:
     if row is None or not row["vector"]:
         return VECTOR_EXTENSION_MISSING
     if not row["schema"]:
@@ -149,11 +156,10 @@ async def verify_knowledge(
     runtime role that can create objects in the schema: as its owner, a member of the owner or
     through a grant, it could plant tables or functions beside the knowledge tables.
     """
-    code = await knowledge_problem(conn)
+    row = await _knowledge_row(conn)
+    code = _knowledge_code(row)
     if code is None and least_privilege:
-        cursor = await conn.execute(KNOWLEDGE_CHECK_SQL)
-        row = await cursor.fetchone()
-        if row is not None and row["can_create"]:
+        if row["can_create"]:
             raise StartupCheckError(
                 "the runtime database role can create objects in the knowledge schema; "
                 "make the migration role its owner and revoke CREATE from other roles",

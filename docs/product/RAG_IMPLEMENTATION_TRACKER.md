@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-03, against `main` at `237e40c` (RAG-01.02 merged via #420).
+**Last verified:** 2026-11-03, against `main` at `da91370` (RAG-01.03 merged; E01 post-merge review fixes on `ccr-7c4dd17f-k9sle9`).
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00 and RAG-E02; the Project board has not been created.
 
 ## New session protocol
@@ -47,7 +47,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | Epic | Title | Phase | Release | Total | Done | In progress | Blocked | Pending | Next story |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
-| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 2 | 1 | 0 | 0 | RAG-01.03 (in progress) |
+| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 1 | 0 | 3 | 1 | RAG-02.01 (ready) |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (ready) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (ready) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **7** | **1** | **3** | **45** | **RAG-01.03** |
+| **Total** | | | | **56** | **8** | **0** | **3** | **45** | **RAG-02.01** |
 
-v1.1.0 scope (E00–E08): 33 stories, 7 done.
+v1.1.0 scope (E00–E08): 33 stories, 8 done.
 
-**Recommended next action:** merge **RAG-01.03** (#418), then RAG-02.01 (#409, the worker and job queue); RAG-03.01 and RAG-04.01 are also unblocked.
+**Recommended next action:** RAG-02.01 (#409, the worker and job queue); RAG-03.01 and RAG-04.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -105,11 +105,11 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E01 Knowledge storage foundation
 
-- **Stories:** 3 total · 2 done · 1 in progress · 0 blocked · 0 pending
+- **Stories:** 3 total · 3 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-01.01 (#419): `APP_KNOWLEDGE_ENABLED` (default off); feature-gated migration 17 (`knowledge_schema`: `vector` extension and migrator-owned `knowledge` schema); a `setup` pre-check and schema-trust check; staging/production start-up and readiness checks with stable codes (`vector_extension_missing`, `knowledge_schema_missing`, `knowledge_schema_untrusted`); `pgvector/pgvector:pg16` pinned in CI, `docker-compose.yml` and the reference stack (with `shm_size` and an init script).
   RAG-01.02 (#420): migrations 18–24 (six `knowledge` tables, unique, GIN and B-tree indexes), RLS policy `kb_scope` on `chunks` and `embeddings`, exact grants for the app role and `APP_POSTGRES_WORKER_ROLE`, index profile 1 seeded from settings with its HNSW index, `knowledge_profile_mismatch`; schema in `ARCHITECTURE.md`.
-  RAG-01.03 on its branch: `knowledge/blobs.py` (`BlobStore`, `LocalBlobStore`, `S3BlobStore` over `obstore`; random 128-bit hex keys, SHA-256 computed while streaming and re-checked on read, idempotent delete, failed uploads cleaned up), `APP_KNOWLEDGE_BLOB_*` settings.
-- **Outstanding work:** RAG-01.03 merge.
+  RAG-01.03 (on `main`, `d563218`…`da91370`): `knowledge/blobs.py` (`BlobStore`, `LocalBlobStore`, `S3BlobStore` over `obstore`; random 128-bit hex keys, SHA-256 computed while streaming and re-checked on read, idempotent delete, failed uploads cleaned up), `APP_KNOWLEDGE_BLOB_*` settings.
+- **Outstanding work:** close #418 and #415 (not done from the cloud session: the GitHub connection failed).
 - **Blockers and decisions:**
   - Decision (RAG-01.01, #416): the migrator has only `CONNECT` on the database, and `CREATE SCHEMA IF NOT EXISTS` checks the database privilege even when the schema exists, so the operator's superuser step creates the extension and `CREATE SCHEMA knowledge AUTHORIZATION neuron_migrator`; the migrator gets no database `CREATE`. `setup` refuses a schema owned by another role or creatable by `PUBLIC` or the app role (security review finding).
   - Assumption (RAG-01.01): "`/health/ready` reports the failing check" is a 503 plus a `knowledge_check_failed` log with the code; the unauthenticated body stays `{"status": "not_ready"}`.
@@ -128,7 +128,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Security review (RAG-01.03): no high findings. Fixed: `put` takes a required `max_bytes` and raises `BlobTooLargeError` (`blob_too_large`) without storing anything; failed-upload clean-up is shielded from cancellation; other storage errors become `blob_backend_error` without the path or URL (logged by type only); the local root is set to `0700` even when it exists; whitespace-only blob settings count as unset. Documented in `OPERATIONS.md`: an S3 lifecycle rule for incomplete multipart uploads, and checking the ambient AWS identity when no keys are set. Left as is: `get` reads the whole blob into memory (bounded by `max_bytes` at `put`); a symlink planted in the root needs write access to it already.
   - Story review (RAG-01.03): the AI review's medium finding (S3 endpoint to internal hosts) is fixed in proportion: link-local addresses (`169.254.0.0/16`, `fe80::/10`), `fd00:ec2::254` and the GCP/Azure metadata names are refused; private hosts stay allowed for self-hosted MinIO, as for the embedding base URL (ADR 0014 requirement 4). Also fixed: the bucket name must be a valid S3 name; with knowledge on, staging/production need an absolute `APP_KNOWLEDGE_BLOB_ROOT` (a relative root follows the working directory, rarely the volume).
   - Assumption (RAG-01.03): the default root `var/knowledge-blobs` is relative, for development; RAG-02.01 or RAG-03.02 wires the store into a process and mounts the volume.
-- **Next recommended story:** RAG-02.01 after RAG-01.03 merges.
+  - Post-merge review (E01, 2026-11-03): no high findings. Fixed: `setup` refused only a missing or clause-less `kb_scope`, so an extra permissive policy (ORed in) or a `kb_scope` rewritten to `USING (true)` passed; it now requires `kb_scope` to be the only permissive policy, with migration 18's expressions (compared as PostgreSQL 16 deparses them). The S3 endpoint check also refuses integer, hex, octal and short IPv4 forms. `run_setup` now requires the knowledge profile instead of defaulting one. Left for RAG-03.02: the idempotency index is per uploader, not per KB, so a replay must check `kb_id` and current access.
+- **Next recommended story:** RAG-02.01.
 
 ### RAG-E02 Durable ingestion pipeline
 

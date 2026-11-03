@@ -123,6 +123,12 @@ async def test_the_start_up_check_passes_with_both() -> None:
     await verify_knowledge(_Conn(row), least_privilege=True)  # type: ignore[arg-type]
 
 
+async def test_knowledge_setup_needs_the_profile_from_settings() -> None:
+    # Profile 1 is fixed once seeded, so a caller that forgets it must not seed a default.
+    with pytest.raises(ValueError, match="knowledge_profile"):
+        await migrations.run_setup("postgresql://unused", knowledge=True)
+
+
 async def test_production_refuses_a_runtime_role_that_can_create_in_the_schema() -> None:
     row = {"vector": True, "schema": True, "can_create": True}
     # Development, test and staging's single-role profile allow it; readiness ignores it.

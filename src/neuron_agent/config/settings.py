@@ -35,6 +35,8 @@ ProcessingPolicy = Literal["allow_hosted", "self_hosted_only"]
 SUPPORTED_PROVIDERS = frozenset({"openai", "nvidia", "anthropic"})
 # Instance-metadata names; link-local addresses are refused by address.
 _METADATA_HOSTS = frozenset({"metadata.google.internal", "metadata.azure.internal"})
+# A host whose last label is numeric is an IPv4 address to URL parsers (WHATWG), in any form.
+_NUMERIC_LABEL = re.compile(r"(0x[0-9a-f]*|[0-9]+)")
 _HOST_PATTERN = re.compile(r"^(\*|(\*\.)?[a-z0-9.-]+)$")
 _ORIGIN_PATTERN = re.compile(r"^https?://([a-z0-9.-]+|\[[0-9a-f:]+\])(:[0-9]{1,5})?$")
 
@@ -60,13 +62,15 @@ def _is_loopback_bind(host: str) -> bool:
 
 
 def _is_metadata_host(hostname: str) -> bool:
-    """A link-local address or a well-known cloud instance-metadata name."""
-    if hostname.lower().rstrip(".") in _METADATA_HOSTS:
+    """A link-local address, a well-known cloud instance-metadata name, or an IPv4 address in a
+    non-canonical form (integer, hex, octal or short), which HTTP clients may read as either."""
+    name = hostname.lower().rstrip(".")
+    if name in _METADATA_HOSTS:
         return True
     try:
         address = ipaddress.ip_address(hostname)
     except ValueError:
-        return False
+        return bool(_NUMERIC_LABEL.fullmatch(name.rsplit(".", 1)[-1]))
     return address.is_link_local or address == ipaddress.ip_address("fd00:ec2::254")
 
 

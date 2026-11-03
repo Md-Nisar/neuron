@@ -16,7 +16,7 @@ from test_postgres_roles import RoleDatabase, _rows, _setup, role_db, roles  # n
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.persistence.checkpointer import build_persistence
-from neuron_agent.persistence.migrations import MIGRATIONS, run_setup
+from neuron_agent.persistence.migrations import MIGRATIONS, KnowledgeProfile, run_setup
 from neuron_agent.persistence.startup_checks import (
     KNOWLEDGE_SCHEMA_MISSING,
     KNOWLEDGE_SCHEMA_UNTRUSTED,
@@ -53,11 +53,11 @@ def _settings(db: RoleDatabase, **overrides: Any) -> Settings:
 
 
 async def test_setup_creates_the_extension_and_schema_once(dsn: str) -> None:  # noqa: F811
-    applied = await run_setup(dsn, knowledge=True)
+    applied = await run_setup(dsn, knowledge=True, knowledge_profile=KnowledgeProfile())
     assert applied == [m.version for m in MIGRATIONS]
     assert await _rows(dsn, _EXTENSION) == [(1,)]
     assert await _rows(dsn, _SCHEMA) == [(True,)]
-    assert await run_setup(dsn, knowledge=True) == []
+    assert await run_setup(dsn, knowledge=True, knowledge_profile=KnowledgeProfile()) == []
     assert await _rows(
         dsn, "SELECT count(*) FROM neuron_migrations WHERE version = %s", (_KNOWLEDGE,)
     ) == [(1,)]
@@ -70,7 +70,7 @@ async def test_without_knowledge_setup_is_as_in_v1_0_0(dsn: str) -> None:  # noq
     assert await _rows(dsn, _EXTENSION) == [(0,)]
     assert await _rows(dsn, _SCHEMA) == [(False,)]
     # Turning knowledge on later applies only its migration.
-    assert await run_setup(dsn, knowledge=True) == [
+    assert await run_setup(dsn, knowledge=True, knowledge_profile=KnowledgeProfile()) == [
         m.version for m in MIGRATIONS if m.feature == "knowledge"
     ]
 
