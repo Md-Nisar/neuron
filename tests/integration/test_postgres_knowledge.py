@@ -70,7 +70,9 @@ async def test_without_knowledge_setup_is_as_in_v1_0_0(dsn: str) -> None:  # noq
     assert await _rows(dsn, _EXTENSION) == [(0,)]
     assert await _rows(dsn, _SCHEMA) == [(False,)]
     # Turning knowledge on later applies only its migration.
-    assert await run_setup(dsn, knowledge=True) == [_KNOWLEDGE]
+    assert await run_setup(dsn, knowledge=True) == [
+        m.version for m in MIGRATIONS if m.feature == "knowledge"
+    ]
 
 
 async def test_the_migrator_cannot_create_the_extension_and_setup_names_it(

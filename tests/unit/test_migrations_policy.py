@@ -9,7 +9,7 @@ from tests.conftest import PRODUCTION_PROFILE
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.persistence import cli, migrations
-from neuron_agent.persistence.migrations import MIGRATIONS, Migration
+from neuron_agent.persistence.migrations import MIGRATIONS, KnowledgeProfile, Migration
 
 _RELEASE = re.compile(r"\d+\.\d+\.\d+")
 _IDENT = r'(?:"[^"]+"|\w+)'
@@ -121,8 +121,10 @@ def test_migration_flags_are_consistent() -> None:
         ):
             assert migration.index, migration.name
         if migration.index:
-            # `to_regclass` and DROP INDEX use it as given: lowercase, no schema prefix.
-            assert re.fullmatch(r"[a-z_][a-z0-9_]*", migration.index), migration.name
+            # `to_regclass` and DROP INDEX use it as given: lowercase, and schema-qualified
+            # exactly when the migration is a feature's (the knowledge schema).
+            prefix = r"knowledge\." if migration.feature == "knowledge" else ""
+            assert re.fullmatch(prefix + r"[a-z_][a-z0-9_]*", migration.index), migration.name
 
 
 def test_only_the_cli_reads_the_migration_dsn() -> None:
@@ -278,6 +280,8 @@ def test_setup_passes_the_role_and_key_and_requires_the_split_in_production(
         "rotate_identity_key": True,
         "memory_store": False,
         "knowledge": False,
+        "knowledge_profile": KnowledgeProfile(),
+        "worker_role": "neuron_worker",
     }
 
 

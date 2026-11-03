@@ -14,8 +14,9 @@ from tests.unit.test_startup_checks import _Conn
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.persistence import cli, migrations
-from neuron_agent.persistence.checkpointer import build_persistence
-from neuron_agent.persistence.migrations import MIGRATIONS, Migration
+from neuron_agent.persistence.checkpointer import build_persistence, knowledge_profile
+from neuron_agent.persistence.migrations import MIGRATIONS, KnowledgeProfile, Migration
+from neuron_agent.persistence.roles import AppRoleError
 from neuron_agent.persistence.startup_checks import (
     KNOWLEDGE_SCHEMA_MISSING,
     KNOWLEDGE_SCHEMA_UNTRUSTED,
@@ -165,9 +166,9 @@ async def test_setup_proceeds_when_both_exist_or_can_be_created(changes: dict[st
 
 def test_the_knowledge_migration_is_feature_gated() -> None:
     gated = [m for m in MIGRATIONS if m.feature is not None]
-    assert [(m.version, m.name, m.feature) for m in gated] == [
-        (17, "knowledge_schema", "knowledge")
-    ]
+    assert [m.version for m in gated] == list(range(17, 25))
+    assert {m.feature for m in gated} == {"knowledge"}
+    assert gated[0].name == "knowledge_schema"
     assert "CREATE EXTENSION IF NOT EXISTS vector" in gated[0].sql
     # `CREATE SCHEMA IF NOT EXISTS` checks the database privilege even when the schema exists.
     assert "CREATE SCHEMA knowledge" in gated[0].sql
@@ -195,3 +196,48 @@ def test_cli_setup_passes_the_knowledge_setting(
     )
     cli._setup(settings, rotate_identity_key=False)
     assert seen["knowledge"] is enabled
+
+
+def test_knowledge_grants_are_exact_and_revoke_first() -> None:
+    statements = [
+        s.as_string()
+        for s in migrations.knowledge_grant_statements(
+            {"app": "neuron_app", "worker": "neuron_worker"}, {"chunks", "grants"}
+        )
+    ]
+    assert statements == [
+        'GRANT USAGE ON SCHEMA "knowledge" TO "neuron_app"',
+        'REVOKE ALL ON "knowledge"."grants" FROM "neuron_app"',
+        'GRANT DELETE, INSERT, SELECT, UPDATE ON "knowledge"."grants" TO "neuron_app"',
+        'REVOKE ALL ON "knowledge"."chunks" FROM "neuron_app"',
+        'GRANT SELECT ON "knowledge"."chunks" TO "neuron_app"',
+        'GRANT USAGE ON SCHEMA "knowledge" TO "neuron_worker"',
+        'REVOKE ALL ON "knowledge"."grants" FROM "neuron_worker"',
+        'REVOKE ALL ON "knowledge"."chunks" FROM "neuron_worker"',
+        'GRANT DELETE, INSERT, SELECT ON "knowledge"."chunks" TO "neuron_worker"',
+    ]
+
+
+def test_the_profile_comes_from_the_embedding_settings() -> None:
+    settings = Settings(
+        env="test", knowledge_embedding_provider="fake", knowledge_embedding_dimensions=8
+    )
+    assert knowledge_profile(settings) == KnowledgeProfile(
+        provider="fake", model="nvidia/nemotron-3.5-embed-1b", dimensions=8
+    )
+
+
+def test_the_worker_role_name_is_a_plain_unreserved_name() -> None:
+    assert Settings(env="test").postgres_worker_role == "neuron_worker"
+    for bad in ("pg_worker", "Worker", "a-b", 'x"; DROP'):
+        with pytest.raises(ValidationError):
+            Settings(env="test", postgres_worker_role=bad)
+
+
+async def test_a_missing_worker_role_is_skipped_and_a_shared_one_refused() -> None:
+    assert await migrations._resolve_worker_role(_Conn({"found": False}), "w", "m", "a") is None  # type: ignore[arg-type]
+    assert await migrations._resolve_worker_role(_Conn({"found": True}), "w", "m", "a") == "w"  # type: ignore[arg-type]
+    assert await migrations._resolve_worker_role(_Conn(None), None, "m", "a") is None  # type: ignore[arg-type]
+    for shared in ("m", "a"):
+        with pytest.raises(AppRoleError):
+            await migrations._resolve_worker_role(_Conn(None), shared, "m", "a")  # type: ignore[arg-type]

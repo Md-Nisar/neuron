@@ -27,6 +27,7 @@ DATABASE_CHECK_FAILED = "database_check_failed"
 VECTOR_EXTENSION_MISSING = "vector_extension_missing"
 KNOWLEDGE_SCHEMA_MISSING = "knowledge_schema_missing"
 KNOWLEDGE_SCHEMA_UNTRUSTED = "knowledge_schema_untrusted"
+KNOWLEDGE_PROFILE_MISMATCH = "knowledge_profile_mismatch"
 
 
 class StartupCheckError(Exception):
