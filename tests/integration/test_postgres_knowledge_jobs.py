@@ -125,7 +125,7 @@ async def test_the_api_queues_and_the_worker_runs_with_exact_rights(
     assert await granted(worker[0]) == dict.fromkeys(_QUEUE_TABLES, dml)
     # The worker reaches nothing in `public`: no threads, checkpoints or token ledger.
     for table in ("checkpoints", "checkpoint_writes", "neuron_thread_meta", "neuron_token_ledger"):
-        await _denied(worker_dsn, f"SELECT 1 FROM public.{table}")
+        await _denied(worker_dsn, f"SELECT 1 FROM public.{table}")  # noqa: S608
     # The API cannot change or drop a queued job.
     await _denied(role_db.app_dsn, "UPDATE knowledge.procrastinate_jobs SET status = 'todo'")
     await _denied(role_db.app_dsn, "DELETE FROM knowledge.procrastinate_jobs")
