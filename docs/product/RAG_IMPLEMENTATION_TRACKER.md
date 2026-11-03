@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-03, against `main` at `89a3020` (after v1.0.0).
-**Backlog status:** Draft, awaiting owner review. GitHub issues and the Project board have not been created.
+**Last verified:** 2026-11-03, against `main` at `c2c99cf` (Phase 0 merged via #407).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 and RAG-E02; the Project board has not been created.
 
 ## New session protocol
 
@@ -48,7 +48,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-01.01 (after E00) |
-| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-02.03 (after E00) |
+| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 0 | 1 | 4 | 0 | RAG-02.03 (in progress); the rest after RAG-01.02 |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (after RAG-01.02) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (after RAG-01.02, RAG-02.03) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
@@ -59,20 +59,19 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **4** | **0** | **0** | **52** | **RAG-01.01** |
+| **Total** | | | | **56** | **4** | **1** | **4** | **47** | **RAG-01.01** |
 
-v1.1.0 scope (E00–E08): 33 stories, 2 done.
+v1.1.0 scope (E00–E08): 33 stories, 4 done.
 
-**Recommended next action:** the owner reviews and approves the backlog (scope, IDs, release
-mapping). Then create the labels, issues and Project board, and start **RAG-00.01 ADR 0014**.
+**Recommended next action:** merge RAG-02.03, then start **RAG-01.01**: RAG-02.01, 02.02, 02.04 and 02.05 are blocked on RAG-01.02 (and RAG-01.03).
 
 ## GitHub synchronisation
 
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 created (#398); E01–E12 not created |
-| Story issues (56) | RAG-00.01–00.04 created (#399–#402); the rest not created |
+| Epic issues (13) | RAG-E00 (#398, closed), RAG-E02 (#408); the others not created |
+| Story issues (56) | RAG-00.01–00.04 (#399–#402, closed), RAG-02.01–02.05 (#409–#413); the rest not created |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
 ### Issue map
@@ -83,7 +82,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | --- | --- | --- |
 | RAG-E00 | #398 | Not on a board |
 | RAG-00.01 … RAG-00.04 | #399–#402 | Not on a board |
-| RAG-E01 … RAG-E12 | — | — |
+| RAG-E02 | #408 | Not on a board |
+| RAG-02.01 … RAG-02.05 | #409–#413 | Not on a board |
+| RAG-E01, RAG-E03 … RAG-E12 | — | — |
 
 ## Epic detail
 
@@ -91,7 +92,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 - **Stories:** 4 total · 4 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** ADR 0014 Accepted 2026-11-02, amending ADR 0001, 0002 and 0005; v1.1.0 in `docs/ROADMAP.md` (RAG-00.01). Labelled corpus and security dataset: 31 documents, 64 answerable, 12 unanswerable, 5 ACL and 4 injection cases, schema-checked in `make test` (RAG-00.03). Spike answers to ADR 0014's five open questions in `docs/releases/v1.1.0-spike.md` (RAG-00.02): Docling on CPU, 1,024 dimensions with `nemotron-3.5-embed-1b`, exact scan up to 10,000 chunks, Procrastinate with a stalled-job sweep, TEI for production. Dependency and image plan in ADR 0014 "Dependencies and images" (RAG-00.04): a `neuron-agent[worker]` extra (+167 MB, API environment unchanged), versions, licences and digests.
-- **Outstanding work:** none; Phase 0 is complete once #403–#406 merge.
+- **Outstanding work:** none. Phase 0 is on `main` (#403, then #407 relanding #404–#406); #398–#402 closed.
 - **Blockers and decisions:**
   - 2026-11-02: the owner accepted ADR 0014, including the v1.1.0 scope (E00–E08).
   - Decision 2026-11-02: the research's security prerequisites are not all done. #370 is fixed
@@ -110,11 +111,14 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E02 Durable ingestion pipeline
 
-- **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
-- **Implemented functionality:** none.
-- **Outstanding work:** RAG-02.01 to RAG-02.05.
-- **Blockers and decisions:** queue library chosen by the spike (Procrastinate, PGQueuer as fallback).
-- **Next recommended story:** RAG-02.03 (depends only on ADR 0014), then RAG-02.01.
+- **Stories:** 5 total · 0 done · 1 in progress · 4 blocked · 0 pending
+- **Implemented functionality:** RAG-02.03 on its branch: `knowledge/providers.py` (`EmbeddingProvider` over LangChain `Embeddings`: `nvidia`, `openai_compatible`, a numpy-free `fake`; batching; count, dimension and finite checks; retries for 429/5xx/connection errors only; sanitised codes) and the `APP_KNOWLEDGE_EMBEDDING_*` and `APP_KNOWLEDGE_PROCESSING_POLICY` settings. A live check against the NVIDIA API catalog with fictional text returned 1,024-dimension passage and query vectors.
+- **Outstanding work:** RAG-02.01, 02.02, 02.04, 02.05.
+- **Blockers and decisions:**
+  - Blocked: RAG-02.01 needs `knowledge.documents` (RAG-01.02); RAG-02.02 needs RAG-02.01; RAG-02.04 needs RAG-02.01, 02.02 and RAG-01.03; RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, missing from its "Depends on").
+  - Assumptions (RAG-02.03, #411): `nvidia` is always hosted; `openai_compatible` is hosted unless `APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted`; the fake provider is refused in staging/production; a keyed endpoint needs https there. `bases.processing` is a RAG-01.02 column; RAG-02.04 and RAG-04.01 must call `ensure_processing_allowed` before every embedding call. A missing NVIDIA key in staging/production fails when the provider is built, not at settings load, until `APP_KNOWLEDGE_ENABLED` (RAG-01.01) gates it.
+  - Decisions still needed (in #408): `/health/ready` with a down worker; the worker role; queue or refuse at the concurrent-job limit; whether embedding tokens count against the chat budget.
+- **Next recommended story:** RAG-01.01, then RAG-01.02, which unblocks RAG-02.01.
 
 ### RAG-E03 Knowledge API
 
@@ -207,11 +211,11 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Pending | — | — | — |
 | RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Pending | — | — | — |
 | RAG-01.03 | BlobStore for original files | 1 | P0 | Pending | — | — | — |
-| RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Pending | — | — | — |
-| RAG-02.02 | Document parser adapters | 1 | P0 | Pending | — | — | — |
-| RAG-02.03 | Embedding provider and processing locality | 1 | P0 | Pending | — | — | — |
-| RAG-02.04 | Idempotent ingest task | 1 | P0 | Pending | — | — | — |
-| RAG-02.05 | Ingestion quotas and embedding token accounting | 1 | P0 | Pending | — | — | — |
+| RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Blocked | #409 | — | — |
+| RAG-02.02 | Document parser adapters | 1 | P0 | Blocked | #410 | — | — |
+| RAG-02.03 | Embedding provider and processing locality | 1 | P0 | In progress | #411 | branch `RAG-02.03` | `tests/unit/test_knowledge_providers.py`: staging/production refusal under `self_hosted_only` (AC1); `embedding_dimension_mismatch`, nothing returned (AC2); 429/5xx/connection retried with backoff, 400 terminal (AC3); fake provider, network blocked (AC4) |
+| RAG-02.04 | Idempotent ingest task | 1 | P0 | Blocked | #412 | — | — |
+| RAG-02.05 | Ingestion quotas and embedding token accounting | 1 | P0 | Blocked | #413 | — | — |
 | RAG-03.01 | Knowledge base routes and permissions | 1 | P0 | Pending | — | — | — |
 | RAG-03.02 | Document upload, list and status | 1 | P0 | Pending | — | — | — |
 | RAG-03.03 | Tombstone delete and purge jobs | 1 | P0 | Pending | — | — | — |
@@ -261,6 +265,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-03 | E00 confirmed on `main`, #398–#402 closed. RAG-E02 analysed; issues #408–#413 created; RAG-02.01, 02.02, 02.04, 02.05 Blocked on E01; RAG-02.03 In progress | Claude session |
 | 2026-11-02 | RAG-00.04: dependency and image plan in ADR 0014; Done when #406 merges | Claude session |
 | 2026-11-02 | RAG-00.02: spike record and ADR 0014 answers; Done when #405 merges | Claude session |
 | 2026-11-02 | RAG-00.03: corpus, schema and test; Done when #404 merges | Claude session |

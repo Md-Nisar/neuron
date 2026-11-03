@@ -64,6 +64,7 @@ The graph is intentionally simple. It uses LangGraph for explicit state and depl
 - `observability/`: structured logging, audit events and OpenTelemetry setup.
 - `prompts/`: versionable prompt assets.
 - `errors/`: shared `AppError` taxonomy and HTTP/retry/visibility metadata.
+- `knowledge/`: the Knowledge Engine (ADR 0014), being built for v1.1.0 and not wired into any route or graph yet. So far `providers.py`: the embedding provider with its checks, retries and processing locality (RAG-02.03).
 
 ## Authentication Across Deployment Paths
 
