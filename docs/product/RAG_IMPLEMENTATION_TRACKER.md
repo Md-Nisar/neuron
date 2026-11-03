@@ -70,8 +70,8 @@ v1.1.0 scope (E00–E08): 33 stories, 8 done.
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 (#398, closed), RAG-E01 (#415), RAG-E02 (#408); the others not created |
-| Story issues (56) | RAG-00.01–00.04 (#399–#402, closed), RAG-01.01–01.03 (#416–#418), RAG-02.01–02.05 (#409–#413; #411 closed); the rest not created |
+| Epic issues (13) | RAG-E00 (#398, closed), RAG-E01 (#415, closed), RAG-E02 (#408); the others not created |
+| Story issues (56) | RAG-00.01–00.04 (#399–#402, closed), RAG-01.01–01.03 (#416–#418, closed), RAG-02.01–02.05 (#409–#413; #411 closed); the rest not created |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
 ### Issue map
@@ -108,8 +108,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 - **Stories:** 3 total · 3 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-01.01 (#419): `APP_KNOWLEDGE_ENABLED` (default off); feature-gated migration 17 (`knowledge_schema`: `vector` extension and migrator-owned `knowledge` schema); a `setup` pre-check and schema-trust check; staging/production start-up and readiness checks with stable codes (`vector_extension_missing`, `knowledge_schema_missing`, `knowledge_schema_untrusted`); `pgvector/pgvector:pg16` pinned in CI, `docker-compose.yml` and the reference stack (with `shm_size` and an init script).
   RAG-01.02 (#420): migrations 18–24 (six `knowledge` tables, unique, GIN and B-tree indexes), RLS policy `kb_scope` on `chunks` and `embeddings`, exact grants for the app role and `APP_POSTGRES_WORKER_ROLE`, index profile 1 seeded from settings with its HNSW index, `knowledge_profile_mismatch`; schema in `ARCHITECTURE.md`.
-  RAG-01.03 (on `main`, `d563218`…`da91370`): `knowledge/blobs.py` (`BlobStore`, `LocalBlobStore`, `S3BlobStore` over `obstore`; random 128-bit hex keys, SHA-256 computed while streaming and re-checked on read, idempotent delete, failed uploads cleaned up), `APP_KNOWLEDGE_BLOB_*` settings.
-- **Outstanding work:** close #418 and #415 (not done from the cloud session: the GitHub connection failed).
+  RAG-01.03 (#421): `knowledge/blobs.py` (`BlobStore`, `LocalBlobStore`, `S3BlobStore` over `obstore`; random 128-bit hex keys, SHA-256 computed while streaming and re-checked on read, idempotent delete, failed uploads cleaned up), `APP_KNOWLEDGE_BLOB_*` settings.
+- **Outstanding work:** none. #415–#418 closed; #421 and #422 labelled.
 - **Blockers and decisions:**
   - Decision (RAG-01.01, #416): the migrator has only `CONNECT` on the database, and `CREATE SCHEMA IF NOT EXISTS` checks the database privilege even when the schema exists, so the operator's superuser step creates the extension and `CREATE SCHEMA knowledge AUTHORIZATION neuron_migrator`; the migrator gets no database `CREATE`. `setup` refuses a schema owned by another role or creatable by `PUBLIC` or the app role (security review finding).
   - Assumption (RAG-01.01): "`/health/ready` reports the failing check" is a 503 plus a `knowledge_check_failed` log with the code; the unauthenticated body stays `{"status": "not_ready"}`.
