@@ -204,6 +204,10 @@ class Settings(BaseSettings):
     knowledge_processing_policy: ProcessingPolicy = "allow_hosted"
     # Original uploaded files (ADR 0014; RAG-01.03). `local` is a directory, normally a volume;
     # staging/production need APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true for it (one node, a volume).
+    # Parsing caps (RAG-02.02): bytes per file, pages, and extracted characters per page.
+    knowledge_parse_max_bytes: int = Field(default=50_000_000, ge=1_024, le=200_000_000)
+    knowledge_parse_max_pages: int = Field(default=2_000, ge=1, le=10_000)
+    knowledge_parse_max_page_chars: int = Field(default=50_000, ge=1_000, le=200_000)
     knowledge_blob_backend: Literal["local", "s3"] = "local"
     knowledge_blob_root: str = Field(default="var/knowledge-blobs", min_length=1)
     knowledge_blob_local_allowed: bool = False
