@@ -31,6 +31,12 @@ from psycopg.rows import dict_row
 
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.roles import AppRoleError, role_problems
+from neuron_agent.persistence.startup_checks import (
+    KNOWLEDGE_SCHEMA_MISSING,
+    KNOWLEDGE_SCHEMA_UNTRUSTED,
+    VECTOR_EXTENSION_MISSING,
+    StartupCheckError,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -129,6 +135,8 @@ class Migration:
     outside a transaction; others run in one transaction together with their record.
     `index` names an index the migration builds, so an `INVALID` leftover can be rebuilt.
     `contract_release` marks a contract step (see the module docstring).
+    `feature` names the setting that enables it (`knowledge`): skipped, and left unrecorded,
+    until that feature is on, so a database without the feature's extension still sets up.
     """
 
     version: int
@@ -137,6 +145,7 @@ class Migration:
     concurrent: bool = False
     index: str | None = None
     contract_release: str | None = None
+    feature: str | None = None
 
 
 MIGRATIONS: tuple[Migration, ...] = (
@@ -360,7 +369,31 @@ ON neuron_feedback (thread_id)
         concurrent=True,
         index="neuron_feedback_thread_idx",
     ),
+    Migration(
+        version=17,
+        name="knowledge_schema",
+        # Knowledge Engine (ADR 0014; RAG-01.01). pgvector is not a trusted extension, and the
+        # migrator has no CREATE on the database, so the operator creates both first as a
+        # superuser (OPERATIONS.md, "Database roles"; `run_setup` checks with stable codes).
+        # Neither statement then needs a privilege: `CREATE SCHEMA IF NOT EXISTS` would, so the
+        # schema is only created when missing. It belongs to the migrator, and no runtime role
+        # gets CREATE on it: RAG-01.02 grants table rights only.
+        sql="""
+CREATE EXTENSION IF NOT EXISTS vector;
+DO $do$
+BEGIN
+    IF to_regnamespace('knowledge') IS NULL THEN
+        CREATE SCHEMA knowledge;
+    END IF;
+END
+$do$
+""",
+        feature="knowledge",
+    ),
 )
+# The schema migration 17 creates, and the extension it needs.
+KNOWLEDGE_SCHEMA = "knowledge"
+VECTOR_EXTENSION = "vector"
 
 
 async def run_setup(
@@ -375,6 +408,7 @@ async def run_setup(
     identity_hash_key: str | None = None,
     rotate_identity_key: bool = False,
     memory_store: bool = False,
+    knowledge: bool = False,
 ) -> list[int]:
     """Run LangGraph's `setup()`, then every unapplied migration. Returns the versions applied.
 
@@ -390,6 +424,9 @@ async def run_setup(
     is stored the first time; a different stored value raises `IdentityKeyMismatch` unless
     `rotate_identity_key` is set. With `memory_store`, LangGraph's store tables are created too
     (per-user memory, ADR 0009); without it a database that never enabled memory gets none.
+    With `knowledge`, the `knowledge` migrations run too, after checking that the `vector`
+    extension and schema exist or this role can create them (`StartupCheckError` with a
+    stable code).
     """
     timeout_ms = DEFAULT_LOCK_TIMEOUT_MS if lock_timeout_ms is None else lock_timeout_ms
     concurrent_ms = (
@@ -408,6 +445,9 @@ async def run_setup(
         if memory_store:
             await AsyncPostgresStore(conn).setup()
         await conn.execute(_CREATE_TABLE_SQL)
+        features = {"knowledge"} if knowledge else set()
+        if knowledge:
+            await _check_knowledge_prerequisites(conn)
         # Tables made so far had no default privileges (first run) or are tightened here.
         # Later tables are tightened in the transaction that creates them.
         after_ddl = (lambda c: _grant(c, target)) if target is not None else None
@@ -419,7 +459,10 @@ async def run_setup(
             timeout_ms,
             concurrent_ms,
             after_ddl,
+            features,
         )
+        if knowledge:
+            await _verify_knowledge_schema(conn, target.name if target is not None else None)
         if identity_hash_key:
             await _check_identity(conn, identity_hash_key, rotate_identity_key)
         else:
@@ -681,6 +724,67 @@ async def _check_identity(
         )
 
 
+async def _check_knowledge_prerequisites(
+    conn: psycopg.AsyncConnection[dict[str, object]],
+) -> None:
+    """Refuse knowledge setup, with a stable code, when migration 17 would fail on privileges."""
+    cursor = await conn.execute(
+        "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = %(ext)s) AS installed,"
+        " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = %(ext)s) AS available,"
+        " (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS superuser,"
+        " to_regnamespace(%(schema)s) IS NOT NULL AS schema,"
+        " has_database_privilege(current_database(), 'CREATE') AS can_create_schema",
+        {"ext": VECTOR_EXTENSION, "schema": KNOWLEDGE_SCHEMA},
+    )
+    row = await cursor.fetchone()
+    assert row is not None  # nosec B101
+    if not row["installed"] and not row["available"]:
+        raise StartupCheckError(
+            "the vector extension is not available on this server; use a Postgres with "
+            "pgvector (the pinned pgvector/pgvector:pg16 image)",
+            VECTOR_EXTENSION_MISSING,
+        )
+    if not row["installed"] and not row["superuser"]:
+        raise StartupCheckError(
+            "the vector extension is not installed and the migration role cannot create it; "
+            "run CREATE EXTENSION vector as a superuser first",
+            VECTOR_EXTENSION_MISSING,
+        )
+    if not row["schema"] and not row["can_create_schema"]:
+        raise StartupCheckError(
+            "the knowledge schema does not exist and the migration role cannot create it; "
+            "run CREATE SCHEMA knowledge AUTHORIZATION <migration role> as a superuser first",
+            KNOWLEDGE_SCHEMA_MISSING,
+        )
+
+
+async def _verify_knowledge_schema(
+    conn: psycopg.AsyncConnection[dict[str, object]], app_role: str | None
+) -> None:
+    """On every knowledge setup: the schema is this role's, and nobody else may create in it.
+
+    A schema created earlier by another role is skipped by migration 17, so its owner or a CREATE
+    grantee could plant objects beside the knowledge tables RAG-01.02 adds.
+    """
+    cursor = await conn.execute(
+        "SELECT n.nspowner = (SELECT oid FROM pg_roles WHERE rolname = current_user) AS owned,"
+        " EXISTS (SELECT 1 FROM aclexplode(coalesce(n.nspacl, acldefault('n', n.nspowner))) a"
+        " WHERE a.grantee = 0 AND a.privilege_type = 'CREATE') AS public_create,"
+        " (%(app)s::text IS NOT NULL AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %(app)s)"
+        " AND has_schema_privilege(%(app)s::text, n.oid, 'CREATE')) AS app_create"
+        " FROM pg_namespace n WHERE n.nspname = %(schema)s",
+        {"schema": KNOWLEDGE_SCHEMA, "app": app_role},
+    )
+    row = await cursor.fetchone()
+    if row is None or not row["owned"] or row["public_create"] or row["app_create"]:
+        raise StartupCheckError(
+            "the knowledge schema must be owned by the migration role, and no other role may "
+            "create objects in it; run ALTER SCHEMA knowledge OWNER TO <migration role> and "
+            "REVOKE CREATE ON SCHEMA knowledge FROM PUBLIC as a superuser",
+            KNOWLEDGE_SCHEMA_UNTRUSTED,
+        )
+
+
 async def _acquire_lock(conn: psycopg.AsyncConnection[dict[str, object]], wait: float) -> None:
     deadline = time.monotonic() + wait
     while True:
@@ -704,11 +808,14 @@ async def _apply(
     concurrent_ms: int,
     after_ddl: Callable[[psycopg.AsyncConnection[dict[str, object]]], Awaitable[None]]
     | None = None,
+    features: Collection[str] = (),
 ) -> list[int]:
     cursor = await conn.execute("SELECT version FROM neuron_migrations")
     done = {row["version"] for row in await cursor.fetchall()}
     applied: list[int] = []
     for migration in migrations:
+        if migration.feature is not None and migration.feature not in features:
+            continue
         recorded = migration.version in done
         if migration.index and await _index_is_invalid(conn, migration.index):
             # `IF NOT EXISTS` would skip a leftover from a failed concurrent build.

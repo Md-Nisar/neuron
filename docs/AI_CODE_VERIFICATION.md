@@ -38,15 +38,17 @@ See also [ai-code-verification/research.md](ai-code-verification/research.md) (t
 
 ## The Postgres job
 
-`postgres-integration.yml` runs on Linux with a `postgres:16` service container and sets
+`postgres-integration.yml` runs on Linux with a `pgvector/pgvector:pg16` container (PostgreSQL 16 with the
+pgvector extension available, ADR 0014) and sets
 `APP_TEST_POSTGRES_DSN` (a throwaway password that exists only for the job). It maps no secrets, fails
 if `OPENAI_API_KEY` is present, and runs `pytest -m postgres`, which replaces the default
 `-m 'not integration'`. Live-model tests carry no `postgres` marker, so they cannot be selected. A skipped
 test exits 0, so a second step reads the JUnit report and fails when zero tests were selected or any
 was skipped (for example, because the DSN was unset). Mark new Postgres tests `postgres`.
 
-The image is pinned to the digest of the multi-arch index for the `16` tag. To refresh it, request the
-index manifest from Docker Hub and read the `docker-content-digest` header:
+The image is pinned to the digest of the multi-arch index for the `pg16` tag. To refresh it, request the
+index manifest from Docker Hub and read the `docker-content-digest` header (for `pgvector/pgvector`, use
+`repository:pgvector/pgvector:pull` and `/v2/pgvector/pgvector/manifests/pg16`):
 
 ```bash
 T=$(curl -sS "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/postgres:pull" \
@@ -56,7 +58,7 @@ curl -sSI -H "Authorization: Bearer $T" \
   https://registry-1.docker.io/v2/library/postgres/manifests/16 | grep -i docker-content-digest
 ```
 
-(`docker buildx imagetools inspect postgres:16` shows the same digest.) Run the tests locally with
+(`docker buildx imagetools inspect pgvector/pgvector:pg16` shows the same digest.) Run the tests locally with
 `APP_TEST_POSTGRES_DSN=... uv run pytest -m postgres`. The owner adds `postgres-integration` to the
 required checks.
 

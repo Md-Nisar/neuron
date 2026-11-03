@@ -20,6 +20,9 @@ _DSN = os.environ.get("APP_TEST_POSTGRES_DSN")
 _INDEX = "neuron_checkpoints_owner_idx"
 # The version after the last real migration, derived so a new migration never collides.
 NEXT = max(m.version for m in MIGRATIONS) + 1
+# What `setup` applies with no feature on (knowledge is off by default; see
+# `test_postgres_knowledge.py`), so these tests also pass on plain `postgres:16`.
+_CORE = [m for m in MIGRATIONS if m.feature is None]
 _SCRATCH = Migration(version=NEXT, name="scratch", sql="CREATE TABLE neuron_scratch (a int)")
 _COUNTED = Migration(
     version=NEXT,
@@ -51,7 +54,7 @@ async def _scalar(dsn: str, sql: str) -> object:
 
 
 async def test_setup_applies_all_then_none_then_only_later_ones(dsn: str) -> None:
-    every = [m.version for m in MIGRATIONS]
+    every = [m.version for m in _CORE]
     assert await run_setup(dsn) == every
     assert await run_setup(dsn) == []
     assert await _scalar(dsn, "SELECT count(*) FROM neuron_migrations") == len(every)
@@ -66,9 +69,9 @@ async def test_setup_applies_all_then_none_then_only_later_ones(dsn: str) -> Non
 async def test_concurrent_setups_apply_each_migration_once(dsn: str) -> None:
     both = [*MIGRATIONS, _COUNTED]
     results = await asyncio.gather(run_setup(dsn, migrations=both), run_setup(dsn, migrations=both))
-    assert sorted(results, key=len) == [[], [m.version for m in both]]
+    assert sorted(results, key=len) == [[], [m.version for m in [*_CORE, _COUNTED]]]
     assert await _scalar(dsn, "SELECT count(*) FROM neuron_counted") == 1
-    assert await _scalar(dsn, "SELECT count(*) FROM neuron_migrations") == len(both)
+    assert await _scalar(dsn, "SELECT count(*) FROM neuron_migrations") == len(_CORE) + 1
 
 
 async def test_concurrent_setup_processes_both_succeed(dsn: str) -> None:
@@ -80,7 +83,7 @@ async def test_concurrent_setup_processes_both_succeed(dsn: str) -> None:
     ]
     outputs = [p.communicate(timeout=120) for p in processes]
     assert [p.returncode for p in processes] == [0, 0], outputs
-    assert await _scalar(dsn, "SELECT count(*) FROM neuron_migrations") == len(MIGRATIONS)
+    assert await _scalar(dsn, "SELECT count(*) FROM neuron_migrations") == len(_CORE)
     assert dsn not in b"".join(out + err for out, err in outputs).decode()
 
 

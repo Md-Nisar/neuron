@@ -74,6 +74,7 @@ def _setup(settings: Settings, *, rotate_identity_key: bool) -> None:
                 identity_hash_key=key.get_secret_value() if key else None,
                 rotate_identity_key=rotate_identity_key,
                 memory_store=settings.memory_enabled,
+                knowledge=settings.knowledge_enabled,
             )
         )
     except Exception as exc:
