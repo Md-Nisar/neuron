@@ -150,7 +150,9 @@ services:
     # migration DSN, the identity key or the API's auth settings.
     environment:
       APP_ENV: development
-      APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker:worker-local-only@postgres:5432/neuron?sslmode=disable
+      APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker@postgres:5432/neuron?sslmode=disable
+      # libpq reads the password from here (the throwaway one from init-roles.sql).
+      PGPASSWORD: worker-local-only
     healthcheck:
       test: ["CMD", "neuron-worker", "health"]
       interval: 10s

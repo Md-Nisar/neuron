@@ -159,11 +159,13 @@ async def test_the_worker_refuses_a_privileged_or_wrong_role(stack: _Stack) -> N
 
     await neuron_worker.verify_worker_role(settings(stack.worker_dsn))
     # The migrator owns `knowledge` and can create in it.
+    migrator = settings(stack.role_db.migrator_dsn)
     with pytest.raises(AppRoleError, match="too privileged"):
-        await neuron_worker.verify_worker_role(settings(stack.role_db.migrator_dsn))
+        await neuron_worker.verify_worker_role(migrator)
     # Production runs as APP_POSTGRES_WORKER_ROLE only, not the app role.
+    app_in_production = settings(stack.role_db.app_dsn, "production")
     with pytest.raises(AppRoleError) as caught:
-        await neuron_worker.verify_worker_role(settings(stack.role_db.app_dsn, "production"))
+        await neuron_worker.verify_worker_role(app_in_production)
     assert caught.value.code == ROLE_NOT_APP_USER
 
 

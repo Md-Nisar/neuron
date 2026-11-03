@@ -78,9 +78,11 @@ def test_a_connection_error_prints_no_dsn(
     assert caught.value.code == 1
     err = capsys.readouterr().err
     assert err.startswith("worker failed: ")
-    assert "s3cret" not in err and "db.internal" not in err and "neuron_worker" not in err
+    for secret in ("s3cret", "db.internal", "neuron_worker"):
+        assert secret not in err
 
 
 def test_the_worker_dsn_needs_tls_in_production() -> None:
+    plaintext = SecretStr("postgresql://w@db/n")
     with pytest.raises(ValidationError, match="APP_POSTGRES_WORKER_DSN must set sslmode"):
-        jwt_settings(env="production", postgres_worker_dsn=SecretStr("postgresql://w@db/n"))
+        jwt_settings(env="production", postgres_worker_dsn=plaintext)

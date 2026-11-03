@@ -241,8 +241,11 @@ class Settings(BaseSettings):
     worker_drain_seconds: float = Field(default=30.0, ge=0, le=600)
     # A job whose worker sent no heartbeat for this long is retried by another worker's sweep.
     worker_stalled_seconds: float = Field(default=30.0, ge=3, le=3600)
-    # Touched while the worker is healthy; the container health check reads its age.
-    worker_health_file: str = Field(default="/tmp/neuron-worker.health", min_length=1)  # noqa: S108  # nosec B108
+    # Touched while the worker is healthy; the container health check reads its age. In the
+    # user's home, not a world-writable directory.
+    worker_health_file: str = Field(
+        default_factory=lambda: str(Path.home() / ".neuron-worker.health"), min_length=1
+    )
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
