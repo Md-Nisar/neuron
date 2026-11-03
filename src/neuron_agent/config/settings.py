@@ -163,6 +163,9 @@ class Settings(BaseSettings):
             "OTEL_EXPORTER_OTLP_METRICS_HEADERS",
         ),
     )
+    # Knowledge Engine (ADR 0014; RAG-01.01). Off until v1.1.0 is released; on, it needs the
+    # Postgres checkpointer and a database with the pgvector extension.
+    knowledge_enabled: bool = False
     # Knowledge Engine embeddings (ADR 0014 K3, K8; RAG-02.03). The default profile is the spike's
     # (RAG-00.02): NVIDIA's API catalog, for development only, at 1,024 dimensions.
     knowledge_embedding_provider: EmbeddingProviderName = "nvidia"
@@ -379,6 +382,9 @@ class Settings(BaseSettings):
         `security/egress.py` (ADR 0014 security requirement 4). Errors never echo the URL.
         """
         provider = self.knowledge_embedding_provider
+        if self.knowledge_enabled and self.checkpointer != "postgres":
+            # Knowledge bases, documents and vectors live only in Postgres.
+            raise ValueError("APP_KNOWLEDGE_ENABLED needs APP_CHECKPOINTER=postgres")
         if provider == "nvidia" and "knowledge_embedding_locality" in self.model_fields_set:
             if self.knowledge_embedding_locality != "hosted":
                 raise ValueError(
@@ -419,6 +425,11 @@ class Settings(BaseSettings):
         if provider == "fake":
             raise ValueError(
                 "APP_KNOWLEDGE_EMBEDDING_PROVIDER=fake is refused in staging/production"
+            )
+        if self.knowledge_enabled and provider == "nvidia" and self.nvidia_api_key is None:
+            raise ValueError(
+                "APP_KNOWLEDGE_ENABLED with the nvidia embedding provider needs NVIDIA_API_KEY "
+                "in staging/production"
             )
         if (
             self.knowledge_processing_policy == "self_hosted_only"

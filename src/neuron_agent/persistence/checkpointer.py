@@ -34,7 +34,9 @@ from neuron_agent.persistence.roles import verify_runtime_role
 from neuron_agent.persistence.startup_checks import (
     DATABASE_CHECK_FAILED,
     StartupCheckError,
+    knowledge_problem,
     verify_identity_key,
+    verify_knowledge,
     verify_store,
     verify_tls,
 )
@@ -136,6 +138,10 @@ class Persistence:
     # Set in staging and production with memory on: `open()` refuses a database whose `store`
     # table is missing or not usable by this role.
     check_store: bool = False
+    # Knowledge Engine (ADR 0014): readiness needs the `vector` extension and `knowledge`
+    # schema; in staging and production `open()` refuses a database without them.
+    knowledge_enabled: bool = False
+    check_knowledge: bool = False
     # Set with `APP_LIMITS_BACKEND=postgres`: readiness also needs the guard tables, because the
     # guards fail closed on every request when `setup` has not created them.
     check_guard_tables: bool = False
@@ -184,6 +190,7 @@ class Persistence:
             or self.require_tls
             or self.identity_check is not None
             or self.check_store
+            or self.check_knowledge
         ):
             await self._run_startup_checks()
         if self.backend == "postgres":
@@ -212,6 +219,8 @@ class Persistence:
                     await verify_identity_key(conn, self.identity_check)
                 if self.check_store:
                     await verify_store(conn)
+                if self.check_knowledge:
+                    await verify_knowledge(conn, least_privilege=self.app_role is not None)
         except StartupCheckError as exc:
             failure = exc
         except psycopg.Error as exc:
@@ -252,6 +261,7 @@ class Persistence:
         if not self.is_open:
             return False
         missing: list[str] = []
+        knowledge: str | None = None
         tables = [
             *(migrations.GUARD_TABLES if self.check_guard_tables else ()),
             *((migrations.STORE_TABLE,) if self.memory_enabled else ()),
@@ -265,6 +275,8 @@ class Persistence:
                     else:
                         cursor = await conn.execute(_MISSING_TABLES_SQL, [tables])
                         missing = [row["name"] for row in await cursor.fetchall()]
+                    if self.knowledge_enabled:
+                        knowledge = await knowledge_problem(conn)
         except (TimeoutError, psycopg.Error) as exc:
             logger.warning(
                 "checkpointer_unreachable", backend=self.backend, error_type=type(exc).__name__
@@ -272,6 +284,9 @@ class Persistence:
             return False
         if missing:
             logger.warning("guard_tables_missing", backend=self.backend, tables=missing)
+            return False
+        if knowledge is not None:
+            logger.warning("knowledge_check_failed", error_code=knowledge)
             return False
         return True
 
@@ -318,6 +333,8 @@ def build_persistence(settings: Settings) -> Persistence:
         check_guard_tables=settings.limits_backend == "postgres",
         memory_enabled=settings.memory_enabled,
         check_store=hardened and settings.memory_enabled,
+        knowledge_enabled=settings.knowledge_enabled,
+        check_knowledge=hardened and settings.knowledge_enabled,
         serde=serde,
         app_role=settings.postgres_app_role if settings.env == "production" else None,
         require_tls=hardened,
@@ -341,7 +358,11 @@ async def setup_schema(persistence: Persistence) -> None:
         assert isinstance(conninfo, str)  # nosec B101
         failure: str | None = None
         try:
-            await migrations.run_setup(conninfo, memory_store=persistence.memory_enabled)
+            await migrations.run_setup(
+                conninfo,
+                memory_store=persistence.memory_enabled,
+                knowledge=persistence.knowledge_enabled,
+            )
         except Exception as exc:
             # Driver messages can echo DSN fragments; keep only the class name. Raised
             # outside the handler so the original is not left in `__context__` either.

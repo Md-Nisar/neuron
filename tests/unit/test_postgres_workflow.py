@@ -28,7 +28,7 @@ def test_postgres_job_guards() -> None:
     assert job["runs-on"] == "ubuntu-latest"
     assert 0 < job["timeout-minutes"] <= 30
     assert "services" not in job  # the server is started by a step, with TLS on
-    assert re.fullmatch(r"postgres:16@sha256:[0-9a-f]{64}", job["env"]["POSTGRES_IMAGE"])
+    assert re.fullmatch(r"pgvector/pgvector:pg16@sha256:[0-9a-f]{64}", job["env"]["POSTGRES_IMAGE"])
     assert job["env"]["APP_TEST_POSTGRES_DSN"].startswith("postgresql://")
     assert "secrets." not in _FILE.read_text("utf-8")  # no provider key reaches the job
     runs = "\n".join(s.get("run", "") for s in job["steps"])

@@ -18,6 +18,13 @@ Copy-Item .env.example .env
 
 Use Python 3.13. The local machine may have newer Python versions, but CI and deployment metadata target 3.13 for framework compatibility.
 
+`docker-compose.yml`, the reference stack and CI's Postgres job use `pgvector/pgvector:pg16`
+(PostgreSQL 16 with pgvector, pinned by digest; ADR 0014). Neuron runs on plain `postgres:16`
+while `APP_KNOWLEDGE_ENABLED` is off. With it on, the development stack's `neuron` superuser lets
+`setup` create the `vector` extension and `knowledge` schema itself; in staging and production a
+superuser creates them first (`OPERATIONS.md`, "Database roles"). Run the Postgres tests against
+the same image: `docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=... pgvector/pgvector:pg16`.
+
 To run the API in Docker with the web app and the development Keycloak, see
 [docs/operations/local-docker-web.md](docs/operations/local-docker-web.md).
 

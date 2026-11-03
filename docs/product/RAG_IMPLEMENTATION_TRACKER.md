@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-03, against `main` at `c2c99cf` (Phase 0 merged via #407).
+**Last verified:** 2026-11-03, against `main` at `7457b9d` (RAG-02.03 merged via #414).
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00 and RAG-E02; the Project board has not been created.
 
 ## New session protocol
@@ -47,8 +47,8 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | Epic | Title | Phase | Release | Total | Done | In progress | Blocked | Pending | Next story |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
-| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-01.01 (after E00) |
-| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 0 | 1 | 4 | 0 | RAG-02.03 (in progress); the rest after RAG-01.02 |
+| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 0 | 1 | 1 | 1 | RAG-01.01 (in progress); RAG-01.03 ready |
+| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 1 | 0 | 4 | 0 | RAG-02.01 (after RAG-01.02) |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (after RAG-01.02) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (after RAG-01.02, RAG-02.03) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
@@ -59,19 +59,19 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **4** | **1** | **4** | **47** | **RAG-01.01** |
+| **Total** | | | | **56** | **5** | **1** | **5** | **45** | **RAG-01.01** |
 
-v1.1.0 scope (E00–E08): 33 stories, 4 done.
+v1.1.0 scope (E00–E08): 33 stories, 5 done.
 
-**Recommended next action:** merge RAG-02.03, then start **RAG-01.01**: RAG-02.01, 02.02, 02.04 and 02.05 are blocked on RAG-01.02 (and RAG-01.03).
+**Recommended next action:** merge RAG-01.01 (#416), then **RAG-01.02** (#417), which unblocks RAG-02.01; RAG-01.03 (#418) can run in parallel.
 
 ## GitHub synchronisation
 
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 (#398, closed), RAG-E02 (#408); the others not created |
-| Story issues (56) | RAG-00.01–00.04 (#399–#402, closed), RAG-02.01–02.05 (#409–#413); the rest not created |
+| Epic issues (13) | RAG-E00 (#398, closed), RAG-E01 (#415), RAG-E02 (#408); the others not created |
+| Story issues (56) | RAG-00.01–00.04 (#399–#402, closed), RAG-01.01–01.03 (#416–#418), RAG-02.01–02.05 (#409–#413; #411 closed); the rest not created |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
 ### Issue map
@@ -82,9 +82,11 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | --- | --- | --- |
 | RAG-E00 | #398 | Not on a board |
 | RAG-00.01 … RAG-00.04 | #399–#402 | Not on a board |
+| RAG-E01 | #415 | Not on a board |
+| RAG-01.01 … RAG-01.03 | #416–#418 | Not on a board |
 | RAG-E02 | #408 | Not on a board |
 | RAG-02.01 … RAG-02.05 | #409–#413 | Not on a board |
-| RAG-E01, RAG-E03 … RAG-E12 | — | — |
+| RAG-E03 … RAG-E12 | — | — |
 
 ## Epic detail
 
@@ -103,21 +105,25 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E01 Knowledge storage foundation
 
-- **Stories:** 3 total · 0 done · 0 in progress · 0 blocked · 3 pending
-- **Implemented functionality:** none. The reference stack runs `postgres:16` without pgvector.
-- **Outstanding work:** RAG-01.01, RAG-01.02, RAG-01.03.
-- **Blockers and decisions:** needs ADR 0014 and the spike's dimension choice.
-- **Next recommended story:** RAG-01.01 (RAG-01.03 can run in parallel).
+- **Stories:** 3 total · 0 done · 1 in progress · 1 blocked · 1 pending
+- **Implemented functionality:** RAG-01.01 on its branch: `APP_KNOWLEDGE_ENABLED` (default off); feature-gated migration 17 (`knowledge_schema`: `vector` extension and migrator-owned `knowledge` schema); a `setup` pre-check and schema-trust check; staging/production start-up and readiness checks with stable codes (`vector_extension_missing`, `knowledge_schema_missing`, `knowledge_schema_untrusted`); `pgvector/pgvector:pg16` pinned in CI, `docker-compose.yml` and the reference stack (with `shm_size` and an init script).
+- **Outstanding work:** RAG-01.01 merge; RAG-01.02 (blocked on RAG-01.01); RAG-01.03 (ready).
+- **Blockers and decisions:**
+  - Decision (RAG-01.01, #416): the migrator has only `CONNECT` on the database, and `CREATE SCHEMA IF NOT EXISTS` checks the database privilege even when the schema exists, so the operator's superuser step creates the extension and `CREATE SCHEMA knowledge AUTHORIZATION neuron_migrator`; the migrator gets no database `CREATE`. `setup` refuses a schema owned by another role or creatable by `PUBLIC` or the app role (security review finding).
+  - Assumption (RAG-01.01): "`/health/ready` reports the failing check" is a 503 plus a `knowledge_check_failed` log with the code; the unauthenticated body stays `{"status": "not_ready"}`.
+  - Decision (#408): the worker gets its own `neuron_worker` role, whose grants RAG-01.02 adds.
+  - Open (RAG-01.03): whether the API image needs `obstore`, and fail-or-warn for a local store in staging/production (proposed: fail without an explicit opt-in).
+- **Next recommended story:** RAG-01.02 after RAG-01.01 merges; RAG-01.03 can run in parallel.
 
 ### RAG-E02 Durable ingestion pipeline
 
-- **Stories:** 5 total · 0 done · 1 in progress · 4 blocked · 0 pending
-- **Implemented functionality:** RAG-02.03 on its branch: `knowledge/providers.py` (`EmbeddingProvider` over LangChain `Embeddings`: `nvidia`, `openai_compatible`, a numpy-free `fake`; batching; count, dimension and finite checks; retries for 429/5xx/connection errors only; sanitised codes) and the `APP_KNOWLEDGE_EMBEDDING_*` and `APP_KNOWLEDGE_PROCESSING_POLICY` settings. A live check against the NVIDIA API catalog with fictional text returned 1,024-dimension passage and query vectors.
+- **Stories:** 5 total · 1 done · 0 in progress · 4 blocked · 0 pending
+- **Implemented functionality:** RAG-02.03 (merged via #414): `knowledge/providers.py` (`EmbeddingProvider` over LangChain `Embeddings`: `nvidia`, `openai_compatible`, a numpy-free `fake`; batching; count, dimension and finite checks; retries for 429/5xx/connection errors only; sanitised codes) and the `APP_KNOWLEDGE_EMBEDDING_*` and `APP_KNOWLEDGE_PROCESSING_POLICY` settings. A live check against the NVIDIA API catalog with fictional text returned 1,024-dimension passage and query vectors.
 - **Outstanding work:** RAG-02.01, 02.02, 02.04, 02.05.
 - **Blockers and decisions:**
   - Blocked: RAG-02.01 needs `knowledge.documents` (RAG-01.02); RAG-02.02 needs RAG-02.01; RAG-02.04 needs RAG-02.01, 02.02 and RAG-01.03; RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, missing from its "Depends on").
-  - Assumptions (RAG-02.03, #411): `nvidia` is always hosted; `openai_compatible` is hosted unless `APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted`; the fake provider is refused in staging/production; a keyed endpoint needs https there. `bases.processing` is a RAG-01.02 column; RAG-02.04 and RAG-04.01 must call `ensure_processing_allowed` before every embedding call. A missing NVIDIA key in staging/production fails when the provider is built, not at settings load, until `APP_KNOWLEDGE_ENABLED` (RAG-01.01) gates it.
-  - Decisions still needed (in #408): `/health/ready` with a down worker; the worker role; queue or refuse at the concurrent-job limit; whether embedding tokens count against the chat budget.
+  - Assumptions (RAG-02.03, #411): `nvidia` is always hosted; `openai_compatible` is hosted unless `APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted`; the fake provider is refused in staging/production; a keyed endpoint needs https there. `bases.processing` is a RAG-01.02 column; RAG-02.04 and RAG-04.01 must call `ensure_processing_allowed` before every embedding call. A missing NVIDIA key in staging/production now fails at settings load when `APP_KNOWLEDGE_ENABLED=true` (RAG-01.01).
+  - Decisions (2026-11-03, delegated by the owner, recorded on #408): the API stays ready with the worker down; the worker uses its own `neuron_worker` role; the concurrent-job limit refuses with 429 `ingestion_concurrency_exceeded`; embedding tokens go in a separate ledger kind, not the chat budget; default embedding `nemotron-3.5-embed-1b` at 1,024 for development (TEI in production); the worker is a second Dockerfile target; chunking uses `HierarchicalChunker` with Neuron's own token split instead of `chunking-openai`.
 - **Next recommended story:** RAG-01.01, then RAG-01.02, which unblocks RAG-02.01.
 
 ### RAG-E03 Knowledge API
@@ -208,12 +214,12 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-00.02 | Phase 0 spike: parser, vectors, queue | 0 | P0 | Done | #400 | #405 | `docs/releases/v1.1.0-spike.md`: one measured answer per question (AC1); kill-worker test, exactly one completion per job (AC2); exact-scan threshold 10,000 as the RAG-04.01 default (AC3) |
 | RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Done | #401 | #404 | `tests/unit/test_knowledge_cases.py`: schema and references (AC1), counts (AC2), licence and source per document (AC3) |
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Done | #402 | #406 | ADR 0014 "Dependencies and images": `uv lock` resolves beside `openai>=3.6.0`, API environment unchanged, worker +167.1 MB (AC1); licence and first release per package (AC2); versions and digests named in RAG-01.01 and RAG-02.01 (AC3) |
-| RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Pending | — | — | — |
-| RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Pending | — | — | — |
-| RAG-01.03 | BlobStore for original files | 1 | P0 | Pending | — | — | — |
+| RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | In progress | #416 | branch `RAG-01.01` | `tests/integration/test_postgres_knowledge.py` on pgvector: extension and schema created, migration recorded once (AC1); start-up refused with `vector_extension_missing`, readiness false (AC2); without knowledge, migration 17 not applied and the full Postgres suite passes on plain `postgres:16` (AC3, run locally 2026-11-03) |
+| RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Blocked | #417 | — | — |
+| RAG-01.03 | BlobStore for original files | 1 | P0 | Pending | #418 | — | — |
 | RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Blocked | #409 | — | — |
 | RAG-02.02 | Document parser adapters | 1 | P0 | Blocked | #410 | — | — |
-| RAG-02.03 | Embedding provider and processing locality | 1 | P0 | In progress | #411 | branch `RAG-02.03` | `tests/unit/test_knowledge_providers.py`: staging/production refusal under `self_hosted_only` (AC1); `embedding_dimension_mismatch`, nothing returned (AC2); 429/5xx/connection retried with backoff, 400 terminal (AC3); fake provider, network blocked (AC4) |
+| RAG-02.03 | Embedding provider and processing locality | 1 | P0 | Done | #411 | #414 | `tests/unit/test_knowledge_providers.py`: staging/production refusal under `self_hosted_only` (AC1); `embedding_dimension_mismatch`, nothing returned (AC2); 429/5xx/connection retried with backoff, 400 terminal (AC3); fake provider, network blocked (AC4) |
 | RAG-02.04 | Idempotent ingest task | 1 | P0 | Blocked | #412 | — | — |
 | RAG-02.05 | Ingestion quotas and embedding token accounting | 1 | P0 | Blocked | #413 | — | — |
 | RAG-03.01 | Knowledge base routes and permissions | 1 | P0 | Pending | — | — | — |
@@ -265,6 +271,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-03 | RAG-02.03 Done (#414). RAG-E01 analysed; issues #415–#418 created; #408 decisions recorded; RAG-01.01 In progress; RAG-01.02 Blocked on it | Claude session |
 | 2026-11-03 | E00 confirmed on `main`, #398–#402 closed. RAG-E02 analysed; issues #408–#413 created; RAG-02.01, 02.02, 02.04, 02.05 Blocked on E01; RAG-02.03 In progress | Claude session |
 | 2026-11-02 | RAG-00.04: dependency and image plan in ADR 0014; Done when #406 merges | Claude session |
 | 2026-11-02 | RAG-00.02: spike record and ADR 0014 answers; Done when #405 merges | Claude session |

@@ -58,7 +58,10 @@ x-api: &api
 
 services:
   postgres:
-    image: postgres:16
+    # PostgreSQL 16 with pgvector (ADR 0014, RAG-01.01); knowledge stays off unless enabled.
+    image: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
+    # Parallel HNSW index builds need more than Docker's 64 MB default /dev/shm (RAG-00.02).
+    shm_size: 256mb
     environment:
       POSTGRES_USER: neuron_owner
       POSTGRES_PASSWORD: owner-local-only
@@ -74,6 +77,7 @@ services:
       - archive_timeout=10
     volumes:
       - ./deploy/reference/init-roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+      - ./deploy/reference/init-knowledge.sql:/docker-entrypoint-initdb.d/20-knowledge.sql:ro
       - ./deploy/reference/init-archive.sh:/docker-entrypoint-initdb.d/05-archive.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U neuron_owner -d neuron"]

@@ -24,6 +24,9 @@ IDENTITY_CHECK_UNSAFE = "identity_check_unsafe"
 STORE_MISSING = "store_missing"
 STORE_NO_ACCESS = "store_no_access"
 DATABASE_CHECK_FAILED = "database_check_failed"
+VECTOR_EXTENSION_MISSING = "vector_extension_missing"
+KNOWLEDGE_SCHEMA_MISSING = "knowledge_schema_missing"
+KNOWLEDGE_SCHEMA_UNTRUSTED = "knowledge_schema_untrusted"
 
 
 class StartupCheckError(Exception):
@@ -112,4 +115,58 @@ async def verify_store(conn: psycopg.AsyncConnection[Any]) -> None:
         raise StartupCheckError(
             "the database role cannot read and write the memory store; run setup to grant it",
             STORE_NO_ACCESS,
+        )
+
+
+# Catalog reads, allowed to any role: whether the extension and schema of migration 17 exist.
+KNOWLEDGE_CHECK_SQL = (
+    "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector,"
+    " to_regnamespace('knowledge') IS NOT NULL AS schema,"
+    " COALESCE(has_schema_privilege(current_user, to_regnamespace('knowledge')::oid, 'CREATE'),"
+    " false) AS can_create"
+)
+
+
+async def knowledge_problem(conn: psycopg.AsyncConnection[Any]) -> str | None:
+    """The stable code of what knowledge is missing (extension first), or None."""
+    cursor = await conn.execute(KNOWLEDGE_CHECK_SQL)
+    row = await cursor.fetchone()
+    if row is None or not row["vector"]:
+        return VECTOR_EXTENSION_MISSING
+    if not row["schema"]:
+        return KNOWLEDGE_SCHEMA_MISSING
+    return None
+
+
+async def verify_knowledge(
+    conn: psycopg.AsyncConnection[Any], *, least_privilege: bool = False
+) -> None:
+    """Refuse start-up with knowledge on when the `vector` extension or `knowledge` schema is
+    missing, so a database without pgvector fails here and not at the first search.
+
+    With `least_privilege` (production, where the runtime role is checked too), also refuse a
+    runtime role that can create objects in the schema: as its owner, a member of the owner or
+    through a grant, it could plant tables or functions beside the knowledge tables.
+    """
+    code = await knowledge_problem(conn)
+    if code is None and least_privilege:
+        cursor = await conn.execute(KNOWLEDGE_CHECK_SQL)
+        row = await cursor.fetchone()
+        if row is not None and row["can_create"]:
+            raise StartupCheckError(
+                "the runtime database role can create objects in the knowledge schema; "
+                "make the migration role its owner and revoke CREATE from other roles",
+                KNOWLEDGE_SCHEMA_UNTRUSTED,
+            )
+    if code == VECTOR_EXTENSION_MISSING:
+        raise StartupCheckError(
+            "knowledge is enabled but the vector extension is not installed; create it as a "
+            "superuser, then run setup with APP_KNOWLEDGE_ENABLED=true",
+            code,
+        )
+    if code == KNOWLEDGE_SCHEMA_MISSING:
+        raise StartupCheckError(
+            "knowledge is enabled but the knowledge schema does not exist; "
+            "run setup with APP_KNOWLEDGE_ENABLED=true",
+            code,
         )
