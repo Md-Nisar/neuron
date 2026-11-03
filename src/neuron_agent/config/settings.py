@@ -185,6 +185,18 @@ class Settings(BaseSettings):
     knowledge_embedding_max_retries: int = Field(default=3, ge=0, le=8)
     # `self_hosted_only` forbids hosted embedding for every knowledge base.
     knowledge_processing_policy: ProcessingPolicy = "allow_hosted"
+    # Original uploaded files (ADR 0014; RAG-01.03). `local` is a directory, normally a volume;
+    # staging/production need APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true for it (one node, a volume).
+    knowledge_blob_backend: Literal["local", "s3"] = "local"
+    knowledge_blob_root: str = Field(default="var/knowledge-blobs", min_length=1)
+    knowledge_blob_local_allowed: bool = False
+    # `s3`: a private bucket. The endpoint is for S3-compatible servers; unset means AWS. Unset
+    # credentials fall back to the standard AWS chain (environment, web identity, instance role).
+    knowledge_blob_bucket: str | None = Field(default=None, min_length=3, max_length=63)
+    knowledge_blob_endpoint: str | None = None
+    knowledge_blob_region: str | None = None
+    knowledge_blob_access_key_id: SecretStr | None = None
+    knowledge_blob_secret_access_key: SecretStr | None = None
     # "auto" resolves to memory in development/test; staging/production must choose explicitly.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
@@ -290,6 +302,22 @@ class Settings(BaseSettings):
     def empty_provider_key_is_unset(cls, value: object) -> object:
         """`OPENAI_API_KEY=` (as copied from `.env.example`) means no key, not an empty one."""
         return None if value == "" else value
+
+    @field_validator(
+        "knowledge_blob_bucket",
+        "knowledge_blob_endpoint",
+        "knowledge_blob_region",
+        "knowledge_blob_access_key_id",
+        "knowledge_blob_secret_access_key",
+        mode="before",
+    )
+    @classmethod
+    def blank_blob_setting_is_unset(cls, value: object) -> object:
+        """A blank or whitespace-only blob setting means unset, so the checks below see it."""
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
 
     def provider_api_key(self, provider: str) -> SecretStr | None:
         """Return the API key for a `default_model` provider prefix, if one is configured."""
@@ -443,6 +471,50 @@ class Settings(BaseSettings):
                 f"{provider} embedding provider in staging/production; configure a "
                 "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
                 "self_hosted)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_knowledge_blobs(self) -> Settings:
+        """Refuse a blob store that is missing what it needs or is not durable where it must be."""
+        if self.knowledge_blob_backend == "s3":
+            if self.knowledge_blob_bucket is None:
+                raise ValueError("APP_KNOWLEDGE_BLOB_BUCKET is required for the s3 blob backend")
+            if (self.knowledge_blob_access_key_id is None) != (
+                self.knowledge_blob_secret_access_key is None
+            ):
+                raise ValueError(
+                    "APP_KNOWLEDGE_BLOB_ACCESS_KEY_ID and APP_KNOWLEDGE_BLOB_SECRET_ACCESS_KEY "
+                    "must be set together"
+                )
+            if self.knowledge_blob_endpoint is not None:
+                parts = urlsplit(self.knowledge_blob_endpoint)
+                if (
+                    parts.scheme not in {"http", "https"}
+                    or not parts.hostname
+                    or parts.username is not None
+                    or parts.password is not None
+                    or parts.query
+                    or parts.fragment
+                ):
+                    raise ValueError(
+                        "APP_KNOWLEDGE_BLOB_ENDPOINT must be an http(s) URL with a host and no "
+                        "credentials, query or fragment"
+                    )
+                if self.env in {"staging", "production"} and parts.scheme != "https":
+                    raise ValueError(
+                        "APP_KNOWLEDGE_BLOB_ENDPOINT must use https in staging/production"
+                    )
+        if (
+            self.knowledge_enabled
+            and self.env in {"staging", "production"}
+            and self.knowledge_blob_backend == "local"
+            and not self.knowledge_blob_local_allowed
+        ):
+            raise ValueError(
+                "APP_KNOWLEDGE_BLOB_BACKEND=local is refused in staging/production unless "
+                "APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true (one node with a persistent volume); "
+                "use s3"
             )
         return self
 

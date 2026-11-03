@@ -657,6 +657,15 @@ ALTER SCHEMA public OWNER TO neuron_migrator;
 - **Checks.** `psql` as `neuron_app`: `DROP TABLE checkpoints` and `TRUNCATE checkpoints` must fail, and `CREATE TABLE x (a int)` must fail with `permission denied for schema`. The `postgres` tests run exactly this against a real database.
 - Not yet checked: that a managed database whose owner is not a superuser accepts the `ALTER SCHEMA ... OWNER TO` above (it may need `GRANT neuron_migrator TO <owner>` first), and that Render allows `CREATE ROLE` at all.
 
+### Knowledge blob store
+
+Original uploaded files (v1.1.0, RAG-01.03) are stored by `APP_KNOWLEDGE_BLOB_BACKEND`:
+
+- **`s3`** (staging and production): `APP_KNOWLEDGE_BLOB_BUCKET`, with `APP_KNOWLEDGE_BLOB_ENDPOINT` for an S3-compatible server (`https` in staging and production) and `APP_KNOWLEDGE_BLOB_REGION`. Without `APP_KNOWLEDGE_BLOB_ACCESS_KEY_ID` and `APP_KNOWLEDGE_BLOB_SECRET_ACCESS_KEY` (set both or neither), the standard AWS chain is used: environment, web identity, instance role. The bucket is the operator's to secure: block all public access, no public ACLs or bucket policy, encryption at rest (SSE-S3 or SSE-KMS as the default bucket encryption), and credentials limited to `GetObject`, `PutObject`, `DeleteObject` and `ListBucket` on this bucket. Neuron never creates presigned or public URLs. Add a lifecycle rule that aborts incomplete multipart uploads after a day, in case a process dies mid-upload. Without explicit keys, check which identity the pod or instance actually has: it should reach this bucket only.
+- **`local`** (development, or one node with a persistent volume): files under `APP_KNOWLEDGE_BLOB_ROOT` (default `var/knowledge-blobs`; the store sets the directory to mode `0700` at start), owned only by the service user. With knowledge on, staging and production refuse to start with `local` unless `APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true`.
+
+Each blob is named by a random key and checked against its recorded SHA-256 on every read. Storage errors are logged as `blob_backend_error` with the operation and error type only. Back up the bucket or volume together with the database: a restore needs both from the same point, or documents point to missing or different blobs.
+
 ## Streaming Behind a Reverse Proxy
 
 `/v1/agent/stream` is a long-lived `text/event-stream` response. Proxies must not buffer or time it out:

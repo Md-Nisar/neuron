@@ -20,3 +20,6 @@ web/coverage/
 web/test-results/
 web/playwright-report/
 .claude/worktrees/
+
+# Local knowledge blob store (APP_KNOWLEDGE_BLOB_ROOT default)
+var/
