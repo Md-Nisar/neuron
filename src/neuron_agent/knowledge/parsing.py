@@ -16,7 +16,6 @@ form feeds (RFC-style page breaks) split pages; without one, blocks have no page
 
 from __future__ import annotations
 
-import asyncio
 import io
 import re
 import struct
@@ -26,6 +25,7 @@ from dataclasses import dataclass
 from typing import Annotated, Literal, Protocol
 from urllib.parse import unquote
 
+import anyio
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from neuron_agent.config.settings import Settings
@@ -137,7 +137,7 @@ async def parse_document(
     data: bytes, declared: str, limits: Limits, parsers: Iterable[DocumentParser]
 ) -> ParsedDocument:
     """The one entry point: check the bytes, then parse them with the parser for their type."""
-    media_type = await asyncio.to_thread(check_input, data, declared, limits)
+    media_type = await anyio.to_thread.run_sync(check_input, data, declared, limits)
     for parser in parsers:
         if media_type in parser.media_types:
             return await parser.parse(data, media_type, limits)
@@ -297,7 +297,7 @@ class PlainTextParser:
     version = "plain-text/1"
 
     async def parse(self, data: bytes, media_type: str, limits: Limits) -> ParsedDocument:
-        return await asyncio.to_thread(self._parse, data, media_type, limits)
+        return await anyio.to_thread.run_sync(self._parse, data, media_type, limits)
 
     def _parse(self, data: bytes, media_type: str, limits: Limits) -> ParsedDocument:
         try:

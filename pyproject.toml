@@ -115,8 +115,10 @@ explicit_package_bases = true
 # Live suites (`integration`) run only when selected explicitly (`make test-integration`,
 # `make eval`); the deterministic `eval` harness tests run by default.
 addopts = "-q --strict-markers --strict-config -m 'not integration'"
-# A test still running after this many seconds dumps every thread's traceback (a hang shows where).
+# A test still running after this many seconds dumps every thread's traceback and ends the run,
+# so a hang shows where and the CI log is written.
 faulthandler_timeout = 120
+faulthandler_exit_on_timeout = true
 testpaths = ["tests"]
 markers = [
     "integration: tests that require external services or credentials",
