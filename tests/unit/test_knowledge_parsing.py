@@ -80,6 +80,11 @@ def test_supported_files_pass_as_the_type_their_content_shows() -> None:
     assert check_input(b"plain", TEXT, _LIMITS) == TEXT
 
 
+def _short(value: object) -> str | None:
+    """Bytes ids by length: pytest puts the id in an environment variable, capped on Windows."""
+    return f"{len(value)}-bytes" if isinstance(value, bytes) else None
+
+
 @pytest.mark.parametrize(
     ("data", "declared", "code"),
     [
@@ -136,6 +141,7 @@ def test_supported_files_pass_as_the_type_their_content_shows() -> None:
         (b"%PDF-1.7\ntrailer\n<< /#45ncrypt 5 0 R >>", PDF, "encrypted_pdf"),
         (b"%PDF-1.7\ntrailer\n<< /En#63rypt 5 0 R >>", PDF, "encrypted_pdf"),
     ],
+    ids=_short,
 )
 def test_unsafe_or_mislabelled_files_are_refused_before_parsing(
     data: bytes, declared: str, code: str
@@ -235,6 +241,7 @@ async def test_markdown_headings_but_not_fenced_code() -> None:
         (b"a\f" * 11, "too_many_pages"),  # counted before anything is built
         (b"a\n\n" * 2_001, "too_many_blocks"),  # 200 blocks per page
     ],
+    ids=_short,
 )
 async def test_page_and_block_bombs_are_refused(data: bytes, code: str) -> None:
     parser = PlainTextParser()
