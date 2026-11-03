@@ -26,6 +26,7 @@ import psycopg
 import structlog
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.postgres import AsyncPostgresStore
+from procrastinate.schema import SchemaManager
 from psycopg import sql
 from psycopg.rows import dict_row
 
@@ -40,6 +41,9 @@ from neuron_agent.persistence.startup_checks import (
 )
 
 logger = structlog.get_logger(__name__)
+
+# The Procrastinate release whose schema migration 25 installs (pinned in `pyproject.toml`).
+PROCRASTINATE_VERSION = "3.10.0"
 
 # DDL waits at most this long for a lock, so a migration behind live traffic fails the
 # deploy instead of queueing every request behind it.
@@ -148,6 +152,21 @@ class Migration:
     contract_release: str | None = None
     feature: str | None = None
 
+
+# Migration 25 ends with this: every Procrastinate function resolves names in the knowledge schema.
+_PIN_QUEUE = """;
+DO $do$
+DECLARE
+    f regprocedure;
+BEGIN
+    FOR f IN SELECT p.oid::regprocedure FROM pg_proc p
+        WHERE p.pronamespace = 'knowledge'::regnamespace AND p.proname LIKE 'procrastinate%'
+    LOOP
+        EXECUTE format('ALTER FUNCTION %s SET search_path = knowledge, pg_catalog, pg_temp', f);
+    END LOOP;
+END
+$do$
+"""
 
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(
@@ -539,6 +558,21 @@ CREATE POLICY kb_scope ON knowledge.embeddings
             ),
         )
     ),
+    Migration(
+        version=25,
+        name="knowledge_job_queue",
+        # The ingestion job queue (ADR 0014 K4; RAG-02.01): Procrastinate's own schema at
+        # `PROCRASTINATE_VERSION`, created in the knowledge schema, so the worker needs no rights
+        # in `public` and operators no second superuser step. Its new, empty tables are indexed
+        # here without CONCURRENTLY. Each function gets a pinned search_path, so the API can call
+        # the schema-qualified defer function inside its own transaction (RAG-03.02) and the
+        # triggers find the queue tables whatever the caller's search_path. An upgrade adds
+        # Procrastinate's migration files as new migrations (`test_migrations_policy.py`).
+        sql="".join(
+            ("SET LOCAL search_path = knowledge, public;\n", SchemaManager.get_schema(), _PIN_QUEUE)
+        ),
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"
@@ -556,6 +590,12 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         "documents": _DML,
         "chunks": _READ,
         "embeddings": _READ,
+        # Queues jobs only: the defer function inserts a job (RETURNING its id) and its trigger
+        # an event.
+        "procrastinate_jobs": frozenset({"SELECT", "INSERT"}),
+        "procrastinate_events": frozenset({"INSERT"}),
+        "procrastinate_workers": frozenset(),
+        "procrastinate_periodic_defers": frozenset(),
     },
     "worker": {
         "index_profiles": _READ,
@@ -565,8 +605,23 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         "documents": _READ,
         "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
         "embeddings": frozenset({"SELECT", "INSERT", "DELETE"}),
+        # Procrastinate's worker fetches, finishes, retries and sweeps jobs and registers itself.
+        "procrastinate_jobs": _DML,
+        "procrastinate_events": _DML,
+        "procrastinate_workers": _DML,
+        "procrastinate_periodic_defers": _DML,
     },
 }
+# The queue tables take their ids from a sequence (`<table>_id_seq`); a role that inserts into
+# one gets USAGE on it.
+_SERIAL_TABLES = frozenset(
+    {
+        "procrastinate_jobs",
+        "procrastinate_events",
+        "procrastinate_workers",
+        "procrastinate_periodic_defers",
+    }
+)
 _WORKER_DOCUMENT_COLUMNS = ("status", "error_code", "parser_version", "page_count", "updated_at")
 # Recorded in `index_profiles.chunker` (the E02 decision on #408: Docling's hierarchical
 # chunker with Neuron's own token split).
@@ -772,6 +827,15 @@ def knowledge_grant_statements(
                         sql.SQL(", ").join(sql.SQL(p) for p in sorted(privileges)), target, role
                     )
                 )
+            if table in _SERIAL_TABLES:
+                sequence = sql.Identifier(KNOWLEDGE_SCHEMA, f"{table}_id_seq")
+                statements.append(
+                    sql.SQL("REVOKE ALL ON SEQUENCE {} FROM {}").format(sequence, role)
+                )
+                if "INSERT" in privileges:
+                    statements.append(
+                        sql.SQL("GRANT USAGE ON SEQUENCE {} TO {}").format(sequence, role)
+                    )
             if kind == "worker" and table == "documents":
                 statements.append(
                     sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(

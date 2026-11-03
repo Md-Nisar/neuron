@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import importlib.metadata
 import re
 from pathlib import Path
 
 import pytest
+from procrastinate.schema import SchemaManager
 from pydantic import SecretStr
 from tests.conftest import PRODUCTION_PROFILE
 
@@ -24,6 +26,13 @@ _UNSAFE = [
     ("CREATE INDEX without CONCURRENTLY", r"\bCREATE\s+(UNIQUE\s+)?INDEX\b(?!\s+CONCURRENTLY\b)"),
 ]
 _ADD = r"\bADD\s+(?:COLUMN\s+)?(?!CONSTRAINT\b|PRIMARY\b|UNIQUE\b|CHECK\b|FOREIGN\b)[^,;]*"
+_TABLE_NAME = rf"{_IDENT}(?:\.{_IDENT})?"
+# A table made by this very statement list: plain CREATE TABLE fails if it already exists.
+_NEW_TABLE = re.compile(rf"\bCREATE\s+TABLE\s+(?!IF\b)({_TABLE_NAME})", re.I)
+_PLAIN_INDEX = re.compile(
+    rf"\bCREATE\s+(?:UNIQUE\s+)?INDEX\b(?!\s+CONCURRENTLY\b)[^;]*?\bON\s+(?:ONLY\s+)?({_TABLE_NAME})",
+    re.I,
+)
 
 
 def normalize(sql: str) -> str:
@@ -36,6 +45,11 @@ def normalize(sql: str) -> str:
 def violations(sql: str) -> list[str]:
     """Expand/contract rule (ADR 0008 decision 7): names each unsafe construct in `sql`."""
     sql = normalize(sql)
+    # An index on a table the same migration creates locks nothing anyone uses yet.
+    new_tables = {match.group(1).lower() for match in _NEW_TABLE.finditer(sql)}
+    sql = _PLAIN_INDEX.sub(
+        lambda match: "" if match.group(1).lower() in new_tables else match.group(0), sql
+    )
     found = [name for name, pattern in _UNSAFE if re.search(pattern, sql, re.I)]
     for column in re.finditer(_ADD, sql, re.I):
         text = column.group(0)
@@ -80,6 +94,12 @@ def check(migration: Migration) -> list[str]:
             "ADD COLUMN ... NOT NULL without a default",
         ),
         ("ALTER TABLE t -- harmless\n RENAME TO u", "RENAME"),
+        # Only a table this migration creates may be indexed without CONCURRENTLY.
+        ("CREATE TABLE t (a int); CREATE INDEX i ON u (a)", "CREATE INDEX without CONCURRENTLY"),
+        (
+            "CREATE TABLE IF NOT EXISTS t (a int); CREATE INDEX i ON t (a)",
+            "CREATE INDEX without CONCURRENTLY",
+        ),
     ],
 )
 def test_unsafe_sql_is_detected_and_needs_a_contract_marker(sql: str, expected: str) -> None:
@@ -99,6 +119,8 @@ def test_unsafe_sql_is_detected_and_needs_a_contract_marker(sql: str, expected: 
         "CREATE INDEX CONCURRENTLY IF NOT EXISTS i ON t (a)",
         "ALTER TABLE t ADD CONSTRAINT c CHECK (a IS NOT NULL) NOT VALID",
         "-- DROP the old way later\nCREATE TABLE t (a int) /* TRUNCATE */",
+        "CREATE TABLE t (a int); CREATE UNIQUE INDEX i ON t (a)",
+        "CREATE TABLE s.t (a int); CREATE INDEX i ON ONLY s.t (a)",
     ],
 )
 def test_expand_steps_pass(sql: str) -> None:
@@ -111,6 +133,15 @@ def test_shipped_migrations_follow_the_compatibility_rule() -> None:
         assert check(migration) == [], migration.name
         if migration.concurrent:
             assert migration.sql.count(";") == 0, "a concurrent migration is one statement"
+
+
+def test_the_job_queue_migration_matches_the_installed_procrastinate() -> None:
+    # Migration 25 holds Procrastinate's whole schema for one release. A newer release must
+    # arrive as its migration files (new migrations here), never as a changed migration 25.
+    assert importlib.metadata.version("procrastinate") == migrations.PROCRASTINATE_VERSION
+    queue = next(m for m in MIGRATIONS if m.name == "knowledge_job_queue")
+    assert queue.feature == "knowledge"
+    assert SchemaManager.get_schema() in queue.sql
 
 
 def test_migration_flags_are_consistent() -> None:

@@ -144,7 +144,7 @@ History bounds (`graphs/main_graph.py`, ADR 0005 decision 3):
 
 ### Knowledge storage
 
-The Knowledge Engine (ADR 0014; RAG-01.02) keeps its tables in the `knowledge` schema, owned by the migrator, created by migrations 17–24 only when `APP_KNOWLEDGE_ENABLED=true`. Queries schema-qualify their tables: the schema is not on any role's `search_path`.
+The Knowledge Engine (ADR 0014; RAG-01.02) keeps its tables in the `knowledge` schema, owned by the migrator, created by migrations 17–25 only when `APP_KNOWLEDGE_ENABLED=true`. Queries schema-qualify their tables: the schema is not on any role's `search_path`.
 
 | Table | Holds | Keys and constraints |
 | --- | --- | --- |
@@ -156,6 +156,8 @@ The Knowledge Engine (ADR 0014; RAG-01.02) keeps its tables in the `knowledge` s
 | `embeddings` | One `halfvec` per chunk and profile | (`chunk_id`, `profile_id`); (`chunk_id`, `kb_id`) references `chunks`. Index on (`profile_id`, `kb_id`) and, per profile, a partial HNSW index on `embedding::halfvec(<dimensions>)` (`embeddings_p1_hnsw`). |
 
 Deleting a base or document cascades to its grants, documents, chunks and embeddings. Authorisation is SQL first: every query on `bases`, `grants` and `documents` filters on the caller's owner key or grant (RAG-04.01). Row-level security repeats it where the content is: the `kb_scope` policy on `chunks` and `embeddings` (`USING` and `WITH CHECK`) admits only rows whose `kb_id` is in `neuron.kb_ids`, which each transaction sets with `SET LOCAL`. Unset, or reset to an empty string after an earlier transaction on a pooled connection, it matches nothing. `bases`, `grants` and `documents` have no RLS: the API reads them to find the allowed KB ids, before it can set `neuron.kb_ids`. The policy binds the app role and the worker role (`neuron_worker`, which sets `neuron.kb_ids` per job), because neither owns the tables or has `BYPASSRLS`. The migrator, as owner, is not bound, and neither are foreign-key cascades. Grants per role are in `OPERATIONS.md`, "Database roles".
+
+Ingestion jobs are Procrastinate's (`knowledge/jobs.py`, RAG-02.01): migration 25 installs its `procrastinate_*` tables and functions in the same schema. A job carries ids only, and the document row stays the public status (there is no job resource). `jobs.defer` queues a job on the caller's connection and refuses one outside a transaction, so the job exists exactly when the row it is about commits. The app role can only queue (`SELECT, INSERT` on `procrastinate_jobs`, `INSERT` on `procrastinate_events`); the worker role has DML on the four queue tables. The queue tables have no RLS.
 
 Original files are kept by a `BlobStore` (`knowledge/blobs.py`, RAG-01.03): a local directory or a private S3-compatible bucket, both through `obstore`. `put` streams the file to a new random key (128 bits as hex; no part of a file name reaches it) and returns the key, SHA-256 and size for the `documents` row; `get` re-checks the SHA-256 and raises `BlobIntegrityError` on a mismatch; `delete` succeeds for a missing key. A key that is not 32 lowercase hex characters is refused. Blobs have no public URL.
 

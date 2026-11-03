@@ -179,7 +179,7 @@ async def test_setup_proceeds_when_both_exist_or_can_be_created(changes: dict[st
 
 def test_the_knowledge_migration_is_feature_gated() -> None:
     gated = [m for m in MIGRATIONS if m.feature is not None]
-    assert [m.version for m in gated] == list(range(17, 25))
+    assert [m.version for m in gated] == list(range(17, 26))
     assert {m.feature for m in gated} == {"knowledge"}
     assert gated[0].name == "knowledge_schema"
     assert "CREATE EXTENSION IF NOT EXISTS vector" in gated[0].sql
