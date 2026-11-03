@@ -48,6 +48,7 @@ def test_knowledge_with_nvidia_needs_its_key_in_staging_and_production(env: str)
         "env": env,
         "checkpointer": "postgres",
         "postgres_dsn": SecretStr("postgresql://app@db.example.test/n?sslmode=verify-full"),
+        "knowledge_blob_local_allowed": True,
     }
     with pytest.raises(ValidationError, match="needs NVIDIA_API_KEY"):
         jwt_settings(knowledge_enabled=True, **hardened)
@@ -80,6 +81,7 @@ def test_the_start_up_check_runs_in_staging_and_production_with_knowledge_only(
         postgres_dsn=dsn,
         knowledge_enabled=knowledge,
         nvidia_api_key=SecretStr("nv-test"),
+        knowledge_blob_local_allowed=True,
     )
     persistence = build_persistence(settings)
     assert persistence.check_knowledge is check

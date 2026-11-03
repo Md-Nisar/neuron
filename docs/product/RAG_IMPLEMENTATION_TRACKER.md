@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-03, against `main` at `d31a86f` (RAG-01.01 merged via #419).
+**Last verified:** 2026-11-03, against `main` at `237e40c` (RAG-01.02 merged via #420).
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00 and RAG-E02; the Project board has not been created.
 
 ## New session protocol
@@ -47,10 +47,10 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | Epic | Title | Phase | Release | Total | Done | In progress | Blocked | Pending | Next story |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
-| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 1 | 1 | 0 | 1 | RAG-01.02 (in progress); RAG-01.03 ready |
-| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 1 | 0 | 4 | 0 | RAG-02.01 (after RAG-01.02) |
-| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (after RAG-01.02) |
-| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (after RAG-01.02, RAG-02.03) |
+| RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 2 | 1 | 0 | 0 | RAG-01.03 (in progress) |
+| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 1 | 0 | 3 | 1 | RAG-02.01 (ready) |
+| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (ready) |
+| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (ready) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (after RAG-03.03) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **6** | **1** | **4** | **45** | **RAG-01.02** |
+| **Total** | | | | **56** | **7** | **1** | **3** | **45** | **RAG-01.03** |
 
-v1.1.0 scope (E00–E08): 33 stories, 6 done.
+v1.1.0 scope (E00–E08): 33 stories, 7 done.
 
-**Recommended next action:** merge **RAG-01.02** (#417), which unblocks RAG-02.01, RAG-03.01 and RAG-04.01; RAG-01.03 (#418) can run in parallel.
+**Recommended next action:** merge **RAG-01.03** (#418), then RAG-02.01 (#409, the worker and job queue); RAG-03.01 and RAG-04.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -105,10 +105,11 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E01 Knowledge storage foundation
 
-- **Stories:** 3 total · 1 done · 1 in progress · 0 blocked · 1 pending
+- **Stories:** 3 total · 2 done · 1 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-01.01 (#419): `APP_KNOWLEDGE_ENABLED` (default off); feature-gated migration 17 (`knowledge_schema`: `vector` extension and migrator-owned `knowledge` schema); a `setup` pre-check and schema-trust check; staging/production start-up and readiness checks with stable codes (`vector_extension_missing`, `knowledge_schema_missing`, `knowledge_schema_untrusted`); `pgvector/pgvector:pg16` pinned in CI, `docker-compose.yml` and the reference stack (with `shm_size` and an init script).
-  RAG-01.02 on its branch: migrations 18–24 (six `knowledge` tables, unique, GIN and B-tree indexes), RLS policy `kb_scope` on `chunks` and `embeddings`, exact grants for the app role and `APP_POSTGRES_WORKER_ROLE`, index profile 1 seeded from settings with its HNSW index, `knowledge_profile_mismatch`; schema in `ARCHITECTURE.md`.
-- **Outstanding work:** RAG-01.02 merge; RAG-01.03 (ready).
+  RAG-01.02 (#420): migrations 18–24 (six `knowledge` tables, unique, GIN and B-tree indexes), RLS policy `kb_scope` on `chunks` and `embeddings`, exact grants for the app role and `APP_POSTGRES_WORKER_ROLE`, index profile 1 seeded from settings with its HNSW index, `knowledge_profile_mismatch`; schema in `ARCHITECTURE.md`.
+  RAG-01.03 on its branch: `knowledge/blobs.py` (`BlobStore`, `LocalBlobStore`, `S3BlobStore` over `obstore`; random 128-bit hex keys, SHA-256 computed while streaming and re-checked on read, idempotent delete, failed uploads cleaned up), `APP_KNOWLEDGE_BLOB_*` settings.
+- **Outstanding work:** RAG-01.03 merge.
 - **Blockers and decisions:**
   - Decision (RAG-01.01, #416): the migrator has only `CONNECT` on the database, and `CREATE SCHEMA IF NOT EXISTS` checks the database privilege even when the schema exists, so the operator's superuser step creates the extension and `CREATE SCHEMA knowledge AUTHORIZATION neuron_migrator`; the migrator gets no database `CREATE`. `setup` refuses a schema owned by another role or creatable by `PUBLIC` or the app role (security review finding).
   - Assumption (RAG-01.01): "`/health/ready` reports the failing check" is a 503 plus a `knowledge_check_failed` log with the code; the unauthenticated body stays `{"status": "not_ready"}`.
@@ -120,8 +121,13 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Assumption (RAG-01.02): while the worker role does not exist, `setup` skips its grants with `worker_role_grants_skipped`, also in production; RAG-02.01, which adds the worker, should make it required there. `chunker` is recorded as `docling-hierarchical`.
   - Security review (RAG-01.02): no high findings. Fixed: `setup` now verifies RLS state (enabled, migrator-owned, `kb_scope` with `USING` and `WITH CHECK`) and refuses drift with `knowledge_schema_untrusted`; the worker is included in the schema `CREATE` check; the worker's `documents` UPDATE is column-level; single-role setups log `knowledge_rls_not_enforced`. Left for later stories: every query on `bases`, `grants` and `documents` must filter on the owner key, with cross-owner tests (RAG-03, RAG-04); callers must use `SET LOCAL`, never a session `SET` (RAG-04.01 test); the worker's reads of `bases` and `documents` are unscoped by design (requirement 2); worker grants are not revoked when knowledge is turned off; role-membership between app and worker is not checked.
   - Not done (RAG-01.02): mutation testing does not apply. The RLS policy is SQL, and `mutmut` mutates only `security/` and `tools/` (`pyproject.toml`), not `persistence/`. The policy and grants are covered by the Postgres integration tests, which fail when `USING`, `WITH CHECK` or a grant changes.
-  - Open (RAG-01.03): whether the API image needs `obstore`, and fail-or-warn for a local store in staging/production (proposed: fail without an explicit opt-in).
-- **Next recommended story:** RAG-01.03 (or RAG-02.01 once RAG-01.02 merges).
+  - Decision (RAG-01.03, ADR 0014 amended): `obstore` is a core dependency, not in the `worker` extra, because the API writes originals at upload (RAG-03.02) and reads them for download (RAG-03.04); about +16 MB in the API image. A plain-filesystem path in the API would rule out `s3` there.
+  - Decision (RAG-01.03): `local` in staging/production fails settings validation unless `APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true`, and only with `APP_KNOWLEDGE_ENABLED=true`, so v1.0.0 production profiles stay valid.
+  - Decision (RAG-01.03): `put` takes no file name at all, so no user path part can reach a key; `get`, `delete` and `exists` refuse any key that is not 32 lowercase hex characters. `get` returns bytes (files are bounded by the upload limit, RAG-03.02). One class over `obstore` serves both backends; `LocalBlobStore` and `S3BlobStore` only build the store.
+  - Assumption (RAG-01.03): write-once comes from fresh random keys (the store never writes to an existing key), not from S3 conditional puts, which `obstore` performs without multipart streaming. Server-side encryption and blocked public access are bucket configuration (`OPERATIONS.md`, "Knowledge blob store"), not per-request headers, so S3-compatible servers without KMS still work. Unset S3 credentials use the standard AWS chain.
+  - Security review (RAG-01.03): no high findings. Fixed: `put` takes a required `max_bytes` and raises `BlobTooLargeError` (`blob_too_large`) without storing anything; failed-upload clean-up is shielded from cancellation; other storage errors become `blob_backend_error` without the path or URL (logged by type only); the local root is set to `0700` even when it exists; whitespace-only blob settings count as unset. Documented in `OPERATIONS.md`: an S3 lifecycle rule for incomplete multipart uploads, and checking the ambient AWS identity when no keys are set. Left as is: `get` reads the whole blob into memory (bounded by `max_bytes` at `put`); a symlink planted in the root needs write access to it already.
+  - Assumption (RAG-01.03): the default root `var/knowledge-blobs` is relative to the working directory; a container needs a writable volume there (RAG-02.01 or RAG-03.02 wires the store into a process).
+- **Next recommended story:** RAG-02.01 after RAG-01.03 merges.
 
 ### RAG-E02 Durable ingestion pipeline
 
@@ -129,7 +135,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 - **Implemented functionality:** RAG-02.03 (merged via #414): `knowledge/providers.py` (`EmbeddingProvider` over LangChain `Embeddings`: `nvidia`, `openai_compatible`, a numpy-free `fake`; batching; count, dimension and finite checks; retries for 429/5xx/connection errors only; sanitised codes) and the `APP_KNOWLEDGE_EMBEDDING_*` and `APP_KNOWLEDGE_PROCESSING_POLICY` settings. A live check against the NVIDIA API catalog with fictional text returned 1,024-dimension passage and query vectors.
 - **Outstanding work:** RAG-02.01, 02.02, 02.04, 02.05.
 - **Blockers and decisions:**
-  - Blocked: RAG-02.01 needs `knowledge.documents` (RAG-01.02); RAG-02.02 needs RAG-02.01; RAG-02.04 needs RAG-02.01, 02.02 and RAG-01.03; RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, missing from its "Depends on").
+  - Unblocked: RAG-02.01 (RAG-01.02 merged in #420). Blocked: RAG-02.02 needs RAG-02.01; RAG-02.04 needs RAG-02.01, 02.02 and RAG-01.03; RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, missing from its "Depends on").
   - Assumptions (RAG-02.03, #411): `nvidia` is always hosted; `openai_compatible` is hosted unless `APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted`; the fake provider is refused in staging/production; a keyed endpoint needs https there. `bases.processing` is a RAG-01.02 column; RAG-02.04 and RAG-04.01 must call `ensure_processing_allowed` before every embedding call. A missing NVIDIA key in staging/production now fails at settings load when `APP_KNOWLEDGE_ENABLED=true` (RAG-01.01).
   - Decisions (2026-11-03, delegated by the owner, recorded on #408): the API stays ready with the worker down; the worker uses its own `neuron_worker` role; the concurrent-job limit refuses with 429 `ingestion_concurrency_exceeded`; embedding tokens go in a separate ledger kind, not the chat budget; default embedding `nemotron-3.5-embed-1b` at 1,024 for development (TEI in production); the worker is a second Dockerfile target; chunking uses `HierarchicalChunker` with Neuron's own token split instead of `chunking-openai`.
 - **Next recommended story:** RAG-01.01, then RAG-01.02, which unblocks RAG-02.01.
@@ -223,9 +229,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-00.03 | Labelled eval corpus and knowledge security dataset | 0 | P0 | Done | #401 | #404 | `tests/unit/test_knowledge_cases.py`: schema and references (AC1), counts (AC2), licence and source per document (AC3) |
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Done | #402 | #406 | ADR 0014 "Dependencies and images": `uv lock` resolves beside `openai>=3.6.0`, API environment unchanged, worker +167.1 MB (AC1); licence and first release per package (AC2); versions and digests named in RAG-01.01 and RAG-02.01 (AC3) |
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Done | #416 | #419 | `tests/integration/test_postgres_knowledge.py` on pgvector: extension and schema created, migration recorded once (AC1); start-up refused with `vector_extension_missing`, readiness false (AC2); without knowledge, migration 17 not applied and the full Postgres suite passes on plain `postgres:16` (AC3, run locally 2026-11-03) |
-| RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | In progress | #417 | branch `RAG-01.02` | `tests/integration/test_postgres_knowledge_tables.py` on pgvector: only KB A's rows with `neuron.kb_ids = A` (AC1); none when unset or empty (AC2); none in the next transaction on the same connection (AC3); app and worker roles cannot `DROP`, `ALTER`, `TRUNCATE`, disable RLS or drop the policy, and hold exactly the documented grants (AC4); the v1.0.0 schema's columns, indexes, constraints and ACLs are identical after knowledge setup (AC5) |
-| RAG-01.03 | BlobStore for original files | 1 | P0 | Pending | #418 | — | — |
-| RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Blocked | #409 | — | — |
+| RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Done | #417 | #420 | `tests/integration/test_postgres_knowledge_tables.py` on pgvector: only KB A's rows with `neuron.kb_ids = A` (AC1); none when unset or empty (AC2); none in the next transaction on the same connection (AC3); app and worker roles cannot `DROP`, `ALTER`, `TRUNCATE`, disable RLS or drop the policy, and hold exactly the documented grants (AC4); the v1.0.0 schema's columns, indexes, constraints and ACLs are identical after knowledge setup (AC5) |
+| RAG-01.03 | BlobStore for original files | 1 | P0 | In progress | #418 | branch `RAG-01.03` | `tests/unit/test_knowledge_blobs.py` (local directory and obstore memory store): keys are 32 hex characters, the only file written is `<root>/<key>`, traversal keys refused (AC1); tampered bytes or a wrong checksum raise `BlobIntegrityError` (AC2); a second `delete` succeeds (AC3); over `max_bytes` stores nothing; backend errors carry no path; production with knowledge on and `local` fails without `APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true` (AC4). S3, run 2026-11-03 against a local moto S3 server (the MinIO image could not be pulled here): 9 MB multipart put, get, checksum mismatch, double delete; a failed upload left 0 objects and 0 pending multipart uploads |
+| RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Pending | #409 | — | — |
 | RAG-02.02 | Document parser adapters | 1 | P0 | Blocked | #410 | — | — |
 | RAG-02.03 | Embedding provider and processing locality | 1 | P0 | Done | #411 | #414 | `tests/unit/test_knowledge_providers.py`: staging/production refusal under `self_hosted_only` (AC1); `embedding_dimension_mismatch`, nothing returned (AC2); 429/5xx/connection retried with backoff, 400 terminal (AC3); fake provider, network blocked (AC4) |
 | RAG-02.04 | Idempotent ingest task | 1 | P0 | Blocked | #412 | — | — |
@@ -279,6 +285,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-03 | RAG-01.02 Done (#420). RAG-01.03 In progress; `obstore` moved to core dependencies (ADR 0014 amended), `local` blob store opt-in for staging/production. RAG-02.01, RAG-03.01, RAG-04.01 unblocked | Claude session |
 | 2026-11-03 | RAG-01.01 Done (#419). RAG-01.02 In progress; decisions on RLS scope, worker rights, profile seeding recorded | Claude session |
 | 2026-11-03 | RAG-02.03 Done (#414). RAG-E01 analysed; issues #415–#418 created; #408 decisions recorded; RAG-01.01 In progress; RAG-01.02 Blocked on it | Claude session |
 | 2026-11-03 | E00 confirmed on `main`, #398–#402 closed. RAG-E02 analysed; issues #408–#413 created; RAG-02.01, 02.02, 02.04, 02.05 Blocked on E01; RAG-02.03 In progress | Claude session |

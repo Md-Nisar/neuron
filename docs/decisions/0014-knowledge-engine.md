@@ -296,6 +296,13 @@ recorded with versions and dates in the RAG-00.04 PR.
   and S3 stores, so `LocalBlobStore` and `S3BlobStore` share one API and no `botocore` is needed.
   Rejected: `boto3` (heavier, sync), and `minio` 7.2.20 and `aioboto3` 15.5.0, whose last
   releases are from 2025.
+  **Amended by RAG-01.03 (2026-11-03):** `obstore` is a core dependency, not part of the
+  `worker` extra, because the API writes originals at upload (RAG-03.02) and reads them for
+  download (RAG-03.04); the API image grows by about 16 MB. The alternative, a plain-filesystem
+  path in the API, would leave the API unable to use the `s3` backend. `LocalBlobStore` with
+  `APP_KNOWLEDGE_BLOB_BACKEND=local` fails settings validation in staging and production with
+  knowledge on, unless `APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true` (one node with a persistent
+  volume).
 - **Chunking.** `HybridChunker` needs a tokenizer. The `chunking-openai` extra uses `tiktoken`,
   already in the lock, instead of `chunking`, which pulls `transformers`. tiktoken counts are an
   approximation of the embedding model's tokens, so the token limit keeps a margin (RAG-02.03),
