@@ -33,6 +33,8 @@ ProcessingPolicy = Literal["allow_hosted", "self_hosted_only"]
 # Starlette compares hostnames without the port, so entries can't carry ports or schemes.
 # Model identifier prefixes `create_chat_model` can build.
 SUPPORTED_PROVIDERS = frozenset({"openai", "nvidia", "anthropic"})
+# Instance-metadata names; link-local addresses are refused by address.
+_METADATA_HOSTS = frozenset({"metadata.google.internal", "metadata.azure.internal"})
 _HOST_PATTERN = re.compile(r"^(\*|(\*\.)?[a-z0-9.-]+)$")
 _ORIGIN_PATTERN = re.compile(r"^https?://([a-z0-9.-]+|\[[0-9a-f:]+\])(:[0-9]{1,5})?$")
 
@@ -55,6 +57,17 @@ def _is_loopback_bind(host: str) -> bool:
         return ipaddress.ip_address(host.strip("[]")).is_loopback
     except ValueError:
         return False
+
+
+def _is_metadata_host(hostname: str) -> bool:
+    """A link-local address or a well-known cloud instance-metadata name."""
+    if hostname.lower().rstrip(".") in _METADATA_HOSTS:
+        return True
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+    return address.is_link_local or address == ipaddress.ip_address("fd00:ec2::254")
 
 
 def _is_internal_host(url: str) -> bool:
@@ -192,7 +205,9 @@ class Settings(BaseSettings):
     knowledge_blob_local_allowed: bool = False
     # `s3`: a private bucket. The endpoint is for S3-compatible servers; unset means AWS. Unset
     # credentials fall back to the standard AWS chain (environment, web identity, instance role).
-    knowledge_blob_bucket: str | None = Field(default=None, min_length=3, max_length=63)
+    knowledge_blob_bucket: str | None = Field(
+        default=None, pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    )
     knowledge_blob_endpoint: str | None = None
     knowledge_blob_region: str | None = None
     knowledge_blob_access_key_id: SecretStr | None = None
@@ -505,6 +520,12 @@ class Settings(BaseSettings):
                     raise ValueError(
                         "APP_KNOWLEDGE_BLOB_ENDPOINT must use https in staging/production"
                     )
+                if _is_metadata_host(parts.hostname):
+                    # Private hosts stay allowed (self-hosted MinIO); instance metadata never.
+                    raise ValueError(
+                        "APP_KNOWLEDGE_BLOB_ENDPOINT must not be a link-local or cloud metadata "
+                        "address"
+                    )
         if (
             self.knowledge_enabled
             and self.env in {"staging", "production"}
@@ -515,6 +536,16 @@ class Settings(BaseSettings):
                 "APP_KNOWLEDGE_BLOB_BACKEND=local is refused in staging/production unless "
                 "APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true (one node with a persistent volume); "
                 "use s3"
+            )
+        if (
+            self.knowledge_enabled
+            and self.env in {"staging", "production"}
+            and self.knowledge_blob_backend == "local"
+            and not Path(self.knowledge_blob_root).is_absolute()
+        ):
+            # A relative root follows the working directory, which is rarely the volume.
+            raise ValueError(
+                "APP_KNOWLEDGE_BLOB_ROOT must be an absolute path in staging/production"
             )
         return self
 
