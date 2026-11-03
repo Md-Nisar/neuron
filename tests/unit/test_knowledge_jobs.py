@@ -86,3 +86,22 @@ def test_the_worker_dsn_needs_tls_in_production() -> None:
     plaintext = SecretStr("postgresql://w@db/n")
     with pytest.raises(ValidationError, match="APP_POSTGRES_WORKER_DSN must set sslmode"):
         jwt_settings(env="production", postgres_worker_dsn=plaintext)
+
+
+def test_an_unexpected_error_prints_only_its_class(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    async def boom(_: Settings) -> None:
+        raise RuntimeError("postgresql://neuron_worker:s3cret@db.internal/n")
+
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("APP_POSTGRES_WORKER_DSN", "postgresql://w@h/d")
+    monkeypatch.setattr(worker, "run", boom)
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(SystemExit) as caught:
+            worker.main([])
+    finally:
+        get_settings.cache_clear()
+    assert caught.value.code == 1
+    assert capsys.readouterr().err == "worker failed: RuntimeError\n"

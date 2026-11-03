@@ -200,7 +200,7 @@ def main(argv: list[str] | None = None) -> None:
     except StartupCheckError as exc:
         print(f"worker failed: {exc}", file=sys.stderr)
         raise SystemExit(1) from None
-    except psycopg.Error as exc:
-        # The class only: a driver message can echo the host, the user or the DSN.
+    except Exception as exc:  # noqa: BLE001 - as `persistence.cli`: no traceback, no text
+        # The class only: a driver or library message can echo the host, the user or the DSN.
         print(f"worker failed: {type(exc).__name__}", file=sys.stderr)
         raise SystemExit(1) from None
