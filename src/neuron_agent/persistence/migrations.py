@@ -26,6 +26,7 @@ import psycopg
 import structlog
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.postgres import AsyncPostgresStore
+from procrastinate.schema import SchemaManager
 from psycopg import sql
 from psycopg.rows import dict_row
 
@@ -40,6 +41,9 @@ from neuron_agent.persistence.startup_checks import (
 )
 
 logger = structlog.get_logger(__name__)
+
+# The Procrastinate release whose schema migration 25 installs (pinned in `pyproject.toml`).
+PROCRASTINATE_VERSION = "3.10.0"
 
 # DDL waits at most this long for a lock, so a migration behind live traffic fails the
 # deploy instead of queueing every request behind it.
@@ -148,6 +152,21 @@ class Migration:
     contract_release: str | None = None
     feature: str | None = None
 
+
+# Migration 25 ends with this: every Procrastinate function resolves names in the knowledge schema.
+_PIN_QUEUE = """;
+DO $do$
+DECLARE
+    f regprocedure;
+BEGIN
+    FOR f IN SELECT p.oid::regprocedure FROM pg_proc p
+        WHERE p.pronamespace = 'knowledge'::regnamespace AND p.proname LIKE 'procrastinate%'
+    LOOP
+        EXECUTE format('ALTER FUNCTION %s SET search_path = knowledge, pg_catalog, pg_temp', f);
+    END LOOP;
+END
+$do$
+"""
 
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(
@@ -539,6 +558,21 @@ CREATE POLICY kb_scope ON knowledge.embeddings
             ),
         )
     ),
+    Migration(
+        version=25,
+        name="knowledge_job_queue",
+        # The ingestion job queue (ADR 0014 K4; RAG-02.01): Procrastinate's own schema at
+        # `PROCRASTINATE_VERSION`, created in the knowledge schema, so the worker needs no rights
+        # in `public` and operators no second superuser step. Its new, empty tables are indexed
+        # here without CONCURRENTLY. Each function gets a pinned search_path, so the API can call
+        # the schema-qualified defer function inside its own transaction (RAG-03.02) and the
+        # triggers find the queue tables whatever the caller's search_path. An upgrade adds
+        # Procrastinate's migration files as new migrations (`test_migrations_policy.py`).
+        sql="".join(
+            ("SET LOCAL search_path = knowledge, public;\n", SchemaManager.get_schema(), _PIN_QUEUE)
+        ),
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"
@@ -556,6 +590,12 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         "documents": _DML,
         "chunks": _READ,
         "embeddings": _READ,
+        # Queues jobs only: the defer function inserts a job (RETURNING its id) and its trigger
+        # an event.
+        "procrastinate_jobs": frozenset({"SELECT", "INSERT"}),
+        "procrastinate_events": frozenset({"INSERT"}),
+        "procrastinate_workers": frozenset(),
+        "procrastinate_periodic_defers": frozenset(),
     },
     "worker": {
         "index_profiles": _READ,
@@ -565,8 +605,23 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         "documents": _READ,
         "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
         "embeddings": frozenset({"SELECT", "INSERT", "DELETE"}),
+        # Procrastinate's worker fetches, finishes, retries and sweeps jobs and registers itself.
+        "procrastinate_jobs": _DML,
+        "procrastinate_events": _DML,
+        "procrastinate_workers": _DML,
+        "procrastinate_periodic_defers": _DML,
     },
 }
+# The queue tables take their ids from a sequence (`<table>_id_seq`); a role that inserts into
+# one gets USAGE on it.
+_SERIAL_TABLES = frozenset(
+    {
+        "procrastinate_jobs",
+        "procrastinate_events",
+        "procrastinate_workers",
+        "procrastinate_periodic_defers",
+    }
+)
 _WORKER_DOCUMENT_COLUMNS = ("status", "error_code", "parser_version", "page_count", "updated_at")
 # Recorded in `index_profiles.chunker` (the E02 decision on #408: Docling's hierarchical
 # chunker with Neuron's own token split).
@@ -740,9 +795,16 @@ async def _resolve_worker_role(
     if worker_role in {migrator, app_role}:
         raise AppRoleError("the worker role must differ from the app and migration roles")
     cursor = await conn.execute(
-        "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %s) AS found", (worker_role,)
+        "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %(worker)s) AS found,"
+        " EXISTS (SELECT 1 FROM pg_roles w, pg_roles a WHERE w.rolname = %(worker)s"
+        " AND a.rolname = %(app)s AND (pg_has_role(w.oid, a.oid, 'MEMBER')"
+        " OR pg_has_role(a.oid, w.oid, 'MEMBER'))) AS shared",
+        {"worker": worker_role, "app": app_role},
     )
     row = await cursor.fetchone()
+    if row is not None and row["shared"]:
+        # Membership would hand the worker the app role's rights in `public`, or the reverse.
+        raise AppRoleError("the worker role must not be a member of the app role, or the reverse")
     if row is not None and row["found"]:
         return worker_role
     logger.warning("worker_role_grants_skipped", reason="the worker role does not exist")
@@ -762,24 +824,34 @@ def knowledge_grant_statements(
         role = sql.Identifier(name)
         statements.append(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, role))
         for table, privileges in _KNOWLEDGE_PRIVILEGES[kind].items():
-            if present is not None and table not in present:
-                continue
-            target = sql.Identifier(KNOWLEDGE_SCHEMA, table)
-            statements.append(sql.SQL("REVOKE ALL ON {} FROM {}").format(target, role))
-            if privileges:
-                statements.append(
-                    sql.SQL("GRANT {} ON {} TO {}").format(
-                        sql.SQL(", ").join(sql.SQL(p) for p in sorted(privileges)), target, role
-                    )
-                )
-            if kind == "worker" and table == "documents":
-                statements.append(
-                    sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
-                        sql.SQL(", ").join(map(sql.Identifier, _WORKER_DOCUMENT_COLUMNS)),
-                        target,
-                        role,
-                    )
-                )
+            if present is None or table in present:
+                statements.extend(_table_grants(kind, table, privileges, role))
+    return statements
+
+
+def _table_grants(
+    kind: str, table: str, privileges: frozenset[str], role: sql.Identifier
+) -> list[sql.Composed]:
+    """One knowledge table's grants for one role, its id sequence's and its column grants."""
+    target = sql.Identifier(KNOWLEDGE_SCHEMA, table)
+    statements = [sql.SQL("REVOKE ALL ON {} FROM {}").format(target, role)]
+    if privileges:
+        statements.append(
+            sql.SQL("GRANT {} ON {} TO {}").format(
+                sql.SQL(", ").join(sql.SQL(p) for p in sorted(privileges)), target, role
+            )
+        )
+    if table in _SERIAL_TABLES:
+        sequence = sql.Identifier(KNOWLEDGE_SCHEMA, f"{table}_id_seq")
+        statements.append(sql.SQL("REVOKE ALL ON SEQUENCE {} FROM {}").format(sequence, role))
+        if "INSERT" in privileges:
+            statements.append(sql.SQL("GRANT USAGE ON SEQUENCE {} TO {}").format(sequence, role))
+    if kind == "worker" and table == "documents":
+        statements.append(
+            sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
+                sql.SQL(", ").join(map(sql.Identifier, _WORKER_DOCUMENT_COLUMNS)), target, role
+            )
+        )
     return statements
 
 
@@ -897,6 +969,8 @@ async def _verify_grants(
     checks.append((role.name, KNOWLEDGE_SCHEMA, _KNOWLEDGE_PRIVILEGES["app"]))
     if role.worker is not None:
         checks.append((role.worker, KNOWLEDGE_SCHEMA, _KNOWLEDGE_PRIVILEGES["worker"]))
+        # The worker parses untrusted files: it must not reach threads, checkpoints or memory.
+        checks.append((role.worker, role.schema, dict.fromkeys(_APP_PRIVILEGES, frozenset())))
     wrong: list[str] = []
     for grantee, schema, matrix in checks:
         for table, expected in matrix.items():

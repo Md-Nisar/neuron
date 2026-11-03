@@ -179,7 +179,7 @@ async def test_setup_proceeds_when_both_exist_or_can_be_created(changes: dict[st
 
 def test_the_knowledge_migration_is_feature_gated() -> None:
     gated = [m for m in MIGRATIONS if m.feature is not None]
-    assert [m.version for m in gated] == list(range(17, 25))
+    assert [m.version for m in gated] == list(range(17, 26))
     assert {m.feature for m in gated} == {"knowledge"}
     assert gated[0].name == "knowledge_schema"
     assert "CREATE EXTENSION IF NOT EXISTS vector" in gated[0].sql
@@ -248,9 +248,14 @@ def test_the_worker_role_name_is_a_plain_unreserved_name() -> None:
 
 
 async def test_a_missing_worker_role_is_skipped_and_a_shared_one_refused() -> None:
-    assert await migrations._resolve_worker_role(_Conn({"found": False}), "w", "m", "a") is None  # type: ignore[arg-type]
-    assert await migrations._resolve_worker_role(_Conn({"found": True}), "w", "m", "a") == "w"  # type: ignore[arg-type]
-    assert await migrations._resolve_worker_role(_Conn(None), None, "m", "a") is None  # type: ignore[arg-type]
+    resolve: Any = migrations._resolve_worker_role
+    assert await resolve(_Conn({"found": False, "shared": False}), "w", "m", "a") is None
+    assert await resolve(_Conn({"found": True, "shared": False}), "w", "m", "a") == "w"
+    assert await resolve(_Conn(None), None, "m", "a") is None
+    # A worker that is a member of the app role (or the reverse) would share its rights.
+    shared_role = _Conn({"found": True, "shared": True})
+    with pytest.raises(AppRoleError, match="member"):
+        await resolve(shared_role, "w", "m", "a")
     for shared in ("m", "a"):
         with pytest.raises(AppRoleError):
             await migrations._resolve_worker_role(_Conn(None), shared, "m", "a")  # type: ignore[arg-type]

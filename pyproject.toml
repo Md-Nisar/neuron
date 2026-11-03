@@ -33,6 +33,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.42.1",
     "opentelemetry-instrumentation-fastapi>=0.63b1",
     "opentelemetry-sdk>=1.42.1",
+    "procrastinate==3.10.0",
     "psycopg[binary,pool]>=3.2",
     "pydantic>=2.12.0",
     "pydantic-settings>=2.12.0",

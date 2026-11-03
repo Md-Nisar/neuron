@@ -161,12 +161,17 @@ async def test_runtime_roles_cannot_alter_drop_or_disable_rls(
             await _denied(dsn, f"TRUNCATE {name}")
         await _denied(dsn, "DROP POLICY kb_scope ON knowledge.chunks")
         await _denied(dsn, "CREATE TABLE knowledge.probe (a int)")
-    # RLS stays on, and the migrator owns every table.
+    # RLS stays on, and the migrator owns every table, the job queue's too (migration 25; its
+    # rows carry ids only, so it has no RLS).
+    queue = ("procrastinate_events", "procrastinate_jobs", "procrastinate_periodic_defers")
     assert await _rows(
         role_db.migrator_dsn,
         "SELECT relname::text, relrowsecurity, pg_get_userbyid(relowner)::text FROM pg_class"
         " WHERE relnamespace = 'knowledge'::regnamespace AND relkind = 'r' ORDER BY 1",
-    ) == [(t, t in {"chunks", "embeddings"}, role_db.roles.migrator) for t in sorted(_TABLES)]
+    ) == [
+        (t, t in {"chunks", "embeddings"}, role_db.roles.migrator)
+        for t in sorted((*_TABLES, *queue, "procrastinate_workers"))
+    ]
 
 
 async def test_grants_are_exactly_what_each_role_needs(

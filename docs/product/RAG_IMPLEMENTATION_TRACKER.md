@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-03, against `main` at `da91370` (RAG-01.03 merged; E01 post-merge review fixes on `ccr-7c4dd17f-k9sle9`).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 and RAG-E02; the Project board has not been created.
+**Last verified:** 2026-11-03, against `main` at `f95c18a` (E01 closed out by #422 and #423; RAG-02.01 part 1 on branch `RAG-02.01`).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01 and RAG-E02; the Project board has not been created.
 
 ## New session protocol
 
@@ -48,7 +48,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
-| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 1 | 0 | 3 | 1 | RAG-02.01 (ready) |
+| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 1 | 1 | 3 | 0 | RAG-02.01 (in progress) |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (ready) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (ready) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **8** | **0** | **3** | **45** | **RAG-02.01** |
+| **Total** | | | | **56** | **8** | **1** | **3** | **44** | **RAG-02.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 8 done.
 
-**Recommended next action:** RAG-02.01 (#409, the worker and job queue); RAG-03.01 and RAG-04.01 are also unblocked.
+**Recommended next action:** finish RAG-02.01 (#409): part 1 (queue schema, grants, transactional defer) is on branch `RAG-02.01`; part 2 is the `neuron-worker` process. RAG-03.01 and RAG-04.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -133,14 +133,20 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E02 Durable ingestion pipeline
 
-- **Stories:** 5 total · 1 done · 0 in progress · 4 blocked · 0 pending
+- **Stories:** 5 total · 1 done · 1 in progress · 3 blocked · 0 pending
 - **Implemented functionality:** RAG-02.03 (merged via #414): `knowledge/providers.py` (`EmbeddingProvider` over LangChain `Embeddings`: `nvidia`, `openai_compatible`, a numpy-free `fake`; batching; count, dimension and finite checks; retries for 429/5xx/connection errors only; sanitised codes) and the `APP_KNOWLEDGE_EMBEDDING_*` and `APP_KNOWLEDGE_PROCESSING_POLICY` settings. A live check against the NVIDIA API catalog with fictional text returned 1,024-dimension passage and query vectors.
-- **Outstanding work:** RAG-02.01, 02.02, 02.04, 02.05.
+  RAG-02.01 part 1 (branch `RAG-02.01`): migration 25 (`knowledge_job_queue`: Procrastinate 3.10.0's schema in the `knowledge` schema, functions with a pinned `search_path`); `knowledge/jobs.py` (`defer` with ids only, refused outside a transaction); app role may only queue, worker role has DML on the queue tables and USAGE on their sequences.
+- **Outstanding work:** RAG-02.01 part 2: the `neuron-worker` entrypoint (worker pool and DSN with `search_path=knowledge`, tasks registered by name, SIGTERM drain, health file, periodic stalled-job sweep), the worker role required in production `setup`, the reference-stack service and `neuron_worker` role, the operations runbook, and the tests for AC1 (SIGKILL), AC2 (drain) and AC4 (API ready with the worker down). Then RAG-02.02, 02.04, 02.05.
 - **Blockers and decisions:**
   - Unblocked: RAG-02.01 (RAG-01.02 merged in #420). Blocked: RAG-02.02 needs RAG-02.01; RAG-02.04 needs RAG-02.01, 02.02 and RAG-01.03; RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, missing from its "Depends on").
   - Assumptions (RAG-02.03, #411): `nvidia` is always hosted; `openai_compatible` is hosted unless `APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted`; the fake provider is refused in staging/production; a keyed endpoint needs https there. `bases.processing` is a RAG-01.02 column; RAG-02.04 and RAG-04.01 must call `ensure_processing_allowed` before every embedding call. A missing NVIDIA key in staging/production now fails at settings load when `APP_KNOWLEDGE_ENABLED=true` (RAG-01.01).
+  - Decision (RAG-02.01): the queue tables live in the `knowledge` schema, not `public` or a `procrastinate` schema. The migrator cannot create a schema (only `CONNECT` on the database), the worker then needs no rights in `public` (so a compromised parser cannot reach threads or checkpoints), and `public`'s default privileges do not hand the app role DML on them. Procrastinate's functions get `search_path = knowledge, pg_catalog, pg_temp`, so the API calls `knowledge.procrastinate_defer_jobs_v1` from its own transaction and the triggers resolve their tables. The queue tables have no RLS: rows carry ids only.
+  - Decision (RAG-02.01, ADR 0014 amended): `procrastinate` is a core dependency pinned to 3.10.0, not in the `worker` extra, because `setup` runs from the API image and takes the schema from the installed library (+4 pure-Python packages in the API environment). An upgrade must add Procrastinate's migration files as new Neuron migrations; `test_the_job_queue_migration_matches_the_installed_procrastinate` fails until it does. The `worker` extra does not exist yet; RAG-02.02 adds it with `docling-core`.
+  - Decision (RAG-02.01): the migration policy allows `CREATE INDEX` without `CONCURRENTLY` on a table the same migration creates with a plain `CREATE TABLE` (it fails if the table exists, so the table is new and empty); Procrastinate's schema needs it.
+  - Decision (RAG-02.01): the app role gets `SELECT, INSERT` on `procrastinate_jobs` (the defer function returns the id) and `INSERT` on `procrastinate_events` (its trigger), nothing on `procrastinate_workers` or `procrastinate_periodic_defers`; it cannot change or delete a job. Split: the story is two PRs to stay near 400 lines (part 1 queue, part 2 worker process); the issue closes with part 2.
+  - Security review (RAG-02.01 part 1): no high findings. Fixed: `setup` now requires the worker role to hold nothing on the `public` tables and refuses a worker that is a member of the app role or the reverse (either would hand the worker the app's rights to threads and checkpoints); the index-policy lint no longer treats a quoted `"Checkpoints"` as the live `checkpoints`. Left for later stories: the app role can insert any job row directly (Procrastinate's functions run with the caller's rights), so a compromised API could queue arbitrary arguments; RAG-02.04's task must parse its arguments as UUIDs and look the document up, never trust them (a SECURITY DEFINER defer wrapper is the stronger option if the API ever needs less than `INSERT`). Not done, not exploitable today: `EXECUTE` on the queue functions stays with `PUBLIC` (only the app and worker have `USAGE` on the schema, and the functions run as the caller); `setup` does not re-check the functions' pinned `search_path` or the sequence grants. RAG-02.01 part 2 sets the worker's `search_path=knowledge` per connection, never `public`; duplicate ingest jobs for one document are RAG-02.04's idempotency (or `queueing_lock = doc_id`).
   - Decisions (2026-11-03, delegated by the owner, recorded on #408): the API stays ready with the worker down; the worker uses its own `neuron_worker` role; the concurrent-job limit refuses with 429 `ingestion_concurrency_exceeded`; embedding tokens go in a separate ledger kind, not the chat budget; default embedding `nemotron-3.5-embed-1b` at 1,024 for development (TEI in production); the worker is a second Dockerfile target; chunking uses `HierarchicalChunker` with Neuron's own token split instead of `chunking-openai`.
-- **Next recommended story:** RAG-01.01, then RAG-01.02, which unblocks RAG-02.01.
+- **Next recommended story:** RAG-02.01 part 2, then RAG-02.02.
 
 ### RAG-E03 Knowledge API
 
@@ -232,8 +238,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-00.04 | Dependency and image plan | 0 | P0 | Done | #402 | #406 | ADR 0014 "Dependencies and images": `uv lock` resolves beside `openai>=3.6.0`, API environment unchanged, worker +167.1 MB (AC1); licence and first release per package (AC2); versions and digests named in RAG-01.01 and RAG-02.01 (AC3) |
 | RAG-01.01 | pgvector image, extension and startup check | 1 | P0 | Done | #416 | #419 | `tests/integration/test_postgres_knowledge.py` on pgvector: extension and schema created, migration recorded once (AC1); start-up refused with `vector_extension_missing`, readiness false (AC2); without knowledge, migration 17 not applied and the full Postgres suite passes on plain `postgres:16` (AC3, run locally 2026-11-03) |
 | RAG-01.02 | Knowledge tables, role grants and row-level security | 1 | P0 | Done | #417 | #420 | `tests/integration/test_postgres_knowledge_tables.py` on pgvector: only KB A's rows with `neuron.kb_ids = A` (AC1); none when unset or empty (AC2); none in the next transaction on the same connection (AC3); app and worker roles cannot `DROP`, `ALTER`, `TRUNCATE`, disable RLS or drop the policy, and hold exactly the documented grants (AC4); the v1.0.0 schema's columns, indexes, constraints and ACLs are identical after knowledge setup (AC5) |
-| RAG-01.03 | BlobStore for original files | 1 | P0 | In progress | #418 | branch `RAG-01.03` | `tests/unit/test_knowledge_blobs.py` (local directory and obstore memory store): keys are 32 hex characters, the only file written is `<root>/<key>`, traversal keys refused (AC1); tampered bytes or a wrong checksum raise `BlobIntegrityError` (AC2); a second `delete` succeeds (AC3); over `max_bytes` stores nothing; backend errors carry no path; production with knowledge on and `local` fails without `APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true` (AC4). S3, run 2026-11-03 against a local moto S3 server (the MinIO image could not be pulled here): 9 MB multipart put, get, checksum mismatch, double delete; a failed upload left 0 objects and 0 pending multipart uploads |
-| RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Pending | #409 | — | — |
+| RAG-01.03 | BlobStore for original files | 1 | P0 | Done | #418 | #421, #422 | `tests/unit/test_knowledge_blobs.py` (local directory and obstore memory store): keys are 32 hex characters, the only file written is `<root>/<key>`, traversal keys refused (AC1); tampered bytes or a wrong checksum raise `BlobIntegrityError` (AC2); a second `delete` succeeds (AC3); over `max_bytes` stores nothing; backend errors carry no path; production with knowledge on and `local` fails without `APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true` (AC4). S3, run 2026-11-03 against a local moto S3 server (the MinIO image could not be pulled here): 9 MB multipart put, get, checksum mismatch, double delete; a failed upload left 0 objects and 0 pending multipart uploads |
+| RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | In progress | #409 | branch `RAG-02.01` (part 1) | `tests/integration/test_postgres_knowledge_jobs.py`: a rolled-back document insert leaves no job, a committed one exactly one (AC3); a real Procrastinate worker as the worker role runs a job the app role queued. AC1, AC2, AC4 in part 2 |
 | RAG-02.02 | Document parser adapters | 1 | P0 | Blocked | #410 | — | — |
 | RAG-02.03 | Embedding provider and processing locality | 1 | P0 | Done | #411 | #414 | `tests/unit/test_knowledge_providers.py`: staging/production refusal under `self_hosted_only` (AC1); `embedding_dimension_mismatch`, nothing returned (AC2); 429/5xx/connection retried with backoff, 400 terminal (AC3); fake provider, network blocked (AC4) |
 | RAG-02.04 | Idempotent ingest task | 1 | P0 | Blocked | #412 | — | — |
@@ -287,6 +293,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-03 | Backlog re-analysed; tracker drift fixed (RAG-01.03 Done, E02 counts). RAG-02.01 In progress: part 1 (queue schema, grants, transactional defer); decisions on queue placement, the core dependency and the index policy recorded | Claude session |
 | 2026-11-03 | RAG-01.02 Done (#420). RAG-01.03 In progress; `obstore` moved to core dependencies (ADR 0014 amended), `local` blob store opt-in for staging/production. RAG-02.01, RAG-03.01, RAG-04.01 unblocked | Claude session |
 | 2026-11-03 | RAG-01.01 Done (#419). RAG-01.02 In progress; decisions on RLS scope, worker rights, profile seeding recorded | Claude session |
 | 2026-11-03 | RAG-02.03 Done (#414). RAG-E01 analysed; issues #415–#418 created; #408 decisions recorded; RAG-01.01 In progress; RAG-01.02 Blocked on it | Claude session |

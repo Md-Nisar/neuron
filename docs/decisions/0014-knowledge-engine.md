@@ -286,6 +286,16 @@ ISC, PSF, Apache-2.0, MIT-CMU (pillow), 0BSD, Zlib and CC0 parts (numpy) and MPL
 (tqdm, file-level copyleft, unmodified),
 recorded with versions and dates in the RAG-00.04 PR.
 
+- **Job queue.** **Amended by RAG-02.01 (2026-11-03):** `procrastinate` is a core dependency,
+  pinned to 3.10.0, not part of the `worker` extra. `setup` runs from the API image and installs
+  Procrastinate's schema from the installed library (migration 25), and the API queues a job in
+  the transaction that inserts its document (RAG-03.02). The API environment gains four
+  pure-Python packages (`procrastinate`, `croniter`, `python-dateutil`, `six`). The queue tables
+  live in the `knowledge` schema, so the worker role needs no rights in `public` and operators no
+  second superuser step; Procrastinate's functions get a pinned `search_path`. A Procrastinate
+  upgrade adds its migration files as new migrations: a test fails while the installed version
+  differs from the one migration 25 installs. Rejected: vendoring the schema SQL (it would drift
+  from the worker's library), and a `procrastinate` schema (the migrator cannot create one).
 - **Embedding client.** No new package. `langchain-openai`'s `OpenAIEmbeddings` called the NVIDIA
   API catalog with `dimensions=1024`, `check_embedding_ctx_length=False` and
   `input_type` passed in `extra_body` (the API rejects a request without it, so it is honoured);
