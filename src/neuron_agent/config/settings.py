@@ -234,6 +234,18 @@ class Settings(BaseSettings):
     # The ingestion worker's role (ADR 0014; RAG-01.02): with knowledge on, `setup` grants it the
     # knowledge-table rights it needs, when it exists.
     postgres_worker_role: str = Field(default="neuron_worker", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    # `neuron-worker` (RAG-02.01): its own DSN, as the worker role; read only by the worker.
+    postgres_worker_dsn: SecretStr | None = None
+    worker_concurrency: int = Field(default=2, ge=1, le=32)
+    # SIGTERM waits this long for running jobs, then releases them to be retried.
+    worker_drain_seconds: float = Field(default=30.0, ge=0, le=600)
+    # A job whose worker sent no heartbeat for this long is retried by another worker's sweep.
+    worker_stalled_seconds: float = Field(default=30.0, ge=3, le=3600)
+    # Touched while the worker is healthy; the container health check reads its age. In the
+    # user's home, not a world-writable directory.
+    worker_health_file: str = Field(
+        default_factory=lambda: str(Path.home() / ".neuron-worker.health"), min_length=1
+    )
     postgres_pool_max_size: int = Field(default=10, ge=1, le=100)
     postgres_pool_timeout_seconds: int = Field(default=10, ge=1, le=120)
     max_history_tokens: int = Field(default=8000, ge=256, le=200_000)
@@ -726,6 +738,7 @@ class Settings(BaseSettings):
         for name, dsn in (
             ("APP_POSTGRES_DSN", self.postgres_dsn),
             ("APP_POSTGRES_MIGRATION_DSN", self.postgres_migration_dsn),
+            ("APP_POSTGRES_WORKER_DSN", self.postgres_worker_dsn),
         ):
             if dsn is not None and dsn.get_secret_value():
                 self._require_sslmode(name, dsn, required_sslmode)

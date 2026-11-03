@@ -296,6 +296,17 @@ recorded with versions and dates in the RAG-00.04 PR.
   upgrade adds its migration files as new migrations: a test fails while the installed version
   differs from the one migration 25 installs. Rejected: vendoring the schema SQL (it would drift
   from the worker's library), and a `procrastinate` schema (the migrator cannot create one).
+- **Worker process.** **Amended by RAG-02.01 (2026-11-03):** `neuron-worker` ships in the API
+  image, run with another command, until a worker-only dependency arrives (RAG-02.02's parser
+  client): every package it uses today is already in the API's dependencies, so the `worker`
+  build target and extra add nothing yet. It connects as the worker role with its own pool,
+  sweeps jobs of workers without a heartbeat for `APP_WORKER_STALLED_SECONDS` back into the
+  queue (one sweep at a time, under an advisory lock, so a stale list never requeues a job that
+  is running again; a job that keeps killing its worker fails after 5 attempts), drains for `APP_WORKER_DRAIN_SECONDS` on `SIGTERM` (jobs still running are released to
+  be retried) and keeps a health file fresh for its container's health check. **The API's
+  `/health/ready` does not report the worker**: chat does not need it, and a stopped worker
+  only delays ingestion, which the document status shows; the worker's health is its own
+  container's.
 - **Embedding client.** No new package. `langchain-openai`'s `OpenAIEmbeddings` called the NVIDIA
   API catalog with `dimensions=1024`, `check_embedding_ctx_length=False` and
   `input_type` passed in `extra_body` (the API rejects a request without it, so it is honoured);

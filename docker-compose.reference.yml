@@ -41,6 +41,8 @@ x-api: &api
     APP_IDENTITY_HASH_KEY: reference-stack-identity-key-local-only-0001
     APP_CHECKPOINTER: postgres
     APP_MEMORY_ENABLED: "true"
+    # Off unless set; with it on, `--profile knowledge` adds the ingestion worker (RAG-02.01).
+    APP_KNOWLEDGE_ENABLED: ${KNOWLEDGE_ENABLED:-false}
     APP_LIMITS_BACKEND: postgres
     APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@postgres:5432/neuron?sslmode=disable
     APP_ALLOWED_HOSTS: '["localhost","127.0.0.1","api1","api2"]'
@@ -131,3 +133,29 @@ services:
     <<: *api
     ports:
       - "127.0.0.1:8102:8000"
+
+  # KNOWLEDGE_ENABLED=true docker compose -f docker-compose.reference.yml --profile knowledge up
+  worker:
+    image: ${NEURON_IMAGE:?set NEURON_IMAGE to the image to test, for example neuron:ref}
+    pull_policy: never
+    restart: unless-stopped
+    profiles: ["knowledge"]
+    command: ["neuron-worker"]
+    # SIGTERM drains for APP_WORKER_DRAIN_SECONDS (30 s); Docker must wait longer than that.
+    stop_grace_period: 40s
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    # Its own settings only: the worker parses untrusted files, so it never holds the app or
+    # migration DSN, the identity key or the API's auth settings.
+    environment:
+      APP_ENV: development
+      APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker@postgres:5432/neuron?sslmode=disable
+      # libpq reads the password from here (the throwaway one from init-roles.sql).
+      PGPASSWORD: worker-local-only
+    healthcheck:
+      test: ["CMD", "neuron-worker", "health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
