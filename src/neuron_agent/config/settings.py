@@ -24,6 +24,11 @@ Environment = Literal["development", "staging", "production", "test"]
 CheckpointerBackend = Literal["auto", "memory", "postgres", "none"]
 LimitsBackend = Literal["auto", "memory", "postgres"]
 AuthMode = Literal["none", "jwt"]
+# Knowledge Engine (ADR 0014 K3, K8). `nvidia` is always hosted; `openai_compatible` (TEI, vLLM,
+# OpenAI) is whatever the operator declares; `fake` makes no network call.
+EmbeddingProviderName = Literal["nvidia", "openai_compatible", "fake"]
+ProcessingLocality = Literal["hosted", "self_hosted"]
+ProcessingPolicy = Literal["allow_hosted", "self_hosted_only"]
 # Browsers send origins as lowercase `scheme://host[:port]`; CORS matching is exact.
 # Starlette compares hostnames without the port, so entries can't carry ports or schemes.
 # Model identifier prefixes `create_chat_model` can build.
@@ -158,6 +163,25 @@ class Settings(BaseSettings):
             "OTEL_EXPORTER_OTLP_METRICS_HEADERS",
         ),
     )
+    # Knowledge Engine embeddings (ADR 0014 K3, K8; RAG-02.03). The default profile is the spike's
+    # (RAG-00.02): NVIDIA's API catalog, for development only, at 1,024 dimensions.
+    knowledge_embedding_provider: EmbeddingProviderName = "nvidia"
+    knowledge_embedding_model: str = Field(
+        default="nvidia/nemotron-3.5-embed-1b", min_length=1, max_length=200
+    )
+    # pgvector indexes `halfvec` with HNSW up to 4,000 dimensions.
+    knowledge_embedding_dimensions: int = Field(default=1024, ge=1, le=4000)
+    # Required for `openai_compatible`, the server's `/v1` base URL; `nvidia` ignores it.
+    knowledge_embedding_base_url: str | None = None
+    # `openai_compatible` only; `nvidia` uses NVIDIA_API_KEY.
+    knowledge_embedding_api_key: SecretStr | None = None
+    # Where `openai_compatible` processes text. Unset means hosted, which fails closed below.
+    knowledge_embedding_locality: ProcessingLocality = "hosted"
+    knowledge_embedding_batch_size: int = Field(default=32, ge=1, le=256)
+    knowledge_embedding_timeout_seconds: int = Field(default=30, ge=1, le=300)
+    knowledge_embedding_max_retries: int = Field(default=3, ge=0, le=8)
+    # `self_hosted_only` forbids hosted embedding for every knowledge base.
+    knowledge_processing_policy: ProcessingPolicy = "allow_hosted"
     # "auto" resolves to memory in development/test; staging/production must choose explicitly.
     checkpointer: CheckpointerBackend = "auto"
     checkpointer_setup_on_startup: bool = False
@@ -252,6 +276,8 @@ class Settings(BaseSettings):
         "nvidia_api_key",
         "anthropic_api_key",
         "langsmith_api_key",
+        "knowledge_embedding_api_key",
+        "knowledge_embedding_base_url",
         mode="before",
     )
     @classmethod
@@ -333,6 +359,76 @@ class Settings(BaseSettings):
             raise ValueError(
                 "APP_CHECKPOINTER_SETUP_ON_STARTUP is refused in staging/production; "
                 "run `python -m neuron_agent.persistence.cli setup` as a deploy step"
+            )
+        return self
+
+    @property
+    def knowledge_embedding_locality_effective(self) -> ProcessingLocality:
+        """Where the configured embedding provider processes document text."""
+        if self.knowledge_embedding_provider == "fake":
+            return "self_hosted"
+        if self.knowledge_embedding_provider == "nvidia":
+            return "hosted"
+        return self.knowledge_embedding_locality
+
+    @model_validator(mode="after")
+    def validate_knowledge_embedding(self) -> Settings:
+        """Refuse an embedding setup that cannot work or would send text where policy forbids.
+
+        The endpoint is operator-configured, so it is checked here and not routed through
+        `security/egress.py` (ADR 0014 security requirement 4). Errors never echo the URL.
+        """
+        provider = self.knowledge_embedding_provider
+        if provider == "nvidia" and "knowledge_embedding_locality" in self.model_fields_set:
+            if self.knowledge_embedding_locality != "hosted":
+                raise ValueError(
+                    "APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted is refused for the nvidia "
+                    "provider: NVIDIA's API catalog is hosted"
+                )
+        if provider == "openai_compatible":
+            url = self.knowledge_embedding_base_url
+            if url is None:
+                raise ValueError(
+                    "APP_KNOWLEDGE_EMBEDDING_BASE_URL is required for the openai_compatible "
+                    "embedding provider"
+                )
+            parts = urlsplit(url)
+            if (
+                parts.scheme not in {"http", "https"}
+                or not parts.hostname
+                or parts.username is not None
+                or parts.password is not None
+                or parts.query
+                or parts.fragment
+            ):
+                raise ValueError(
+                    "APP_KNOWLEDGE_EMBEDDING_BASE_URL must be an http(s) URL with a host and "
+                    "no credentials, query or fragment"
+                )
+            if (
+                self.env in {"staging", "production"}
+                and parts.scheme != "https"
+                and self.knowledge_embedding_api_key is not None
+            ):
+                raise ValueError(
+                    "APP_KNOWLEDGE_EMBEDDING_BASE_URL must use https when "
+                    "APP_KNOWLEDGE_EMBEDDING_API_KEY is set in staging/production"
+                )
+        if self.env not in {"staging", "production"}:
+            return self
+        if provider == "fake":
+            raise ValueError(
+                "APP_KNOWLEDGE_EMBEDDING_PROVIDER=fake is refused in staging/production"
+            )
+        if (
+            self.knowledge_processing_policy == "self_hosted_only"
+            and self.knowledge_embedding_locality_effective == "hosted"
+        ):
+            raise ValueError(
+                "APP_KNOWLEDGE_PROCESSING_POLICY=self_hosted_only forbids the hosted "
+                f"{provider} embedding provider in staging/production; configure a "
+                "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
+                "self_hosted)"
             )
         return self
 

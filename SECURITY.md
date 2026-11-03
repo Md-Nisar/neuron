@@ -104,6 +104,21 @@ With thread persistence enabled (`APP_CHECKPOINTER=memory` or `postgres`, ADR 00
 - **Encryption.** Encryption at rest is the database's responsibility (managed-service or disk encryption). LangGraph's `EncryptedSerializer` is available if application-level encryption is required; it isn't enabled by default.
 - **Access.** Thread history is exposed through the owner-checked history endpoint and `/v1/me/export`. System prompts, tool calls and tool output are never returned. In v0.3.0, owner identity comes from the unauthenticated `X-User-Id` header or `user_id` in the body. In v0.4.0 JWT mode, it comes from the verified principal defined by ADR 0006.
 
+## Knowledge Embedding Egress (ADR 0014 K8, v1.1.0, unreleased)
+
+The Knowledge Engine is not enabled yet; this is what decides where document text goes once it is. Embedding sends every chunk of a document, and every search query, to the embedding provider (`knowledge/providers.py`, RAG-02.03):
+
+| `APP_KNOWLEDGE_EMBEDDING_PROVIDER` | Where text is processed | Use |
+| --- | --- | --- |
+| `nvidia` (default) | Hosted: NVIDIA's API catalog | Development only; the trial terms forbid production use (spike, `docs/releases/v1.1.0-spike.md`) |
+| `openai_compatible` | What `APP_KNOWLEDGE_EMBEDDING_LOCALITY` declares; unset means `hosted` | TEI or vLLM inside your boundary (`self_hosted`), or a hosted OpenAI-compatible API |
+| `fake` | Nowhere (hash-based vectors) | Development and tests; refused in staging/production. Also used in development/test when no NVIDIA key is set |
+
+- `APP_KNOWLEDGE_PROCESSING_POLICY=self_hosted_only` refuses to start staging or production with a hosted provider. `nvidia` cannot be declared `self_hosted`.
+- A knowledge base's own `processing` value (`hosted` or `self_hosted`) is checked before each embedding call: a hosted provider never embeds a `self_hosted` knowledge base, or anything under `self_hosted_only` (`ensure_processing_allowed`).
+- The endpoint is operator-configured, so settings validation checks it (http or https, a host, no credentials, query or fragment; https in staging/production when an API key is set) instead of `security/egress.py`, which is for user-influenced URLs. Plain http is allowed for a keyless server on a private network. `self_hosted` is the operator's declaration; Neuron cannot verify where the server runs. The API key is a secret setting (`NVIDIA_API_KEY`, or `APP_KNOWLEDGE_EMBEDDING_API_KEY` for `openai_compatible`).
+- Provider errors become stable codes (`embedding_provider_rejected`, `embedding_provider_unavailable`, `embedding_quota_exhausted`, `embedding_dimension_mismatch`, `embedding_count_mismatch`, `embedding_non_finite`, `embedding_provider_error` for anything unexpected, `processing_locality_forbidden`) without the provider's message, which can echo the text. Only 429 (not an exhausted quota), 5xx, connection errors and timeouts are retried, with bounded backoff.
+
 ## Guard Tables and Database Roles
 
 ADR 0008 decisions 15 and 16.
