@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import stat
+import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -176,6 +177,7 @@ async def test_backend_errors_are_typed_and_carry_no_path(
         assert raised.value.__cause__ is None
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
 def test_an_existing_local_root_is_made_private(tmp_path: Path) -> None:
     root = tmp_path / "blobs"
     root.mkdir(mode=0o755)
