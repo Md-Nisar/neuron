@@ -262,6 +262,7 @@ def test_s3_endpoint_must_be_a_plain_http_url(endpoint: str) -> None:
         "https://169.254.170.2:443",
         "http://[fd00:ec2::254]",
         "http://[fe80::1]:9000",
+        "http://[fe80::1%25eth0]:9000",
         "http://metadata.google.internal",
     ],
 )
