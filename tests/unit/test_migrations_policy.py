@@ -42,13 +42,19 @@ def normalize(sql: str) -> str:
     return re.sub(r"\s+", " ", sql).strip()
 
 
+def _table_key(name: str) -> tuple[str, ...]:
+    """Postgres folds unquoted names to lower case and keeps quoted ones as written."""
+    parts = re.findall(r'"[^"]+"|\w+', name)
+    return tuple(p[1:-1] if p.startswith('"') else p.lower() for p in parts)
+
+
 def violations(sql: str) -> list[str]:
     """Expand/contract rule (ADR 0008 decision 7): names each unsafe construct in `sql`."""
     sql = normalize(sql)
     # An index on a table the same migration creates locks nothing anyone uses yet.
-    new_tables = {match.group(1).lower() for match in _NEW_TABLE.finditer(sql)}
+    new_tables = {_table_key(match.group(1)) for match in _NEW_TABLE.finditer(sql)}
     sql = _PLAIN_INDEX.sub(
-        lambda match: "" if match.group(1).lower() in new_tables else match.group(0), sql
+        lambda match: "" if _table_key(match.group(1)) in new_tables else match.group(0), sql
     )
     found = [name for name, pattern in _UNSAFE if re.search(pattern, sql, re.I)]
     for column in re.finditer(_ADD, sql, re.I):
@@ -100,6 +106,11 @@ def check(migration: Migration) -> list[str]:
             "CREATE TABLE IF NOT EXISTS t (a int); CREATE INDEX i ON t (a)",
             "CREATE INDEX without CONCURRENTLY",
         ),
+        # A quoted name is another table than the unquoted, live one.
+        (
+            'CREATE TABLE "Checkpoints" (a int); CREATE INDEX i ON checkpoints (a)',
+            "CREATE INDEX without CONCURRENTLY",
+        ),
     ],
 )
 def test_unsafe_sql_is_detected_and_needs_a_contract_marker(sql: str, expected: str) -> None:
@@ -121,6 +132,8 @@ def test_unsafe_sql_is_detected_and_needs_a_contract_marker(sql: str, expected: 
         "-- DROP the old way later\nCREATE TABLE t (a int) /* TRUNCATE */",
         "CREATE TABLE t (a int); CREATE UNIQUE INDEX i ON t (a)",
         "CREATE TABLE s.t (a int); CREATE INDEX i ON ONLY s.t (a)",
+        'CREATE TABLE "Q" (a int); CREATE INDEX i ON "Q" (a)',
+        "CREATE TABLE T (a int); CREATE INDEX i ON t (a)",
     ],
 )
 def test_expand_steps_pass(sql: str) -> None:

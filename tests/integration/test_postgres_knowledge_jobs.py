@@ -14,9 +14,10 @@ import procrastinate
 import psycopg
 import pytest
 from test_postgres_knowledge_tables import _knowledge_db, worker  # noqa: F401
-from test_postgres_roles import RoleDatabase, _denied, _rows, role_db, roles  # noqa: F401
+from test_postgres_roles import _DSN, RoleDatabase, _denied, _rows, role_db, roles  # noqa: F401
 
 from neuron_agent.knowledge import jobs
+from neuron_agent.persistence.roles import AppRoleError
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -69,6 +70,23 @@ async def test_a_job_exists_only_if_its_document_insert_commits(
     assert await _jobs(role_db) == [("knowledge", "ingest_document", {"doc_id": str(doc)}, "todo")]
 
 
+async def test_the_worker_role_may_not_share_the_app_roles_rights(
+    role_db: RoleDatabase,  # noqa: F811
+    worker: tuple[str, str],  # noqa: F811
+) -> None:
+    # Membership would hand the worker the app role's rights in `public`. The roles live for
+    # the whole session, so the grant is taken back.
+    assert _DSN
+    app, member = f'"{role_db.roles.app}"', f'"{worker[0]}"'
+    async with await psycopg.AsyncConnection.connect(_DSN, autocommit=True) as admin:
+        await admin.execute(f"GRANT {app} TO {member}")  # type: ignore[call-overload]
+        try:
+            with pytest.raises(AppRoleError, match="member of the app role"):
+                await _knowledge_db(role_db, worker)
+        finally:
+            await admin.execute(f"REVOKE {app} FROM {member}")  # type: ignore[call-overload]
+
+
 async def test_defer_needs_the_callers_transaction(role_db: RoleDatabase) -> None:  # noqa: F811
     await _knowledge_db(role_db)
     async with await psycopg.AsyncConnection.connect(role_db.app_dsn, autocommit=True) as conn:
@@ -105,6 +123,9 @@ async def test_the_api_queues_and_the_worker_runs_with_exact_rights(
     }
     dml = {"SELECT", "INSERT", "UPDATE", "DELETE"}
     assert await granted(worker[0]) == dict.fromkeys(_QUEUE_TABLES, dml)
+    # The worker reaches nothing in `public`: no threads, checkpoints or token ledger.
+    for table in ("checkpoints", "checkpoint_writes", "neuron_thread_meta", "neuron_token_ledger"):
+        await _denied(worker_dsn, f"SELECT 1 FROM public.{table}")
     # The API cannot change or drop a queued job.
     await _denied(role_db.app_dsn, "UPDATE knowledge.procrastinate_jobs SET status = 'todo'")
     await _denied(role_db.app_dsn, "DELETE FROM knowledge.procrastinate_jobs")

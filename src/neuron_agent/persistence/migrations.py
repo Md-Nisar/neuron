@@ -795,9 +795,16 @@ async def _resolve_worker_role(
     if worker_role in {migrator, app_role}:
         raise AppRoleError("the worker role must differ from the app and migration roles")
     cursor = await conn.execute(
-        "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %s) AS found", (worker_role,)
+        "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %(worker)s) AS found,"
+        " EXISTS (SELECT 1 FROM pg_roles w, pg_roles a WHERE w.rolname = %(worker)s"
+        " AND a.rolname = %(app)s AND (pg_has_role(w.oid, a.oid, 'MEMBER')"
+        " OR pg_has_role(a.oid, w.oid, 'MEMBER'))) AS shared",
+        {"worker": worker_role, "app": app_role},
     )
     row = await cursor.fetchone()
+    if row is not None and row["shared"]:
+        # Membership would hand the worker the app role's rights in `public`, or the reverse.
+        raise AppRoleError("the worker role must not be a member of the app role, or the reverse")
     if row is not None and row["found"]:
         return worker_role
     logger.warning("worker_role_grants_skipped", reason="the worker role does not exist")
@@ -961,6 +968,8 @@ async def _verify_grants(
     checks.append((role.name, KNOWLEDGE_SCHEMA, _KNOWLEDGE_PRIVILEGES["app"]))
     if role.worker is not None:
         checks.append((role.worker, KNOWLEDGE_SCHEMA, _KNOWLEDGE_PRIVILEGES["worker"]))
+        # The worker parses untrusted files: it must not reach threads, checkpoints or memory.
+        checks.append((role.worker, role.schema, dict.fromkeys(_APP_PRIVILEGES, frozenset())))
     wrong: list[str] = []
     for grantee, schema, matrix in checks:
         for table, expected in matrix.items():
