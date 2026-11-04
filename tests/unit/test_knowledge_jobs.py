@@ -28,6 +28,8 @@ async def test_defer_refuses_anything_but_ids(value: Any) -> None:
 
 
 class _Ingestor:
+    connect = blobs = None  # the purger's, unused here
+
     def __init__(self, error: Exception | None = None) -> None:
         self.error, self.calls, self.failed = error, [], []  # type: ignore[var-annotated]
 
@@ -93,11 +95,32 @@ async def test_office_files_without_a_parser_url_fail_with_a_clear_code(tmp_path
 def test_every_task_is_registered_by_name() -> None:
     settings = Settings(env="test", postgres_worker_dsn=SecretStr("postgresql://w@h/d"))
     app = worker.build_app(settings, _Ingestor())  # type: ignore[arg-type]
-    # Queued by the API (RAG-03.01) before the worker runs it (RAG-03.03): remove it from here then.
-    pending = {jobs.Task.PURGE_KNOWLEDGE_BASE.value}
-    assert {task.value for task in jobs.Task} - pending <= set(app.tasks)
-    assert not pending & set(app.tasks), "registered now: drop it from `pending`"
-    assert app.tasks[jobs.Task.INGEST_DOCUMENT.value].queue == jobs.QUEUE
+    assert {task.value for task in jobs.Task} <= set(app.tasks)
+    for task in jobs.Task:
+        assert app.tasks[task.value].queue == jobs.QUEUE
+        assert app.tasks[task.value].retry_strategy == worker.RETRY
+
+
+class _Purges:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error, self.calls = error, []  # type: ignore[var-annotated]
+
+    async def purge(self, key: uuid.UUID) -> int:
+        self.calls.append(key)
+        if self.error:
+            raise self.error
+        return 1
+
+
+async def test_a_purge_parses_its_argument_and_raises_the_class_only() -> None:
+    purges = _Purges()
+    await worker._purge(purges.purge, "../../etc/passwd")  # ends the job; a retry cannot help
+    key = uuid.uuid4()
+    await worker._purge(purges.purge, str(key))
+    assert purges.calls == [key]
+    with pytest.raises(worker.PurgeError) as caught:
+        await worker._purge(_Purges(OSError("/blobs/ab/cd: permission denied")).purge, str(key))
+    assert (str(caught.value), caught.value.__cause__) == ("OSError", None)
 
 
 def test_the_health_file_must_be_fresh(tmp_path: Path) -> None:

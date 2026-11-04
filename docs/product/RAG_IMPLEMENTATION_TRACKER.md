@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-04, against `main` at `c6c4bb6` (RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
+**Last verified:** 2026-11-04, against `main` at `2231c1d` (RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01, RAG-E02, and RAG-03.01 and RAG-03.02 with their epic; the Project board has not been created.
 
 ## New session protocol
@@ -49,7 +49,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
-| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 2 | 0 | 0 | 3 | RAG-03.03 (ready) |
+| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 2 | 1 | 0 | 2 | RAG-03.03 (in progress) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (ready) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
@@ -59,7 +59,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **14** | **0** | **0** | **42** | **RAG-03.03** |
+| **Total** | | | | **56** | **14** | **1** | **0** | **41** | **RAG-03.03** |
 
 v1.1.0 scope (E00–E08): 33 stories, 14 done.
 
@@ -89,6 +89,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-E03 | #431 | Not on a board |
 | RAG-03.01 | #432 | Not on a board |
 | RAG-03.02 | #434 | Not on a board |
+| RAG-03.03 | #439 | Not on a board |
 | RAG-E04 … RAG-E12 | — | — |
 
 ## Epic detail
@@ -177,13 +178,15 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E03 Knowledge API
 
-- **Stories:** 5 total · 2 done · 0 in progress · 0 blocked · 3 pending
+- **Stories:** 5 total · 2 done · 1 in progress · 0 blocked · 2 pending
 - **Implemented functionality:**
   RAG-03.01 (#432): `GET`, `POST /v1/knowledge/bases`, `PATCH`, `DELETE /v1/knowledge/bases/{kb_id}` (`api/main.py`, rate-limited under `/v1/knowledge/`), `knowledge/service.py` (`KnowledgeBases`: every statement filters on the owner key and `deleted_at`; create writes the owner's `admin` grant and holds a per-owner advisory lock for `APP_KNOWLEDGE_MAX_BASES_PER_USER`; delete tombstones and queues `purge_knowledge_base` in the same transaction), `knowledge/authorization.py` (`KnowledgeAuthorization.allowed_kbs`: read and write sets from the owner's grants on live bases), `schemas/knowledge.py` (`extra="forbid"`, names through the thread-title rules: 1–80 characters, no control or invisible characters), permissions `knowledge:read`, `knowledge:write`, `tools:search_knowledge` (development permissions; the first two in the reference stack's `neuron-user`), errors `knowledge_disabled`, `knowledge_base_not_found`, `knowledge_base_limit_reached`, audit events with ids and counts.
   RAG-03.02 part 1 (#435): `GET /v1/knowledge/bases/{kb_id}/documents` (paginated, with `total`) and `GET /v1/knowledge/documents/{doc_id}`: documents are found through `allowed_kbs` and the base's owner, never tombstoned ones or those of a deleted base; `knowledge_document_not_found`.
   RAG-03.02 part 2 (#436): `POST /v1/knowledge/bases/{kb_id}/documents`. `api/multipart.py` reads the stream (one `file` part, an optional `title`; the body counted against the parse cap plus 64 KiB, no disk spooling; the body-size middleware lets only this path through unbuffered, after a `Content-Length` check); `parsing.accepted_type` takes the type from the content (HTML and XML refused unless inside Markdown) and runs `check_input`; `KnowledgeBases.check_upload` answers an `Idempotency-Key` replay before the body is read, `upload` returns the base's existing copy of the same SHA-256, stores the original and inserts the `queued` row with its `ingest_document` job in one transaction (into a live base of the caller's only; `ON CONFLICT DO NOTHING` on both unique indexes, the stored file deleted if the row does not commit). `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` slots per process (`429 upload_busy`). Titles: the given one through the title rules (1–300 characters), else the file name without folders or control characters.
-- **Outstanding work:** RAG-03.03 to RAG-03.05.
+- **Outstanding work:** RAG-03.03 part 2 (document delete route), RAG-03.04, RAG-03.05.
 - **Blockers and decisions:**
+  - Decision (RAG-03.03): two PRs. Part 1, the purge tasks and KB delete tombstoning its documents (AC2); part 2, `DELETE /v1/knowledge/documents/{doc_id}` with its audit and `SECURITY.md` (AC1, AC3). The worker purges (it already holds the blob store), with `DELETE` on `bases` and `documents`; cascades remove chunks, embeddings and grants (referential actions run as the table owner, so RLS and the worker's lack of rights on `grants` do not stop them). The file is deleted before its row and each document commits on its own, so a retry always finds what is left. Only rows whose own or base's `deleted_at` is set are purged, so a forged job cannot remove live data. A purge that uses all its attempts, and bases tombstoned before this story whose job failed as task-not-found (development databases only), are left to RAG-07.02's sweep of "tombstones whose purge did not finish". A purged document's `embedding_tokens` go with its row.
+  - Security review (RAG-03.03 part 1): no high findings. Fixed: an upload committing while its base is deleted could escape the tombstone and lose its file to the base row's cascade; the upload's insert now takes `FOR SHARE` on the base, so the delete waits and tombstones it (tested); one document that cannot be purged (for example a `blob_key` the store refuses) no longer holds up the rest of its base, its error is raised after the others; the row delete repeats the tombstone predicate. Accepted: the worker's `DELETE` on `bases` and `documents` is guarded by the purge's predicates, not by the database (a trigger or RLS delete policy would be new machinery for a role that already reads every row); a base's document ids and keys are read at once, bounded by `APP_KNOWLEDGE_MAX_DOCUMENTS_PER_USER`.
   - Decision (owner, 2026-11-04, #431): the RAG-03.02 / RAG-02.05 cycle is resolved by dropping RAG-02.05 from RAG-03.02's "Depends on" (backlog updated); the upload ships with its hard byte cap, and RAG-02.05, now depending on RAG-03.02, adds the per-user quotas to it.
   - Decision (RAG-03.02): two PRs. Part 1, the list and status routes (AC5); part 2, the upload (AC1 to AC4). The document list is not audited per poll of one document: `knowledge_documents_read` (count) is emitted for the list only.
   - Security review (RAG-03.02 part 1): no high findings. Accepted: reading one document is not audited (ADR 0014 requirement 5 lists creates, deletes, erase and export; a status poll would flood the log); `total` and the page are two statements, so a concurrent purge can make them disagree by the purged rows. Left for part 2: titles must pass `plain_title` at upload, as the response returns them as stored.
@@ -284,7 +287,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-02.05 | Ingestion quotas and embedding token accounting | 1 | P0 | Done | #413 | #437 (part 1), #438 (part 2) | `tests/integration/test_postgres_knowledge_quotas.py`: at the byte quota an upload is `413 byte_quota_exceeded`, the blob store is never called and no row, job or file is added; a duplicate uses no quota, and quotas are per owner (AC1); document and page quotas, counting a deleted base's documents until purge; at the ingesting limit `429 ingestion_concurrency_exceeded` with `Retry-After` until one finishes, and a deleted base's queued documents stop counting (AC3); two concurrent uploads at one document's room: one accepted, one refused, its file deleted. `tests/integration/test_postgres_knowledge_ingest.py`: after ingestion the uploader's `embedding_tokens` equal the estimate of what was embedded, a re-run adds it again, and `neuron_token_ledger` is untouched (AC2) |
 | RAG-03.01 | Knowledge base routes and permissions | 1 | P0 | Done | #432 | #433 | `tests/integration/test_postgres_knowledge_api.py` (as the app role, real tokens): another user's `PATCH` and `DELETE` are the same `404` body as an unknown id and change nothing (AC1); a deleted base is no longer listed and one `purge_knowledge_base` job is queued, a second delete queues none (AC4); the per-user limit; `allowed_kbs`. `tests/security/test_knowledge_api.py`: each route without its permission is `403` (AC2); an unknown field and invalid names or ids are `422` (AC3); with knowledge off every route is `404` |
 | RAG-03.02 | Document upload, list and status | 1 | P0 | Done | #434 | #435 (part 1), #436 (part 2) | `tests/integration/test_postgres_knowledge_api.py`: a PDF upload is `202` with `doc_id` and `status_url`, the row is `queued`, one `ingest_document` job and one blob under a random key (AC1); a repeated `Idempotency-Key` returns the first `doc_id` and stores no second blob or job, even with different bytes, and the key on another base is `409` (AC2); HTML claiming `application/pdf` and an image are `415`, nothing stored (AC3); a file over the cap is `413 file_too_large`, a declared body over it `413 payload_too_large`, nothing stored (AC4); `tests/integration/test_postgres_knowledge_api.py`: user B's `GET` of user A's document, or of the list of A's base, is the same `404` as an unknown id and shows no title (AC5); the owner's list pages live documents with `total` and status, hides tombstoned ones and those of a deleted base. the upload route is in the BOLA matrix. `tests/unit/test_knowledge_parsing.py` (`accepted_type`), `tests/unit/test_upload_multipart.py` (the reader's caps and refusals), `tests/security/test_knowledge_api.py` (scope, `Idempotency-Key` format, only this path takes a large body) |
-| RAG-03.03 | Tombstone delete and purge jobs | 1 | P0 | Pending | — | — | — |
+| RAG-03.03 | Tombstone delete and purge jobs | 1 | P0 | In progress | #439 | part 1 (purge tasks) | `tests/integration/test_postgres_knowledge_purge.py`: a base purge stopped half way (the store down, or a crash after a file was deleted) completes on retry and leaves no rows in any knowledge table and no file (AC2); a live document or base is never purged; a tombstoned document is purged alone. AC1 and AC3 in part 2 |
 | RAG-03.04 | Chunk inspection and file download | 1 | P0 | Pending | — | — | — |
 | RAG-03.05 | Knowledge search endpoint | 1 | P1 | Pending | — | — | — |
 | RAG-04.01 | Hybrid retriever with authorisation in the query | 1 | P0 | Pending | — | — | — |

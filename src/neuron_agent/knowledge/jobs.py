@@ -25,9 +25,10 @@ QUEUE = "knowledge"
 
 
 class Task(StrEnum):
-    """Task names the worker registers. The purge task itself is RAG-03.03's."""
+    """Task names the worker registers."""
 
     INGEST_DOCUMENT = "ingest_document"
+    PURGE_DOCUMENT = "purge_document"
     PURGE_KNOWLEDGE_BASE = "purge_knowledge_base"
 
 

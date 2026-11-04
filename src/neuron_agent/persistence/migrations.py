@@ -618,10 +618,12 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
     },
     "worker": {
         "index_profiles": _READ,
-        "bases": _READ,
+        # DELETE for the purge (RAG-03.03), which removes tombstoned rows only; grants, chunks
+        # and embeddings go with them (ON DELETE CASCADE).
+        "bases": frozenset({"SELECT", "DELETE"}),
         "grants": frozenset(),
         # Plus UPDATE on `_WORKER_DOCUMENT_COLUMNS` only: never `kb_id`, `blob_key` or the owner.
-        "documents": _READ,
+        "documents": frozenset({"SELECT", "DELETE"}),
         "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
         "embeddings": frozenset({"SELECT", "INSERT", "DELETE"}),
         # Procrastinate's worker fetches, finishes, retries and sweeps jobs and registers itself.

@@ -223,7 +223,7 @@ With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases an
 | `GET /v1/knowledge/bases` | The caller's knowledge bases, oldest first: `kb_id`, `name`, `processing`, `created_at` |
 | `POST /v1/knowledge/bases` | `{"name": "...", "processing": "hosted"}` (`processing` optional, or `self_hosted`); `201`. At most `APP_KNOWLEDGE_MAX_BASES_PER_USER` (20), then `409 knowledge_base_limit_reached` |
 | `PATCH /v1/knowledge/bases/{kb_id}` | `{"name": "..."}`: rename |
-| `DELETE /v1/knowledge/bases/{kb_id}` | `202`: the base disappears at once and a purge job is queued (the purge itself is RAG-03.03) |
+| `DELETE /v1/knowledge/bases/{kb_id}` | `202`: the base disappears at once and a purge job is queued ; its documents are tombstoned with it, and the worker's purge deletes their files, rows, chunks and embeddings, then the base |
 | `POST /v1/knowledge/bases/{kb_id}/documents` | Upload: `multipart/form-data` with one `file` part and an optional `title` field (else the file name); optional `Idempotency-Key` header (1–200 printable ASCII characters). `202` with `doc_id`, `kb_id`, `status` (`queued`) and `status_url` |
 | `GET /v1/knowledge/bases/{kb_id}/documents?limit&offset` | A page of the base's documents, oldest first, with `total`: `doc_id`, `kb_id`, `title`, `mime_type`, `size_bytes`, `page_count`, `status`, `error_code`, `created_at`, `updated_at` |
 | `GET /v1/knowledge/documents/{doc_id}` | One document: the same fields. `status` is the stage, below |

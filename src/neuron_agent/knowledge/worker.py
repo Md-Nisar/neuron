@@ -19,6 +19,7 @@ import asyncio
 import sys
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
@@ -43,6 +44,7 @@ from neuron_agent.knowledge.parsing import (
     PlainTextParser,
 )
 from neuron_agent.knowledge.providers import create_embedding_provider
+from neuron_agent.knowledge.purge import Purger
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
 from neuron_agent.persistence.roles import AppRoleError, role_problems
@@ -61,6 +63,10 @@ _SWEEP = 0x4E52_5357
 
 class IngestError(Exception):
     """What a failed ingest job raises to the queue: the original error's class name only."""
+
+
+class PurgeError(Exception):
+    """What a failed purge job raises to the queue, to be retried: the class name only."""
 
 
 class _Unconfigured:
@@ -114,6 +120,14 @@ def build_app(settings: Settings, ingestor: Ingestor | None = None) -> procrasti
             log.warning("knowledge.job.failed", doc_id=str(parsed), error=type(exc).__name__)
             raise IngestError(type(exc).__name__) from None
 
+    purger = Purger(connect=ingestor.connect, blobs=ingestor.blobs)
+
+    async def purge_document(doc_id: str) -> None:
+        await _purge(purger.purge_document, doc_id)
+
+    async def purge_knowledge_base(kb_id: str) -> None:
+        await _purge(purger.purge_base, kb_id)
+
     app = procrastinate.App(
         connector=procrastinate.PsycopgConnector(
             conninfo=settings.postgres_worker_dsn.get_secret_value(),
@@ -126,7 +140,27 @@ def build_app(settings: Settings, ingestor: Ingestor | None = None) -> procrasti
     app.task(name=Task.INGEST_DOCUMENT.value, queue=QUEUE, retry=RETRY, pass_context=True)(
         ingest_document
     )
+    for task, func in (
+        (Task.PURGE_DOCUMENT, purge_document),
+        (Task.PURGE_KNOWLEDGE_BASE, purge_knowledge_base),
+    ):
+        app.task(name=task.value, queue=QUEUE, retry=RETRY)(func)
     return app
+
+
+async def _purge(purge: Callable[[uuid.UUID], Awaitable[int]], value: str) -> None:
+    """Run a purge on the id a job carries; a failure is raised for the queue to retry."""
+    try:
+        parsed = uuid.UUID(value)
+    except ValueError:
+        log.warning("knowledge.job.invalid_argument")  # retrying cannot fix it
+        return
+    try:
+        removed = await purge(parsed)
+    except Exception as exc:
+        log.warning("knowledge.purge.failed", id=str(parsed), error=type(exc).__name__)
+        raise PurgeError(type(exc).__name__) from None
+    log.info("knowledge.purge.done", id=str(parsed), documents=removed)
 
 
 async def verify_worker_role(settings: Settings) -> None:
