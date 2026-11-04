@@ -50,7 +50,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 4 | 0 | 0 | 1 | RAG-03.05 (after RAG-04.01) |
-| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (ready) |
+| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 1 | 0 | 3 | RAG-04.01 (in progress) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
@@ -59,7 +59,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **16** | **0** | **0** | **40** | **RAG-04.01** |
+| **Total** | | | | **56** | **16** | **1** | **0** | **39** | **RAG-04.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 16 done.
 
@@ -91,7 +91,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-03.02 | #434 | Not on a board |
 | RAG-03.03 | #439 | Not on a board |
 | RAG-03.04 | #442 | Not on a board |
-| RAG-E04 … RAG-E12 | — | — |
+| RAG-E04 | #445 | Not on a board |
+| RAG-04.01 | #446 | Not on a board |
+| RAG-E05 … RAG-E12 | — | — |
 
 ## Epic detail
 
@@ -206,10 +208,13 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E04 Retrieval and agent tools
 
-- **Stories:** 4 total · 0 done · 0 in progress · 0 blocked · 4 pending
-- **Implemented functionality:** none. The building blocks exist: `ToolSpec.taints_run` (`tools/registry.py`), identity through runtime context (`memory/tools.py`).
+- **Stories:** 4 total · 0 done · 1 in progress · 0 blocked · 3 pending
+- **Implemented functionality:** RAG-04.01 part 1: `knowledge/retrieval.py`, full-text search fused with RRF inside the authorised, live set. The building blocks exist: `ToolSpec.taints_run` (`tools/registry.py`), identity through runtime context (`memory/tools.py`).
 - **Outstanding work:** RAG-04.01 to RAG-04.04.
-- **Blockers and decisions:** exact/HNSW threshold from the spike.
+- **Blockers and decisions:**
+  - Exact/HNSW threshold from the spike (10,000).
+  - Plan (RAG-04.01): three stacked parts by path, to stay under 400 lines each. Part 1: full text, fusion, authorisation and the live filter. Part 2: dense candidates, exact/HNSW, the similarity floor, processing locality, `EXPLAIN` checks. Part 3: the eval comparison (AC5) on the public corpus with the spike's cached `nemotron-3.5-embed-1b` vectors (no key in the session).
+  - Security review (RAG-04.01, on the full change before the split): no high findings. Fixed: FTS runs before the HNSW query, whose planner settings (`enable_bitmapscan`, `enable_sort` off) would otherwise price out the GIN scan; the retriever refuses `k` outside 1 to 50 and a query empty or over 2,000 characters; hybrid falls back to full text when the embedding provider fails (dense mode raises). Left as is: success-only audit, as in `service.py`; an HNSW candidate of a not-yet-purged document takes a slot (recall only); a base's `ts_config` is fixed at creation, so its chunks' `tsv` match.
 - **Next recommended story:** RAG-04.01.
 
 ### RAG-E05 Server-validated citations
@@ -297,7 +302,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-03.03 | Tombstone delete and purge jobs | 1 | P0 | Done | #439 | #440 (part 1), #441 (part 2) | `tests/integration/test_postgres_knowledge_purge.py`: after a document delete and before its purge, its chunks are still stored but the document is gone from the list and get routes and from the join to live documents that retrieval uses; the search itself is RAG-04.01, whose AC4 re-checks tombstoned documents (AC1); a base purge stopped half way (the store down, or a crash after a file was deleted) completes on retry and leaves no rows in any knowledge table and no file (AC2); a live document or base is never purged; an upload committing during the base's delete is tombstoned with it. `tests/integration/test_postgres_knowledge_api.py`: a document delete is `202` with one `purge_document` job, a second is `404` and queues nothing (AC3); another user's delete is the same `404` as an unknown id (BOLA matrix). `tests/security/test_knowledge_api.py`: `403` without `knowledge:write`, `422` for a bad id |
 | RAG-03.04 | Chunk inspection and file download | 1 | P0 | Done | #442 | #443 (part 1), #444 (part 2) | `tests/integration/test_postgres_knowledge_download.py`: an uploaded Markdown file holding SVG and script downloads as an attachment, `text/plain`, with `nosniff` and the API's CSP, the title percent-encoded behind an ASCII fallback, and a PDF keeps its type; the headers equal `web/e2e/download_headers.json`, which `web/e2e/download.spec.ts` serves to Chromium: an HTML or SVG file runs no script when followed (a download), framed, embedded or loaded as an image, while a control serving it as a page sees it run (AC1); after the grant is lost, a chunk fetched a moment ago and the file are `404` (AC2); a chunk id from another document of the same base is `404` under this `doc_id`, both ways (AC3); neighbours by ordinal, `422` over 3; a document not ready or deleted hides its chunks. `tests/integration/test_postgres_knowledge_api.py`: both routes in the BOLA matrix. `tests/security/test_knowledge_api.py`: `403` without `knowledge:read`, `422` for bad ids and a negative `neighbours` |
 | RAG-03.05 | Knowledge search endpoint | 1 | P1 | Pending | — | — | — |
-| RAG-04.01 | Hybrid retriever with authorisation in the query | 1 | P0 | Pending | — | — | — |
+| RAG-04.01 | Hybrid retriever with authorisation in the query | 1 | P0 | In progress | #446 | — | Part 1 (full text, fusion, authorised and live-only, AC1, AC3, AC4 for that path) in review; part 2 dense and exact/HNSW; part 3 the eval comparison (AC5) |
 | RAG-04.02 | Knowledge agent tools | 1 | P0 | Pending | — | — | — |
 | RAG-04.03 | Abstention and grounding | 1 | P0 | Pending | — | — | — |
 | RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Pending | — | — | — |
@@ -341,6 +346,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-04 | RAG-04.01 In progress (#446, epic #445): part 1 (full-text search, RRF, authorised and live-only) in review; split into three parts by path | Claude session |
 | 2026-11-04 | RAG-02.05 Done (#437, #438); RAG-E02 complete |
 | 2026-11-04 | RAG-02.05 part 1 merged (#437); part 2 (embedding tokens) in review |
 | 2026-11-04 | RAG-02.05 In progress, part 1 (upload quotas); owner decided the embedding-token record and the 429 | Claude session |
