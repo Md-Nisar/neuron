@@ -40,11 +40,13 @@ from neuron_agent.agents.factory import build_registry
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import (
     AppError,
+    AuthenticationError,
     ConcurrentRunsExceededError,
     PersistenceError,
     QuotaExceededError,
     ShuttingDownError,
 )
+from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.langsmith_governance import configure_langsmith
@@ -76,6 +78,12 @@ from neuron_agent.schemas.agent import (
     UserDataExportResponse,
     UserThreadsResponse,
 )
+from neuron_agent.schemas.knowledge import (
+    KnowledgeBase,
+    KnowledgeBaseCreate,
+    KnowledgeBasesResponse,
+    KnowledgeBaseUpdate,
+)
 from neuron_agent.security.auth import (
     Principal,
     RequestSecurity,
@@ -99,6 +107,7 @@ configure_langsmith(settings)
 telemetry = configure_telemetry(settings)
 persistence = build_persistence(settings)
 service = AgentService(settings, persistence=persistence)
+knowledge = KnowledgeBases(settings, lambda: persistence.pool)
 auth_verifier = get_shared_token_verifier(settings)
 
 
@@ -157,7 +166,7 @@ principal_rate_limiter = build_rate_limiter(settings, persistence)
 ip_pre_limiter = build_ip_pre_limiter(settings)
 
 
-_RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/", "/v1/me/")
+_RATE_LIMITED_PREFIXES = ("/v1/agent/", "/v1/threads/", "/v1/me/", "/v1/knowledge/")
 _DOCS_PATHS = frozenset({"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"})
 # The API only returns JSON and SSE; nothing may load, run or frame its responses.
 _CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'"
@@ -903,6 +912,70 @@ async def erase_my_memories(
         return await service.erase_memories(user_id, principal=principal)
     except AppError as exc:
         raise _http_error("memory_erase_failed", exc) from exc
+
+
+def _knowledge_owner(principal: Principal | None, user_id: str | None) -> str:
+    """The caller's owner key; knowledge bases always have an owner."""
+    owner_key = service.owner_key_for(principal, user_id)
+    if owner_key is None:
+        raise AuthenticationError("an identified caller is required")
+    return owner_key
+
+
+@app.get("/v1/knowledge/bases", response_model=KnowledgeBasesResponse)
+async def list_knowledge_bases(
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeBasesResponse:
+    """The caller's knowledge bases, oldest first (ADR 0014; RAG-03.01)."""
+    try:
+        return KnowledgeBasesResponse(
+            bases=await knowledge.list(_knowledge_owner(principal, user_id))
+        )
+    except AppError as exc:
+        raise _http_error("knowledge_bases_list_failed", exc) from exc
+
+
+@app.post("/v1/knowledge/bases", response_model=KnowledgeBase, status_code=201)
+async def create_knowledge_base(
+    body: KnowledgeBaseCreate,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeBase:
+    """Create a knowledge base owned by the caller, up to the per-user limit."""
+    try:
+        owner_key = _knowledge_owner(principal, user_id)
+        return await knowledge.create(owner_key, body.name, body.processing)
+    except AppError as exc:
+        raise _http_error("knowledge_base_create_failed", exc) from exc
+
+
+@app.patch("/v1/knowledge/bases/{kb_id}", response_model=KnowledgeBase)
+async def rename_knowledge_base(
+    kb_id: uuid.UUID,
+    body: KnowledgeBaseUpdate,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeBase:
+    """Rename one of the caller's knowledge bases; any other id is the same `404`."""
+    try:
+        return await knowledge.rename(_knowledge_owner(principal, user_id), kb_id, body.name)
+    except AppError as exc:
+        raise _http_error("knowledge_base_rename_failed", exc) from exc
+
+
+@app.delete("/v1/knowledge/bases/{kb_id}", status_code=202)
+async def delete_knowledge_base(
+    kb_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> Response:
+    """Tombstone one of the caller's knowledge bases and queue its purge; `202`."""
+    try:
+        await knowledge.delete(_knowledge_owner(principal, user_id), kb_id)
+    except AppError as exc:
+        raise _http_error("knowledge_base_delete_failed", exc) from exc
+    return Response(status_code=202)
 
 
 @app.delete("/v1/me/threads", response_model=UserDataErasureResponse)

@@ -93,7 +93,10 @@ async def test_office_files_without_a_parser_url_fail_with_a_clear_code(tmp_path
 def test_every_task_is_registered_by_name() -> None:
     settings = Settings(env="test", postgres_worker_dsn=SecretStr("postgresql://w@h/d"))
     app = worker.build_app(settings, _Ingestor())  # type: ignore[arg-type]
-    assert {task.value for task in jobs.Task} <= set(app.tasks)
+    # Queued by the API (RAG-03.01) before the worker runs it (RAG-03.03): remove it from here then.
+    pending = {jobs.Task.PURGE_KNOWLEDGE_BASE.value}
+    assert {task.value for task in jobs.Task} - pending <= set(app.tasks)
+    assert not pending & set(app.tasks), "registered now: drop it from `pending`"
     assert app.tasks[jobs.Task.INGEST_DOCUMENT.value].queue == jobs.QUEUE
 
 

@@ -62,6 +62,8 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads` |
 | `memories:read` | `GET /v1/me/memories` |
 | `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |
+| `knowledge:read` | `GET /v1/knowledge/bases` (in development, v1.1.0) |
+| `knowledge:write` | `POST /v1/knowledge/bases`, `PATCH /v1/knowledge/bases/{kb_id}`, `DELETE /v1/knowledge/bases/{kb_id}` (in development, v1.1.0) |
 | `tools:calculator` | lets the agent use the `calculator` tool |
 | `tools:mcp.<server>.<tool>` | lets the agent use that MCP tool |
 
@@ -214,7 +216,18 @@ A tool whose definition later differs from its pin, or that is not in the file, 
 
 ## Knowledge files (in development, v1.1.0)
 
-Knowledge bases are not available yet: there is no upload route (ADR 0014, `docs/product/RAG_IMPLEMENTATION_TRACKER.md`). These are the file types the parser accepts:
+With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases; documents cannot be uploaded yet (ADR 0014, `docs/product/RAG_IMPLEMENTATION_TRACKER.md`):
+
+| Route | Does |
+| --- | --- |
+| `GET /v1/knowledge/bases` | The caller's knowledge bases, oldest first: `kb_id`, `name`, `processing`, `created_at` |
+| `POST /v1/knowledge/bases` | `{"name": "...", "processing": "hosted"}` (`processing` optional, or `self_hosted`); `201`. At most `APP_KNOWLEDGE_MAX_BASES_PER_USER` (20), then `409 knowledge_base_limit_reached` |
+| `PATCH /v1/knowledge/bases/{kb_id}` | `{"name": "..."}`: rename |
+| `DELETE /v1/knowledge/bases/{kb_id}` | `202`: the base disappears at once and a purge job is queued (the purge itself is RAG-03.03) |
+
+A name is 1 to 80 characters without control characters; unknown fields are `422`. Another user's base, a deleted one and an unknown id are all `404 knowledge_base_not_found`. With knowledge off every route is `404 knowledge_disabled`.
+
+These are the file types the parser accepts:
 
 | Format | Media type | Parsed by |
 | --- | --- | --- |

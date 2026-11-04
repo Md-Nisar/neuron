@@ -111,13 +111,17 @@ class RenameThreadRequest(BaseModel):
     @field_validator("title")
     @classmethod
     def _plain_title(cls, value: str) -> str:
-        """Whitespace collapsed, 1 to 80 characters, no control or invisible characters."""
-        if any(unicodedata.category(c)[0] == "C" for c in value if c not in "\t\n\r"):
-            raise ValueError("title contains control or invisible characters")
-        title = " ".join(value.split())
-        if not 1 <= len(title) <= TITLE_MAX_CHARS:
-            raise ValueError(f"title must be 1 to {TITLE_MAX_CHARS} characters")
-        return title
+        return plain_title(value)
+
+
+def plain_title(value: str) -> str:
+    """Whitespace collapsed, 1 to 80 characters, no control or invisible characters."""
+    if any(unicodedata.category(c)[0] == "C" for c in value if c not in "\t\n\r"):
+        raise ValueError("title contains control or invisible characters")
+    title = " ".join(value.split())
+    if not 1 <= len(title) <= TITLE_MAX_CHARS:
+        raise ValueError(f"title must be 1 to {TITLE_MAX_CHARS} characters")
+    return title
 
 
 POSITIVE_REASONS = ("helpful", "accurate")

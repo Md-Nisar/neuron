@@ -93,6 +93,24 @@ class MemoryFullError(AppError):
     context = ErrorContext(code="memory_full", http_status=409)
 
 
+class KnowledgeDisabledError(AppError):
+    """The Knowledge Engine is not enabled on this deployment."""
+
+    context = ErrorContext(code="knowledge_disabled", http_status=404)
+
+
+class KnowledgeBaseNotFoundError(AppError):
+    """The caller has no live knowledge base with this ID (missing, deleted or someone else's)."""
+
+    context = ErrorContext(code="knowledge_base_not_found", http_status=404)
+
+
+class KnowledgeBaseLimitError(AppError):
+    """The caller has as many knowledge bases as the operator allows."""
+
+    context = ErrorContext(code="knowledge_base_limit_reached", http_status=409)
+
+
 class ExportTooLargeError(AppError):
     """A user export page exceeds the configured response-size cap."""
 

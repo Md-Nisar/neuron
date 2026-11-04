@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-04, against `main` at `612ce0f` (RAG-02.02 Done: #426, #427, #428; RAG-02.04 part 1 merged in #429, part 2 on branch `RAG-02.04-part2`).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01 and RAG-E02; the Project board has not been created.
+**Last verified:** 2026-11-04, against `main` at `408ecf8` (RAG-02.04 Done: #429, #430; RAG-03.01 on branch `RAG-03.01`).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01, RAG-E02 and RAG-03.01 (with its epic); the Project board has not been created.
 
 ## New session protocol
 
@@ -48,8 +48,8 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
-| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 3 | 1 | 1 | 0 | RAG-02.04 (in progress) |
-| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-03.01 (ready) |
+| RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 4 | 0 | 1 | 0 | RAG-02.05 (after RAG-03.02) |
+| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 1 | 0 | 0 | 4 | RAG-03.02 (decision needed, #431) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (ready) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **10** | **1** | **1** | **44** | **RAG-02.04** |
+| **Total** | | | | **56** | **12** | **0** | **1** | **43** | **RAG-03.02** |
 
-v1.1.0 scope (E00–E08): 33 stories, 10 done.
+v1.1.0 scope (E00–E08): 33 stories, 12 done.
 
-**Recommended next action:** merge RAG-02.04 part 2 (#412, branch `RAG-02.04-part2`), which closes the story. Then RAG-03.01 (knowledge base routes) and RAG-03.02 (upload), which RAG-02.05 needs; RAG-04.01 is also unblocked.
+**Recommended next action:** decide the RAG-03.02 / RAG-02.05 dependency cycle (#431; proposed: the upload ships with its byte cap, RAG-02.05 adds quotas to it), then RAG-03.02 (upload). RAG-04.01 is also unblocked.
 
 ## GitHub synchronisation
 
@@ -86,7 +86,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-01.01 … RAG-01.03 | #416–#418 | Not on a board |
 | RAG-E02 | #408 | Not on a board |
 | RAG-02.01 … RAG-02.05 | #409–#413 | Not on a board |
-| RAG-E03 … RAG-E12 | — | — |
+| RAG-E03 | #431 | Not on a board |
+| RAG-03.01 | #432 | Not on a board |
+| RAG-E04 … RAG-E12 | — | — |
 
 ## Epic detail
 
@@ -133,7 +135,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E02 Durable ingestion pipeline
 
-- **Stories:** 5 total · 3 done · 1 in progress · 1 blocked · 0 pending
+- **Stories:** 5 total · 4 done · 0 in progress · 1 blocked · 0 pending
 - **Implemented functionality:** RAG-02.03 (merged via #414): `knowledge/providers.py` (`EmbeddingProvider` over LangChain `Embeddings`: `nvidia`, `openai_compatible`, a numpy-free `fake`; batching; count, dimension and finite checks; retries for 429/5xx/connection errors only; sanitised codes) and the `APP_KNOWLEDGE_EMBEDDING_*` and `APP_KNOWLEDGE_PROCESSING_POLICY` settings. A live check against the NVIDIA API catalog with fictional text returned 1,024-dimension passage and query vectors.
   RAG-02.01 part 1 (#424): migration 25 (`knowledge_job_queue`: Procrastinate 3.10.0's schema in the `knowledge` schema, functions with a pinned `search_path`); `knowledge/jobs.py` (`defer` with ids only, refused outside a transaction); app role may only queue, worker role has DML on the queue tables and USAGE on their sequences.
   RAG-02.01 part 2 (#425): `knowledge/worker.py` and the `neuron-worker` console script (worker DSN and pool with `search_path=knowledge`, `jobs.Task` registered by name, the ingest task a UUID-checking stub for RAG-02.04, a stalled-job sweep under an advisory lock that fails a job after 5 attempts, `SIGTERM` drain, `neuron-worker health`); `APP_POSTGRES_WORKER_DSN` and `APP_WORKER_*` settings; production `setup` requires the worker role; reference-stack `worker` service (`knowledge` profile) and `neuron_worker` role; OPERATIONS runbook.
@@ -141,7 +143,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   RAG-02.02 part 2a (#427): `knowledge/docling_serve.py`: `DoclingServeParser` posts bytes to docling-serve's `/v1/convert/file` (JSON out, OCR, accurate tables, a page range one past the cap) under a total deadline (`parser_timeout`, final), caps the reply (`parser_output_too_large`), validates the parts of Docling's JSON it reads (`parser_output_invalid`), walks the body's references with its own stack, drops running heads, and maps headings (levels), lists, tables, pages and top-left boxes; `parser_unavailable` (connection refused, 408, 429, 502-504) is the only retryable code. Recorded fake: Docling's reply for `nist-cswp-29` in `tests/fixtures/knowledge/recorded/`. `APP_KNOWLEDGE_PARSER_*` settings.
   RAG-02.02 part 2b (#428): docling-serve (pinned by digest) in the reference stack's `knowledge` profile, only on the internal `parser` network shared with the worker; the supported formats in the README; opt-in tests against a real docling-serve and its network.
   RAG-02.04 part 1 (#429): `knowledge/chunking.py`: `chunk_document` closes a chunk at each heading and records the heading path, fills chunks with the blocks under one heading up to `APP_KNOWLEDGE_CHUNK_MAX_TOKENS` (400 estimated tokens, one per three UTF-8 bytes), splits longer blocks at lines, then spaces, then characters in linear time, and keeps first and last pages; index profile `chunker` is `neuron-headings-v1`.
-  RAG-02.04 part 2 (branch `RAG-02.04-part2`): `knowledge/ingest.py` (`Ingestor.ingest`): the document row supplies the base, file and processing setting; guarded status updates (`parsing`, `embedding`, `ready`, `failed`) never touch a tombstoned document or base; locality checked before the file is read; original fetched (SHA-256 checked), parsed, chunked (at most 20,000 chunks), heading path and text embedded; one transaction locks the row, scopes RLS to its base, replaces the chunk set and sets `ready`; a failure deletes the chunks and records the code. `worker.py` builds the ingestor (plain text always; docling-serve with `APP_KNOWLEDGE_PARSER_URL`, else `parser_not_configured`), retries retryable failures until the last attempt, records `ingest_failed` for an unexpected last-attempt error and `worker_lost` from the sweep, and passes only the error's class to Procrastinate. Status values and error codes in the README.
+  RAG-02.04 part 2 (#430): `knowledge/ingest.py` (`Ingestor.ingest`): the document row supplies the base, file and processing setting; guarded status updates (`parsing`, `embedding`, `ready`, `failed`) never touch a tombstoned document or base; locality checked before the file is read; original fetched (SHA-256 checked), parsed, chunked (at most 20,000 chunks), heading path and text embedded; one transaction locks the row, scopes RLS to its base, replaces the chunk set and sets `ready`; a failure deletes the chunks and records the code. `worker.py` builds the ingestor (plain text always; docling-serve with `APP_KNOWLEDGE_PARSER_URL`, else `parser_not_configured`), retries retryable failures until the last attempt, records `ingest_failed` for an unexpected last-attempt error and `worker_lost` from the sweep, and passes only the error's class to Procrastinate. Status values and error codes in the README.
 - **Outstanding work:** Follow-up from RAG-02.01: a worker settings profile, so that staging/production validation stops requiring `APP_POSTGRES_DSN` (the app DSN) in the worker's environment (security review of part 2). RAG-02.05 (after RAG-03.02).
 - **Blockers and decisions:**
   - Unblocked: RAG-02.04 (RAG-02.01, 02.02, 02.03 and RAG-01.03 merged). Blocked: RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, missing from its "Depends on").
@@ -164,15 +166,20 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Decision (RAG-02.04 part 1, ADR 0014 amended): the owner's chunking choice (`HierarchicalChunker` with Neuron's own token split, #408) is implemented as Neuron's own heading-aware chunker over `ParsedDocument`, not docling-core's class: the parsers do not keep the `DoclingDocument` and text and Markdown never have one, so docling-core would be a new dependency, the raw JSON and a second path for text, for the same result (chunks per heading, heading path kept, own token split). Tokens are estimated from UTF-8 bytes because the worker has no tokenizer file and no egress; the 400 default is about the spike's 1,200-character chunks (recall@5 0.918 at 1,024 dimensions). No chunk overlap. The profile label changed from `docling-hierarchical` to `neuron-headings-v1`; no deployed database has profile 1 yet (no production), and setup does not compare the label. AC1 to AC4 are part 2's.
   - Security review (RAG-02.04 part 2): no high findings. Fixed before the PR: the processing-locality check runs before the file is read (docling-serve is part of the deployment, internal and without egress, so the setting governs the embedding provider, the only hosted step); Procrastinate logs only `IngestError(<class name>)`, because a database error's detail can echo a row of chunk text; a 20,000-chunk cap (`too_many_chunks`); an argument that is not a UUID ends the job instead of being retried 5 times; the row lock also requires the base to be live. Found by the tests: the failure path's chunk delete ran without `neuron.kb_ids`, so RLS hid the old chunks; the scope is now set under the row lock on every write path. Left: if recording `ingest_failed` itself fails (database down on the last attempt), the document stays in progress; a base's `profile_id` is read before the lock (profiles do not change for a base).
   - Decision (RAG-02.04 part 2): the embedded text is the heading path then the chunk text; the stored chunk text is the text alone. Re-processing a `ready` document is allowed and replaces its set. Duplicate jobs for one document serialise on the row lock and the last one wins; no queueing lock.
-- **Next recommended story:** RAG-03.01, then RAG-03.02 (RAG-02.05 needs the upload route).
+- **Next recommended story:** RAG-02.05, after RAG-03.02 (the upload route).
 
 ### RAG-E03 Knowledge API
 
-- **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
-- **Implemented functionality:** none. No `knowledge:*` permissions exist in `security/authorization.py`.
-- **Outstanding work:** RAG-03.01 to RAG-03.05.
-- **Blockers and decisions:** needs RAG-01.02.
-- **Next recommended story:** RAG-03.01.
+- **Stories:** 5 total · 1 done · 0 in progress · 0 blocked · 4 pending
+- **Implemented functionality:**
+  RAG-03.01 (#432): `GET`, `POST /v1/knowledge/bases`, `PATCH`, `DELETE /v1/knowledge/bases/{kb_id}` (`api/main.py`, rate-limited under `/v1/knowledge/`), `knowledge/service.py` (`KnowledgeBases`: every statement filters on the owner key and `deleted_at`; create writes the owner's `admin` grant and holds a per-owner advisory lock for `APP_KNOWLEDGE_MAX_BASES_PER_USER`; delete tombstones and queues `purge_knowledge_base` in the same transaction), `knowledge/authorization.py` (`KnowledgeAuthorization.allowed_kbs`: read and write sets from the owner's grants on live bases), `schemas/knowledge.py` (`extra="forbid"`, names through the thread-title rules: 1–80 characters, no control or invisible characters), permissions `knowledge:read`, `knowledge:write`, `tools:search_knowledge` (development permissions; the first two in the reference stack's `neuron-user`), errors `knowledge_disabled`, `knowledge_base_not_found`, `knowledge_base_limit_reached`, audit events with ids and counts.
+- **Outstanding work:** RAG-03.02 to RAG-03.05.
+- **Blockers and decisions:**
+  - Decision needed (#431): RAG-03.02 depends on RAG-02.05, whose first criterion needs RAG-03.02's upload route. Proposed: drop RAG-02.05 from RAG-03.02's "Depends on"; the upload ships with its streaming byte cap, and RAG-02.05 adds the per-user quotas to it.
+  - Decision (RAG-03.01): `allowed_kbs(conn, ctx)` takes the caller's connection as well as the context, so a route reads the allowed set and the rows in one transaction. Rename and delete filter on the owner key, not on `allowed.write`: in Phase 1 the owner is the only admin; role grants (Phase 2) must switch them to `allowed_kbs`. A second delete is `404` and queues nothing (RAG-03.03's AC3 allows `202` or `404`, consistently). The knowledge routes need Postgres, so their BOLA matrix is `tests/integration/test_postgres_knowledge_api.py`; the thread matrix excludes them and the knowledge matrix checks it covers every `/v1/knowledge/` route. No OpenAPI snapshot file exists in the repository; the routes are in the README.
+  - Left for RAG-03.03: the worker does not register `purge_knowledge_base` yet, so a KB delete's job fails as task-not-found until then (no production exists); RAG-03.03 must also purge bases tombstoned before it (for example by sweeping tombstoned bases, not only by job). `test_every_task_is_registered_by_name` names the task as pending and fails once it is registered. Documents of a deleted base are hidden by the base's `deleted_at` (ingest checks it); tombstoning them is RAG-03.03's.
+  - Security review (RAG-03.01): no high findings. Applied: a comment that Phase 2 must keep `allowed_kbs` as the list filter and check `allowed.write` on rename and delete. Accepted: with `APP_AUTH_MODE=none` (development and test only; staging and production refuse it) the owner is the hashed `X-User-Id`, as for threads and memories; audit events are emitted after commit, so a crash in between loses the event; refused attempts are not audited, as for the memory routes.
+- **Next recommended story:** RAG-03.02, once the dependency decision is made.
 
 ### RAG-E04 Retrieval and agent tools
 
@@ -260,9 +267,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-02.01 | Worker entrypoint and job queue | 1 | P0 | Done | #409 | #424, #425 | `tests/integration/test_postgres_knowledge_jobs.py`: a rolled-back document insert leaves no job, a committed one exactly one (AC3). `tests/integration/test_postgres_knowledge_worker.py` (a `neuron-worker` subprocess): `SIGKILL` mid-job, restart, the job completes once (AC1); `SIGTERM` finishes a 2 s job within a 20 s drain and exits 0, and releases a 60 s job to `todo` after a 1 s drain and exits 0 (AC2); with a job queued and no worker, `/health/ready`'s persistence check is ready (AC4) |
 | RAG-02.02 | Document parser adapters | 1 | P0 | Done | #410 | #426, #427, #428 | `tests/unit/test_knowledge_parsing.py`: encrypted PDF, non-Office zip, macro-enabled and mislabelled files refused with stable codes (AC4); schema-invalid output fails with `parser_output_invalid` (AC3); corpus Markdown sections parsed as headings. `tests/unit/test_knowledge_docling_serve.py`: corpus PDF evidence on its expected pages, headings with levels (AC1, recorded reply); deadline and read timeout give `parser_timeout`, not retryable (AC2's parser side); invalid Docling JSON gives `parser_output_invalid` (AC3). `tests/unit/test_reference_stack.py::test_the_parser_has_no_route_out` and the egress probe evidence above (AC5). AC2's document status in RAG-02.04 |
 | RAG-02.03 | Embedding provider and processing locality | 1 | P0 | Done | #411 | #414 | `tests/unit/test_knowledge_providers.py`: staging/production refusal under `self_hosted_only` (AC1); `embedding_dimension_mismatch`, nothing returned (AC2); 429/5xx/connection retried with backoff, 400 terminal (AC3); fake provider, network blocked (AC4) |
-| RAG-02.04 | Idempotent ingest task | 1 | P0 | In progress | #412 | #429 (part 1), branch `RAG-02.04-part2` (part 2) | `tests/unit/test_knowledge_chunking.py`: heading paths, token budget, splitting, corpus PDF evidence inside chunks on its pages. `tests/integration/test_postgres_knowledge_ingest.py` as the worker role: a second run leaves the same single chunk set (AC1); a failure in the chunk-set transaction's last statement leaves no chunks, and the retry equals a clean run (AC2); a parser error ends `failed` with `media_type_mismatch` and deletes the earlier chunks (AC3); a tombstoned document is skipped and keeps `deleting` (AC4); retryable parser errors raise until the last attempt; locality refusal; `no_text`; chunk cap; a base deleted mid-run gets no chunks. `test_postgres_knowledge_worker.py`: a job that keeps killing its worker leaves its document `worker_lost` |
+| RAG-02.04 | Idempotent ingest task | 1 | P0 | Done | #412 | #429, #430 | `tests/unit/test_knowledge_chunking.py`: heading paths, token budget, splitting, corpus PDF evidence inside chunks on its pages. `tests/integration/test_postgres_knowledge_ingest.py` as the worker role: a second run leaves the same single chunk set (AC1); a failure in the chunk-set transaction's last statement leaves no chunks, and the retry equals a clean run (AC2); a parser error ends `failed` with `media_type_mismatch` and deletes the earlier chunks (AC3); a tombstoned document is skipped and keeps `deleting` (AC4); retryable parser errors raise until the last attempt; locality refusal; `no_text`; chunk cap; a base deleted mid-run gets no chunks. `test_postgres_knowledge_worker.py`: a job that keeps killing its worker leaves its document `worker_lost` |
 | RAG-02.05 | Ingestion quotas and embedding token accounting | 1 | P0 | Blocked | #413 | — | — |
-| RAG-03.01 | Knowledge base routes and permissions | 1 | P0 | Pending | — | — | — |
+| RAG-03.01 | Knowledge base routes and permissions | 1 | P0 | Done | #432 | this PR | `tests/integration/test_postgres_knowledge_api.py` (as the app role, real tokens): another user's `PATCH` and `DELETE` are the same `404` body as an unknown id and change nothing (AC1); a deleted base is no longer listed and one `purge_knowledge_base` job is queued, a second delete queues none (AC4); the per-user limit; `allowed_kbs`. `tests/security/test_knowledge_api.py`: each route without its permission is `403` (AC2); an unknown field and invalid names or ids are `422` (AC3); with knowledge off every route is `404` |
 | RAG-03.02 | Document upload, list and status | 1 | P0 | Pending | — | — | — |
 | RAG-03.03 | Tombstone delete and purge jobs | 1 | P0 | Pending | — | — | — |
 | RAG-03.04 | Chunk inspection and file download | 1 | P0 | Pending | — | — | — |
@@ -311,6 +318,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-04 | RAG-02.04 Done (#429, #430). RAG-E03 analysed; issues #431, #432 created; RAG-03.01 Done with this PR; RAG-03.02 / RAG-02.05 dependency cycle recorded for a decision | Claude session |
 | 2026-11-04 | RAG-02.04 part 1 merged (#429); part 2 (the ingest task) in a PR with AC1 to AC4 tests | Claude session |
 | 2026-11-04 | RAG-02.02 Done (#426, #427, #428; AC5 run against the pinned docling-serve image). RAG-02.04 In progress: part 1 (chunker); ADR 0014 amended (Neuron's own heading chunker) | Claude session |
 | 2026-11-03 | RAG-02.01 Done (#424, #425). RAG-02.02 In progress: part 1 (input checks, output schema, plain-text parser) | Claude session |

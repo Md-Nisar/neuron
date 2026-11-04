@@ -25,9 +25,10 @@ QUEUE = "knowledge"
 
 
 class Task(StrEnum):
-    """Task names the worker registers. The ingest task itself is RAG-02.04's."""
+    """Task names the worker registers. The purge task itself is RAG-03.03's."""
 
     INGEST_DOCUMENT = "ingest_document"
+    PURGE_KNOWLEDGE_BASE = "purge_knowledge_base"
 
 
 # Procrastinate's `procrastinate_job_to_defer_v1`: queue, task, priority, lock, queueing lock,
