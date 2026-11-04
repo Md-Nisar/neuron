@@ -88,8 +88,10 @@ def _send(
     return api.client.request(method, path, json=body, headers=headers)
 
 
-def _requests(kb_id: str, doc_id: str = "{doc_id}") -> list[tuple[str, str, dict[str, Any] | None]]:
-    """One request per knowledge route, aimed at `kb_id` and `doc_id` where the route takes one.
+def _requests(
+    kb_id: str, doc_id: str = "{doc_id}", chunk_id: str = "{chunk_id}"
+) -> list[tuple[str, str, dict[str, Any] | None]]:
+    """One request per knowledge route, aimed at the `kb_id`, `doc_id` and `chunk_id` it takes.
 
     Reads come before the delete, which would hide the rest.
     """
@@ -99,6 +101,8 @@ def _requests(kb_id: str, doc_id: str = "{doc_id}") -> list[tuple[str, str, dict
         ("GET", f"/v1/knowledge/bases/{kb_id}/documents", None),
         ("POST", f"/v1/knowledge/bases/{kb_id}/documents", None),
         ("GET", f"/v1/knowledge/documents/{doc_id}", None),
+        ("GET", f"/v1/knowledge/documents/{doc_id}/chunks/{chunk_id}", None),
+        ("GET", f"/v1/knowledge/documents/{doc_id}/file", None),
         ("DELETE", f"/v1/knowledge/documents/{doc_id}", None),
         ("PATCH", f"/v1/knowledge/bases/{kb_id}", {"name": "taken over"}),
         ("DELETE", f"/v1/knowledge/bases/{kb_id}", None),
@@ -147,9 +151,11 @@ async def test_another_users_base_is_the_same_404_as_an_unknown_id(
     client, db = api
     alice, mallory = make_token("alice", scopes=_SCOPES), make_token("mallory", scopes=_SCOPES)
     base = _create(client, alice, "Alice's secret plans")
-    doc = await _document(db, base["kb_id"])
+    doc, chunk = await _document(db, base["kb_id"]), str(uuid.uuid4())
     for (method, path, body), (_, unknown, unknown_body) in zip(
-        _requests(base["kb_id"], doc), _requests(str(uuid.uuid4()), str(uuid.uuid4())), strict=True
+        _requests(base["kb_id"], doc, chunk),
+        _requests(str(uuid.uuid4()), str(uuid.uuid4()), chunk),
+        strict=True,
     ):
         response = _send(client, method, path, body, bearer(mallory))
         assert "secret plans" not in response.text

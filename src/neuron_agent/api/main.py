@@ -24,6 +24,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager, suppress
 from types import FrameType
 from typing import Annotated, Any
+from urllib.parse import quote
 
 import anyio
 import structlog
@@ -53,6 +54,7 @@ from neuron_agent.errors.base import (
     UploadRefusedError,
 )
 from neuron_agent.knowledge.blobs import build_blob_store
+from neuron_agent.knowledge.parsing import DOCX, MARKDOWN, PDF, PPTX, TEXT, XLSX
 from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
@@ -91,6 +93,7 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeBaseCreate,
     KnowledgeBasesResponse,
     KnowledgeBaseUpdate,
+    KnowledgeChunk,
     KnowledgeDocument,
     KnowledgeDocumentsResponse,
     document_title,
@@ -1130,6 +1133,56 @@ async def get_knowledge_document(
         return await knowledge.document(_knowledge_owner(principal, user_id), doc_id)
     except AppError as exc:
         raise _http_error("knowledge_document_get_failed", exc) from exc
+
+
+@app.get("/v1/knowledge/documents/{doc_id}/chunks/{chunk_id}", response_model=KnowledgeChunk)
+async def get_knowledge_chunk(
+    doc_id: uuid.UUID,
+    chunk_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
+    neighbours: int = Query(default=0, ge=0, le=3),
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeChunk:
+    """The passage behind a citation, as extracted text, with up to `neighbours` chunks on each
+    side; access is re-checked on every call, and a chunk of another document is `404`."""
+    try:
+        owner_key = _knowledge_owner(principal, user_id)
+        return await knowledge.chunk(owner_key, doc_id, chunk_id, neighbours=neighbours)
+    except AppError as exc:
+        raise _http_error("knowledge_chunk_get_failed", exc) from exc
+
+
+# Types a browser shows or runs never go out as themselves: text is plain text, the rest bytes.
+_DOWNLOAD_TYPES = {
+    **{kind: kind for kind in (PDF, DOCX, XLSX, PPTX)},
+    **dict.fromkeys((TEXT, MARKDOWN), "text/plain; charset=utf-8"),
+}
+
+
+def _attachment(title: str) -> str:
+    """A `Content-Disposition` that always downloads: an ASCII fallback name and the title
+    percent-encoded (RFC 6266), so no title can add a header or a parameter."""
+    fallback = re.sub(r"[^A-Za-z0-9._ -]", "_", title)[:100].strip() or "download"
+    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(title, safe='')}"
+
+
+@app.get("/v1/knowledge/documents/{doc_id}/file")
+async def download_knowledge_document(
+    doc_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> Response:
+    """The original file, always as an attachment with `nosniff` and a type no browser renders
+    as a page (RAG-03.04)."""
+    try:
+        title, mime_type, data = await knowledge.file(_knowledge_owner(principal, user_id), doc_id)
+    except AppError as exc:
+        raise _http_error("knowledge_document_download_failed", exc) from exc
+    return Response(
+        content=data,
+        media_type=_DOWNLOAD_TYPES.get(mime_type, "application/octet-stream"),
+        headers={"Content-Disposition": _attachment(title), "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @app.delete("/v1/knowledge/documents/{doc_id}", status_code=202)

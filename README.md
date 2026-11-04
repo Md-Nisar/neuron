@@ -62,7 +62,7 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads` |
 | `memories:read` | `GET /v1/me/memories` |
 | `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |
-| `knowledge:read` | `GET /v1/knowledge/bases`, `GET /v1/knowledge/bases/{kb_id}/documents`, `GET /v1/knowledge/documents/{doc_id}` (in development, v1.1.0) |
+| `knowledge:read` | `GET /v1/knowledge/bases`, `GET /v1/knowledge/bases/{kb_id}/documents`, `GET /v1/knowledge/documents/{doc_id}`, `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`, `GET /v1/knowledge/documents/{doc_id}/file` (in development, v1.1.0) |
 | `knowledge:write` | `POST /v1/knowledge/bases`, `PATCH /v1/knowledge/bases/{kb_id}`, `DELETE /v1/knowledge/bases/{kb_id}`, `POST /v1/knowledge/bases/{kb_id}/documents`, `DELETE /v1/knowledge/documents/{doc_id}` (in development, v1.1.0) |
 | `tools:calculator` | lets the agent use the `calculator` tool |
 | `tools:mcp.<server>.<tool>` | lets the agent use that MCP tool |
@@ -227,6 +227,8 @@ With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases an
 | `POST /v1/knowledge/bases/{kb_id}/documents` | Upload: `multipart/form-data` with one `file` part and an optional `title` field (else the file name); optional `Idempotency-Key` header (1–200 printable ASCII characters). `202` with `doc_id`, `kb_id`, `status` (`queued`) and `status_url` |
 | `GET /v1/knowledge/bases/{kb_id}/documents?limit&offset` | A page of the base's documents, oldest first, with `total`: `doc_id`, `kb_id`, `title`, `mime_type`, `size_bytes`, `page_count`, `status`, `error_code`, `created_at`, `updated_at` |
 | `GET /v1/knowledge/documents/{doc_id}` | One document: the same fields. `status` is the stage, below |
+| `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}` | The passage behind a citation: its extracted text, headings and pages, with `?neighbours=1` to `3` chunks on each side. Only for a `ready` document; a chunk of another document is `404` |
+| `GET /v1/knowledge/documents/{doc_id}/file` | The original file, always as an attachment (`Content-Disposition: attachment`, `nosniff`); text and Markdown go out as `text/plain` |
 | `DELETE /v1/knowledge/documents/{doc_id}` | `202`: the document disappears at once, and the worker's purge then deletes its file, row, chunks and embeddings. A second delete is `404` and queues nothing |
 
 A name is 1 to 80 characters without control characters; unknown fields are `422`. Another user's base, a deleted one and an unknown id are all `404 knowledge_base_not_found` (`knowledge_document_not_found` for a document, also when its base is deleted). Titles are user text: clients show them as text. With knowledge off every route is `404 knowledge_disabled`.
