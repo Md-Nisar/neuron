@@ -58,10 +58,10 @@ async def setup(
     role_db: RoleDatabase,  # noqa: F811
     worker: tuple[str, str],  # noqa: F811
     tmp_path: Path,
-) -> AsyncIterator[tuple[RoleDatabase, Ingestor]]:
+) -> tuple[RoleDatabase, Ingestor]:
     dsn = await _knowledge_db(role_db, worker)
     assert dsn is not None
-    yield (
+    return (
         role_db,
         Ingestor(
             connect=connector(dsn, "-c search_path=knowledge"),

@@ -72,7 +72,9 @@ _READY = (
 )
 
 
-class _Failed(Exception):  # noqa: N818 - control flow, never raised past `ingest`
+class _RefusedError(Exception):
+    """Control flow inside `ingest`: the document fails with `code`; never raised past it."""
+
     def __init__(self, code: str) -> None:
         self.code = code
 
@@ -114,7 +116,7 @@ class Ingestor:
                 if exc.code == "blob_backend_error" and not last_attempt:
                     raise
                 return await self._fail_on(conn, doc_id, exc.code)
-            except _Failed as exc:
+            except _RefusedError as exc:
                 return await self._fail_on(conn, doc_id, exc.code)
             written = await self._write(conn, doc_id, row, chunks, vectors, parsed)
         if not written:
@@ -138,9 +140,9 @@ class Ingestor:
         parsed = await parse_document(data, row["mime_type"], self.limits, self.parsers)
         chunks = chunk_document(parsed, self.chunk_max_tokens)
         if not chunks:
-            raise _Failed("no_text")
+            raise _RefusedError("no_text")
         if len(chunks) > MAX_CHUNKS:
-            raise _Failed("too_many_chunks")
+            raise _RefusedError("too_many_chunks")
         return chunks, (parsed.parser_version, parsed.page_count)
 
     async def _set(
