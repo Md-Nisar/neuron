@@ -896,11 +896,12 @@ def _table_grants(
             for column in _WORKER_DOCUMENT_COLUMNS
             if document_columns is None or column in document_columns
         ]
-        statements.append(
-            sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
-                sql.SQL(", ").join(map(sql.Identifier, columns)), target, role
+        if columns:
+            statements.append(
+                sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
+                    sql.SQL(", ").join(map(sql.Identifier, columns)), target, role
+                )
             )
-        )
     return statements
 
 
