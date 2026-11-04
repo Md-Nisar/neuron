@@ -208,6 +208,8 @@ class Settings(BaseSettings):
     knowledge_parse_max_bytes: int = Field(default=50_000_000, ge=1_024, le=200_000_000)
     knowledge_parse_max_pages: int = Field(default=2_000, ge=1, le=10_000)
     knowledge_parse_max_page_chars: int = Field(default=50_000, ge=1_000, le=200_000)
+    # Chunk size in estimated tokens (RAG-02.04): 400 is about the spike's 1,200 characters.
+    knowledge_chunk_max_tokens: int = Field(default=400, ge=50, le=8_000)
     # docling-serve for PDF and Office files (RAG-02.02): its base URL, reachable only from the
     # worker; a total deadline per file; and a cap on its JSON reply.
     # No credentials in the URL: docling-serve is reached only over the internal network.
