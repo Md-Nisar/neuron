@@ -60,11 +60,16 @@ async def api(
     return built, role_db
 
 
-def _requests(kb_id: str) -> list[tuple[str, str, dict[str, Any] | None]]:
-    """One request per knowledge route, aimed at `kb_id` wherever the route takes one."""
+def _requests(kb_id: str, doc_id: str = "{doc_id}") -> list[tuple[str, str, dict[str, Any] | None]]:
+    """One request per knowledge route, aimed at `kb_id` and `doc_id` where the route takes one.
+
+    Reads come before the delete, which would hide the rest.
+    """
     return [
         ("GET", "/v1/knowledge/bases", None),
         ("POST", "/v1/knowledge/bases", {"name": "probe"}),
+        ("GET", f"/v1/knowledge/bases/{kb_id}/documents", None),
+        ("GET", f"/v1/knowledge/documents/{doc_id}", None),
         ("PATCH", f"/v1/knowledge/bases/{kb_id}", {"name": "taken over"}),
         ("DELETE", f"/v1/knowledge/bases/{kb_id}", None),
     ]
@@ -86,6 +91,20 @@ def _create(api: JwtApi, token: str, name: str = "Greenhouse") -> dict[str, Any]
     return dict(response.json())
 
 
+async def _document(db: RoleDatabase, kb_id: str, title: str = "Alice's tax return") -> str:
+    """A document row as the upload (RAG-03.02 part 2) leaves it."""
+    doc = uuid.uuid4()
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(
+            "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type,"
+            " size_bytes, sha256, blob_key, status)"
+            " SELECT %s, kb_id, owner_key, %s, 'text/plain', 3, %s, %s, 'queued'"
+            " FROM knowledge.bases WHERE kb_id = %s",
+            (doc, title, uuid.uuid4().hex * 2, uuid.uuid4().hex, kb_id),
+        )
+    return str(doc)
+
+
 async def _jobs(db: RoleDatabase) -> list[tuple[Any, ...]]:
     return await _rows(
         db.migrator_dsn, "SELECT task_name, args FROM knowledge.procrastinate_jobs ORDER BY id"
@@ -98,11 +117,13 @@ async def test_another_users_base_is_the_same_404_as_an_unknown_id(
     client, db = api
     alice, mallory = make_token("alice", scopes=_SCOPES), make_token("mallory", scopes=_SCOPES)
     base = _create(client, alice, "Alice's secret plans")
+    doc = await _document(db, base["kb_id"])
     for (method, path, body), (_, unknown, unknown_body) in zip(
-        _requests(base["kb_id"]), _requests(str(uuid.uuid4())), strict=True
+        _requests(base["kb_id"], doc), _requests(str(uuid.uuid4()), str(uuid.uuid4())), strict=True
     ):
         response = client.client.request(method, path, json=body, headers=bearer(mallory))
         assert "secret plans" not in response.text
+        assert "tax return" not in response.text
         assert base["kb_id"] not in response.text
         if unknown == path:
             assert response.status_code in {200, 201}, (method, path)  # mallory's own scope
@@ -111,7 +132,10 @@ async def test_another_users_base_is_the_same_404_as_an_unknown_id(
             method, unknown, json=unknown_body, headers=bearer(mallory)
         )
         assert response.status_code == baseline.status_code == 404, (method, path)
-        assert response.json() == baseline.json() == {"detail": "knowledge_base_not_found"}
+        detail = (
+            "knowledge_document_not_found" if "/documents/" in path else "knowledge_base_not_found"
+        )
+        assert response.json() == baseline.json() == {"detail": detail}
     listed = client.client.get("/v1/knowledge/bases", headers=bearer(alice)).json()
     assert listed == {"bases": [base]}
     assert await _jobs(db) == []
@@ -183,3 +207,44 @@ async def test_allowed_kbs_is_the_owners_live_bases(
         )
     assert allowed.read == allowed.write == {uuid.UUID(kept["kb_id"])}
     assert other.read == other.write == anonymous.read == frozenset()
+
+
+async def test_the_owner_sees_live_documents_and_their_status(
+    api: tuple[JwtApi, RoleDatabase], make_token: Callable[..., str]
+) -> None:
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    docs = [await _document(db, base["kb_id"], f"doc {i}") for i in range(3)]
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(
+            "UPDATE knowledge.documents SET status = 'failed', error_code = 'no_text'"
+            " WHERE doc_id = %s",
+            (docs[1],),
+        )
+        await conn.execute(
+            "UPDATE knowledge.documents SET status = 'deleting', deleted_at = now()"
+            " WHERE doc_id = %s",
+            (docs[2],),
+        )
+    listing = f"/v1/knowledge/bases/{base['kb_id']}/documents"
+    page = client.client.get(f"{listing}?limit=1&offset=1", headers=bearer(alice)).json()
+    assert (page["total"], page["limit"], page["offset"]) == (2, 1, 1)
+    assert [(d["doc_id"], d["status"], d["error_code"]) for d in page["documents"]] == [
+        (docs[1], "failed", "no_text")
+    ]
+    one = client.client.get(f"/v1/knowledge/documents/{docs[0]}", headers=bearer(alice))
+    assert one.status_code == 200
+    assert set(one.json()) == {
+        "doc_id", "kb_id", "title", "mime_type", "size_bytes", "page_count", "status",
+        "error_code", "created_at", "updated_at",
+    }  # fmt: skip
+    assert (one.json()["title"], one.json()["status"]) == ("doc 0", "queued")
+    gone = client.client.get(f"/v1/knowledge/documents/{docs[2]}", headers=bearer(alice))
+    assert (gone.status_code, gone.json()) == (404, {"detail": "knowledge_document_not_found"})
+
+    # A deleted base takes its documents with it, before the purge runs.
+    client.client.delete(f"/v1/knowledge/bases/{base['kb_id']}", headers=bearer(alice))
+    after = client.client.get(f"/v1/knowledge/documents/{docs[0]}", headers=bearer(alice))
+    assert after.status_code == 404
+    assert client.client.get(listing, headers=bearer(alice)).status_code == 404

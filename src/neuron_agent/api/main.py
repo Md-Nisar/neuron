@@ -83,6 +83,8 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeBaseCreate,
     KnowledgeBasesResponse,
     KnowledgeBaseUpdate,
+    KnowledgeDocument,
+    KnowledgeDocumentsResponse,
 )
 from neuron_agent.security.auth import (
     Principal,
@@ -976,6 +978,38 @@ async def delete_knowledge_base(
     except AppError as exc:
         raise _http_error("knowledge_base_delete_failed", exc) from exc
     return Response(status_code=202)
+
+
+@app.get("/v1/knowledge/bases/{kb_id}/documents", response_model=KnowledgeDocumentsResponse)
+async def list_knowledge_documents(
+    kb_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeDocumentsResponse:
+    """A page of one of the caller's knowledge bases' documents, with their status."""
+    try:
+        owner_key = _knowledge_owner(principal, user_id)
+        documents, total = await knowledge.documents(owner_key, kb_id, limit=limit, offset=offset)
+    except AppError as exc:
+        raise _http_error("knowledge_documents_list_failed", exc) from exc
+    return KnowledgeDocumentsResponse(
+        documents=list(documents), total=total, limit=limit, offset=offset
+    )
+
+
+@app.get("/v1/knowledge/documents/{doc_id}", response_model=KnowledgeDocument)
+async def get_knowledge_document(
+    doc_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeDocument:
+    """One document's metadata and status; any id the caller cannot read is the same `404`."""
+    try:
+        return await knowledge.document(_knowledge_owner(principal, user_id), doc_id)
+    except AppError as exc:
+        raise _http_error("knowledge_document_get_failed", exc) from exc
 
 
 @app.delete("/v1/me/threads", response_model=UserDataErasureResponse)

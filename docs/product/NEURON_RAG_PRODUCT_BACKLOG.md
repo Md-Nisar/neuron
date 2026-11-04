@@ -531,7 +531,7 @@ something fails part way.
 ### RAG-02.05 Ingestion quotas and embedding token accounting
 
 - **Epic:** RAG-E02 · **Phase:** 1 · **Priority:** P0 · **Estimate:** 0.5 w · **Research:** KE-023, Claude gap 3
-- **Depends on:** RAG-02.04
+- **Depends on:** RAG-02.04, RAG-03.02 (the upload route its quotas apply to)
 
 **Story.** As an operator, I want limits on what each user can ingest and a record of embedding
 tokens, so that one large upload cannot cause unbounded spend.
@@ -606,7 +606,7 @@ Exit gate: foreign or deleted ids return 404 everywhere; every route has scope a
 ### RAG-03.02 Document upload, list and status
 
 - **Epic:** RAG-E03 · **Phase:** 1 · **Priority:** P0 · **Estimate:** 1 w · **Research:** KE-017, KN-017
-- **Depends on:** RAG-03.01, RAG-01.03, RAG-02.01, RAG-02.05
+- **Depends on:** RAG-03.01, RAG-01.03, RAG-02.01 (RAG-02.05 adds quotas to the upload afterwards; owner decision, 2026-11-04, #431)
 
 **Story.** As a user, I want to upload documents to my knowledge base and see their processing status.
 

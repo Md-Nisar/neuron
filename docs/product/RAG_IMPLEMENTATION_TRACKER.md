@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-04, against `main` at `408ecf8` (RAG-02.04 Done: #429, #430; RAG-03.01 on branch `RAG-03.01`).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01, RAG-E02 and RAG-03.01 (with its epic); the Project board has not been created.
+**Last verified:** 2026-11-04, against `main` at `570eba3` (RAG-03.01 Done: #433; RAG-03.02 part 1 on branch `RAG-03.02`).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01, RAG-E02, and RAG-03.01 and RAG-03.02 with their epic; the Project board has not been created.
 
 ## New session protocol
 
@@ -49,7 +49,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 4 | 0 | 1 | 0 | RAG-02.05 (after RAG-03.02) |
-| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 1 | 0 | 0 | 4 | RAG-03.02 (decision needed, #431) |
+| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 1 | 1 | 0 | 3 | RAG-03.02 (in progress) |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 0 | 0 | 4 | RAG-04.01 (ready) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **12** | **0** | **1** | **43** | **RAG-03.02** |
+| **Total** | | | | **56** | **12** | **1** | **1** | **42** | **RAG-03.02** |
 
 v1.1.0 scope (E00–E08): 33 stories, 12 done.
 
-**Recommended next action:** decide the RAG-03.02 / RAG-02.05 dependency cycle (#431; proposed: the upload ships with its byte cap, RAG-02.05 adds quotas to it), then RAG-03.02 (upload). RAG-04.01 is also unblocked.
+**Recommended next action:** finish RAG-03.02 (#434): part 1 (list and status) in review, then part 2 (the upload). Then RAG-02.05 (quotas on the upload) or RAG-03.03. RAG-04.01 is also unblocked.
 
 ## GitHub synchronisation
 
@@ -88,6 +88,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-02.01 … RAG-02.05 | #409–#413 | Not on a board |
 | RAG-E03 | #431 | Not on a board |
 | RAG-03.01 | #432 | Not on a board |
+| RAG-03.02 | #434 | Not on a board |
 | RAG-E04 … RAG-E12 | — | — |
 
 ## Epic detail
@@ -146,7 +147,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   RAG-02.04 part 2 (#430): `knowledge/ingest.py` (`Ingestor.ingest`): the document row supplies the base, file and processing setting; guarded status updates (`parsing`, `embedding`, `ready`, `failed`) never touch a tombstoned document or base; locality checked before the file is read; original fetched (SHA-256 checked), parsed, chunked (at most 20,000 chunks), heading path and text embedded; one transaction locks the row, scopes RLS to its base, replaces the chunk set and sets `ready`; a failure deletes the chunks and records the code. `worker.py` builds the ingestor (plain text always; docling-serve with `APP_KNOWLEDGE_PARSER_URL`, else `parser_not_configured`), retries retryable failures until the last attempt, records `ingest_failed` for an unexpected last-attempt error and `worker_lost` from the sweep, and passes only the error's class to Procrastinate. Status values and error codes in the README.
 - **Outstanding work:** Follow-up from RAG-02.01: a worker settings profile, so that staging/production validation stops requiring `APP_POSTGRES_DSN` (the app DSN) in the worker's environment (security review of part 2). RAG-02.05 (after RAG-03.02).
 - **Blockers and decisions:**
-  - Unblocked: RAG-02.04 (RAG-02.01, 02.02, 02.03 and RAG-01.03 merged). Blocked: RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, missing from its "Depends on").
+  - Unblocked: RAG-02.04 (RAG-02.01, 02.02, 02.03 and RAG-01.03 merged). Blocked: RAG-02.05 needs RAG-02.04 and the upload route (RAG-03.02, now in its "Depends on").
   - Assumptions (RAG-02.03, #411): `nvidia` is always hosted; `openai_compatible` is hosted unless `APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted`; the fake provider is refused in staging/production; a keyed endpoint needs https there. `bases.processing` is a RAG-01.02 column; RAG-02.04 and RAG-04.01 must call `ensure_processing_allowed` before every embedding call. A missing NVIDIA key in staging/production now fails at settings load when `APP_KNOWLEDGE_ENABLED=true` (RAG-01.01).
   - Decision (RAG-02.01): the queue tables live in the `knowledge` schema, not `public` or a `procrastinate` schema. The migrator cannot create a schema (only `CONNECT` on the database), the worker then needs no rights in `public` (so a compromised parser cannot reach threads or checkpoints), and `public`'s default privileges do not hand the app role DML on them. Procrastinate's functions get `search_path = knowledge, pg_catalog, pg_temp`, so the API calls `knowledge.procrastinate_defer_jobs_v1` from its own transaction and the triggers resolve their tables. The queue tables have no RLS: rows carry ids only.
   - Decision (RAG-02.01, ADR 0014 amended): `procrastinate` is a core dependency pinned to 3.10.0, not in the `worker` extra, because `setup` runs from the API image and takes the schema from the installed library (+4 pure-Python packages in the API environment). An upgrade must add Procrastinate's migration files as new Neuron migrations; `test_the_job_queue_migration_matches_the_installed_procrastinate` fails until it does. The `worker` extra does not exist yet; RAG-02.02 adds it with `docling-core`.
@@ -170,16 +171,19 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E03 Knowledge API
 
-- **Stories:** 5 total · 1 done · 0 in progress · 0 blocked · 4 pending
+- **Stories:** 5 total · 1 done · 1 in progress · 0 blocked · 3 pending
 - **Implemented functionality:**
   RAG-03.01 (#432): `GET`, `POST /v1/knowledge/bases`, `PATCH`, `DELETE /v1/knowledge/bases/{kb_id}` (`api/main.py`, rate-limited under `/v1/knowledge/`), `knowledge/service.py` (`KnowledgeBases`: every statement filters on the owner key and `deleted_at`; create writes the owner's `admin` grant and holds a per-owner advisory lock for `APP_KNOWLEDGE_MAX_BASES_PER_USER`; delete tombstones and queues `purge_knowledge_base` in the same transaction), `knowledge/authorization.py` (`KnowledgeAuthorization.allowed_kbs`: read and write sets from the owner's grants on live bases), `schemas/knowledge.py` (`extra="forbid"`, names through the thread-title rules: 1–80 characters, no control or invisible characters), permissions `knowledge:read`, `knowledge:write`, `tools:search_knowledge` (development permissions; the first two in the reference stack's `neuron-user`), errors `knowledge_disabled`, `knowledge_base_not_found`, `knowledge_base_limit_reached`, audit events with ids and counts.
-- **Outstanding work:** RAG-03.02 to RAG-03.05.
+  RAG-03.02 part 1 (branch `RAG-03.02`): `GET /v1/knowledge/bases/{kb_id}/documents` (paginated, with `total`) and `GET /v1/knowledge/documents/{doc_id}`: documents are found through `allowed_kbs` and the base's owner, never tombstoned ones or those of a deleted base; `knowledge_document_not_found`.
+- **Outstanding work:** RAG-03.02 part 2 (the upload), RAG-03.03 to RAG-03.05.
 - **Blockers and decisions:**
-  - Decision needed (#431): RAG-03.02 depends on RAG-02.05, whose first criterion needs RAG-03.02's upload route. Proposed: drop RAG-02.05 from RAG-03.02's "Depends on"; the upload ships with its streaming byte cap, and RAG-02.05 adds the per-user quotas to it.
+  - Decision (owner, 2026-11-04, #431): the RAG-03.02 / RAG-02.05 cycle is resolved by dropping RAG-02.05 from RAG-03.02's "Depends on" (backlog updated); the upload ships with its hard byte cap, and RAG-02.05, now depending on RAG-03.02, adds the per-user quotas to it.
+  - Decision (RAG-03.02): two PRs. Part 1, the list and status routes (AC5); part 2, the upload (AC1 to AC4). The document list is not audited per poll of one document: `knowledge_documents_read` (count) is emitted for the list only.
+  - Security review (RAG-03.02 part 1): no high findings. Accepted: reading one document is not audited (ADR 0014 requirement 5 lists creates, deletes, erase and export; a status poll would flood the log); `total` and the page are two statements, so a concurrent purge can make them disagree by the purged rows. Left for part 2: titles must pass `plain_title` at upload, as the response returns them as stored.
   - Decision (RAG-03.01): `allowed_kbs(conn, ctx)` takes the caller's connection as well as the context, so a route reads the allowed set and the rows in one transaction. Rename and delete filter on the owner key, not on `allowed.write`: in Phase 1 the owner is the only admin; role grants (Phase 2) must switch them to `allowed_kbs`. A second delete is `404` and queues nothing (RAG-03.03's AC3 allows `202` or `404`, consistently). The knowledge routes need Postgres, so their BOLA matrix is `tests/integration/test_postgres_knowledge_api.py`; the thread matrix excludes them and the knowledge matrix checks it covers every `/v1/knowledge/` route. No OpenAPI snapshot file exists in the repository; the routes are in the README.
   - Left for RAG-03.03: the worker does not register `purge_knowledge_base` yet, so a KB delete's job fails as task-not-found until then (no production exists); RAG-03.03 must also purge bases tombstoned before it (for example by sweeping tombstoned bases, not only by job). `test_every_task_is_registered_by_name` names the task as pending and fails once it is registered. Documents of a deleted base are hidden by the base's `deleted_at` (ingest checks it); tombstoning them is RAG-03.03's.
   - Security review (RAG-03.01): no high findings. Applied: a comment that Phase 2 must keep `allowed_kbs` as the list filter and check `allowed.write` on rename and delete. Accepted: with `APP_AUTH_MODE=none` (development and test only; staging and production refuse it) the owner is the hashed `X-User-Id`, as for threads and memories; audit events are emitted after commit, so a crash in between loses the event; refused attempts are not audited, as for the memory routes.
-- **Next recommended story:** RAG-03.02, once the dependency decision is made.
+- **Next recommended story:** RAG-03.02 part 2 (the upload).
 
 ### RAG-E04 Retrieval and agent tools
 
@@ -270,7 +274,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-02.04 | Idempotent ingest task | 1 | P0 | Done | #412 | #429, #430 | `tests/unit/test_knowledge_chunking.py`: heading paths, token budget, splitting, corpus PDF evidence inside chunks on its pages. `tests/integration/test_postgres_knowledge_ingest.py` as the worker role: a second run leaves the same single chunk set (AC1); a failure in the chunk-set transaction's last statement leaves no chunks, and the retry equals a clean run (AC2); a parser error ends `failed` with `media_type_mismatch` and deletes the earlier chunks (AC3); a tombstoned document is skipped and keeps `deleting` (AC4); retryable parser errors raise until the last attempt; locality refusal; `no_text`; chunk cap; a base deleted mid-run gets no chunks. `test_postgres_knowledge_worker.py`: a job that keeps killing its worker leaves its document `worker_lost` |
 | RAG-02.05 | Ingestion quotas and embedding token accounting | 1 | P0 | Blocked | #413 | — | — |
 | RAG-03.01 | Knowledge base routes and permissions | 1 | P0 | Done | #432 | #433 | `tests/integration/test_postgres_knowledge_api.py` (as the app role, real tokens): another user's `PATCH` and `DELETE` are the same `404` body as an unknown id and change nothing (AC1); a deleted base is no longer listed and one `purge_knowledge_base` job is queued, a second delete queues none (AC4); the per-user limit; `allowed_kbs`. `tests/security/test_knowledge_api.py`: each route without its permission is `403` (AC2); an unknown field and invalid names or ids are `422` (AC3); with knowledge off every route is `404` |
-| RAG-03.02 | Document upload, list and status | 1 | P0 | Pending | — | — | — |
+| RAG-03.02 | Document upload, list and status | 1 | P0 | In progress | #434 | branch `RAG-03.02` (part 1) | `tests/integration/test_postgres_knowledge_api.py`: user B's `GET` of user A's document, or of the list of A's base, is the same `404` as an unknown id and shows no title (AC5); the owner's list pages live documents with `total` and status, hides tombstoned ones and those of a deleted base. AC1 to AC4 in part 2 |
 | RAG-03.03 | Tombstone delete and purge jobs | 1 | P0 | Pending | — | — | — |
 | RAG-03.04 | Chunk inspection and file download | 1 | P0 | Pending | — | — | — |
 | RAG-03.05 | Knowledge search endpoint | 1 | P1 | Pending | — | — | — |
@@ -318,6 +322,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-04 | RAG-03.01 Done (#433). Owner resolved the RAG-03.02 / RAG-02.05 cycle (backlog updated); issue #434; RAG-03.02 In progress, part 1 (list and status) | Claude session |
 | 2026-11-04 | RAG-02.04 Done (#429, #430). RAG-E03 analysed; issues #431, #432 created; RAG-03.01 Done (#433); RAG-03.02 / RAG-02.05 dependency cycle recorded for a decision | Claude session |
 | 2026-11-04 | RAG-02.04 part 1 merged (#429); part 2 (the ingest task) in a PR with AC1 to AC4 tests | Claude session |
 | 2026-11-04 | RAG-02.02 Done (#426, #427, #428; AC5 run against the pinned docling-serve image). RAG-02.04 In progress: part 1 (chunker); ADR 0014 amended (Neuron's own heading chunker) | Claude session |
