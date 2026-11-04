@@ -22,6 +22,7 @@ import uuid
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import procrastinate
 import psycopg
@@ -30,7 +31,18 @@ from procrastinate.sql import queries
 from psycopg.rows import dict_row
 
 from neuron_agent.config.settings import Settings, get_settings
+from neuron_agent.knowledge.blobs import build_blob_store
+from neuron_agent.knowledge.docling_serve import DoclingServeParser
+from neuron_agent.knowledge.ingest import Ingestor, connector
 from neuron_agent.knowledge.jobs import QUEUE, Task
+from neuron_agent.knowledge.parsing import (
+    DocumentParser,
+    Limits,
+    ParsedDocument,
+    ParseError,
+    PlainTextParser,
+)
+from neuron_agent.knowledge.providers import create_embedding_provider
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
 from neuron_agent.persistence.roles import AppRoleError, role_problems
@@ -39,22 +51,69 @@ from neuron_agent.persistence.startup_checks import ROLE_NOT_APP_USER, StartupCh
 log = structlog.get_logger(__name__)
 
 # A job released by a drain or a failure runs again; jobs are idempotent (ADR 0014 K4).
-RETRY = procrastinate.RetryStrategy(max_attempts=5, exponential_wait=5)
+MAX_ATTEMPTS = 5
+RETRY = procrastinate.RetryStrategy(max_attempts=MAX_ATTEMPTS, exponential_wait=5)
 # Queue functions and tables are in `knowledge` (migration 25); the role has nothing elsewhere.
 _OPTIONS = "-c search_path=knowledge"
 # The advisory lock key that serialises the stalled-job sweep across workers.
 _SWEEP = 0x4E52_5357
 
 
-async def ingest_document(doc_id: str) -> None:
-    # The app role can insert any job row, so the argument is parsed, never trusted.
-    parsed = uuid.UUID(doc_id)
-    log.info("knowledge.job.ingest_document", doc_id=str(parsed))  # RAG-02.04 does the work
+class IngestError(Exception):
+    """What a failed ingest job raises to the queue: the original error's class name only."""
 
 
-def build_app(settings: Settings) -> procrastinate.App:
+class _Unconfigured:
+    """PDF and Office files without `APP_KNOWLEDGE_PARSER_URL`: a clear code, not a crash."""
+
+    media_types = DoclingServeParser.media_types
+
+    async def parse(self, data: bytes, media_type: str, limits: Limits) -> ParsedDocument:
+        raise ParseError("parser_not_configured")
+
+
+def build_ingestor(settings: Settings) -> Ingestor:
+    assert settings.postgres_worker_dsn is not None  # nosec B101 - main() checks it
+    office: DocumentParser = (
+        DoclingServeParser.from_settings(settings)
+        if settings.knowledge_parser_url is not None
+        else _Unconfigured()
+    )
+    return Ingestor(
+        connect=connector(settings.postgres_worker_dsn.get_secret_value(), _OPTIONS),
+        blobs=build_blob_store(settings),
+        parsers=(PlainTextParser(), office),
+        embeddings=create_embedding_provider(settings),
+        limits=Limits.from_settings(settings),
+        chunk_max_tokens=settings.knowledge_chunk_max_tokens,
+        policy=settings.knowledge_processing_policy,
+    )
+
+
+def build_app(settings: Settings, ingestor: Ingestor | None = None) -> procrastinate.App:
     """A Procrastinate app on the worker DSN with every `Task` registered by name."""
     assert settings.postgres_worker_dsn is not None  # nosec B101 - main() checks it
+    ingestor = ingestor or build_ingestor(settings)
+
+    async def ingest_document(context: procrastinate.JobContext, doc_id: str) -> None:
+        # The app role can insert any job row, so the argument is parsed, never trusted, and
+        # the knowledge base and file come from the document's row.
+        try:
+            parsed = uuid.UUID(doc_id)
+        except ValueError:
+            log.warning("knowledge.job.invalid_argument")  # retrying cannot fix it
+            return
+        last_attempt = context.job.attempts + 1 >= MAX_ATTEMPTS
+        try:
+            await ingestor.ingest(parsed, last_attempt=last_attempt)
+        except Exception as exc:
+            if last_attempt:  # an unexpected error: the document must not stay `parsing`
+                await ingestor.fail(parsed, "ingest_failed")
+            # Procrastinate logs a failed job's exception, and a database error's detail can
+            # echo a row of chunk text: only the class goes on.
+            log.warning("knowledge.job.failed", doc_id=str(parsed), error=type(exc).__name__)
+            raise IngestError(type(exc).__name__) from None
+
     app = procrastinate.App(
         connector=procrastinate.PsycopgConnector(
             conninfo=settings.postgres_worker_dsn.get_secret_value(),
@@ -64,7 +123,9 @@ def build_app(settings: Settings) -> procrastinate.App:
             kwargs={"options": _OPTIONS},
         )
     )
-    app.task(name=Task.INGEST_DOCUMENT.value, queue=QUEUE, retry=RETRY)(ingest_document)
+    app.task(name=Task.INGEST_DOCUMENT.value, queue=QUEUE, retry=RETRY, pass_context=True)(
+        ingest_document
+    )
     return app
 
 
@@ -115,6 +176,8 @@ async def sweep(dsn: str, stalled_seconds: float) -> int:
                     queries["finish_job"],
                     {"job_id": job["id"], "status": "failed", "delete_job": False},
                 )
+                if job["task_name"] == Task.INGEST_DOCUMENT.value:
+                    await _worker_lost(conn, job["args"])
             else:
                 await conn.execute(
                     queries["retry_job"],
@@ -127,6 +190,19 @@ async def sweep(dsn: str, stalled_seconds: float) -> int:
                     },
                 )
     return len(stalled)
+
+
+async def _worker_lost(conn: psycopg.AsyncConnection[Any], args: object) -> None:
+    """The document of a job that killed its worker five times ends `failed`, not `parsing`."""
+    try:
+        doc_id = uuid.UUID(str(args["doc_id"]))  # type: ignore[index]
+    except (KeyError, TypeError, ValueError):
+        return  # not a job the API queued
+    await conn.execute(
+        "UPDATE documents SET status = 'failed', error_code = 'worker_lost', updated_at = now()"
+        " WHERE doc_id = %s AND deleted_at IS NULL AND status IN ('parsing', 'embedding')",
+        (doc_id,),
+    )
 
 
 async def _maintain(settings: Settings) -> None:

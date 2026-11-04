@@ -227,6 +227,20 @@ Knowledge bases are not available yet: there is no upload route (ADR 0014, `docs
 
 The type is read from the file's content, not its name. Refused, each with a stable error code: encrypted PDFs (`encrypted_pdf`), archives (`archive_refused`), macro-enabled Office files such as `.docm` (`macro_refused`), legacy `.doc`/`.xls`/`.ppt` and anything else (`unsupported_media_type`), and files over the caps `APP_KNOWLEDGE_PARSE_MAX_BYTES` (50 MB), `APP_KNOWLEDGE_PARSE_MAX_PAGES` (2,000) and `APP_KNOWLEDGE_PARSE_MAX_PAGE_CHARS` (50,000). docling-serve runs in its own container with no network access (`--profile knowledge` in the reference stack); the worker sends it the file's bytes, never a URL.
 
+A document's `status` moves `queued` → `parsing` → `embedding` → `ready`, or ends `failed` with an `error_code`; `deleting` means it was deleted and is being purged. Re-processing a `ready` or `failed` document replaces its chunks. `error_code` is one stable value, never an error message:
+
+| `error_code` | Meaning |
+| --- | --- |
+| `encrypted_pdf`, `archive_refused`, `macro_refused`, `unsupported_media_type`, `media_type_mismatch`, `empty_file` | The file was refused (see above) |
+| `file_too_large`, `too_many_pages`, `page_too_long`, `too_many_blocks`, `decompression_limit` | Over a cap |
+| `no_text` | Parsed, but no text to index (an image-only file OCR could not read, or headings only) |
+| `parser_timeout`, `parser_failed`, `parser_output_invalid`, `parser_output_too_large` | docling-serve could not convert it; the same file would fail again |
+| `parser_unavailable`, `parser_not_configured` | docling-serve was down for every retry, or is not configured |
+| `processing_locality_forbidden` | The knowledge base is self-hosted only and the embedding provider is hosted |
+| `embedding_*` | The embedding provider refused or failed for every retry |
+| `blob_not_found`, `blob_checksum_mismatch`, `blob_backend_error` | The stored original is missing, altered or unreachable |
+| `worker_lost`, `ingest_failed` | The worker died or failed unexpectedly on every attempt |
+
 ## Migrating from 0.3.x
 
 0.4.0 replaces caller-chosen identity with verified tokens. Breaking changes:

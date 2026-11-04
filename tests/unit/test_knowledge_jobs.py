@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -14,6 +15,7 @@ from tests.unit.test_production_feature_guards import jwt_settings
 
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.knowledge import jobs, worker
+from neuron_agent.knowledge.parsing import PDF, ParseError
 
 pytestmark = pytest.mark.anyio
 
@@ -25,16 +27,72 @@ async def test_defer_refuses_anything_but_ids(value: Any) -> None:
         await jobs.defer(object(), jobs.Task.INGEST_DOCUMENT, doc_id=value)  # type: ignore[arg-type]
 
 
+class _Ingestor:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error, self.calls, self.failed = error, [], []  # type: ignore[var-annotated]
+
+    async def ingest(self, doc_id: uuid.UUID, *, last_attempt: bool) -> str:
+        self.calls.append((doc_id, last_attempt))
+        if self.error:
+            raise self.error
+        return "ready"
+
+    async def fail(self, doc_id: uuid.UUID, code: str) -> str:
+        self.failed.append((doc_id, code))
+        return "failed"
+
+
+def _task(ingestor: _Ingestor) -> Any:
+    settings = Settings(env="test", postgres_worker_dsn=SecretStr("postgresql://w@h/d"))
+    app = worker.build_app(settings, ingestor)  # type: ignore[arg-type]
+    return app.tasks[jobs.Task.INGEST_DOCUMENT.value].func
+
+
+def _context(attempts: int) -> Any:
+    return SimpleNamespace(job=SimpleNamespace(attempts=attempts))
+
+
 async def test_the_ingest_task_parses_its_argument() -> None:
     # The app role can insert any job row: a non-UUID argument fails the job.
-    with pytest.raises(ValueError):
-        await worker.ingest_document("../../etc/passwd")
-    await worker.ingest_document(str(uuid.uuid4()))
+    ingestor = _Ingestor()
+    await _task(ingestor)(_context(0), "../../etc/passwd")  # ends the job; a retry cannot help
+    doc = uuid.uuid4()
+    await _task(ingestor)(_context(0), str(doc))
+    await _task(ingestor)(_context(worker.MAX_ATTEMPTS - 1), str(doc))
+    assert ingestor.calls == [(doc, False), (doc, True)]
+
+
+async def test_an_unexpected_error_on_the_last_attempt_fails_the_document() -> None:
+    doc = uuid.uuid4()
+    ingestor = _Ingestor(RuntimeError("a row of chunk text"))
+    task, first, doc_id = _task(ingestor), _context(0), str(doc)
+    with pytest.raises(worker.IngestError) as caught:
+        await task(first, doc_id)
+    # The queue logs what the job raised: the class name, never the message or its cause.
+    assert (str(caught.value), caught.value.__cause__) == ("RuntimeError", None)
+    assert caught.value.__suppress_context__
+    assert ingestor.failed == []  # retried, so the document stays in progress
+    last = _context(worker.MAX_ATTEMPTS - 1)
+    with pytest.raises(worker.IngestError):
+        await task(last, doc_id)
+    assert ingestor.failed == [(doc, "ingest_failed")]
+
+
+async def test_office_files_without_a_parser_url_fail_with_a_clear_code(tmp_path: Path) -> None:
+    settings = Settings(
+        env="test",
+        postgres_worker_dsn=SecretStr("postgresql://w@h/d"),
+        knowledge_blob_root=str(tmp_path),
+    )
+    ingestor = worker.build_ingestor(settings)
+    office = ingestor.parsers[1]
+    with pytest.raises(ParseError, match="parser_not_configured"):
+        await office.parse(b"%PDF", PDF, ingestor.limits)
 
 
 def test_every_task_is_registered_by_name() -> None:
     settings = Settings(env="test", postgres_worker_dsn=SecretStr("postgresql://w@h/d"))
-    app = worker.build_app(settings)
+    app = worker.build_app(settings, _Ingestor())  # type: ignore[arg-type]
     assert {task.value for task in jobs.Task} <= set(app.tasks)
     assert app.tasks[jobs.Task.INGEST_DOCUMENT.value].queue == jobs.QUEUE
 
