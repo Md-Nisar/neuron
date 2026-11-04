@@ -307,6 +307,9 @@ recorded with versions and dates in the RAG-00.04 PR.
   `/health/ready` does not report the worker**: chat does not need it, and a stopped worker
   only delays ingestion, which the document status shows; the worker's health is its own
   container's.
+  **Amended by RAG-02.02 (2026-11-04):** the parser client is `httpx2`, already a core
+  dependency, so RAG-02.02 brings no worker-only package either. The `worker` extra and build
+  target arrive with `docling-core` (RAG-02.03's chunker), the first package only the worker needs.
 - **Embedding client.** No new package. `langchain-openai`'s `OpenAIEmbeddings` called the NVIDIA
   API catalog with `dimensions=1024`, `check_embedding_ctx_length=False` and
   `input_type` passed in `extra_body` (the API rejects a request without it, so it is honoured);
