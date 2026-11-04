@@ -11,6 +11,7 @@ import signal
 import subprocess  # nosec B404
 import sys
 import time
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from test_postgres_knowledge_tables import _knowledge_db, worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, _rows, role_db, roles  # noqa: F401
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge import worker as neuron_worker
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.roles import AppRoleError
@@ -190,6 +192,37 @@ async def test_sweeps_never_overlap_and_a_job_that_keeps_stalling_fails(stack: _
     assert await neuron_worker.sweep(stack.worker_dsn, 3) == 1
     assert await stack.status(job) == "todo"
 
-    poison = await _stall(stack, attempts=neuron_worker.RETRY.max_attempts - 1)  # type: ignore[operator]
+    poison = await _stall(stack, attempts=neuron_worker.MAX_ATTEMPTS - 1)
     assert await neuron_worker.sweep(stack.worker_dsn, 3) == 1
     assert await stack.status(poison) == "failed"
+
+
+async def test_the_document_of_a_job_that_keeps_stalling_ends_failed(stack: _Stack) -> None:
+    kb, doc = uuid.uuid4(), uuid.uuid4()
+    async with await psycopg.AsyncConnection.connect(stack.role_db.app_dsn) as conn:
+        await conn.execute(
+            "INSERT INTO knowledge.bases (kb_id, owner_key, name, profile_id)"
+            " VALUES (%s, %s, 'kb', 1)",
+            (kb, "c" * 64),
+        )
+        await conn.execute(
+            "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type,"
+            " size_bytes, sha256, blob_key, status)"
+            " VALUES (%s, %s, %s, 't', 'text/plain', 1, %s, 'k', 'parsing')",
+            (doc, kb, "c" * 64, "d" * 64),
+        )
+        job = await jobs.defer(conn, jobs.Task.INGEST_DOCUMENT, doc_id=doc)
+    # Its worker died on every attempt: the last one is left `doing`.
+    async with await psycopg.AsyncConnection.connect(stack.role_db.migrator_dsn) as conn:
+        await conn.execute(
+            "UPDATE knowledge.procrastinate_jobs SET status = 'doing', attempts = %s WHERE id = %s",
+            (neuron_worker.MAX_ATTEMPTS - 1, job),
+        )
+    assert await neuron_worker.sweep(stack.worker_dsn, 3) == 1
+    assert await stack.status(job) == "failed"
+    rows = await _rows(
+        stack.role_db.migrator_dsn,
+        "SELECT status, error_code FROM knowledge.documents WHERE doc_id = %s",
+        (doc,),
+    )
+    assert rows == [("failed", "worker_lost")]
