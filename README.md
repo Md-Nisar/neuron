@@ -212,6 +212,21 @@ The agent can use read-only tools from an [MCP](https://modelcontextprotocol.io)
 
 A tool whose definition later differs from its pin, or that is not in the file, is not registered. Only Streamable HTTP is supported (no stdio). Tools are read once at start-up, so restart after changing the server or the file. Tools marked (or defaulting to) `mutating` are refused until human approval exists.
 
+## Knowledge files (in development, v1.1.0)
+
+Knowledge bases are not available yet: there is no upload route (ADR 0014, `docs/product/RAG_IMPLEMENTATION_TRACKER.md`). These are the file types the parser accepts:
+
+| Format | Media type | Parsed by |
+| --- | --- | --- |
+| PDF, including scanned pages (OCR) | `application/pdf` | docling-serve |
+| Word (`.docx`) | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | docling-serve |
+| Excel (`.xlsx`) | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` | docling-serve |
+| PowerPoint (`.pptx`) | `application/vnd.openxmlformats-officedocument.presentationml.presentation` | docling-serve |
+| Plain text (`.txt`; a form feed starts a new page) | `text/plain` | Neuron |
+| Markdown (`.md`) | `text/markdown` | Neuron |
+
+The type is read from the file's content, not its name. Refused, each with a stable error code: encrypted PDFs (`encrypted_pdf`), archives (`archive_refused`), macro-enabled Office files such as `.docm` (`macro_refused`), legacy `.doc`/`.xls`/`.ppt` and anything else (`unsupported_media_type`), and files over the caps `APP_KNOWLEDGE_PARSE_MAX_BYTES` (50 MB), `APP_KNOWLEDGE_PARSE_MAX_PAGES` (2,000) and `APP_KNOWLEDGE_PARSE_MAX_PAGE_CHARS` (50,000). docling-serve runs in its own container with no network access (`--profile knowledge` in the reference stack); the worker sends it the file's bytes, never a URL.
+
 ## Migrating from 0.3.x
 
 0.4.0 replaces caller-chosen identity with verified tokens. Breaking changes:

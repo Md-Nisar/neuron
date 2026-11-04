@@ -78,5 +78,28 @@ def test_the_worker_runs_as_its_own_role_only_with_knowledge() -> None:
     # Docker's stop timeout outlasts the 30 s drain, so SIGKILL never cuts a drain short.
     assert int(worker["stop_grace_period"].rstrip("s")) > 30
     assert "ports" not in worker
-    assert set(worker["environment"]) == {"APP_ENV", "APP_POSTGRES_WORKER_DSN", "PGPASSWORD"}
+    assert set(worker["environment"]) == {
+        "APP_ENV",
+        "APP_POSTGRES_WORKER_DSN",
+        "APP_KNOWLEDGE_PARSER_URL",
+        "PGPASSWORD",
+    }
     assert "neuron_worker" in (_ROOT / "deploy/reference/init-roles.sql").read_text("utf-8")
+
+
+def test_the_parser_has_no_route_out() -> None:
+    """RAG-02.02 AC5: docling-serve is only on an internal network, which has no egress."""
+    docling, worker = _SERVICES["docling"], _SERVICES["worker"]
+    assert docling["profiles"] == ["knowledge"]
+    assert docling["networks"] == ["parser"]
+    assert _COMPOSE["networks"]["parser"] == {"internal": True}
+    assert "ports" not in docling
+    assert "@sha256:" in docling["image"]
+    assert docling["environment"]["DOCLING_SERVE_ENABLE_REMOTE_SERVICES"] == "false"
+    # Only the worker shares the parser's network, and it reaches docling-serve by name.
+    others = [
+        name for name, service in _SERVICES.items() if "parser" in service.get("networks", [])
+    ]
+    assert sorted(others) == ["docling", "worker"]
+    assert worker["environment"]["APP_KNOWLEDGE_PARSER_URL"] == "http://docling:5001"
+    assert worker["depends_on"]["docling"]["condition"] == "service_healthy"
