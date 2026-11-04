@@ -1,0 +1,6 @@
+{
+  "content-type": "text/plain; charset=utf-8",
+  "x-content-type-options": "nosniff",
+  "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+  "cache-control": "no-store"
+}

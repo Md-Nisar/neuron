@@ -6,8 +6,10 @@ on every call; the original file always goes out as an attachment a browser does
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -18,6 +20,10 @@ from tests.conftest import JwtApi, bearer
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
+# What the browser check in web/e2e/download.spec.ts serves for a text file.
+_BROWSER_HEADERS = json.loads(
+    (Path(__file__).parents[2] / "web/e2e/download_headers.json").read_text(encoding="utf-8")
+)
 _NOT_FOUND = (404, {"detail": "knowledge_document_not_found"})
 
 
@@ -137,12 +143,7 @@ async def test_the_original_downloads_as_an_attachment_never_rendered(
     download = client.client.get(f"/v1/knowledge/documents/{doc}/file", headers=bearer(reader))
     assert download.status_code == 200
     assert download.content == data
-    expected = {
-        "content-type": served,
-        "x-content-type-options": "nosniff",
-        "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-        "cache-control": "no-store",
-    }
+    expected = {**_BROWSER_HEADERS, "content-type": served}
     assert {name: download.headers.get(name) for name in expected} == expected
     assert download.headers["content-disposition"] == (
         'attachment; filename="Q3 _plan__ filename_evil.html_";'
