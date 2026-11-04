@@ -1094,9 +1094,9 @@ class AgentService:
         """The per-user memory, or None while memory is off."""
         return self._memory
 
-    def owner_key_for(self, principal: Principal) -> str | None:
-        """The owner key a verified principal's data is filed under."""
-        return self._owner_key(None, principal)
+    def owner_key_for(self, principal: Principal | None, user_id: str | None = None) -> str | None:
+        """The owner key a caller's data is filed under (`user_id` counts only without JWT)."""
+        return self._owner_key(user_id, principal)
 
     def _require_memory(self) -> MemoryStore:
         if self._memory is None:

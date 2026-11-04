@@ -83,10 +83,13 @@ def _route_requests(
 
 
 def test_matrix_covers_every_v1_route() -> None:
+    # The knowledge routes need Postgres: their matrix is in test_postgres_knowledge_api.py.
     declared = {
         (method, route.path)
         for route in api_main.app.routes
-        if isinstance(route, APIRoute) and route.path.startswith("/v1/")
+        if isinstance(route, APIRoute)
+        and route.path.startswith("/v1/")
+        and not route.path.startswith("/v1/knowledge/")
         for method in route.methods
     }
     probe = "{thread_id}"

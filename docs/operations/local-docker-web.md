@@ -22,7 +22,7 @@ one, development falls back to the fake model.
          APP_AUTH_AUDIENCE: neuron-api
          APP_AUTH_JWKS_URL: http://keycloak:8080/realms/neuron/protocol/openid-connect/certs
          APP_AUTH_ALGORITHMS: '["RS256"]'
-         APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:recall","tools:remember"],"neuron-reader":["threads:read"]}'
+         APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:recall","tools:remember"],"neuron-reader":["threads:read"]}'
          APP_IDENTITY_HASH_KEY: dev-web-identity-key-local-only-000000001
          APP_CORS_ALLOWED_ORIGINS: '["http://localhost:5173"]'
    ```

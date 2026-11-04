@@ -24,6 +24,9 @@ DEV_PERMISSIONS = frozenset(
         "memories:read",
         "memories:write",
         "tools:calculator",
+        "knowledge:read",
+        "knowledge:write",
+        "tools:search_knowledge",
     }
 )
 
