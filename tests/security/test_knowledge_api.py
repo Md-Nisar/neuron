@@ -21,6 +21,8 @@ _KB = f"/v1/knowledge/bases/{uuid.uuid4()}"
         ("POST", "/v1/knowledge/bases", {"name": "kb"}, "knowledge:write"),
         ("PATCH", _KB, {"name": "kb"}, "knowledge:write"),
         ("DELETE", _KB, None, "knowledge:write"),
+        ("GET", f"{_KB}/documents", None, "knowledge:read"),
+        ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None, "knowledge:read"),
     ],
 )
 def test_a_token_without_the_routes_permission_is_refused(
@@ -50,6 +52,10 @@ def test_a_token_without_the_routes_permission_is_refused(
         ("PATCH", _KB, {"name": "kb", "processing": "hosted"}),
         ("PATCH", "/v1/knowledge/bases/not-a-uuid", {"name": "kb"}),
         ("DELETE", "/v1/knowledge/bases/not-a-uuid", None),
+        ("GET", "/v1/knowledge/bases/not-a-uuid/documents", None),
+        ("GET", f"{_KB}/documents?limit=101", None),
+        ("GET", f"{_KB}/documents?offset=-1", None),
+        ("GET", "/v1/knowledge/documents/not-a-uuid", None),
     ],
     ids=[
         "unknown-field",
@@ -61,6 +67,10 @@ def test_a_token_without_the_routes_permission_is_refused(
         "rename-only",
         "bad-id",
         "bad-id-delete",
+        "bad-id-documents",
+        "limit-over-100",
+        "negative-offset",
+        "bad-document-id",
     ],
 )
 def test_an_invalid_request_is_422(
@@ -84,6 +94,8 @@ def test_with_knowledge_off_every_route_is_404(
         ("POST", "/v1/knowledge/bases", {"name": "kb"}),
         ("PATCH", _KB, {"name": "kb"}),
         ("DELETE", _KB, None),
+        ("GET", f"{_KB}/documents", None),
+        ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None),
     ]:
         response = jwt_api.client.request(method, path, json=body, headers=bearer(token))
         assert (response.status_code, response.json()) == (404, {"detail": "knowledge_disabled"})

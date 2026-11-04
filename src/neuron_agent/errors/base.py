@@ -105,6 +105,12 @@ class KnowledgeBaseNotFoundError(AppError):
     context = ErrorContext(code="knowledge_base_not_found", http_status=404)
 
 
+class KnowledgeDocumentNotFoundError(AppError):
+    """The caller has no live document with this ID (missing, deleted or someone else's)."""
+
+    context = ErrorContext(code="knowledge_document_not_found", http_status=404)
+
+
 class KnowledgeBaseLimitError(AppError):
     """The caller has as many knowledge bases as the operator allows."""
 

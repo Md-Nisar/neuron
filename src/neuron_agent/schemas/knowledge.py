@@ -50,6 +50,35 @@ class KnowledgeBase(BaseModel):
     created_at: datetime
 
 
+DocumentStatus = Literal["queued", "parsing", "embedding", "ready", "failed"]
+
+
+class KnowledgeDocument(BaseModel):
+    """A document's metadata and processing status. `title` is user text."""
+
+    doc_id: uuid.UUID
+    kb_id: uuid.UUID
+    title: str
+    mime_type: str
+    size_bytes: int
+    page_count: int | None
+    # The stage: `queued`, `parsing`, `embedding`, then `ready` or `failed` (RAG-02.04).
+    status: DocumentStatus
+    # A stable code when `failed` (README, "Knowledge files"); never a message.
+    error_code: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class KnowledgeDocumentsResponse(BaseModel):
+    """A page of a knowledge base's live documents, oldest first."""
+
+    documents: list[KnowledgeDocument]
+    total: int
+    limit: int
+    offset: int
+
+
 class KnowledgeBasesResponse(BaseModel):
     """The caller's live knowledge bases, oldest first (at most the per-user limit)."""
 

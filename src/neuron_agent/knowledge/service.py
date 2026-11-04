@@ -12,7 +12,7 @@ the same transaction, removes its documents, chunks and files (RAG-03.03).
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -25,13 +25,14 @@ from neuron_agent.errors.base import (
     KnowledgeBaseLimitError,
     KnowledgeBaseNotFoundError,
     KnowledgeDisabledError,
+    KnowledgeDocumentNotFoundError,
     PersistenceError,
 )
 from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge.authorization import KnowledgeAuthorization
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
-from neuron_agent.schemas.knowledge import KnowledgeBase
+from neuron_agent.schemas.knowledge import KnowledgeBase, KnowledgeDocument
 from neuron_agent.security.authorization import AuthorizationContext
 
 log = structlog.get_logger(__name__)
@@ -60,6 +61,25 @@ _TOMBSTONE = (
     "UPDATE knowledge.bases SET deleted_at = now()"
     " WHERE kb_id = %s AND owner_key = %s AND deleted_at IS NULL RETURNING kb_id"
 )
+
+# Documents are found through the bases the caller may read (`allowed_kbs`) and the base's owner
+# (ADR 0014 requirement 2); a tombstoned document or base is never shown.
+_DOCUMENT_FILTER = (
+    " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " WHERE d.kb_id = ANY(%(kbs)s) AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+    " AND d.deleted_at IS NULL AND d.status <> 'deleting'"
+)
+_DOCUMENT_COLUMNS = (
+    "SELECT d.doc_id, d.kb_id, d.title, d.mime_type, d.size_bytes, d.page_count, d.status,"
+    " d.error_code, d.created_at, d.updated_at"
+)
+_DOCUMENT = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " AND d.doc_id = %(doc)s"
+_DOCUMENTS = (
+    _DOCUMENT_COLUMNS
+    + _DOCUMENT_FILTER
+    + " AND d.kb_id = %(kb)s ORDER BY d.created_at, d.doc_id LIMIT %(limit)s OFFSET %(offset)s"
+)
+_DOCUMENT_COUNT = "SELECT count(*) AS n" + _DOCUMENT_FILTER + " AND d.kb_id = %(kb)s"
 
 
 class KnowledgeBases:
@@ -133,6 +153,39 @@ class KnowledgeBases:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
             await jobs.defer(conn, jobs.Task.PURGE_KNOWLEDGE_BASE, kb_id=kb_id)
         self._audit("knowledge_base_deleted", owner_key, _WRITE, kb_id)
+
+    async def documents(
+        self, owner_key: str, kb_id: uuid.UUID, *, limit: int, offset: int
+    ) -> tuple[Sequence[KnowledgeDocument], int]:
+        """A page of a readable base's documents and their total; any other base is `404`."""
+        async with self._transaction() as conn:
+            kbs = await self._readable(conn, owner_key)
+            if kb_id not in kbs:
+                raise KnowledgeBaseNotFoundError("knowledge base not found")
+            params = {"kbs": kbs, "owner": owner_key, "kb": kb_id}
+            cursor = await conn.execute(_DOCUMENTS, {**params, "limit": limit, "offset": offset})
+            documents = [KnowledgeDocument(**row) for row in await cursor.fetchall()]
+            cursor = await conn.execute(_DOCUMENT_COUNT, params)
+            total = await cursor.fetchone()
+        self._audit("knowledge_documents_read", owner_key, _READ, kb_id, count=len(documents))
+        return documents, int(total["n"]) if total else 0
+
+    async def document(self, owner_key: str, doc_id: uuid.UUID) -> KnowledgeDocument:
+        """One document of a readable base; any other id is `404`."""
+        async with self._transaction() as conn:
+            kbs = await self._readable(conn, owner_key)
+            cursor = await conn.execute(_DOCUMENT, {"kbs": kbs, "owner": owner_key, "doc": doc_id})
+            row = await cursor.fetchone()
+        if row is None:
+            raise KnowledgeDocumentNotFoundError("knowledge document not found")
+        return KnowledgeDocument(**row)
+
+    @staticmethod
+    async def _readable(conn: psycopg.AsyncConnection[Any], owner_key: str) -> Sequence[uuid.UUID]:
+        allowed = await KnowledgeAuthorization.allowed_kbs(
+            conn, AuthorizationContext(frozenset(), owner_key=owner_key)
+        )
+        return [*allowed.read]
 
     def _audit(
         self,
