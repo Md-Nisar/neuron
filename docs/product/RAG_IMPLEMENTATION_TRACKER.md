@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-04, against `main` at `570eba3` (RAG-03.01 Done: #433; RAG-03.02 part 1 in #435, part 2 on branch `RAG-03.02-part2`).
+**Last verified:** 2026-11-04, against `main` at `570eba3` (RAG-03.01 Done: #433; RAG-03.02 part 1 merged in #435, part 2 on branch `RAG-03.02-part2`).
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01, RAG-E02, and RAG-03.01 and RAG-03.02 with their epic; the Project board has not been created.
 
 ## New session protocol
