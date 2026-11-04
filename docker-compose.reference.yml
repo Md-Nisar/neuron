@@ -146,11 +146,16 @@ services:
     depends_on:
       setup:
         condition: service_completed_successfully
+      docling:
+        condition: service_healthy
+    # Postgres on the default network; docling-serve only on `parser`.
+    networks: [default, parser]
     # Its own settings only: the worker parses untrusted files, so it never holds the app or
     # migration DSN, the identity key or the API's auth settings.
     environment:
       APP_ENV: development
       APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker@postgres:5432/neuron?sslmode=disable
+      APP_KNOWLEDGE_PARSER_URL: http://docling:5001
       # libpq reads the password from here (the throwaway one from init-roles.sql).
       PGPASSWORD: worker-local-only
     healthcheck:
@@ -159,3 +164,35 @@ services:
       timeout: 3s
       start_period: 20s
       retries: 3
+
+  # PDF and Office parsing (ADR 0014 K2; RAG-02.02), the image the spike measured, models
+  # included. It parses hostile files, so it is only on `parser`, an internal network with no
+  # route out (the weights in the image are all it has), publishes no port, and runs read-only
+  # without capabilities. Its API has no auth: the worker, which listens on nothing, is the only
+  # other service on `parser`.
+  docling:
+    image: quay.io/docling-project/docling-serve-cpu@sha256:7a480a1604fa3b42efeddc7db9527690d9f9bc903226136013e2bfe6b1a4dfb0
+    restart: unless-stopped
+    profiles: ["knowledge"]
+    networks: [parser]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "false"
+      DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "false"
+      DOCLING_SERVE_ALLOW_EXTERNAL_PLUGINS: "false"
+      # The synchronous endpoint waits as long as the worker's deadline (default 120 s).
+      DOCLING_SERVE_MAX_SYNC_WAIT: "900"
+      HF_HUB_OFFLINE: "1"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 60s
+      retries: 3
+
+networks:
+  parser:
+    internal: true
