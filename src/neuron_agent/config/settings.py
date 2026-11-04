@@ -208,6 +208,14 @@ class Settings(BaseSettings):
     knowledge_parse_max_bytes: int = Field(default=50_000_000, ge=1_024, le=200_000_000)
     knowledge_parse_max_pages: int = Field(default=2_000, ge=1, le=10_000)
     knowledge_parse_max_page_chars: int = Field(default=50_000, ge=1_000, le=200_000)
+    # docling-serve for PDF and Office files (RAG-02.02): its base URL, reachable only from the
+    # worker; a total deadline per file; and a cap on its JSON reply.
+    # No credentials in the URL: docling-serve is reached only over the internal network.
+    knowledge_parser_url: str | None = Field(default=None, pattern=r"^https?://[^@/?#]+(/[^@]*)?$")
+    knowledge_parser_timeout_seconds: int = Field(default=900, ge=10, le=7_200)
+    knowledge_parser_max_response_bytes: int = Field(
+        default=64_000_000, ge=1_000_000, le=512_000_000
+    )
     knowledge_blob_backend: Literal["local", "s3"] = "local"
     knowledge_blob_root: str = Field(default="var/knowledge-blobs", min_length=1)
     knowledge_blob_local_allowed: bool = False
@@ -331,6 +339,7 @@ class Settings(BaseSettings):
         "langsmith_api_key",
         "knowledge_embedding_api_key",
         "knowledge_embedding_base_url",
+        "knowledge_parser_url",
         mode="before",
     )
     @classmethod
