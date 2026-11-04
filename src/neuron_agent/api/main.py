@@ -1162,7 +1162,7 @@ _DOWNLOAD_TYPES = {
 def _attachment(title: str) -> str:
     """A `Content-Disposition` that always downloads: an ASCII fallback name and the title
     percent-encoded (RFC 6266), so no title can add a header or a parameter."""
-    fallback = re.sub(r"[^A-Za-z0-9._ -]", "_", title)[:100].strip() or "download"
+    fallback = re.sub(r"[^A-Za-z0-9._ -]", "_", title)[:100].strip(" .") or "download"
     return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(title, safe='')}"
 
 
