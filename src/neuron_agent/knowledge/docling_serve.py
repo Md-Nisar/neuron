@@ -37,7 +37,8 @@ _CONVERT = "/v1/convert/file"
 _SKIPPED = frozenset({"page_header", "page_footer"})
 _KINDS = {"list_item": "list", "code": "code"}
 # One spelling per item, so a reply cannot alias an item under many references.
-_REF = re.compile(r"#/(texts|tables|groups|pictures)/(0|[1-9][0-9]{0,8})")
+_REF = re.compile(r"#/(texts|tables|groups|pictures)/(0|[1-9]\d{0,8})", re.ASCII)
+_LENGTH = re.compile(r"\d{1,18}", re.ASCII)
 # Transient: the service is down, busy or restarting. A 500 or a reset mid-reply is not
 # retried, because a file that crashes the converter would crash it again.
 _RETRYABLE_STATUS = frozenset({408, 429, 502, 503, 504})
@@ -192,7 +193,7 @@ class DoclingServeParser:
 
     async def _read(self, response: httpx2.Response) -> bytes:
         declared = response.headers.get("content-length", "")
-        if re.fullmatch(r"[0-9]{1,18}", declared) and int(declared) > self._max_response:
+        if _LENGTH.fullmatch(declared) and int(declared) > self._max_response:
             raise ParseError("parser_output_too_large")
         body = bytearray()
         async for chunk in response.aiter_bytes():

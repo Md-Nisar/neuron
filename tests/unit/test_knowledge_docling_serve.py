@@ -96,7 +96,7 @@ async def test_bytes_are_posted_as_a_file_with_the_page_cap() -> None:
     assert b"%PDF-1.7 the bytes" in body
     assert b'name="to_formats"\r\n\r\njson' in body
     assert b'name="page_range"\r\n\r\n2001' in body
-    assert b"http_sources" not in body and b"sources" not in body
+    assert b"sources" not in body  # never a URL for docling-serve to fetch
 
 
 async def _slow(request: httpx2.Request) -> httpx2.Response:
@@ -179,14 +179,16 @@ async def _chunks() -> AsyncIterator[bytes]:
 async def test_parser_failures_have_stable_codes(
     handler: _Handler, code: str, retryable: bool
 ) -> None:
+    parser = _parser(handler, timeout=0.5, max_response=2_000_000)
     with pytest.raises(ParseError) as caught:
-        await _parser(handler, timeout=0.5, max_response=2_000_000).parse(b"%PDF", PDF, _LIMITS)
+        await parser.parse(b"%PDF", PDF, _LIMITS)
     assert (caught.value.code, caught.value.retryable) == (code, retryable)
 
 
 async def test_a_document_past_the_page_cap_is_refused() -> None:
+    parser, limits = _parser(_replay), Limits(50_000_000, 10, 50_000)
     with pytest.raises(ParseError, match="too_many_pages"):
-        await _parser(_replay).parse(b"%PDF", PDF, Limits(50_000_000, 10, 50_000))
+        await parser.parse(b"%PDF", PDF, limits)
 
 
 async def test_running_heads_are_dropped_and_boxes_are_measured_from_the_top() -> None:
@@ -239,8 +241,9 @@ async def test_one_spelling_per_reference(ref: str) -> None:
         body={"children": [{"$ref": "#/groups/0"}]},
         groups=[{"children": [{"$ref": "#/texts/0"}, {"$ref": ref}]}],
     )
+    parser = _parser(lambda r: httpx2.Response(200, content=reply))
     with pytest.raises(ParseError, match="parser_output_invalid"):
-        await _parser(lambda r: httpx2.Response(200, content=reply)).parse(b"%PDF", PDF, _LIMITS)
+        await parser.parse(b"%PDF", PDF, _LIMITS)
 
 
 def test_the_parser_url_has_no_credentials() -> None:
@@ -249,8 +252,9 @@ def test_the_parser_url_has_no_credentials() -> None:
 
 
 def test_the_parser_needs_its_url() -> None:
+    unset = Settings(env="test")
     with pytest.raises(ParseError, match="parser_not_configured"):
-        DoclingServeParser.from_settings(Settings(env="test"))
+        DoclingServeParser.from_settings(unset)
     parser = DoclingServeParser.from_settings(
         Settings(env="test", knowledge_parser_url="http://docling:5001")
     )
