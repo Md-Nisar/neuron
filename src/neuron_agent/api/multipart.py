@@ -11,11 +11,15 @@ name is returned only to default the title: it never reaches a path, a key or a 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from python_multipart.multipart import MultipartCallbacks, MultipartParser, parse_options_header
+from python_multipart.multipart import MultipartParser, parse_options_header
 from starlette.requests import Request
 
 from neuron_agent.errors.base import UploadRefusedError as UploadError
+
+if TYPE_CHECKING:
+    from python_multipart.multipart import MultipartCallbacks
 
 _MAX_TITLE_BYTES = 1_200  # 300 characters of 4 bytes
 _MAX_PARTS = 2
