@@ -49,8 +49,8 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E00 | Readiness and decisions | 0 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
-| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 4 | 0 | 0 | 1 | RAG-03.05 (after RAG-04.01) |
-| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 0 | 1 | 0 | 3 | RAG-04.01 (in progress) |
+| RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 4 | 0 | 0 | 1 | RAG-03.05 (ready) |
+| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 1 | 0 | 0 | 3 | RAG-04.02 (ready) |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (after RAG-04.02) |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **16** | **1** | **0** | **39** | **RAG-04.01** |
+| **Total** | | | | **56** | **17** | **0** | **0** | **39** | **RAG-04.02** |
 
-v1.1.0 scope (E00–E08): 33 stories, 16 done.
+v1.1.0 scope (E00–E08): 33 stories, 17 done.
 
-**Recommended next action:** RAG-04.01 (hybrid retrieval). RAG-07.01 is also unblocked; RAG-03.05 and RAG-06.01 follow RAG-04.01 and E03.
+**Recommended next action:** RAG-04.02 (knowledge agent tools). RAG-03.05 (search endpoint) and RAG-07.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -188,7 +188,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   RAG-03.02 part 2 (#436): `POST /v1/knowledge/bases/{kb_id}/documents`. `api/multipart.py` reads the stream (one `file` part, an optional `title`; the body counted against the parse cap plus 64 KiB, no disk spooling; the body-size middleware lets only this path through unbuffered, after a `Content-Length` check); `parsing.accepted_type` takes the type from the content (HTML and XML refused unless inside Markdown) and runs `check_input`; `KnowledgeBases.check_upload` answers an `Idempotency-Key` replay before the body is read, `upload` returns the base's existing copy of the same SHA-256, stores the original and inserts the `queued` row with its `ingest_document` job in one transaction (into a live base of the caller's only; `ON CONFLICT DO NOTHING` on both unique indexes, the stored file deleted if the row does not commit). `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` slots per process (`429 upload_busy`). Titles: the given one through the title rules (1–300 characters), else the file name without folders or control characters.
   RAG-03.03 (#440, #441): `knowledge/purge.py` (`Purger`: the worker's `purge_document` and `purge_knowledge_base` tasks; file, then row, per document; only tombstoned rows), the worker's `DELETE` on `bases` and `documents`; KB delete tombstones its documents, and the upload's insert locks the base `FOR SHARE`; `DELETE /v1/knowledge/documents/{doc_id}` (tombstone through `allowed_kbs`' write set and the base's owner, `purge_document` in the same transaction, audit `knowledge_document_deleted`); deletion semantics in `SECURITY.md`.
   RAG-03.04 (#443, #444): `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}` (`?neighbours=0..3`; read under RLS with `neuron.kb_ids` set to `allowed_kbs`' read set, through a live `ready` document of a readable base; audit `knowledge_chunk_read`) and `GET /v1/knowledge/documents/{doc_id}/file` (the original, checked against its SHA-256, as an attachment with `nosniff`: PDF and Office types kept, text and Markdown as `text/plain`, anything else `application/octet-stream`; audit `knowledge_document_downloaded`); the browser check `web/e2e/download.spec.ts`.
-- **Outstanding work:** RAG-03.05 (after RAG-04.01).
+- **Outstanding work:** RAG-03.05 (ready).
 - **Blockers and decisions:**
   - Decision (RAG-03.04): two PRs. Part 1, both routes with their headers and tests (AC2, AC3, AC1's headers); part 2, the browser check (AC1). The `web/e2e` stack has no Postgres (the API runs on memory storage), so the browser check serves the route's response itself, with the headers in `web/e2e/download_headers.json`, which the Postgres test asserts the real route sends; a control serving the same file as a page proves the check sees script run. The file is read whole and checked against its SHA-256 before any byte goes out, not streamed (the store's `get` returns bytes); bounded by `APP_KNOWLEDGE_PARSE_MAX_BYTES`. A chunk needs a `ready` document; the file is any live document's, including a failed or refused one (the owner's own bytes, under the same safe type).
   - Security review (RAG-03.04 part 1): no high findings. Fixed: a title of dots only gets the fallback name. Accepted: downloads are bounded by the parse cap and the `/v1` rate limit but not by a separate concurrency cap (left for RAG-E08); a failed or refused document's file downloads (above); a missing or changed blob is a generic `500` naming no key; the chunk-read audit names the document, not the chunk, as other reads do.
@@ -208,14 +208,15 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E04 Retrieval and agent tools
 
-- **Stories:** 4 total · 0 done · 1 in progress · 0 blocked · 3 pending
-- **Implemented functionality:** RAG-04.01 part 1: `knowledge/retrieval.py`, full-text search fused with RRF inside the authorised, live set. The building blocks exist: `ToolSpec.taints_run` (`tools/registry.py`), identity through runtime context (`memory/tools.py`).
-- **Outstanding work:** RAG-04.01 to RAG-04.04.
+- **Stories:** 4 total · 1 done · 0 in progress · 0 blocked · 3 pending
+- **Implemented functionality:** RAG-04.01 (#447, #448, #449): `knowledge/retrieval.py` `Retriever.search`: one transaction reads `allowed_kbs`, sets `neuron.kb_ids` with `SET LOCAL`, ranks full-text (top 80, per-base `ts_config`) and dense (top 80, active profile, similarity floor) candidates of live `ready` documents, fuses them with RRF (k = 60); exact scan up to `APP_KNOWLEDGE_EXACT_SCAN_MAX_CHUNKS` (10,000), forced HNSW above it; `APP_KNOWLEDGE_SEARCH_MODE` (hybrid); audit `knowledge_searched`. Not yet a route (RAG-03.05) or tool (RAG-04.02). The building blocks exist: `ToolSpec.taints_run` (`tools/registry.py`), identity through runtime context (`memory/tools.py`).
+- **Outstanding work:** RAG-04.02 to RAG-04.04.
 - **Blockers and decisions:**
   - Exact/HNSW threshold from the spike (10,000).
   - Plan (RAG-04.01): three stacked parts by path, to stay under 400 lines each. Part 1: full text, fusion, authorisation and the live filter. Part 2: dense candidates, exact/HNSW, the similarity floor, processing locality, `EXPLAIN` checks. Part 3: the eval comparison (AC5) on the public corpus with the spike's cached `nemotron-3.5-embed-1b` vectors (no key in the session).
+  - Decision (RAG-04.01 AC5): the eval used the spike's chunks and cached `nemotron-3.5-embed-1b` vectors (no API key in the session); Neuron's chunker on real vectors is left to RAG-08.01. Full text alone is weak on questions (AND of every word); an `OR` query or English config are RAG-08.01 tuning candidates. `APP_KNOWLEDGE_SEARCH_MIN_SIMILARITY` defaults to 0.0 until RAG-04.03 calibrates abstention.
   - Security review (RAG-04.01, on the full change before the split): no high findings. Fixed: FTS runs before the HNSW query, whose planner settings (`enable_bitmapscan`, `enable_sort` off) would otherwise price out the GIN scan; the retriever refuses `k` outside 1 to 50 and a query empty or over 2,000 characters; hybrid falls back to full text when the embedding provider fails (dense mode raises). Left as is: success-only audit, as in `service.py`; an HNSW candidate of a not-yet-purged document takes a slot (recall only); a base's `ts_config` is fixed at creation, so its chunks' `tsv` match.
-- **Next recommended story:** RAG-04.01.
+- **Next recommended story:** RAG-04.02.
 
 ### RAG-E05 Server-validated citations
 
@@ -302,7 +303,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-03.03 | Tombstone delete and purge jobs | 1 | P0 | Done | #439 | #440 (part 1), #441 (part 2) | `tests/integration/test_postgres_knowledge_purge.py`: after a document delete and before its purge, its chunks are still stored but the document is gone from the list and get routes and from the join to live documents that retrieval uses; the search itself is RAG-04.01, whose AC4 re-checks tombstoned documents (AC1); a base purge stopped half way (the store down, or a crash after a file was deleted) completes on retry and leaves no rows in any knowledge table and no file (AC2); a live document or base is never purged; an upload committing during the base's delete is tombstoned with it. `tests/integration/test_postgres_knowledge_api.py`: a document delete is `202` with one `purge_document` job, a second is `404` and queues nothing (AC3); another user's delete is the same `404` as an unknown id (BOLA matrix). `tests/security/test_knowledge_api.py`: `403` without `knowledge:write`, `422` for a bad id |
 | RAG-03.04 | Chunk inspection and file download | 1 | P0 | Done | #442 | #443 (part 1), #444 (part 2) | `tests/integration/test_postgres_knowledge_download.py`: an uploaded Markdown file holding SVG and script downloads as an attachment, `text/plain`, with `nosniff` and the API's CSP, the title percent-encoded behind an ASCII fallback, and a PDF keeps its type; the headers equal `web/e2e/download_headers.json`, which `web/e2e/download.spec.ts` serves to Chromium: an HTML or SVG file runs no script when followed (a download), framed, embedded or loaded as an image, while a control serving it as a page sees it run (AC1); after the grant is lost, a chunk fetched a moment ago and the file are `404` (AC2); a chunk id from another document of the same base is `404` under this `doc_id`, both ways (AC3); neighbours by ordinal, `422` over 3; a document not ready or deleted hides its chunks. `tests/integration/test_postgres_knowledge_api.py`: both routes in the BOLA matrix. `tests/security/test_knowledge_api.py`: `403` without `knowledge:read`, `422` for bad ids and a negative `neighbours` |
 | RAG-03.05 | Knowledge search endpoint | 1 | P1 | Pending | — | — | — |
-| RAG-04.01 | Hybrid retriever with authorisation in the query | 1 | P0 | In progress | #446 | — | Part 1 (#447): full text, fusion, authorised and live-only. Part 2: dense, exact/HNSW with `EXPLAIN` checks; AC1–AC4 on both paths. Part 3: the eval comparison (AC5) |
+| RAG-04.01 | Hybrid retriever with authorisation in the query | 1 | P0 | Done | #446 | #447, #448, #449 | `tests/integration/test_postgres_knowledge_search.py` as the app role under RLS: the same text in two users' bases, each sees only their own chunk in every mode (AC1); a 30-chunk base returns k = 20 through the exact scan for an off-topic query (AC2); `ERR-7741-ZQ` found through full text with the dense path floored out (AC3); failed, still-embedding and tombstoned documents and a tombstoned base return nothing on the exact and HNSW paths (AC4); `EXPLAIN` shows `embeddings_p1_hnsw` on the HNSW path and never on the exact one (plans in #448). `docs/releases/v1.1.0-retrieval-eval.md` (`test_postgres_knowledge_eval.py`): recall@5 dense 0.918, full text 0.033, hybrid 0.918 (recall@1 0.721 / 0.016 / 0.754), so hybrid stays the default (AC5) |
 | RAG-04.02 | Knowledge agent tools | 1 | P0 | Pending | — | — | — |
 | RAG-04.03 | Abstention and grounding | 1 | P0 | Pending | — | — | — |
 | RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Pending | — | — | — |
@@ -346,6 +347,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-04 | RAG-04.01 Done with part 3 (eval comparison, AC5): hybrid kept as the default; RAG-04.02 and RAG-03.05 unblocked | Claude session |
 | 2026-11-04 | RAG-04.01 In progress (#446, epic #445): part 1 (full-text search, RRF, authorised and live-only) in review; split into three parts by path | Claude session |
 | 2026-11-04 | RAG-02.05 Done (#437, #438); RAG-E02 complete |
 | 2026-11-04 | RAG-02.05 part 1 merged (#437); part 2 (embedding tokens) in review |
