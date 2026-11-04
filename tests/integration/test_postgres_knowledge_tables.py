@@ -204,9 +204,9 @@ async def test_grants_are_exactly_what_each_role_needs(
     }
     assert await granted(worker[0]) == {
         "index_profiles": {"SELECT"},
-        "bases": {"SELECT"},
+        "bases": {"SELECT", "DELETE"},  # the purge (RAG-03.03)
         "grants": set(),
-        "documents": {"SELECT"},
+        "documents": {"SELECT", "DELETE"},
         "chunks": {"SELECT", "INSERT", "DELETE"},
         "embeddings": {"SELECT", "INSERT", "DELETE"},
     }

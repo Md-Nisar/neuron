@@ -5,8 +5,8 @@
 
 Every statement filters on the caller's owner key (ADR 0014 requirement 2), so another user's
 base, a deleted one and an unknown id are the same `knowledge_base_not_found`. Delete is a
-tombstone: `deleted_at` hides the base from every query at once, and the purge job, queued in
-the same transaction, removes its documents, chunks and files (RAG-03.03).
+tombstone: `deleted_at` hides the base and its documents from every query at once, and the purge
+job, queued in the same transaction, removes them with their chunks and files (RAG-03.03).
 """
 
 from __future__ import annotations
@@ -69,6 +69,10 @@ _TOMBSTONE = (
     "UPDATE knowledge.bases SET deleted_at = now()"
     " WHERE kb_id = %s AND owner_key = %s AND deleted_at IS NULL RETURNING kb_id"
 )
+_TOMBSTONE_DOCUMENTS = (
+    "UPDATE knowledge.documents SET deleted_at = now(), status = 'deleting', updated_at = now()"
+    " WHERE kb_id = %s AND deleted_at IS NULL"
+)
 
 # Documents are found through the bases the caller may read (`allowed_kbs`) and the base's owner
 # (ADR 0014 requirement 2); a tombstoned document or base is never shown.
@@ -107,13 +111,14 @@ _BY_SHA = (
     " AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
 )
 # Into a live base of the caller's only. A concurrent upload of the same content or key loses on
-# the unique indexes and returns the winner's document.
+# the unique indexes and returns the winner's document. FOR SHARE holds off the base's delete
+# until this commits, so the delete tombstones this document too, and its purge finds it.
 _INSERT_DOCUMENT = (
     "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type, size_bytes,"
     " sha256, blob_key, idempotency_key, status)"
     " SELECT %(doc)s, kb_id, %(owner)s, %(title)s, %(mime)s, %(size)s, %(sha)s, %(blob)s,"
     " %(key)s, 'queued' FROM knowledge.bases"
-    " WHERE kb_id = %(kb)s AND owner_key = %(owner)s AND deleted_at IS NULL"
+    " WHERE kb_id = %(kb)s AND owner_key = %(owner)s AND deleted_at IS NULL FOR SHARE"
     " ON CONFLICT DO NOTHING RETURNING doc_id"
 )
 # What the uploader holds (ADR 0014 requirement 7; RAG-02.05). Bytes, documents and pages count
@@ -210,11 +215,13 @@ class KnowledgeBases:
         return KnowledgeBase(**row)
 
     async def delete(self, owner_key: str, kb_id: uuid.UUID) -> None:
-        """Tombstone the base and queue its purge; a second delete finds nothing to delete."""
+        """Tombstone the base and its documents and queue its purge; a second delete finds
+        nothing to delete."""
         async with self._transaction() as conn:
             cursor = await conn.execute(_TOMBSTONE, (kb_id, owner_key))
             if await cursor.fetchone() is None:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
+            await conn.execute(_TOMBSTONE_DOCUMENTS, (kb_id,))
             await jobs.defer(conn, jobs.Task.PURGE_KNOWLEDGE_BASE, kb_id=kb_id)
         self._audit("knowledge_base_deleted", owner_key, _WRITE, kb_id)
 
