@@ -18,6 +18,7 @@ from test_postgres_roles import RoleDatabase, _rows, role_db, roles  # noqa: F40
 
 from neuron_agent.knowledge import ingest
 from neuron_agent.knowledge.blobs import LocalBlobStore
+from neuron_agent.knowledge.chunking import estimate_tokens
 from neuron_agent.knowledge.ingest import Ingestor, connector
 from neuron_agent.knowledge.parsing import (
     MARKDOWN,
@@ -139,6 +140,37 @@ async def test_a_second_run_leaves_exactly_one_chunk_set(
     assert await _state(db, doc) == first
 
 
+async def _embedding_tokens(db: RoleDatabase) -> int:
+    ((total,),) = await _rows(
+        db.migrator_dsn,
+        "SELECT coalesce(sum(embedding_tokens), 0) FROM knowledge.documents WHERE uploaded_by = %s",
+        (_OWNER,),
+    )
+    return int(total)
+
+
+async def test_embedding_tokens_are_recorded_for_the_uploader_on_every_ingestion(
+    setup: tuple[RoleDatabase, Ingestor],
+) -> None:
+    db, ingestor = setup
+    doc = await _document(db, ingestor)
+    assert await ingestor.ingest(doc) == "ready"
+    chunks = await _rows(
+        db.migrator_dsn,
+        "SELECT headings, text FROM knowledge.chunks WHERE doc_id = %s",
+        (doc,),
+    )
+    # The estimate of what was sent: each chunk's heading path, then its text.
+    sent = sum(estimate_tokens("\n".join([*headings, text])) for headings, text in chunks)
+    assert sent > 0
+    assert await _embedding_tokens(db) == sent
+    # A re-run embeds the document again and is charged again.
+    assert await ingestor.ingest(doc) == "ready"
+    assert await _embedding_tokens(db) == 2 * sent
+    # Not the chat budget: the token ledger is untouched.
+    assert await _rows(db.migrator_dsn, "SELECT count(*) FROM neuron_token_ledger") == [(0,)]
+
+
 async def test_a_crash_before_commit_then_a_retry_equals_a_clean_run(
     setup: tuple[RoleDatabase, Ingestor], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -148,7 +180,7 @@ async def test_a_crash_before_commit_then_a_retry_equals_a_clean_run(
     doc = await _document(db, ingestor)
     # The last statement of the chunk-set transaction fails: everything in it is rolled back.
     with monkeypatch.context() as patch:
-        patch.setattr(ingest, "_READY", "SELECT 1 / 0, %s::text, %s::text, %s::uuid")
+        patch.setattr(ingest, "_READY", "SELECT 1 / 0, %s::text, %s::text, %s::int, %s::uuid")
         with pytest.raises(psycopg.errors.DivisionByZero):
             await ingestor.ingest(doc)
     crashed = await _state(db, doc)

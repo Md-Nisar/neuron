@@ -141,6 +141,17 @@ only. The UI states where content is processed. Embedding tokens are recorded in
 token ledger under a separate kind, and ingestion quotas (bytes, pages, documents, concurrent
 jobs) are checked before work is queued.
 
+**Amended by RAG-02.05 (2026-11-04, owner decision):** embedding tokens are recorded per
+document in `knowledge.documents.embedding_tokens`, not in `neuron_token_ledger`. The ledger is a
+rolling budget window, pruned after `APP_USER_TOKEN_BUDGET_WINDOW_SECONDS`, so it cannot keep a
+record; and the worker holds no rights in `public`. The worker adds the estimated tokens it sent
+(heading path and text of each chunk, three UTF-8 bytes a token) when a document becomes
+`ready`, so a re-run is charged again; a user's total is the sum over their documents. It is
+not counted against the chat budget. It is an accounting estimate, not a control: text that
+tokenises denser than three bytes a token is under-counted, and an attempt that fails after
+calling the provider records nothing. The quotas, checked at upload (RAG-02.05 part 1), are
+what bound spend.
+
 Rejected: implicit hosted processing (every chunk would leave Neuron's boundary without a
 decision).
 

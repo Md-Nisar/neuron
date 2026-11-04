@@ -221,6 +221,7 @@ async def test_grants_are_exactly_what_each_role_needs(
                 "error_code",
                 "parser_version",
                 "page_count",
+                "embedding_tokens",
                 "updated_at",
                 "kb_id",
                 "blob_key",
@@ -229,7 +230,14 @@ async def test_grants_are_exactly_what_each_role_needs(
             ],
             worker[0],
         ),
-    ) == [("error_code",), ("page_count",), ("parser_version",), ("status",), ("updated_at",)]
+    ) == [
+        ("embedding_tokens",),
+        ("error_code",),
+        ("page_count",),
+        ("parser_version",),
+        ("status",),
+        ("updated_at",),
+    ]
     # A right granted by hand is taken back by the next setup; production then verifies.
     await _superuser(role_db, f'GRANT INSERT ON knowledge.chunks TO "{role_db.roles.app}"')
     await _setup(role_db, knowledge=True, worker_role=worker[0], require_app_role=True)

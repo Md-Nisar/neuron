@@ -26,7 +26,7 @@ from psycopg.rows import dict_row
 
 from neuron_agent.config.settings import ProcessingPolicy
 from neuron_agent.knowledge.blobs import BlobStore, BlobStoreError
-from neuron_agent.knowledge.chunking import Chunk, chunk_document
+from neuron_agent.knowledge.chunking import Chunk, chunk_document, estimate_tokens
 from neuron_agent.knowledge.parsing import DocumentParser, Limits, ParseError, parse_document
 from neuron_agent.knowledge.providers import (
     EmbeddingError,
@@ -65,9 +65,10 @@ _INSERT_EMBEDDING = (
     "INSERT INTO knowledge.embeddings (chunk_id, profile_id, kb_id, embedding)"
     " VALUES (%s, %s, %s, %s)"
 )
+# Each ingestion adds what it sent to the embedding provider, so a re-run is charged again.
 _READY = (
     "UPDATE knowledge.documents SET status = 'ready', error_code = NULL, parser_version = %s,"
-    " page_count = %s, updated_at = now()"
+    " page_count = %s, embedding_tokens = embedding_tokens + %s, updated_at = now()"
     " WHERE doc_id = %s AND deleted_at IS NULL AND status <> 'deleting'"
 )
 
@@ -211,7 +212,8 @@ class Ingestor:
                         for chunk_id, vector in zip(ids, vectors, strict=True)
                     ],
                 )
-            await conn.execute(_READY, (*parsed, doc_id))
+            tokens = sum(estimate_tokens(_passage(chunk)) for chunk in chunks)
+            await conn.execute(_READY, (*parsed, tokens, doc_id))
         return True
 
 
