@@ -216,6 +216,13 @@ class Settings(BaseSettings):
     # Uploads one API process reads at once (RAG-03.02): each holds up to
     # APP_KNOWLEDGE_PARSE_MAX_BYTES in memory while its type is checked. More are `429`.
     knowledge_upload_concurrency: int = Field(default=4, ge=1, le=64)
+    # What one user may hold (RAG-02.05; ADR 0014 requirement 7), checked before an upload is
+    # stored. Stored bytes, documents and parsed pages count every document until it is purged;
+    # documents being ingested (queued, parsing, embedding) count while their base is live.
+    knowledge_max_bytes_per_user: int = Field(default=1_000_000_000, ge=1_024, le=10**13)
+    knowledge_max_documents_per_user: int = Field(default=1_000, ge=1, le=100_000)
+    knowledge_max_pages_per_user: int = Field(default=20_000, ge=1, le=10_000_000)
+    knowledge_max_ingesting_per_user: int = Field(default=5, ge=1, le=1_000)
     # docling-serve for PDF and Office files (RAG-02.02): its base URL, reachable only from the
     # worker; a total deadline per file; and a cap on its JSON reply.
     # No credentials in the URL: docling-serve is reached only over the internal network.

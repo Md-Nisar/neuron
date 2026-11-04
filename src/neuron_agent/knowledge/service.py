@@ -26,6 +26,7 @@ from psycopg_pool import AsyncConnectionPool
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
     IdempotencyKeyReusedError,
+    IngestionConcurrencyError,
     KnowledgeBaseLimitError,
     KnowledgeBaseNotFoundError,
     KnowledgeDisabledError,
@@ -114,6 +115,16 @@ _INSERT_DOCUMENT = (
     " %(key)s, 'queued' FROM knowledge.bases"
     " WHERE kb_id = %(kb)s AND owner_key = %(owner)s AND deleted_at IS NULL"
     " ON CONFLICT DO NOTHING RETURNING doc_id"
+)
+# What the uploader holds (ADR 0014 requirement 7; RAG-02.05). Bytes, documents and pages count
+# every row until the purge deletes it, since its file is still stored; documents being ingested
+# count while their base is live, as the worker skips the rest.
+_USAGE = (
+    "SELECT count(*) AS documents, coalesce(sum(d.size_bytes), 0) AS bytes,"
+    " coalesce(sum(d.page_count), 0) AS pages, count(*) FILTER (WHERE d.status IN"
+    " ('queued', 'parsing', 'embedding') AND d.deleted_at IS NULL AND b.deleted_at IS NULL)"
+    " AS ingesting FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " WHERE d.uploaded_by = %s"
 )
 _UPLOAD_STATUS = {"file_too_large": 413, "empty_file": 422}
 
@@ -251,12 +262,20 @@ class KnowledgeBases:
             existing := await self._existing(owner_key, kb_id, sha256, idempotency_key)
         ) is not None:
             return existing
+        async with self._transaction() as conn:
+            await self._check_quota(conn, owner_key, len(data))
         assert self._blobs is not None  # nosec B101 - wired with knowledge on
         blobs = self._blobs()
         blob = await blobs.put(_once(data), max_bytes=limits.max_bytes)
         doc_id, queued = uuid.uuid4(), False
         try:
             async with self._transaction() as conn:
+                # Again under the owner's lock, so concurrent uploads cannot pass a quota together.
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                    (f"knowledge.documents:{owner_key}",),
+                )
+                await self._check_quota(conn, owner_key, blob.size)
                 cursor = await conn.execute(
                     _INSERT_DOCUMENT,
                     {
@@ -290,6 +309,23 @@ class KnowledgeBases:
             "knowledge_document_uploaded", owner_key, _WRITE, doc_id, resource="knowledge_document"
         )
         return _accepted({"doc_id": doc_id, "kb_id": kb_id, "status": "queued"})
+
+    async def _check_quota(
+        self, conn: psycopg.AsyncConnection[Any], owner_key: str, size: int
+    ) -> None:
+        """Refuse an upload of `size` bytes that would take the owner past a quota."""
+        cursor = await conn.execute(_USAGE, (owner_key,))
+        usage = await cursor.fetchone()
+        assert usage is not None  # nosec B101 - an aggregate always returns a row
+        settings = self._settings
+        if usage["documents"] >= settings.knowledge_max_documents_per_user:
+            raise UploadRefusedError("document_quota_exceeded", 413)
+        if usage["bytes"] + size > settings.knowledge_max_bytes_per_user:
+            raise UploadRefusedError("byte_quota_exceeded", 413)
+        if usage["pages"] >= settings.knowledge_max_pages_per_user:
+            raise UploadRefusedError("page_quota_exceeded", 413)
+        if usage["ingesting"] >= settings.knowledge_max_ingesting_per_user:
+            raise IngestionConcurrencyError("too many documents being ingested")
 
     async def _existing(
         self, owner_key: str, kb_id: uuid.UUID, sha256: str, idempotency_key: str | None
