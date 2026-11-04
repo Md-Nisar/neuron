@@ -99,6 +99,7 @@ def _requests(kb_id: str, doc_id: str = "{doc_id}") -> list[tuple[str, str, dict
         ("GET", f"/v1/knowledge/bases/{kb_id}/documents", None),
         ("POST", f"/v1/knowledge/bases/{kb_id}/documents", None),
         ("GET", f"/v1/knowledge/documents/{doc_id}", None),
+        ("DELETE", f"/v1/knowledge/documents/{doc_id}", None),
         ("PATCH", f"/v1/knowledge/bases/{kb_id}", {"name": "taken over"}),
         ("DELETE", f"/v1/knowledge/bases/{kb_id}", None),
     ]
@@ -402,3 +403,37 @@ async def test_a_body_that_does_not_arrive_in_time_frees_its_slot(
     assert (response.status_code, response.json()) == (408, {"detail": "upload_timeout"})
     assert api_main._upload_slots.in_flight == 0
     assert _blobs(tmp_path) == []
+
+
+async def test_a_document_delete_is_202_once_and_queues_one_purge(
+    api: tuple[JwtApi, RoleDatabase], make_token: Callable[..., str]
+) -> None:
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    kept, doomed = [await _document(db, base["kb_id"], f"doc {i}") for i in range(2)]
+    path = f"/v1/knowledge/documents/{doomed}"
+    assert client.client.delete(path, headers=bearer(alice)).status_code == 202
+    assert await _jobs(db) == [("purge_document", {"doc_id": doomed})]
+    assert await _rows(
+        db.migrator_dsn,
+        "SELECT status, deleted_at IS NOT NULL FROM knowledge.documents WHERE doc_id = %s",
+        (doomed,),
+    ) == [("deleting", True)]
+    for method in ("DELETE", "GET"):
+        again = client.client.request(method, path, headers=bearer(alice))
+        assert (again.status_code, again.json()) == (
+            404,
+            {"detail": "knowledge_document_not_found"},
+        )
+    assert len(await _jobs(db)) == 1  # the second delete queued nothing
+    listed = client.client.get(
+        f"/v1/knowledge/bases/{base['kb_id']}/documents", headers=bearer(alice)
+    )
+    assert [d["doc_id"] for d in listed.json()["documents"]] == [kept]
+    # Read-only callers cannot delete.
+    reader = make_token("alice", scopes="knowledge:read")
+    assert (
+        client.client.delete(f"/v1/knowledge/documents/{kept}", headers=bearer(reader)).status_code
+        == 403
+    )

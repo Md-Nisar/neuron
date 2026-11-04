@@ -20,6 +20,7 @@ from test_postgres_knowledge_tables import worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, _rows, role_db, roles  # noqa: F401
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.errors.base import KnowledgeDocumentNotFoundError
 from neuron_agent.knowledge import service as knowledge_service
 from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.ingest import Ingestor
@@ -185,3 +186,31 @@ async def test_an_upload_committing_during_the_base_delete_is_tombstoned_with_it
         "SELECT status, deleted_at IS NOT NULL FROM knowledge.documents WHERE doc_id = %s",
         (doc,),
     ) == [("deleting", True)]
+
+
+async def test_a_deleted_documents_chunks_are_unreachable_until_purged(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    tmp_path: Path,
+) -> None:
+    db, ingestor = setup
+    kb = await _base(db)
+    kept, doomed = [await _ingested(db, ingestor, kb, n) for n in range(2)]
+    service = _service(db)
+    await service.delete_document(_OWNER, doomed)
+    # Before the purge: its chunks are still stored, but every read path, and the join to live
+    # documents that retrieval uses (RAG-04.01), excludes them.
+    assert (await _left(db, tmp_path))["documents"] == 2
+    documents, total = await service.documents(_OWNER, kb, limit=10, offset=0)
+    assert ([d.doc_id for d in documents], total) == ([kept], 1)
+    live: list[Any] = await _rows(
+        db.migrator_dsn,
+        "SELECT DISTINCT c.doc_id FROM knowledge.chunks c JOIN knowledge.documents d"
+        " USING (doc_id) WHERE d.status = 'ready' AND d.deleted_at IS NULL",
+    )
+    assert live == [(kept,)]
+    with pytest.raises(KnowledgeDocumentNotFoundError):
+        await service.delete_document(_OWNER, doomed)
+    assert await _jobs(db) == [("purge_document", {"doc_id": str(doomed)})]
+    assert await Purger(ingestor.connect, ingestor.blobs).purge_document(doomed) == 1
+    left = await _left(db, tmp_path)
+    assert (left["documents"], left["files"]) == (1, 1)

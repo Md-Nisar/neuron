@@ -24,6 +24,7 @@ _KB = f"/v1/knowledge/bases/{uuid.uuid4()}"
         ("GET", f"{_KB}/documents", None, "knowledge:read"),
         ("POST", f"{_KB}/documents", None, "knowledge:write"),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None, "knowledge:read"),
+        ("DELETE", f"/v1/knowledge/documents/{uuid.uuid4()}", None, "knowledge:write"),
     ],
 )
 def test_a_token_without_the_routes_permission_is_refused(
@@ -57,6 +58,7 @@ def test_a_token_without_the_routes_permission_is_refused(
         ("GET", f"{_KB}/documents?limit=101", None),
         ("GET", f"{_KB}/documents?offset=-1", None),
         ("GET", "/v1/knowledge/documents/not-a-uuid", None),
+        ("DELETE", "/v1/knowledge/documents/not-a-uuid", None),
     ],
     ids=[
         "unknown-field",
@@ -72,6 +74,7 @@ def test_a_token_without_the_routes_permission_is_refused(
         "limit-over-100",
         "negative-offset",
         "bad-document-id",
+        "bad-document-id-delete",
     ],
 )
 def test_an_invalid_request_is_422(

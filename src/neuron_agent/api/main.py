@@ -1132,6 +1132,20 @@ async def get_knowledge_document(
         raise _http_error("knowledge_document_get_failed", exc) from exc
 
 
+@app.delete("/v1/knowledge/documents/{doc_id}", status_code=202)
+async def delete_knowledge_document(
+    doc_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:write"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> Response:
+    """Tombstone one of the caller's documents and queue its purge; `202`."""
+    try:
+        await knowledge.delete_document(_knowledge_owner(principal, user_id), doc_id)
+    except AppError as exc:
+        raise _http_error("knowledge_document_delete_failed", exc) from exc
+    return Response(status_code=202)
+
+
 @app.delete("/v1/me/threads", response_model=UserDataErasureResponse)
 async def erase_my_threads(
     principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
