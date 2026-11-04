@@ -35,7 +35,9 @@ from neuron_agent.knowledge.ingest import _vector
 from neuron_agent.knowledge.providers import EmbeddingProvider
 from neuron_agent.knowledge.retrieval import Retriever
 
-pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
+# Marked `eval`, not `postgres`: the postgres-integration job requires every test it selects to
+# run, and this one needs the corpus and cached vectors, which CI does not have.
+pytestmark = [pytest.mark.integration, pytest.mark.eval, pytest.mark.anyio]
 
 _DIR = os.environ.get("APP_KNOWLEDGE_EVAL_DIR")
 _FIXTURES = Path("tests/fixtures")
