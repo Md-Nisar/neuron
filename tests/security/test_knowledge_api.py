@@ -32,6 +32,7 @@ _KB = f"/v1/knowledge/bases/{uuid.uuid4()}"
             "knowledge:read",
         ),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}/file", None, "knowledge:read"),
+        ("POST", "/v1/knowledge/search", {"query": "q"}, "knowledge:read"),
     ],
 )
 def test_a_token_without_the_routes_permission_is_refused(
@@ -73,6 +74,15 @@ def test_a_token_without_the_routes_permission_is_refused(
             None,
         ),
         ("GET", "/v1/knowledge/documents/not-a-uuid/file", None),
+        ("POST", "/v1/knowledge/search", {"query": "q" * 501}),
+        ("POST", "/v1/knowledge/search", {"query": " \n "}),
+        ("POST", "/v1/knowledge/search", {"query": ""}),
+        ("POST", "/v1/knowledge/search", {"query": "q", "owner_key": "a" * 64}),
+        ("POST", "/v1/knowledge/search", {"query": "q", "kb_ids": []}),
+        ("POST", "/v1/knowledge/search", {"query": "q", "kb_ids": [str(uuid.uuid4())] * 11}),
+        ("POST", "/v1/knowledge/search", {"query": "q", "kb_ids": ["not-a-uuid"]}),
+        ("POST", "/v1/knowledge/search", {"query": "q", "limit": 11}),
+        ("POST", "/v1/knowledge/search", {"query": "q", "limit": 0}),
     ],
     ids=[
         "unknown-field",
@@ -92,6 +102,15 @@ def test_a_token_without_the_routes_permission_is_refused(
         "bad-chunk-id",
         "negative-neighbours",
         "bad-document-id-file",
+        "search-query-over-500",
+        "search-blank-query",
+        "search-empty-query",
+        "search-owner-field",
+        "search-no-kb-ids",
+        "search-over-10-kb-ids",
+        "search-bad-kb-id",
+        "search-limit-over-10",
+        "search-limit-0",
     ],
 )
 def test_an_invalid_request_is_422(
@@ -118,6 +137,7 @@ def test_with_knowledge_off_every_route_is_404(
         ("GET", f"{_KB}/documents", None),
         ("POST", f"{_KB}/documents", None),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None),
+        ("POST", "/v1/knowledge/search", {"query": "q"}),
     ]:
         response = jwt_api.client.request(method, path, json=body, headers=bearer(token))
         assert (response.status_code, response.json()) == (404, {"detail": "knowledge_disabled"})

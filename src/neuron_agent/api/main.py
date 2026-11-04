@@ -47,6 +47,7 @@ from neuron_agent.errors.base import (
     AuthenticationError,
     ConcurrentRunsExceededError,
     IngestionConcurrencyError,
+    KnowledgeDisabledError,
     PersistenceError,
     QuotaExceededError,
     ShuttingDownError,
@@ -55,6 +56,8 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.knowledge.blobs import build_blob_store
 from neuron_agent.knowledge.parsing import DOCX, MARKDOWN, PDF, PPTX, TEXT, XLSX
+from neuron_agent.knowledge.providers import create_embedding_provider
+from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
@@ -96,6 +99,9 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeChunk,
     KnowledgeDocument,
     KnowledgeDocumentsResponse,
+    KnowledgeSearchHit,
+    KnowledgeSearchRequest,
+    KnowledgeSearchResponse,
     document_title,
 )
 from neuron_agent.security.auth import (
@@ -123,6 +129,11 @@ persistence = build_persistence(settings)
 service = AgentService(settings, persistence=persistence)
 knowledge = KnowledgeBases(
     settings, lambda: persistence.pool, functools.cache(lambda: build_blob_store(settings))
+)
+# Built on first search: the embedding provider can need credentials a deployment without
+# knowledge never sets.
+retriever = functools.cache(
+    lambda: Retriever(settings, lambda: persistence.pool, create_embedding_provider(settings))
 )
 auth_verifier = get_shared_token_verifier(settings)
 
@@ -1150,6 +1161,32 @@ async def get_knowledge_chunk(
         return await knowledge.chunk(owner_key, doc_id, chunk_id, neighbours=neighbours)
     except AppError as exc:
         raise _http_error("knowledge_chunk_get_failed", exc) from exc
+
+
+@app.post("/v1/knowledge/search", response_model=KnowledgeSearchResponse)
+async def search_knowledge(
+    body: KnowledgeSearchRequest,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeSearchResponse:
+    """The caller's best-matching passages, through the retriever and authorisation the agent's
+    `search_knowledge` tool uses (RAG-03.05). A `kb_ids` entry that is not one of the caller's
+    bases is ignored, as an unknown id is; the query is never logged."""
+    try:
+        if not settings.knowledge_enabled:
+            raise KnowledgeDisabledError("knowledge is not enabled")
+        result = await retriever().search(
+            _knowledge_owner(principal, user_id), body.query, k=body.limit, kb_ids=body.kb_ids
+        )
+    except AppError as exc:
+        raise _http_error("knowledge_search_failed", exc) from exc
+    return KnowledgeSearchResponse(
+        status=result.status,
+        results=[
+            KnowledgeSearchHit.model_validate(passage, from_attributes=True)
+            for passage in result.passages
+        ],
+    )
 
 
 # Types a browser shows or runs never go out as themselves: text is plain text, the rest bytes.

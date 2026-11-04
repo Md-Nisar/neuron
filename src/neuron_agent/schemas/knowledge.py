@@ -132,3 +132,37 @@ class KnowledgeChunk(ChunkPassage):
     doc_id: uuid.UUID
     kb_id: uuid.UUID
     neighbours: list[ChunkPassage]
+
+
+class KnowledgeSearchRequest(BaseModel):
+    """`POST /v1/knowledge/search` body (RAG-03.05). `kb_ids` narrows the search to those of the
+    caller's bases; an id that is not one of them is ignored, as an unknown one is."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1, max_length=500)
+    kb_ids: list[uuid.UUID] | None = Field(default=None, min_length=1, max_length=10)
+    limit: int = Field(default=5, ge=1, le=10)
+
+    @field_validator("query")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("query must not be blank")
+        return value
+
+
+class KnowledgeSearchHit(ChunkPassage):
+    """A passage found by search, as text. `title` is user text; `score` orders hits only."""
+
+    doc_id: uuid.UUID
+    kb_id: uuid.UUID
+    title: str
+    score: float
+
+
+class KnowledgeSearchResponse(BaseModel):
+    """The best passages first; `no_relevant_results` when there are none."""
+
+    status: Literal["ok", "no_relevant_results"]
+    results: list[KnowledgeSearchHit]
