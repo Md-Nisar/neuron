@@ -86,6 +86,13 @@ _DOCUMENT_COLUMNS = (
     " d.error_code, d.created_at, d.updated_at"
 )
 _DOCUMENT = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " AND d.doc_id = %(doc)s"
+# Hidden from every read path at once; the purge job, queued in the same transaction, removes it.
+_TOMBSTONE_DOCUMENT = (
+    "UPDATE knowledge.documents d SET deleted_at = now(), status = 'deleting', updated_at = now()"
+    " FROM knowledge.bases b WHERE b.kb_id = d.kb_id AND d.kb_id = ANY(%(kbs)s)"
+    " AND b.owner_key = %(owner)s AND b.deleted_at IS NULL AND d.deleted_at IS NULL"
+    " AND d.status <> 'deleting' AND d.doc_id = %(doc)s RETURNING d.doc_id"
+)
 _DOCUMENTS = (
     _DOCUMENT_COLUMNS
     + _DOCUMENT_FILTER
@@ -369,6 +376,23 @@ class KnowledgeBases:
         if row is None:
             raise KnowledgeDocumentNotFoundError("knowledge document not found")
         return KnowledgeDocument(**row)
+
+    async def delete_document(self, owner_key: str, doc_id: uuid.UUID) -> None:
+        """Tombstone a document of a writable base and queue its purge; a second delete finds
+        nothing to delete (`404`) and queues nothing."""
+        async with self._transaction() as conn:
+            allowed = await KnowledgeAuthorization.allowed_kbs(
+                conn, AuthorizationContext(frozenset(), owner_key=owner_key)
+            )
+            cursor = await conn.execute(
+                _TOMBSTONE_DOCUMENT, {"kbs": [*allowed.write], "owner": owner_key, "doc": doc_id}
+            )
+            if await cursor.fetchone() is None:
+                raise KnowledgeDocumentNotFoundError("knowledge document not found")
+            await jobs.defer(conn, jobs.Task.PURGE_DOCUMENT, doc_id=doc_id)
+        self._audit(
+            "knowledge_document_deleted", owner_key, _WRITE, doc_id, resource="knowledge_document"
+        )
 
     @staticmethod
     async def _readable(conn: psycopg.AsyncConnection[Any], owner_key: str) -> Sequence[uuid.UUID]:
