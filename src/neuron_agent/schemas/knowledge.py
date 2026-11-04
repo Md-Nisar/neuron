@@ -112,3 +112,23 @@ class KnowledgeBasesResponse(BaseModel):
     """The caller's live knowledge bases, oldest first (at most the per-user limit)."""
 
     bases: list[KnowledgeBase]
+
+
+class ChunkPassage(BaseModel):
+    """A passage of a document's extracted text, shown as text: never the original markup."""
+
+    chunk_id: uuid.UUID
+    ordinal: int
+    text: str
+    headings: list[str]
+    page_start: int | None
+    page_end: int | None
+
+
+class KnowledgeChunk(ChunkPassage):
+    """`GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`: the passage behind a citation
+    and, on request, its neighbours in document order (RAG-03.04)."""
+
+    doc_id: uuid.UUID
+    kb_id: uuid.UUID
+    neighbours: list[ChunkPassage]

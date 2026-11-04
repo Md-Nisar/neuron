@@ -25,6 +25,13 @@ _KB = f"/v1/knowledge/bases/{uuid.uuid4()}"
         ("POST", f"{_KB}/documents", None, "knowledge:write"),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None, "knowledge:read"),
         ("DELETE", f"/v1/knowledge/documents/{uuid.uuid4()}", None, "knowledge:write"),
+        (
+            "GET",
+            f"/v1/knowledge/documents/{uuid.uuid4()}/chunks/{uuid.uuid4()}",
+            None,
+            "knowledge:read",
+        ),
+        ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}/file", None, "knowledge:read"),
     ],
 )
 def test_a_token_without_the_routes_permission_is_refused(
@@ -59,6 +66,13 @@ def test_a_token_without_the_routes_permission_is_refused(
         ("GET", f"{_KB}/documents?offset=-1", None),
         ("GET", "/v1/knowledge/documents/not-a-uuid", None),
         ("DELETE", "/v1/knowledge/documents/not-a-uuid", None),
+        ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}/chunks/not-a-uuid", None),
+        (
+            "GET",
+            f"/v1/knowledge/documents/{uuid.uuid4()}/chunks/{uuid.uuid4()}?neighbours=-1",
+            None,
+        ),
+        ("GET", "/v1/knowledge/documents/not-a-uuid/file", None),
     ],
     ids=[
         "unknown-field",
@@ -75,6 +89,9 @@ def test_a_token_without_the_routes_permission_is_refused(
         "negative-offset",
         "bad-document-id",
         "bad-document-id-delete",
+        "bad-chunk-id",
+        "negative-neighbours",
+        "bad-document-id-file",
     ],
 )
 def test_an_invalid_request_is_422(

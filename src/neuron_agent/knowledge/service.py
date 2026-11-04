@@ -40,7 +40,13 @@ from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.parsing import Limits, ParseError, accepted_type
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
-from neuron_agent.schemas.knowledge import DocumentAccepted, KnowledgeBase, KnowledgeDocument
+from neuron_agent.schemas.knowledge import (
+    ChunkPassage,
+    DocumentAccepted,
+    KnowledgeBase,
+    KnowledgeChunk,
+    KnowledgeDocument,
+)
 from neuron_agent.security.authorization import AuthorizationContext
 
 log = structlog.get_logger(__name__)
@@ -86,6 +92,27 @@ _DOCUMENT_COLUMNS = (
     " d.error_code, d.created_at, d.updated_at"
 )
 _DOCUMENT = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " AND d.doc_id = %(doc)s"
+_FILE = (
+    "SELECT d.title, d.mime_type, d.blob_key, d.sha256"
+    + _DOCUMENT_FILTER
+    + " AND d.doc_id = %(doc)s"
+)
+# Chunks are read under RLS (`neuron.kb_ids`, set to the readable bases) and only through a live,
+# ready document of a readable base; a chunk id from another document is not found (RAG-03.04).
+_PASSAGE = "SELECT c.chunk_id, c.ordinal, c.text, c.headings, c.page_start, c.page_end"
+_CHUNK = _PASSAGE + (
+    ", d.doc_id, d.kb_id FROM knowledge.chunks c JOIN knowledge.documents d ON d.doc_id = c.doc_id"
+    " AND d.kb_id = c.kb_id JOIN knowledge.bases b ON b.kb_id = d.kb_id"
+    " WHERE d.kb_id = ANY(%(kbs)s) AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+    " AND d.deleted_at IS NULL AND d.status = 'ready' AND d.doc_id = %(doc)s"
+    " AND c.chunk_id = %(chunk)s"
+)
+_NEIGHBOURS = _PASSAGE + (
+    " FROM knowledge.chunks c WHERE c.doc_id = %(doc)s AND c.kb_id = %(kb)s"
+    " AND c.ordinal BETWEEN %(ordinal)s - %(n)s AND %(ordinal)s + %(n)s"
+    " AND c.chunk_id <> %(chunk)s ORDER BY c.ordinal"
+)
+_SCOPE = "SELECT set_config('neuron.kb_ids', %s, true)"
 # Hidden from every read path at once; the purge job, queued in the same transaction, removes it.
 _TOMBSTONE_DOCUMENT = (
     "UPDATE knowledge.documents d SET deleted_at = now(), status = 'deleting', updated_at = now()"
@@ -376,6 +403,42 @@ class KnowledgeBases:
         if row is None:
             raise KnowledgeDocumentNotFoundError("knowledge document not found")
         return KnowledgeDocument(**row)
+
+    async def chunk(
+        self, owner_key: str, doc_id: uuid.UUID, chunk_id: uuid.UUID, *, neighbours: int = 0
+    ) -> KnowledgeChunk:
+        """A chunk of a ready document of a readable base, with up to `neighbours` chunks on
+        each side; access is checked on every call, and any other id is `404`."""
+        async with self._transaction() as conn:
+            kbs = await self._readable(conn, owner_key)
+            await conn.execute(_SCOPE, (",".join(map(str, kbs)),))
+            params = {"kbs": kbs, "owner": owner_key, "doc": doc_id, "chunk": chunk_id}
+            row = await (await conn.execute(_CHUNK, params)).fetchone()
+            if row is None:
+                raise KnowledgeDocumentNotFoundError("knowledge chunk not found")
+            nearby: list[dict[str, Any]] = []
+            if neighbours:
+                params.update(kb=row["kb_id"], ordinal=row["ordinal"], n=neighbours)
+                nearby = await (await conn.execute(_NEIGHBOURS, params)).fetchall()
+        self._audit("knowledge_chunk_read", owner_key, _READ, doc_id, resource="knowledge_document")
+        return KnowledgeChunk(**row, neighbours=[ChunkPassage(**n) for n in nearby])
+
+    async def file(self, owner_key: str, doc_id: uuid.UUID) -> tuple[str, str, bytes]:
+        """A readable document's title, stored media type and original bytes; any other id is
+        `404`. The bytes are checked against the SHA-256 recorded at upload."""
+        async with self._transaction() as conn:
+            kbs = await self._readable(conn, owner_key)
+            row = await (
+                await conn.execute(_FILE, {"kbs": kbs, "owner": owner_key, "doc": doc_id})
+            ).fetchone()
+        if row is None:
+            raise KnowledgeDocumentNotFoundError("knowledge document not found")
+        assert self._blobs is not None  # nosec B101 - wired with knowledge on
+        data = await self._blobs().get(row["blob_key"], row["sha256"])
+        self._audit(
+            "knowledge_document_downloaded", owner_key, _READ, doc_id, resource="knowledge_document"
+        )
+        return row["title"], row["mime_type"], data
 
     async def delete_document(self, owner_key: str, doc_id: uuid.UUID) -> None:
         """Tombstone a document of a writable base and queue its purge; a second delete finds
