@@ -20,7 +20,7 @@ orders by the indexed expression with bitmap scans and sorts priced out.
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Collection, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -179,9 +179,16 @@ class Retriever:
             raise PersistenceError("knowledge search failed") from exc
 
     async def search(
-        self, owner_key: str, query: str, *, k: int, mode: SearchMode | None = None
+        self,
+        owner_key: str,
+        query: str,
+        *,
+        k: int,
+        kb_ids: Collection[uuid.UUID] | None = None,
+        mode: SearchMode | None = None,
     ) -> SearchResult:
-        """The `k` best passages for `query` in the caller's readable bases.
+        """The `k` best passages for `query` in the caller's readable bases, or only those of
+        them in `kb_ids`: any other id there is ignored, as an unknown one is.
 
         Callers validate input first; out-of-range values are a programming error here.
         """
@@ -193,7 +200,7 @@ class Retriever:
             # The query is embedded before the search transaction, so no connection is held
             # during the provider call; the bases are read again inside it.
             async with self._transaction() as conn:
-                bases = await self._bases(conn, owner_key)
+                bases = await self._bases(conn, owner_key, kb_ids)
             if self._dense_bases(bases):
                 try:
                     values = await self._embeddings.embed_query(query)
@@ -205,7 +212,7 @@ class Retriever:
                 else:
                     vector = "[" + ",".join(repr(float(value)) for value in values) + "]"
         async with self._transaction() as conn:
-            bases = await self._bases(conn, owner_key)
+            bases = await self._bases(conn, owner_key, kb_ids)
             await conn.execute(_SCOPE, (",".join(str(row["kb_id"]) for row in bases),))
             rankings: list[list[uuid.UUID]] = []
             path: Literal["exact", "hnsw", "none"] = "none"
@@ -230,12 +237,17 @@ class Retriever:
         return SearchResult(passages, path)
 
     @staticmethod
-    async def _bases(conn: psycopg.AsyncConnection[Any], owner_key: str) -> list[dict[str, Any]]:
+    async def _bases(
+        conn: psycopg.AsyncConnection[Any],
+        owner_key: str,
+        kb_ids: Collection[uuid.UUID] | None,
+    ) -> list[dict[str, Any]]:
         allowed = await KnowledgeAuthorization.allowed_kbs(
             conn, AuthorizationContext(frozenset(), owner_key=owner_key)
         )
+        kbs = allowed.read if kb_ids is None else allowed.read & set(kb_ids)
         cursor = await conn.execute(
-            _BASES, {"kbs": [*allowed.read], "owner": owner_key, "profile": KNOWLEDGE_PROFILE_ID}
+            _BASES, {"kbs": [*kbs], "owner": owner_key, "profile": KNOWLEDGE_PROFILE_ID}
         )
         return list(await cursor.fetchall())
 

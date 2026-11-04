@@ -24,6 +24,8 @@ from tests.conftest import JwtApi, bearer
 from neuron_agent.api import main as api_main
 from neuron_agent.knowledge.authorization import KnowledgeAuthorization
 from neuron_agent.knowledge.blobs import LocalBlobStore
+from neuron_agent.knowledge.providers import EmbeddingProvider, FakeEmbeddings
+from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.security.authorization import AuthorizationContext
 
@@ -72,6 +74,12 @@ async def api(
         "knowledge",
         KnowledgeBases(settings, lambda: connections, lambda: blobs),  # type: ignore[arg-type,return-value]
     )
+    fake = FakeEmbeddings(1024)
+    provider = EmbeddingProvider(
+        fake, fake, dimensions=1024, locality="self_hosted", batch_size=8, max_retries=0
+    )
+    search = Retriever(settings, lambda: connections, provider)  # type: ignore[arg-type,return-value]
+    monkeypatch.setattr(api_main, "retriever", lambda: search)
     return built, role_db
 
 
@@ -100,6 +108,7 @@ def _requests(
         ("POST", "/v1/knowledge/bases", {"name": "probe"}),
         ("GET", f"/v1/knowledge/bases/{kb_id}/documents", None),
         ("POST", f"/v1/knowledge/bases/{kb_id}/documents", None),
+        ("POST", "/v1/knowledge/search", {"query": "secret plans", "kb_ids": [kb_id]}),
         ("GET", f"/v1/knowledge/documents/{doc_id}", None),
         ("GET", f"/v1/knowledge/documents/{doc_id}/chunks/{chunk_id}", None),
         ("GET", f"/v1/knowledge/documents/{doc_id}/file", None),
