@@ -65,16 +65,16 @@ async def test_the_ingest_task_parses_its_argument() -> None:
 async def test_an_unexpected_error_on_the_last_attempt_fails_the_document() -> None:
     doc = uuid.uuid4()
     ingestor = _Ingestor(RuntimeError("a row of chunk text"))
-    task = _task(ingestor)
+    task, first, doc_id = _task(ingestor), _context(0), str(doc)
     with pytest.raises(worker.IngestError) as caught:
-        await task(_context(0), str(doc))
+        await task(first, doc_id)
     # The queue logs what the job raised: the class name, never the message or its cause.
     assert (str(caught.value), caught.value.__cause__) == ("RuntimeError", None)
     assert caught.value.__suppress_context__
     assert ingestor.failed == []  # retried, so the document stays in progress
     last = _context(worker.MAX_ATTEMPTS - 1)
     with pytest.raises(worker.IngestError):
-        await task(last, str(doc))
+        await task(last, doc_id)
     assert ingestor.failed == [(doc, "ingest_failed")]
 
 
