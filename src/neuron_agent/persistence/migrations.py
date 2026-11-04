@@ -573,6 +573,16 @@ CREATE POLICY kb_scope ON knowledge.embeddings
         ),
         feature="knowledge",
     ),
+    # Serves the per-user quota sums at upload (RAG-02.05).
+    Migration(
+        version=26,
+        name="documents_uploader_idx",
+        sql="CREATE INDEX CONCURRENTLY IF NOT EXISTS documents_uploader_idx"
+        " ON knowledge.documents (uploaded_by)",
+        concurrent=True,
+        index="knowledge.documents_uploader_idx",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"

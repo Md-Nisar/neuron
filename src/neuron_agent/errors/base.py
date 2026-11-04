@@ -131,6 +131,12 @@ class UploadBusyError(AppError):
     context = ErrorContext(code="upload_busy", http_status=429, retryable=True)
 
 
+class IngestionConcurrencyError(AppError):
+    """The caller has `APP_KNOWLEDGE_MAX_INGESTING_PER_USER` documents still being ingested."""
+
+    context = ErrorContext(code="ingestion_concurrency_exceeded", http_status=429, retryable=True)
+
+
 class KnowledgeBaseLimitError(AppError):
     """The caller has as many knowledge bases as the operator allows."""
 

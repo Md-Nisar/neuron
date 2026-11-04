@@ -45,6 +45,7 @@ from neuron_agent.errors.base import (
     AppError,
     AuthenticationError,
     ConcurrentRunsExceededError,
+    IngestionConcurrencyError,
     PersistenceError,
     QuotaExceededError,
     ShuttingDownError,
@@ -1164,6 +1165,9 @@ def _retry_headers(exc: AppError) -> dict[str, str] | None:
     if isinstance(exc, ConcurrentRunsExceededError | ShuttingDownError | UploadBusyError):
         # Shutting down: a retry goes to another instance once the platform routes there.
         return {"Retry-After": "1"}
+    if isinstance(exc, IngestionConcurrencyError):
+        # A document takes seconds to minutes to ingest; polling sooner only adds load.
+        return {"Retry-After": "30"}
     return None
 
 
