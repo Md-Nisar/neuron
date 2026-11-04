@@ -45,7 +45,7 @@ def test_a_token_without_the_routes_permission_is_refused(
         ("POST", "/v1/knowledge/bases", {"name": "kb", "processing": "anywhere"}),
         ("POST", "/v1/knowledge/bases", {"name": "   "}),
         ("POST", "/v1/knowledge/bases", {"name": "x" * 81}),
-        ("POST", "/v1/knowledge/bases", {"name": "a‮b"}),
+        ("POST", "/v1/knowledge/bases", {"name": "a" + chr(0x202E) + "b"}),
         ("POST", "/v1/knowledge/bases", {}),
         ("PATCH", _KB, {"name": "kb", "processing": "hosted"}),
         ("PATCH", "/v1/knowledge/bases/not-a-uuid", {"name": "kb"}),

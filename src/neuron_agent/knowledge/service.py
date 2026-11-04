@@ -36,6 +36,8 @@ from neuron_agent.security.authorization import AuthorizationContext
 
 log = structlog.get_logger(__name__)
 
+_READ, _WRITE = "knowledge:read", "knowledge:write"
+
 _LIST = (
     "SELECT kb_id, name, processing, created_at FROM knowledge.bases"
     " WHERE kb_id = ANY(%s) AND owner_key = %s AND deleted_at IS NULL ORDER BY created_at, kb_id"
@@ -90,7 +92,7 @@ class KnowledgeBases:
             # `allowed_kbs` as the filter, and rename and delete must check `allowed.write`.
             cursor = await conn.execute(_LIST, (list(allowed.read), owner_key))
             bases = [KnowledgeBase(**row) for row in await cursor.fetchall()]
-        self._audit("knowledge_bases_read", owner_key, "knowledge:read", count=len(bases))
+        self._audit("knowledge_bases_read", owner_key, _READ, count=len(bases))
         return bases
 
     async def create(self, owner_key: str, name: str, processing: str) -> KnowledgeBase:
@@ -111,7 +113,7 @@ class KnowledgeBases:
             assert created is not None  # nosec B101
             await conn.execute(_OWNER_GRANT, (created["kb_id"], owner_key, owner_key))
         base = KnowledgeBase(**created)
-        self._audit("knowledge_base_created", owner_key, "knowledge:write", base.kb_id)
+        self._audit("knowledge_base_created", owner_key, _WRITE, base.kb_id)
         return base
 
     async def rename(self, owner_key: str, kb_id: uuid.UUID, name: str) -> KnowledgeBase:
@@ -120,7 +122,7 @@ class KnowledgeBases:
             row = await cursor.fetchone()
         if row is None:
             raise KnowledgeBaseNotFoundError("knowledge base not found")
-        self._audit("knowledge_base_renamed", owner_key, "knowledge:write", kb_id)
+        self._audit("knowledge_base_renamed", owner_key, _WRITE, kb_id)
         return KnowledgeBase(**row)
 
     async def delete(self, owner_key: str, kb_id: uuid.UUID) -> None:
@@ -130,7 +132,7 @@ class KnowledgeBases:
             if await cursor.fetchone() is None:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
             await jobs.defer(conn, jobs.Task.PURGE_KNOWLEDGE_BASE, kb_id=kb_id)
-        self._audit("knowledge_base_deleted", owner_key, "knowledge:write", kb_id)
+        self._audit("knowledge_base_deleted", owner_key, _WRITE, kb_id)
 
     def _audit(
         self,

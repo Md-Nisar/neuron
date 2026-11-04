@@ -102,7 +102,8 @@ async def test_another_users_base_is_the_same_404_as_an_unknown_id(
         _requests(base["kb_id"]), _requests(str(uuid.uuid4())), strict=True
     ):
         response = client.client.request(method, path, json=body, headers=bearer(mallory))
-        assert "secret plans" not in response.text and base["kb_id"] not in response.text
+        assert "secret plans" not in response.text
+        assert base["kb_id"] not in response.text
         if unknown == path:
             assert response.status_code in {200, 201}, (method, path)  # mallory's own scope
             continue
