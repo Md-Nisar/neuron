@@ -213,6 +213,9 @@ class Settings(BaseSettings):
     # Knowledge bases one user may have (RAG-03.01; ADR 0014 requirement 7). Tombstoned ones
     # do not count.
     knowledge_max_bases_per_user: int = Field(default=20, ge=1, le=1_000)
+    # Uploads one API process reads at once (RAG-03.02): each holds up to
+    # APP_KNOWLEDGE_PARSE_MAX_BYTES in memory while its type is checked. More are `429`.
+    knowledge_upload_concurrency: int = Field(default=4, ge=1, le=64)
     # docling-serve for PDF and Office files (RAG-02.02): its base URL, reachable only from the
     # worker; a total deadline per file; and a cap on its JSON reply.
     # No credentials in the URL: docling-serve is reached only over the internal network.

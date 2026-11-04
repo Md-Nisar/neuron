@@ -22,6 +22,7 @@ _KB = f"/v1/knowledge/bases/{uuid.uuid4()}"
         ("PATCH", _KB, {"name": "kb"}, "knowledge:write"),
         ("DELETE", _KB, None, "knowledge:write"),
         ("GET", f"{_KB}/documents", None, "knowledge:read"),
+        ("POST", f"{_KB}/documents", None, "knowledge:write"),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None, "knowledge:read"),
     ],
 )
@@ -95,7 +96,38 @@ def test_with_knowledge_off_every_route_is_404(
         ("PATCH", _KB, {"name": "kb"}),
         ("DELETE", _KB, None),
         ("GET", f"{_KB}/documents", None),
+        ("POST", f"{_KB}/documents", None),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None),
     ]:
         response = jwt_api.client.request(method, path, json=body, headers=bearer(token))
         assert (response.status_code, response.json()) == (404, {"detail": "knowledge_disabled"})
+
+
+@pytest.mark.parametrize("key", ["", "has space", "x" * 201, "tab\there"])
+def test_an_invalid_idempotency_key_is_422(
+    jwt_api: JwtApi, make_token: Callable[..., str], key: str
+) -> None:
+    token = make_token("alice", scopes="knowledge:write")
+    response = jwt_api.client.post(
+        f"{_KB}/documents",
+        files={"file": ("a.txt", b"text", "text/plain")},
+        headers={**bearer(token), "Idempotency-Key": key},
+    )
+    assert response.status_code == 422, response.text
+
+
+def test_only_the_upload_route_takes_a_large_body(
+    jwt_api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    token = make_token("alice", scopes="knowledge:write")
+    big = b"x" * (jwt_api.settings.max_request_body_bytes + 1)
+    for path in ("/v1/knowledge/bases", f"{_KB}/documents/extra", f"{_KB}"):
+        response = jwt_api.client.post(path, content=big, headers=bearer(token))
+        assert response.status_code == 413, path
+    # Knowledge is off here, so the upload is refused, after the body limit let it through.
+    response = jwt_api.client.post(
+        f"{_KB}/documents",
+        content=big,
+        headers={**bearer(token), "Content-Type": "multipart/form-data; boundary=x"},
+    )
+    assert (response.status_code, response.json()) == (404, {"detail": "knowledge_disabled"})

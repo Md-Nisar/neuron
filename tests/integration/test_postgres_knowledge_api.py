@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -22,12 +23,15 @@ from tests.conftest import JwtApi, bearer
 
 from neuron_agent.api import main as api_main
 from neuron_agent.knowledge.authorization import KnowledgeAuthorization
+from neuron_agent.knowledge.blobs import LocalBlobStore
 from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.security.authorization import AuthorizationContext
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
 _SCOPES = "knowledge:read knowledge:write"
+_PDF = b"%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n"
+_MAX_BYTES = 4_096
 
 
 class _Connections:
@@ -49,15 +53,39 @@ async def api(
     role_db: RoleDatabase,  # noqa: F811
     jwt_api_factory: Callable[..., JwtApi],
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> tuple[JwtApi, RoleDatabase]:
     await _knowledge_db(role_db)
     built = jwt_api_factory()
     settings = built.settings.model_copy(
-        update={"knowledge_enabled": True, "knowledge_max_bases_per_user": 3}
+        update={
+            "knowledge_enabled": True,
+            "knowledge_max_bases_per_user": 3,
+            "knowledge_parse_max_bytes": _MAX_BYTES,
+        }
     )
     connections = _Connections(role_db.app_dsn)
-    monkeypatch.setattr(api_main, "knowledge", KnowledgeBases(settings, lambda: connections))  # type: ignore[arg-type,return-value]
+    blobs = LocalBlobStore(tmp_path / "blobs")
+    monkeypatch.setattr(api_main, "settings", settings)
+    monkeypatch.setattr(
+        api_main,
+        "knowledge",
+        KnowledgeBases(settings, lambda: connections, lambda: blobs),  # type: ignore[arg-type,return-value]
+    )
     return built, role_db
+
+
+def _blobs(tmp_path: Path) -> list[Path]:
+    return sorted(path for path in (tmp_path / "blobs").rglob("*") if path.is_file())
+
+
+def _send(
+    api: JwtApi, method: str, path: str, body: dict[str, Any] | None, headers: dict[str, str]
+) -> Any:
+    if method == "POST" and path.endswith("/documents"):
+        files = {"file": ("r.pdf", _PDF, "application/pdf")}
+        return api.client.post(path, files=files, headers=headers)
+    return api.client.request(method, path, json=body, headers=headers)
 
 
 def _requests(kb_id: str, doc_id: str = "{doc_id}") -> list[tuple[str, str, dict[str, Any] | None]]:
@@ -69,6 +97,7 @@ def _requests(kb_id: str, doc_id: str = "{doc_id}") -> list[tuple[str, str, dict
         ("GET", "/v1/knowledge/bases", None),
         ("POST", "/v1/knowledge/bases", {"name": "probe"}),
         ("GET", f"/v1/knowledge/bases/{kb_id}/documents", None),
+        ("POST", f"/v1/knowledge/bases/{kb_id}/documents", None),
         ("GET", f"/v1/knowledge/documents/{doc_id}", None),
         ("PATCH", f"/v1/knowledge/bases/{kb_id}", {"name": "taken over"}),
         ("DELETE", f"/v1/knowledge/bases/{kb_id}", None),
@@ -121,16 +150,14 @@ async def test_another_users_base_is_the_same_404_as_an_unknown_id(
     for (method, path, body), (_, unknown, unknown_body) in zip(
         _requests(base["kb_id"], doc), _requests(str(uuid.uuid4()), str(uuid.uuid4())), strict=True
     ):
-        response = client.client.request(method, path, json=body, headers=bearer(mallory))
+        response = _send(client, method, path, body, bearer(mallory))
         assert "secret plans" not in response.text
         assert "tax return" not in response.text
         assert base["kb_id"] not in response.text
         if unknown == path:
             assert response.status_code in {200, 201}, (method, path)  # mallory's own scope
             continue
-        baseline = client.client.request(
-            method, unknown, json=unknown_body, headers=bearer(mallory)
-        )
+        baseline = _send(client, method, unknown, unknown_body, bearer(mallory))
         assert response.status_code == baseline.status_code == 404, (method, path)
         detail = (
             "knowledge_document_not_found" if "/documents/" in path else "knowledge_base_not_found"
@@ -248,3 +275,130 @@ async def test_the_owner_sees_live_documents_and_their_status(
     after = client.client.get(f"/v1/knowledge/documents/{docs[0]}", headers=bearer(alice))
     assert after.status_code == 404
     assert client.client.get(listing, headers=bearer(alice)).status_code == 404
+
+
+def _upload(
+    api: JwtApi,
+    token: str,
+    kb_id: str,
+    data: bytes = _PDF,
+    content_type: str = "application/pdf",
+    **headers: str,
+) -> Any:
+    return api.client.post(
+        f"/v1/knowledge/bases/{kb_id}/documents",
+        files={"file": ("report.pdf", data, content_type)},
+        headers={**bearer(token), **headers},
+    )
+
+
+async def test_a_pdf_upload_is_queued_with_its_job(
+    api: tuple[JwtApi, RoleDatabase], make_token: Callable[..., str], tmp_path: Path
+) -> None:
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    response = _upload(client, alice, base["kb_id"])
+    assert response.status_code == 202, response.text
+    accepted = response.json()
+    doc = accepted["doc_id"]
+    assert accepted == {
+        "doc_id": doc,
+        "kb_id": base["kb_id"],
+        "status": "queued",
+        "status_url": f"/v1/knowledge/documents/{doc}",
+    }
+    status = client.client.get(accepted["status_url"], headers=bearer(alice)).json()
+    assert (status["title"], status["mime_type"], status["size_bytes"], status["status"]) == (
+        "report.pdf",
+        "application/pdf",
+        len(_PDF),
+        "queued",
+    )
+    assert await _jobs(db) == [("ingest_document", {"doc_id": doc})]
+    (blob,) = _blobs(tmp_path)
+    assert blob.read_bytes() == _PDF
+    assert "report" not in str(blob)  # no file name in the key
+
+
+async def test_a_repeated_idempotency_key_returns_the_first_document_and_stores_nothing(
+    api: tuple[JwtApi, RoleDatabase], make_token: Callable[..., str], tmp_path: Path
+) -> None:
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base, other = _create(client, alice), _create(client, alice, "Other")
+    key = {"Idempotency-Key": "upload-1"}
+    first = _upload(client, alice, base["kb_id"], **key)
+    again = _upload(client, alice, base["kb_id"], _PDF + b"different", **key)
+    assert again.status_code == 202
+    assert again.json() == first.json()
+    assert len(_blobs(tmp_path)) == 1
+    assert len(await _jobs(db)) == 1
+    elsewhere = _upload(client, alice, other["kb_id"], **key)
+    assert (elsewhere.status_code, elsewhere.json()) == (409, {"detail": "idempotency_key_reused"})
+    # The same content again, without a key: the base's existing document.
+    assert _upload(client, alice, base["kb_id"]).json() == first.json()
+    assert len(_blobs(tmp_path)) == 1
+
+
+_HTML = b"<!DOCTYPE html><html><script>alert(1)</script>"
+
+
+@pytest.mark.parametrize(
+    ("data", "content_type", "status", "detail"),
+    [
+        (_HTML, "application/pdf", 415, "unsupported_media_type"),
+        (b"\x89PNG\r\n\x1a\n", "image/png", 415, "unsupported_media_type"),
+        (b"%PDF-1.7\n" + b"x" * _MAX_BYTES, "application/pdf", 413, "file_too_large"),
+        (b"", "application/pdf", 422, "empty_file"),
+    ],
+    ids=["html-claiming-pdf", "image", "over-the-cap", "empty"],
+)
+async def test_a_refused_file_stores_nothing(
+    api: tuple[JwtApi, RoleDatabase],
+    make_token: Callable[..., str],
+    tmp_path: Path,
+    data: bytes,
+    content_type: str,
+    status: int,
+    detail: str,
+) -> None:
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    response = _upload(client, alice, base["kb_id"], data, content_type)
+    assert (response.status_code, response.json()) == (status, {"detail": detail})
+    assert _blobs(tmp_path) == []
+    assert await _rows(db.migrator_dsn, "SELECT count(*) FROM knowledge.documents") == [(0,)]
+    assert await _jobs(db) == []
+
+
+async def test_a_body_declared_over_the_cap_is_413_before_it_is_read(
+    api: tuple[JwtApi, RoleDatabase], make_token: Callable[..., str], tmp_path: Path
+) -> None:
+    client, _ = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    response = client.client.post(
+        f"/v1/knowledge/bases/{base['kb_id']}/documents",
+        content=b"x" * (api_main.upload_body_limit() + 1),
+        headers={**bearer(alice), "Content-Type": "multipart/form-data; boundary=x"},
+    )
+    assert (response.status_code, response.json()) == (413, {"detail": "payload_too_large"})
+    assert _blobs(tmp_path) == []
+
+
+async def test_a_body_that_does_not_arrive_in_time_frees_its_slot(
+    api: tuple[JwtApi, RoleDatabase],
+    make_token: Callable[..., str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    monkeypatch.setattr(api_main, "_UPLOAD_READ_SECONDS", 0)
+    response = _upload(client, alice, base["kb_id"])
+    assert (response.status_code, response.json()) == (408, {"detail": "upload_timeout"})
+    assert api_main._upload_slots.in_flight == 0
+    assert _blobs(tmp_path) == []

@@ -6,12 +6,14 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import hashlib
 import hmac
 import importlib
 import ipaddress
 import json
 import math
+import re
 import secrets
 import signal
 import sys
@@ -37,6 +39,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from uvicorn.supervisors import ChangeReload
 
 from neuron_agent.agents.factory import build_registry
+from neuron_agent.api.multipart import read_upload
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import (
     AppError,
@@ -45,7 +48,10 @@ from neuron_agent.errors.base import (
     PersistenceError,
     QuotaExceededError,
     ShuttingDownError,
+    UploadBusyError,
+    UploadRefusedError,
 )
+from neuron_agent.knowledge.blobs import build_blob_store
 from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
@@ -79,12 +85,14 @@ from neuron_agent.schemas.agent import (
     UserThreadsResponse,
 )
 from neuron_agent.schemas.knowledge import (
+    DocumentAccepted,
     KnowledgeBase,
     KnowledgeBaseCreate,
     KnowledgeBasesResponse,
     KnowledgeBaseUpdate,
     KnowledgeDocument,
     KnowledgeDocumentsResponse,
+    document_title,
 )
 from neuron_agent.security.auth import (
     Principal,
@@ -109,7 +117,9 @@ configure_langsmith(settings)
 telemetry = configure_telemetry(settings)
 persistence = build_persistence(settings)
 service = AgentService(settings, persistence=persistence)
-knowledge = KnowledgeBases(settings, lambda: persistence.pool)
+knowledge = KnowledgeBases(
+    settings, lambda: persistence.pool, functools.cache(lambda: build_blob_store(settings))
+)
 auth_verifier = get_shared_token_verifier(settings)
 
 
@@ -199,6 +209,37 @@ class _CleanupEventSourceResponse(EventSourceResponse):
                 await self._on_close()
 
 
+_UPLOAD_PATH = re.compile(r"/v1/knowledge/bases/[^/]+/documents")
+# Multipart framing and the title field, on top of the file's own cap.
+_UPLOAD_OVERHEAD_BYTES = 65_536
+# 50 MB at about 1.4 Mbit/s; a body still arriving after this frees its upload slot.
+_UPLOAD_READ_SECONDS = 300
+
+
+def upload_body_limit() -> int:
+    return settings.knowledge_parse_max_bytes + _UPLOAD_OVERHEAD_BYTES
+
+
+class _UploadSlots:
+    """Uploads this process is reading; each holds its file in memory while it is checked."""
+
+    def __init__(self) -> None:
+        self.in_flight = 0
+
+    @contextmanager
+    def take(self) -> Iterator[None]:
+        if self.in_flight >= settings.knowledge_upload_concurrency:
+            raise UploadBusyError("too many uploads in progress")
+        self.in_flight += 1
+        try:
+            yield
+        finally:
+            self.in_flight -= 1
+
+
+_upload_slots = _UploadSlots()
+
+
 class _RequestBodyLimitMiddleware:
     """Enforce `APP_MAX_REQUEST_BODY_BYTES` on the bytes received, not on `Content-Length`.
 
@@ -216,7 +257,11 @@ class _RequestBodyLimitMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        limit = settings.max_request_body_bytes
+        upload = (
+            scope.get("method") == "POST"
+            and _UPLOAD_PATH.fullmatch(scope.get("path", "")) is not None
+        )
+        limit = upload_body_limit() if upload else settings.max_request_body_bytes
         declared_size: int | None = None
         for name, value in scope["headers"]:
             if name == b"content-length":
@@ -230,6 +275,10 @@ class _RequestBodyLimitMiddleware:
         if declared_size is not None and declared_size > limit:
             logger.warning("agent_request_body_too_large", content_length=declared_size)
             await self._reject(scope, receive, send, 413, "payload_too_large")
+            return
+        if upload:
+            # Not buffered: the upload route counts the stream itself (`read_upload`).
+            await self.app(scope, receive, send)
             return
         body = bytearray()
         first: Message | None = None
@@ -980,6 +1029,76 @@ async def delete_knowledge_base(
     return Response(status_code=202)
 
 
+_IdempotencyKey = Header(
+    default=None, alias="Idempotency-Key", min_length=1, max_length=200, pattern=r"^[\x21-\x7e]+$"
+)
+
+
+@app.post(
+    "/v1/knowledge/bases/{kb_id}/documents",
+    response_model=DocumentAccepted,
+    status_code=202,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["file"],
+                        "properties": {
+                            "file": {"type": "string", "format": "binary"},
+                            "title": {"type": "string", "maxLength": 300},
+                        },
+                    }
+                }
+            },
+        }
+    },
+)
+async def upload_knowledge_document(
+    kb_id: uuid.UUID,
+    request: Request,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:write"))] = None,
+    idempotency_key: str | None = _IdempotencyKey,
+    user_id: str | None = _UserIdHeader,
+) -> DocumentAccepted:
+    """Upload a file to one of the caller's knowledge bases and queue its ingestion; `202`.
+
+    The content decides the type; a refused file stores nothing. A repeated `Idempotency-Key`
+    returns the first document without reading the body; the base's copy of the same content
+    is returned instead of a second one.
+    """
+    try:
+        owner_key = _knowledge_owner(principal, user_id)
+        if (replay := await knowledge.check_upload(owner_key, kb_id, idempotency_key)) is not None:
+            return replay
+        with _upload_slots.take():
+            # A slow body would hold the slot: the whole body must arrive within the deadline.
+            with anyio.move_on_after(_UPLOAD_READ_SECONDS) as deadline:
+                upload = await read_upload(
+                    request,
+                    max_file_bytes=settings.knowledge_parse_max_bytes,
+                    max_body_bytes=upload_body_limit(),
+                )
+            if deadline.cancelled_caught:
+                raise UploadRefusedError("upload_timeout", 408)
+            try:
+                title = document_title(upload.title, upload.filename)
+            except ValueError:
+                raise UploadRefusedError("upload_invalid", 422) from None
+            return await knowledge.upload(
+                owner_key,
+                kb_id,
+                data=upload.data,
+                claimed_type=upload.content_type,
+                title=title,
+                idempotency_key=idempotency_key,
+            )
+    except AppError as exc:
+        raise _http_error("knowledge_document_upload_failed", exc) from exc
+
+
 @app.get("/v1/knowledge/bases/{kb_id}/documents", response_model=KnowledgeDocumentsResponse)
 async def list_knowledge_documents(
     kb_id: uuid.UUID,
@@ -1042,7 +1161,7 @@ def _http_error(event: str, exc: AppError) -> HTTPException:
 def _retry_headers(exc: AppError) -> dict[str, str] | None:
     if isinstance(exc, QuotaExceededError):
         return {"Retry-After": str(exc.retry_after_seconds)}
-    if isinstance(exc, ConcurrentRunsExceededError | ShuttingDownError):
+    if isinstance(exc, ConcurrentRunsExceededError | ShuttingDownError | UploadBusyError):
         # Shutting down: a retry goes to another instance once the platform routes there.
         return {"Retry-After": "1"}
     return None

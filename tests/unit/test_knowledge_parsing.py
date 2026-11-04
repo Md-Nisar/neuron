@@ -21,6 +21,7 @@ from neuron_agent.knowledge.parsing import (
     Limits,
     ParseError,
     PlainTextParser,
+    accepted_type,
     check_input,
     parse_document,
     validate_output,
@@ -303,3 +304,42 @@ def test_limits_come_from_settings() -> None:
     assert limits.max_pages == 5
     assert limits.max_bytes == 50_000_000
     assert parsing.SUPPORTED >= {PDF, DOCX, TEXT, MARKDOWN}
+
+
+@pytest.mark.parametrize(
+    ("data", "claimed", "expected"),
+    [
+        (b"%PDF-1.7\n%%EOF", TEXT, PDF),  # the content decides
+        (b"%PDF-1.7\n%%EOF", "application/octet-stream", PDF),
+        (_zip(_DOCX), "", DOCX),  # the Office type is found in the content
+        (_zip(_DOCX), XLSX, DOCX),
+        (b"<div align=center>logo</div>\n# Title\n", MARKDOWN, MARKDOWN),  # Markdown holds HTML
+        (b"plain notes", "", TEXT),
+        (b"a < b <p", TEXT, TEXT),
+    ],
+)
+def test_an_uploads_type_comes_from_its_content(data: bytes, claimed: str, expected: str) -> None:
+    assert accepted_type(data, claimed, _LIMITS) == expected
+
+
+@pytest.mark.parametrize(
+    ("data", "claimed", "code"),
+    [
+        (b"<!DOCTYPE html><html><script>x</script>", PDF, "unsupported_media_type"),
+        (b"\xef\xbb\xbf \n<HTML>", TEXT, "unsupported_media_type"),
+        (b" " * 5_000 + b"<html>", TEXT, "unsupported_media_type"),  # past the first 1,024 bytes
+        (b"<script\tsrc=x>", TEXT, "unsupported_media_type"),  # any whitespace ends the name
+        (b"<svg/onload=x>", TEXT, "unsupported_media_type"),
+        (b"<p\nclass=x>", TEXT, "unsupported_media_type"),
+        (b"<!DOCTYPE\thtml>", TEXT, "unsupported_media_type"),
+        (b"<svg onload=x>", "image/svg+xml", "unsupported_media_type"),
+        (b"<?xml version='1.0'?><a/>", TEXT, "unsupported_media_type"),
+        (b"\x89PNG\r\n\x1a\n", "image/png", "unsupported_media_type"),
+        (_zip({"a.txt": b"x"}), DOCX, "archive_refused"),
+        (b"", TEXT, "empty_file"),
+    ],
+)
+def test_an_upload_of_another_type_is_refused(data: bytes, claimed: str, code: str) -> None:
+    with pytest.raises(ParseError) as caught:
+        accepted_type(data, claimed, _LIMITS)
+    assert caught.value.code == code

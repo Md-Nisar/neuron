@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 import uuid
 from datetime import datetime
 from typing import Literal
@@ -77,6 +78,34 @@ class KnowledgeDocumentsResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class DocumentAccepted(BaseModel):
+    """`202` for an upload: a new document, the first one of a repeated `Idempotency-Key`, or
+    the base's existing copy of the same content. Poll `status_url` for its status."""
+
+    doc_id: uuid.UUID
+    kb_id: uuid.UUID
+    status: DocumentStatus
+    status_url: str
+
+
+TITLE_MAX = 300
+
+
+def document_title(title: str | None, filename: str | None) -> str:
+    """A given title, else the file name without its folders, else a default. Raises ValueError
+    for a given title that is not plain text of 1 to 300 characters."""
+    if title is not None:
+        if any(unicodedata.category(c)[0] == "C" for c in title if c not in "\t\n\r"):
+            raise ValueError("title contains control or invisible characters")
+        text = " ".join(title.split())
+        if not 1 <= len(text) <= TITLE_MAX:
+            raise ValueError(f"title must be 1 to {TITLE_MAX} characters")
+        return text
+    name = (filename or "").replace("\\", "/").rsplit("/", 1)[-1]
+    name = "".join(c for c in name if unicodedata.category(c)[0] != "C")
+    return " ".join(name.split())[:TITLE_MAX] or "Untitled document"
 
 
 class KnowledgeBasesResponse(BaseModel):
