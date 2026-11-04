@@ -328,6 +328,10 @@ def test_an_uploads_type_comes_from_its_content(data: bytes, claimed: str, expec
         (b"<!DOCTYPE html><html><script>x</script>", PDF, "unsupported_media_type"),
         (b"\xef\xbb\xbf \n<HTML>", TEXT, "unsupported_media_type"),
         (b" " * 5_000 + b"<html>", TEXT, "unsupported_media_type"),  # past the first 1,024 bytes
+        (b"<script\tsrc=x>", TEXT, "unsupported_media_type"),  # any whitespace ends the name
+        (b"<svg/onload=x>", TEXT, "unsupported_media_type"),
+        (b"<p\nclass=x>", TEXT, "unsupported_media_type"),
+        (b"<!DOCTYPE\thtml>", TEXT, "unsupported_media_type"),
         (b"<svg onload=x>", "image/svg+xml", "unsupported_media_type"),
         (b"<?xml version='1.0'?><a/>", TEXT, "unsupported_media_type"),
         (b"\x89PNG\r\n\x1a\n", "image/png", "unsupported_media_type"),

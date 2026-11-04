@@ -167,8 +167,8 @@ _OOXML = (DOCX, XLSX, PPTX)
 # WHATWG MIME sniffing's HTML and XML signatures (mimesniff 7.1), checked on text: a page that
 # claims to be a PDF or plain text is refused at upload.
 _MARKUP = re.compile(
-    rb"\A(?:<\?xml|<!--|<!doctype html|<(?:html|head|script|iframe"
-    rb"|h1|div|font|table|a|style|title|b|body|br|p|svg)[ >])",
+    rb"\A(?:<\?xml|<!--|<!doctype\s+html|<(?:html|head|script|iframe"
+    rb"|h1|div|font|table|a|style|title|b|body|br|p|svg)[\s/>])",
     re.IGNORECASE,
 )
 
