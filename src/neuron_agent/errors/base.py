@@ -111,6 +111,26 @@ class KnowledgeDocumentNotFoundError(AppError):
     context = ErrorContext(code="knowledge_document_not_found", http_status=404)
 
 
+class IdempotencyKeyReusedError(AppError):
+    """The caller already used this `Idempotency-Key` for another base or a deleted document."""
+
+    context = ErrorContext(code="idempotency_key_reused", http_status=409)
+
+
+class UploadRefusedError(AppError):
+    """An upload refused before anything is stored, with its stable code and HTTP status."""
+
+    def __init__(self, code: str, http_status: int) -> None:
+        super().__init__(code)
+        self.context = ErrorContext(code=code, http_status=http_status)
+
+
+class UploadBusyError(AppError):
+    """This process is reading as many uploads as `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` allows."""
+
+    context = ErrorContext(code="upload_busy", http_status=429, retryable=True)
+
+
 class KnowledgeBaseLimitError(AppError):
     """The caller has as many knowledge bases as the operator allows."""
 

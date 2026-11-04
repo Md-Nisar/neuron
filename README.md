@@ -216,7 +216,7 @@ A tool whose definition later differs from its pin, or that is not in the file, 
 
 ## Knowledge files (in development, v1.1.0)
 
-With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases; documents cannot be uploaded yet (ADR 0014, `docs/product/RAG_IMPLEMENTATION_TRACKER.md`):
+With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases and upload documents to them; the worker then ingests each one (ADR 0014, `docs/product/RAG_IMPLEMENTATION_TRACKER.md`):
 
 | Route | Does |
 | --- | --- |
@@ -224,10 +224,19 @@ With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases; d
 | `POST /v1/knowledge/bases` | `{"name": "...", "processing": "hosted"}` (`processing` optional, or `self_hosted`); `201`. At most `APP_KNOWLEDGE_MAX_BASES_PER_USER` (20), then `409 knowledge_base_limit_reached` |
 | `PATCH /v1/knowledge/bases/{kb_id}` | `{"name": "..."}`: rename |
 | `DELETE /v1/knowledge/bases/{kb_id}` | `202`: the base disappears at once and a purge job is queued (the purge itself is RAG-03.03) |
+| `POST /v1/knowledge/bases/{kb_id}/documents` | Upload: `multipart/form-data` with one `file` part and an optional `title` field (else the file name); optional `Idempotency-Key` header (1–200 printable ASCII characters). `202` with `doc_id`, `kb_id`, `status` (`queued`) and `status_url` |
 | `GET /v1/knowledge/bases/{kb_id}/documents?limit&offset` | A page of the base's documents, oldest first, with `total`: `doc_id`, `kb_id`, `title`, `mime_type`, `size_bytes`, `page_count`, `status`, `error_code`, `created_at`, `updated_at` |
 | `GET /v1/knowledge/documents/{doc_id}` | One document: the same fields. `status` is the stage, below |
 
 A name is 1 to 80 characters without control characters; unknown fields are `422`. Another user's base, a deleted one and an unknown id are all `404 knowledge_base_not_found` (`knowledge_document_not_found` for a document, also when its base is deleted). Titles are user text: clients show them as text. With knowledge off every route is `404 knowledge_disabled`.
+
+Upload rules:
+
+- The file's **content** decides its type; the type the client sends only chooses between Markdown and plain text. Anything else, HTML or XML among them (except inside Markdown), is `415 unsupported_media_type`; a mislabelled, encrypted, macro-enabled or non-Office archive file gets the matching code below with `415`. An empty file is `422 empty_file`.
+- A file over `APP_KNOWLEDGE_PARSE_MAX_BYTES` (50 MB) is `413 file_too_large`, and a body declared over that plus 64 KiB is `413 payload_too_large` before it is read. A refused file stores nothing.
+- The same `Idempotency-Key` again returns the first document without reading the body (`409 idempotency_key_reused` if that key was used for another base or a deleted document). The same content again in the same base returns the existing document.
+- Each API process reads at most `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` (4) uploads at once, since each is held in memory while its type is checked; more get `429 upload_busy` with `Retry-After`, and a body that has not fully arrived after 300 seconds is `408 upload_timeout`. Per-user quotas come with RAG-02.05.
+- The file name is used only as the default title; it never reaches a storage key or a log line.
 
 These are the file types the parser accepts:
 

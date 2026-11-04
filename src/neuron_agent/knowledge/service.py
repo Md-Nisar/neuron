@@ -11,28 +11,35 @@ the same transaction, removes its documents, chunks and files (RAG-03.03).
 
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import uuid
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 
+import anyio
 import psycopg
 import structlog
 from psycopg_pool import AsyncConnectionPool
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
+    IdempotencyKeyReusedError,
     KnowledgeBaseLimitError,
     KnowledgeBaseNotFoundError,
     KnowledgeDisabledError,
     KnowledgeDocumentNotFoundError,
     PersistenceError,
+    UploadRefusedError,
 )
 from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge.authorization import KnowledgeAuthorization
+from neuron_agent.knowledge.blobs import BlobStore
+from neuron_agent.knowledge.parsing import Limits, ParseError, accepted_type
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
-from neuron_agent.schemas.knowledge import KnowledgeBase, KnowledgeDocument
+from neuron_agent.schemas.knowledge import DocumentAccepted, KnowledgeBase, KnowledgeDocument
 from neuron_agent.security.authorization import AuthorizationContext
 
 log = structlog.get_logger(__name__)
@@ -81,13 +88,59 @@ _DOCUMENTS = (
 )
 _DOCUMENT_COUNT = "SELECT count(*) AS n" + _DOCUMENT_FILTER + " AND d.kb_id = %(kb)s"
 
+_LIVE_BASE = (
+    "SELECT kb_id FROM knowledge.bases WHERE kb_id = %s AND owner_key = %s AND deleted_at IS NULL"
+)
+# An `Idempotency-Key` is the caller's, across bases (the index is per uploader): a replay is
+# honoured only for the same base while the document and base are live.
+_BY_KEY = (
+    "SELECT d.doc_id, d.kb_id, d.status, d.kb_id = %(kb)s AND d.deleted_at IS NULL"
+    " AND b.deleted_at IS NULL AND b.owner_key = %(owner)s AS replayable"
+    " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " WHERE d.uploaded_by = %(owner)s AND d.idempotency_key = %(key)s"
+)
+_BY_SHA = (
+    "SELECT d.doc_id, d.kb_id, d.status"
+    " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " WHERE d.kb_id = %(kb)s AND d.sha256 = %(sha)s AND d.deleted_at IS NULL"
+    " AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+)
+# Into a live base of the caller's only. A concurrent upload of the same content or key loses on
+# the unique indexes and returns the winner's document.
+_INSERT_DOCUMENT = (
+    "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type, size_bytes,"
+    " sha256, blob_key, idempotency_key, status)"
+    " SELECT %(doc)s, kb_id, %(owner)s, %(title)s, %(mime)s, %(size)s, %(sha)s, %(blob)s,"
+    " %(key)s, 'queued' FROM knowledge.bases"
+    " WHERE kb_id = %(kb)s AND owner_key = %(owner)s AND deleted_at IS NULL"
+    " ON CONFLICT DO NOTHING RETURNING doc_id"
+)
+_UPLOAD_STATUS = {"file_too_large": 413, "empty_file": 422}
+
+
+def _accepted(row: dict[str, Any]) -> DocumentAccepted:
+    return DocumentAccepted(
+        doc_id=row["doc_id"],
+        kb_id=row["kb_id"],
+        status=row["status"],
+        status_url=f"/v1/knowledge/documents/{row['doc_id']}",
+    )
+
+
+async def _once(data: bytes) -> AsyncIterator[bytes]:
+    yield data
+
 
 class KnowledgeBases:
     def __init__(
-        self, settings: Settings, pool: Callable[[], AsyncConnectionPool[Any] | None]
+        self,
+        settings: Settings,
+        pool: Callable[[], AsyncConnectionPool[Any] | None],
+        blobs: Callable[[], BlobStore] | None = None,
     ) -> None:
         self._settings = settings
         self._pool = pool
+        self._blobs = blobs
 
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
@@ -154,6 +207,100 @@ class KnowledgeBases:
             await jobs.defer(conn, jobs.Task.PURGE_KNOWLEDGE_BASE, kb_id=kb_id)
         self._audit("knowledge_base_deleted", owner_key, _WRITE, kb_id)
 
+    async def check_upload(
+        self, owner_key: str, kb_id: uuid.UUID, idempotency_key: str | None
+    ) -> DocumentAccepted | None:
+        """Before the body is read: the first document of a repeated `Idempotency-Key`, or None
+        when the upload may go ahead. `404` unless the base is the caller's and live."""
+        async with self._transaction() as conn:
+            if idempotency_key is not None:
+                cursor = await conn.execute(
+                    _BY_KEY, {"kb": kb_id, "owner": owner_key, "key": idempotency_key}
+                )
+                if (row := await cursor.fetchone()) is not None:
+                    if not row["replayable"]:
+                        raise IdempotencyKeyReusedError("idempotency key reused")
+                    return _accepted(row)
+            cursor = await conn.execute(_LIVE_BASE, (kb_id, owner_key))
+            if await cursor.fetchone() is None:
+                raise KnowledgeBaseNotFoundError("knowledge base not found")
+        return None
+
+    async def upload(
+        self,
+        owner_key: str,
+        kb_id: uuid.UUID,
+        *,
+        data: bytes,
+        claimed_type: str,
+        title: str,
+        idempotency_key: str | None,
+    ) -> DocumentAccepted:
+        """Check the file, store it and queue its ingestion, or return the base's existing copy.
+
+        A refused file stores nothing. The document row and its job commit together; if they do
+        not, the stored file is deleted.
+        """
+        limits = Limits.from_settings(self._settings)
+        try:
+            media_type = await anyio.to_thread.run_sync(accepted_type, data, claimed_type, limits)
+        except ParseError as exc:
+            raise UploadRefusedError(exc.code, _UPLOAD_STATUS.get(exc.code, 415)) from None
+        sha256 = hashlib.sha256(data).hexdigest()
+        if (
+            existing := await self._existing(owner_key, kb_id, sha256, idempotency_key)
+        ) is not None:
+            return existing
+        assert self._blobs is not None  # nosec B101 - wired with knowledge on
+        blobs = self._blobs()
+        blob = await blobs.put(_once(data), max_bytes=limits.max_bytes)
+        doc_id, queued = uuid.uuid4(), False
+        try:
+            async with self._transaction() as conn:
+                cursor = await conn.execute(
+                    _INSERT_DOCUMENT,
+                    {
+                        "doc": doc_id,
+                        "owner": owner_key,
+                        "title": title,
+                        "mime": media_type,
+                        "size": blob.size,
+                        "sha": blob.sha256,
+                        "blob": blob.key,
+                        "key": idempotency_key,
+                        "kb": kb_id,
+                    },
+                )
+                if await cursor.fetchone() is not None:
+                    await jobs.defer(conn, jobs.Task.INGEST_DOCUMENT, doc_id=doc_id)
+                    queued = True
+        finally:
+            if not queued:
+                # Also when the request is cancelled: an orphan blob, never a lost error.
+                with anyio.CancelScope(shield=True), contextlib.suppress(Exception):
+                    await blobs.delete(blob.key)
+        if not queued:
+            # Lost a race on the same content or key, or the base was deleted meanwhile.
+            log.info("knowledge_upload_not_inserted", kb_id=str(kb_id))
+            existing = await self._existing(owner_key, kb_id, sha256, idempotency_key)
+            if existing is None:
+                raise KnowledgeBaseNotFoundError("knowledge base not found")
+            return existing
+        self._audit(
+            "knowledge_document_uploaded", owner_key, _WRITE, doc_id, resource="knowledge_document"
+        )
+        return _accepted({"doc_id": doc_id, "kb_id": kb_id, "status": "queued"})
+
+    async def _existing(
+        self, owner_key: str, kb_id: uuid.UUID, sha256: str, idempotency_key: str | None
+    ) -> DocumentAccepted | None:
+        if (replay := await self.check_upload(owner_key, kb_id, idempotency_key)) is not None:
+            return replay
+        async with self._transaction() as conn:
+            cursor = await conn.execute(_BY_SHA, {"kb": kb_id, "sha": sha256, "owner": owner_key})
+            row = await cursor.fetchone()
+        return _accepted(row) if row is not None else None
+
     async def documents(
         self, owner_key: str, kb_id: uuid.UUID, *, limit: int, offset: int
     ) -> tuple[Sequence[KnowledgeDocument], int]:
@@ -195,6 +342,7 @@ class KnowledgeBases:
         kb_id: uuid.UUID | None = None,
         *,
         count: int | None = None,
+        resource: str = "knowledge_base",
     ) -> None:
         audit(
             event,
@@ -202,7 +350,7 @@ class KnowledgeBases:
             actor=owner_key[:12] if self._settings.auth_mode == "jwt" else None,
             issuer_id=self._settings.auth_issuer_id,
             action=action,
-            resource_type="knowledge_base",
+            resource_type=resource,
             resource_id=str(kb_id) if kb_id else None,
             count=count,
         )

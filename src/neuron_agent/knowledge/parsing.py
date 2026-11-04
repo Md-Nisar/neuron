@@ -162,6 +162,41 @@ def sniff(data: bytes) -> str | None:
     return TEXT
 
 
+_OOXML = (DOCX, XLSX, PPTX)
+# WHATWG MIME sniffing's HTML and XML signatures (mimesniff 7.1), checked on text: a page that
+# claims to be a PDF or plain text is refused at upload.
+_MARKUP = re.compile(
+    rb"\A(?:<\?xml|<!--|<!doctype html|<(?:html|head|script|iframe"
+    rb"|h1|div|font|table|a|style|title|b|body|br|p|svg)[ >])",
+    re.IGNORECASE,
+)
+
+
+def accepted_type(data: bytes, claimed: str, limits: Limits) -> str:
+    """The media type an upload is stored as: the content decides, the claim only picks among
+    types the content allows (Markdown or text; which Office type). Raises `ParseError`."""
+    sniffed = sniff(data)
+    if sniffed == PDF:
+        candidates: tuple[str, ...] = (PDF,)
+    elif sniffed == "application/zip":
+        candidates = (
+            (claimed, *(t for t in _OOXML if t != claimed)) if claimed in _OOXML else _OOXML
+        )
+    elif sniffed == TEXT and claimed == MARKDOWN:
+        candidates = (MARKDOWN,)  # Markdown may hold HTML
+    elif sniffed == TEXT and not _MARKUP.match(data.removeprefix(b"\xef\xbb\xbf").lstrip()[:1024]):
+        candidates = (TEXT,)
+    else:
+        raise ParseError("empty_file" if not data else "unsupported_media_type")
+    for candidate in candidates:
+        try:
+            return check_input(data, candidate, limits)
+        except ParseError as exc:
+            if exc.code != "media_type_mismatch":
+                raise
+    raise ParseError("unsupported_media_type")
+
+
 def check_input(data: bytes, declared: str, limits: Limits) -> str:
     """Return the media type to parse as, or raise `ParseError` before any parser runs."""
     if not data:
