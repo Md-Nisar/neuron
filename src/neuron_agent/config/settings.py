@@ -210,6 +210,13 @@ class Settings(BaseSettings):
     knowledge_parse_max_page_chars: int = Field(default=50_000, ge=1_000, le=200_000)
     # Chunk size in estimated tokens (RAG-02.04): 400 is about the spike's 1,200 characters.
     knowledge_chunk_max_tokens: int = Field(default=400, ge=50, le=8_000)
+    # Search (RAG-04.01). Dense candidates come from an exact scan while the readable bases hold
+    # at most this many embeddings, else from HNSW; the spike's measured default (RAG-00.02).
+    knowledge_exact_scan_max_chunks: int = Field(default=10_000, ge=0, le=10_000_000)
+    # Dense candidates below this cosine similarity are dropped; with no full-text match either,
+    # the search is `no_relevant_results`.
+    knowledge_search_min_similarity: float = Field(default=0.0, ge=-1.0, le=1.0)
+    knowledge_search_mode: Literal["hybrid", "dense", "fts"] = "hybrid"
     # Knowledge bases one user may have (RAG-03.01; ADR 0014 requirement 7). Tombstoned ones
     # do not count.
     knowledge_max_bases_per_user: int = Field(default=20, ge=1, le=1_000)
