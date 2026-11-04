@@ -95,7 +95,10 @@ def test_the_parser_has_no_route_out() -> None:
     assert _COMPOSE["networks"]["parser"] == {"internal": True}
     assert "ports" not in docling
     assert "@sha256:" in docling["image"]
-    assert docling["environment"]["DOCLING_SERVE_ENABLE_REMOTE_SERVICES"] == "false"
+    for flag in ("ENABLE_REMOTE_SERVICES", "ALLOW_EXTERNAL_PLUGINS"):
+        assert docling["environment"][f"DOCLING_SERVE_{flag}"] == "false", flag
+    assert not {"network_mode", "extra_hosts", "expose"} & set(docling)
+    assert (docling["read_only"], docling["cap_drop"]) == (True, ["ALL"])
     # Only the worker shares the parser's network, and it reaches docling-serve by name.
     others = [
         name for name, service in _SERVICES.items() if "parser" in service.get("networks", [])
@@ -103,3 +106,4 @@ def test_the_parser_has_no_route_out() -> None:
     assert sorted(others) == ["docling", "worker"]
     assert worker["environment"]["APP_KNOWLEDGE_PARSER_URL"] == "http://docling:5001"
     assert worker["depends_on"]["docling"]["condition"] == "service_healthy"
+    assert not {"ports", "expose"} & set(worker)  # nothing for a compromised parser to call

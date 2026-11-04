@@ -7,8 +7,10 @@ Opt-in, excluded from `make test` by the `integration` marker. The image is the 
     APP_TEST_DOCLING_URL=http://127.0.0.1:5001 uv run python -m pytest -m integration \\
         tests/integration/test_docling_serve.py
 
-The parse test downloads `nist-cswp-29` from its source and checks its SHA-256. The egress test
-needs Docker and the image, and runs the parser on the reference stack's `parser` network.
+The parse test downloads `nist-cswp-29` from its source and checks its SHA-256; the container
+above has network access, so give it only this public file. The egress test needs Docker and the
+image, and runs the parser on the reference stack's `parser` network in its own compose project,
+so a running reference stack is left alone.
 """
 
 from __future__ import annotations
@@ -96,7 +98,7 @@ def test_the_parser_cannot_connect_out() -> None:
         "try:\n    socket.create_connection(('1.1.1.1', 443), timeout=5)\n"
         "except OSError:\n    print('blocked')"
     )
-    compose = ["compose", "-f", str(_COMPOSE), "--profile", "knowledge"]
+    compose = ["compose", "-p", "neuron-egress-test", "-f", str(_COMPOSE), "--profile", "knowledge"]
     try:
         result = _docker(
             *compose, "run", "--rm", "--no-deps", "--entrypoint", "python", "docling", "-c", probe
