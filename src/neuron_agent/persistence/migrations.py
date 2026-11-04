@@ -583,6 +583,15 @@ CREATE POLICY kb_scope ON knowledge.embeddings
         index="knowledge.documents_uploader_idx",
         feature="knowledge",
     ),
+    # Estimated embedding tokens spent on a document, added up over its ingestions (ADR 0014
+    # K8 as amended by RAG-02.05): a durable record per uploader, not the windowed chat ledger.
+    Migration(
+        version=27,
+        name="documents_embedding_tokens",
+        sql="ALTER TABLE knowledge.documents"
+        " ADD COLUMN IF NOT EXISTS embedding_tokens bigint NOT NULL DEFAULT 0",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"
@@ -632,7 +641,14 @@ _SERIAL_TABLES = frozenset(
         "procrastinate_periodic_defers",
     }
 )
-_WORKER_DOCUMENT_COLUMNS = ("status", "error_code", "parser_version", "page_count", "updated_at")
+_WORKER_DOCUMENT_COLUMNS = (
+    "status",
+    "error_code",
+    "parser_version",
+    "page_count",
+    "embedding_tokens",
+    "updated_at",
+)
 # Recorded in `index_profiles.chunker`: `knowledge/chunking.py`, which follows the parsed
 # document's headings with its own token split (the E02 decision on #408, ADR 0014 amended by
 # RAG-02.04). A different chunker means a new profile and a re-index.
@@ -832,11 +848,15 @@ async def _resolve_worker_role(
 
 
 def knowledge_grant_statements(
-    roles: dict[str, str], present: Collection[str] | None = None
+    roles: dict[str, str],
+    present: Collection[str] | None = None,
+    document_columns: Collection[str] | None = None,
 ) -> list[sql.Composed]:
     """Exact rights on the knowledge tables for each runtime role (`{"app": name, ...}`).
 
-    REVOKE ALL first, so a right granted by hand is taken back on the next setup.
+    REVOKE ALL first, so a right granted by hand is taken back on the next setup. Column grants
+    name only `document_columns` when given: a grant runs after each migration, before a later
+    one adds its column.
     """
     schema = sql.Identifier(KNOWLEDGE_SCHEMA)
     statements: list[sql.Composed] = []
@@ -845,12 +865,16 @@ def knowledge_grant_statements(
         statements.append(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, role))
         for table, privileges in _KNOWLEDGE_PRIVILEGES[kind].items():
             if present is None or table in present:
-                statements.extend(_table_grants(kind, table, privileges, role))
+                statements.extend(_table_grants(kind, table, privileges, role, document_columns))
     return statements
 
 
 def _table_grants(
-    kind: str, table: str, privileges: frozenset[str], role: sql.Identifier
+    kind: str,
+    table: str,
+    privileges: frozenset[str],
+    role: sql.Identifier,
+    document_columns: Collection[str] | None = None,
 ) -> list[sql.Composed]:
     """One knowledge table's grants for one role, its id sequence's and its column grants."""
     target = sql.Identifier(KNOWLEDGE_SCHEMA, table)
@@ -867,9 +891,14 @@ def _table_grants(
         if "INSERT" in privileges:
             statements.append(sql.SQL("GRANT USAGE ON SEQUENCE {} TO {}").format(sequence, role))
     if kind == "worker" and table == "documents":
+        columns = [
+            column
+            for column in _WORKER_DOCUMENT_COLUMNS
+            if document_columns is None or column in document_columns
+        ]
         statements.append(
             sql.SQL("GRANT UPDATE ({}) ON {} TO {}").format(
-                sql.SQL(", ").join(map(sql.Identifier, _WORKER_DOCUMENT_COLUMNS)), target, role
+                sql.SQL(", ").join(map(sql.Identifier, columns)), target, role
             )
         )
     return statements
@@ -959,11 +988,17 @@ async def _grant(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRol
             (KNOWLEDGE_SCHEMA,),
         )
         knowledge = {str(row["name"]) for row in await cursor.fetchall()}
+        cursor = await conn.execute(
+            "SELECT attname::text AS name FROM pg_attribute"
+            " WHERE attrelid = to_regclass('knowledge.documents') AND attnum > 0"
+            " AND NOT attisdropped"
+        )
+        columns = {str(row["name"]) for row in await cursor.fetchall()}
         runtime = {"app": role.name} | ({"worker": role.worker} if role.worker else {})
         statements = [
             *default_privilege_statements(role.migrator, role.schema, role.name),
             *table_grant_statements(role.schema, role.name, present),
-            *(knowledge_grant_statements(runtime, knowledge) if knowledge else []),
+            *(knowledge_grant_statements(runtime, knowledge, columns) if knowledge else []),
         ]
         for statement in statements:
             await conn.execute(statement)
