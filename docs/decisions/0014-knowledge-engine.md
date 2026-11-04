@@ -336,6 +336,18 @@ recorded with versions and dates in the RAG-00.04 PR.
   docling-core's `HierarchicalChunker` with Neuron's own token split, which drops all 10. Other
   transitive packages released before 2026 are small, stable libraries (`six`, `defusedxml`,
   `python-dateutil`, `colorama`, `jsonref`, `mdurl`, `shellingham`).
+  **Amended by RAG-02.04 (2026-11-04):** the owner chose the fallback (#408), and it is Neuron's
+  own chunker (`knowledge/chunking.py`, profile `chunker` `neuron-headings-v1`) rather than
+  docling-core's `HierarchicalChunker`. The parsers already return one normalised
+  `ParsedDocument`, which keeps the headings, levels and pages the chunker needs; the
+  `DoclingDocument` is not kept, and plain text and Markdown never had one, so
+  `HierarchicalChunker` would need docling-core, the raw Docling JSON and a second path for text.
+  The chunker closes a chunk at each heading, records the heading path on every chunk, fills a
+  chunk with the blocks under one heading up to `APP_KNOWLEDGE_CHUNK_MAX_TOKENS` (400), and
+  splits a longer block at lines, then spaces, then characters. Tokens are estimated as one per
+  three UTF-8 bytes, above what embedding tokenizers count for Latin-script text (about four bytes a token; a CJK character, three bytes, can be more than one token, which the 400 default leaves room for below the model's context), because the worker
+  has no tokenizer file and no egress (`tiktoken` would download one). No new dependency, so the
+  `worker` extra and build target still wait for a worker-only package.
 
 | Image | Pin (multi-arch index digest) | Notes |
 | --- | --- | --- |

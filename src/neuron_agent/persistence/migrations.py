@@ -623,9 +623,10 @@ _SERIAL_TABLES = frozenset(
     }
 )
 _WORKER_DOCUMENT_COLUMNS = ("status", "error_code", "parser_version", "page_count", "updated_at")
-# Recorded in `index_profiles.chunker` (the E02 decision on #408: Docling's hierarchical
-# chunker with Neuron's own token split).
-CHUNKER = "docling-hierarchical"
+# Recorded in `index_profiles.chunker`: `knowledge/chunking.py`, which follows the parsed
+# document's headings with its own token split (the E02 decision on #408, ADR 0014 amended by
+# RAG-02.04). A different chunker means a new profile and a re-index.
+CHUNKER = "neuron-headings-v1"
 KNOWLEDGE_PROFILE_ID = 1
 
 
