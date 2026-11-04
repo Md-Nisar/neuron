@@ -37,6 +37,7 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 TEXT = "text/plain"
 MARKDOWN = "text/markdown"
+_ZIP = "application/zip"
 SUPPORTED = frozenset({PDF, DOCX, XLSX, PPTX, TEXT, MARKDOWN})
 # The main part's content type: exactly the non-macro, non-template document for each format.
 _OOXML_MAIN = {kind: f'ContentType="{kind}.main+xml"'.encode() for kind in (DOCX, XLSX, PPTX)}
@@ -152,7 +153,7 @@ def sniff(data: bytes) -> str | None:
     if data.startswith(b"%PDF-"):
         return PDF
     if data.startswith(b"PK\x03\x04"):
-        return "application/zip"
+        return _ZIP
     if b"\x00" in data:
         return None
     try:
@@ -175,26 +176,26 @@ _MARKUP = re.compile(
 def accepted_type(data: bytes, claimed: str, limits: Limits) -> str:
     """The media type an upload is stored as: the content decides, the claim only picks among
     types the content allows (Markdown or text; which Office type). Raises `ParseError`."""
-    sniffed = sniff(data)
-    if sniffed == PDF:
-        candidates: tuple[str, ...] = (PDF,)
-    elif sniffed == "application/zip":
-        candidates = (
-            (claimed, *(t for t in _OOXML if t != claimed)) if claimed in _OOXML else _OOXML
-        )
-    elif sniffed == TEXT and claimed == MARKDOWN:
-        candidates = (MARKDOWN,)  # Markdown may hold HTML
-    elif sniffed == TEXT and not _MARKUP.match(data.removeprefix(b"\xef\xbb\xbf").lstrip()[:1024]):
-        candidates = (TEXT,)
-    else:
-        raise ParseError("empty_file" if not data else "unsupported_media_type")
-    for candidate in candidates:
+    for candidate in _candidates(data, claimed):
         try:
             return check_input(data, candidate, limits)
         except ParseError as exc:
             if exc.code != "media_type_mismatch":
                 raise
     raise ParseError("unsupported_media_type")
+
+
+def _candidates(data: bytes, claimed: str) -> tuple[str, ...]:
+    sniffed = sniff(data)
+    if sniffed == PDF:
+        return (PDF,)
+    if sniffed == _ZIP:
+        return (claimed, *(t for t in _OOXML if t != claimed)) if claimed in _OOXML else _OOXML
+    if sniffed == TEXT and claimed == MARKDOWN:
+        return (MARKDOWN,)  # Markdown may hold HTML
+    if sniffed == TEXT and not _MARKUP.match(data.removeprefix(b"\xef\xbb\xbf").lstrip()[:1024]):
+        return (TEXT,)
+    raise ParseError("empty_file" if not data else "unsupported_media_type")
 
 
 def check_input(data: bytes, declared: str, limits: Limits) -> str:
@@ -215,7 +216,7 @@ def check_input(data: bytes, declared: str, limits: Limits) -> str:
         if _ENCRYPT.search(data):
             raise ParseError("encrypted_pdf")
         return PDF
-    if sniffed == "application/zip":
+    if sniffed == _ZIP:
         _check_office_zip(data, declared, limits)
         return declared
     if sniffed == TEXT and declared in {TEXT, MARKDOWN}:

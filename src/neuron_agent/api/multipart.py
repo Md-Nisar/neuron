@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from python_multipart.multipart import MultipartParser, parse_options_header
+from python_multipart.multipart import MultipartCallbacks, MultipartParser, parse_options_header
 from starlette.requests import Request
 
 from neuron_agent.errors.base import UploadRefusedError as UploadError
@@ -37,28 +37,37 @@ class Upload:
     title: str | None
 
 
-async def read_upload(request: Request, *, max_file_bytes: int, max_body_bytes: int) -> Upload:
-    """The form's file and title, or `UploadError`: 413 past `max_file_bytes` of file or
-    `max_body_bytes` of body, 415 when the body is not multipart, 422 for any other form."""
-    kind, options = parse_options_header(request.headers.get("content-type"))
-    boundary = options.get(b"boundary")
-    if kind != b"multipart/form-data" or not boundary:
-        raise UploadError("multipart_required", 415)
-    parts: list[_Part] = []
-    header = [bytearray(), bytearray()]
+class _Collector:
+    """python-multipart's callbacks: the parts, each capped as it arrives."""
 
-    def begin() -> None:
-        if len(parts) == _MAX_PARTS:
+    def __init__(self, max_file_bytes: int) -> None:
+        self.parts: list[_Part] = []
+        self._max_file_bytes = max_file_bytes
+        self._field = bytearray()
+        self._value = bytearray()
+
+    def callbacks(self) -> MultipartCallbacks:
+        return {
+            "on_part_begin": self._begin,
+            "on_header_field": lambda d, s, e: self._field.extend(d[s:e]),
+            "on_header_value": lambda d, s, e: self._value.extend(d[s:e]),
+            "on_header_end": self._header_end,
+            "on_headers_finished": self._headers_done,
+            "on_part_data": self._data,
+        }
+
+    def _begin(self) -> None:
+        if len(self.parts) == _MAX_PARTS:
             raise UploadError("upload_invalid", 422)
-        parts.append(_Part())
+        self.parts.append(_Part())
 
-    def header_end() -> None:
-        parts[-1].headers[bytes(header[0]).lower()] = bytes(header[1])
-        header[0].clear()
-        header[1].clear()
+    def _header_end(self) -> None:
+        self.parts[-1].headers[bytes(self._field).lower()] = bytes(self._value)
+        self._field.clear()
+        self._value.clear()
 
-    def headers_done() -> None:
-        part = parts[-1]
+    def _headers_done(self) -> None:
+        part = self.parts[-1]
         disposition, params = parse_options_header(part.headers.get(b"content-disposition"))
         if disposition != b"form-data":
             raise UploadError("upload_invalid", 422)
@@ -66,25 +75,24 @@ async def read_upload(request: Request, *, max_file_bytes: int, max_body_bytes: 
         if b"filename" in params:
             part.filename = params[b"filename"].decode("utf-8", "replace")
 
-    def data(chunk: bytes, start: int, end: int) -> None:
-        part = parts[-1]
+    def _data(self, chunk: bytes, start: int, end: int) -> None:
+        part = self.parts[-1]
         part.data += chunk[start:end]
-        if part.name == b"file" and len(part.data) > max_file_bytes:
+        if part.name == b"file" and len(part.data) > self._max_file_bytes:
             raise UploadError("file_too_large", 413)
         if part.name != b"file" and len(part.data) > _MAX_TITLE_BYTES:
             raise UploadError("upload_invalid", 422)
 
-    parser = MultipartParser(
-        boundary,
-        {
-            "on_part_begin": begin,
-            "on_header_field": lambda d, s, e: header[0].extend(d[s:e]),
-            "on_header_value": lambda d, s, e: header[1].extend(d[s:e]),
-            "on_header_end": header_end,
-            "on_headers_finished": headers_done,
-            "on_part_data": data,
-        },
-    )
+
+async def read_upload(request: Request, *, max_file_bytes: int, max_body_bytes: int) -> Upload:
+    """The form's file and title, or `UploadError`: 413 past `max_file_bytes` of file or
+    `max_body_bytes` of body, 415 when the body is not multipart, 422 for any other form."""
+    kind, options = parse_options_header(request.headers.get("content-type"))
+    boundary = options.get(b"boundary")
+    if kind != b"multipart/form-data" or not boundary:
+        raise UploadError("multipart_required", 415)
+    collector = _Collector(max_file_bytes)
+    parser = MultipartParser(boundary, collector.callbacks())
     received = 0
     try:
         async for chunk in request.stream():
@@ -97,7 +105,7 @@ async def read_upload(request: Request, *, max_file_bytes: int, max_body_bytes: 
         raise
     except Exception:  # noqa: BLE001 - any malformed body is the same refusal
         raise UploadError("upload_invalid", 422) from None
-    return _form(parts)
+    return _form(collector.parts)
 
 
 def _form(parts: list[_Part]) -> Upload:
