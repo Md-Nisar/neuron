@@ -230,6 +230,36 @@ async def test_an_excerpt_needs_a_cite_id_from_this_run(monkeypatch: pytest.Monk
     assert chunk_calls[1][3] == _CHUNKS[2]
 
 
+async def test_an_eleventh_excerpt_in_one_run_gets_the_limit_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    excerpts = [_call("get_document_excerpt", cite_id="cite-1", window=0) for _ in range(11)]
+    model = _model(
+        monkeypatch, _call("search_knowledge", query="q"), *excerpts, AIMessage(content="done")
+    )
+
+    await _run(model, max_agent_iterations=25)
+
+    _, *done, eleventh = _results(model)
+    assert [m.status for m in done] == ["success"] * 10
+    assert (eleventh.status, eleventh.content) == ("error", knowledge_tools._TOO_MANY)
+
+
+async def test_the_model_never_sees_document_or_chunk_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="q"),
+        _call("get_document_excerpt", cite_id="cite-1", window=1),
+        AIMessage(content="done"),
+    )
+
+    await _run(model)
+
+    sent = [m.model_dump(exclude={"artifact"}) for m in model.seen[-1]]
+    assert all(str(i) not in repr(sent) for i in (_DOC, *_CHUNKS))
+    assert str(_CHUNKS[0]) in repr([m.artifact for m in _results(model)])  # positive control
+
+
 async def test_a_cite_id_does_not_outlive_its_run(monkeypatch: pytest.MonkeyPatch) -> None:
     """Thread history keeps answers, not tool results: an id from an earlier run is unknown."""
     model = _model(
