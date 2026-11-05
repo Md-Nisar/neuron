@@ -166,8 +166,12 @@ async def test_after_a_search_an_outbound_tool_needs_approval(
 async def test_a_token_without_the_tool_scope_is_refused(
     monkeypatch: pytest.MonkeyPatch, name: str
 ) -> None:
-    args = {"search_knowledge": {"query": "q"}, "get_document_excerpt": {"cite_id": "x"}}
-    model = _model(monkeypatch, _call(name, **args.get(name, {})), AIMessage(content="done"))
+    args = {
+        "list_knowledge_bases": {},
+        "search_knowledge": {"query": "q"},
+        "get_document_excerpt": {"cite_id": "x"},
+    }
+    model = _model(monkeypatch, _call(name, **args[name]), AIMessage(content="done"))
 
     with structlog.testing.capture_logs() as logs:
         await _run(model, scopes=_SCOPES - {f"tools:{name}"})
@@ -294,20 +298,24 @@ async def test_list_knowledge_bases_frames_user_named_bases(
 
 
 @pytest.mark.parametrize(
-    "args",
+    ("name", "args"),
     [
-        {"query": ""},
-        {"query": "   "},
-        {"query": "q" * 501},
-        {"query": "q", "limit": 11},
-        {"query": "q", "kb_ids": ["not-a-uuid"]},
-        {"query": "q", "kb_ids": [str(uuid.uuid4()) for _ in range(11)]},
+        ("search_knowledge", {"query": ""}),
+        ("search_knowledge", {"query": "   "}),
+        ("search_knowledge", {"query": "q" * 501}),
+        ("search_knowledge", {"query": "q", "limit": 11}),
+        ("search_knowledge", {"query": "q", "kb_ids": ["not-a-uuid"]}),
+        ("search_knowledge", {"query": "q", "kb_ids": [str(uuid.uuid4()) for _ in range(11)]}),
+        ("get_document_excerpt", {"cite_id": ""}),
+        ("get_document_excerpt", {"cite_id": "x" * 65}),
+        ("get_document_excerpt", {"cite_id": "x", "window": -1}),
+        ("get_document_excerpt", {"cite_id": "x", "window": 3}),
     ],
 )
 async def test_invalid_arguments_get_one_fixed_error(
-    monkeypatch: pytest.MonkeyPatch, args: dict[str, Any]
+    monkeypatch: pytest.MonkeyPatch, name: str, args: dict[str, Any]
 ) -> None:
-    model = _model(monkeypatch, _call("search_knowledge", **args), AIMessage(content="done"))
+    model = _model(monkeypatch, _call(name, **args), AIMessage(content="done"))
 
     await _run(model)
 
@@ -335,6 +343,31 @@ async def test_a_failed_search_or_a_run_without_an_owner_gets_a_fixed_error(
     assert failed.content == ownerless.content == knowledge_tools._UNAVAILABLE
     assert "search failed" not in str(failed.content)
     assert len(_calls) == 1
+
+
+@pytest.mark.parametrize("owner", [_OWNER, None])
+async def test_a_failed_read_or_a_run_without_an_owner_gets_a_fixed_error_from_every_tool(
+    monkeypatch: pytest.MonkeyPatch, owner: str | None
+) -> None:
+    async def down(*_: Any, **__: Any) -> Any:
+        raise PersistenceError("knowledge persistence failed")
+
+    monkeypatch.setattr(_Bases, "list", down)
+    monkeypatch.setattr(_Bases, "chunk", down)
+    model = _model(
+        monkeypatch,
+        _call("list_knowledge_bases"),
+        _call("search_knowledge", query="q"),
+        _call("get_document_excerpt", cite_id="cite-1"),
+        AIMessage(content="done"),
+    )
+
+    await _run(model, owner=owner)
+
+    listed, searched, excerpt = _results(model)
+    assert listed.content == excerpt.content == knowledge_tools._UNAVAILABLE
+    assert (searched.status == "success") is (owner is not None)
+    assert "persistence failed" not in repr(_results(model))
 
 
 async def test_a_slow_search_is_cut_off_by_the_tool_timeout(
