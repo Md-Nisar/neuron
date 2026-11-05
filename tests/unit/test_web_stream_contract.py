@@ -54,7 +54,8 @@ def test_the_final_payload_with_citations_is_what_the_server_sends() -> None:
     response = AgentResponse.model_validate(payload)
 
     assert response.model_dump(mode="json") == payload
-    assert response.citations and response.grounded is True
+    assert response.citations
+    assert response.grounded is True
     assert response.citation_schema_version == 1
     assert STREAM_PROTOCOL_VERSION == "1"
 

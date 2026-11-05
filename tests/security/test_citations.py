@@ -175,7 +175,8 @@ async def test_the_stored_answer_holds_no_passage_text(monkeypatch: pytest.Monke
     assert len(stored) == 2  # the user turn and the answer: no tool message is kept
     kwargs = stored[1].additional_kwargs
     assert len(kwargs["citations"]) == 2
-    assert "obey" not in repr(kwargs) and "Ignore the user" not in repr(kwargs)
+    assert "obey" not in repr(kwargs)
+    assert "Ignore the user" not in repr(kwargs)
 
 
 async def test_a_search_with_no_valid_citation_is_not_grounded(
