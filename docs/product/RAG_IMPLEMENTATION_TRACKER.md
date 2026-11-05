@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-04, against `main` at `04fe41d` plus #443 and #444 (RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00, RAG-E01, RAG-E02, and RAG-03.01 to RAG-03.04 with their epic; the Project board has not been created.
+**Last verified:** 2026-11-05, against `main` at `705ed58` plus #458 (RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E05, all of RAG-E00 to RAG-E03, RAG-04.01, RAG-04.02 and RAG-05.01; the Project board has not been created.
 
 ## New session protocol
 
@@ -50,20 +50,20 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
-| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 2 | 0 | 0 | 2 | RAG-04.04 (ready); RAG-04.03 after RAG-05.01 |
-| RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-05.01 (ready) |
+| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 2 | 0 | 0 | 2 | RAG-04.03 (ready); RAG-04.04 (ready) |
+| RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 1 | 0 | 0 | 1 | RAG-05.02 (ready) |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
-| RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-08.01 (after RAG-04.01, RAG-05.01) |
+| RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-08.01 (ready) |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.02 (Phase 2) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **19** | **0** | **0** | **37** | **RAG-05.01** |
+| **Total** | | | | **56** | **20** | **0** | **0** | **36** | **RAG-05.02** |
 
-v1.1.0 scope (E00–E08): 33 stories, 19 done.
+v1.1.0 scope (E00–E08): 33 stories, 20 done.
 
-**Recommended next action:** RAG-05.01 (citation minting and validation), which builds on the per-run `cite_id`s of RAG-04.02 and unblocks RAG-04.03 and RAG-08.01. RAG-04.04 and RAG-07.01 are also unblocked.
+**Recommended next action:** RAG-05.02 (citation contract in API, stream and history), which stamps RAG-05.01's validated citations on the stored answer and exposes them. RAG-04.03, RAG-04.04, RAG-07.01 and RAG-08.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -95,7 +95,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-03.05 | #450 | Not on a board |
 | RAG-04.01 | #446 | Not on a board |
 | RAG-04.02 | #452 | Not on a board |
-| RAG-E05 … RAG-E12 | — | — |
+| RAG-E05 | #456 | Not on a board |
+| RAG-05.01 | #457 | Not on a board |
+| RAG-E06 … RAG-E12 | — | — |
 
 ## Epic detail
 
@@ -223,15 +225,17 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Plan (RAG-04.02): three stacked parts to stay under 400 lines: part 1 the framing helper and `search_knowledge`; part 2 `list_knowledge_bases`, `get_document_excerpt` and per-run `cite_id`s; part 3 the service wiring, the Agent Server and parity tests, the docs.
   - Decision (RAG-04.02): "this run" is the run's own tool messages, which are never stored in the thread (only the user turn and final answer are); the `cite_id` map lives in `ToolMessage.artifact`, which providers do not send to the model (tested: no document or chunk id reaches the model). The per-run limits count the run's tool calls in its state, which no middleware trims (recorded in the code and `SECURITY.md`). `list_knowledge_bases` also taints the run (base names are user text, as notes are), beyond the story's two tools. RAG-05.01 reuses the artifacts to validate citations.
   - Security review (RAG-04.02, on the full change before the split): no high findings. Fixed: a cap of 10 excerpts per run (neighbours get their own ids, so a run could walk a whole document); a test that the model never sees document or chunk ids. Checked: every backend failure is an `AppError` the tools map to fixed text; LangSmith hides tool outputs outside development. Advisory AI review (#453, #454): the "escape `>`" and "catch every exception" findings answered without changes; the excerpt tool's invalid arguments and every tool's failure path gained tests.
-- **Next recommended story:** RAG-04.04 (ready); RAG-04.03 after RAG-05.01.
+- **Next recommended story:** RAG-04.03 or RAG-04.04 (both ready).
 
 ### RAG-E05 Server-validated citations
 
-- **Stories:** 2 total · 0 done · 0 in progress · 0 blocked · 2 pending
-- **Implemented functionality:** none. `_final_answer` (`graphs/main_graph.py`) already recomputes `used_tools`; citations follow the same pattern.
-- **Outstanding work:** RAG-05.01, RAG-05.02.
-- **Blockers and decisions:** RAG-04.02 is done; `cite_id`s are minted per run in tool message artifacts (`knowledge/tools.py`), which `_final_answer` can read.
-- **Next recommended story:** RAG-05.01.
+- **Stories:** 2 total · 1 done · 0 in progress · 0 blocked · 1 pending
+- **Implemented functionality:** RAG-05.01 (#458): `AgentAnswer.citations`; `knowledge/citations.py` `validate` keeps the listed `cite_id`s found in the artifact of a successful `search_knowledge` or `get_document_excerpt` message of this run and resolves each to document id, chunk id, title, headings and pages (stored in the artifact when the id is minted); `_final_answer` drops the rest and counts them in `neuron.citations.rejected` (log `citations_rejected`, counts only).
+- **Outstanding work:** RAG-05.02.
+- **Blockers and decisions:**
+  - Decision (RAG-05.01): resolution reads the artifact, not the database, so a citation needs no extra query; an excerpt's passages take the title of the passage they were read from. The bounding box is optional and is left out: retrieval does not load `chunks.bbox` yet, and nothing shows it before RAG-06.02. `MainGraphState` is unchanged: RAG-05.02 stamps the resolved citations on the final `AIMessage` inside `call_agent`, where the run's messages are.
+  - Security review (RAG-05.01): no blocking findings. Checked: client history before the run is outside the slice `validate` reads, so an injected tool message validates nothing; error messages mint nothing. Left as is: `get_document_excerpt` reads every message in state, but the knowledge tools exist only on the `AgentService` path, whose stored history holds only user turns and answers (RAG-04.02 AC6); `citations` has no length cap, since what is kept is bounded by the ids minted (at most 100 per run).
+- **Next recommended story:** RAG-05.02.
 
 ### RAG-E06 Knowledge in the web app
 
@@ -314,7 +318,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.02 | Knowledge agent tools | 1 | P0 | Done | #452 | #453, #454, #455 | `tests/security/test_knowledge_tools.py` through the real agent loop: an MCP call after a search waits for approval (AC1); a token without the tool's scope is refused by `ToolAuthorizationMiddleware`, for each tool (AC2); no schema has a user, owner, tenant or subject field (AC3); the sixth search and the eleventh excerpt get the fixed limit error (AC4); an excerpt for a `cite_id` not minted in this run, from an earlier run of the thread, or of a deleted document is "no such passage" (AC5); `build_graph(settings)`, the `langgraph.json` graph, gets no knowledge tools, and `AgentService` adds them only with knowledge on (AC6). Also: framing and the 6,000-character cap, fixed errors for invalid arguments, failures and a missing owner, the tool timeout, no document or chunk id sent to the model. `tests/integration/test_postgres_knowledge_search_api.py`: tool and route parity |
 | RAG-04.03 | Abstention and grounding | 1 | P0 | Pending | — | — | — |
 | RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Pending | — | — | — |
-| RAG-05.01 | Citation minting and validation | 1 | P0 | Pending | — | — | — |
+| RAG-05.01 | Citation minting and validation | 1 | P0 | Done | #457 | #458 | `tests/security/test_citations.py` through the real agent loop: a `cite_id` no tool returned is dropped and `neuron.citations.rejected` counts it, as is every citation of a run without a knowledge tool (AC1); a `cite_id`-shaped string the model copies from a passage is dropped (AC2); two valid citations are kept in the listed order and resolve to document, chunk, title, headings and pages (AC3). Also: only successful knowledge-tool artifacts mint ids; `tests/security/test_knowledge_tools.py` checks the artifacts of a search and an excerpt |
 | RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Pending | — | — | — |
 | RAG-06.01 | Knowledge screen | 1 | P0 | Pending | — | — | — |
 | RAG-06.02 | Citation chips and source sheet | 1 | P0 | Pending | — | — | — |

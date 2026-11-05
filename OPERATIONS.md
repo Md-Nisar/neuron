@@ -297,6 +297,7 @@ are in seconds. Instruments:
 | `neuron.memory.operations` | counter | `neuron.memory.operation`: `remember`, `list`, `forget`, `erase`; `neuron.outcome`: `success`, `error` |
 | `neuron.model.fallbacks` | counter | `neuron.fallback.from`, `neuron.fallback.to`: the configured model ids switched from and to |
 | `neuron.agent.policy.blocks` | counter | `neuron.rule`: `empty_message`, `message_too_long`, `control_characters`, `token_budget`, `concurrent_runs`, `concurrent_streams`, `request_rate`, `insufficient_scope`, `unknown_tool` |
+| `neuron.citations.rejected` | counter, `{citation}` | none. `cite_id`s an answer listed that no knowledge tool returned in its run (made up, or copied from a passage); they are dropped from the answer (log `citations_rejected`) |
 | `neuron.checkpoint.duration` | histogram | `neuron.outcome`, `error.type` (the exception class) |
 | `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |
 | `http.server.request.body.size`, `http.server.response.body.size` | histogram | `http.route`, `http.response.status_code` |

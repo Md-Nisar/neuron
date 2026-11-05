@@ -113,6 +113,7 @@ class _Instruments:
     tool_duration: metrics.Histogram
     errors: metrics.Counter
     policy_blocks: metrics.Counter
+    citations_rejected: metrics.Counter
     model_fallbacks: metrics.Counter
     approvals: metrics.Counter
     feedback: metrics.Counter
@@ -195,6 +196,11 @@ def _build(meter: metrics.Meter) -> _Instruments:
         ),
         policy_blocks=meter.create_counter(
             semconv.METRIC_POLICY_BLOCKS, unit="{block}", description="Requests blocked by rule"
+        ),
+        citations_rejected=meter.create_counter(
+            semconv.METRIC_CITATIONS_REJECTED,
+            unit="{citation}",
+            description="Citations dropped because no knowledge tool returned them in the run",
         ),
         model_fallbacks=meter.create_counter(
             semconv.METRIC_MODEL_FALLBACKS,
@@ -309,6 +315,11 @@ def record_error(error_type: str) -> None:
 def record_policy_block(rule: str) -> None:
     """Count one request or tool call refused by `rule`."""
     _instruments().policy_blocks.add(1, {semconv.NEURON_RULE: rule})
+
+
+def record_citations_rejected(count: int) -> None:
+    """Count `count` citations dropped from an answer; unlabelled."""
+    _instruments().citations_rejected.add(count)
 
 
 def record_model_fallback(source: str, target: str) -> None:
