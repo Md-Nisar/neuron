@@ -59,7 +59,30 @@ class AgentAnswer(BaseModel):
     )
 
 
-class AgentResponse(BaseModel):
+class Citation(BaseModel):
+    """A passage an answer cites, validated by the server (RAG-05.01). `cite_id` is opaque and
+    valid only in its run; `title` and `headings` are user text. No passage text: clients
+    fetch it from the chunk route, which checks access each time."""
+
+    cite_id: str
+    doc_id: uuid.UUID
+    chunk_id: uuid.UUID
+    title: str | None
+    headings: list[str]
+    page_start: int | None
+    page_end: int | None
+
+
+class CitationFields(BaseModel):
+    """An answer's citations (RAG-05.02). Set only when the run searched or read knowledge;
+    `grounded` is then whether any citation was kept. All null otherwise."""
+
+    citations: list[Citation] | None = None
+    citation_schema_version: Literal[1] | None = None
+    grounded: bool | None = None
+
+
+class AgentResponse(CitationFields):
     """HTTP response payload for a run that finished."""
 
     status: Literal["completed"] = "completed"
@@ -180,7 +203,7 @@ class ToolCallRecord(BaseModel):
     status: Literal["pending", "completed", "failed", "rejected"]
 
 
-class ThreadMessage(BaseModel):
+class ThreadMessage(CitationFields):
     """One conversation turn as exposed to clients."""
 
     role: Literal["user", "assistant"]

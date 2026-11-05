@@ -188,7 +188,7 @@ Event protocol, version 1. Each event is an SSE `event:` name with a JSON `data:
 | `run_started` | `request_id`, `thread_id`, `run_id` | always first |
 | `token` | `text` | answer delta; zero or more |
 | `tool_call` | `name` | a real tool call starts; never arguments or results |
-| `final` | `request_id`, `thread_id`, `answer`, `used_tools`, `confidence`, `refused`, `clarification_needed` | success; same shape as the `/invoke` response |
+| `final` | `request_id`, `thread_id`, `run_id`, `answer`, `used_tools`, `confidence`, `refused`, `clarification_needed`, and `citations`, `citation_schema_version`, `grounded` (null unless the run searched or read knowledge; additive, RAG-05.02) | success; same shape as the `/invoke` response |
 | `error` | `code`, `retryable` | failure after start; replaces `final` |
 | `done` | `{}` | always last |
 
@@ -196,6 +196,8 @@ Event protocol, version 1. Each event is an SSE `event:` name with a JSON `data:
 - For JSON structured output, whether in message content or in the `AgentAnswer` tool-call arguments, it re-parses the partial JSON on each chunk (`parse_partial_json`) and emits only the growth of the `answer` field.
 - Plain text is passed through.
 - Other tools' arguments are never fed in.
+
+Citations (RAG-05.02, ADR 0014 K6) are the server-validated ones the graph stamps on the stored answer's `additional_kwargs` with `run_id`, as `citations` (each `cite_id`, `doc_id`, `chunk_id`, `title`, `headings`, `page_start`, `page_end`; never passage text), `citation_schema_version` (1) and `grounded` (whether any citation was kept). The `/invoke` response, the `final` event and thread history read the same stamp, so a reloaded thread shows the citations it was answered with. They are set only when the run called `search_knowledge` or `get_document_excerpt`; otherwise all three are null, never `grounded: false`. A client reads the passage from the chunk route, which checks access each time.
 
 Deltas are a best-effort preview; `final` is authoritative. `error` codes follow the same `user_visible` rule as HTTP errors, so internal failures appear as `internal_server_error`. Heartbeat comments are sent every `APP_STREAM_HEARTBEAT_SECONDS` (default `15`). Responses set `Cache-Control: no-store` and `X-Accel-Buffering: no`. A streamed turn is persisted to the thread exactly like an `/invoke` turn.
 

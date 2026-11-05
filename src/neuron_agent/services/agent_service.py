@@ -27,6 +27,7 @@ from langchain_core.messages import (
 from langgraph.types import Command, Interrupt, StateSnapshot
 from opentelemetry import trace
 from opentelemetry.trace import Span
+from pydantic import ValidationError
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
@@ -64,6 +65,7 @@ from neuron_agent.schemas.agent import (
     AgentResponse,
     ApprovalRequest,
     ApprovalRequiredResponse,
+    CitationFields,
     ExportedThread,
     FeedbackResponse,
     MemoriesResponse,
@@ -624,7 +626,7 @@ class AgentService:
         response: AgentResponse | ApprovalRequiredResponse = (
             self._approval_required(run, interrupts[0])
             if (interrupts := result.get("__interrupt__"))
-            else _response(run, result["answer"])
+            else _response(run, result["answer"], _answer_message(result["messages"]))
         )
         self._audit_thread_created(run)
         await self._name_new_thread(run)
@@ -710,6 +712,7 @@ class AgentService:
         # Withholds text that could be a system prompt quote; the graph guards the final answer.
         guard = StreamLeakGuard()
         answer: AgentAnswer | None = None
+        answered: BaseMessage | None = None
         pending: Interrupt | None = None
         try:
             async with asyncio.timeout(self._settings.run_timeout_seconds):
@@ -729,6 +732,7 @@ class AgentService:
                             continue
                         if mode == "updates" and not namespace and "agent" in chunk:
                             answer = chunk["agent"]["answer"]
+                            answered = _answer_message(chunk["agent"]["messages"])
                             continue
                         if mode != "messages" or not namespace:
                             continue
@@ -770,7 +774,8 @@ class AgentService:
                     queue.put_nowait(StreamEvent("token", {"text": tail}))
                 self._audit_thread_created(run)
                 await self._name_new_thread(run)
-                queue.put_nowait(StreamEvent("final", _response(run, answer).model_dump()))
+                final = _response(run, answer, answered)
+                queue.put_nowait(StreamEvent("final", final.model_dump(mode="json")))
         finally:
             # Unbounded queue: its size is bounded by the run's own output
             # (APP_MAX_OUTPUT_TOKENS per model call, APP_MAX_AGENT_ITERATIONS calls).
@@ -1379,8 +1384,9 @@ def _approval_request(interrupt: Interrupt) -> ApprovalRequest:
     )
 
 
-def _response(run: PreparedRun, answer: AgentAnswer) -> AgentResponse:
+def _response(run: PreparedRun, answer: AgentAnswer, message: BaseMessage | None) -> AgentResponse:
     return AgentResponse(
+        **(_stamped_citations(message) if message is not None else {}),
         request_id=run.request_id,
         thread_id=run.thread_id,
         run_id=run.run_id,
@@ -1522,7 +1528,11 @@ def _public_thread_messages(
             role = "user" if isinstance(message, HumanMessage) else "assistant"
             turns.append(
                 ThreadMessage(
-                    role=role, content=text, tool_calls=calls, run_id=_stamped_run(message)
+                    **_stamped_citations(message),
+                    role=role,
+                    content=text,
+                    tool_calls=calls,
+                    run_id=_stamped_run(message),
                 )
             )
     return turns
@@ -1538,6 +1548,25 @@ def _stamped_run(message: BaseMessage) -> str | None:
     """The run ID the graph stamped on a stored message; threads from before it have none."""
     value = message.additional_kwargs.get("run_id")
     return value if isinstance(value, str) else None
+
+
+def _answer_message(messages: Any) -> BaseMessage | None:
+    """The run's answer: the last message the graph committed."""
+    last = messages[-1] if isinstance(messages, list) and messages else None
+    return last if isinstance(last, AIMessage) else None
+
+
+def _stamped_citations(message: BaseMessage) -> dict[str, Any]:
+    """The citation fields the graph stamped on a stored answer (RAG-05.02); none on a user
+    turn, an answer without them, or one whose stamp does not validate."""
+    if not isinstance(message, AIMessage):
+        return {}
+    stamped = {k: message.additional_kwargs.get(k) for k in CitationFields.model_fields}
+    try:
+        return CitationFields.model_validate(stamped).model_dump(exclude_none=True)
+    except ValidationError:
+        logger.warning("stored_citations_invalid")
+        return {}
 
 
 _SUMMARY_VALUE_CHARS = 60

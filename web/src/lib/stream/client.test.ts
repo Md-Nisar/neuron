@@ -86,6 +86,18 @@ describe("streamRun: events", () => {
     expect(types(events)).toEqual(["run_started", "final", "done"]);
   });
 
+  it("reads a final with citations unchanged, ignoring the fields it does not know", async () => {
+    const cited = contract.payloads.final_with_citations;
+    const wire = [frame("run_started", started), frame("final", cited), frame("done", {})];
+    const events = await collect(run(respond(sseResponse(streamOf(wire)))));
+
+    expect(types(events)).toEqual(["run_started", "final", "done"]);
+    const { citations, citation_schema_version, grounded, status, ...known } = cited;
+    expect(citations).toHaveLength(1);
+    expect([citation_schema_version, grounded, status]).toEqual([1, true, "completed"]);
+    expect(events[1]).toEqual({ type: "final", data: known });
+  });
+
   it("ignores heartbeat comments and unknown events, and stops reading after done", async () => {
     let cancelled = false;
     const wire = [

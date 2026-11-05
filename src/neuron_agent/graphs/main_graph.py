@@ -42,7 +42,7 @@ from neuron_agent.observability.audit import audit
 from neuron_agent.observability.langsmith_governance import configure_langsmith
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.observability.telemetry import configure_telemetry
-from neuron_agent.schemas.agent import AgentAnswer
+from neuron_agent.schemas.agent import AgentAnswer, Citation
 from neuron_agent.security.authorization import AuthorizationContext, TokenUsageAccumulator
 from neuron_agent.security.output_policy import (
     POLICY_RULE,
@@ -110,7 +110,8 @@ async def call_agent(
         if authorization is not None:
             invocation["context"] = authorization
         result = await agent.ainvoke({"messages": history}, **invocation)
-        answer = _final_answer(result, run_messages=result.get("messages", [])[len(history) :])
+        run_messages = result.get("messages", [])[len(history) :]
+        answer, cited = _final_answer(result, run_messages=run_messages)
         tainted = is_tainted(result.get("messages", []), tainting)
     except GraphBubbleUp:
         # A tool is waiting for a human decision: the run pauses, it did not fail.
@@ -132,7 +133,10 @@ async def call_agent(
         )
         raise error from exc
 
-    answer = _guard_answer(answer, state, authorization)
+    guarded = _guard_answer(answer, state, authorization)
+    if guarded is not answer:
+        cited = []  # the refusal cites nothing
+    answer = guarded
     logger.info(
         "agent_execution_completed",
         request_id=request_id,
@@ -145,8 +149,13 @@ async def call_agent(
     # Only the user turn and the final answer are persisted; the agent's intermediate
     # tool-call/tool-result messages stay inside this run.
     # A run that read untrusted or private data marks its answer, so later turns that see the
-    # answer stay tainted (see `is_tainted`).
-    stamp = {**_run_stamp(run_id), **({TAINT_KEY: True} if tainted else {})}
+    # answer stay tainted (see `is_tainted`). Validated citations are kept with the answer, as
+    # the run's tool messages are not (RAG-05.02).
+    stamp = {
+        **_run_stamp(run_id),
+        **({TAINT_KEY: True} if tainted else {}),
+        **citations.stamp(cited, run_messages),
+    }
     turn = [*new_turn, AIMessage(content=answer.answer, additional_kwargs=stamp)]
     evicted = evict_oldest_turns(
         stored, incoming=len(turn), limit=resolved_settings.max_thread_messages
@@ -209,13 +218,16 @@ def _turn(state: MainGraphState) -> int:
     return stored + (1 if state.get("user_message") else 0)
 
 
-def _final_answer(result: dict[str, Any], *, run_messages: list[BaseMessage]) -> AgentAnswer:
+def _final_answer(
+    result: dict[str, Any], *, run_messages: list[BaseMessage]
+) -> tuple[AgentAnswer, list[Citation]]:
     """The run's answer, with `used_tools` taken from the tool calls that actually ran and only
     the `citations` a knowledge tool returned in this run.
 
     The model's own `used_tools` and `citations` are not trusted: it can omit tools it called
     or list ones it did not, such as the `AgentAnswer` structured-output tool, and list a
-    `cite_id` it made up or copied from a passage's text.
+    `cite_id` it made up or copied from a passage's text. The kept citations are returned
+    resolved.
     """
     structured = result.get("structured_response")
     if isinstance(structured, AgentAnswer):
@@ -229,9 +241,10 @@ def _final_answer(result: dict[str, Any], *, run_messages: list[BaseMessage]) ->
     if rejected:
         metrics.record_citations_rejected(rejected)
         logger.warning("citations_rejected", rejected=rejected, kept=len(cited))
-    return answer.model_copy(
+    kept = answer.model_copy(
         update={"used_tools": _tools_run(run_messages), "citations": [c.cite_id for c in cited]}
     )
+    return kept, cited
 
 
 def _tools_run(messages: list[BaseMessage]) -> list[str]:
