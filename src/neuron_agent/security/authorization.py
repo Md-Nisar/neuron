@@ -26,7 +26,9 @@ DEV_PERMISSIONS = frozenset(
         "tools:calculator",
         "knowledge:read",
         "knowledge:write",
+        "tools:list_knowledge_bases",
         "tools:search_knowledge",
+        "tools:get_document_excerpt",
     }
 )
 
