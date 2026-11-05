@@ -47,6 +47,7 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
+from neuron_agent.knowledge.tools import knowledge_specs
 from neuron_agent.memory.store import Memory, MemoryStore, memory_id_key
 from neuron_agent.memory.tools import memory_specs
 from neuron_agent.observability import metrics, semconv, telemetry
@@ -152,6 +153,7 @@ class AgentService:
         # The tool set the graph was built with; None means the builtin tools.
         self._registry: ToolRegistry | None = None
         self._memory: MemoryStore | None = None
+        self._composed = False
         self._drain_started: float | None = None
         self._in_flight = 0
         if self._persistence.is_open:
@@ -164,20 +166,29 @@ class AgentService:
         """Serve `registry` (builtin plus MCP tools) from the next `startup`."""
         self._registry = registry
         self._memory = None
+        self._composed = False
 
     def _compose_tools(self) -> None:
-        """Add the memory tools to the registry once the store exists (ADR 0009 decision 7)."""
+        """Add the memory tools once the store exists (ADR 0009 decision 7) and the knowledge
+        tools once the pool exists (ADR 0014 K5). The Agent Server graph gets neither."""
         store = self._persistence.store
-        if store is None or self._memory is not None:
+        knowledge = self._settings.knowledge_enabled and self._persistence.pool is not None
+        if self._composed or (store is None and not knowledge):
             return
-        self._memory = MemoryStore(
-            store,
-            id_key=memory_id_key(self._settings),
-            max_items=self._settings.memory_max_items,
-            max_chars=self._settings.memory_max_chars,
-            ttl_days=self._settings.memory_ttl_days,
-        )
-        self._registry = ToolRegistry([*self._tools(), *memory_specs(self._memory)])
+        specs = [*self._tools()]
+        if store is not None:
+            self._memory = MemoryStore(
+                store,
+                id_key=memory_id_key(self._settings),
+                max_items=self._settings.memory_max_items,
+                max_chars=self._settings.memory_max_chars,
+                ttl_days=self._settings.memory_ttl_days,
+            )
+            specs.extend(memory_specs(self._memory))
+        if knowledge:
+            specs.extend(knowledge_specs(self._settings, lambda: self._persistence.pool))
+        self._registry = ToolRegistry(specs)
+        self._composed = True
 
     async def startup(self) -> None:
         """Open persistence resources (connection pool) and build the graph.

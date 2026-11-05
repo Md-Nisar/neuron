@@ -7,6 +7,7 @@ import itertools
 import json
 import re
 import uuid
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -27,7 +28,8 @@ from neuron_agent.knowledge import tools as knowledge_tools
 from neuron_agent.knowledge.retrieval import Passage, SearchResult
 from neuron_agent.schemas.knowledge import ChunkPassage, KnowledgeBase, KnowledgeChunk
 from neuron_agent.security.authorization import DEV_PERMISSIONS, AuthorizationContext
-from neuron_agent.tools.registry import ToolRegistry
+from neuron_agent.services.agent_service import AgentService
+from neuron_agent.tools.registry import ToolRegistry, builtin_registry
 
 pytestmark = pytest.mark.anyio
 
@@ -390,3 +392,44 @@ async def test_results_are_capped_at_6000_characters(monkeypatch: pytest.MonkeyP
     assert len(str(message.content)) <= knowledge_tools.MAX_CHARS
     [passage] = _block(message)  # the second passage is dropped, and only its id is minted
     assert list(message.artifact) == [passage["cite_id"]]
+
+
+def test_the_agent_server_graph_has_no_knowledge_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`langgraph.json` exports `build_graph(settings)`: the builtin tools, whatever is on."""
+    built: list[Any] = []
+    monkeypatch.setattr(main_graph, "build_agent", lambda *args: built.append(args))
+
+    main_graph.build_graph(
+        Settings(
+            env="test",
+            knowledge_enabled=True,
+            checkpointer="postgres",
+            postgres_dsn="postgresql://app@localhost/neuron",
+        )
+    )
+
+    [args] = built
+    assert len(args) == 1  # no registry: `build_agent` falls back to the builtin tools
+    assert not set(knowledge_tools.KNOWLEDGE_TOOL_SCOPES) & set(builtin_registry().names())
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_the_service_offers_the_knowledge_tools_only_when_knowledge_is_on(
+    enabled: bool,
+) -> None:
+    settings = Settings(
+        env="test",
+        knowledge_enabled=enabled,
+        checkpointer="postgres",
+        postgres_dsn="postgresql://app@localhost/neuron",
+    )
+    persistence = SimpleNamespace(is_open=False, store=None, pool=object())
+    service = AgentService(
+        settings, persistence=persistence, token_budget=object(), run_guard=object()
+    )  # type: ignore[arg-type]
+
+    service._compose_tools()
+
+    names = set(service._tools().names())
+    assert (set(knowledge_tools.KNOWLEDGE_TOOL_SCOPES) <= names) is enabled
+    assert set(builtin_registry().names()) <= names

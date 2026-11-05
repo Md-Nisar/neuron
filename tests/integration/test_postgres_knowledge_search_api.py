@@ -1,4 +1,5 @@
-"""`POST /v1/knowledge/search` on Postgres, as the app role, with real tokens (RAG-03.05)."""
+"""`POST /v1/knowledge/search` on Postgres, as the app role, with real tokens (RAG-03.05), and
+the agent's `search_knowledge` tool beside it (RAG-04.02)."""
 
 from __future__ import annotations
 
@@ -8,26 +9,34 @@ from collections.abc import Callable
 import psycopg
 import pytest
 import structlog
+from langchain.tools import ToolRuntime
 from test_postgres_knowledge_api import _create, api  # noqa: F401
 from test_postgres_knowledge_search import _document
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 from tests.conftest import JwtApi, bearer
 
 from neuron_agent.api import main as api_main
+from neuron_agent.knowledge import tools as knowledge_tools
+from neuron_agent.security.authorization import AuthorizationContext
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
 _SCOPES = "knowledge:read knowledge:write"
 
 
-async def _seed(db: RoleDatabase, kb_id: str, texts: list[str]) -> list[str]:
+async def _owner_of(db: RoleDatabase, kb_id: str) -> str:
     async with await psycopg.AsyncConnection.connect(db.migrator_dsn) as conn:
         cursor = await conn.execute(
             "SELECT owner_key FROM knowledge.bases WHERE kb_id = %s", (kb_id,)
         )
         row = await cursor.fetchone()
     assert row is not None
-    return [str(c) for c in await _document(db, uuid.UUID(kb_id), row[0], texts)]
+    return str(row[0])
+
+
+async def _seed(db: RoleDatabase, kb_id: str, texts: list[str]) -> list[str]:
+    owner = await _owner_of(db, kb_id)
+    return [str(c) for c in await _document(db, uuid.UUID(kb_id), owner, texts)]
 
 
 def _search(client: JwtApi, token: str, **body: object) -> tuple[int, dict[str, object]]:
@@ -109,11 +118,44 @@ async def test_the_route_returns_what_the_retriever_does_and_never_logs_the_quer
         status, body = _search(client, alice, query=query, limit=5)
     assert status == 200
     assert query not in repr(logs) and "sentinel-q-7731" not in repr(logs)
-    async with await psycopg.AsyncConnection.connect(db.migrator_dsn) as conn:
-        cursor = await conn.execute(
-            "SELECT owner_key FROM knowledge.bases WHERE kb_id = %s", (base["kb_id"],)
-        )
-        row = await cursor.fetchone()
-    assert row is not None
-    direct = await api_main.retriever().search(row[0], query, k=5)
+    direct = await api_main.retriever().search(await _owner_of(db, base["kb_id"]), query, k=5)
     assert _ids(body) == [str(p.chunk_id) for p in direct.passages]
+
+
+async def test_the_search_tool_finds_what_the_route_does(
+    api: tuple[JwtApi, RoleDatabase],  # noqa: F811
+    make_token: Callable[..., str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """RAG-03.05 AC3: the agent's `search_knowledge` and the route return the same chunks."""
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice, "Notes")
+    await _seed(db, base["kb_id"], ["tulip bulbs", "tulip colours", "daffodils", "tulip soil"])
+    status, body = _search(client, alice, query="tulip", limit=3)
+    assert status == 200
+    owner = await _owner_of(db, base["kb_id"])
+    # The tool builds its own retriever on the same pool, with the route's embeddings.
+    route = api_main.retriever()
+    monkeypatch.setattr(knowledge_tools, "create_embedding_provider", lambda _: route._embeddings)
+    specs = knowledge_tools.knowledge_specs(route._settings, route._pool)
+    search = next(spec.tool for spec in specs if spec.name == "search_knowledge")
+    runtime = ToolRuntime(
+        state={"messages": []},
+        context=AuthorizationContext(frozenset(), owner_key=owner),
+        config={},
+        stream_writer=lambda _: None,
+        tool_call_id="call-1",
+        store=None,
+    )
+
+    message = await search.ainvoke(
+        {
+            "name": "search_knowledge",
+            "args": {"query": "tulip", "limit": 3, "runtime": runtime},
+            "id": "call-1",
+            "type": "tool_call",
+        }
+    )
+
+    assert [ref["chunk_id"] for ref in message.artifact.values()] == _ids(body)
