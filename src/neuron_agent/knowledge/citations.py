@@ -11,27 +11,15 @@ passage's text, matches no artifact.
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from langchain_core.messages import BaseMessage, ToolMessage
-from pydantic import BaseModel
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+
+from neuron_agent.schemas.agent import Citation, CitationFields
 
 # Tool messages whose artifacts hold this run's `cite_id`s.
 MINTING_TOOLS = ("search_knowledge", "get_document_excerpt")
-
-
-class Citation(BaseModel):
-    """A passage the answer cites. `title` and `headings` are user text."""
-
-    cite_id: str
-    doc_id: uuid.UUID
-    chunk_id: uuid.UUID
-    title: str | None
-    headings: list[str]
-    page_start: int | None
-    page_end: int | None
 
 
 def minted(messages: Sequence[Any]) -> dict[str, dict[str, Any]]:
@@ -65,3 +53,18 @@ def validate(
         else:
             kept[cite_id] = Citation(cite_id=cite_id, **ref)
     return list(kept.values()), rejected
+
+
+def stamp(cited: Sequence[Citation], run_messages: Sequence[BaseMessage]) -> dict[str, Any]:
+    """The citation fields stored on the run's answer: empty unless the run called a knowledge
+    tool that mints ids, in which case `grounded` is whether any citation was kept."""
+    searched = any(
+        call["name"] in MINTING_TOOLS
+        for message in run_messages
+        if isinstance(message, AIMessage)
+        for call in message.tool_calls
+    )
+    if not searched:
+        return {}
+    fields = CitationFields(citations=list(cited), citation_schema_version=1, grounded=bool(cited))
+    return fields.model_dump(mode="json")

@@ -44,7 +44,19 @@ def test_the_final_payload_is_what_the_server_sends() -> None:
         confidence=0.9,
     )
 
-    assert _fixture()["payloads"]["final"] == response.model_dump()  # type: ignore[index]
+    assert _fixture()["payloads"]["final"] == response.model_dump(mode="json")  # type: ignore[index]
+
+
+def test_the_final_payload_with_citations_is_what_the_server_sends() -> None:
+    """RAG-05.02: additive fields, so protocol version 1 is unchanged."""
+    payload = _fixture()["payloads"]["final_with_citations"]  # type: ignore[index]
+
+    response = AgentResponse.model_validate(payload)
+
+    assert response.model_dump(mode="json") == payload
+    assert response.citations and response.grounded is True
+    assert response.citation_schema_version == 1
+    assert STREAM_PROTOCOL_VERSION == "1"
 
 
 def test_the_approval_payload_is_what_the_server_sends() -> None:

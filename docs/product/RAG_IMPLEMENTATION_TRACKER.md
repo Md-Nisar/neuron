@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-05, against `main` at `705ed58` plus #458 (RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E05, all of RAG-E00 to RAG-E03, RAG-04.01, RAG-04.02 and RAG-05.01; the Project board has not been created.
+**Last verified:** 2026-11-05, against `main` at `2e7acd8` plus #460 (RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E05, all of RAG-E00 to RAG-E03, RAG-04.01, RAG-04.02, RAG-05.01 and RAG-05.02; the Project board has not been created.
 
 ## New session protocol
 
@@ -51,7 +51,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 2 | 0 | 0 | 2 | RAG-04.03 (ready); RAG-04.04 (ready) |
-| RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 1 | 0 | 0 | 1 | RAG-05.02 (ready) |
+| RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-08.01 (ready) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **20** | **0** | **0** | **36** | **RAG-05.02** |
+| **Total** | | | | **56** | **21** | **0** | **0** | **35** | **RAG-04.03** |
 
-v1.1.0 scope (E00–E08): 33 stories, 20 done.
+v1.1.0 scope (E00–E08): 33 stories, 21 done.
 
-**Recommended next action:** RAG-05.02 (citation contract in API, stream and history), which stamps RAG-05.01's validated citations on the stored answer and exposes them. RAG-04.03, RAG-04.04, RAG-07.01 and RAG-08.01 are also unblocked.
+**Recommended next action:** RAG-04.03 (abstention and grounding), which adds the `no_relevant_results` marker, the prompt change and the eval cases on top of RAG-05.02's `grounded` field. RAG-04.04, RAG-06.02, RAG-07.01 and RAG-08.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -97,6 +97,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.02 | #452 | Not on a board |
 | RAG-E05 | #456 | Not on a board |
 | RAG-05.01 | #457 | Not on a board |
+| RAG-05.02 | #459 | Not on a board |
 | RAG-E06 … RAG-E12 | — | — |
 
 ## Epic detail
@@ -229,13 +230,15 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E05 Server-validated citations
 
-- **Stories:** 2 total · 1 done · 0 in progress · 0 blocked · 1 pending
+- **Stories:** 2 total · 2 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-05.01 (#458): `AgentAnswer.citations`; `knowledge/citations.py` `validate` keeps the listed `cite_id`s found in the artifact of a successful `search_knowledge` or `get_document_excerpt` message of this run and resolves each to document id, chunk id, title, headings and pages (stored in the artifact when the id is minted); `_final_answer` drops the rest and counts them in `neuron.citations.rejected` (log `citations_rejected`, counts only).
-- **Outstanding work:** RAG-05.02.
+  RAG-05.02 (#460): `call_agent` stamps `citations`, `citation_schema_version: 1` and `grounded` on the final `AIMessage.additional_kwargs` when the run called `search_knowledge` or `get_document_excerpt` (`citations.stamp`); `AgentResponse`, the SSE `final` event and `ThreadMessage` share `CitationFields` (`schemas/agent.py`) and read that stamp (`AgentService._stamped_citations`), so history returns what the answer had. A system-prompt refusal keeps no citations.
+- **Outstanding work:** none.
 - **Blockers and decisions:**
   - Decision (RAG-05.01): resolution reads the artifact, not the database, so a citation needs no extra query; an excerpt's passages take the title of the passage they were read from. The bounding box is optional and is left out: retrieval does not load `chunks.bbox` yet, and nothing shows it before RAG-06.02. `MainGraphState` is unchanged: RAG-05.02 stamps the resolved citations on the final `AIMessage` inside `call_agent`, where the run's messages are.
   - Security review (RAG-05.01): no blocking findings. Checked: client history before the run is outside the slice `validate` reads, so an injected tool message validates nothing; error messages mint nothing. Left as is: `get_document_excerpt` reads every message in state, but the knowledge tools exist only on the `AgentService` path, whose stored history holds only user turns and answers (RAG-04.02 AC6); `citations` has no length cap, since what is kept is bounded by the ids minted (at most 100 per run).
-- **Next recommended story:** RAG-05.02.
+  - Decision (RAG-05.02): the three fields are null, not absent, on every message and response without them, as `run_id` is; a run that never called a minting tool has `grounded: null`, a run that did but kept no citation `grounded: false` (RAG-04.03 AC3). `grounded` is computed here because the payload carries it; RAG-04.03 adds the marker, prompt and evals. `cite_id` is in the payload so a client can match an inline marker; it means nothing after the run. A stamp that fails validation is dropped from history with a `stored_citations_invalid` log.
+- **Next recommended story:** none in this epic; RAG-06.02 shows the citations.
 
 ### RAG-E06 Knowledge in the web app
 
@@ -319,7 +322,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.03 | Abstention and grounding | 1 | P0 | Pending | — | — | — |
 | RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Pending | — | — | — |
 | RAG-05.01 | Citation minting and validation | 1 | P0 | Done | #457 | #458 | `tests/security/test_citations.py` through the real agent loop: a `cite_id` no tool returned is dropped and `neuron.citations.rejected` counts it, as is every citation of a run without a knowledge tool (AC1); a `cite_id`-shaped string the model copies from a passage is dropped (AC2); two valid citations are kept in the listed order and resolve to document, chunk, title, headings and pages (AC3). Also: only successful knowledge-tool artifacts mint ids; `tests/security/test_knowledge_tools.py` checks the artifacts of a search and an excerpt |
-| RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Pending | — | — | — |
+| RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Done | #459 | #460 | `tests/security/test_citations.py`: a thread reloaded from its checkpoint returns the answer's citations in history, and a later run without knowledge has none (AC1); the stored answer holds ids, title and pages but no passage text, and no tool message is stored (AC3); a search with no valid citation is `grounded: false`; a stamp that does not validate is ignored. `web/src/lib/stream/client.test.ts`: the current client reads a v1 `final` with citations unchanged (AC2), against `contract.json`'s `final_with_citations`, which `tests/unit/test_web_stream_contract.py` checks against `AgentResponse` |
 | RAG-06.01 | Knowledge screen | 1 | P0 | Pending | — | — | — |
 | RAG-06.02 | Citation chips and source sheet | 1 | P0 | Pending | — | — | — |
 | RAG-07.01 | Erase and export include knowledge | 1 | P0 | Pending | — | — | — |
