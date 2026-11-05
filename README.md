@@ -65,6 +65,7 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `knowledge:read` | `GET /v1/knowledge/bases`, `GET /v1/knowledge/bases/{kb_id}/documents`, `GET /v1/knowledge/documents/{doc_id}`, `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`, `GET /v1/knowledge/documents/{doc_id}/file`, `POST /v1/knowledge/search` (in development, v1.1.0) |
 | `knowledge:write` | `POST /v1/knowledge/bases`, `PATCH /v1/knowledge/bases/{kb_id}`, `DELETE /v1/knowledge/bases/{kb_id}`, `POST /v1/knowledge/bases/{kb_id}/documents`, `DELETE /v1/knowledge/documents/{doc_id}` (in development, v1.1.0) |
 | `tools:calculator` | lets the agent use the `calculator` tool |
+| `tools:list_knowledge_bases`, `tools:search_knowledge`, `tools:get_document_excerpt` | let the agent use those knowledge tools (in development, v1.1.0) |
 | `tools:mcp.<server>.<tool>` | lets the agent use that MCP tool |
 
 ### Approving a tool call
@@ -231,6 +232,8 @@ With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases an
 | `GET /v1/knowledge/documents/{doc_id}/file` | The original file, always as an attachment (`Content-Disposition: attachment`, `nosniff`); text and Markdown go out as `text/plain` |
 | `POST /v1/knowledge/search` | `{"query": "...", "kb_ids": [...], "limit": 5}`: hybrid search over the caller's bases (`query` 1–500 characters; `kb_ids` optional, 1–10, narrows the search, and an id that is not one of the caller's bases is ignored; `limit` 1–10). `status` (`ok` or `no_relevant_results`) and `results`: `chunk_id`, `doc_id`, `kb_id`, `title`, `ordinal`, `text`, `headings`, `page_start`, `page_end`, `score`, best first |
 | `DELETE /v1/knowledge/documents/{doc_id}` | `202`: the document disappears at once, and the worker's purge then deletes its file, row, chunks and embeddings. A second delete is `404` and queues nothing |
+
+The assistant reads the same bases through three tools, on the FastAPI path only (not through Agent Server): `list_knowledge_bases`, `search_knowledge` (`query`, optional `kb_ids` and `limit`, the same limits as the route; at most 5 searches per answer) and `get_document_excerpt` (a `cite_id` a search returned in the same answer, with `window` 0 to 2 neighbouring passages). Each needs its `tools:` scope. Results reach the model as data, at most 6,000 characters, and after a knowledge result any MCP call needs the user's approval.
 
 A name is 1 to 80 characters without control characters; unknown fields are `422`. Another user's base, a deleted one and an unknown id are all `404 knowledge_base_not_found` (`knowledge_document_not_found` for a document, also when its base is deleted). Titles are user text: clients show them as text. With knowledge off every route is `404 knowledge_disabled`.
 

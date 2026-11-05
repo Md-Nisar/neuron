@@ -10,7 +10,6 @@ the user wrote: the model cannot store text it got from a tool result or made up
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
@@ -21,6 +20,7 @@ from langchain_core.tools import BaseTool, ToolException
 from neuron_agent.errors.base import MemoryFullError, ValidationAppError
 from neuron_agent.memory.store import Memory, MemoryStore
 from neuron_agent.security.authorization import AuthorizationContext
+from neuron_agent.tools.framing import frame
 from neuron_agent.tools.registry import ToolSpec
 
 _ID = re.compile(r"[0-9a-f]{32}")
@@ -62,8 +62,7 @@ def _is_users_own_words(request: Any) -> bool:
 def render_notes(memories: list[Memory]) -> str:
     """The notes as one delimited block of data. JSON, with `<` escaped, so a note cannot close
     the block or pose as text outside it."""
-    body = json.dumps([{"id": m.id, "text": m.text} for m in memories], ensure_ascii=True)
-    return f"{_FRAMING}\n<notes>\n{body.replace('<', chr(92) + 'u003c')}\n</notes>"
+    return frame(_FRAMING, "notes", [{"id": m.id, "text": m.text} for m in memories])
 
 
 def memory_specs(memory: MemoryStore) -> list[ToolSpec]:
