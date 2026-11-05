@@ -83,6 +83,8 @@ METRIC_STREAM_TTFT = "neuron.agent.stream.ttft"
 METRIC_TOOL_DURATION = "neuron.agent.tool.duration"
 METRIC_ERRORS = "neuron.agent.errors"
 METRIC_POLICY_BLOCKS = "neuron.agent.policy.blocks"
+# `cite_id`s an answer listed that no knowledge tool returned in its run (RAG-05.01).
+METRIC_CITATIONS_REJECTED = "neuron.citations.rejected"
 # Model fallbacks, by the configured model ids switched from and to (bounded, operator-chosen).
 METRIC_MODEL_FALLBACKS = "neuron.model.fallbacks"
 # Approval requests and decisions by `neuron.approval.decision`; memory operations by

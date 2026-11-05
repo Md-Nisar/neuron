@@ -20,13 +20,14 @@ from collections.abc import Callable, Sequence
 from typing import Annotated, Any
 
 from langchain.tools import ToolRuntime, tool
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage
 from langchain_core.tools import BaseTool, ToolException
 from psycopg_pool import AsyncConnectionPool
 from pydantic import Field
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import AppError, KnowledgeDocumentNotFoundError
+from neuron_agent.knowledge.citations import minted
 from neuron_agent.knowledge.providers import create_embedding_provider
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
@@ -51,9 +52,6 @@ _UNAVAILABLE = "Error: knowledge is not available right now."
 _NO_PASSAGE = "Error: there is no such passage. Use a cite_id from a search in this answer."
 _TOO_MANY = "Error: the limit for this answer is reached. Answer from what you found."
 _INVALID = "Error: the request is invalid. Check the arguments and their limits."
-# Tool messages whose artifacts hold this run's `cite_id`s.
-_MINTING = ("search_knowledge", "get_document_excerpt")
-
 Pool = Callable[[], AsyncConnectionPool[Any] | None]
 
 
@@ -80,20 +78,6 @@ def _calls(messages: Sequence[Any], name: str) -> int:
     )
 
 
-def _cited(messages: Sequence[Any]) -> dict[str, dict[str, str]]:
-    """The `cite_id`s minted in this run, each with the document and chunk it stands for."""
-    cited: dict[str, dict[str, str]] = {}
-    for message in messages:
-        if (
-            isinstance(message, ToolMessage)
-            and message.name in _MINTING
-            and message.status != "error"
-            and isinstance(message.artifact, dict)
-        ):
-            cited.update(message.artifact)
-    return cited
-
-
 def _capped(items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
     """The framed block, within `MAX_CHARS`: later items are dropped first, then the text of
     the one left is shortened."""
@@ -110,20 +94,32 @@ def _capped(items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
 
 
 def _minted(
-    passages: list[tuple[dict[str, str], dict[str, Any]]],
-) -> tuple[str, dict[str, dict[str, str]]]:
+    passages: list[tuple[dict[str, Any], dict[str, Any]]],
+) -> tuple[str, dict[str, dict[str, Any]]]:
     """Give each passage a new `cite_id`; return the framed block and the ids it shows."""
     text, shown = _capped([{"cite_id": secrets.token_hex(6), **item} for _, item in passages])
     return text, {item["cite_id"]: passages[n][0] for n, item in enumerate(shown)}
 
 
-def _shown(passage: Any, **extra: Any) -> dict[str, Any]:
+def _where(passage: Any) -> dict[str, Any]:
     return {
-        **extra,
         "headings": passage.headings,
         "page_start": passage.page_start,
         "page_end": passage.page_end,
-        "text": passage.text,
+    }
+
+
+def _shown(passage: Any, **extra: Any) -> dict[str, Any]:
+    return {**extra, **_where(passage), "text": passage.text}
+
+
+def _ref(doc_id: uuid.UUID, passage: Any, title: str | None) -> dict[str, Any]:
+    """What a `cite_id` stands for: the passage and where it is, as a citation shows it."""
+    return {
+        "doc_id": str(doc_id),
+        "chunk_id": str(passage.chunk_id),
+        "title": title,
+        **_where(passage),
     }
 
 
@@ -152,7 +148,7 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         runtime: ToolRuntime[Any, Any],
         kb_ids: Annotated[list[uuid.UUID] | None, Field(min_length=1, max_length=10)] = None,
         limit: Annotated[int, Field(ge=1, le=10)] = 5,
-    ) -> tuple[str, dict[str, dict[str, str]]]:
+    ) -> tuple[str, dict[str, dict[str, Any]]]:
         """Search the user's knowledge bases for passages that answer `query`. Use it when the
         question may be answered by the user's own documents. `kb_ids` (from
         list_knowledge_bases) limits the search to those bases; `limit` is 1 to 10."""
@@ -166,13 +162,7 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         except AppError:  # an embedding failure too
             raise ToolException(_UNAVAILABLE) from None
         return _minted(
-            [
-                (
-                    {"doc_id": str(p.doc_id), "chunk_id": str(p.chunk_id)},
-                    _shown(p, title=p.title),
-                )
-                for p in result.passages
-            ]
+            [(_ref(p.doc_id, p, p.title), _shown(p, title=p.title)) for p in result.passages]
         )
 
     @tool(response_format="content_and_artifact")
@@ -180,14 +170,14 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         cite_id: Annotated[str, Field(min_length=1, max_length=64)],
         runtime: ToolRuntime[Any, Any],
         window: Annotated[int, Field(ge=0, le=2)] = 1,
-    ) -> tuple[str, dict[str, dict[str, str]]]:
+    ) -> tuple[str, dict[str, dict[str, Any]]]:
         """Read the passage behind a `cite_id` from search_knowledge in this answer, with up to
         `window` (0 to 2) neighbouring passages on each side; `ordinal` gives document order."""
         owner = _owner(runtime)
         messages = _messages(runtime)
         if _calls(messages, "get_document_excerpt") > MAX_EXCERPTS:
             raise ToolException(_TOO_MANY)
-        ref = _cited(messages).get(cite_id)
+        ref = minted(messages).get(cite_id)
         if ref is None:
             raise ToolException(_NO_PASSAGE)
         doc_id = uuid.UUID(ref["doc_id"])
@@ -200,13 +190,8 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         # The cited passage first, so the size cap drops neighbours before it.
         passages = [chunk, *chunk.neighbours]
         return _minted(
-            [
-                (
-                    {"doc_id": str(doc_id), "chunk_id": str(p.chunk_id)},
-                    _shown(p, ordinal=p.ordinal),
-                )
-                for p in passages
-            ]
+            # An excerpt's passages are of the cited one's document, so they share its title.
+            [(_ref(doc_id, p, ref["title"]), _shown(p, ordinal=p.ordinal)) for p in passages]
         )
 
     return [

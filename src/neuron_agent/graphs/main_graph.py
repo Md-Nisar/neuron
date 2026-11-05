@@ -28,6 +28,7 @@ from neuron_agent.agents.factory import build_agent
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
+from neuron_agent.knowledge import citations
 from neuron_agent.models.factory import (
     TAINT_KEY,
     agent_invocation_config,
@@ -209,10 +210,12 @@ def _turn(state: MainGraphState) -> int:
 
 
 def _final_answer(result: dict[str, Any], *, run_messages: list[BaseMessage]) -> AgentAnswer:
-    """The run's answer, with `used_tools` taken from the tool calls that actually ran.
+    """The run's answer, with `used_tools` taken from the tool calls that actually ran and only
+    the `citations` a knowledge tool returned in this run.
 
-    The model's own `used_tools` is not trusted: it can omit tools it called or list ones it
-    did not, such as the `AgentAnswer` structured-output tool.
+    The model's own `used_tools` and `citations` are not trusted: it can omit tools it called
+    or list ones it did not, such as the `AgentAnswer` structured-output tool, and list a
+    `cite_id` it made up or copied from a passage's text.
     """
     structured = result.get("structured_response")
     if isinstance(structured, AgentAnswer):
@@ -222,7 +225,13 @@ def _final_answer(result: dict[str, Any], *, run_messages: list[BaseMessage]) ->
         if not output_text.strip():
             raise AppStructuredOutputError("agent returned an empty answer")
         answer = AgentAnswer(answer=output_text, confidence=0.5)
-    return answer.model_copy(update={"used_tools": _tools_run(run_messages)})
+    cited, rejected = citations.validate(answer.citations, run_messages)
+    if rejected:
+        metrics.record_citations_rejected(rejected)
+        logger.warning("citations_rejected", rejected=rejected, kept=len(cited))
+    return answer.model_copy(
+        update={"used_tools": _tools_run(run_messages), "citations": [c.cite_id for c in cited]}
+    )
 
 
 def _tools_run(messages: list[BaseMessage]) -> list[str]:

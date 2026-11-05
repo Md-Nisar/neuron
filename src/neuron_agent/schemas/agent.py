@@ -53,6 +53,10 @@ class AgentAnswer(BaseModel):
         default=False,
         description="True when the answer asks the user for missing detail instead of answering.",
     )
+    citations: list[str] = Field(
+        default_factory=list,
+        description="The cite_id of each knowledge passage the answer relies on.",
+    )
 
 
 class AgentResponse(BaseModel):
