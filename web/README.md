@@ -152,8 +152,9 @@ more"), with `PATCH /v1/threads/{id}` to rename and `DELETE /v1/threads/{id}` to
 
 ## Knowledge (`src/features/knowledge`, in development)
 
-The "Knowledge" page lists the user's knowledge bases and creates one, saying first where its text
-is processed (`hosted` or `self_hosted`). It uses `/v1/knowledge/*` and needs `knowledge:read` and
+The "Knowledge" page lists the user's knowledge bases and creates, renames and deletes them. Delete
+takes two steps and also deletes the base's documents. Creating one says first where its text is
+processed (`hosted` or `self_hosted`). It uses `/v1/knowledge/*` and needs `knowledge:read` and
 `knowledge:write`; with knowledge off on the server it says so. Names are shown as text.
 
 ## Your data (`src/features/data`)
