@@ -1,0 +1,12 @@
+# Allowlist: the sources the build needs, never node_modules, build output or env files.
+*
+!package.json
+!package-lock.json
+!index.html
+!nginx.conf
+!src/
+!tsconfig.json
+!vite.config.ts
+**/*.test.ts
+**/*.test.tsx
+**/.env*

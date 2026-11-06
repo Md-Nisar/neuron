@@ -23,7 +23,8 @@ updates:
         patterns:
           - "*"
   - package-ecosystem: docker
-    directory: /
+    # The API image, and the web and Keycloak images of the local stack (docker-compose.yml).
+    directories: [/, /web, /keycloak-theme]
     schedule:
       interval: weekly
     cooldown:

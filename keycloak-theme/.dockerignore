@@ -1,0 +1,11 @@
+# Allowlist: the sources the theme build needs, never node_modules or build output.
+*
+!package.json
+!package-lock.json
+!index.html
+!public/
+!src/
+!tsconfig*.json
+!vite.config.ts
+public/keycloakify-dev-resources/
+**/.env*
