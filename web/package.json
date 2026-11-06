@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "e2e:knowledge": "playwright test -c playwright.knowledge.config.ts",
     "audit": "npm audit --audit-level=low"
   },
   "dependencies": {

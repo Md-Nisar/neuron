@@ -35,6 +35,7 @@ FLOWS: dict[str, str] = {
     "threads": "Rename and delete conversations",
     "feedback": "Rate an answer",
     "data-rights": "Export and erase my data",
+    "knowledge": "Create a knowledge base, upload a file, see it ready; downloads never run",
     "isolation": "One user cannot see another's data",
     "validation": "Bad requests are rejected before a run starts",
     "security": "Hostile text, third-party origins, tokens in storage",
@@ -69,26 +70,31 @@ def _walk(suite: dict[str, Any], found: dict[str, list[str]]) -> None:
         _walk(child, found)
 
 
+# The default browser config, and the one for the knowledge flow (Postgres and the worker).
+PLAYWRIGHT_CONFIGS = ("playwright.config.ts", "playwright.knowledge.config.ts")
+
+
 def browser_flows(web_dir: Path) -> dict[str, list[str]] | None:
     """Map flow name to the Playwright tests tagged with it, or None if they can't be listed."""
     npx = shutil.which("npx")
     if npx is None:
         return None
-    try:
-        result = subprocess.run(  # noqa: S603 - fixed argv, no shell
-            [npx, "playwright", "test", "--list", "--reporter=json"],
-            cwd=web_dir,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=True,
-        )
-        report = json.loads(result.stdout)
-    except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
-        return None
     found: dict[str, list[str]] = {}
-    for suite in report.get("suites", []):
-        _walk(suite, found)
+    for config in PLAYWRIGHT_CONFIGS:
+        try:
+            result = subprocess.run(  # noqa: S603 - fixed argv, no shell
+                [npx, "playwright", "test", "-c", config, "--list", "--reporter=json"],
+                cwd=web_dir,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=True,
+            )
+            report = json.loads(result.stdout)
+        except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+            return None
+        for suite in report.get("suites", []):
+            _walk(suite, found)
     return found
 
 

@@ -7,6 +7,8 @@ const api = "http://127.0.0.1:8000";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Needs Postgres and the ingestion worker: `playwright.knowledge.config.ts`.
+  testIgnore: /knowledge\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,

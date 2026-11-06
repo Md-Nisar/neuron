@@ -114,6 +114,70 @@ jobs:
       - if: always()
         run: uv run python scripts/flow_report.py
 
+  # The knowledge flow in the browser (RAG-06.01): the same stand-ins as `web-e2e`, with the API on
+  # Postgres (pgvector, the reference stack's roles), `setup` and the ingestion worker. The fake
+  # embedding provider and a text file keep it offline: no provider call, no docling-serve.
+  web-e2e-knowledge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      # The same image and digest as postgres-integration.yml.
+      POSTGRES_IMAGE: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
+      # Throwaway CI-only values; the role passwords are those of deploy/reference/init-roles.sql.
+      APP_ENV: development
+      APP_CHECKPOINTER: postgres
+      APP_MEMORY_ENABLED: "true"
+      APP_KNOWLEDGE_ENABLED: "true"
+      APP_KNOWLEDGE_EMBEDDING_PROVIDER: fake
+      APP_IDENTITY_HASH_KEY: browser-e2e-identity-hash-key-not-a-secret
+      APP_POSTGRES_MIGRATION_DSN: postgresql://neuron_migrator:migrator-local-only@127.0.0.1:5432/neuron?sslmode=disable
+      APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@127.0.0.1:5432/neuron?sslmode=disable
+      APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker:worker-local-only@127.0.0.1:5432/neuron?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Start Postgres with the reference roles
+        run: |
+          set -euo pipefail
+          docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=ci-only-throwaway \
+            -e POSTGRES_DB=neuron "$POSTGRES_IMAGE"
+          for _ in $(seq 30); do
+            docker exec postgres pg_isready -h 127.0.0.1 -U postgres && break
+            sleep 2
+          done
+          for sql in init-roles.sql init-knowledge.sql; do
+            docker exec -i postgres psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d neuron \
+              < "deploy/reference/$sql"
+          done
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv python install 3.13
+      - run: uv sync
+      - run: uv run python -m neuron_agent.persistence.cli setup
+      - name: Start the ingestion worker
+        run: |
+          nohup uv run neuron-worker > worker.log 2>&1 &
+          for _ in $(seq 30); do uv run neuron-worker health && exit 0; sleep 2; done
+          cat worker.log >&2
+          exit 1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run e2e:knowledge
+        working-directory: web
+        env:
+          CI: "true"
+      - if: failure()
+        run: tail -n 200 worker.log
+
   # Runs the real `promtool` and `otelcol-contrib` (pinned by version and SHA-256 in the script)
   # on the alert rules and the Collector config. Standard library Python only; no secret.
   observability-config:

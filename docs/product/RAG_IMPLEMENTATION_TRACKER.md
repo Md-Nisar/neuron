@@ -52,18 +52,18 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
-| RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 1 | 0 | 1 | RAG-06.01 (in progress) |
+| RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 1 | 0 | 0 | 1 | RAG-06.02 (ready) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-08.01 (ready) |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.02 (Phase 2) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **23** | **1** | **0** | **32** | **RAG-06.01** |
+| **Total** | | | | **56** | **24** | **0** | **0** | **32** | **RAG-06.02** |
 
-v1.1.0 scope (E00–E08): 33 stories, 23 done.
+v1.1.0 scope (E00–E08): 33 stories, 24 done.
 
-**Recommended next action:** finish RAG-06.01 (knowledge screen, owner's choice 2026-11-06), then RAG-06.02. RAG-08.01 (which also carries RAG-04.03's live abstention check and the similarity floor) and RAG-07.01 are also unblocked.
+**Recommended next action:** RAG-06.02 (citation chips and source sheet), which completes RAG-E06. RAG-08.01 (which also carries RAG-04.03's live abstention check and the similarity floor) and RAG-07.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -252,11 +252,14 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E06 Knowledge in the web app
 
-- **Stories:** 2 total · 0 done · 1 in progress · 0 blocked · 1 pending
-- **Implemented functionality:** RAG-06.01 part 1 (#468): the knowledge API client and response checks (`web/src/features/knowledge/api.ts`, `parse.ts`). Part 2 (#469): the "Knowledge" page in the sidebar lists and creates bases, stating the processing locality first (`KnowledgeScreen.tsx`). Part 3 (#470): rename and two-step delete (`BaseRow.tsx`). Part 4: upload by drop or picker, the processing notice above it, and status polling until every document has settled (`DocumentsPanel.tsx`). Part 5: fixed wording for each `error_code` and upload refusal, quotas included (`messages.ts`).
-- **Outstanding work:** RAG-06.01: Playwright flow and axe in both themes. Then RAG-06.02.
-- **Blockers and decisions:** none; the E03 routes and the RAG-05.02 contract are done. RAG-06.01 lands as several PRs of under 400 lines.
-- **Next recommended story:** RAG-06.01.
+- **Stories:** 2 total · 1 done · 0 in progress · 0 blocked · 1 pending
+- **Implemented functionality:** RAG-06.01 part 1 (#468): the knowledge API client and response checks (`web/src/features/knowledge/api.ts`, `parse.ts`). Part 2 (#469): the "Knowledge" page in the sidebar lists and creates bases, stating the processing locality first (`KnowledgeScreen.tsx`). Part 3 (#470): rename and two-step delete (`BaseRow.tsx`). Part 4 (#471): upload by drop or picker, the processing notice above it, and status polling until every document has settled (`DocumentsPanel.tsx`). Part 5 (#472): fixed wording for each `error_code` and upload refusal, quotas included (`messages.ts`). Part 6: the flow in Chromium against Postgres and the worker, with axe in both themes (`web/e2e/knowledge.spec.ts`, CI job `web-e2e-knowledge`).
+- **Outstanding work:** RAG-06.02.
+- **Blockers and decisions:**
+  - RAG-06.01 landed as six PRs of under 400 lines (#468 to #472 and the Playwright PR).
+  - Decision (owner, 2026-11-06): the browser test for AC1 uploads a text file, not a PDF, so the CI job needs no docling-serve. PDF parsing is covered by the ingestion tests (RAG-02.02); the same queued-to-ready path in the page is covered for a PDF with a mocked API (`DocumentsPanel.test.tsx`).
+  - The browser axe run checks colour contrast too (jsdom cannot), on the Knowledge page only.
+- **Next recommended story:** RAG-06.02.
 
 ### RAG-E07 Data rights and lifecycle
 
@@ -333,7 +336,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Done | #464 | #465 | `tests/integration/test_postgres_knowledge_search_api.py` on Postgres as the app role: a run narrowed to A finds only A's chunk although the model asks for B, which the user owns (AC1); a foreign id in the list, alone or beside A, finds nothing and is not an error, the same as an unknown id (AC2). `tests/unit/test_api.py`: 11 ids, an empty list or a bad id is `422` on invoke, stream and both decision routes (AC3). `tests/security/test_knowledge_tools.py`: the model's `kb_ids` are intersected with the list, `list_knowledge_bases` shows only listed bases, and the list is in the run context, not the graph input. `tests/unit/test_thread_lifecycle.py`: a decision carries the list into the continued run |
 | RAG-05.01 | Citation minting and validation | 1 | P0 | Done | #457 | #458 | `tests/security/test_citations.py` through the real agent loop: a `cite_id` no tool returned is dropped and `neuron.citations.rejected` counts it, as is every citation of a run without a knowledge tool (AC1); a `cite_id`-shaped string the model copies from a passage is dropped (AC2); two valid citations are kept in the listed order and resolve to document, chunk, title, headings and pages (AC3). Also: only successful knowledge-tool artifacts mint ids; `tests/security/test_knowledge_tools.py` checks the artifacts of a search and an excerpt |
 | RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Done | #459 | #460 | `tests/security/test_citations.py`: a thread reloaded from its checkpoint returns the answer's citations in history, and a later run without knowledge has none (AC1); the stored answer holds ids, title and pages but no passage text, and no tool message is stored (AC3); a search with no valid citation is `grounded: false`; a stamp that does not validate is ignored. `web/src/lib/stream/client.test.ts`: the current client reads a v1 `final` with citations unchanged (AC2), against `contract.json`'s `final_with_citations`, which `tests/unit/test_web_stream_contract.py` checks against `AgentResponse` |
-| RAG-06.01 | Knowledge screen | 1 | P0 | In progress | #467 | #468, #469 | Part 1: API client and parsing (`web/src/features/knowledge/*.test.ts`); part 2: list and create (`KnowledgeScreen.test.tsx`, AC2 for the create form); part 3: rename and delete; part 4: AC1 with a mocked API and AC2 (`DocumentsPanel.test.tsx`); part 5: AC3 |
+| RAG-06.01 | Knowledge screen | 1 | P0 | Done | #467 | #468, #469, #470, #471, #472 and part 6 | AC1: `web/e2e/knowledge.spec.ts` (create, upload a text file, Ready without a reload, in CI `web-e2e-knowledge`) and `DocumentsPanel.test.tsx` (a PDF, mocked API); AC2: `DocumentsPanel.test.tsx` and `KnowledgeScreen.test.tsx`; AC3: `DocumentsPanel.test.tsx` (codes mapped, no server text); AC4: axe in `knowledge.spec.ts` (light and dark, contrast included) and the Vitest axe tests; `make flows` lists `knowledge` |
 | RAG-06.02 | Citation chips and source sheet | 1 | P0 | Pending | — | — | — |
 | RAG-07.01 | Erase and export include knowledge | 1 | P0 | Pending | — | — | — |
 | RAG-07.02 | Orphan sweep and reconciliation | 1 | P1 | Pending | — | — | — |
@@ -371,6 +374,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-06 | RAG-06.01 Done (#467: #468 to #472 and part 6): Knowledge page, upload, status polling, failure messages, browser flow with axe in both themes. AC1's browser test uses a text file (owner's decision). Next: RAG-06.02 | Claude session |
 | 2026-11-06 | RAG-06.01 In progress (#467, part 1: API client). Epic issue RAG-E06 #466 created. Header brought up to date with RAG-04.03 and RAG-04.04 (Done) | Claude session |
 | 2026-11-06 | RAG-04.04 Done (#464, #465); RAG-04.03 Done (#461, #462, #463), its live abstention check and the floor calibration moved to RAG-08.01; epic RAG-E04 closed | Claude session |
 | 2026-11-05 | RAG-04.02 Done (#452; #453, #454, #455): the three knowledge tools, wired into `AgentService`; RAG-03.05 Done with its AC3 parity test (#455). Security review: no high findings; excerpt cap and a no-ids-to-the-model test added | Claude session |

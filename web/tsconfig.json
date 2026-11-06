@@ -20,5 +20,12 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "e2e", "vite.config.ts", "playwright.config.ts", "eslint.config.js"]
+  "include": [
+    "src",
+    "e2e",
+    "vite.config.ts",
+    "playwright.config.ts",
+    "playwright.knowledge.config.ts",
+    "eslint.config.js"
+  ]
 }
