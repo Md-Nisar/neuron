@@ -1575,10 +1575,12 @@ def _stamped_citations(message: BaseMessage) -> dict[str, Any]:
         return {}
     stamped = {k: message.additional_kwargs.get(k) for k in CitationFields.model_fields}
     try:
-        return CitationFields.model_validate(stamped).model_dump(exclude_none=True)
+        fields = CitationFields.model_validate(stamped).model_dump()
     except ValidationError:
         logger.warning("stored_citations_invalid")
         return {}
+    # Only absent fields are dropped: a citation's own nulls (no pages, no title) are kept.
+    return {key: value for key, value in fields.items() if value is not None}
 
 
 _SUMMARY_VALUE_CHARS = 60

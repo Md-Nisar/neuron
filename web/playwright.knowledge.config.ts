@@ -22,7 +22,8 @@ export default defineConfig({
   testMatch: /knowledge\.spec\.ts/,
   webServer: servers.map((server) =>
     server.url?.endsWith("/health/live") === true
-      ? { ...server, env: { ...server.env, ...KNOWLEDGE_ENV } }
+      ? // The API's own logs (stdout) show in CI when the flow fails.
+        { ...server, env: { ...server.env, ...KNOWLEDGE_ENV }, stdout: "pipe" as const }
       : server,
   ),
 });

@@ -29,7 +29,7 @@ async function violations(page: Page): Promise<string[]> {
 }
 
 test(
-  "a user creates a knowledge base, uploads a file and sees it become ready",
+  "a user uploads a file, sees it become ready, asks about it and opens the citation",
   { tag: ["@knowledge"] },
   async ({ page }) => {
     const user = `kb${Date.now().toString(36)}`;
@@ -62,5 +62,27 @@ test(
       );
       expect(await violations(page), `${scheme} theme`).toEqual([]);
     }
+
+    // RAG-06.02: ask, then open the passage the answer cites. Without a provider key the API's
+    // fake model answers `search: ...` by searching knowledge and citing what it found.
+    await page.getByRole("button", { name: "Chat" }).click();
+    const composer = page.getByRole("textbox", { name: "Message" });
+    await composer.fill("search: paid leave");
+    await composer.press("Enter");
+    // The scripted answer; on any other outcome, say what the chat shows instead.
+    const log = page.getByRole("log", { name: "Messages" });
+    await expect(log.getByText("From your documents."))
+      .toBeVisible({ timeout: 30_000 })
+      .catch(async (error: unknown) => {
+        throw new Error(`chat shows: ${await log.innerText()}`, { cause: error });
+      });
+    const sources = page.getByRole("list", { name: "Sources" });
+    const chip = sources.getByRole("button").first();
+    await expect(chip).toContainText("1");
+    await expect(chip).toContainText("leave-policy.txt");
+    await chip.click();
+    const sheet = page.getByRole("region", { name: /^1\. leave-policy\.txt/ });
+    await expect(sheet.getByText("Everyone gets 25 days of paid leave a year.")).toBeVisible();
+    expect(await violations(page), "chat with an open source").toEqual([]);
   },
 );
