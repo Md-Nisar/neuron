@@ -54,6 +54,12 @@ test(
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${scheme}\\b`));
+      // Controls fade to the new colours (`transition-all`): measure contrast after the fade.
+      await page.waitForFunction(() =>
+        document
+          .getAnimations()
+          .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+      );
       expect(await violations(page), `${scheme} theme`).toEqual([]);
     }
   },
