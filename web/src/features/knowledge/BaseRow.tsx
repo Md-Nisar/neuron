@@ -11,13 +11,16 @@ import type { KnowledgeBase } from "./parse";
 
 export interface BaseRowProps {
   base: KnowledgeBase;
+  /** Its documents are shown below the list. */
+  open: boolean;
+  onOpen: () => void;
   /** Resolves true once the name is stored; false keeps the form open (the screen shows why). */
   onRename: (name: string) => Promise<boolean>;
   onDelete: () => void;
 }
 
 /** One knowledge base: its name as text, where it is processed, rename, and a two-step delete. */
-export function BaseRow({ base, onRename, onDelete }: BaseRowProps) {
+export function BaseRow({ base, open, onOpen, onRename, onDelete }: BaseRowProps) {
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
   const [draft, setDraft] = useState("");
   const renameButton = useRef<HTMLButtonElement>(null);
@@ -75,7 +78,14 @@ export function BaseRow({ base, onRename, onDelete }: BaseRowProps) {
 
   return (
     <>
-      <p className="min-w-0 flex-1 truncate text-sm font-medium">{name}</p>
+      <button
+        type="button"
+        aria-pressed={open}
+        className="min-w-0 flex-1 truncate rounded text-left text-sm font-medium outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:text-primary"
+        onClick={onOpen}
+      >
+        {name}
+      </button>
       <Badge variant="secondary">{PROCESSING_TEXT[base.processing].label}</Badge>
       {mode === "confirm" ? (
         <>

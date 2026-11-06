@@ -16,11 +16,13 @@ const kb = (n: number, name: string, processing = "hosted") => ({
 
 /** A fetch that answers `GET` with the bases and any change with `reply`. */
 function setup(bases: unknown[], reply?: { status: number; body: unknown }) {
-  const fetch = vi.fn<typeof globalThis.fetch>((_input, init) =>
+  const fetch = vi.fn<typeof globalThis.fetch>((input, init) =>
     Promise.resolve(
-      init?.method === "GET"
-        ? jsonResponse(200, { bases })
-        : jsonResponse(reply?.status ?? 201, reply?.body),
+      init?.method !== "GET"
+        ? jsonResponse(reply?.status ?? 201, reply?.body)
+        : (input instanceof URL ? input.pathname : "").endsWith("/bases")
+          ? jsonResponse(200, { bases })
+          : jsonResponse(200, { documents: [], total: 0 }),
     ),
   );
   const user = userEvent.setup();
@@ -68,6 +70,12 @@ describe("knowledge bases", () => {
       processing: "self_hosted",
     });
     expect(screen.getByLabelText("New knowledge base")).toHaveValue("");
+    // The new base opens, ready for its first upload.
+    expect(screen.getByRole("button", { name: "Contracts" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("heading", { name: "Documents in Contracts" })).toBeInTheDocument();
   });
 
   it("refuses an empty name without calling the API", async () => {

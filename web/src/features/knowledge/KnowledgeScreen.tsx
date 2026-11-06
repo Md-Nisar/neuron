@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/request";
 
 import { createBase, deleteBase, listBases, renameBase } from "./api";
 import { BaseRow } from "./BaseRow";
+import { DocumentsPanel } from "./DocumentsPanel";
 import { knowledgeErrorText, NAME_MAX_CHARS, PROCESSING_TEXT } from "./messages";
 import type { KnowledgeBase, Processing } from "./parse";
 
@@ -26,6 +27,7 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [processing, setProcessing] = useState<Processing>("hosted");
+  const [openId, setOpenId] = useState<string | null>(null);
   const busy = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -82,6 +84,7 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
     void run(async () => {
       const made = await createBase(deps, wanted, processing);
       setBases((current) => [...current, made]);
+      setOpenId(made.kb_id);
       setName("");
     });
   }
@@ -192,6 +195,10 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
               <li key={base.kb_id} className="flex flex-wrap items-center gap-2 px-4 py-3">
                 <BaseRow
                   base={base}
+                  open={openId === base.kb_id}
+                  onOpen={() => {
+                    setOpenId(base.kb_id);
+                  }}
                   onRename={(draft) => rename(base.kb_id, draft)}
                   onDelete={() => {
                     remove(base.kb_id);
@@ -200,6 +207,11 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
               </li>
             ))}
           </ul>
+          {bases
+            .filter((base) => base.kb_id === openId)
+            .map((base) => (
+              <DocumentsPanel key={base.kb_id} deps={deps} base={base} />
+            ))}
         </CardContent>
       </Card>
     </section>

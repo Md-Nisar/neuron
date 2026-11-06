@@ -35,3 +35,9 @@ export const PROCESSING_TEXT: Record<Processing, { label: string; detail: string
       "Text from your files is indexed only by models this service runs itself. If none is set up, processing fails instead of using a hosted provider.",
   },
 };
+
+/** Why a document failed: one fixed wording for every code, for now. */
+export const DOCUMENT_FAILED = "Processing failed. Upload the file again.";
+
+/** Why an upload was refused. */
+export const uploadErrorText = knowledgeErrorText;
