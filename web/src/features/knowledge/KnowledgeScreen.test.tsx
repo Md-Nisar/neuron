@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -14,13 +14,13 @@ const kb = (n: number, name: string, processing = "hosted") => ({
   created_at: "2026-11-01T10:00:00Z",
 });
 
-/** A fetch that answers `GET` with the bases and `POST` with `created` (or `failure`). */
-function setup(bases: unknown[], post?: { status: number; body: unknown }) {
+/** A fetch that answers `GET` with the bases and any change with `reply`. */
+function setup(bases: unknown[], reply?: { status: number; body: unknown }) {
   const fetch = vi.fn<typeof globalThis.fetch>((_input, init) =>
     Promise.resolve(
-      init?.method === "POST"
-        ? jsonResponse(post?.status ?? 201, post?.body)
-        : jsonResponse(200, { bases }),
+      init?.method === "GET"
+        ? jsonResponse(200, { bases })
+        : jsonResponse(reply?.status ?? 201, reply?.body),
     ),
   );
   const user = userEvent.setup();
@@ -110,6 +110,58 @@ describe("knowledge bases", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Knowledge bases are turned off for this service.",
     );
+  });
+
+  it("renames one and returns focus to its rename button", async () => {
+    const { fetch, user } = setup([kb(1, "Policies")], { status: 200, body: kb(1, "Rules") });
+    await user.click(await screen.findByRole("button", { name: "Rename Policies" }));
+    const input = screen.getByRole("textbox", { name: "New name for Policies" });
+
+    await user.clear(input);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Use 1 to 80 characters.");
+    await user.type(input, "Rules{Enter}");
+
+    expect(await screen.findByRole("button", { name: "Rename Rules" })).toHaveFocus();
+    const [url, init] = fetch.mock.calls[1] ?? [];
+    expect(init?.method).toBe("PATCH");
+    expect(url instanceof URL ? url.pathname : "").toBe(`/v1/knowledge/bases/${kb(1, "").kb_id}`);
+    expect(JSON.parse(init?.body as string)).toEqual({ name: "Rules" });
+  });
+
+  it("deletes one only after confirming, then keeps focus in the section", async () => {
+    const { fetch, user } = setup([kb(1, "Policies"), kb(2, "Contracts")], {
+      status: 202,
+      body: null,
+    });
+    await user.click(await screen.findByRole("button", { name: "Delete Policies" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Delete Policies" })).toHaveFocus();
+    expect(fetch).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole("button", { name: "Delete Policies" }));
+    await user.click(screen.getByRole("button", { name: "Confirm delete" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Policies")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Contracts")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Knowledge bases" })).toHaveFocus();
+    expect(fetch.mock.calls[1]?.[1]?.method).toBe("DELETE");
+  });
+
+  it("drops a base that another tab already deleted", async () => {
+    const { user } = setup([kb(1, "Policies")], {
+      status: 404,
+      body: { detail: "knowledge_base_not_found" },
+    });
+    await user.click(await screen.findByRole("button", { name: "Delete Policies" }));
+    await user.click(screen.getByRole("button", { name: "Confirm delete" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "That knowledge base no longer exists.",
+    );
+    expect(screen.queryByText("Policies")).not.toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
