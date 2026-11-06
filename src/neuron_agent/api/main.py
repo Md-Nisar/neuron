@@ -413,7 +413,7 @@ def _host_and_cors_stack(app: ASGIApp, config: Settings) -> ASGIApp:
             stack,
             allow_origins=config.cors_allowed_origins,
             allow_methods=["GET", "POST", "PATCH", "DELETE"],
-            allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],
+            allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Correlation-ID"],
             expose_headers=["Retry-After", "X-Correlation-ID"],
             max_age=600,
         )
