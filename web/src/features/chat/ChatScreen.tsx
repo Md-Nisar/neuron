@@ -36,6 +36,7 @@ import type { ChatMessage } from "./chatState";
 import { displaySafe } from "./displaySafe";
 import { FeedbackBar } from "./FeedbackBar";
 import { characterCount, checkDraft, type DraftProblem } from "./limits";
+import { KnowledgePicker } from "./KnowledgePicker";
 import { Markdown } from "./Markdown";
 import { MessageActions } from "./MessageActions";
 import { Sources } from "./Sources";
@@ -380,7 +381,14 @@ export function ChatView({
               }}
               onKeyDown={onKeyDown}
             />
-            <div className="flex items-center gap-2 px-3 pb-3">
+            <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
+              {feedback !== undefined && (
+                <KnowledgePicker
+                  deps={feedback}
+                  selected={chat.knowledgeBaseIds}
+                  onChange={chat.setKnowledgeBaseIds}
+                />
+              )}
               <p
                 id="message-count"
                 className={cn(

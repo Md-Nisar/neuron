@@ -17,6 +17,49 @@ const approval = {
 };
 const started = frame("run_started", { request_id: "r1", thread_id: "t1" });
 
+describe("narrowing to chosen knowledge bases", () => {
+  const A = "0b6f1c1e-6c8e-4c36-9d2b-6a1f2f3e4d5c";
+  const body = (call: Parameters<typeof fetch> | undefined) =>
+    JSON.parse(call?.[1]?.body as string) as Record<string, unknown>;
+
+  it("sends the chosen ids with the question and again with the decision, and none when unset", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    fetchMock.mockResolvedValueOnce(
+      sseResponse(streamOf([started, frame("approval_required", approval), frame("done", {})])),
+    );
+    fetchMock.mockResolvedValue(sseResponse(streamOf([started, frame("done", {})])));
+    const { result } = renderHook(() =>
+      useChat({
+        apiUrl: "http://127.0.0.1:8000",
+        getAccessToken: () => "tok",
+        onSessionEnded: vi.fn(),
+        maxChars: 1000,
+        fetch: fetchMock,
+      }),
+    );
+    act(() => {
+      result.current.setKnowledgeBaseIds([A]);
+    });
+    await act(async () => {
+      await result.current.send("what does the policy say?");
+    });
+    const messageId = result.current.messages.find((m) => m.approval !== null)?.id ?? "";
+    await act(async () => {
+      await result.current.decide(messageId, "approve");
+    });
+    act(() => {
+      result.current.setKnowledgeBaseIds([]);
+    });
+    await act(async () => {
+      await result.current.send("and now?");
+    });
+
+    expect(body(fetchMock.mock.calls[0])["knowledge_base_ids"]).toEqual([A]);
+    expect(body(fetchMock.mock.calls[1])).toEqual({ decision: "approve", knowledge_base_ids: [A] });
+    expect(body(fetchMock.mock.calls[2])).not.toHaveProperty("knowledge_base_ids");
+  });
+});
+
 describe("useChat.decide", () => {
   it("makes one decision even if called twice in the same tick", async () => {
     const fetchMock = vi.fn<typeof fetch>();

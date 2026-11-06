@@ -35,6 +35,9 @@ export function useChat(deps: ChatDeps) {
   const [openedAt, setOpenedAt] = useState(0);
   const openRequest = useRef(0);
   const openingNow = useRef(false);
+  // The knowledge bases a question may search (RAG-04.04); empty means all of the user's.
+  const [knowledgeBaseIds, setKnowledgeBaseIds] = useState<string[]>([]);
+  const narrowed = knowledgeBaseIds.length > 0 ? { knowledge_base_ids: knowledgeBaseIds } : {};
 
   useEffect(
     () => () => {
@@ -67,7 +70,11 @@ export function useChat(deps: ChatDeps) {
         baseUrl: deps.apiUrl,
         path: "/v1/agent/stream",
         token,
-        body: { message: text, ...(state.threadId === null ? {} : { thread_id: state.threadId }) },
+        body: {
+          message: text,
+          ...(state.threadId === null ? {} : { thread_id: state.threadId }),
+          ...narrowed,
+        },
         signal: controller.signal,
         ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
       });
@@ -123,7 +130,8 @@ export function useChat(deps: ChatDeps) {
           baseUrl: deps.apiUrl,
           path: approvalStreamPath(approval.payload),
           token,
-          body: { decision },
+          // Not stored with the thread: a continued run is narrowed only if sent again.
+          body: { decision, ...narrowed },
           signal: controller.signal,
           ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
         });
@@ -225,6 +233,8 @@ export function useChat(deps: ChatDeps) {
     openedAt,
     open,
     running: state.running,
+    knowledgeBaseIds,
+    setKnowledgeBaseIds,
     canRetry: retryText !== null,
     send,
     decide,
