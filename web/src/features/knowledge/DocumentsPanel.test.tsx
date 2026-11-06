@@ -6,6 +6,7 @@ import { accessibilityViolations } from "@/test/axe";
 import { jsonResponse } from "@/test/sse";
 
 import { DocumentsPanel, POLL_MS } from "./DocumentsPanel";
+import { documentFailureText } from "./messages";
 import type { Processing } from "./parse";
 
 const KB = "0b6f1c1e-6c8e-4c36-9d2b-6a1f2f3e4d5c";
@@ -90,13 +91,43 @@ describe("documents", () => {
     expect(gets(fetch)).toBe(before);
   });
 
-  it("shows a failed document's message, with no server text", async () => {
-    setup([[doc("failed", "Traceback: /srv/x.py")]]);
+  it("explains a failed document from its code, with no server text", async () => {
+    setup([
+      [
+        doc("failed", "encrypted_pdf"),
+        {
+          ...doc("failed", "Traceback: /srv/x.py"),
+          doc_id: "7d1e2f3a-4b5c-4d6e-8f70-819203a4b5c7",
+        },
+      ],
+    ]);
 
     expect(
-      await screen.findByText("Processing failed. Upload the file again."),
+      await screen.findByText(
+        "The PDF is password-protected. Remove the password and upload it again.",
+      ),
     ).toBeInTheDocument();
+    expect(screen.getByText("Processing failed. Upload the file again.")).toBeInTheDocument();
     expect(screen.queryByText(/Traceback|srv/)).toBeNull();
+  });
+
+  it("maps every kind of failure code to fixed wording", () => {
+    expect(documentFailureText("embedding_rate_limited")).toBe(
+      "Indexing failed. Upload the file again later.",
+    );
+    expect(documentFailureText("blob_not_found")).toMatch(/stored file/);
+    expect(documentFailureText("toString")).toBe("Processing failed. Upload the file again.");
+    expect(documentFailureText(null)).toBe("Processing failed. Upload the file again.");
+  });
+
+  it("says clearly when an upload is over a quota", async () => {
+    const { user } = setup([[]], { upload: jsonResponse(413, { detail: "byte_quota_exceeded" }) });
+
+    await user.upload(screen.getByLabelText(/Drop files here/), new File(["x"], "notes.txt"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "notes.txt: You have used all your document storage. Delete documents to upload more.",
+    );
   });
 
   it("has no accessibility violations", async () => {
