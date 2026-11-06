@@ -11,6 +11,8 @@ export function knowledgeErrorText(error: unknown): string {
         return "Knowledge bases are turned off for this service.";
       case "knowledge_base_not_found":
         return "That knowledge base no longer exists.";
+      case "knowledge_document_not_found":
+        return "That document no longer exists.";
       case "knowledge_base_limit_reached":
         return "You have reached the limit of knowledge bases. Delete one to create another.";
     }

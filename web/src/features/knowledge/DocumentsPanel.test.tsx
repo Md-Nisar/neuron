@@ -24,16 +24,28 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Each `GET` answers with the next list (the last one repeats); `POST` with `upload`. */
-function setup(lists: unknown[][], options: { processing?: Processing; upload?: Response } = {}) {
+/**
+ * Each `GET` answers with the next list (the last one repeats; an `Error` entry is a 500);
+ * each `POST` with the next of `uploads` (the last one repeats); `DELETE` with `remove`.
+ */
+function setup(
+  lists: (unknown[] | Error)[],
+  options: { processing?: Processing; uploads?: Response[]; remove?: Response } = {},
+) {
   let call = 0;
+  let posted = 0;
   const fetch = vi.fn<typeof globalThis.fetch>((_input, init) => {
-    if (init?.method === "POST")
+    if (init?.method === "POST") {
+      const uploads = options.uploads ?? [];
       return Promise.resolve(
-        options.upload ??
+        uploads[Math.min(posted++, uploads.length - 1)]?.clone() ??
           jsonResponse(202, { doc_id: doc("queued").doc_id, kb_id: KB, status: "queued" }),
       );
+    }
+    if (init?.method === "DELETE")
+      return Promise.resolve(options.remove ?? new Response(null, { status: 202 }));
     const documents = lists[Math.min(call++, lists.length - 1)] ?? [];
+    if (documents instanceof Error) return Promise.resolve(jsonResponse(500, {}));
     return Promise.resolve(jsonResponse(200, { documents, total: documents.length }));
   });
   const base = {
@@ -121,13 +133,83 @@ describe("documents", () => {
   });
 
   it("says clearly when an upload is over a quota", async () => {
-    const { user } = setup([[]], { upload: jsonResponse(413, { detail: "byte_quota_exceeded" }) });
+    const { user } = setup([[]], {
+      uploads: [jsonResponse(413, { detail: "byte_quota_exceeded" })],
+    });
 
     await user.upload(screen.getByLabelText(/Drop files here/), new File(["x"], "notes.txt"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "notes.txt: You have used all your document storage. Delete documents to upload more.",
     );
+  });
+
+  it("keeps every refusal of a batch in view, and lists each upload once accepted", async () => {
+    const { fetch, user } = setup([[], [doc("ready")]], {
+      uploads: [
+        jsonResponse(415, { detail: "unsupported_media_type" }),
+        jsonResponse(202, { doc_id: doc("queued").doc_id, kb_id: KB, status: "queued" }),
+        jsonResponse(413, { detail: "file_too_large" }),
+      ],
+    });
+
+    await user.upload(screen.getByLabelText(/Drop files here/), [
+      new File(["x"], "a.md"),
+      new File(["x"], "b.txt"),
+      new File(["x"], "c.pdf"),
+    ]);
+
+    const alert = await screen.findByRole("alert");
+    await vi.waitFor(() => {
+      expect(alert).toHaveTextContent(/c\.pdf: The file is too large/);
+    });
+    expect(alert).toHaveTextContent(/a\.md: This file type isn't supported/);
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    expect(gets(fetch)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps polling after a failed refresh", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fetch } = setup([[doc("queued")], new Error(), [doc("ready")]]);
+    expect(await screen.findByText("Queued")).toBeInTheDocument();
+
+    await act(() => vi.advanceTimersByTimeAsync(POLL_MS));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await act(() => vi.advanceTimersByTimeAsync(POLL_MS));
+
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    expect(gets(fetch)).toBe(3);
+  });
+
+  it("deletes a document after a confirm step, and keeps focus in the panel", async () => {
+    const { fetch, user } = setup([[doc("ready")]]);
+    await user.click(await screen.findByRole("button", { name: "Delete Handbook.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Delete Handbook.pdf" })).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Delete Handbook.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Confirm delete Handbook.pdf" }));
+
+    await vi.waitFor(() => {
+      expect(screen.queryByText("Handbook.pdf")).toBeNull();
+    });
+    const [url, init] = fetch.mock.calls.find(([, i]) => i?.method === "DELETE") ?? [];
+    expect((url as URL).href).toBe(
+      `http://127.0.0.1:8000/v1/knowledge/documents/${doc("ready").doc_id}`,
+    );
+    expect(init?.method).toBe("DELETE");
+    expect(screen.getByRole("heading", { name: /Documents in/ })).toHaveFocus();
+  });
+
+  it("drops a document another tab already deleted, and says so", async () => {
+    const { user } = setup([[doc("ready")]], {
+      remove: jsonResponse(404, { detail: "knowledge_document_not_found" }),
+    });
+    await user.click(await screen.findByRole("button", { name: "Delete Handbook.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Confirm delete Handbook.pdf" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("That document no longer exists.");
+    expect(screen.queryByText("Handbook.pdf")).toBeNull();
   });
 
   it("has no accessibility violations", async () => {
