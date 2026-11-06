@@ -156,6 +156,9 @@ The "Knowledge" page lists the user's knowledge bases and creates, renames and d
 takes two steps and also deletes the base's documents. Creating one says first where its text is
 processed (`hosted` or `self_hosted`). It uses `/v1/knowledge/*` and needs `knowledge:read` and
 `knowledge:write`; with knowledge off on the server it says so. Names are shown as text.
+Opening a base shows its documents and, above the upload area, where their text is processed.
+Files are uploaded by drop or picker, one request each with its own `Idempotency-Key`, and the list
+is fetched again every 2 seconds while any document is still queued or being processed.
 
 ## Your data (`src/features/data`)
 
