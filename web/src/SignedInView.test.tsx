@@ -126,6 +126,20 @@ describe("SignedInView", () => {
     expect(screen.queryByText("No conversations yet.")).not.toBeInTheDocument();
   });
 
+  it("opens the knowledge screen from the sidebar and comes back to the chat", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Knowledge" }));
+
+    expect(screen.getByRole("button", { name: "Knowledge" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("region", { name: "Knowledge" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Chat" }));
+    expect(screen.queryByRole("region", { name: "Knowledge" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeVisible();
+  });
+
   it("clears the open chat when its conversation is deleted from the list", async () => {
     const { user, api } = setup();
     await user.click(screen.getByRole("textbox", { name: "Message" }));

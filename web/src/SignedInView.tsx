@@ -1,4 +1,14 @@
-import { LogOut, Menu, MessageSquare, Monitor, Moon, ShieldCheck, Sun, X } from "lucide-react";
+import {
+  Library,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Monitor,
+  Moon,
+  ShieldCheck,
+  Sun,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Logo } from "@/components/Logo";
@@ -7,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ChatView } from "@/features/chat/ChatScreen";
 import { useChat } from "@/features/chat/useChat";
 import { DataScreen } from "@/features/data/DataScreen";
+import { KnowledgeScreen } from "@/features/knowledge/KnowledgeScreen";
 import { ThreadList } from "@/features/threads/ThreadList";
 import type { UseAuth } from "@/lib/auth";
 import { useTheme, type ThemeChoice } from "@/lib/theme";
@@ -17,6 +28,9 @@ export interface SignedInViewProps {
   apiUrl: string;
   maxChars: number;
 }
+
+type View = "chat" | "knowledge" | "data";
+const TITLES: Record<Exclude<View, "chat">, string> = { knowledge: "Knowledge", data: "Your data" };
 
 const THEME: Record<ThemeChoice, { label: string; icon: ReactNode }> = {
   system: { label: "Theme: system", icon: <Monitor /> },
@@ -56,7 +70,7 @@ function NavButton({
  * person's messages and conversation list never survive into the next person's session.
  */
 export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
-  const [view, setView] = useState<"chat" | "data">("chat");
+  const [view, setView] = useState<View>("chat");
   const [refresh, setRefresh] = useState(0);
   const [drawer, setDrawer] = useState(false);
   const theme = useTheme();
@@ -96,7 +110,7 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
     onSessionEnded: auth.sessionEnded,
   };
 
-  function show(next: "chat" | "data"): void {
+  function show(next: View): void {
     setView(next);
     setDrawer(false);
   }
@@ -169,6 +183,15 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
             }}
           >
             Chat
+          </NavButton>
+          <NavButton
+            active={view === "knowledge"}
+            icon={<Library />}
+            onClick={() => {
+              show("knowledge");
+            }}
+          >
+            Knowledge
           </NavButton>
           <NavButton
             active={view === "data"}
@@ -245,14 +268,18 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
             toolbarStart={view === "chat" ? menu : null}
           />
         </div>
-        {view === "data" && (
+        {view !== "chat" && (
           <div className="flex min-h-0 flex-1 flex-col">
             <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
               {menu}
-              <h2 className="text-sm font-medium">Your data</h2>
+              <h2 className="text-sm font-medium">{TITLES[view]}</h2>
             </header>
             <div className="flex-1 overflow-y-auto">
-              <DataScreen deps={dataDeps} onErased={auth.signOut} />
+              {view === "data" ? (
+                <DataScreen deps={dataDeps} onErased={auth.signOut} />
+              ) : (
+                <KnowledgeScreen deps={dataDeps} />
+              )}
             </div>
           </div>
         )}

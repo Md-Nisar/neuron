@@ -84,6 +84,7 @@ describe("keyboard-only use", () => {
     // "Open sidebar" is hidden by CSS on wide screens; jsdom applies no CSS, so it is listed.
     const expected = [
       screen.getByRole("button", { name: "Chat" }),
+      screen.getByRole("button", { name: "Knowledge" }),
       screen.getByRole("button", { name: "Your data" }),
       screen.getByRole("button", { name: /^Theme:/ }),
       screen.getByRole("button", { name: "Sign out" }),
