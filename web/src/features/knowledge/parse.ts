@@ -36,6 +36,14 @@ export interface DocumentAccepted {
   status: DocumentStatus;
 }
 
+/** The passage behind a citation (RAG-03.04): extracted text, shown as text. */
+export interface Passage {
+  text: string;
+  headings: string[];
+  page_start: number | null;
+  page_end: number | null;
+}
+
 // Ids become URL path segments, so only the server's UUID form is accepted.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CODE = /^[a-z0-9_]{1,64}$/;
@@ -100,5 +108,25 @@ export function parseAccepted(body: unknown): DocumentAccepted {
     doc_id: id(accepted, "doc_id"),
     kb_id: id(accepted, "kb_id"),
     status: oneOf(accepted, "status", STATUSES),
+  };
+}
+
+function page(source: Record<string, unknown>, key: string): number | null {
+  const value = source[key];
+  if (value === null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0)
+    throw new TypeError("shape");
+  return value;
+}
+
+export function parsePassage(body: unknown): Passage {
+  const chunk = record(body);
+  const headings = list(chunk, "headings");
+  if (!headings.every((heading) => typeof heading === "string")) throw new TypeError("shape");
+  return {
+    text: str(chunk, "text"),
+    headings,
+    page_start: page(chunk, "page_start"),
+    page_end: page(chunk, "page_end"),
   };
 }

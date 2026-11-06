@@ -5,9 +5,11 @@ import {
   parseBase,
   parseBases,
   parseDocuments,
+  parsePassage,
   type DocumentAccepted,
   type DocumentsPage,
   type KnowledgeBase,
+  type Passage,
   type Processing,
 } from "./parse";
 
@@ -72,4 +74,10 @@ export function uploadDocument(
     idempotencyKey,
     parse: parseAccepted,
   });
+}
+
+/** The passage a citation points at. Access is checked again on every call. */
+export function getPassage(deps: DataDeps, docId: string, chunkId: string): Promise<Passage> {
+  const path = `/v1/knowledge/documents/${encodeURIComponent(docId)}/chunks/${encodeURIComponent(chunkId)}`;
+  return call(deps, { path, method: "GET", parse: parsePassage });
 }
