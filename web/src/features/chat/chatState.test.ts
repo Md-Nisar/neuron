@@ -52,6 +52,8 @@ describe("chatReducer", () => {
         confidence: 1,
         refused: false,
         clarification_needed: false,
+        citations: [],
+        grounded: null,
       },
     };
     state = chatReducer(state, {
@@ -132,6 +134,8 @@ describe("attach_approval", () => {
           status: "needs_approval",
           failure: null,
           approval: null,
+          citations: [],
+          grounded: null,
         },
       ],
     });

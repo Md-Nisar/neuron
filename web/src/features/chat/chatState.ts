@@ -1,4 +1,10 @@
-import { displayText, type ApprovalRequired, type Decision, type RunState } from "@/lib/stream";
+import {
+  displayText,
+  type ApprovalRequired,
+  type Citation,
+  type Decision,
+  type RunState,
+} from "@/lib/stream";
 
 export interface Failure {
   /** A fixed reason (a start-error kind or a stream error code), never server text. */
@@ -36,6 +42,9 @@ export interface ChatMessage {
   failure: Failure | null;
   /** Set only from a validated `approval_required` event. */
   approval: MessageApproval | null;
+  /** From the validated `final` event or history, never from the answer's text. */
+  citations: Citation[];
+  grounded: boolean | null;
 }
 
 export interface ChatState {
@@ -93,6 +102,8 @@ function newMessage(
     status,
     failure: null,
     approval: null,
+    citations: [],
+    grounded: null,
   };
 }
 
@@ -144,6 +155,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           text: displayText(run),
           toolCalls: run.toolCalls,
           runId: run.ids?.runId ?? message.runId,
+          citations: run.final?.citations ?? [],
+          grounded: run.final?.grounded ?? null,
           status: statusOf(run),
           failure,
           approval:

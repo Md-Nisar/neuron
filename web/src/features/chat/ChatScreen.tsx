@@ -38,6 +38,7 @@ import { FeedbackBar } from "./FeedbackBar";
 import { characterCount, checkDraft, type DraftProblem } from "./limits";
 import { Markdown } from "./Markdown";
 import { MessageActions } from "./MessageActions";
+import { Sources } from "./Sources";
 import { draftProblemText, failureText, openFailureText } from "./messages";
 import { useChat, type ChatDeps } from "./useChat";
 
@@ -114,6 +115,7 @@ function MessageView({
         <p className="sr-only">neuron</p>
         {message.text !== "" && <Markdown text={message.text} />}
         {message.status === "streaming" && message.text === "" && <Thinking />}
+        <Sources citations={message.citations} grounded={message.grounded} />
         {(message.toolCalls.length > 0 || message.skipped.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
             {message.toolCalls.length > 0 && (

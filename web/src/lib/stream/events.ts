@@ -6,9 +6,11 @@
  * with a bad payload is a protocol error. Error messages name the event, never its content.
  */
 
+import { parseGrounding, type Grounding } from "./citations";
+
 export type Decision = "approve" | "reject";
 
-export interface FinalResponse {
+export interface FinalResponse extends Grounding {
   request_id: string;
   thread_id: string;
   run_id?: string;
@@ -91,11 +93,18 @@ function parseFinal(name: string, p: Record<string, unknown>): FinalResponse {
   ) {
     return invalid(name);
   }
+  let grounding: Grounding;
+  try {
+    grounding = parseGrounding(p);
+  } catch {
+    return invalid(name);
+  }
   const runId = text(p, "run_id");
   return {
     request_id: requestId,
     thread_id: threadId,
     ...(runId === undefined ? {} : { run_id: runId }),
+    ...grounding,
     answer,
     used_tools,
     confidence,
