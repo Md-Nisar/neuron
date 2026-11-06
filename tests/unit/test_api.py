@@ -53,6 +53,32 @@ def test_agent_invoke_rejects_unexpected_fields() -> None:
     assert response.json() == {"detail": "validation_error"}
 
 
+@pytest.mark.parametrize(
+    "ids",
+    [
+        [str(uuid.uuid4()) for _ in range(11)],  # RAG-04.04 AC3: at most 10
+        [],
+        ["not-a-uuid"],
+    ],
+)
+def test_agent_invoke_rejects_invalid_knowledge_base_ids(ids: list[str]) -> None:
+    client = TestClient(app)
+    for path in ("/v1/agent/invoke", "/v1/agent/stream"):
+        response = client.post(path, json={"message": "hi", "knowledge_base_ids": ids})
+        assert response.status_code == 422
+        assert response.json() == {"detail": "validation_error"}
+    decision = f"/v1/threads/{uuid.uuid4()}/approvals/a1"
+    for path in (decision, f"{decision}/stream"):
+        response = client.post(path, json={"decision": "approve", "knowledge_base_ids": ids})
+        assert response.status_code == 422
+
+
+def test_agent_request_takes_up_to_ten_knowledge_base_ids() -> None:
+    ids = [uuid.uuid4() for _ in range(10)]
+    assert AgentRequest(message="hi", knowledge_base_ids=ids).knowledge_base_ids == ids
+    assert AgentRequest(message="hi").knowledge_base_ids is None
+
+
 def test_validation_failure_log_omits_the_rejected_input() -> None:
     client = TestClient(app)
     with structlog.testing.capture_logs() as logs:

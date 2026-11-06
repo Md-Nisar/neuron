@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from typing import Any
 
 import psycopg
 import pytest
@@ -159,3 +160,56 @@ async def test_the_search_tool_finds_what_the_route_does(
     )
 
     assert [ref["chunk_id"] for ref in message.artifact.values()] == _ids(body)
+
+
+def _runtime(owner: str, bases: set[str]) -> ToolRuntime[Any, Any]:
+    scope = frozenset(uuid.UUID(kb) for kb in bases)
+    context = AuthorizationContext(frozenset(), owner_key=owner, knowledge_base_ids=scope)
+    return ToolRuntime(
+        state={"messages": []},
+        context=context,
+        config={},
+        stream_writer=lambda _: None,
+        tool_call_id="call-1",
+        store=None,
+    )
+
+
+async def test_a_run_narrowed_to_one_base_searches_only_it(
+    api: tuple[JwtApi, RoleDatabase],  # noqa: F811
+    make_token: Callable[..., str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """RAG-04.04 AC1 and AC2: the request's bases bound the search; the model's `kb_ids` and a
+    foreign id in the list widen nothing, and the foreign id is not an error."""
+    client, db = api
+    alice, bob = make_token("alice", scopes=_SCOPES), make_token("bob", scopes=_SCOPES)
+    a, b = _create(client, alice, "A"), _create(client, alice, "B")
+    foreign = _create(client, bob, "Bob's")
+    [in_a] = await _seed(db, a["kb_id"], ["orchid repotting guide"])
+    await _seed(db, b["kb_id"], ["orchid watering guide"])
+    await _seed(db, foreign["kb_id"], ["orchid fertiliser guide"])
+    owner = await _owner_of(db, a["kb_id"])
+    route = api_main.retriever()
+    monkeypatch.setattr(knowledge_tools, "create_embedding_provider", lambda _: route._embeddings)
+    specs = knowledge_tools.knowledge_specs(route._settings, route._pool)
+    search = next(spec.tool for spec in specs if spec.name == "search_knowledge")
+
+    async def found(bases: set[str], **args: object) -> list[str]:
+        message = await search.ainvoke(
+            {
+                "name": "search_knowledge",
+                "args": {"query": "orchid", **args, "runtime": _runtime(owner, bases)},
+                "id": "call-1",
+                "type": "tool_call",
+            }
+        )
+        assert message.status == "success"
+        return [ref["chunk_id"] for ref in message.artifact.values()]
+
+    # Alice owns B too, and the model asks for it: still only A's chunk.
+    assert await found({a["kb_id"], foreign["kb_id"]}, kb_ids=[b["kb_id"]]) == [in_a]
+    assert await found({a["kb_id"]}) == [in_a]
+    # Only someone else's base: nothing found, the same as an unknown id.
+    assert await found({foreign["kb_id"]}) == []
+    assert await found({str(uuid.uuid4())}) == []

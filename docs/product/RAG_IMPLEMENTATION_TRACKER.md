@@ -50,7 +50,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E01 | Knowledge storage foundation | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E02 | Durable ingestion pipeline | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
-| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 3 | 0 | 0 | 1 | RAG-04.04 (ready) |
+| RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
@@ -59,11 +59,11 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **22** | **0** | **0** | **34** | **RAG-04.04** |
+| **Total** | | | | **56** | **23** | **0** | **0** | **33** | **RAG-08.01** |
 
-v1.1.0 scope (E00–E08): 33 stories, 22 done.
+v1.1.0 scope (E00–E08): 33 stories, 23 done.
 
-**Recommended next action:** RAG-04.04 (narrow a run to selected knowledge bases). RAG-06.02, RAG-07.01 and RAG-08.01 are also unblocked.
+**Recommended next action:** RAG-08.01 (retrieval and citation eval harness), which also carries RAG-04.03's live abstention check and the similarity floor. RAG-06.02 and RAG-07.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -96,6 +96,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.01 | #446 | Not on a board |
 | RAG-04.02 | #452 | Not on a board |
 | RAG-04.03 | #461 | Not on a board |
+| RAG-04.04 | #464 | Not on a board |
 | RAG-E05 | #456 | Not on a board |
 | RAG-05.01 | #457 | Not on a board |
 | RAG-05.02 | #459 | Not on a board |
@@ -215,11 +216,12 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E04 Retrieval and agent tools
 
-- **Stories:** 4 total · 3 done · 0 in progress · 0 blocked · 1 pending
+- **Stories:** 4 total · 4 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-04.01 (#447, #448, #449): `knowledge/retrieval.py` `Retriever.search`: one transaction reads `allowed_kbs`, sets `neuron.kb_ids` with `SET LOCAL`, ranks full-text (top 80, per-base `ts_config`) and dense (top 80, active profile, similarity floor) candidates of live `ready` documents, fuses them with RRF (k = 60); exact scan up to `APP_KNOWLEDGE_EXACT_SCAN_MAX_CHUNKS` (10,000), forced HNSW above it; `APP_KNOWLEDGE_SEARCH_MODE` (hybrid); audit `knowledge_searched`.
   RAG-04.02 (#453, #454, #455): `knowledge/tools.py`: `list_knowledge_bases`, `search_knowledge` (5 per run) and `get_document_excerpt` (10 per run, only for a `cite_id` minted in the same run, re-read through `KnowledgeBases.chunk`), scopes `tools:<name>`, owner from `AuthorizationContext`, results framed by `tools/framing.py` and capped at 6,000 characters, all three `taints_run`; the `cite_id` → chunk map is in each tool message's `artifact`; `AgentService._compose_tools` adds them on the FastAPI path when knowledge is on.
   RAG-04.03 (#462): `search_knowledge` returns `{"status": "no_relevant_results", "passages": []}` with an empty artifact when nothing passes the floor; system prompt version 2 (`SYSTEM_PROMPT_VERSION`, hash-pinned) asks for `citations` and for an abstention that is not a refusal; `neuron-eval` reports `prompt_version`.
-- **Outstanding work:** RAG-04.04.
+  RAG-04.04 (#465): `AgentRequest` and `ApprovalDecisionRequest` take optional `knowledge_base_ids` (1 to 10); `AgentService._authorization` puts it on `AuthorizationContext.knowledge_base_ids`; `list_knowledge_bases` shows only those bases and `search_knowledge` intersects the model's `kb_ids` with them, falling back to all of them.
+- **Outstanding work:** none.
 - **Blockers and decisions:**
   - Exact/HNSW threshold from the spike (10,000).
   - Plan (RAG-04.01): three stacked parts by path, to stay under 400 lines each. Part 1: full text, fusion, authorisation and the live filter. Part 2: dense candidates, exact/HNSW, the similarity floor, processing locality, `EXPLAIN` checks. Part 3: the eval comparison (AC5) on the public corpus with the spike's cached `nemotron-3.5-embed-1b` vectors (no key in the session).
@@ -230,7 +232,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Security review (RAG-04.02, on the full change before the split): no high findings. Fixed: a cap of 10 excerpts per run (neighbours get their own ids, so a run could walk a whole document); a test that the model never sees document or chunk ids. Checked: every backend failure is an `AppError` the tools map to fixed text; LangSmith hides tool outputs outside development. Advisory AI review (#453, #454): the "escape `>`" and "catch every exception" findings answered without changes; the excerpt tool's invalid arguments and every tool's failure path gained tests.
   - Decision (RAG-04.03): `APP_KNOWLEDGE_SEARCH_MIN_SIMILARITY` stays 0.0. Calibrating it needs embeddings of the 12 unanswerable questions, and the cached spike vectors cover only the 61 answerable ones (no provider key in the session); with RAG-08.01's abstention metric. With the floor at 0.0 the marker fires only when the readable bases have no match at all, so abstention on weak matches relies on the prompt rule. Eval cases: the 12 unanswerable questions in `knowledge_cases.json` (RAG-00.03) are the dataset; the live harness has no knowledge database, so running them on a model is RAG-08.01's harness. AC1 is shown in code with a scripted model (marker seen, a guessed id dropped, `grounded: false`); whether a live model's wording abstains is not yet evidenced. Owner decision (2026-11-06): RAG-04.03 is closed and that live check moves to RAG-08.01, whose abstention-accuracy metric runs the unanswerable questions on a model.
   - Security review (RAG-04.03): no blocking findings. Fixed: the first wording of the abstention rule shared an 8-word run with a likely answer ("the user's documents do not contain the answer"), so the output guard would have replaced the abstention with the prompt-leak refusal (now reworded, with abstention phrasings in `test_output_policy.py`); an abstention is stated not to be a refusal; the tool docstring says only that nothing scored high enough. Recorded: abstention is prompt guidance, `grounded: false` is the enforced signal.
-- **Next recommended story:** RAG-04.04 (ready).
+  - Decision (RAG-04.04): the list is not stored with the thread. A run continued after an approval is narrowed only when the decision request sends the list again (the security review's recommendation over reading it back from the checkpoint); without it, it covers all of the caller's bases, never more. When the model's `kb_ids` are all outside the list, the search covers the whole list rather than returning nothing (AC1: the user's choice wins over the model's).
+  - Security review (RAG-04.04): no blocking findings. Fixed: the decision routes accept the list, so a narrowed run stays narrowed after an approval. Checked: a foreign or unknown id is the same `no_relevant_results` (no existence oracle); no log or audit event carries the ids; the Agent Server path builds its own context with no owner, so the knowledge tools stay unavailable there; `get_document_excerpt` needs no check, since its `cite_id`s come only from this run's narrowed searches.
+- **Next recommended story:** none in this epic; RAG-08.01.
 
 ### RAG-E05 Server-validated citations
 
@@ -324,7 +328,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.01 | Hybrid retriever with authorisation in the query | 1 | P0 | Done | #446 | #447, #448, #449 | `tests/integration/test_postgres_knowledge_search.py` as the app role under RLS: the same text in two users' bases, each sees only their own chunk in every mode (AC1); a 30-chunk base returns k = 20 through the exact scan for an off-topic query (AC2); `ERR-7741-ZQ` found through full text with the dense path floored out (AC3); failed, still-embedding and tombstoned documents and a tombstoned base return nothing on the exact and HNSW paths (AC4); `EXPLAIN` shows `embeddings_p1_hnsw` on the HNSW path and never on the exact one (plans in #448). `docs/releases/v1.1.0-retrieval-eval.md` (`test_postgres_knowledge_eval.py`): recall@5 dense 0.918, full text 0.033, hybrid 0.918 (recall@1 0.721 / 0.016 / 0.754), so hybrid stays the default (AC5) |
 | RAG-04.02 | Knowledge agent tools | 1 | P0 | Done | #452 | #453, #454, #455 | `tests/security/test_knowledge_tools.py` through the real agent loop: an MCP call after a search waits for approval (AC1); a token without the tool's scope is refused by `ToolAuthorizationMiddleware`, for each tool (AC2); no schema has a user, owner, tenant or subject field (AC3); the sixth search and the eleventh excerpt get the fixed limit error (AC4); an excerpt for a `cite_id` not minted in this run, from an earlier run of the thread, or of a deleted document is "no such passage" (AC5); `build_graph(settings)`, the `langgraph.json` graph, gets no knowledge tools, and `AgentService` adds them only with knowledge on (AC6). Also: framing and the 6,000-character cap, fixed errors for invalid arguments, failures and a missing owner, the tool timeout, no document or chunk id sent to the model. `tests/integration/test_postgres_knowledge_search_api.py`: tool and route parity |
 | RAG-04.03 | Abstention and grounding | 1 | P0 | Done | #461 | #462 | `tests/security/test_citations.py`: a search with nothing above the floor shows the model the marker, a guessed `cite_id` is dropped and the answer is `grounded: false` (AC1, scripted model; the live-model wording check moved to RAG-08.01 by owner decision); a valid citation is `grounded: true` (AC2) and a run without knowledge has null fields (AC3), both from RAG-05.02. `tests/security/test_knowledge_tools.py`: the marker block and an empty artifact. `tests/unit/test_prompts.py`: version 2 pinned to the prompt's hash. `tests/security/test_output_policy.py`: abstentions pass the output guard |
-| RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Pending | — | — | — |
+| RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Done | #464 | #465 | `tests/integration/test_postgres_knowledge_search_api.py` on Postgres as the app role: a run narrowed to A finds only A's chunk although the model asks for B, which the user owns (AC1); a foreign id in the list, alone or beside A, finds nothing and is not an error, the same as an unknown id (AC2). `tests/unit/test_api.py`: 11 ids, an empty list or a bad id is `422` on invoke, stream and both decision routes (AC3). `tests/security/test_knowledge_tools.py`: the model's `kb_ids` are intersected with the list, `list_knowledge_bases` shows only listed bases, and the list is in the run context, not the graph input. `tests/unit/test_thread_lifecycle.py`: a decision carries the list into the continued run |
 | RAG-05.01 | Citation minting and validation | 1 | P0 | Done | #457 | #458 | `tests/security/test_citations.py` through the real agent loop: a `cite_id` no tool returned is dropped and `neuron.citations.rejected` counts it, as is every citation of a run without a knowledge tool (AC1); a `cite_id`-shaped string the model copies from a passage is dropped (AC2); two valid citations are kept in the listed order and resolve to document, chunk, title, headings and pages (AC3). Also: only successful knowledge-tool artifacts mint ids; `tests/security/test_knowledge_tools.py` checks the artifacts of a search and an excerpt |
 | RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Done | #459 | #460 | `tests/security/test_citations.py`: a thread reloaded from its checkpoint returns the answer's citations in history, and a later run without knowledge has none (AC1); the stored answer holds ids, title and pages but no passage text, and no tool message is stored (AC3); a search with no valid citation is `grounded: false`; a stamp that does not validate is ignored. `web/src/lib/stream/client.test.ts`: the current client reads a v1 `final` with citations unchanged (AC2), against `contract.json`'s `final_with_citations`, which `tests/unit/test_web_stream_contract.py` checks against `AgentResponse` |
 | RAG-06.01 | Knowledge screen | 1 | P0 | Pending | — | — | — |

@@ -8,12 +8,17 @@ from __future__ import annotations
 import unicodedata
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 # The longest conversation title, set from the first message or by `PATCH /v1/threads/{id}`.
 TITLE_MAX_CHARS = 80
+
+
+# RAG-04.04: the knowledge bases a run may search. It only narrows what the caller can read; an
+# id the caller cannot read is ignored, as an unknown one is.
+KnowledgeBaseIds = Annotated[list[uuid.UUID] | None, Field(min_length=1, max_length=10)]
 
 
 class AgentRequest(BaseModel):
@@ -26,6 +31,7 @@ class AgentRequest(BaseModel):
     message: str = Field(min_length=1, max_length=200_000)
     thread_id: str | None = Field(default=None, max_length=255)
     user_id: str | None = Field(default=None, max_length=128)
+    knowledge_base_ids: KnowledgeBaseIds = None
 
     @field_validator("thread_id")
     @classmethod
@@ -126,6 +132,8 @@ class ApprovalDecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     decision: Literal["approve", "reject"]
+    # Not stored with the thread: a client that narrowed the run sends it again to continue it.
+    knowledge_base_ids: KnowledgeBaseIds = None
 
 
 class RenameThreadRequest(BaseModel):

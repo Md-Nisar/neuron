@@ -328,7 +328,9 @@ class AgentService:
                 "run_id": run_id,
                 **owner_state,
             },
-            authorization=self._authorization(owner_key, principal, usage),
+            authorization=self._authorization(
+                owner_key, principal, usage, request.knowledge_base_ids
+            ),
             budget_key=budget_key,
             budget_reservation=reservation,
             checkpoint_owner=owner_key,
@@ -482,10 +484,17 @@ class AgentService:
         user_id: str | None = None,
         principal: Principal | None = None,
         usage: TokenUsageAccumulator | None = None,
+        knowledge_base_ids: list[uuid.UUID] | None = None,
     ) -> AgentResponse | ApprovalRequiredResponse:
         """Decide a pending approval and continue the run (see `prepare_decision`)."""
         run = await self.prepare_decision(
-            thread_id, approval_id, decision, user_id=user_id, principal=principal, usage=usage
+            thread_id,
+            approval_id,
+            decision,
+            user_id=user_id,
+            principal=principal,
+            usage=usage,
+            knowledge_base_ids=knowledge_base_ids,
         )
         return await self._execute(run)
 
@@ -499,6 +508,7 @@ class AgentService:
         user_id: str | None = None,
         principal: Principal | None = None,
         usage: TokenUsageAccumulator | None = None,
+        knowledge_base_ids: list[uuid.UUID] | None = None,
     ) -> PreparedRun:
         """Claim the run that continues a pending approval; nothing has executed yet.
 
@@ -548,7 +558,7 @@ class AgentService:
             thread_id=thread_id,
             run_id=run_id,
             graph_input=Command(resume={"decisions": [{"type": decision}] * actions}),
-            authorization=self._authorization(owner_key, principal, usage),
+            authorization=self._authorization(owner_key, principal, usage, knowledge_base_ids),
             budget_key=budget_key,
             budget_reservation=reservation,
             checkpoint_owner=owner_key,
@@ -577,6 +587,7 @@ class AgentService:
         owner_key: str | None,
         principal: Principal | None,
         usage: TokenUsageAccumulator | None,
+        knowledge_base_ids: list[uuid.UUID] | None = None,
     ) -> AuthorizationContext:
         """The run's trusted authorization inputs, from the verified principal only."""
         permissions = (
@@ -593,6 +604,7 @@ class AgentService:
             actor=owner_key[:12] if self._settings.auth_mode == "jwt" and owner_key else None,
             issuer_id=self._settings.auth_issuer_id,
             owner_key=owner_key,
+            knowledge_base_ids=frozenset(knowledge_base_ids) if knowledge_base_ids else None,
         )
 
     async def invoke(

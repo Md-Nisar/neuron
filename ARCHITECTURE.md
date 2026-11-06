@@ -175,7 +175,7 @@ Original files are kept by a `BlobStore` (`knowledge/blobs.py`, RAG-01.03): a lo
 
 ## Streaming
 
-`POST /v1/agent/stream` takes the same `AgentRequest` body as `/v1/agent/invoke` and returns `text/event-stream` (ADR 0005, decision 4). It is rate-limited and body-size-limited like `/invoke`.
+`POST /v1/agent/stream` takes the same `AgentRequest` body as `/v1/agent/invoke` (including the optional `knowledge_base_ids`, which reaches the knowledge tools in the run's `AuthorizationContext`, never graph state; RAG-04.04) and returns `text/event-stream` (ADR 0005, decision 4). It is rate-limited and body-size-limited like `/invoke`.
 
 - **Before the first byte:** `AgentService.prepare` validates the message and resolves the thread. Those failures (`422`, `400`, `404 thread_not_found`, `429`, `413`) are ordinary HTTP responses.
 - **After the stream starts:** `AgentService.stream` drives `graph.astream(stream_mode=["messages", "updates"], subgraphs=True)`. `subgraphs=True` is required because `create_agent` runs as a nested graph inside the `agent` node; without it, LangGraph drops the model's token events.

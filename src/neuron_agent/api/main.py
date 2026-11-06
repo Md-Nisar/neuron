@@ -871,10 +871,18 @@ async def decide_approval(
     try:
         if principal is None:
             return await service.decide_approval(
-                str(thread_id), approval_id, body.decision, user_id=user_id
+                str(thread_id),
+                approval_id,
+                body.decision,
+                user_id=user_id,
+                knowledge_base_ids=body.knowledge_base_ids,
             )
         return await service.decide_approval(
-            str(thread_id), approval_id, body.decision, principal=principal
+            str(thread_id),
+            approval_id,
+            body.decision,
+            principal=principal,
+            knowledge_base_ids=body.knowledge_base_ids,
         )
     except AppError as exc:
         raise _http_error("approval_decision_failed", exc) from exc
@@ -889,13 +897,24 @@ async def stream_approval_decision(
     user_id: str | None = _UserIdHeader,
 ) -> EventSourceResponse:
     """`decide_approval`, with the continuation streamed like `/v1/agent/stream`."""
+    scope = body.knowledge_base_ids
     prepare = (
         service.prepare_decision(
-            str(thread_id), approval_id, body.decision, streaming=True, user_id=user_id
+            str(thread_id),
+            approval_id,
+            body.decision,
+            streaming=True,
+            user_id=user_id,
+            knowledge_base_ids=scope,
         )
         if principal is None
         else service.prepare_decision(
-            str(thread_id), approval_id, body.decision, streaming=True, principal=principal
+            str(thread_id),
+            approval_id,
+            body.decision,
+            streaming=True,
+            principal=principal,
+            knowledge_base_ids=scope,
         )
     )
     return await _stream_prepared(prepare, thread_id=str(thread_id))
