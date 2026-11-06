@@ -162,12 +162,13 @@ jobs:
           done
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
       - run: uv python install 3.13
-      - run: uv sync
-      - run: uv run python -m neuron_agent.persistence.cli setup
+      # Locked versions only; the later steps use the synced environment directly.
+      - run: uv sync --locked
+      - run: .venv/bin/python -m neuron_agent.persistence.cli setup
       - name: Start the ingestion worker
         run: |
-          nohup uv run neuron-worker > worker.log 2>&1 &
-          for _ in $(seq 30); do uv run neuron-worker health && exit 0; sleep 2; done
+          nohup .venv/bin/neuron-worker > worker.log 2>&1 &
+          for _ in $(seq 30); do .venv/bin/neuron-worker health && exit 0; sleep 2; done
           cat worker.log >&2
           exit 1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -175,9 +176,9 @@ jobs:
           node-version-file: web/.nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         working-directory: web
-      - run: npx playwright install --with-deps chromium
+      - run: node_modules/.bin/playwright install --with-deps chromium
         working-directory: web
       - run: npm run e2e:knowledge
         working-directory: web
