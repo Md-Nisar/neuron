@@ -4,12 +4,19 @@ import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { DataDeps } from "@/features/data/api";
 import { listBases } from "@/features/knowledge/api";
+import { ApiError } from "@/lib/request";
 import type { KnowledgeBase } from "@/features/knowledge/parse";
 
 import { displaySafe } from "./displaySafe";
 
 /** The API takes at most this many (RAG-04.04). */
 export const MAX_SELECTED = 10;
+/** A load refused for a while (rate limit, a restart) is tried again this often, this many times. */
+export const RETRY_MS = 5000;
+const RETRIES = 3;
+
+const passing = (error: unknown) =>
+  error instanceof ApiError && (error.kind === "rate_limited" || error.kind === "unavailable");
 
 /**
  * Choose which knowledge bases a question may search; none chosen means all of them. Shown only
@@ -27,11 +34,13 @@ export function KnowledgePicker({
 }) {
   const [bases, setBases] = useState<KnowledgeBase[]>([]);
   const [open, setOpen] = useState(false);
+  const [retries, setRetries] = useState(0);
   const panelId = useId();
 
   // Loaded on mount and each time the list is opened, so a base made meanwhile appears.
   useEffect(() => {
     let live = true;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     listBases(deps).then(
       (found) => {
         if (!live) return;
@@ -41,15 +50,21 @@ export function KnowledgePicker({
         if (selected.some((id) => !known.has(id))) onChange(selected.filter((id) => known.has(id)));
       },
       // A failed refresh keeps the list it had, so a choice in force stays visible and can be
-      // changed; a first load that fails shows nothing.
-      () => undefined,
+      // changed. A passing refusal is tried again, or the picker could stay hidden all session.
+      (error: unknown) => {
+        if (live && passing(error) && retries < RETRIES)
+          retry = setTimeout(() => {
+            setRetries((n) => n + 1);
+          }, RETRY_MS);
+      },
     );
     return () => {
       live = false;
+      clearTimeout(retry);
     };
     // `deps` is stable; `selected` is read only to prune it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, retries]);
 
   if (bases.length === 0) return null;
   const label =

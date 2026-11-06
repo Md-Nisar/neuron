@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { accessibilityViolations } from "@/test/axe";
 import { jsonResponse } from "@/test/sse";
 
-import { DocumentsPanel, POLL_MS } from "./DocumentsPanel";
+import { DocumentsPanel, POLL_MS, pollDelay } from "./DocumentsPanel";
 import { documentFailureText } from "./messages";
 import type { Processing } from "./parse";
 
@@ -168,14 +168,27 @@ describe("documents", () => {
     expect(gets(fetch)).toBeGreaterThanOrEqual(2);
   });
 
+  it("waits longer between polls while a document is still processing", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fetch } = setup([[doc("embedding")]]);
+    expect(await screen.findByText("Indexing")).toBeInTheDocument();
+
+    // Twenty seconds of polling make six requests, not the eleven a fixed 2 s would.
+    for (let second = 0; second < 20; second++) await act(() => vi.advanceTimersByTimeAsync(1000));
+
+    expect(gets(fetch)).toBeLessThanOrEqual(6);
+    expect(pollDelay(0)).toBe(POLL_MS);
+    expect(pollDelay(20)).toBe(15_000);
+  });
+
   it("keeps polling after a failed refresh", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { fetch } = setup([[doc("queued")], new Error(), [doc("ready")]]);
     expect(await screen.findByText("Queued")).toBeInTheDocument();
 
-    await act(() => vi.advanceTimersByTimeAsync(POLL_MS));
+    await act(() => vi.advanceTimersByTimeAsync(pollDelay(0)));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    await act(() => vi.advanceTimersByTimeAsync(POLL_MS));
+    await act(() => vi.advanceTimersByTimeAsync(pollDelay(1)));
 
     expect(await screen.findByText("Ready")).toBeInTheDocument();
     expect(gets(fetch)).toBe(3);

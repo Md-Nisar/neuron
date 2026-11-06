@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { accessibilityViolations } from "@/test/axe";
 import { jsonResponse } from "@/test/sse";
 
-import { KnowledgePicker, MAX_SELECTED } from "./KnowledgePicker";
+import { KnowledgePicker, MAX_SELECTED, RETRY_MS } from "./KnowledgePicker";
 
 const kb = (n: number) => ({
   kb_id: `0b6f1c1e-6c8e-4c36-9d2b-${n.toString(16).padStart(12, "0")}`,
@@ -40,7 +40,7 @@ function setup(lists: Response[], initial: string[] = []) {
     );
   }
   const view = render(<Harness />);
-  return { view, changes, user: userEvent.setup() };
+  return { view, changes, fetch, user: userEvent.setup() };
 }
 
 const toggle = () => screen.findByRole("button", { name: /Knowledge to search/ });
@@ -108,5 +108,32 @@ describe("the knowledge picker", () => {
 
     expect(await toggle()).toHaveTextContent("1 of 2 bases");
     expect(screen.getByRole("checkbox", { name: "Base 1" })).toBeChecked();
+  });
+
+  it("tries again when its first load is rate limited, and appears", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setup([jsonResponse(429, { detail: "rate_limited" }), jsonResponse(200, { bases: [kb(1)] })]);
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(screen.queryByRole("button")).toBeNull();
+
+      await act(() => vi.advanceTimersByTimeAsync(RETRY_MS));
+
+      expect(await toggle()).toHaveTextContent("All knowledge");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not retry when knowledge is off or not permitted", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { fetch } = setup([jsonResponse(403, {}), jsonResponse(200, { bases: [kb(1)] })]);
+      await act(() => vi.advanceTimersByTimeAsync(RETRY_MS * 4));
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("button")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

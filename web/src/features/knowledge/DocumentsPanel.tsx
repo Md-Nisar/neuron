@@ -18,6 +18,16 @@ import {
 import type { DocumentStatus, KnowledgeBase, KnowledgeDocument } from "./parse";
 
 export const POLL_MS = 2000;
+const POLL_MAX_MS = 15_000;
+
+/**
+ * The wait before poll `n` (0 first): 2 s, then half as long again each time, up to 15 s. A
+ * large file can take minutes to ingest, and every poll counts against the user's rate limit
+ * (60 a minute by default), which the chat shares.
+ */
+export function pollDelay(n: number): number {
+  return Math.min(POLL_MS * 1.5 ** n, POLL_MAX_MS);
+}
 const PAGE = 100;
 const STATUS: Record<DocumentStatus, string> = {
   queued: "Queued",
@@ -47,6 +57,8 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
   const [confirming, setConfirming] = useState<string | null>(null);
   const deleting = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
+  // Polls since the last upload; each one waits longer (`pollDelay`).
+  const polls = useRef(0);
   const trash = useRef(new Map<string, HTMLButtonElement>());
   const cancelled = useRef<string | null>(null);
   const pending = docs.some((doc) => !settled(doc));
@@ -78,7 +90,7 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
     if (!pending) return;
     const timer = setTimeout(() => {
       setTick((n) => n + 1);
-    }, POLL_MS);
+    }, pollDelay(polls.current++));
     return () => {
       clearTimeout(timer);
     };
@@ -100,6 +112,7 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
       setUploading((n) => n + 1);
       try {
         await uploadDocument(deps, base.kb_id, file, crypto.randomUUID());
+        polls.current = 0;
         setTick((n) => n + 1);
       } catch (failure) {
         refused.push(`${displaySafe(file.name)}: ${uploadErrorText(failure)}`);
