@@ -62,6 +62,10 @@ def test_reproducing_the_prompt_is_a_leak(answer: str) -> None:
         "I will use tools only when needed and say what is uncertain.",
         "Set refused to true? I cannot say. Instructions are private.",
         "The answer is direct and useful; when uncertain, I will say so.",
+        # Abstentions (RAG-04.03) must not read as quoting the knowledge rules.
+        "Your documents have nothing on that, so I cannot answer it from them.",
+        "The user's documents do not contain the answer to this question.",
+        "I searched your knowledge bases and found no relevant results for this.",
         "",
     ],
 )

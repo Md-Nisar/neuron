@@ -224,3 +224,30 @@ def test_stored_citation_fields_are_never_sent_to_the_provider() -> None:
     sent = _convert_message_to_dict(message)
     assert not {"citations", "citation_schema_version", "grounded"} & set(sent)
     assert "secret title" not in repr(sent)
+
+
+async def test_a_search_with_nothing_relevant_gives_an_ungrounded_answer(
+    monkeypatch: pytest.MonkeyPatch, rejected: list[int]
+) -> None:
+    # RAG-04.03: the model sees the marker, has no cite_id to give, and a guessed one is dropped.
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="nothing"),
+        _call(
+            "AgentAnswer",
+            answer="Your documents do not contain the answer.",
+            confidence=0.9,
+            citations=["cite-1"],
+        ),
+    )
+
+    graph, config = await _thread_runs(model, turns=1)
+
+    [marker] = _results(model)
+    assert "no_relevant_results" in str(marker.content)
+    answer = (await graph.aget_state(config)).values["messages"][1]
+    assert (answer.additional_kwargs["citations"], answer.additional_kwargs["grounded"]) == (
+        [],
+        False,
+    )
+    assert rejected == [1]
