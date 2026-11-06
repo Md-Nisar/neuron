@@ -251,3 +251,44 @@ async def test_a_search_with_nothing_relevant_gives_an_ungrounded_answer(
         False,
     )
     assert rejected == [1]
+
+
+async def test_the_fake_model_searches_and_cites_for_browser_tests() -> None:
+    # RAG-06.02: the dev/test fake model (no provider key) answers `search: ...` by calling
+    # search_knowledge, then cites the first cite_id it was shown, through the same validation.
+    specs = knowledge_tools.knowledge_specs(Settings(env="test"), lambda: None)
+    graph = main_graph.build_graph(
+        Settings(env="test", openai_api_key=None, anthropic_api_key=None, nvidia_api_key=None),
+        checkpointer=InMemorySaver(),
+        registry=ToolRegistry(specs),
+    )
+    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="search: leave")]},
+        config,
+        context=AuthorizationContext(_SCOPES, owner_key=_OWNER),
+    )
+
+    assert result["answer"].citations == ["cite-1"]
+    stored = (await graph.aget_state(config)).values["messages"][-1].additional_kwargs
+    assert stored["grounded"] is True
+    assert [c["chunk_id"] for c in stored["citations"]] == [str(_CHUNKS[0])]
+
+
+async def test_the_fake_model_answers_plainly_without_the_prefix() -> None:
+    specs = knowledge_tools.knowledge_specs(Settings(env="test"), lambda: None)
+    graph = main_graph.build_graph(
+        Settings(env="test", openai_api_key=None, anthropic_api_key=None, nvidia_api_key=None),
+        checkpointer=InMemorySaver(),
+        registry=ToolRegistry(specs),
+    )
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="what is leave?")]},
+        {"configurable": {"thread_id": str(uuid.uuid4())}},
+        context=AuthorizationContext(_SCOPES, owner_key=_OWNER),
+    )
+
+    assert result["answer"].citations == []
+    assert result["answer"].used_tools == []

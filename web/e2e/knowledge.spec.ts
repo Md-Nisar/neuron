@@ -29,7 +29,7 @@ async function violations(page: Page): Promise<string[]> {
 }
 
 test(
-  "a user creates a knowledge base, uploads a file and sees it become ready",
+  "a user uploads a file, sees it become ready, asks about it and opens the citation",
   { tag: ["@knowledge"] },
   async ({ page }) => {
     const user = `kb${Date.now().toString(36)}`;
@@ -62,5 +62,19 @@ test(
       );
       expect(await violations(page), `${scheme} theme`).toEqual([]);
     }
+
+    // RAG-06.02: ask, then open the passage the answer cites. Without a provider key the API's
+    // fake model answers `search: ...` by searching knowledge and citing what it found.
+    await page.getByRole("button", { name: "Chat" }).click();
+    await page.getByLabel("Message").fill("search: paid leave");
+    await page.getByLabel("Message").press("Enter");
+    const sources = page.getByRole("list", { name: "Sources" });
+    const chip = sources.getByRole("button").first();
+    await expect(chip).toContainText("1");
+    await expect(chip).toContainText("leave-policy.txt");
+    await chip.click();
+    const sheet = page.getByRole("region", { name: /^1\. leave-policy\.txt/ });
+    await expect(sheet.getByText("Everyone gets 25 days of paid leave a year.")).toBeVisible();
+    expect(await violations(page), "chat with an open source").toEqual([]);
   },
 );

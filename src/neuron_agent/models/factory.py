@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
@@ -678,6 +679,10 @@ def _tool_name(tool: dict[str, Any] | type | Callable[..., Any] | BaseTool) -> s
     return getattr(tool, "__name__", None)
 
 
+# A `cite_id` in a knowledge tool's result block (`knowledge/tools.py`).
+_CITE_ID = re.compile(r'"cite_id": "([A-Za-z0-9_-]{1,64})"')
+
+
 class _FakeChatModel(FakeListChatModel):
     """`FakeListChatModel` that tolerates `create_agent`'s unconditional `bind_tools` call.
 
@@ -708,6 +713,32 @@ class _FakeChatModel(FakeListChatModel):
         prefix = "remember:"
         return last.content[len(prefix) :].strip() if last.content.startswith(prefix) else None
 
+    def _knowledge_step(self, messages: list[BaseMessage]) -> dict[str, Any] | None:
+        """A scripted knowledge turn, for browser tests of citations (RAG-06.02): a `search: ...`
+        user turn searches knowledge, and the search's result is answered citing its first
+        `cite_id` (read from the result text, as a model would). Needs `search_knowledge` and the
+        `AgentAnswer` output tool bound; otherwise the reply is the usual text."""
+        if not {"search_knowledge", _STRUCTURED_OUTPUT_TOOL} <= set(self.bound_tool_names):
+            return None
+        last = messages[-1] if messages else None
+        prefix = "search:"
+        if (
+            isinstance(last, HumanMessage)
+            and isinstance(last.content, str)
+            and last.content.startswith(prefix)
+        ):
+            query = last.content[len(prefix) :].strip()
+            return {"name": "search_knowledge", "args": {"query": query}, "id": uuid.uuid4().hex}
+        if isinstance(last, ToolMessage) and last.name == "search_knowledge":
+            found = _CITE_ID.search(str(last.content))
+            answer = {
+                "answer": "From your documents." if found else "Your documents do not say.",
+                "confidence": 0.9,
+                "citations": [found.group(1)] if found else [],
+            }
+            return {"name": _STRUCTURED_OUTPUT_TOOL, "args": answer, "id": uuid.uuid4().hex}
+        return None
+
     def _words(self) -> list[str]:
         if self.output_tokens is None:
             return [self.responses[0]]
@@ -726,6 +757,11 @@ class _FakeChatModel(FakeListChatModel):
     async def _agenerate(
         self, messages: list[BaseMessage], *args: Any, **kwargs: Any
     ) -> ChatResult:
+        step = self._knowledge_step(messages)
+        if step is not None:
+            return ChatResult(
+                generations=[ChatGeneration(message=AIMessage("", tool_calls=[step]))]
+            )
         note = self._note_to_remember(messages) if self._shaped() else None
         if note is None:
             return await super()._agenerate(messages, *args, **kwargs)
@@ -736,6 +772,15 @@ class _FakeChatModel(FakeListChatModel):
     async def _astream(
         self, messages: list[BaseMessage], *args: Any, **kwargs: Any
     ) -> AsyncIterator[ChatGenerationChunk]:
+        step = self._knowledge_step(messages)
+        if step is not None:
+            scripted = {**step, "args": json.dumps(step["args"]), "index": 0}
+            yield ChatGenerationChunk(
+                message=AIMessageChunk(
+                    content="", tool_call_chunks=[scripted], chunk_position="last"
+                )
+            )
+            return
         if not self._shaped():
             async for chunk in super()._astream(messages, *args, **kwargs):
                 yield chunk
