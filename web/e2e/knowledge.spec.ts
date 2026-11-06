@@ -66,8 +66,9 @@ test(
     // RAG-06.02: ask, then open the passage the answer cites. Without a provider key the API's
     // fake model answers `search: ...` by searching knowledge and citing what it found.
     await page.getByRole("button", { name: "Chat" }).click();
-    await page.getByLabel("Message").fill("search: paid leave");
-    await page.getByLabel("Message").press("Enter");
+    const composer = page.getByRole("textbox", { name: "Message" });
+    await composer.fill("search: paid leave");
+    await composer.press("Enter");
     const sources = page.getByRole("list", { name: "Sources" });
     const chip = sources.getByRole("button").first();
     await expect(chip).toContainText("1");
