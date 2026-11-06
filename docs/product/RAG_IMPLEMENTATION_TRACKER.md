@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-05, against `main` at `2e7acd8` plus #460 (RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E05, all of RAG-E00 to RAG-E03, RAG-04.01, RAG-04.02, RAG-05.01 and RAG-05.02; the Project board has not been created.
+**Last verified:** 2026-11-06, against `main` at `48959d4` (RAG-04.04 Done: #465; RAG-04.03 Done: #462, #463; RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E06, all stories of RAG-E00 to RAG-E05, and RAG-06.01; the Project board has not been created.
 
 ## New session protocol
 
@@ -52,18 +52,18 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
-| RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 0 | 0 | 2 | RAG-06.01 (after E03) |
+| RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 0 | 1 | 0 | 1 | RAG-06.01 (in progress) |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-08.01 (ready) |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.02 (Phase 2) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **23** | **0** | **0** | **33** | **RAG-08.01** |
+| **Total** | | | | **56** | **23** | **1** | **0** | **32** | **RAG-06.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 23 done.
 
-**Recommended next action:** RAG-08.01 (retrieval and citation eval harness), which also carries RAG-04.03's live abstention check and the similarity floor. RAG-06.02 and RAG-07.01 are also unblocked.
+**Recommended next action:** finish RAG-06.01 (knowledge screen, owner's choice 2026-11-06), then RAG-06.02. RAG-08.01 (which also carries RAG-04.03's live abstention check and the similarity floor) and RAG-07.01 are also unblocked.
 
 ## GitHub synchronisation
 
@@ -97,6 +97,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.02 | #452 | Not on a board |
 | RAG-04.03 | #461 | Not on a board |
 | RAG-04.04 | #464 | Not on a board |
+| RAG-E06 | #466 | Not on a board |
+| RAG-06.01 | #467 | Not on a board |
 | RAG-E05 | #456 | Not on a board |
 | RAG-05.01 | #457 | Not on a board |
 | RAG-05.02 | #459 | Not on a board |
@@ -250,10 +252,10 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E06 Knowledge in the web app
 
-- **Stories:** 2 total · 0 done · 0 in progress · 0 blocked · 2 pending
-- **Implemented functionality:** none. `web/src/features/` has `chat`, `data`, `threads`.
-- **Outstanding work:** RAG-06.01, RAG-06.02.
-- **Blockers and decisions:** needs the E03 routes and the RAG-05.02 contract.
+- **Stories:** 2 total · 0 done · 1 in progress · 0 blocked · 1 pending
+- **Implemented functionality:** RAG-06.01 part 1: the knowledge API client and response checks (`web/src/features/knowledge/api.ts`, `parse.ts`), not on a screen yet.
+- **Outstanding work:** RAG-06.01 parts 2 to 4 (base management and the sidebar entry; upload, processing notice, status polling and error messages; Playwright flow and axe in both themes), then RAG-06.02.
+- **Blockers and decisions:** none; the E03 routes and the RAG-05.02 contract are done. RAG-06.01 lands as four PRs, in the order above.
 - **Next recommended story:** RAG-06.01.
 
 ### RAG-E07 Data rights and lifecycle
@@ -331,7 +333,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.04 | Narrow a run to selected knowledge bases | 1 | P1 | Done | #464 | #465 | `tests/integration/test_postgres_knowledge_search_api.py` on Postgres as the app role: a run narrowed to A finds only A's chunk although the model asks for B, which the user owns (AC1); a foreign id in the list, alone or beside A, finds nothing and is not an error, the same as an unknown id (AC2). `tests/unit/test_api.py`: 11 ids, an empty list or a bad id is `422` on invoke, stream and both decision routes (AC3). `tests/security/test_knowledge_tools.py`: the model's `kb_ids` are intersected with the list, `list_knowledge_bases` shows only listed bases, and the list is in the run context, not the graph input. `tests/unit/test_thread_lifecycle.py`: a decision carries the list into the continued run |
 | RAG-05.01 | Citation minting and validation | 1 | P0 | Done | #457 | #458 | `tests/security/test_citations.py` through the real agent loop: a `cite_id` no tool returned is dropped and `neuron.citations.rejected` counts it, as is every citation of a run without a knowledge tool (AC1); a `cite_id`-shaped string the model copies from a passage is dropped (AC2); two valid citations are kept in the listed order and resolve to document, chunk, title, headings and pages (AC3). Also: only successful knowledge-tool artifacts mint ids; `tests/security/test_knowledge_tools.py` checks the artifacts of a search and an excerpt |
 | RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Done | #459 | #460 | `tests/security/test_citations.py`: a thread reloaded from its checkpoint returns the answer's citations in history, and a later run without knowledge has none (AC1); the stored answer holds ids, title and pages but no passage text, and no tool message is stored (AC3); a search with no valid citation is `grounded: false`; a stamp that does not validate is ignored. `web/src/lib/stream/client.test.ts`: the current client reads a v1 `final` with citations unchanged (AC2), against `contract.json`'s `final_with_citations`, which `tests/unit/test_web_stream_contract.py` checks against `AgentResponse` |
-| RAG-06.01 | Knowledge screen | 1 | P0 | Pending | — | — | — |
+| RAG-06.01 | Knowledge screen | 1 | P0 | In progress | #467 | — | Part 1: API client and parsing (`web/src/features/knowledge/*.test.ts`) |
 | RAG-06.02 | Citation chips and source sheet | 1 | P0 | Pending | — | — | — |
 | RAG-07.01 | Erase and export include knowledge | 1 | P0 | Pending | — | — | — |
 | RAG-07.02 | Orphan sweep and reconciliation | 1 | P1 | Pending | — | — | — |
@@ -369,6 +371,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-06 | RAG-06.01 In progress (#467, part 1: API client). Epic issue RAG-E06 #466 created. Header brought up to date with RAG-04.03 and RAG-04.04 (Done) | Claude session |
+| 2026-11-06 | RAG-04.04 Done (#464, #465); RAG-04.03 Done (#461, #462, #463), its live abstention check and the floor calibration moved to RAG-08.01; epic RAG-E04 closed | Claude session |
 | 2026-11-05 | RAG-04.02 Done (#452; #453, #454, #455): the three knowledge tools, wired into `AgentService`; RAG-03.05 Done with its AC3 parity test (#455). Security review: no high findings; excerpt cap and a no-ids-to-the-model test added | Claude session |
 | 2026-11-04 | RAG-03.05 In progress (#450, #451): the search route; AC3's parity test waits for the tool (RAG-04.02). Security review: no findings above low (the cached retriever retries a failed provider build on each request; noted) | Claude session |
 | 2026-11-04 | RAG-04.01 Done with part 3 (eval comparison, AC5): hybrid kept as the default; RAG-04.02 and RAG-03.05 unblocked | Claude session |

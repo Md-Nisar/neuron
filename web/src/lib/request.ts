@@ -21,6 +21,10 @@ export interface RequestOptions<T> {
   method: "GET" | "DELETE" | "PATCH" | "POST";
   /** A JSON request body (sent with `PATCH` or `POST`). */
   body?: unknown;
+  /** A `multipart/form-data` body instead of JSON; the browser sets its boundary. */
+  form?: FormData;
+  /** An `Idempotency-Key` header, so a retried upload is not stored twice. */
+  idempotencyKey?: string;
   /** Turns the parsed JSON body into `T`, or throws if it has the wrong shape. */
   parse?: (body: unknown) => T;
   signal?: AbortSignal | undefined;
@@ -43,7 +47,11 @@ export async function apiRequest<T = undefined>(options: RequestOptions<T>): Pro
         Authorization: `Bearer ${options.token}`,
         Accept: "application/json",
         ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(options.idempotencyKey === undefined
+          ? {}
+          : { "Idempotency-Key": options.idempotencyKey }),
       },
+      ...(options.form === undefined ? {} : { body: options.form }),
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
       credentials: "omit",
       cache: "no-store",
