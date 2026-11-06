@@ -76,6 +76,14 @@ export function uploadDocument(
   });
 }
 
+/** Tombstone a document; its file, chunks and index entries are purged soon after. */
+export function deleteDocument(deps: DataDeps, docId: string): Promise<undefined> {
+  return call(deps, {
+    path: `/v1/knowledge/documents/${encodeURIComponent(docId)}`,
+    method: "DELETE",
+  });
+}
+
 /** The passage a citation points at. Access is checked again on every call. */
 export function getPassage(deps: DataDeps, docId: string, chunkId: string): Promise<Passage> {
   const path = `/v1/knowledge/documents/${encodeURIComponent(docId)}/chunks/${encodeURIComponent(chunkId)}`;

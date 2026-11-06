@@ -96,4 +96,17 @@ describe("the knowledge picker", () => {
       expect(changes.at(-1)).toEqual([kb(1).kb_id]);
     });
   });
+
+  it("keeps the list and the choice in view when a refresh fails", async () => {
+    const { user } = setup(
+      [jsonResponse(200, { bases: [kb(1), kb(2)] }), jsonResponse(500, {})],
+      [kb(1).kb_id],
+    );
+
+    await user.click(await toggle());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(await toggle()).toHaveTextContent("1 of 2 bases");
+    expect(screen.getByRole("checkbox", { name: "Base 1" })).toBeChecked();
+  });
 });

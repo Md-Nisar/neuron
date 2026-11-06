@@ -40,9 +40,9 @@ export function KnowledgePicker({
         const known = new Set(found.map((base) => base.kb_id));
         if (selected.some((id) => !known.has(id))) onChange(selected.filter((id) => known.has(id)));
       },
-      () => {
-        if (live) setBases([]);
-      },
+      // A failed refresh keeps the list it had, so a choice in force stays visible and can be
+      // changed; a first load that fails shows nothing.
+      () => undefined,
     );
     return () => {
       live = false;
