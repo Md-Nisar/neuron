@@ -1140,6 +1140,7 @@ Exit gate (Claude report §12): zero cross-user results in the security suite; �
 - Given the corpus is ingested, when `make eval` runs, then the four metrics are reported in the eval report schema.
 - Given a change that lowers recall@5 below the baseline tolerance, when evals run, then they fail.
 - Given the v1.1.0 gate, when evals run on the release commit, then ≥90% of answerable questions cite a correct page.
+- Given an unanswerable question, when the live-model eval runs, then the answer says the documents do not contain it and `grounded` is false (carried from RAG-04.03 AC1).
 
 **Technical tasks**
 - [ ] Metric functions and tests.
