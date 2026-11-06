@@ -52,6 +52,9 @@ _UNAVAILABLE = "Error: knowledge is not available right now."
 _NO_PASSAGE = "Error: there is no such passage. Use a cite_id from a search in this answer."
 _TOO_MANY = "Error: the limit for this answer is reached. Answer from what you found."
 _INVALID = "Error: the request is invalid. Check the arguments and their limits."
+# RAG-04.03: a search with nothing above the score floor says so, rather than return an empty
+# list the model might read as a failed call; with no passage there is nothing to cite.
+_NO_RESULTS = {"status": "no_relevant_results", "passages": []}
 Pool = Callable[[], AsyncConnectionPool[Any] | None]
 
 
@@ -151,7 +154,8 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
     ) -> tuple[str, dict[str, dict[str, Any]]]:
         """Search the user's knowledge bases for passages that answer `query`. Use it when the
         question may be answered by the user's own documents. `kb_ids` (from
-        list_knowledge_bases) limits the search to those bases; `limit` is 1 to 10."""
+        list_knowledge_bases) limits the search to those bases; `limit` is 1 to 10. A
+        `no_relevant_results` status means no passage scored high enough for `query`."""
         owner = _owner(runtime)
         if not query.strip():
             raise ToolException(_INVALID)
@@ -161,6 +165,8 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             result = await retriever().search(owner, query, k=limit, kb_ids=kb_ids)
         except AppError:  # an embedding failure too
             raise ToolException(_UNAVAILABLE) from None
+        if result.status == "no_relevant_results":
+            return frame(_PREAMBLE, "knowledge", _NO_RESULTS), {}
         return _minted(
             [(_ref(p.doc_id, p, p.title), _shown(p, title=p.title)) for p in result.passages]
         )

@@ -32,6 +32,7 @@ from neuron_agent.evaluation import (
     wilson_interval,
 )
 from neuron_agent.graphs import main_graph
+from neuron_agent.prompts.loader import SYSTEM_PROMPT_VERSION
 from neuron_agent.schemas.agent import AgentAnswer, AgentRequest, AgentResponse
 from neuron_agent.services.agent_service import AgentService
 
@@ -447,6 +448,7 @@ def test_cli_options_filter_repeat_and_write_the_report(
     assert all(c["trials"] == 2 and c["passes"] == 2 for c in security["results"])
     assert security["pass_hat_k"] == 1.0
     assert report["dataset_versions"] == {"security": security["dataset_version"]}
+    assert report["prompt_version"] == SYSTEM_PROMPT_VERSION
 
 
 def test_cli_reports_each_selected_suite_and_validates(

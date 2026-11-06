@@ -31,6 +31,7 @@ from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ThreadNotFoundError
 from neuron_agent.memory.tools import MEMORY_TOOL_SCOPES
 from neuron_agent.models import factory
+from neuron_agent.prompts.loader import SYSTEM_PROMPT_VERSION
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ApprovalRequiredResponse
 from neuron_agent.security.auth import Principal
 from neuron_agent.security.authorization import DEV_PERMISSIONS, TokenUsageAccumulator
@@ -963,6 +964,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         "report_version": REPORT_VERSION,
         "model": get_settings().default_model,
         "git_sha": _git_sha(),
+        "prompt_version": SYSTEM_PROMPT_VERSION,
         "dataset_versions": {n: load_dataset_version(SUITES[n][0]) for n in suites},
         "trials": args.trials,
         "infrastructure_errors": sum(

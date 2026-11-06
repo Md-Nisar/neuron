@@ -51,6 +51,8 @@ class _Retriever:
             raise PersistenceError("knowledge search failed")
         if query == "slow":
             await asyncio.sleep(5)
+        if query == "nothing":  # nothing above the score floor
+            return SearchResult([], "exact")
         text = {
             "long": "x" * 4_000,
             # Text shaped like a minted cite_id, for a model to copy (RAG-05.01).
@@ -126,6 +128,24 @@ def _block(message: ToolMessage) -> list[dict[str, Any]]:
     assert match, content
     assert "<" not in match.group(1)
     return json.loads(match.group(1))  # type: ignore[no-any-return]
+
+
+async def test_a_search_with_nothing_relevant_returns_the_marker_and_mints_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="nothing"),
+        _call("AgentAnswer", answer="Your documents do not cover that.", confidence=0.9),
+    )
+
+    await _run(model)
+
+    [result] = _results(model)
+    assert result.status == "success"
+    block: Any = _block(result)
+    assert block == {"status": "no_relevant_results", "passages": []}
+    assert result.artifact == {}
 
 
 async def test_a_search_finds_framed_passages_as_the_caller(
