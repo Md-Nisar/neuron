@@ -807,3 +807,22 @@ async def test_erase_user_data_handles_concurrent_hold_thread_denial(
 
     history = await service.get_history(t1, "bob", limit=100, offset=0)
     assert len(history.messages) == 2
+
+
+async def test_a_decision_carries_the_requested_knowledge_bases_into_the_continued_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """RAG-04.04: the narrowing is not stored with the thread; the decision request repeats it,
+    and a decision without it continues unnarrowed."""
+    service = _service()
+    thread_id, approval_id = await _paused_approval_thread(service, "alice", monkeypatch)
+    kb = uuid.uuid4()
+
+    run = await service.prepare_decision(
+        thread_id, approval_id, "approve", user_id="alice", knowledge_base_ids=[kb]
+    )
+    await run.lease.release()
+    assert run.authorization.knowledge_base_ids == frozenset({kb})
+    run = await service.prepare_decision(thread_id, approval_id, "approve", user_id="alice")
+    await run.lease.release()
+    assert run.authorization.knowledge_base_ids is None

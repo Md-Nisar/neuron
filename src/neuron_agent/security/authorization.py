@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING
 
@@ -44,6 +45,8 @@ class AuthorizationContext:
     issuer_id: str | None = None
     # The HMAC owner key of the caller: what per-user data is filed under. Never a raw subject.
     owner_key: str | None = None
+    # The knowledge bases the request narrowed this run to (RAG-04.04); None means all readable.
+    knowledge_base_ids: frozenset[uuid.UUID] | None = None
 
 
 UNKNOWN_MODEL = "unknown"

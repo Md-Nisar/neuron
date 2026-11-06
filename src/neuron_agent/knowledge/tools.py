@@ -65,6 +65,12 @@ def _owner(runtime: ToolRuntime[Any, Any]) -> str:
     return context.owner_key
 
 
+def _scope(runtime: ToolRuntime[Any, Any]) -> frozenset[uuid.UUID] | None:
+    """The bases the request narrowed the run to, from the trusted context; None for all."""
+    context = runtime.context
+    return context.knowledge_base_ids if isinstance(context, AuthorizationContext) else None
+
+
 def _messages(runtime: ToolRuntime[Any, Any]) -> list[Any]:
     state = runtime.state
     return list(state.get("messages", [])) if isinstance(state, dict) else []
@@ -143,6 +149,8 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             found = await bases.list(owner)
         except AppError:
             raise ToolException(_UNAVAILABLE) from None
+        if (scope := _scope(runtime)) is not None:
+            found = [b for b in found if b.kb_id in scope]
         return _capped([{"kb_id": str(b.kb_id), "name": b.name} for b in found])[0]
 
     @tool(response_format="content_and_artifact")
@@ -161,6 +169,9 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             raise ToolException(_INVALID)
         if _calls(_messages(runtime), "search_knowledge") > MAX_SEARCHES:
             raise ToolException(_TOO_MANY)
+        if (scope := _scope(runtime)) is not None:
+            # The model's `kb_ids` narrow the request's bases further, never widen them.
+            kb_ids = [kb for kb in kb_ids or () if kb in scope] or sorted(scope, key=str)
         try:
             result = await retriever().search(owner, query, k=limit, kb_ids=kb_ids)
         except AppError:  # an embedding failure too

@@ -26,6 +26,7 @@ from neuron_agent.errors.base import (
 from neuron_agent.graphs import main_graph
 from neuron_agent.knowledge import tools as knowledge_tools
 from neuron_agent.knowledge.retrieval import Passage, SearchResult
+from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.schemas.knowledge import ChunkPassage, KnowledgeBase, KnowledgeChunk
 from neuron_agent.security.authorization import DEV_PERMISSIONS, AuthorizationContext
 from neuron_agent.services.agent_service import AgentService
@@ -102,6 +103,7 @@ async def _run(
     model: _RecordingModel,
     scopes: frozenset[str] = _SCOPES,
     owner: str | None = _OWNER,
+    knowledge_base_ids: frozenset[uuid.UUID] | None = None,
     **settings: Any,
 ) -> Any:
     specs = knowledge_tools.knowledge_specs(Settings(env="test"), lambda: None)
@@ -113,7 +115,9 @@ async def _run(
     return await graph.ainvoke(
         {"messages": [HumanMessage(content="go")]},
         {"configurable": {"thread_id": str(uuid.uuid4())}},
-        context=AuthorizationContext(scopes, owner_key=owner),
+        context=AuthorizationContext(
+            scopes, owner_key=owner, knowledge_base_ids=knowledge_base_ids
+        ),
     )
 
 
@@ -462,3 +466,52 @@ def test_the_service_offers_the_knowledge_tools_only_when_knowledge_is_on(
     names = set(service._tools().names())
     assert (set(knowledge_tools.KNOWLEDGE_TOOL_SCOPES) <= names) is enabled
     assert set(builtin_registry().names()) <= names
+
+
+_OTHER = uuid.uuid4()  # another base the caller can read
+
+
+@pytest.mark.parametrize(
+    ("kb_ids", "searched"),
+    [
+        (None, [_KB]),
+        ([_OTHER], [_KB]),  # the model's choice outside the request's bases is ignored
+        ([_OTHER, _KB], [_KB]),
+    ],
+)
+async def test_a_narrowed_run_searches_only_the_requested_bases(
+    monkeypatch: pytest.MonkeyPatch, kb_ids: list[uuid.UUID] | None, searched: list[uuid.UUID]
+) -> None:
+    """RAG-04.04 AC1: the request's bases bound the search, whatever `kb_ids` the model gives."""
+    args: dict[str, Any] = {"query": "q"} if kb_ids is None else {"query": "q", "kb_ids": kb_ids}
+    model = _model(monkeypatch, _call("search_knowledge", **args), AIMessage(content="done"))
+
+    await _run(model, knowledge_base_ids=frozenset({_KB}))
+
+    assert _calls == [("search", _OWNER, "q", 5, searched)]
+
+
+async def test_a_narrowed_run_lists_only_the_requested_bases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model(monkeypatch, _call("list_knowledge_bases"), AIMessage(content="done"))
+
+    await _run(model, knowledge_base_ids=frozenset({_OTHER}))
+
+    [message] = _results(model)
+    assert _block(message) == []
+
+
+async def test_the_requested_bases_reach_the_run_only_through_its_context() -> None:
+    """RAG-04.04: the list is in the trusted runtime context, not in graph state."""
+    service = AgentService(Settings(env="test"))
+    ids = [_KB, _OTHER, _KB]
+    run = await service.prepare(AgentRequest(message="hi", knowledge_base_ids=ids))
+    try:
+        assert run.authorization.knowledge_base_ids == frozenset({_KB, _OTHER})
+        assert str(_KB) not in repr(run.graph_input)
+    finally:
+        await run.lease.release()
+    unscoped = await service.prepare(AgentRequest(message="hi"))
+    await unscoped.lease.release()
+    assert unscoped.authorization.knowledge_base_ids is None
