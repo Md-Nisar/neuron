@@ -7,7 +7,12 @@ import type { DataDeps } from "@/features/data/api";
 import { cn } from "@/lib/utils";
 
 import { listDocuments, uploadDocument } from "./api";
-import { DOCUMENT_FAILED, knowledgeErrorText, PROCESSING_TEXT, uploadErrorText } from "./messages";
+import {
+  documentFailureText,
+  knowledgeErrorText,
+  PROCESSING_TEXT,
+  uploadErrorText,
+} from "./messages";
 import type { DocumentStatus, KnowledgeBase, KnowledgeDocument } from "./parse";
 
 export const POLL_MS = 2000;
@@ -146,7 +151,7 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
               </Badge>
             </div>
             {doc.status === "failed" && (
-              <p className="mt-1 text-xs text-destructive">{DOCUMENT_FAILED}</p>
+              <p className="mt-1 text-xs text-destructive">{documentFailureText(doc.error_code)}</p>
             )}
           </li>
         ))}

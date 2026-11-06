@@ -159,6 +159,8 @@ processed (`hosted` or `self_hosted`). It uses `/v1/knowledge/*` and needs `know
 Opening a base shows its documents and, above the upload area, where their text is processed.
 Files are uploaded by drop or picker, one request each with its own `Idempotency-Key`, and the list
 is fetched again every 2 seconds while any document is still queued or being processed.
+A failed document's `error_code` and an upload refusal's code (quotas included) map to fixed
+wording in `messages.ts`; an unknown code gets a general message.
 
 ## Your data (`src/features/data`)
 
