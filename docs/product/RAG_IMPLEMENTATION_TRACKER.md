@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-06, against `main` at `48959d4` (RAG-04.04 Done: #465; RAG-04.03 Done: #462, #463; RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E06, all stories of RAG-E00 to RAG-E05, and RAG-06.01; the Project board has not been created.
+**Last verified:** 2026-11-06, against `main` at `3960add` (RAG-06.02 Done: #475, #476, #477, #478; RAG-06.01 Done: #468 to #473; RAG-04.04 Done: #465; RAG-04.03 Done: #462, #463; RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E06, all stories of RAG-E00 to RAG-E06; the Project board has not been created.
 
 ## New session protocol
 
@@ -52,18 +52,18 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E03 | Knowledge API | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
-| RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 1 | 0 | 0 | 1 | RAG-06.02 (ready) |
+| RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 0 | 0 | 0 | 5 | RAG-08.01 (ready) |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.02 (Phase 2) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **24** | **0** | **0** | **32** | **RAG-06.02** |
+| **Total** | | | | **56** | **25** | **0** | **0** | **31** | **RAG-08.01** |
 
-v1.1.0 scope (E00–E08): 33 stories, 24 done.
+v1.1.0 scope (E00–E08): 33 stories, 25 done.
 
-**Recommended next action:** RAG-06.02 (citation chips and source sheet), which completes RAG-E06. RAG-08.01 (which also carries RAG-04.03's live abstention check and the similarity floor) and RAG-07.01 are also unblocked.
+**Recommended next action:** RAG-08.01 (which also carries RAG-04.03's live abstention check and the similarity floor; its live parts need a provider key) or RAG-07.01. RAG-E06 is complete.
 
 ## GitHub synchronisation
 
@@ -99,6 +99,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-04.04 | #464 | Not on a board |
 | RAG-E06 | #466 | Not on a board |
 | RAG-06.01 | #467 | Not on a board |
+| RAG-06.02 | #474 | Not on a board |
 | RAG-E05 | #456 | Not on a board |
 | RAG-05.01 | #457 | Not on a board |
 | RAG-05.02 | #459 | Not on a board |
@@ -252,14 +253,17 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E06 Knowledge in the web app
 
-- **Stories:** 2 total · 1 done · 0 in progress · 0 blocked · 1 pending
-- **Implemented functionality:** RAG-06.01 part 1 (#468): the knowledge API client and response checks (`web/src/features/knowledge/api.ts`, `parse.ts`). Part 2 (#469): the "Knowledge" page in the sidebar lists and creates bases, stating the processing locality first (`KnowledgeScreen.tsx`). Part 3 (#470): rename and two-step delete (`BaseRow.tsx`). Part 4 (#471): upload by drop or picker, the processing notice above it, and status polling until every document has settled (`DocumentsPanel.tsx`). Part 5 (#472): fixed wording for each `error_code` and upload refusal, quotas included (`messages.ts`). Part 6: the flow in Chromium against Postgres and the worker, with axe in both themes (`web/e2e/knowledge.spec.ts`, CI job `web-e2e-knowledge`).
-- **Outstanding work:** RAG-06.02.
+- **Stories:** 2 total · 2 done · 0 in progress · 0 blocked · 0 pending
+- **Implemented functionality:** RAG-06.01 part 1 (#468): the knowledge API client and response checks (`web/src/features/knowledge/api.ts`, `parse.ts`). Part 2 (#469): the "Knowledge" page in the sidebar lists and creates bases, stating the processing locality first (`KnowledgeScreen.tsx`). Part 3 (#470): rename and two-step delete (`BaseRow.tsx`). Part 4 (#471): upload by drop or picker, the processing notice above it, and status polling until every document has settled (`DocumentsPanel.tsx`). Part 5 (#472): fixed wording for each `error_code` and upload refusal, quotas included (`messages.ts`). Part 6 (#473): the flow in Chromium against Postgres and the worker, with axe in both themes (`web/e2e/knowledge.spec.ts`, CI job `web-e2e-knowledge`). RAG-06.02 part 1 (#475): numbered source chips and a not-grounded notice under answers, from the stream's `final` and from history alike (`lib/stream/citations.ts`, `Sources.tsx`). Part 2 (#476): a chip opens its passage, fetched through the chunk route each time, as text; "Source not available" on `404`/`403` (`SourceSheet.tsx`). Part 3 (#477): a knowledge-base picker in the composer sends `knowledge_base_ids` with questions and decisions (`KnowledgePicker.tsx`). Part 4 (#478): the browser flow goes on to ask, open citation 1 and read the passage; the dev/test fake model scripts a `search: ...` turn.
+- **Outstanding work:** none.
 - **Blockers and decisions:**
   - RAG-06.01 landed as six PRs of under 400 lines (#468 to #472 and the Playwright PR).
   - Decision (owner, 2026-11-06): the browser test for AC1 uploads a text file, not a PDF, so the CI job needs no docling-serve. PDF parsing is covered by the ingestion tests (RAG-02.02); the same queued-to-ready path in the page is covered for a PDF with a mocked API (`DocumentsPanel.test.tsx`).
-  - The browser axe run checks colour contrast too (jsdom cannot), on the Knowledge page only.
-- **Next recommended story:** RAG-06.02.
+  - The browser axe run checks colour contrast too (jsdom cannot), on the Knowledge page and the chat with an open source.
+  - RAG-06.02 landed as four PRs (#475 to #478). The source sheet is an inline panel below the chips, not a modal (no focus trap needed; jsdom has no `showModal`). A `403` reads as "not available", like a `404`. The KB picker (optional in the backlog) is a per-page preference, not stored with the thread. Chip text, base names and passages go through `displaySafe`.
+  - Decision (RAG-06.02 AC4): the browser flow needs an answer that searches and cites without a provider key, so the development/test fake model answers a `search: ...` turn by calling `search_knowledge` and citing the first `cite_id` it was shown, through the usual validation (security review: no blocking findings; unreachable in staging and production).
+  - Fixed (found by the AC4 browser flow, from RAG-05.02): reading a stored citation stamp with `exclude_none` dropped a citation's own nulls, so an answer citing a passage with no pages or title (a text or Markdown file) broke the stream's `final` and returned `500` from thread history and the thread list. Test: `test_a_citation_without_pages_or_title_reaches_the_response_and_history`.
+- **Next recommended story:** none in this epic; RAG-08.01 or RAG-07.01.
 
 ### RAG-E07 Data rights and lifecycle
 
@@ -337,7 +341,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-05.01 | Citation minting and validation | 1 | P0 | Done | #457 | #458 | `tests/security/test_citations.py` through the real agent loop: a `cite_id` no tool returned is dropped and `neuron.citations.rejected` counts it, as is every citation of a run without a knowledge tool (AC1); a `cite_id`-shaped string the model copies from a passage is dropped (AC2); two valid citations are kept in the listed order and resolve to document, chunk, title, headings and pages (AC3). Also: only successful knowledge-tool artifacts mint ids; `tests/security/test_knowledge_tools.py` checks the artifacts of a search and an excerpt |
 | RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Done | #459 | #460 | `tests/security/test_citations.py`: a thread reloaded from its checkpoint returns the answer's citations in history, and a later run without knowledge has none (AC1); the stored answer holds ids, title and pages but no passage text, and no tool message is stored (AC3); a search with no valid citation is `grounded: false`; a stamp that does not validate is ignored. `web/src/lib/stream/client.test.ts`: the current client reads a v1 `final` with citations unchanged (AC2), against `contract.json`'s `final_with_citations`, which `tests/unit/test_web_stream_contract.py` checks against `AgentResponse` |
 | RAG-06.01 | Knowledge screen | 1 | P0 | Done | #467 | #468, #469, #470, #471, #472 and part 6 | AC1: `web/e2e/knowledge.spec.ts` (create, upload a text file, Ready without a reload, in CI `web-e2e-knowledge`) and `DocumentsPanel.test.tsx` (a PDF, mocked API); AC2: `DocumentsPanel.test.tsx` and `KnowledgeScreen.test.tsx`; AC3: `DocumentsPanel.test.tsx` (codes mapped, no server text); AC4: axe in `knowledge.spec.ts` (light and dark, contrast included) and the Vitest axe tests; `make flows` lists `knowledge` |
-| RAG-06.02 | Citation chips and source sheet | 1 | P0 | Pending | — | — | — |
+| RAG-06.02 | Citation chips and source sheet | 1 | P0 | Done | #474 | #475, #476, #477, #478 | AC1: `SourceSheet.test.tsx` (chip 1 shows the cited page's passage through the chunk route) and `web/e2e/knowledge.spec.ts` (the uploaded passage in Chromium); AC2: `SourceSheet.test.tsx` (`404` and `403` show "Source not available" and no passage); AC3: `Sources.test.tsx` (the chips after a reload equal the streamed ones); AC4: `knowledge.spec.ts` upload → ask → open citation in CI `web-e2e-knowledge` (#478); KB picker: `KnowledgePicker.test.tsx`, `useChat.test.tsx` |
 | RAG-07.01 | Erase and export include knowledge | 1 | P0 | Pending | — | — | — |
 | RAG-07.02 | Orphan sweep and reconciliation | 1 | P1 | Pending | — | — | — |
 | RAG-07.03 | Backup and restore drill covers knowledge | 1 | P1 | Pending | — | — | — |
@@ -374,6 +378,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-06 | RAG-06.02 Done (#474: #475 to #478): citation chips, source sheet, KB picker, browser flow upload → ask → open citation. Fixed a citation-stamp bug that broke answers citing text files. RAG-E06 complete. Next: RAG-08.01 or RAG-07.01 | Claude session |
 | 2026-11-06 | RAG-06.01 Done (#467: #468 to #472 and part 6): Knowledge page, upload, status polling, failure messages, browser flow with axe in both themes. AC1's browser test uses a text file (owner's decision). Next: RAG-06.02 | Claude session |
 | 2026-11-06 | RAG-06.01 In progress (#467, part 1: API client). Epic issue RAG-E06 #466 created. Header brought up to date with RAG-04.03 and RAG-04.04 (Done) | Claude session |
 | 2026-11-06 | RAG-04.04 Done (#464, #465); RAG-04.03 Done (#461, #462, #463), its live abstention check and the floor calibration moved to RAG-08.01; epic RAG-E04 closed | Claude session |
