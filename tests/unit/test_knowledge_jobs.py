@@ -123,9 +123,11 @@ async def test_a_purge_parses_its_argument_and_raises_the_class_only() -> None:
     assert (str(caught.value), caught.value.__cause__) == ("OSError", None)
 
 
-def test_the_health_file_must_be_fresh(tmp_path: Path) -> None:
+def test_the_health_file_must_be_fresh(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     health = tmp_path / "health"
     settings = Settings(env="test", worker_health_file=str(health), worker_stalled_seconds=30)
+    # `main` reads its own settings: these, not the default file a local worker may be writing.
+    monkeypatch.setattr(worker, "get_settings", lambda: settings)
     assert worker.healthy(settings) is False
     health.touch()
     assert worker.healthy(settings) is True
