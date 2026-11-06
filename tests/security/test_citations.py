@@ -25,6 +25,7 @@ from neuron_agent.graphs import main_graph
 from neuron_agent.knowledge import citations
 from neuron_agent.knowledge import tools as knowledge_tools
 from neuron_agent.observability import metrics
+from neuron_agent.schemas.agent import AgentResponse, ThreadMessage
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.services import agent_service
 from neuron_agent.tools.registry import ToolRegistry
@@ -197,6 +198,34 @@ def test_a_stamp_that_does_not_validate_is_ignored() -> None:
     message = AIMessage(content="x", additional_kwargs={"citations": [{"cite_id": 1}]})
 
     assert agent_service._stamped_citations(message) == {}
+
+
+def test_a_citation_without_pages_or_title_reaches_the_response_and_history() -> None:
+    # A text or Markdown file has no pages (RAG-06.02's browser flow found this): the nulls
+    # inside a citation must survive, or the final event and history fail to build.
+    cited = {
+        "cite_id": "c1",
+        "doc_id": str(_DOC),
+        "chunk_id": str(_CHUNKS[0]),
+        "title": None,
+        "headings": [],
+        "page_start": None,
+        "page_end": None,
+    }
+    message = AIMessage(
+        content="a",
+        additional_kwargs={"citations": [cited], "citation_schema_version": 1, "grounded": True},
+    )
+
+    fields = agent_service._stamped_citations(message)
+
+    [kept] = fields["citations"]
+    assert (kept["title"], kept["page_start"], kept["page_end"]) == (None, None, None)
+    response = AgentResponse(
+        request_id="r", thread_id="t", answer="a", used_tools=[], confidence=0.9, **fields
+    )
+    assert response.citations is not None and response.citations[0].page_start is None
+    assert ThreadMessage(role="assistant", content="a", **fields).grounded is True
 
 
 def test_the_answer_message_is_the_last_one_the_graph_committed() -> None:
