@@ -125,16 +125,13 @@ jobs:
     env:
       # The same image and digest as postgres-integration.yml.
       POSTGRES_IMAGE: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
-      # Throwaway CI-only values; the role passwords are those of deploy/reference/init-roles.sql.
+      # The DSNs are set by the first step, with passwords generated for this run only.
       APP_ENV: development
       APP_CHECKPOINTER: postgres
       APP_MEMORY_ENABLED: "true"
       APP_KNOWLEDGE_ENABLED: "true"
       APP_KNOWLEDGE_EMBEDDING_PROVIDER: fake
       APP_IDENTITY_HASH_KEY: browser-e2e-identity-hash-key-not-a-secret
-      APP_POSTGRES_MIGRATION_DSN: postgresql://neuron_migrator:migrator-local-only@127.0.0.1:5432/neuron?sslmode=disable
-      APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@127.0.0.1:5432/neuron?sslmode=disable
-      APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker:worker-local-only@127.0.0.1:5432/neuron?sslmode=disable
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -151,6 +148,17 @@ jobs:
           for sql in init-roles.sql init-knowledge.sql; do
             docker exec -i postgres psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d neuron \
               < "deploy/reference/$sql"
+          done
+          # Replace the roles' fixed reference passwords with ones made for this run.
+          for pair in APP_POSTGRES_MIGRATION_DSN:neuron_migrator APP_POSTGRES_DSN:neuron_app \
+            APP_POSTGRES_WORKER_DSN:neuron_worker; do
+            role="${pair#*:}"
+            password="$(openssl rand -hex 24)"
+            echo "::add-mask::$password"
+            docker exec postgres psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d neuron \
+              -c "ALTER ROLE $role PASSWORD '$password'"
+            echo "${pair%%:*}=postgresql://$role:$password@127.0.0.1:5432/neuron?sslmode=disable" \
+              >> "$GITHUB_ENV"
           done
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
       - run: uv python install 3.13
