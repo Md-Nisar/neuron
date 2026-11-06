@@ -9,6 +9,8 @@ Needs Node from `.nvmrc` and the npm in `package.json` (`packageManager`). Run f
     make web-dev       # open http://localhost:5173 (the one origin the dev Keycloak allows; 127.0.0.1 is refused)
     make web           # format check, lint, typecheck, test, build, npm audit
     make web-e2e       # browser end to end (Chromium); one-time: npx playwright install chromium
+    npm --prefix web run e2e:knowledge  # the knowledge flow: needs Postgres, `setup` and the worker
+                                        # (the CI job `web-e2e-knowledge` shows the steps)
 
 Rules for this directory:
 
@@ -199,7 +201,7 @@ The target is WCAG 2.2 AA for the chat and approval flows (ADR 0010, decision 8)
 
 **Not checked, and why:**
 
-- **Colour contrast.** jsdom has no layout or computed colours, so `color-contrast` is off in the axe run. It needs a browser (Playwright with axe) or a manual pass in light and dark mode.
+- **Colour contrast.** jsdom has no layout or computed colours, so `color-contrast` is off in the axe run. It needs a browser (Playwright with axe) or a manual pass in light and dark mode. The Knowledge page is the exception: `e2e/knowledge.spec.ts` runs axe, contrast included, in Chromium in both themes.
 - **The 360 px layout and dark mode as rendered.** The classes and meta tags are tested; nobody has looked at the page at that width in a real browser.
 - **A screen-reader pass.** The issue asks for a manual pass (NVDA, VoiceOver) recorded in the release record. It has not been done. Live-region behaviour (`aria-live`, `role="status"`) is exactly what differs between screen readers and is not something jsdom can show.
 

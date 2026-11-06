@@ -184,6 +184,25 @@ def test_stream_preflight_succeeds_for_an_allowed_origin(
     _assert_security_headers(response)
 
 
+def test_upload_preflight_allows_the_idempotency_key(
+    jwt_api_factory: Callable[..., JwtApi],
+) -> None:
+    # The web app sends `Idempotency-Key` with each upload (RAG-06.01); without it in the CORS
+    # policy the browser refuses the request before it is sent.
+    api = jwt_api_factory(cors_allowed_origins=[_APP_ORIGIN])
+    response = api.client.options(
+        "/v1/knowledge/bases/00000000-0000-4000-8000-000000000001/documents",
+        headers={
+            "Origin": _APP_ORIGIN,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization, idempotency-key",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "idempotency-key" in response.headers["access-control-allow-headers"].lower()
+
+
 @pytest.mark.parametrize(
     "headers",
     [
