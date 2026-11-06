@@ -115,7 +115,7 @@ function MessageView({
         <p className="sr-only">neuron</p>
         {message.text !== "" && <Markdown text={message.text} />}
         {message.status === "streaming" && message.text === "" && <Thinking />}
-        <Sources citations={message.citations} grounded={message.grounded} />
+        <Sources citations={message.citations} grounded={message.grounded} deps={feedback?.deps} />
         {(message.toolCalls.length > 0 || message.skipped.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
             {message.toolCalls.length > 0 && (
