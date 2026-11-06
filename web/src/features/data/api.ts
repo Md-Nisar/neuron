@@ -1,4 +1,4 @@
-import { ApiError, apiRequest } from "@/lib/request";
+import { ApiError, apiRequest, type RequestOptions } from "@/lib/request";
 
 import {
   parseErasure,
@@ -20,13 +20,7 @@ export interface DataDeps {
 /** Run an API call with the current token; a missing or refused token ends the session. */
 export async function call<T>(
   deps: DataDeps,
-  options: {
-    path: string;
-    method: "GET" | "DELETE" | "PATCH" | "POST";
-    body?: unknown;
-    parse?: (body: unknown) => T;
-    signal?: AbortSignal | undefined;
-  },
+  options: Omit<RequestOptions<T>, "baseUrl" | "token" | "fetch">,
 ): Promise<T> {
   const token = deps.getAccessToken();
   if (token === null) {
