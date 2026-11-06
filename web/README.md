@@ -150,6 +150,12 @@ more"), with `PATCH /v1/threads/{id}` to rename and `DELETE /v1/threads/{id}` to
   "Waiting for approval" notice is shown and nothing can be decided. A card addressed to another
   thread is never shown. Opening is disabled while a reply streams.
 
+## Knowledge (`src/features/knowledge`, in development)
+
+The "Knowledge" page lists the user's knowledge bases and creates one, saying first where its text
+is processed (`hosted` or `self_hosted`). It uses `/v1/knowledge/*` and needs `knowledge:read` and
+`knowledge:write`; with knowledge off on the server it says so. Names are shown as text.
+
 ## Your data (`src/features/data`)
 
 The "Your data" page (opened from the nav; the chat stays mounted so a draft survives a visit) uses
@@ -176,7 +182,7 @@ The target is WCAG 2.2 AA for the chat and approval flows (ADR 0010, decision 8)
 
 **Keyboard and focus, each pinned by a test:**
 
-- Tab order is: Sign out, Chat, Your data, New conversation, the message box. Enter sends, Shift+Enter adds a line; Approve and Reject work with Enter and Space.
+- Tab order is: Sign out, Chat, Knowledge, Your data, New conversation, the message box. Enter sends, Shift+Enter adds a line; Approve and Reject work with Enter and Space.
 - Clicking Send keeps focus in the message box (the button disables itself while a reply streams, which would strand focus on it).
 - When a reply ends, or is stopped, and focus has fallen to the page, it returns to the message box; if the user has moved focus elsewhere it is left alone.
 - When an approval card appears it takes focus (its heading), so the user knows a decision is waiting.
