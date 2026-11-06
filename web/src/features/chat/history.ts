@@ -1,5 +1,5 @@
 import { count, list, record, str } from "@/features/data/parse";
-import { SAFE_ID } from "@/lib/stream";
+import { parseGrounding, SAFE_ID, type Grounding } from "@/lib/stream";
 
 import type { ChatMessage, SkippedTool } from "./chatState";
 
@@ -9,7 +9,7 @@ const MAX_NAME_CHARS = 64;
 const STATUSES = ["pending", "completed", "failed", "rejected"] as const;
 type ToolStatus = (typeof STATUSES)[number];
 
-export interface HistoryMessage {
+export interface HistoryMessage extends Grounding {
   role: "user" | "assistant";
   content: string;
   tools: { name: string; status: ToolStatus }[];
@@ -33,6 +33,7 @@ function parseMessage(value: unknown): HistoryMessage {
   return {
     role,
     content: str(item, "content"),
+    ...parseGrounding(item),
     runId: run ?? null,
     tools: calls.map((call) => {
       const entry = record(call);
@@ -65,6 +66,8 @@ export function toChatMessages(history: HistoryMessage[], newId: () => string): 
       status: skipped.some((tool) => tool.why === "pending") ? "needs_approval" : "done",
       failure: null,
       approval: null,
+      citations: message.citations,
+      grounded: message.grounded,
     };
   });
 }

@@ -12,6 +12,9 @@ export interface FakeMessage {
   content: string;
   tool_calls?: { name: string; summary: string; status: string }[];
   run_id?: string | null;
+  citations?: unknown;
+  citation_schema_version?: number | null;
+  grounded?: boolean | null;
 }
 export interface FakeApproval {
   approval_id: string;

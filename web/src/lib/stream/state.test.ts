@@ -18,6 +18,8 @@ const final = (answer: string): StreamEvent => ({
     confidence: 1,
     refused: false,
     clarification_needed: false,
+    citations: [],
+    grounded: null,
   },
 });
 const fold = (events: StreamEvent[]): RunState => events.reduce(reduceRunState, initialRunState);
