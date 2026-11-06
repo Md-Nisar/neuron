@@ -69,6 +69,13 @@ test(
     const composer = page.getByRole("textbox", { name: "Message" });
     await composer.fill("search: paid leave");
     await composer.press("Enter");
+    // The scripted answer; on any other outcome, say what the chat shows instead.
+    const log = page.getByRole("log", { name: "Messages" });
+    await expect(log.getByText("From your documents."))
+      .toBeVisible({ timeout: 30_000 })
+      .catch(async (error: unknown) => {
+        throw new Error(`chat shows: ${await log.innerText()}`, { cause: error });
+      });
     const sources = page.getByRole("list", { name: "Sources" });
     const chip = sources.getByRole("button").first();
     await expect(chip).toContainText("1");
