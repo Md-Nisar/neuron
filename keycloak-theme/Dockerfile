@@ -20,3 +20,4 @@ RUN npm run build-keycloak-theme
 # quay.io/keycloak/keycloak:26.0.7
 FROM quay.io/keycloak/keycloak:26.0.7@sha256:4388e2379b7e870a447adbe7b80bd61f5fbf04e925832b19669fda4957f05a81
 COPY --from=build /theme/dist_keycloak/neuron-theme.jar /opt/keycloak/providers/
+USER 1000

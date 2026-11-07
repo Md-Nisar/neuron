@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
 # Type checks and tests run in CI (`make web`); the image only bundles.
-RUN npx vite build
+RUN ./node_modules/.bin/vite build
 
 # nginxinc/nginx-unprivileged:1.29-alpine
 FROM nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
