@@ -16,6 +16,13 @@ async function signIn(page: Page, user: string): Promise<void> {
 
 /** axe on the page's main area, in a real browser, so colour contrast is checked too. */
 async function violations(page: Page): Promise<string[]> {
+  // Controls fade to new colours (`transition-all`) and the source sheet fades in
+  // (`fade-in-0`): measure contrast after every fade, not halfway through one.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+  );
   await page.addScriptTag({ path: AXE });
   return page.evaluate(async () => {
     const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
@@ -54,12 +61,6 @@ test(
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${scheme}\\b`));
-      // Controls fade to the new colours (`transition-all`): measure contrast after the fade.
-      await page.waitForFunction(() =>
-        document
-          .getAnimations()
-          .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
-      );
       expect(await violations(page), `${scheme} theme`).toEqual([]);
     }
 
