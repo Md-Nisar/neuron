@@ -1,0 +1,612 @@
+[
+  {
+    "coverage_id": "Dockerfile%23EXPOSE_8000::src%2Fneuron_agent%2Fconfig%2Fsettings.py::deployment::ATTACK-CLASSES.md%23Wildcard",
+    "surface": "Direct Origin Access and WAF Attachment",
+    "boundary": "Public Internet to Origin Container",
+    "subsystem": "deployment/origin",
+    "attack_class": "Wildcard",
+    "canonical_refs": {
+      "surface": "Dockerfile#EXPOSE_8000",
+      "boundary": "src/neuron_agent/config/settings.py",
+      "subsystem": "deployment",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "starting_paths": [
+      "Dockerfile",
+      "src/neuron_agent/config/settings.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Edge, WAF, and reverse proxy"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLIENT-SIDE.md#Service workers",
+        "reason": "Backend deployment topology"
+      }
+    ],
+    "prior_status": "prior_needs_validation",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-6",
+    "reviewed_paths": [
+      "Dockerfile",
+      "src/neuron_agent/config/settings.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-6",
+        "reviewed_paths": [
+          "Dockerfile",
+          "src/neuron_agent/config/settings.py"
+        ],
+        "invariant": "Direct origin access is restricted via Cloudflare Tunnel or Authenticated Origin Pulls",
+        "method": "source",
+        "result": "Container listens on 0.0.0.0:8000; external network enforcement requires verification of cloudflared or firewall ingress rules",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "CF-SEC-04"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fapi%2Fmain.py%23chat::src%2Fneuron_agent%2Fsecurity%2Finput_policy.py::src%2Fneuron_agent%2Fapi::ATTACK-CLASSES.md%23Injection",
+    "surface": "API Chat Endpoint",
+    "boundary": "External to Application",
+    "subsystem": "api/chat",
+    "attack_class": "Injection",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/api/main.py#chat",
+      "boundary": "src/neuron_agent/security/input_policy.py",
+      "subsystem": "src/neuron_agent/api",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "starting_paths": [
+      "src/neuron_agent/api/main.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Context, prompt injection, and prompt assembly",
+      "WEB-PROTOCOL-AND-AUTH.md#Request integrity and headers"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Memory safety",
+        "reason": "Target is Python and TypeScript"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "src/neuron_agent/api/main.py",
+      "src/neuron_agent/security/input_policy.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "src/neuron_agent/api/main.py",
+          "src/neuron_agent/security/input_policy.py"
+        ],
+        "invariant": "Chat endpoint validates input length and strips prompt injection delimiters",
+        "method": "source",
+        "result": "Input policy enforces maximum character limits and sanitizes system delimiters before graph invocation",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fapi%2Fmain.py%23client_ip::src%2Fneuron_agent%2Fsecurity%2Frate_limiter.py::src%2Fneuron_agent%2Fapi::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "surface": "API Rate Limiting and Client IP",
+    "boundary": "Edge Proxy to Application",
+    "subsystem": "api/ratelimit",
+    "attack_class": "Resource and file handling",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/api/main.py#client_ip",
+      "boundary": "src/neuron_agent/security/rate_limiter.py",
+      "subsystem": "src/neuron_agent/api",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "starting_paths": [
+      "src/neuron_agent/api/main.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Edge, WAF, and reverse proxy",
+      "WEB-PROTOCOL-AND-AUTH.md#Request integrity and headers"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Memory safety",
+        "reason": "Target is Python"
+      }
+    ],
+    "prior_status": "prior_confirmed_same_source",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "src/neuron_agent/api/main.py",
+      "tests/security/test_rate_limit_keys.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "src/neuron_agent/api/main.py",
+          "tests/security/test_rate_limit_keys.py"
+        ],
+        "invariant": "Client IP honors CF-Connecting-IP when peer is in trusted_proxies allowlist",
+        "method": "source",
+        "result": "Confirmed fix in main.py inspecting CF-Connecting-IP and covered by unit tests in test_rate_limit_keys.py",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "CF-SEC-02"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fapi%2Fmain.py%23health_ready::src%2Fneuron_agent%2Fapi%2Fmain.py::src%2Fneuron_agent%2Fapi::ATTACK-CLASSES.md%23Feature%20abuse%20and%20data%20leakage",
+    "surface": "Health Readiness Information Disclosure",
+    "boundary": "Unauthenticated Caller to Health Endpoint",
+    "subsystem": "api/health",
+    "attack_class": "Feature abuse and data leakage",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/api/main.py#health_ready",
+      "boundary": "src/neuron_agent/api/main.py",
+      "subsystem": "src/neuron_agent/api",
+      "attack_class": "ATTACK-CLASSES.md#Feature abuse and data leakage"
+    },
+    "starting_paths": [
+      "src/neuron_agent/api/main.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Request integrity and headers"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Context, prompt injection, and prompt assembly",
+        "reason": "Standard health endpoint"
+      }
+    ],
+    "prior_status": "prior_needs_validation",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-6",
+    "reviewed_paths": [
+      "src/neuron_agent/api/main.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-6",
+        "reviewed_paths": [
+          "src/neuron_agent/api/main.py"
+        ],
+        "invariant": "Unauthenticated health endpoints do not disclose internal runtime environments or metadata",
+        "method": "source",
+        "result": "/health/ready responds with environment string; requires Cloudflare WAF shielding or config strip in production",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "CF-SEC-05"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fapi%2Fmultipart.py%23read_upload::src%2Fneuron_agent%2Fapi%2Fmultipart.py::src%2Fneuron_agent%2Fapi::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "surface": "Document Upload Multipart Stream",
+    "boundary": "External Input to Document Storage",
+    "subsystem": "api/upload",
+    "attack_class": "Resource and file handling",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/api/multipart.py#read_upload",
+      "boundary": "src/neuron_agent/api/multipart.py",
+      "subsystem": "src/neuron_agent/api",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "starting_paths": [
+      "src/neuron_agent/api/multipart.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Request integrity and headers",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Multi-tenant stores"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLIENT-SIDE.md#DOM rendering",
+        "reason": "Server-side multipart parsing"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-3",
+    "reviewed_paths": [
+      "src/neuron_agent/api/multipart.py",
+      "src/neuron_agent/knowledge/blobs.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-3",
+        "reviewed_paths": [
+          "src/neuron_agent/api/multipart.py",
+          "src/neuron_agent/knowledge/blobs.py"
+        ],
+        "invariant": "Multipart parser strictly bounds file and title sizes and streams directly to memory/storage without temp files",
+        "method": "source",
+        "result": "Parser caps parts at 2, rejects files over limit with 413, never executes shell commands or writes user filenames to disk",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fknowledge%2Fblobs.py%23put::src%2Fneuron_agent%2Fknowledge%2Fblobs.py::src%2Fneuron_agent%2Fknowledge::ATTACK-CLASSES.md%23Feature%20abuse%20and%20data%20leakage",
+    "surface": "Knowledge Blob Storage",
+    "boundary": "Application to Object Storage",
+    "subsystem": "knowledge/blobs",
+    "attack_class": "Feature abuse and data leakage",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/knowledge/blobs.py#put",
+      "boundary": "src/neuron_agent/knowledge/blobs.py",
+      "subsystem": "src/neuron_agent/knowledge",
+      "attack_class": "ATTACK-CLASSES.md#Feature abuse and data leakage"
+    },
+    "starting_paths": [
+      "src/neuron_agent/knowledge/blobs.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Storage and object access",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Multi-tenant stores"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Deep links",
+        "reason": "Server-side blob storage"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-3",
+    "reviewed_paths": [
+      "src/neuron_agent/knowledge/blobs.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-3",
+        "reviewed_paths": [
+          "src/neuron_agent/knowledge/blobs.py"
+        ],
+        "invariant": "Blob keys are 128-bit unguessable random hex tokens and never derived from user filenames",
+        "method": "source",
+        "result": "Key validation regex [0-9a-f]{32} strictly prevents path traversal and overwrites, verifying SHA-256 integrity on every read",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fsecurity%2Fauth.py%23cf_access::src%2Fneuron_agent%2Fsecurity%2Fauth.py::src%2Fneuron_agent%2Fsecurity::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "surface": "Cloudflare Access Header Integration",
+    "boundary": "Zero Trust Edge to API Origin",
+    "subsystem": "security/access_jwt",
+    "attack_class": "Chained vulnerabilities and trust boundaries",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/security/auth.py#cf_access",
+      "boundary": "src/neuron_agent/security/auth.py",
+      "subsystem": "src/neuron_agent/security",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "starting_paths": [
+      "src/neuron_agent/security/auth.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Edge, WAF, and reverse proxy"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Custom protocols",
+        "reason": "HTTP REST API"
+      }
+    ],
+    "prior_status": "prior_needs_validation",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-2",
+    "reviewed_paths": [
+      "src/neuron_agent/security/auth.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-2",
+        "reviewed_paths": [
+          "src/neuron_agent/security/auth.py"
+        ],
+        "invariant": "Cloudflare Access assertion header handled seamlessly with TokenVerifier",
+        "method": "source",
+        "result": "TokenVerifier inspects Authorization: Bearer; Cloudflare Access Cf-Access-Jwt-Assertion requires edge transform rule or gateway translation",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "CF-SEC-06"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fsecurity%2Fauth.py%23verify_token::src%2Fneuron_agent%2Fsecurity%2Fauth.py::src%2Fneuron_agent%2Fsecurity::ATTACK-CLASSES.md%23Access%20control",
+    "surface": "API Authentication",
+    "boundary": "Unauthenticated to Authenticated Principal",
+    "subsystem": "security/auth",
+    "attack_class": "Access control",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/security/auth.py#verify_token",
+      "boundary": "src/neuron_agent/security/auth.py",
+      "subsystem": "src/neuron_agent/security",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "starting_paths": [
+      "src/neuron_agent/security/auth.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Authentication and sessions"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Local IPC",
+        "reason": "Web service architecture"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-2",
+    "reviewed_paths": [
+      "src/neuron_agent/security/auth.py",
+      "src/neuron_agent/security/authorization.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-2",
+        "reviewed_paths": [
+          "src/neuron_agent/security/auth.py",
+          "src/neuron_agent/security/authorization.py"
+        ],
+        "invariant": "Auth0 JWT tokens validated against JWKS with RS256, audience, issuer and expiration",
+        "method": "source",
+        "result": "TokenVerifier strictly validates signature, expiry, issuer and audience, rejecting unauthenticated or expired requests",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Fsecurity%2Fegress.py%23PublicOnlyBackend::src%2Fneuron_agent%2Fsecurity%2Fegress.py::src%2Fneuron_agent%2Fsecurity::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "surface": "Outbound Network Egress",
+    "boundary": "Application to Remote Services",
+    "subsystem": "security/egress",
+    "attack_class": "Resource and file handling",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/security/egress.py#PublicOnlyBackend",
+      "boundary": "src/neuron_agent/security/egress.py",
+      "subsystem": "src/neuron_agent/security",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "starting_paths": [
+      "src/neuron_agent/security/egress.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Request integrity and headers"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Binary loaders",
+        "reason": "Python networking stack"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-4",
+    "reviewed_paths": [
+      "src/neuron_agent/security/egress.py",
+      "src/neuron_agent/security/input_policy.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-4",
+        "reviewed_paths": [
+          "src/neuron_agent/security/egress.py",
+          "src/neuron_agent/security/input_policy.py"
+        ],
+        "invariant": "Outbound network requests resolve IP addresses once and connect only to verified public IP addresses",
+        "method": "source",
+        "result": "PublicOnlyBackend blocks loopback, private, link-local, multicast, and unix sockets, eliminating SSRF and DNS rebinding",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fneuron_agent%2Ftools%2Fcalculator.py%23calculator::src%2Fneuron_agent%2Ftools%2Fcalculator.py::src%2Fneuron_agent%2Ftools::ATTACK-CLASSES.md%23Injection",
+    "surface": "Calculator Tool Execution",
+    "boundary": "Agent LLM to Tool Execution",
+    "subsystem": "tools/calculator",
+    "attack_class": "Injection",
+    "canonical_refs": {
+      "surface": "src/neuron_agent/tools/calculator.py#calculator",
+      "boundary": "src/neuron_agent/tools/calculator.py",
+      "subsystem": "src/neuron_agent/tools",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "starting_paths": [
+      "src/neuron_agent/tools/calculator.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Tool definitions, execution, and MCP"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLIENT-SIDE.md#DOM rendering",
+        "reason": "Server-side math tool"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-4",
+    "reviewed_paths": [
+      "src/neuron_agent/tools/calculator.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-4",
+        "reviewed_paths": [
+          "src/neuron_agent/tools/calculator.py"
+        ],
+        "invariant": "Arithmetic tool evaluates only constant binary/unary AST nodes without eval or attribute access",
+        "method": "source",
+        "result": "Strict AST whitelist restricts operations to numbers and basic operators with length and exponent caps, preventing RCE and DoS",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "web%2Fpublic%2F_headers%23edge::web%2Fpublic%2F_redirects::web%2Fpublic::ATTACK-CLASSES.md%23Business%20logic",
+    "surface": "Web Frontend SPA Edge Routing and Headers",
+    "boundary": "Edge Proxy to Browser Client",
+    "subsystem": "web/public",
+    "attack_class": "Business logic",
+    "canonical_refs": {
+      "surface": "web/public/_headers#edge",
+      "boundary": "web/public/_redirects",
+      "subsystem": "web/public",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "starting_paths": [
+      "web/public/_headers",
+      "web/public/_redirects"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Edge, WAF, and reverse proxy",
+      "CLIENT-SIDE.md#Browser storage and session isolation"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Streaming RPC",
+        "reason": "Static web SPA deployment"
+      }
+    ],
+    "prior_status": "prior_confirmed_same_source",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-5",
+    "reviewed_paths": [
+      "web/public/_headers",
+      "web/public/_redirects"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-5",
+        "reviewed_paths": [
+          "web/public/_headers",
+          "web/public/_redirects"
+        ],
+        "invariant": "Cloudflare Pages provides SPA routing rewrites and baseline edge security headers",
+        "method": "source",
+        "result": "Implemented web/public/_redirects (SPA fallback) and web/public/_headers (HSTS, CSP, X-Frame-Options, Permissions-Policy)",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "CF-SEC-01"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "web%2Fsrc%2Ffeatures%2Fchat%2FMarkdown.tsx%23Markdown::web%2Fsrc%2Ffeatures%2Fchat%2FdisplaySafe.ts::web%2Fchat::ATTACK-CLASSES.md%23Injection",
+    "surface": "Web Markdown Sanitization",
+    "boundary": "Untrusted Model Output to Browser DOM",
+    "subsystem": "web/chat/markdown",
+    "attack_class": "Injection",
+    "canonical_refs": {
+      "surface": "web/src/features/chat/Markdown.tsx#Markdown",
+      "boundary": "web/src/features/chat/displaySafe.ts",
+      "subsystem": "web/chat",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "starting_paths": [
+      "web/src/features/chat/Markdown.tsx"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#DOM rendering and client sanitization",
+      "AI-AND-LLM.md#Output parsing, actions, and downstream effects"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#IAM",
+        "reason": "Frontend UI component"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-5",
+    "reviewed_paths": [
+      "web/src/features/chat/Markdown.tsx",
+      "web/src/features/chat/displaySafe.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-5",
+        "reviewed_paths": [
+          "web/src/features/chat/Markdown.tsx",
+          "web/src/features/chat/displaySafe.ts"
+        ],
+        "invariant": "Markdown rendering strips HTML tags, forbids image exfiltration, and disables dangerous link protocols",
+        "method": "source",
+        "result": "ReactMarkdown urlTransform allows only http/https/mailto, images rendered as inert text, and displaySafe marks invisible reordering chars",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  }
+]
