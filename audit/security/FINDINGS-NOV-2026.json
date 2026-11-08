@@ -1,0 +1,278 @@
+[
+  {
+    "verdict": "confirmed",
+    "fingerprint": "CF-SEC-01",
+    "title": "Missing SPA Routing and Edge Security Headers on Cloudflare Pages",
+    "description": "Cloudflare Pages static hosting requires an explicit _redirects rule for single-page applications and a _headers file to inject modern defensive HTTP headers at the edge.",
+    "root_cause": "Prior to remediation, web/public contained no _redirects or _headers configuration, resulting in HTTP 404 errors on deep SPA routes and missing edge security headers (CSP, HSTS, X-Content-Type-Options, etc.).",
+    "intended_behavior": "Cloudflare Pages edge should rewrite all non-asset routes to /index.html with HTTP 200 and return strict edge security headers on all responses.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "web/public/_redirects",
+        "line": 1,
+        "scope": "Cloudflare Pages Routing",
+        "description": "Edge rewrite rule mapping all SPA paths to /index.html"
+      },
+      {
+        "kind": "sink",
+        "file": "web/public/_headers",
+        "line": 1,
+        "scope": "Cloudflare Edge Headers",
+        "description": "Edge HTTP response header directives for security policies"
+      }
+    ],
+    "evidence": [
+      {
+        "file": "web/public/_headers",
+        "line": 1,
+        "description": "Defines Strict-Transport-Security, X-Content-Type-Options, Referrer-Policy, X-Frame-Options, and Permissions-Policy"
+      },
+      {
+        "file": "web/public/_redirects",
+        "line": 1,
+        "description": "Defines /* /index.html 200 rule for SPA routing"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "system_configuration",
+        "description": "Frontend repository built and published to Cloudflare Pages"
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Unauthenticated web visitor requesting deep URLs or inspecting response security headers",
+      "payloads": [
+        "GET /chat/recent HTTP/1.1"
+      ],
+      "instructions": [
+        "Request a deep client route on the static host",
+        "Inspect response HTTP headers for security protections and status code"
+      ],
+      "observed_result": "Deep routes returned 404 and edge responses lacked modern hardening headers prior to adding _redirects and _headers"
+    },
+    "remediation": {
+      "strategy": "Deploy _redirects and _headers in web/public to instruct Cloudflare Pages edge router and inject security headers",
+      "code_changes": [
+        {
+          "file_name": "web/public/_redirects",
+          "fixed_code": "/* /index.html 200\n"
+        },
+        {
+          "file_name": "web/public/_headers",
+          "fixed_code": "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  X-Frame-Options: SAMEORIGIN\n  Cross-Origin-Opener-Policy: same-origin\n  Cross-Origin-Resource-Policy: same-origin\n  Permissions-Policy: accelerometer=(), camera=(), clipboard-read=(), clipboard-write=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()\n  X-Permitted-Cross-Domain-Policies: none\n  Strict-Transport-Security: max-age=63072000; includeSubDomains\n\n/index.html\n  Cache-Control: no-cache\n\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Occurs whenever users directly open or bookmark deep SPA URLs on Cloudflare Pages"
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Degrades availability of deep routes and exposes the frontend to missing edge framing and MIME sniffing protections"
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Cloudflare Pages documentation and deployment specifications confirm _redirects and _headers behavior"
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "CF-SEC-02",
+    "title": "Reverse Proxy IP Resolution Ignored CF-Connecting-IP Behind Trusted Proxy",
+    "description": "When deployed behind Cloudflare reverse proxy, the client IP resolution function _client_ip checked X-Forwarded-For but did not evaluate CF-Connecting-IP provided by Cloudflare edge.",
+    "root_cause": "The _client_ip function in src/neuron_agent/api/main.py only inspected X-Forwarded-For entries when peeling proxy addresses, ignoring the canonical single client IP header provided by Cloudflare.",
+    "intended_behavior": "When request.client is within APP_TRUSTED_PROXIES, the server should first evaluate CF-Connecting-IP for the authenticated edge client IP.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/neuron_agent/api/main.py",
+        "line": 492,
+        "scope": "src.neuron_agent.api.main._client_ip",
+        "description": "Incoming HTTP request client address inspection"
+      },
+      {
+        "kind": "propagation",
+        "file": "src/neuron_agent/api/main.py",
+        "line": 497,
+        "scope": "src.neuron_agent.api.main._client_ip",
+        "description": "Verification of peer address against trusted proxy allowlist"
+      },
+      {
+        "kind": "sink",
+        "file": "src/neuron_agent/api/main.py",
+        "line": 504,
+        "scope": "src.neuron_agent.api.main._client_ip",
+        "description": "Resolution and normalization of client IP for rate limiting key derivation"
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/neuron_agent/api/main.py",
+        "line": 498,
+        "description": "Added CF-Connecting-IP check when peer is trusted proxy"
+      },
+      {
+        "file": "tests/security/test_rate_limit_keys.py",
+        "line": 215,
+        "description": "Unit tests verifying CF-Connecting-IP extraction behind trusted and untrusted peers"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "network_routing",
+        "description": "Backend API deployed behind Cloudflare reverse proxy with trusted_proxies configured"
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Client sending requests through Cloudflare with custom X-Forwarded-For or relying on CF-Connecting-IP attribution",
+      "payloads": [
+        "GET /api/v1/chat HTTP/1.1\\r\\nHost: api.neuron.ai\\r\\nCF-Connecting-IP: 203.0.113.195\\r\\nX-Forwarded-For: 198.51.100.77\\r\\n\\r\\n"
+      ],
+      "instructions": [
+        "Send request with CF-Connecting-IP through a peer in trusted_proxies",
+        "Verify _client_ip returns CF-Connecting-IP"
+      ],
+      "observed_result": "Before remediation, CF-Connecting-IP was ignored in favor of X-Forwarded-For; after remediation, CF-Connecting-IP is prioritized for trusted peers"
+    },
+    "remediation": {
+      "strategy": "Inspect and parse CF-Connecting-IP when peer is a trusted proxy, mapping IPv6 to /64 CIDR",
+      "code_changes": [
+        {
+          "file_name": "src/neuron_agent/api/main.py",
+          "fixed_code": "if _trusted_proxy(address):\n    cf_connecting_ip = request.headers.get(\"CF-Connecting-IP\")\n    if cf_connecting_ip:\n        try:\n            cf_address = _unmapped(ipaddress.ip_address(cf_connecting_ip.strip()))\n            if isinstance(cf_address, ipaddress.IPv6Address):\n                return str(ipaddress.IPv6Network((int(cf_address), 64), strict=False))\n            return str(cf_address)\n        except ValueError:\n            pass"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires Cloudflare reverse proxy deployment with multiple proxy headers present"
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Could lead to rate limit key misattribution or shared bucket collision between clients"
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified through unit tests in test_rate_limit_keys.py"
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "CF-SEC-04",
+    "title": "Direct Origin Exposure Bypass of Cloudflare Edge / WAF",
+    "description": "The backend container exposes port 8000 directly. If the host network interface is reachable from the public internet without an ingress firewall, attackers could bypass Cloudflare WAF and DDoS mitigation by sending requests directly to the origin.",
+    "claimed_root_cause": "Dockerfile and Uvicorn server bind to 0.0.0.0:8000 without requiring mutual TLS (Authenticated Origin Pulls) or restricting ingress to Cloudflare IP ranges / Cloudflare Tunnel.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "Dockerfile",
+        "line": 60,
+        "scope": "Container entrypoint",
+        "description": "EXPOSE 8000 and uvicorn binding on 0.0.0.0:8000"
+      },
+      {
+        "kind": "sink",
+        "file": "src/neuron_agent/api/main.py",
+        "line": 550,
+        "scope": "FastAPI request handler",
+        "description": "Receives raw TCP connections directly from any routable peer"
+      }
+    ],
+    "evidence": [
+      {
+        "file": "Dockerfile",
+        "line": 60,
+        "description": "Container exposes port 8000 unconditionally"
+      }
+    ],
+    "blockers": [
+      "Target repository does not contain cloud infrastructure manifests (Terraform, AWS Security Groups, or Kubernetes NetworkPolicies) establishing whether origin port 8000 is shielded from public internet ingress."
+    ],
+    "validation_plan": {
+      "local": "Run container locally and inspect network binding on loopback vs external interfaces.",
+      "deployment": "Infrastructure operator verifies that origin firewall allows inbound traffic only from Cloudflare IP ranges or that cloudflared tunnel is used for origin ingress."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "CF-SEC-05",
+    "title": "Unauthenticated Health Readiness Endpoint Exposes Deployment Environment Name",
+    "description": "The /health/ready endpoint is unauthenticated and returns a JSON payload containing the environment name from settings.env (e.g. dev, staging, prod).",
+    "claimed_root_cause": "In src/neuron_agent/api/main.py, the readiness healthcheck handler returns {'status': 'ready', 'environment': settings.env} without authentication or environment sanitization.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/neuron_agent/api/main.py",
+        "line": 230,
+        "scope": "src.neuron_agent.api.main.health_ready",
+        "description": "GET /health/ready endpoint definition"
+      },
+      {
+        "kind": "sink",
+        "file": "src/neuron_agent/api/main.py",
+        "line": 245,
+        "scope": "src.neuron_agent.api.main.health_ready",
+        "description": "JSON response construction returning environment string"
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/neuron_agent/api/main.py",
+        "line": 245,
+        "description": "Returns {'status': 'ready', 'environment': settings.env}"
+      }
+    ],
+    "blockers": [
+      "Repository source does not indicate whether Cloudflare WAF Transform Rules or API Gateway rules filter or shield the /health/ready route from public callers."
+    ],
+    "validation_plan": {
+      "local": "Send GET /health/ready using httpx locally to observe response body.",
+      "deployment": "Infrastructure operator verifies if Cloudflare WAF or reverse proxy restricts /health/* to internal monitoring tools."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "CF-SEC-06",
+    "title": "Cloudflare Access JWT Assertion Header Integration",
+    "description": "Cloudflare Zero Trust Access authenticates users at the edge and passes identity in the Cf-Access-Jwt-Assertion HTTP header. The backend TokenVerifier currently inspects the standard Authorization: Bearer header.",
+    "claimed_root_cause": "src/neuron_agent/security/auth.py verifies tokens from the Authorization header but does not natively extract tokens from Cf-Access-Jwt-Assertion if Cloudflare Access is deployed.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/neuron_agent/security/auth.py",
+        "line": 120,
+        "scope": "src.neuron_agent.security.auth.TokenVerifier.verify",
+        "description": "Header extraction from HTTP authorization request"
+      },
+      {
+        "kind": "sink",
+        "file": "src/neuron_agent/security/auth.py",
+        "line": 140,
+        "scope": "src.neuron_agent.security.auth.TokenVerifier.verify",
+        "description": "Bearer token signature validation"
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/neuron_agent/security/auth.py",
+        "line": 120,
+        "description": "TokenVerifier parses Authorization header with Bearer scheme"
+      }
+    ],
+    "blockers": [
+      "Deployment architecture does not define whether Cloudflare Access is utilized in front of the API or whether a Cloudflare Worker transforms Cf-Access-Jwt-Assertion into Authorization: Bearer."
+    ],
+    "validation_plan": {
+      "local": "Review TokenVerifier header extraction logic with test headers.",
+      "deployment": "Zero Trust administrator confirms whether Cloudflare Access is attached to API endpoints and how the JWT assertion is forwarded."
+    }
+  }
+]

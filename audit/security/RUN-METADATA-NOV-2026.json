@@ -1,0 +1,36 @@
+{
+  "run_id": "standard-audit-run-2",
+  "repo": "neuron",
+  "target": "c:\\entomo\\AI\\neuron",
+  "source_ref": "00ef23ef2004a375d55c2fd591a1ea9cc56a9f7c (dirty)",
+  "profile": "standard",
+  "scope_paths": [
+    "src/neuron_agent",
+    "web",
+    ".github/workflows",
+    "Dockerfile",
+    "scripts"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "selected_companion_files": [
+    "AI-AND-LLM.md",
+    "WEB-PROTOCOL-AND-AUTH.md",
+    "CLOUD-AND-DEPLOYMENT.md",
+    "CLIENT-SIDE.md",
+    "DATA-ISOLATION-AND-LIFECYCLE.md"
+  ],
+  "prior_run_paths": [
+    "c:\\entomo\\AI\\neuron\\SECURITY_AUDIT_REPORT.md",
+    "c:\\entomo\\AI\\neuron\\SECURITY_REMEDIATION_LOG.md"
+  ],
+  "shared_file_owners": {
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "run_status": "complete"
+}
