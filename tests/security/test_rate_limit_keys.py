@@ -210,3 +210,40 @@ def test_empty_forwarded_entry_keeps_the_last_good_address(
 
     assert api_main._client_ip(_request("10.2.3.4", b"203.0.113.8,")) == "10.2.3.4"
     assert api_main._client_ip(_request("10.2.3.4", b"203.0.113.8, ,10.9.9.9")) == "10.9.9.9"
+
+
+def test_cf_connecting_ip_behind_trusted_proxy_is_honored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/",
+            "headers": [
+                (b"cf-connecting-ip", b"203.0.113.195"),
+                (b"x-forwarded-for", b"198.51.100.77"),
+            ],
+            "client": ("10.2.3.4", 1234),
+            "server": ("test", 80),
+        }
+    )
+    assert api_main._client_ip(request) == "203.0.113.195"
+
+
+def test_cf_connecting_ip_from_untrusted_peer_is_ignored() -> None:
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/",
+            "headers": [
+                (b"cf-connecting-ip", b"203.0.113.195"),
+            ],
+            "client": ("198.51.100.77", 1234),
+            "server": ("test", 80),
+        }
+    )
+    assert api_main._client_ip(request) == "198.51.100.77"

@@ -495,6 +495,15 @@ def _client_ip(request: Request) -> str:
     except ValueError:
         return peer
     if _trusted_proxy(address):
+        cf_connecting_ip = request.headers.get("CF-Connecting-IP")
+        if cf_connecting_ip:
+            try:
+                cf_address = _unmapped(ipaddress.ip_address(cf_connecting_ip.strip()))
+                if isinstance(cf_address, ipaddress.IPv6Address):
+                    return str(ipaddress.IPv6Network((int(cf_address), 64), strict=False))
+                return str(cf_address)
+            except ValueError:
+                pass
         entries = ",".join(request.headers.getlist("X-Forwarded-For")).split(",")
         while entries and _trusted_proxy(address):
             try:
