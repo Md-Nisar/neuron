@@ -80,9 +80,11 @@ describe("keyboard-only use", () => {
         <App apiUrl={API} maxChars={12_000} />
       </AuthProvider>,
     );
-    // Sidebar first (sections, then the account controls in its footer), then the conversation.
+    // The skip link first, then the sidebar (sections, then the account controls in its footer),
+    // then the conversation.
     // "Open sidebar" is hidden by CSS on wide screens; jsdom applies no CSS, so it is listed.
     const expected = [
+      screen.getByRole("link", { name: "Skip to main content" }),
       screen.getByRole("button", { name: "Chat" }),
       screen.getByRole("button", { name: "Knowledge" }),
       screen.getByRole("button", { name: "Your data" }),
