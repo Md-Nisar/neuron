@@ -83,6 +83,11 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
   const wasRunning = useRef(false);
   const menuButton = useRef<HTMLButtonElement>(null);
 
+  // Dynamic page title per active view (WCAG 2.4.2).
+  useEffect(() => {
+    document.title = view === "chat" ? "neuron" : `${TITLES[view]} | neuron`;
+  }, [view]);
+
   // A finished reply may have created or touched a conversation: reload the list.
   useEffect(() => {
     if (wasRunning.current && !chat.running) setRefresh((n) => n + 1);
@@ -136,6 +141,12 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        Skip to main content
+      </a>
       {/* Drawer backdrop (small screens only). */}
       <div
         aria-hidden="true"
@@ -258,7 +269,11 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
           </Tooltip>
         </div>
       </aside>
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main
+        id="main-content"
+        inert={drawer ? true : undefined}
+        className="flex min-w-0 flex-1 flex-col"
+      >
         {/* The chat stays mounted (hidden) so a conversation in progress survives a visit to "Your data". */}
         <div hidden={view !== "chat"} className="min-h-0 flex-1">
           <ChatView

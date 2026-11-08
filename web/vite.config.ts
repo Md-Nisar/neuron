@@ -8,6 +8,28 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   server: { host: "127.0.0.1", port: 5173, strictPort: true },
+  build: {
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes("node_modules/react-markdown") ||
+            id.includes("node_modules/micromark") ||
+            id.includes("node_modules/unist") ||
+            id.includes("node_modules/vfile")
+          ) {
+            return "markdown";
+          }
+          if (id.includes("node_modules/radix-ui") || id.includes("node_modules/@radix-ui")) {
+            return "radix";
+          }
+          if (id.includes("node_modules/lucide-react")) {
+            return "icons";
+          }
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],

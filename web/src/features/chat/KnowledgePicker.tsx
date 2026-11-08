@@ -92,6 +92,11 @@ export function KnowledgePicker({
       {open && (
         <fieldset
           id={panelId}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setOpen(false);
+            }
+          }}
           className="order-last basis-full space-y-1.5 rounded-lg border px-3 py-2 text-sm"
         >
           <legend className="px-1 text-xs text-muted-foreground">
