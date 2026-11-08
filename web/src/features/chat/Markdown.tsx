@@ -46,10 +46,21 @@ function OmittedImage({ alt }: ComponentProps<"img">) {
   );
 }
 
+function ScrollableCodeBlock({ children, ...props }: ComponentProps<"pre">) {
+  return (
+    <pre tabIndex={0} aria-label="Code block" {...props}>
+      {children}
+    </pre>
+  );
+}
+
 export function Markdown({ text }: { text: string }) {
   return (
     <div className="prose-chat">
-      <ReactMarkdown urlTransform={urlTransform} components={{ a: SafeLink, img: OmittedImage }}>
+      <ReactMarkdown
+        urlTransform={urlTransform}
+        components={{ a: SafeLink, img: OmittedImage, pre: ScrollableCodeBlock }}
+      >
         {text}
       </ReactMarkdown>
     </div>

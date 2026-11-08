@@ -7,6 +7,7 @@
   Permissions-Policy: accelerometer=(), camera=(), clipboard-read=(), clipboard-write=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
   X-Permitted-Cross-Domain-Policies: none
   Strict-Transport-Security: max-age=63072000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; connect-src 'self' http://127.0.0.1:8000 http://localhost:8180; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-src 'self' http://localhost:8180; frame-ancestors 'self'; base-uri 'none'; object-src 'none'; form-action 'self'
 
 /index.html
   Cache-Control: no-cache

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -357,6 +357,13 @@ describe("composer", () => {
     await user.keyboard("{Enter}");
     await screen.findByText("ok");
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("does not send on Enter while IME composition is active or keycode is 229", () => {
+    const { fetchMock, box } = setup();
+    fireEvent.change(box(), { target: { value: "kanji" } });
+    fireEvent.keyDown(box(), { key: "Enter", keyCode: 229 });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("clears the composer after sending", async () => {

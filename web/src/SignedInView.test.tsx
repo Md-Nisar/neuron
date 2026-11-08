@@ -135,6 +135,7 @@ describe("SignedInView", () => {
       "true",
     );
     expect(screen.getByRole("region", { name: "Knowledge" })).toBeInTheDocument();
+    expect(document.title).toBe("Knowledge | neuron");
     await user.click(screen.getByRole("button", { name: "Chat" }));
     expect(screen.queryByRole("region", { name: "Knowledge" })).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message" })).toBeVisible();
@@ -169,5 +170,17 @@ describe("SignedInView", () => {
       expect(screen.queryByText("other")).not.toBeInTheDocument();
     });
     expect(screen.getByText("general kenobi")).toBeInTheDocument();
+  });
+
+  it("marks the main area inert when the drawer is open on mobile", async () => {
+    const { user } = setup();
+    const main = document.getElementById("main-content");
+    expect(main).not.toHaveAttribute("inert");
+
+    await user.click(screen.getByRole("button", { name: "Open sidebar" }));
+    expect(main).toHaveAttribute("inert");
+
+    await user.click(screen.getByRole("button", { name: "Close sidebar" }));
+    expect(main).not.toHaveAttribute("inert");
   });
 });

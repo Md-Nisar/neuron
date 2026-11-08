@@ -282,7 +282,13 @@ export function ChatView({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing &&
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- Safari IME bug 165004 sets keyCode 229 on confirming Enter
+      event.keyCode !== 229
+    ) {
       event.preventDefault();
       void submit();
     }

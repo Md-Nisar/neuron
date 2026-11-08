@@ -117,7 +117,7 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
       className="mx-auto w-full max-w-3xl animate-in space-y-6 px-4 py-8 duration-300 fade-in-0"
     >
       <div>
-        <p className="text-2xl font-semibold tracking-tight">Knowledge</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Knowledge</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload your own documents so the assistant can answer from them. Only you can see them.
         </p>

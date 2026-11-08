@@ -71,6 +71,9 @@ describe("Markdown renders model text safely", () => {
     const container = view("```html\n<script>alert(1)</script>\n```\n\n`<b>x</b>`");
 
     expect(container.querySelector("script, b")).toBeNull();
+    const pre = container.querySelector("pre");
+    expect(pre).toHaveAttribute("tabindex", "0");
+    expect(pre).toHaveAttribute("aria-label", "Code block");
     expect(container.querySelector("pre code")?.textContent).toContain("<script>alert(1)</script>");
   });
 

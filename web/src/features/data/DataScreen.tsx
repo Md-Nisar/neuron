@@ -10,7 +10,7 @@ export function DataScreen({ deps, onErased }: { deps: DataDeps; onErased: () =>
       className="mx-auto w-full max-w-3xl animate-in space-y-6 px-4 py-8 duration-300 fade-in-0"
     >
       <div>
-        <p className="text-2xl font-semibold tracking-tight">Your data</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Your data</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           See what neuron remembers about you, take a copy, or erase it.
         </p>
