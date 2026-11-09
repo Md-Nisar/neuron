@@ -5,7 +5,7 @@ acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT
 research in `docs/research/rag/`.
 
 **Last verified:** 2026-11-09, against `main` at `a12b778` (full backlog review: RAG-08.04 In progress, part 1 #484 merged, issue #485; RAG-E06 follow-ups #481, #482, #483, #486 merged after the epic closed; bug issue #480 mapped below; no other RAG PR since `3960add`. Earlier: RAG-06.02 Done: #475, #476, #477, #478; RAG-06.01 Done: #468 to #473; RAG-04.04 Done: #465; RAG-04.03 Done: #462, #463; RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E06, all stories of RAG-E00 to RAG-E06, and RAG-08.04 (#485); no issue yet for epics RAG-E07 and RAG-E08 or their other stories. The Project board has not been created.
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E07, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495) and RAG-08.04 (#485); no issue yet for epic RAG-E08 or the other stories of RAG-E07 and RAG-E08. The Project board has not been created.
 
 ## New session protocol
 
@@ -53,25 +53,25 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E04 | Retrieval and agent tools | 1 | v1.1.0 | 4 | 4 | 0 | 0 | 0 | — |
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
-| RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 0 | 0 | 3 | RAG-07.01 (ready) |
+| RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 0 | 1 | 0 | 2 | RAG-07.01 (in progress) |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 0 | 1 | 0 | 4 | RAG-08.01 (ready); RAG-08.04 in progress |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.02 (Phase 2) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **25** | **1** | **0** | **30** | **RAG-07.01** |
+| **Total** | | | | **56** | **25** | **2** | **0** | **29** | **RAG-07.01** |
 
-v1.1.0 scope (E00–E08): 33 stories, 25 done, 1 in progress (RAG-08.04), 7 pending. Of the pending ones, RAG-07.01, RAG-07.02, RAG-08.01 and RAG-08.03 are ready; RAG-07.03 waits for RAG-07.02, RAG-08.02 for RAG-07.01, and RAG-08.05 for all of them.
+v1.1.0 scope (E00–E08): 33 stories, 25 done, 2 in progress (RAG-07.01, RAG-08.04), 6 pending. Of the pending ones, RAG-07.02, RAG-08.01 and RAG-08.03 are ready; RAG-07.03 waits for RAG-07.02, RAG-08.02 for RAG-07.01, and RAG-08.05 for all of them.
 
-**Recommended next action (2026-11-09):** RAG-07.01 (P0, ready, no provider key needed, and the last dependency of the RAG-08.02 security gate). After it: RAG-08.01 (P0; its live parts need a provider key), then RAG-08.04 parts 2 and 3 (P1, in progress). RAG-E06 is complete.
+**Recommended next action (2026-11-09):** finish RAG-07.01 (#495): run its Postgres integration tests (`tests/integration/test_postgres_knowledge_erase.py`) in CI, then tick its acceptance criteria. After it: RAG-08.01 (P0; its live parts need a provider key), then RAG-08.04 parts 2 and 3 (P1, in progress). RAG-E06 is complete.
 
 ## GitHub synchronisation
 
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), all closed; RAG-E07 to RAG-E12 not created |
-| Story issues (56) | All 25 stories of RAG-E00 to RAG-E06 (closed; see the issue map); RAG-08.04 (#485, open, titled without the brackets the de-duplication matches on: `RAG-08.04 …`, not `[RAG-08.04] …`); the other 30 not created |
+| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), all closed; RAG-E07 (#494, open); RAG-E08 to RAG-E12 not created |
+| Story issues (56) | All 25 stories of RAG-E00 to RAG-E06 (closed; see the issue map); RAG-07.01 (#495, open); RAG-08.04 (#485, open, titled without the brackets the de-duplication matches on: `RAG-08.04 …`, not `[RAG-08.04] …`); the other 29 not created |
 | Related issues | #480 (bug, `rag`, open): findings from running the full Docker Compose stack; its items are mapped to stories under RAG-E08 |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
@@ -104,8 +104,10 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-E05 | #456 | Not on a board |
 | RAG-05.01 | #457 | Not on a board |
 | RAG-05.02 | #459 | Not on a board |
+| RAG-E07 | #494 | Not on a board |
+| RAG-07.01 | #495 | Not on a board |
 | RAG-08.04 | #485 | Not on a board |
-| RAG-E07, RAG-E08 … RAG-E12 and their other stories | — | — |
+| RAG-E08 … RAG-E12 and their other stories | — | — |
 
 ## Epic detail
 
@@ -270,14 +272,17 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E07 Data rights and lifecycle
 
-- **Stories:** 3 total · 0 done · 0 in progress · 0 blocked · 3 pending
-- **Implemented functionality:** none. Existing data-rights routes under `/v1/me` cover threads and memories only.
-- **Outstanding work:** RAG-07.01 to RAG-07.03. Verified 2026-11-09: `GET /v1/me/export`, `DELETE /v1/me/threads` and `DELETE /v1/me/memories` exist and do not touch knowledge; there is no `DELETE /v1/me/knowledge`, no periodic sweep in `knowledge/` and no knowledge step in the restore drill.
+- **Stories:** 3 total · 0 done · 1 in progress · 0 blocked · 2 pending
+- **Implemented functionality:** RAG-07.01 (#495, branch `ccr-50c38b2f-kg5e9i`; part 1 API 52ce6dd, part 2 web 9b4d107; no PR yet): `KnowledgeBases.erase` tombstones all of the owner's live bases and their documents under the owner's advisory lock, queues `purge_knowledge_base` for every tombstoned base of theirs with no `todo`/`doing` purge job (so a repeat re-queues a purge that used all its attempts), and reports `purge_pending` while any base or document row of theirs is stored; `KnowledgeBases.export` lists live bases with their live documents' metadata. `DELETE /v1/me/knowledge` (`threads:delete`, audit `knowledge_erased` with a count); `DELETE /v1/me/threads` returns it as `knowledge` (null with knowledge off) and its `complete` waits for the purge; `GET /v1/me/export` adds `knowledge_bases` on its first page. The web data page puts `knowledge_bases` in the export file and, while the purge is pending, keeps the user signed in and asks them to repeat the erase.
+- **Outstanding work:** RAG-07.01: run `tests/integration/test_postgres_knowledge_erase.py` (AC1 to AC3) in CI's `postgres-integration` job, then tick #495 and mark Done. RAG-07.02, RAG-07.03. Verified 2026-11-09: `GET /v1/me/export`, `DELETE /v1/me/threads` and `DELETE /v1/me/memories` exist and do not touch knowledge; there is no `DELETE /v1/me/knowledge`, no periodic sweep in `knowledge/` and no knowledge step in the restore drill.
 - **Blockers and decisions:**
   - Unblocked: RAG-03.03 and RAG-02.04 are Done, so RAG-07.01 and RAG-07.02 are ready; RAG-07.03 needs RAG-07.02. No GitHub issues yet (epic or stories).
   - Carried into RAG-07.02 by earlier stories, beyond its three acceptance criteria: blobs stored without a committed row (RAG-03.02 part 2); tombstones whose purge used all its attempts, and bases tombstoned before RAG-03.03 whose job failed as task-not-found (RAG-03.03). The backlog's requirement names "tombstones whose purge did not finish", but no acceptance criterion tests it; add one when the issue is written.
-  - Open question for RAG-07.01: the permission for `DELETE /v1/me/knowledge` (`threads:delete`, as the research proposes, or a new one); ADR 0014 does not name one yet.
-- **Next recommended story:** RAG-07.01.
+  - Decision (owner, 2026-11-09, RAG-07.01): `DELETE /v1/me/knowledge` requires `threads:delete`, as erase-everything does. A token with `threads:delete` but not `knowledge:write` can therefore erase knowledge (README permission table).
+  - Decision (RAG-07.01): queued ingest jobs are not deleted (the app role has no `DELETE` on the queue, and the jobs hold ids only); the worker skips a tombstoned or purged document. `complete` is measured on rows: the purge deletes each file before its row, so no row means no file from a purge, but a file stored without a row (a crash during upload) is RAG-07.02's. Erase-everything with knowledge off reports `knowledge: null` and does not touch knowledge data; `SECURITY.md` says to erase before turning knowledge off. Export lists only live bases and documents (tombstoned ones are hidden from every read path); it is on page 1 whole, about 0.4 MB at the default 1,000 documents, so at the configured maximum (100,000) it would exceed `APP_USER_DATA_EXPORT_MAX_BYTES`, which page sizes cannot fix (accepted; paginate if the limits are raised).
+  - Not run in the session (RAG-07.01): the knowledge Postgres tests need pgvector ≥ 0.7 for `halfvec`; the session had only the distribution's 0.6.0 and could not build a newer one. Run instead: the new SQL against stand-in tables (owner scoping, the failed-purge re-queue, no duplicate while a purge waits, the stored check), and the existing Postgres erase/export tests (checkpointer, run guard, roles: 67 passed, 0 skipped) on Postgres 16. `make format lint typecheck test security` passed (2,377 passed), web lint, types and Vitest (599 passed).
+  - Security review (RAG-07.01): no blocking findings; no cross-owner path and no `complete: true` while a row is stored. Low, recorded above: knowledge off leaves data, files without a row, export size at the maximum limits, and the permission choice. Also low, left as is: in erase-everything a thread or memory failure stops before the knowledge erase (audited as `erasure_failed`; every step is idempotent, so a retry finishes); the re-queue check scans `procrastinate_jobs.args` without an index, bounded by the owner's tombstoned bases.
+- **Next recommended story:** RAG-07.01 (finish), then RAG-07.02.
 
 ### RAG-E08 Quality, security and release
 
@@ -354,7 +359,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-05.02 | Citation contract in API, stream and history | 1 | P0 | Done | #459 | #460 | `tests/security/test_citations.py`: a thread reloaded from its checkpoint returns the answer's citations in history, and a later run without knowledge has none (AC1); the stored answer holds ids, title and pages but no passage text, and no tool message is stored (AC3); a search with no valid citation is `grounded: false`; a stamp that does not validate is ignored. `web/src/lib/stream/client.test.ts`: the current client reads a v1 `final` with citations unchanged (AC2), against `contract.json`'s `final_with_citations`, which `tests/unit/test_web_stream_contract.py` checks against `AgentResponse` |
 | RAG-06.01 | Knowledge screen | 1 | P0 | Done | #467 | #468, #469, #470, #471, #472 and part 6 | AC1: `web/e2e/knowledge.spec.ts` (create, upload a text file, Ready without a reload, in CI `web-e2e-knowledge`) and `DocumentsPanel.test.tsx` (a PDF, mocked API); AC2: `DocumentsPanel.test.tsx` and `KnowledgeScreen.test.tsx`; AC3: `DocumentsPanel.test.tsx` (codes mapped, no server text); AC4: axe in `knowledge.spec.ts` (light and dark, contrast included) and the Vitest axe tests; `make flows` lists `knowledge` |
 | RAG-06.02 | Citation chips and source sheet | 1 | P0 | Done | #474 | #475, #476, #477, #478 | AC1: `SourceSheet.test.tsx` (chip 1 shows the cited page's passage through the chunk route) and `web/e2e/knowledge.spec.ts` (the uploaded passage in Chromium); AC2: `SourceSheet.test.tsx` (`404` and `403` show "Source not available" and no passage); AC3: `Sources.test.tsx` (the chips after a reload equal the streamed ones); AC4: `knowledge.spec.ts` upload → ask → open citation in CI `web-e2e-knowledge` (#478); KB picker: `KnowledgePicker.test.tsx`, `useChat.test.tsx` |
-| RAG-07.01 | Erase and export include knowledge | 1 | P0 | Pending | — | — | — |
+| RAG-07.01 | Erase and export include knowledge | 1 | P0 | In progress | #495 | — (52ce6dd, 9b4d107 on `ccr-50c38b2f-kg5e9i`) | Written, not yet run: `tests/integration/test_postgres_knowledge_erase.py`: after the purge no row or file of the owner remains and only then `complete`, another user's untouched (AC1); right after the erase and on a repeat before the purge `complete` is false and no second purge is queued (AC2); export lists live bases and documents with ids, names, titles, sizes and status, not a deleted document or another user's base, and only on page 1 (AC3); a failed purge is re-queued. Passing: `tests/unit/test_thread_lifecycle.py` (`complete` rule), `tests/security/test_knowledge_api.py` (knowledge off: `404`, `knowledge: null`, empty export), `tests/security/test_authorization.py` (`403` without `threads:delete`), web `DataScreen.test.tsx`, `parse.test.ts`, `exportData.test.ts` |
 | RAG-07.02 | Orphan sweep and reconciliation | 1 | P1 | Pending | — | — | — |
 | RAG-07.03 | Backup and restore drill covers knowledge | 1 | P1 | Pending | — | — | — |
 | RAG-08.01 | Retrieval and citation eval harness | 1 | P0 | Pending | — | — | — |
@@ -390,6 +395,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-09 | RAG-07.01 In progress (#495, epic #494): API (52ce6dd) and web (9b4d107); owner chose `threads:delete`; security review no blocking findings. Its Postgres tests need pgvector ≥ 0.7 and run in CI | Claude session |
 | 2026-11-09 | Full backlog review against `main` at `a12b778`: RAG-08.04 In progress (#485, part 1 #484); E06 follow-ups #481 to #486 recorded; #480 mapped to stories; GitHub synchronisation and issue map corrected (epic issues E03 to E06 existed); stale next-story and outstanding-work lines in E00 to E02 fixed; E07 and E08 gaps, carried items, the RAG-08.04 AC1 inconsistency and the RAG-08.02 coverage map recorded. Next: RAG-07.01 | Claude session |
 | 2026-11-06 | RAG-06.02 Done (#474: #475 to #478): citation chips, source sheet, KB picker, browser flow upload → ask → open citation. Fixed a citation-stamp bug that broke answers citing text files. RAG-E06 complete. Next: RAG-08.01 or RAG-07.01 | Claude session |
 | 2026-11-06 | RAG-06.01 Done (#467: #468 to #472 and part 6): Knowledge page, upload, status polling, failure messages, browser flow with axe in both themes. AC1's browser test uses a text file (owner's decision). Next: RAG-06.02 | Claude session |
