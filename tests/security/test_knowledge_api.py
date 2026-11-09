@@ -143,6 +143,19 @@ def test_with_knowledge_off_every_route_is_404(
         assert (response.status_code, response.json()) == (404, {"detail": "knowledge_disabled"})
 
 
+def test_with_knowledge_off_data_rights_leave_knowledge_out(
+    jwt_api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    """RAG-07.01: erase-everything and export work as before, with an empty knowledge part."""
+    token = make_token("alice", scopes="threads:read threads:delete")
+    erased = jwt_api.client.delete("/v1/me/knowledge", headers=bearer(token))
+    assert (erased.status_code, erased.json()) == (404, {"detail": "knowledge_disabled"})
+    everything = jwt_api.client.delete("/v1/me/threads", headers=bearer(token)).json()
+    assert (everything["knowledge"], everything["complete"]) == (None, True)
+    exported = jwt_api.client.get("/v1/me/export", headers=bearer(token)).json()
+    assert exported["knowledge_bases"] == []
+
+
 @pytest.mark.parametrize("key", ["", "has space", "x" * 201, "tab\there"])
 def test_an_invalid_idempotency_key_is_422(
     jwt_api: JwtApi, make_token: Callable[..., str], key: str

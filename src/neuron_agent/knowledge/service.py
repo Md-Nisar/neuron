@@ -11,6 +11,7 @@ job, queued in the same transaction, removes them with their chunks and files (R
 
 from __future__ import annotations
 
+import builtins
 import contextlib
 import hashlib
 import uuid
@@ -43,9 +44,11 @@ from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
 from neuron_agent.schemas.knowledge import (
     ChunkPassage,
     DocumentAccepted,
+    ExportedKnowledgeBase,
     KnowledgeBase,
     KnowledgeChunk,
     KnowledgeDocument,
+    KnowledgeErasureResponse,
 )
 from neuron_agent.security.authorization import AuthorizationContext
 
@@ -166,6 +169,31 @@ _USAGE = (
     " WHERE d.uploaded_by = %s"
 )
 _UPLOAD_STATUS = {"file_too_large": 413, "empty_file": 422}
+
+# Erasure (RAG-07.01): every live base of the owner and its documents are tombstoned, as one
+# delete does; the purge queued for each removes rows, chunks, embeddings, grants and files.
+_ERASE_BASES = (
+    "UPDATE knowledge.bases SET deleted_at = now()"
+    " WHERE owner_key = %s AND deleted_at IS NULL RETURNING kb_id"
+)
+_ERASE_DOCUMENTS = (
+    "UPDATE knowledge.documents SET deleted_at = now(), status = 'deleting', updated_at = now()"
+    " WHERE kb_id = ANY(%s) AND deleted_at IS NULL"
+)
+# Every tombstoned base of the owner with no purge waiting or running: those just erased, and
+# any whose earlier purge used all its attempts, so a repeated erase finishes what one left.
+_UNPURGED_BASES = (
+    "SELECT b.kb_id FROM knowledge.bases b WHERE b.owner_key = %s AND b.deleted_at IS NOT NULL"
+    " AND NOT EXISTS (SELECT 1 FROM knowledge.procrastinate_jobs j"
+    " WHERE j.task_name = 'purge_knowledge_base' AND j.args->>'kb_id' = b.kb_id::text"
+    " AND j.status IN ('todo', 'doing'))"
+)
+# Anything of the owner's still stored, live or waiting for its purge.
+_STORED = (
+    "SELECT EXISTS (SELECT 1 FROM knowledge.bases WHERE owner_key = %(owner)s)"
+    " OR EXISTS (SELECT 1 FROM knowledge.documents WHERE uploaded_by = %(owner)s) AS stored"
+)
+_EXPORT_DOCUMENTS = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " ORDER BY d.created_at, d.doc_id"
 
 
 def _accepted(row: dict[str, Any]) -> DocumentAccepted:
@@ -455,6 +483,54 @@ class KnowledgeBases:
             await jobs.defer(conn, jobs.Task.PURGE_DOCUMENT, doc_id=doc_id)
         self._audit(
             "knowledge_document_deleted", owner_key, _WRITE, doc_id, resource="knowledge_document"
+        )
+
+    async def export(self, owner_key: str) -> builtins.list[ExportedKnowledgeBase]:
+        """The owner's live bases with their live documents' metadata, oldest first (RAG-07.01).
+
+        Bounded by the per-user base and document limits; no file contents.
+        """
+        async with self._transaction() as conn:
+            kbs = await self._readable(conn, owner_key)
+            cursor = await conn.execute(_LIST, (kbs, owner_key))
+            bases = await cursor.fetchall()
+            cursor = await conn.execute(_EXPORT_DOCUMENTS, {"kbs": kbs, "owner": owner_key})
+            documents = [KnowledgeDocument(**row) for row in await cursor.fetchall()]
+        return [
+            ExportedKnowledgeBase(
+                **base, documents=[d for d in documents if d.kb_id == base["kb_id"]]
+            )
+            for base in bases
+        ]
+
+    async def erase(self, owner_key: str) -> KnowledgeErasureResponse:
+        """Tombstone all of the owner's bases and documents and queue their purge (RAG-07.01).
+
+        Idempotent: a repeat tombstones nothing new, re-queues the purge of any base whose purge
+        is no longer waiting or running, and reports `purge_pending` until nothing is stored.
+        Queued ingest jobs stay in the queue: they carry ids only, and the worker skips a
+        tombstoned or purged document.
+        """
+        async with self._transaction() as conn:
+            # Serialises with the owner's creates, so none lands between tombstone and check.
+            await conn.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"knowledge.bases:{owner_key}",),
+            )
+            cursor = await conn.execute(_ERASE_BASES, (owner_key,))
+            erased = [row["kb_id"] for row in await cursor.fetchall()]
+            cursor = await conn.execute(_ERASE_DOCUMENTS, (erased,))
+            documents = cursor.rowcount
+            cursor = await conn.execute(_UNPURGED_BASES, (owner_key,))
+            for row in await cursor.fetchall():
+                await jobs.defer(conn, jobs.Task.PURGE_KNOWLEDGE_BASE, kb_id=row["kb_id"])
+            cursor = await conn.execute(_STORED, {"owner": owner_key})
+            stored = await cursor.fetchone()
+        self._audit("knowledge_erased", owner_key, "threads:delete", count=len(erased))
+        return KnowledgeErasureResponse(
+            erased_base_count=len(erased),
+            erased_document_count=documents,
+            purge_pending=stored is not None and bool(stored["stored"]),
         )
 
     @staticmethod

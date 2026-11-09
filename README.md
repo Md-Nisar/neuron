@@ -59,7 +59,7 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `threads:read` | `GET /v1/threads/{id}/messages`, `GET /v1/me/threads`, `GET /v1/me/export` |
 | `threads:write` | `PATCH /v1/threads/{id}` (rename a conversation) |
 | `feedback:write` | `POST /v1/threads/{id}/runs/{run_id}/feedback` (rate an answer) |
-| `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads` |
+| `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads`, `DELETE /v1/me/knowledge` |
 | `memories:read` | `GET /v1/me/memories` |
 | `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |
 | `knowledge:read` | `GET /v1/knowledge/bases`, `GET /v1/knowledge/bases/{kb_id}/documents`, `GET /v1/knowledge/documents/{doc_id}`, `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`, `GET /v1/knowledge/documents/{doc_id}/file`, `POST /v1/knowledge/search` (in development, v1.1.0) |

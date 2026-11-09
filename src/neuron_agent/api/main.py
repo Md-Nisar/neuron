@@ -99,6 +99,7 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeChunk,
     KnowledgeDocument,
     KnowledgeDocumentsResponse,
+    KnowledgeErasureResponse,
     KnowledgeSearchHit,
     KnowledgeSearchRequest,
     KnowledgeSearchResponse,
@@ -1274,6 +1275,18 @@ async def erase_my_threads(
         return await service.erase_user_data(user_id, principal=principal)
     except AppError as exc:
         raise _http_error("user_data_erasure_failed", exc) from exc
+
+
+@app.delete("/v1/me/knowledge", response_model=KnowledgeErasureResponse)
+async def erase_my_knowledge(
+    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeErasureResponse:
+    """Tombstone all of the caller's knowledge and queue its purge; repeat until `complete`."""
+    try:
+        return await knowledge.erase(_knowledge_owner(principal, user_id))
+    except AppError as exc:
+        raise _http_error("knowledge_erasure_failed", exc) from exc
 
 
 def _http_error(event: str, exc: AppError) -> HTTPException:

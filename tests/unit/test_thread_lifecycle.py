@@ -28,7 +28,8 @@ from neuron_agent.models import factory
 from neuron_agent.persistence import cli
 from neuron_agent.persistence.checkpointer import build_persistence
 from neuron_agent.persistence.retention import prune_threads
-from neuron_agent.schemas.agent import AgentRequest
+from neuron_agent.schemas.agent import AgentRequest, UserDataErasureResponse
+from neuron_agent.schemas.knowledge import KnowledgeErasureResponse
 from neuron_agent.security.rate_limiter import InMemoryTokenBucketRateLimiter
 from neuron_agent.security.run_guard import RunClaimDenied
 from neuron_agent.services import agent_service
@@ -600,6 +601,7 @@ def test_user_data_rights_endpoints_are_scoped_paginated_and_idempotent(
         "erased_count": 2,
         "skipped_busy_count": 0,
         "erased_memory_count": 0,
+        "knowledge": None,
         "complete": True,
     }
     repeated = client.delete("/v1/me/threads", headers=alice_headers)
@@ -607,6 +609,7 @@ def test_user_data_rights_endpoints_are_scoped_paginated_and_idempotent(
         "erased_count": 0,
         "skipped_busy_count": 0,
         "erased_memory_count": 0,
+        "knowledge": None,
         "complete": True,
     }
     assert (
@@ -826,3 +829,26 @@ async def test_a_decision_carries_the_requested_knowledge_bases_into_the_continu
     run = await service.prepare_decision(thread_id, approval_id, "approve", user_id="alice")
     await run.lease.release()
     assert run.authorization.knowledge_base_ids is None
+
+
+@pytest.mark.parametrize(
+    ("skipped", "pending", "complete"),
+    [(0, None, True), (0, False, True), (0, True, False), (1, False, False)],
+)
+def test_erase_everything_is_complete_only_once_the_knowledge_purge_is_done(
+    skipped: int, pending: bool | None, complete: bool
+) -> None:
+    """RAG-07.01 AC2: a knowledge purge still running keeps `complete` false."""
+    knowledge = (
+        None
+        if pending is None
+        else KnowledgeErasureResponse(
+            erased_base_count=1, erased_document_count=2, purge_pending=pending
+        )
+    )
+    erased = UserDataErasureResponse(
+        erased_count=0, skipped_busy_count=skipped, knowledge=knowledge
+    )
+    assert erased.model_dump()["complete"] is complete
+    if knowledge is not None:
+        assert knowledge.model_dump()["complete"] is not pending
