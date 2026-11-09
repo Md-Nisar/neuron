@@ -11,7 +11,8 @@ Gates (the backlog's acceptance criteria):
 
 Live and billed, so marked `integration` (`make test-integration`); it skips without the model's
 key or `APP_TEST_POSTGRES_DSN`. Run it with `APP_DEFAULT_MODEL` set, for example
-`nvidia:nvidia/nemotron-3-ultra-550b-a55b`. Model calls are throttled to the eval CLI's 30 per
+`nvidia:nvidia/nemotron-3-ultra-550b-a55b`, and lift pytest's 120-second per-test limit with
+`-o faulthandler_timeout=7200`: the run takes far longer. Model calls are throttled to the eval CLI's 30 per
 minute. With `APP_KNOWLEDGE_EVAL_REPORT` set, the report's `retrieval` section, with all four
 metrics, is written to that path.
 """
