@@ -5,7 +5,9 @@
 
 Deterministic and model-free: they score passages and citations against a case's
 `expected_sources` in the RAG-00.03 dataset (`tests/fixtures/knowledge_cases.json`). A source
-names a document and either the pages or the sections that hold the answer.
+names a document and either the pages or the sections that hold the answer. A section is
+written as in the file (`## HNSW`, `1.  Introduction`); a plain-text RFC has no headings the
+parser can see, so a sectioned source also matches a passage that holds the case's `evidence`.
 """
 
 from __future__ import annotations
@@ -20,22 +22,34 @@ RECALL_K = 5
 
 @dataclass(frozen=True)
 class Located:
-    """Where a passage or a citation is: the dataset's document id, its pages and headings."""
+    """Where a passage or a citation is: the dataset's document id, its pages, headings and
+    text (a citation's is its passage's)."""
 
     document: str
     page_start: int | None = None
     page_end: int | None = None
     headings: tuple[str, ...] = ()
+    text: str = ""
 
 
 def _norm(text: str) -> str:
     return re.sub(r"\s+", " ", text).lower().strip()
 
 
-def is_correct(sources: Sequence[Mapping[str, Any]], located: Located) -> bool:
-    """Whether `located` is in an expected source: one of its pages, or under one of its
-    sections (a heading containing the section's text, ignoring case and spacing)."""
-    for source in sources:
+def _heading(text: str) -> str:
+    return _norm(text.lstrip("#"))
+
+
+Case = Mapping[str, Any]  # an answerable case of the dataset
+Answer = tuple[Case, Sequence[Located]]  # a case and its answer's citations
+
+
+def is_correct(case: Case, located: Located) -> bool:
+    """Whether `located` is in one of `case`'s expected sources: one of its pages, or one of
+    its sections, as a heading (ignoring Markdown `#`s, case and spacing) or by holding the
+    case's `evidence`."""
+    evidence = _norm(case.get("evidence", ""))
+    for source in case["expected_sources"]:
         if source["document"] != located.document:
             continue
         pages = set(source.get("pages", ()))
@@ -43,15 +57,18 @@ def is_correct(sources: Sequence[Mapping[str, Any]], located: Located) -> bool:
             end = located.page_end if located.page_end is not None else located.page_start
             if pages & set(range(located.page_start, end + 1)):
                 return True
-        sections = [_norm(s) for s in source.get("sections", ())]
-        if any(s in _norm(h) for s in sections for h in located.headings):
+        sections = {_heading(s) for s in source.get("sections", ())}
+        if sections and (
+            sections & {_heading(h) for h in located.headings}
+            or (evidence and evidence in _norm(located.text))
+        ):
             return True
     return False
 
 
-def first_hit_rank(sources: Sequence[Mapping[str, Any]], passages: Sequence[Located]) -> int | None:
+def first_hit_rank(case: Case, passages: Sequence[Located]) -> int | None:
     """The 1-based rank of the first passage in an expected source, or None if none is."""
-    return next((i for i, p in enumerate(passages, 1) if is_correct(sources, p)), None)
+    return next((i for i, p in enumerate(passages, 1) if is_correct(case, p)), None)
 
 
 def recall_at_k(ranks: Sequence[int | None], k: int = RECALL_K) -> float | None:
@@ -64,24 +81,19 @@ def mean_reciprocal_rank(ranks: Sequence[int | None]) -> float | None:
     return sum(1 / r for r in ranks if r) / len(ranks) if ranks else None
 
 
-def citation_precision(
-    answers: Sequence[tuple[Sequence[Mapping[str, Any]], Sequence[Located]]],
-) -> float | None:
+def citation_precision(answers: Sequence[Answer]) -> float | None:
     """The share of all citations, over answerable cases' answers, that are in an expected
-    source. `answers` pairs each case's sources with its answer's citations; None if nothing
-    was cited."""
-    verdicts = [is_correct(sources, c) for sources, cited in answers for c in cited]
+    source; None if nothing was cited."""
+    verdicts = [is_correct(case, c) for case, cited in answers for c in cited]
     return sum(verdicts) / len(verdicts) if verdicts else None
 
 
-def cited_correctly(
-    answers: Sequence[tuple[Sequence[Mapping[str, Any]], Sequence[Located]]],
-) -> float | None:
+def cited_correctly(answers: Sequence[Answer]) -> float | None:
     """The share of answerable cases whose answer cites at least one expected source (the
     v1.1.0 gate asks for 90%); None without cases."""
     if not answers:
         return None
-    return sum(any(is_correct(s, c) for c in cited) for s, cited in answers) / len(answers)
+    return sum(any(is_correct(case, c) for c in cited) for case, cited in answers) / len(answers)
 
 
 def abstention_accuracy(abstained: Sequence[bool]) -> float | None:
@@ -93,7 +105,7 @@ def abstention_accuracy(abstained: Sequence[bool]) -> float | None:
 def retrieval_report(
     dataset_version: str,
     ranks: Sequence[int | None],
-    answers: Sequence[tuple[Sequence[Mapping[str, Any]], Sequence[Located]]] = (),
+    answers: Sequence[Answer] = (),
     abstained: Sequence[bool] = (),
 ) -> dict[str, Any]:
     """The eval report's `retrieval` section (`eval_report.schema.json`). `ranks` holds each

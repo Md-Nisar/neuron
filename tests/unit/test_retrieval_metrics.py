@@ -24,15 +24,20 @@ from neuron_agent.retrieval_metrics import (
 
 _DATASET = json.loads(Path("tests/fixtures/knowledge_cases.json").read_text(encoding="utf-8"))
 _CASES = {case["id"]: case for case in _DATASET["cases"]}
-# answerable-001: nist-ai-100-1, page 17. answerable-042: rfc9457, two sections.
-_PAGED = _CASES["answerable-001"]["expected_sources"]
-_SECTIONED = _CASES["answerable-042"]["expected_sources"]
+# answerable-001: nist-ai-100-1, page 17. answerable-042: rfc9457, two sections (a plain-text
+# RFC without headings the parser sees). answerable-050: pgvector-readme, Markdown sections.
+_PAGED = _CASES["answerable-001"]
+_SECTIONED = _CASES["answerable-042"]
+_MARKDOWN = _CASES["answerable-050"]
 
 
 def test_the_cases_used_here_are_what_the_tests_assume() -> None:
-    assert _PAGED == [{"document": "nist-ai-100-1", "pages": [17]}]
-    assert _SECTIONED[0]["document"] == "rfc9457"
-    assert "3.  The Problem Details JSON Object" in _SECTIONED[0]["sections"]
+    assert _PAGED["expected_sources"] == [{"document": "nist-ai-100-1", "pages": [17]}]
+    [rfc] = _SECTIONED["expected_sources"]
+    assert rfc["document"] == "rfc9457"
+    assert "3.  The Problem Details JSON Object" in rfc["sections"]
+    assert _SECTIONED["evidence"] == "application/problem+json"
+    assert _MARKDOWN["expected_sources"][0]["sections"] == ["## HNSW", "## Half-Precision Indexing"]
 
 
 @pytest.mark.parametrize(
@@ -57,11 +62,36 @@ def test_a_paged_source_matches_on_an_overlapping_page(located: Located, correct
         (("RFC 9457", "3.  THE PROBLEM DETAILS JSON OBJECT"), True),  # any heading, any case
         (("3.  The Problem Details JSON Object", "3.1.  Members"), True),
         (("4.  Defining New Problem Types",), False),
+        (("3.  The Problem Details JSON Object, continued",), False),  # whole headings only
         ((), False),
     ],
 )
 def test_a_sectioned_source_matches_on_a_heading(headings: tuple[str, ...], correct: bool) -> None:
     assert is_correct(_SECTIONED, Located("rfc9457", headings=headings)) is correct
+
+
+@pytest.mark.parametrize(
+    ("headings", "correct"),
+    [
+        (("pgvector", "Indexing", "HNSW"), True),  # the parser drops the `##`
+        (("pgvector", "## Half-Precision Indexing"), True),
+        (("pgvector", "IVFFlat"), False),
+    ],
+)
+def test_a_markdown_section_matches_without_its_hashes(
+    headings: tuple[str, ...], correct: bool
+) -> None:
+    assert is_correct(_MARKDOWN, Located("pgvector-readme", headings=headings)) is correct
+
+
+def test_a_sectioned_source_matches_a_passage_holding_the_evidence() -> None:
+    # A plain-text RFC's chunks have no headings: the case's evidence quote places them.
+    holding = Located("rfc9457", text="...uses the media type\nApplication/Problem+JSON for...")
+    assert is_correct(_SECTIONED, holding)
+    assert not is_correct(_SECTIONED, Located("rfc9457", text="no quote here"))
+    assert not is_correct(_SECTIONED, Located("rfc7519", text=holding.text))  # other document
+    # Only sections are placed by text: a paged source needs its page.
+    assert not is_correct(_PAGED, Located("nist-ai-100-1", 3, 3, text=_PAGED["evidence"]))
 
 
 def test_the_rank_is_the_first_correct_passage_counted_from_one() -> None:
@@ -83,7 +113,7 @@ def test_recall_and_mrr_over_ranks() -> None:
 
 def test_citation_precision_counts_citations_and_cited_correctly_counts_answers() -> None:
     right, wrong = Located("nist-ai-100-1", 17, 17), Located("nist-ai-100-1", 2, 2)
-    answers: list[tuple[Any, list[Located]]] = [
+    answers: list[tuple[dict[str, Any], list[Located]]] = [
         (_PAGED, [right, wrong]),  # one of two citations correct: the answer counts
         (_PAGED, [wrong]),
         (_PAGED, []),  # cited nothing: no citation to score, but a miss for the answer
