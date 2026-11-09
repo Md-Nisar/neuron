@@ -203,7 +203,7 @@ async def test_an_answer_saying_the_documents_lack_it_keeps_no_citation(
         "AgentAnswer",
         answer="Your documents do not mention a phase 3; the plan lists phases 1 and 2.",
         confidence=0.9,
-        citations=["cite-1", "cite-2"],
+        citations=["cite-1", "cite-2", "forged"],
         not_in_documents=True,
     )
     model = _model(monkeypatch, _call("search_knowledge", query="q"), abstained)
@@ -215,7 +215,7 @@ async def test_an_answer_saying_the_documents_lack_it_keeps_no_citation(
         [],
         False,
     )
-    assert rejected == []  # dropped by the model's own abstention, not rejected as invalid
+    assert rejected == [1]  # the forged id is still counted; the valid ones are not
 
 
 def test_a_stamp_that_does_not_validate_is_ignored() -> None:

@@ -237,13 +237,15 @@ def _final_answer(
         if not output_text.strip():
             raise AppStructuredOutputError("agent returned an empty answer")
         answer = AgentAnswer(answer=output_text, confidence=0.5)
-    # An answer saying the documents do not have it rests on no passage, whatever passages it
-    # describes on the way: the model's own abstention drops its citations (RAG-08.01).
-    listed = [] if answer.not_in_documents else answer.citations
-    cited, rejected = citations.validate(listed, run_messages)
+    cited, rejected = citations.validate(answer.citations, run_messages)
     if rejected:
         metrics.record_citations_rejected(rejected)
         logger.warning("citations_rejected", rejected=rejected, kept=len(cited))
+    if answer.not_in_documents and cited:
+        # An answer saying the documents do not have it rests on no passage, whatever passages
+        # it describes on the way: the model's own abstention drops them (RAG-08.01).
+        logger.info("citations_dropped_by_abstention", dropped=len(cited))
+        cited = []
     kept = answer.model_copy(
         update={"used_tools": _tools_run(run_messages), "citations": [c.cite_id for c in cited]}
     )
