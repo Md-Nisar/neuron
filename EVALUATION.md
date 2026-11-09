@@ -237,7 +237,7 @@ APP_TEST_POSTGRES_DSN=... APP_KNOWLEDGE_EVAL_REPORT=answers.json \
 uv run python -m pytest tests/integration/test_live_knowledge_answers.py -m integration -o faulthandler_timeout=7200
 ```
 
-It takes about 35 minutes (76 runs, throttled to 30 model calls a minute). An answer cut off by the step limit counts as a miss; any other error makes the run inconclusive. Results are in `docs/releases/v1.1.0-retrieval-eval.md`.
+It takes about 35 minutes (76 runs, throttled to 30 model calls a minute). An answer cut off by the step limit counts as a miss; any other error makes the run inconclusive, so rerun it. Each case runs once, and `cited_correctly` has varied from 0.891 to 0.952 between runs of the same code, so a run near the gate is not by itself a regression. Results are in `docs/releases/v1.1.0-retrieval-eval.md`.
 
 How to read a report:
 - Check `infrastructure_errors` first. If it is not zero, the run is incomplete, not a quality result: rerun before comparing.
