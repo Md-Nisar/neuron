@@ -19,8 +19,24 @@ The labelled corpus for the Knowledge Engine (RAG-00.03, ADR 0014). The cases ar
 | ACL documents for the two users | `acl/` | In this folder | Apache-2.0, written for this repository |
 | Prompt-injection documents | `injection/` | In this folder | Apache-2.0, written for this repository |
 
-Public documents are not committed: they are large, and the dataset only needs to identify them.
-Fetch one and check it before use, for example:
+Public documents are not committed as files: they are large, and the dataset only needs to
+identify them. What Neuron's parsers extract from them is committed, for the retrieval eval
+(RAG-08.01, owner decision 2026-11-09): `eval/parsed.json.gz` holds every document's text as
+blocks, with the pages and headings the parsers report, and `eval/vectors.*` the embeddings of
+its chunks. Their licences allow it, and the notices are kept here: NIST publications are public
+domain in the US; the IETF Trust lets RFCs be reproduced in full. The READMEs keep their
+notices, from each project's licence at the pinned tag:
+
+- pgvector (v0.8.0), PostgreSQL License: Portions Copyright (c) 1996-2024, PostgreSQL Global
+  Development Group; Portions Copyright (c) 1994, The Regents of the University of California.
+- Procrastinate (3.0.0), MIT License: Copyright (c) 2019-2021, PeopleDoc; Copyright (c)
+  2021-2023, Joachim Jablon, Eric Lemoine.
+- Docling (v2.15.0), MIT License: Copyright (c) 2024 International Business Machines.
+
+Each licence permits copying provided the copyright and permission notices are kept; their full
+texts are in `eval/licences/`. `scripts/build_knowledge_eval.py` rebuilds both files.
+
+Fetch a document and check it before use, for example:
 
 ```bash
 curl -sSLo nist-ai-100-1.pdf https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf

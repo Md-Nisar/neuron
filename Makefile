@@ -84,7 +84,7 @@ test-integration:
 	uv run python -m pytest tests/integration -m integration
 
 eval:
-	uv run python -m pytest tests/evals -m eval
+	uv run python -m pytest tests/evals tests/integration/test_postgres_knowledge_retrieval.py -m eval
 
 # Dependency audit ignores: each needs an entry, with a review date, in SECURITY.md
 # (Dependency Vulnerabilities).
