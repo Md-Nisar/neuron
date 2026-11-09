@@ -116,3 +116,25 @@ async def test_the_last_allowed_model_call_is_offered_no_tools_so_it_answers(
     assert all("calculator" in names for names in offered[:2])
     assert "calculator" not in offered[2]
     assert offered[2]  # the structured answer is still offered
+
+
+async def test_with_one_model_call_allowed_it_is_offered_no_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A tool result would have no model call left to answer it, so the single call answers.
+    offered: list[list[str]] = []
+
+    class _Recording(StreamingFakeModel):
+        def bind_tools(self, tools: Any, **kwargs: Any) -> Any:  # type: ignore[override]
+            offered.append(sorted(str(factory._tool_name(tool)) for tool in tools))
+            return self
+
+    replies = iter([AIMessage(content="84")])
+    monkeypatch.setattr(factory, "create_chat_model", lambda _: _Recording(messages=replies))
+    graph = build_graph(Settings(env="test", max_agent_iterations=1))
+
+    result = await graph.ainvoke({"messages": [HumanMessage(content="hi")]}, context=_ALLOWED)  # type: ignore[attr-defined]
+
+    assert result["answer"].answer == "84"
+    assert len(offered) == 1
+    assert "calculator" not in offered[0]

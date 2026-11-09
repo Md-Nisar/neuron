@@ -550,7 +550,8 @@ def final_answer_middleware(max_model_calls: int) -> AgentMiddleware:
     A model that keeps calling tools otherwise ends the run with `agent_step_limit_exceeded` and
     no answer: #480, and RAG-08.01's eval, where one sent the same refused search until the
     limit. With no tools, `create_agent` binds only the structured answer (`tool_choice` "any"
-    for the tool strategy), so the model answers from what the run found.
+    for the tool strategy), so the model answers from what the run found. With a limit of one
+    call, that call is offered no tools: a tool result would have no call left to answer it.
     """
     return _FinalAnswerMiddleware(max_model_calls)
 
