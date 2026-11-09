@@ -20,7 +20,7 @@ from collections.abc import Callable, Sequence
 from typing import Annotated, Any
 
 from langchain.tools import ToolRuntime, tool
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool, ToolException
 from psycopg_pool import AsyncConnectionPool
 from pydantic import Field
@@ -96,25 +96,36 @@ def _calls(messages: Sequence[Any], name: str) -> int:
 def _search_key(args: Any) -> tuple[str, tuple[str, ...]] | None:
     if not isinstance(args, dict) or not isinstance(args.get("query"), str):
         return None
+    kb_ids = args.get("kb_ids") or ()
+    if not isinstance(kb_ids, list | tuple):
+        return None
     query = " ".join(args["query"].lower().split())
-    return query, tuple(sorted(str(kb).lower() for kb in args.get("kb_ids") or ()))
+    return query, tuple(sorted(str(kb).lower() for kb in kb_ids))
 
 
 def _repeated(messages: Sequence[Any], call_id: str | None, args: dict[str, Any]) -> bool:
     """Whether a search call made before this one in the run, including one earlier in the
     same model turn, asked the same query (ignoring case and spacing) of the same bases. The
-    result limit is ignored: a larger one returns mostly the same passages. Without the
-    current call's id, the calls before it cannot be told apart, so nothing is refused."""
+    result limit is ignored: a larger one returns mostly the same passages. A call that failed
+    does not count, so it can be retried. Without the current call's id, the calls before it
+    cannot be told apart, so nothing is refused."""
     if call_id is None:
         return False
     key = _search_key(args)
+    failed = {
+        m.tool_call_id for m in messages if isinstance(m, ToolMessage) and m.status == "error"
+    }
     for message in messages:
         if not isinstance(message, AIMessage):
             continue
         for call in message.tool_calls:
             if call.get("id") == call_id:
                 return False
-            if call["name"] == "search_knowledge" and _search_key(call["args"]) == key:
+            if (
+                call["name"] == "search_knowledge"
+                and call.get("id") not in failed
+                and _search_key(call["args"]) == key
+            ):
                 return True
     return False
 

@@ -267,7 +267,25 @@ async def test_a_repeated_search_is_refused_and_a_new_one_runs(
     assert results[2][0] == "success"
     assert results[3] == repeated  # the same query earlier in the same turn
     assert results[4][0] == "success"  # the same query of all bases, not of one
-    assert [c[2] for c in _calls] == ["pump P-3", "pump P-4", "pump P-3"]
+    # The calls of one turn run concurrently, in no fixed order.
+    assert sorted(c[2] for c in _calls) == ["pump P-3", "pump P-3", "pump P-4"]
+
+
+async def test_a_failed_search_can_be_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Arguments that failed validation are the model's own, unchecked: they must neither end
+    # the run nor make a corrected retry count as a repeat.
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="pump P-5", kb_ids=5),
+        _call("search_knowledge", query="pump P-5", limit=999),
+        _call("search_knowledge", query="pump P-5"),
+        AIMessage(content="done"),
+    )
+
+    await _run(model, max_agent_iterations=20)
+
+    assert [m.status for m in _results(model)] == ["error", "error", "success"]
+    assert [c[2] for c in _calls] == ["pump P-5"]
 
 
 async def test_an_excerpt_needs_a_cite_id_from_this_run(monkeypatch: pytest.MonkeyPatch) -> None:
