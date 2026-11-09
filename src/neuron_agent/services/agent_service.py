@@ -48,6 +48,7 @@ from neuron_agent.errors.base import (
     ThreadNotFoundError,
 )
 from neuron_agent.graphs.main_graph import build_graph
+from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.knowledge.tools import knowledge_specs
 from neuron_agent.memory.store import Memory, MemoryStore, memory_id_key
 from neuron_agent.memory.tools import memory_specs
@@ -81,6 +82,7 @@ from neuron_agent.schemas.agent import (
     UserThreadsResponse,
     UserThreadSummary,
 )
+from neuron_agent.schemas.knowledge import KnowledgeErasureResponse
 from neuron_agent.security.auth import Principal, principal_owner_key
 from neuron_agent.security.authorization import (
     DEV_PERMISSIONS,
@@ -151,6 +153,8 @@ class AgentService:
         self._persistence = persistence or build_persistence(settings)
         self._token_budget = token_budget or build_token_budget(settings, self._persistence)
         self._run_guard = run_guard or build_run_guard(settings, self._persistence)
+        # Data rights only (export, erase); the API's own instance serves the knowledge routes.
+        self._knowledge = KnowledgeBases(settings, lambda: self._persistence.pool)
         self._graph: Any | None = None
         # The tool set the graph was built with; None means the builtin tools.
         self._registry: ToolRegistry | None = None
@@ -1090,6 +1094,11 @@ class AgentService:
             if self._memory is not None and offset == 0
             else []
         )
+        knowledge_bases = (
+            await self._knowledge.export(owner_key)
+            if self._settings.knowledge_enabled and owner_key is not None and offset == 0
+            else []
+        )
         response = UserDataExportResponse(
             threads=exported,
             total_threads=page.total,
@@ -1099,6 +1108,7 @@ class AgentService:
             message_offset=message_offset,
             has_more_messages=has_more_messages,
             memories=memories,
+            knowledge_bases=knowledge_bases,
         )
         if len(response.model_dump_json().encode("utf-8")) > max_bytes:
             raise ExportTooLargeError("reduce the thread or message page size and retry")
@@ -1205,6 +1215,7 @@ class AgentService:
         erased = 0
         erased_memories = 0
         skipped_busy = 0
+        knowledge: KnowledgeErasureResponse | None = None
         failed = True
         try:
             active_owned = (
@@ -1243,6 +1254,8 @@ class AgentService:
                 self._audit_memory(
                     "memories_erased", owner_key, action="threads:erase_all", count=erased_memories
                 )
+            if self._settings.knowledge_enabled and owner_key is not None:
+                knowledge = await self._knowledge.erase(owner_key)
             failed = False
         finally:
             # Also when it stops part-way: the count so far, never thread IDs.
@@ -1268,6 +1281,7 @@ class AgentService:
             erased_count=erased,
             skipped_busy_count=skipped_busy,
             erased_memory_count=erased_memories,
+            knowledge=knowledge,
         )
 
     async def _forget_thread_content(self, thread_ids: list[str]) -> None:

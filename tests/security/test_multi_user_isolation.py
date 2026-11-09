@@ -83,13 +83,16 @@ def _route_requests(
 
 
 def test_matrix_covers_every_v1_route() -> None:
-    # The knowledge routes need Postgres: their matrix is in test_postgres_knowledge_api.py.
+    # The knowledge routes need Postgres: their matrix is in test_postgres_knowledge_api.py, and
+    # `DELETE /v1/me/knowledge` (one user's erase leaves another's) in
+    # test_postgres_knowledge_erase.py.
     declared = {
         (method, route.path)
         for route in api_main.app.routes
         if isinstance(route, APIRoute)
         and route.path.startswith("/v1/")
         and not route.path.startswith("/v1/knowledge/")
+        and route.path != "/v1/me/knowledge"
         for method in route.methods
     }
     probe = "{thread_id}"
@@ -189,6 +192,7 @@ def test_owner_reaches_own_thread_on_every_route(
         "erased_count": 1,
         "skipped_busy_count": 0,
         "erased_memory_count": 0,
+        "knowledge": None,
         "complete": True,
     }
 

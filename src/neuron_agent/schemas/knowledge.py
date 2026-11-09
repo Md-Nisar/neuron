@@ -10,9 +10,14 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from neuron_agent.schemas.agent import plain_title
+
+def _plain_title(value: str) -> str:
+    # Imported here: `schemas.agent` imports this module for the data-rights responses.
+    from neuron_agent.schemas.agent import plain_title
+
+    return plain_title(value)
 
 
 class KnowledgeBaseCreate(BaseModel):
@@ -28,7 +33,7 @@ class KnowledgeBaseCreate(BaseModel):
     @field_validator("name")
     @classmethod
     def _plain_name(cls, value: str) -> str:
-        return plain_title(value)
+        return _plain_title(value)
 
 
 class KnowledgeBaseUpdate(BaseModel):
@@ -41,7 +46,7 @@ class KnowledgeBaseUpdate(BaseModel):
     @field_validator("name")
     @classmethod
     def _plain_name(cls, value: str) -> str:
-        return plain_title(value)
+        return _plain_title(value)
 
 
 class KnowledgeBase(BaseModel):
@@ -78,6 +83,28 @@ class KnowledgeDocumentsResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ExportedKnowledgeBase(KnowledgeBase):
+    """A live base in the caller's data export, with its live documents' metadata (RAG-07.01).
+    File contents are not exported; each file downloads through its own route."""
+
+    documents: list[KnowledgeDocument]
+
+
+class KnowledgeErasureResponse(BaseModel):
+    """`DELETE /v1/me/knowledge`: the caller's bases and documents tombstoned now, and whether
+    any of their rows or files is still stored. The worker's purge removes them; until it has,
+    `complete` is false, and repeating the request is safe (RAG-07.01)."""
+
+    erased_base_count: int
+    erased_document_count: int
+    purge_pending: bool
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def complete(self) -> bool:
+        return not self.purge_pending
 
 
 class DocumentAccepted(BaseModel):

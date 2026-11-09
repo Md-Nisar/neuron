@@ -12,6 +12,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from neuron_agent.schemas.knowledge import ExportedKnowledgeBase, KnowledgeErasureResponse
+
 # The longest conversation title, set from the first message or by `PATCH /v1/threads/{id}`.
 TITLE_MAX_CHARS = 80
 
@@ -295,21 +297,27 @@ class UserDataExportResponse(BaseModel):
     has_more_messages: bool
     # The caller's memories, whole, on the first page only (offset 0); empty when memory is off.
     memories: list[MemoryItem] = Field(default_factory=list)
+    # The caller's live knowledge bases with their documents' metadata, on the first page only;
+    # empty when knowledge is off (RAG-07.01).
+    knowledge_bases: list[ExportedKnowledgeBase] = Field(default_factory=list)
 
 
 class UserDataErasureResponse(BaseModel):
     """Result of an idempotent erase-all request.
 
-    `complete` is false while any owned thread was skipped because a run was active on it: the
-    caller has not erased everything and should repeat the request once the run has ended.
+    `complete` is false while any owned thread was skipped because a run was active on it, or
+    while the purge of the caller's knowledge has not finished: the caller has not erased
+    everything yet and should repeat the request later.
     """
 
     erased_count: int
     skipped_busy_count: int
     # How many memories were deleted with the threads (0 when memory is off).
     erased_memory_count: int = 0
+    # The knowledge erase (RAG-07.01); null when knowledge is off.
+    knowledge: KnowledgeErasureResponse | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def complete(self) -> bool:
-        return self.skipped_busy_count == 0
+        return self.skipped_busy_count == 0 and (self.knowledge is None or self.knowledge.complete)
