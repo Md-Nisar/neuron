@@ -237,6 +237,57 @@ async def test_a_sixth_search_in_one_run_gets_the_limit_error(
     assert len(_calls) == 5
 
 
+async def test_a_repeated_search_is_refused_and_a_new_one_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The live eval's loops: the same query again, in a later turn and in parallel in one turn,
+    # until the step limit ended the run without an answer (RAG-08.01).
+    kb = str(_KB)
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="pump P-3", kb_ids=[kb]),
+        _call("search_knowledge", query="  PUMP   p-3 ", kb_ids=[kb.upper()], limit=10),
+        AIMessage(
+            content="",
+            tool_calls=[
+                {"name": "search_knowledge", "args": {"query": "pump P-4"}, "id": "same-turn-1"},
+                {"name": "search_knowledge", "args": {"query": "pump P-4"}, "id": "same-turn-2"},
+                {"name": "search_knowledge", "args": {"query": "pump P-3"}, "id": "other-bases"},
+            ],
+        ),
+        AIMessage(content="done"),
+    )
+
+    await _run(model, max_agent_iterations=20)
+
+    results = [(m.status, m.content) for m in _results(model)]
+    repeated = ("error", knowledge_tools._REPEATED)
+    assert results[0][0] == "success"
+    assert results[1] == repeated  # case, spacing, base id case and limit do not matter
+    assert results[2][0] == "success"
+    assert results[3] == repeated  # the same query earlier in the same turn
+    assert results[4][0] == "success"  # the same query of all bases, not of one
+    # The calls of one turn run concurrently, in no fixed order.
+    assert sorted(c[2] for c in _calls) == ["pump P-3", "pump P-3", "pump P-4"]
+
+
+async def test_a_failed_search_can_be_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Arguments that failed validation are the model's own, unchecked: they must neither end
+    # the run nor make a corrected retry count as a repeat.
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="pump P-5", kb_ids=5),
+        _call("search_knowledge", query="pump P-5", limit=999),
+        _call("search_knowledge", query="pump P-5"),
+        AIMessage(content="done"),
+    )
+
+    await _run(model, max_agent_iterations=20)
+
+    assert [m.status for m in _results(model)] == ["error", "error", "success"]
+    assert [c[2] for c in _calls] == ["pump P-5"]
+
+
 async def test_an_excerpt_needs_a_cite_id_from_this_run(monkeypatch: pytest.MonkeyPatch) -> None:
     model = _model(
         monkeypatch,

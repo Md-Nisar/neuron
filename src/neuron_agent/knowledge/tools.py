@@ -20,7 +20,7 @@ from collections.abc import Callable, Sequence
 from typing import Annotated, Any
 
 from langchain.tools import ToolRuntime, tool
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool, ToolException
 from psycopg_pool import AsyncConnectionPool
 from pydantic import Field
@@ -51,6 +51,12 @@ _PREAMBLE = (
 _UNAVAILABLE = "Error: knowledge is not available right now."
 _NO_PASSAGE = "Error: there is no such passage. Use a cite_id from a search in this answer."
 _TOO_MANY = "Error: the limit for this answer is reached. Answer from what you found."
+# A model that finds no answer tends to rerun the same search until the run's step limit ends
+# it without an answer (RAG-08.01's eval, #480).
+_REPEATED = (
+    "Error: this search already ran in this answer. Answer from what you found, or say the "
+    "documents do not have it."
+)
 _INVALID = "Error: the request is invalid. Check the arguments and their limits."
 # RAG-04.03: a search with nothing above the score floor says so, rather than return an empty
 # list the model might read as a failed call; with no passage there is nothing to cite.
@@ -85,6 +91,43 @@ def _calls(messages: Sequence[Any], name: str) -> int:
         if isinstance(message, AIMessage)
         for call in message.tool_calls
     )
+
+
+def _search_key(args: Any) -> tuple[str, tuple[str, ...]] | None:
+    if not isinstance(args, dict) or not isinstance(args.get("query"), str):
+        return None
+    kb_ids = args.get("kb_ids") or ()
+    if not isinstance(kb_ids, list | tuple):
+        return None
+    query = " ".join(args["query"].lower().split())
+    return query, tuple(sorted(str(kb).lower() for kb in kb_ids))
+
+
+def _repeated(messages: Sequence[Any], call_id: str | None, args: dict[str, Any]) -> bool:
+    """Whether a search call made before this one in the run, including one earlier in the
+    same model turn, asked the same query (ignoring case and spacing) of the same bases. The
+    result limit is ignored: a larger one returns mostly the same passages. A call that failed
+    does not count, so it can be retried. Without the current call's id, the calls before it
+    cannot be told apart, so nothing is refused."""
+    if call_id is None:
+        return False
+    key = _search_key(args)
+    failed = {
+        m.tool_call_id for m in messages if isinstance(m, ToolMessage) and m.status == "error"
+    }
+    for message in messages:
+        if not isinstance(message, AIMessage):
+            continue
+        for call in message.tool_calls:
+            if call.get("id") == call_id:
+                return False
+            if (
+                call["name"] == "search_knowledge"
+                and call.get("id") not in failed
+                and _search_key(call["args"]) == key
+            ):
+                return True
+    return False
 
 
 def _capped(items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
@@ -167,8 +210,11 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         owner = _owner(runtime)
         if not query.strip():
             raise ToolException(_INVALID)
-        if _calls(_messages(runtime), "search_knowledge") > MAX_SEARCHES:
+        messages = _messages(runtime)
+        if _calls(messages, "search_knowledge") > MAX_SEARCHES:
             raise ToolException(_TOO_MANY)
+        if _repeated(messages, runtime.tool_call_id, {"query": query, "kb_ids": kb_ids}):
+            raise ToolException(_REPEATED)
         if (scope := _scope(runtime)) is not None:
             # The model's `kb_ids` narrow the request's bases further, never widen them.
             kb_ids = [kb for kb in kb_ids or () if kb in scope] or sorted(scope, key=str)

@@ -10,7 +10,7 @@ from importlib.resources import files
 
 # Bumped with every change to `system/main.md`; a test pins it to the file's hash. Recorded in
 # the changelog and in eval reports, so a quality change can be traced to the prompt.
-SYSTEM_PROMPT_VERSION = 2
+SYSTEM_PROMPT_VERSION = 3
 
 
 @lru_cache

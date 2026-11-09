@@ -229,7 +229,15 @@ Estimated cost is not reported: it depends on the optional pricing file of ADR 0
 | `cited_correctly` | Share of answerable cases whose answer cites at least one correct passage. The v1.1.0 gate asks for 0.9. |
 | `abstention_accuracy` | Share of unanswerable cases whose answer abstained (`grounded` false, nothing cited). |
 
-The last three need a model run and are `null` without one. `below_baseline` lists the metrics that fell more than a tolerance below a stored baseline. The run that fills this section and its baseline come in part 2 (#498).
+The last three need a model run and are `null` without one. `below_baseline` lists the metrics that fell more than a tolerance below a stored baseline. Two tests fill it. `tests/integration/test_postgres_knowledge_retrieval.py` (part 2, in `make eval` and CI) stores the corpus with committed vectors and gates recall@5 and MRR at 0.02 below `evals/baselines/knowledge_retrieval.json`. `tests/integration/test_live_knowledge_answers.py` (part 3, live, `integration` marker) asks every answerable and unanswerable case through `AgentService` with the configured model and gates `cited_correctly` at 0.9 and abstention on every unanswerable case:
+
+```bash
+NVIDIA_API_KEY=... APP_DEFAULT_MODEL=nvidia:nvidia/nemotron-3-ultra-550b-a55b \
+APP_TEST_POSTGRES_DSN=... APP_KNOWLEDGE_EVAL_REPORT=answers.json \
+uv run python -m pytest tests/integration/test_live_knowledge_answers.py -m integration -o faulthandler_timeout=7200
+```
+
+It takes about 35 minutes (76 runs, throttled to 30 model calls a minute). An answer cut off by the step limit counts as a miss; any other error makes the run inconclusive. Results are in `docs/releases/v1.1.0-retrieval-eval.md`.
 
 How to read a report:
 - Check `infrastructure_errors` first. If it is not zero, the run is incomplete, not a quality result: rerun before comparing.

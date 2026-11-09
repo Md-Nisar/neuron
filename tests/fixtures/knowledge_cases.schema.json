@@ -128,6 +128,11 @@
           "description": "A short quote from the expected page or section that supports the answer.",
           "type": "string",
           "minLength": 1
+        },
+        "grading_note": {
+          "description": "Why the case changed after its first version, naming the dataset version that changed it.",
+          "type": "string",
+          "minLength": 1
         }
       }
     },
