@@ -41,6 +41,8 @@ export interface FakeData {
   maxItemsPerPage?: number;
   memoryEnabled?: boolean;
   eraseSkipsBusy?: number;
+  /** Knowledge on: export lists these bases; erase reports them, pending while `purgePending`. */
+  knowledge?: { bases: unknown[]; purgePending: boolean };
 }
 
 export const memory = (n: number, text = `memory ${String(n)}`): FakeMemory => ({
@@ -120,6 +122,9 @@ export function fakeApi(data: FakeData) {
           message_offset: mo,
           has_more_messages: page.some((t) => mo + ml < t.messages.length),
           memories: offset === 0 ? data.memories : [],
+          ...(data.knowledge === undefined
+            ? {}
+            : { knowledge_bases: offset === 0 ? data.knowledge.bases : [] }),
         }),
       );
     }
@@ -214,12 +219,23 @@ export function fakeApi(data: FakeData) {
       const erasedMemories = data.memories.length;
       data.threads = data.threads.slice(erased);
       data.memories = [];
+      const { knowledge } = data;
+      const pending = knowledge?.purgePending ?? false;
       return Promise.resolve(
         jsonResponse(200, {
           erased_count: erased,
           skipped_busy_count: skipped,
           erased_memory_count: erasedMemories,
-          complete: skipped === 0,
+          knowledge:
+            knowledge === undefined
+              ? null
+              : {
+                  erased_base_count: knowledge.bases.length,
+                  erased_document_count: 0,
+                  purge_pending: pending,
+                  complete: !pending,
+                },
+          complete: skipped === 0 && !pending,
         }),
       );
     }

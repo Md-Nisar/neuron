@@ -9,10 +9,27 @@ import { eraseAllData, type DataDeps } from "./api";
 import { dataErrorText, ERASE_PHRASE } from "./messages";
 import type { Erasure } from "./parse";
 
+/** What an erase did, and what is left to do when it is not complete. */
+function resultText(result: Erasure): string {
+  const { knowledge } = result;
+  const erased =
+    knowledge === null
+      ? `Erased ${String(result.erased_count)} conversations and ${String(result.erased_memory_count)} memories.`
+      : `Erased ${String(result.erased_count)} conversations, ${String(result.erased_memory_count)} memories and ${String(knowledge.erased_base_count)} knowledge bases.`;
+  if (result.complete) return `${erased} Signing you out…`;
+  const left: string[] = [];
+  if (result.skipped_busy_count > 0)
+    left.push(
+      `${String(result.skipped_busy_count)} could not be erased because a reply was still running.`,
+    );
+  if (knowledge?.purge_pending === true) left.push("Your knowledge files are still being deleted.");
+  return `${erased} ${left.join(" ")} Try again in a moment to finish.`;
+}
+
 /**
- * Erase all of the caller's conversations and memories. Needs the typed phrase. Signs the user
- * out only when the server reports the erase complete; if a conversation was busy and skipped,
- * the user stays signed in to repeat it.
+ * Erase all of the caller's conversations, memories and knowledge. Needs the typed phrase. Signs
+ * the user out only when the server reports the erase complete; if a conversation was busy, or
+ * knowledge files are still being deleted, the user stays signed in to repeat it.
  */
 export function EraseSection({ deps, onErased }: { deps: DataDeps; onErased: () => void }) {
   const [typed, setTyped] = useState("");
@@ -45,8 +62,8 @@ export function EraseSection({ deps, onErased }: { deps: DataDeps; onErased: () 
           Erase your data
         </h2>
         <CardDescription>
-          This permanently deletes all of your conversations and memories. It cannot be undone, and
-          you will be signed out.
+          This permanently deletes all of your conversations, memories and knowledge bases with
+          their files. It cannot be undone, and you will be signed out.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -81,9 +98,7 @@ export function EraseSection({ deps, onErased }: { deps: DataDeps; onErased: () 
         )}
         {result !== null && (
           <p role="status" aria-live="polite" className="mt-2 text-sm">
-            {result.complete
-              ? `Erased ${String(result.erased_count)} conversations and ${String(result.erased_memory_count)} memories. Signing you out…`
-              : `Erased ${String(result.erased_count)} conversations. ${String(result.skipped_busy_count)} could not be erased because a reply was still running. Try again in a moment.`}
+            {resultText(result)}
           </p>
         )}
       </CardContent>

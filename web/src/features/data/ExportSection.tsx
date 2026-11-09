@@ -43,7 +43,8 @@ export function ExportSection({ deps }: { deps: DataDeps }) {
           Export your data
         </h2>
         <CardDescription>
-          Download your conversations and memories as one JSON file. It is made in this page and is
+          Download your conversations, memories and a list of your knowledge bases and documents
+          (names, sizes and status, not the files) as one JSON file. It is made in this page and is
           not kept after the download.
         </CardDescription>
       </CardHeader>
