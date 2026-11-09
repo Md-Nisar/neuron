@@ -12,9 +12,10 @@ Gates (the backlog's acceptance criteria):
 Live and billed, so marked `integration` (`make test-integration`); it skips without the model's
 key or `APP_TEST_POSTGRES_DSN`. Run it with `APP_DEFAULT_MODEL` set, for example
 `nvidia:nvidia/nemotron-3-ultra-550b-a55b`, and lift pytest's 120-second per-test limit with
-`-o faulthandler_timeout=7200`: the run takes far longer. Model calls are throttled to the eval CLI's 30 per
-minute. With `APP_KNOWLEDGE_EVAL_REPORT` set, the report's `retrieval` section, with all four
-metrics, is written to that path.
+`-o faulthandler_timeout=7200`: the run takes far longer. Model calls are throttled to the eval
+CLI's 30 per minute. An answer cut off by the agent's step limit is a miss; any other error makes
+the run inconclusive. With `APP_KNOWLEDGE_EVAL_REPORT` set, the outcome is written to that path:
+the report's `retrieval` section, with all four metrics, and the cases that missed.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from test_postgres_knowledge_retrieval import SCHEMA, _Cached, _store
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.errors.base import AgentStepLimitError
 from neuron_agent.evaluation import (
     DEFAULT_MAX_REQUESTS_PER_MINUTE,
     RequestThrottle,
@@ -136,7 +138,8 @@ async def test_answers_cite_the_right_source_and_abstain_without_one(
                 )
             )
 
-    replies: dict[str, AgentResponse] = {}
+    # None: the agent hit its step limit without answering, a miss rather than an error.
+    replies: dict[str, AgentResponse | None] = {}
     errors: list[str] = []
     service = AgentService(settings)
     await service.startup()
@@ -150,6 +153,9 @@ async def test_answers_cite_the_right_source_and_abstain_without_one(
                         AgentRequest(message=case["question"]),
                         principal=principals[case["as_user"]],
                     )
+                except AgentStepLimitError:
+                    replies[case["id"]] = None
+                    continue
                 except Exception as exc:  # an infrastructure error: the run is inconclusive
                     errors.append(f"{case['id']}: {type(exc).__name__}")
                     continue
@@ -157,9 +163,8 @@ async def test_answers_cite_the_right_source_and_abstain_without_one(
                 replies[case["id"]] = reply
     finally:
         await service.shutdown()
-    assert not errors, f"inconclusive, rerun: {errors}"
 
-    cited_ids = {c.chunk_id for r in replies.values() for c in r.citations or ()}
+    cited_ids = {c.chunk_id for r in replies.values() if r for c in r.citations or ()}
     texts = await _texts(role_db, cited_ids)
     answers: list[Answer] = []
     abstained: dict[str, bool] = {}
@@ -170,20 +175,29 @@ async def test_answers_cite_the_right_source_and_abstain_without_one(
             cited = [
                 Located(names[c.doc_id], c.page_start, c.page_end, tuple(c.headings),
                         texts[c.chunk_id])
-                for c in done.citations or ()
+                for c in (done.citations or () if done else ())
             ]  # fmt: skip
             answers.append((case, cited))
         else:
-            abstained[case_id] = done.grounded is False
+            abstained[case_id] = done is not None and done.grounded is False
 
     report = retrieval_report(dataset["version"], ranks, answers, list(abstained.values()))
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     jsonschema.validate(report, {"$ref": "#/$defs/retrieval", "$defs": schema["$defs"]})
+    missed = [case["id"] for case, cited in answers if not any(is_correct(case, c) for c in cited)]
+    outcome = {
+        "model": settings.default_model,
+        "retrieval": report,
+        "not_cited_correctly": missed,
+        "not_abstained": [i for i, ok in abstained.items() if not ok],
+        "step_limit": [i for i, r in replies.items() if r is None],
+        "infrastructure_errors": errors,
+    }
     if path := os.environ.get("APP_KNOWLEDGE_EVAL_REPORT"):
         with open(path, "w", encoding="utf-8") as out:
-            json.dump({"model": settings.default_model, "retrieval": report}, out, indent=2)
+            json.dump(outcome, out, indent=2)
             out.write("\n")
+    assert not errors, f"inconclusive, rerun: {errors}"
     assert (report["answerable_cases"], report["unanswerable_cases"]) == (64, 12)
-    missed = [case["id"] for case, cited in answers if not any(is_correct(case, c) for c in cited)]
-    assert report["cited_correctly"] >= CITED_CORRECTLY_GATE, (report, missed)
-    assert all(abstained.values()), [i for i, ok in abstained.items() if not ok]
+    assert report["cited_correctly"] >= CITED_CORRECTLY_GATE, outcome
+    assert all(abstained.values()), outcome
