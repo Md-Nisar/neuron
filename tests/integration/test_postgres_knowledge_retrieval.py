@@ -69,8 +69,10 @@ async def _store(
     dataset: dict[str, Any],
     vectors: Mapping[str, Sequence[float]],
     max_tokens: int,
+    owners: Mapping[str, str],
 ) -> dict[uuid.UUID, str]:
-    """Each user's documents in one knowledge base of theirs; returns doc_id -> dataset id."""
+    """Each user's documents in one knowledge base of theirs (`owners` maps each dataset user
+    to its owner key); returns doc_id -> dataset id."""
     chunks = passages(load_parsed(), max_tokens)
     absent = [_passage(c) for cs in chunks.values() for c in cs]
     absent = [t for t in absent if key("passage", t) not in vectors]
@@ -79,7 +81,6 @@ async def _store(
         " run `scripts/build_knowledge_eval.py embed` with NVIDIA_API_KEY"
     )
     await _knowledge_db(db)
-    owners = {user: hashlib.sha256(user.encode()).hexdigest() for user in dataset["users"]}
     kbs = {owner: uuid.uuid4() for owner in owners.values()}
     names: dict[uuid.UUID, str] = {}
     async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
@@ -134,7 +135,8 @@ async def test_recall_and_mrr_hold_the_baseline(role_db: RoleDatabase) -> None: 
         settings.knowledge_embedding_model,
         settings.knowledge_embedding_dimensions,
     ), "the committed vectors are not the configured embedding model's"
-    names = await _store(role_db, dataset, vectors, settings.knowledge_chunk_max_tokens)
+    owners = {user: hashlib.sha256(user.encode()).hexdigest() for user in dataset["users"]}
+    names = await _store(role_db, dataset, vectors, settings.knowledge_chunk_max_tokens, owners)
     cached = _Cached(vectors)
     retriever = Retriever(
         settings,
@@ -152,8 +154,7 @@ async def test_recall_and_mrr_hold_the_baseline(role_db: RoleDatabase) -> None: 
     for case in dataset["cases"]:
         if case["category"] != "answerable":
             continue
-        owner = hashlib.sha256(case["as_user"].encode()).hexdigest()
-        result = await retriever.search(owner, case["question"], k=10)
+        result = await retriever.search(owners[case["as_user"]], case["question"], k=10)
         located = [
             Located(names[p.doc_id], p.page_start, p.page_end, tuple(p.headings), p.text)
             for p in result.passages
