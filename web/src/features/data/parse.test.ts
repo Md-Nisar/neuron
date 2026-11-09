@@ -49,6 +49,63 @@ describe("parseExportPage", () => {
     expect(withTools.has_more_messages).toBe(true);
   });
 
+  const base = {
+    kb_id: "kb-1",
+    name: "Taxes",
+    processing: "hosted",
+    created_at: "a",
+    documents: [
+      {
+        doc_id: "d-1",
+        kb_id: "kb-1",
+        title: "Return 2025",
+        mime_type: "application/pdf",
+        size_bytes: 2048,
+        page_count: null,
+        status: "failed",
+        error_code: "parser_failed",
+        created_at: "a",
+        updated_at: "b",
+      },
+    ],
+  };
+
+  it("accepts the knowledge listing, and a page without one from an older server", () => {
+    const page = parseExportPage({
+      threads: [],
+      total_threads: 0,
+      has_more_messages: false,
+      knowledge_bases: [base],
+    });
+    expect(page.knowledge_bases[0]?.documents[0]).toEqual({
+      doc_id: "d-1",
+      title: "Return 2025",
+      mime_type: "application/pdf",
+      size_bytes: 2048,
+      page_count: null,
+      status: "failed",
+      error_code: "parser_failed",
+      created_at: "a",
+      updated_at: "b",
+    });
+    expect(
+      parseExportPage({ threads: [], total_threads: 0, has_more_messages: false }).knowledge_bases,
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["knowledge that is not a list", { knowledge_bases: {} }],
+    ["a base without documents", { knowledge_bases: [{ ...base, documents: undefined }] }],
+    [
+      "a document with a negative size",
+      { knowledge_bases: [{ ...base, documents: [{ ...base.documents[0], size_bytes: -1 }] }] },
+    ],
+  ])("rejects %s", (_name, extra) => {
+    expect(() =>
+      parseExportPage({ threads: [], total_threads: 0, has_more_messages: false, ...extra }),
+    ).toThrow(TypeError);
+  });
+
   it.each([
     ["no has_more_messages", { threads: [thread], total_threads: 1 }],
     [
@@ -78,8 +135,30 @@ describe("parseErasure", () => {
       erased_count: 2,
       skipped_busy_count: 0,
       erased_memory_count: 3,
+      knowledge: null,
       complete: true,
     });
+  });
+
+  it("reads the knowledge part, pending while its files are being deleted", () => {
+    const knowledge = { erased_base_count: 2, erased_document_count: 5, purge_pending: true };
+    const result = parseErasure({
+      erased_count: 0,
+      skipped_busy_count: 0,
+      erased_memory_count: 0,
+      knowledge: { ...knowledge, complete: false },
+      complete: false,
+    });
+    expect(result.knowledge).toEqual(knowledge);
+    expect(() =>
+      parseErasure({
+        erased_count: 0,
+        skipped_busy_count: 0,
+        erased_memory_count: 0,
+        knowledge: { erased_base_count: 2, erased_document_count: 5 },
+        complete: false,
+      }),
+    ).toThrow(TypeError);
   });
 
   it("rejects a result that does not say whether it is complete", () => {

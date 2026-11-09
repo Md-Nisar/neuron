@@ -329,6 +329,30 @@ describe("erase", () => {
     expect(onErased).not.toHaveBeenCalled();
   });
 
+  it("stays signed in while knowledge files are still being deleted, then finishes", async () => {
+    const { api, user, onErased } = setup({
+      memories: [memory(1)],
+      threads: [thread(1, 2)],
+      knowledge: { bases: [{}, {}], purgePending: true },
+    });
+    const erase = within(screen.getByRole("region", { name: "Erase your data" }));
+    expect(erase.getByText(/knowledge bases with their files/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Type erase my data to confirm/), phrase);
+    await user.click(screen.getByRole("button", { name: "Erase all my data" }));
+
+    expect(await erase.findByRole("status")).toHaveTextContent(
+      "Erased 1 conversations, 1 memories and 2 knowledge bases. Your knowledge files are still being deleted. Try again in a moment to finish.",
+    );
+    expect(onErased).not.toHaveBeenCalled();
+
+    // The worker has purged them: the repeat completes and signs the user out.
+    api.data.knowledge = { bases: [], purgePending: false };
+    await user.type(screen.getByLabelText(/Type erase my data to confirm/), phrase);
+    await user.click(screen.getByRole("button", { name: "Erase all my data" }));
+    expect(await erase.findByText(/0 knowledge bases\. Signing you out/)).toBeInTheDocument();
+    expect(onErased).toHaveBeenCalledOnce();
+  });
+
   it("makes one request on a double-click", async () => {
     const { api, user } = setup({ memories: [], threads: [thread(1, 1)] });
     await user.type(screen.getByLabelText(/Type erase my data to confirm/), phrase);

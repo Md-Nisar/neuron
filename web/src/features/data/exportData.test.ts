@@ -66,6 +66,21 @@ describe("buildExport", () => {
     ]);
   });
 
+  it("adds the knowledge listing from the first page once", async () => {
+    const bases = [
+      { kb_id: "kb-1", name: "Taxes", processing: "hosted", created_at: "a", documents: [] },
+    ];
+    const api = fakeApi({ ...dataset(), knowledge: { bases, purgePending: false } });
+    const exported = JSON.parse(await buildExport(deps(api.fetch))) as {
+      knowledge_bases: unknown[];
+    };
+    expect(exported.knowledge_bases).toEqual(bases);
+    const withoutKnowledge = JSON.parse(await buildExport(deps(fakeApi(dataset()).fetch))) as {
+      knowledge_bases: unknown[];
+    };
+    expect(withoutKnowledge.knowledge_bases).toEqual([]);
+  });
+
   it("works for an account with no conversations", async () => {
     const api = fakeApi({ memories: [memory(1)], threads: [] });
     const exported = JSON.parse(await buildExport(deps(api.fetch))) as {

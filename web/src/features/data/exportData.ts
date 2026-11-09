@@ -1,7 +1,7 @@
 import { ApiError } from "@/lib/request";
 
 import { exportPage, type DataDeps } from "./api";
-import type { ExportedMessage, ExportedThread, Memory } from "./parse";
+import type { ExportedKnowledgeBase, ExportedMessage, ExportedThread, Memory } from "./parse";
 
 /** The export is assembled in the browser; past this size it is refused rather than held. */
 export const MAX_EXPORT_CHARS = 64 * 1024 * 1024;
@@ -15,7 +15,8 @@ export class ExportError extends Error {
 }
 
 /**
- * Fetch all of the caller's threads, messages and memories and return them as one JSON text.
+ * Fetch all of the caller's threads, messages, memories and knowledge-base listing (metadata of
+ * their documents, never the files) and return them as one JSON text.
  *
  * The API pages threads and, independently, the messages inside them, and refuses a page over
  * its size limit (413); this halves the page sizes and retries. The result is checked for
@@ -33,6 +34,7 @@ export async function buildExport(
   let requests = 0;
   let size = 0;
   let memories: Memory[] = [];
+  let knowledgeBases: ExportedKnowledgeBase[] = [];
   const threads = new Map<string, ExportedThread>();
   const messages = new Map<string, (ExportedMessage | undefined)[]>();
 
@@ -59,7 +61,10 @@ export async function buildExport(
         throw error;
       }
       totalThreads = page.total_threads;
-      if (offset === 0 && messageOffset === 0) memories = page.memories;
+      if (offset === 0 && messageOffset === 0) {
+        memories = page.memories;
+        knowledgeBases = page.knowledge_bases;
+      }
       for (const thread of page.threads) {
         if (!threads.has(thread.thread_id)) {
           threads.set(thread.thread_id, { ...thread, messages: [] });
@@ -87,7 +92,12 @@ export async function buildExport(
     complete.push({ ...thread, messages: slots as ExportedMessage[] });
   }
   return JSON.stringify(
-    { exported_at: new Date().toISOString(), threads: complete, memories },
+    {
+      exported_at: new Date().toISOString(),
+      threads: complete,
+      memories,
+      knowledge_bases: knowledgeBases,
+    },
     null,
     2,
   );
