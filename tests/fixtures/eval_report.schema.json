@@ -31,12 +31,38 @@
       "minProperties": 1,
       "propertyNames": { "$ref": "#/$defs/suiteName" },
       "additionalProperties": { "$ref": "#/$defs/suite" }
-    }
+    },
+    "retrieval": { "$ref": "#/$defs/retrieval" }
   },
   "$defs": {
     "suiteName": { "enum": ["single_turn", "multi_turn", "security", "approval"] },
     "count": { "type": "integer", "minimum": 0 },
     "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "retrieval": {
+      "description": "Knowledge retrieval and citation metrics (RAG-08.01), from `retrieval_metrics`. A rate is null when no case measured it, such as citation precision without a model run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_version",
+        "answerable_cases",
+        "unanswerable_cases",
+        "recall_at_5",
+        "mrr",
+        "citation_precision",
+        "cited_correctly",
+        "abstention_accuracy"
+      ],
+      "properties": {
+        "dataset_version": { "type": "string", "minLength": 1 },
+        "answerable_cases": { "$ref": "#/$defs/count" },
+        "unanswerable_cases": { "$ref": "#/$defs/count" },
+        "recall_at_5": { "$ref": "#/$defs/rate" },
+        "mrr": { "$ref": "#/$defs/rate" },
+        "citation_precision": { "$ref": "#/$defs/rate" },
+        "cited_correctly": { "$ref": "#/$defs/rate" },
+        "abstention_accuracy": { "$ref": "#/$defs/rate" }
+      }
+    },
     "milliseconds": { "type": ["number", "null"], "minimum": 0 },
     "tokens": {
       "type": "object",

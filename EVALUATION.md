@@ -218,6 +218,19 @@ Estimated cost is not reported: it depends on the optional pricing file of ADR 0
 
 `latency_ms` (`p50`, `p95`, per suite) is the wall-clock time of a whole trial, including a multi-turn case's `setup` turns, over graded trials, by linear interpolation between ranks. `tokens` (per suite) is the provider-reported usage summed over all trials, including failed and infrastructure-error ones, by kind: `input_tokens`, `output_tokens`, `cache_read_tokens` (included in input), `reasoning_tokens` (included in output) and `total_tokens`. It is zero with the fake model, or for a provider that reports no usage.
 
+**Retrieval and citation metrics** (RAG-08.01, part 1). The report may carry a `retrieval` section for the knowledge eval. It is optional, like `prompt_version`, so `report_version` stays 1. `src/neuron_agent/retrieval_metrics.py` computes it. A passage or citation is correct when it is in one of the case's `expected_sources` in `tests/fixtures/knowledge_cases.json`: the same document, and either a page in its page range or a heading that contains an expected section's text (ignoring case and spacing).
+
+| Field | Meaning |
+| --- | --- |
+| `answerable_cases`, `unanswerable_cases` | Cases scored. |
+| `recall_at_5` | Share of answerable cases with a correct passage in search's top 5. |
+| `mrr` | Mean of 1/rank of each answerable case's first correct passage (0 for a miss). |
+| `citation_precision` | Share of all citations in answers to answerable cases that are correct. |
+| `cited_correctly` | Share of answerable cases whose answer cites at least one correct passage. The v1.1.0 gate asks for 0.9. |
+| `abstention_accuracy` | Share of unanswerable cases whose answer abstained (`grounded` false, nothing cited). |
+
+The last three need a model run and are `null` without one. `below_baseline` lists the metrics that fell more than a tolerance below a stored baseline. The run that fills this section and its baseline come in part 2 (#498).
+
 How to read a report:
 - Check `infrastructure_errors` first. If it is not zero, the run is incomplete, not a quality result: rerun before comparing.
 - A drop in `pass_hat_k` with a steady `pass_rate` means the agent got less consistent. A case with `passes` between 0 and k is flaky; one with 0 is broken.
