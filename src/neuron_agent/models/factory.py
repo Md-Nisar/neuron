@@ -544,6 +544,38 @@ class _StructuredOutputRetryMiddleware(AgentMiddleware[Any, Any]):
         raise AssertionError("unreachable")  # pragma: no cover
 
 
+def final_answer_middleware(max_model_calls: int) -> AgentMiddleware:
+    """Offer the model no tools on the run's last allowed model call, so that call answers.
+
+    A model that keeps calling tools otherwise ends the run with `agent_step_limit_exceeded` and
+    no answer: #480, and RAG-08.01's eval, where one sent the same refused search until the
+    limit. With no tools, `create_agent` binds only the structured answer (`tool_choice` "any"
+    for the tool strategy), so the model answers from what the run found.
+    """
+    return _FinalAnswerMiddleware(max_model_calls)
+
+
+class _FinalAnswerMiddleware(AgentMiddleware[Any, Any]):
+    def __init__(self, max_model_calls: int) -> None:
+        super().__init__()
+        self._max_model_calls = max_model_calls
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        if _model_calls_this_run(request.messages) >= self._max_model_calls - 1:
+            request = request.override(tools=[])
+        return await handler(request)
+
+
+def _model_calls_this_run(messages: Sequence[Any]) -> int:
+    """Model replies since the user's message: earlier turns are the thread's history."""
+    calls = 0
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage):
+            break
+        calls += isinstance(message, AIMessage)
+    return calls
+
+
 def _failed_answers_this_run(messages: Sequence[Any]) -> int:
     """Structured-output tool calls this run that were answered with an error, not accepted."""
     failed = 0
@@ -639,6 +671,7 @@ def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMi
         # Outside the tracing layer: each attempt is its own `chat` span.
         empty_reply_retry_middleware(),
         structured_output_retry_middleware(),
+        final_answer_middleware(settings.max_agent_iterations),
         tracing_middleware(settings),
         tool_authorization_middleware(registry),
         *([approval] if approval else []),
