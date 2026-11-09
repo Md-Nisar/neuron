@@ -14,6 +14,7 @@ import pytest
 import structlog.testing
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
+from pydantic import Field
 from tests.security.test_mcp_abuse import _call, _model, _RecordingModel
 from tests.security.test_tainted_egress import _registry, _searched
 
@@ -26,6 +27,7 @@ from neuron_agent.errors.base import (
 from neuron_agent.graphs import main_graph
 from neuron_agent.knowledge import tools as knowledge_tools
 from neuron_agent.knowledge.retrieval import Passage, SearchResult
+from neuron_agent.models import factory
 from neuron_agent.schemas.agent import AgentRequest
 from neuron_agent.schemas.knowledge import ChunkPassage, KnowledgeBase, KnowledgeChunk
 from neuron_agent.security.authorization import DEV_PERMISSIONS, AuthorizationContext
@@ -269,6 +271,45 @@ async def test_a_repeated_search_is_refused_and_a_new_one_runs(
     assert results[4][0] == "success"  # the same query of all bases, not of one
     # The calls of one turn run concurrently, in no fixed order.
     assert sorted(c[2] for c in _calls) == ["pump P-3", "pump P-3", "pump P-4"]
+
+
+class _Offered(_RecordingModel):
+    """Records the tool names and `tool_choice` of each model call."""
+
+    offered: list[tuple[list[str], Any]] = Field(default_factory=list)
+
+    def bind_tools(self, tools: Any, **kwargs: Any) -> Any:  # type: ignore[override]
+        names = sorted(str(factory._tool_name(tool)) for tool in tools)
+        self.offered.append((names, kwargs.get("tool_choice")))
+        return self
+
+
+async def test_the_first_call_must_search_when_the_caller_may(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # RAG-08.01's live eval: answers from general knowledge with no search. The first call is
+    # offered only `search_knowledge`, which it must call; later calls get every tool back.
+    model = _Offered(messages=iter([_call("search_knowledge", query="q"), AIMessage("done")]))
+    monkeypatch.setattr(factory, "create_chat_model", lambda _: model)
+
+    await _run(model)
+
+    first, second = model.offered
+    assert first == (["search_knowledge"], "any")
+    assert {"search_knowledge", "AgentAnswer"} <= set(second[0])
+
+
+async def test_a_caller_who_may_not_search_is_not_made_to(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _Offered(messages=iter([AIMessage("done")]))
+    monkeypatch.setattr(factory, "create_chat_model", lambda _: model)
+
+    await _run(model, scopes=_SCOPES - {"tools:search_knowledge"})
+
+    [(names, _)] = model.offered
+    assert "search_knowledge" not in names
+    assert "AgentAnswer" in names
 
 
 async def test_a_failed_search_can_be_retried(monkeypatch: pytest.MonkeyPatch) -> None:

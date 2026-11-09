@@ -4,6 +4,7 @@ survive into the answer, and they resolve to the passage they stand for."""
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -90,9 +91,10 @@ async def test_a_cite_id_copied_from_a_passage_is_dropped(
 async def test_without_a_knowledge_tool_every_citation_is_dropped(
     monkeypatch: pytest.MonkeyPatch, rejected: list[int]
 ) -> None:
+    # Without the search scope the first call is not made a search (`knowledge_first`).
     model = _model(monkeypatch, _answer("cite-1"))
 
-    result = await _run(model)
+    result = await _run(model, scopes=_SCOPES - {"tools:search_knowledge"})
 
     assert result["answer"].citations == []
     assert rejected == [1]
@@ -121,8 +123,11 @@ def test_only_successful_knowledge_tool_artifacts_mint_cite_ids() -> None:
     assert rejected == 2
 
 
-async def _thread_runs(model: Any, turns: int) -> tuple[Any, dict[str, Any]]:
-    """`turns` runs of one thread on a checkpointer; the graph and the thread's config."""
+async def _thread_runs(
+    model: Any, turns: int, scopes: Sequence[frozenset[str]] = ()
+) -> tuple[Any, dict[str, Any]]:
+    """`turns` runs of one thread on a checkpointer, each with its `scopes` (all by default);
+    the graph and the thread's config."""
     graph = main_graph.build_graph(
         Settings(env="test"),
         checkpointer=InMemorySaver(),
@@ -133,7 +138,7 @@ async def _thread_runs(model: Any, turns: int) -> tuple[Any, dict[str, Any]]:
         await graph.ainvoke(
             {"messages": [HumanMessage(content=f"turn {n}")]},
             config,
-            context=AuthorizationContext(_SCOPES, owner_key=_OWNER),
+            context=AuthorizationContext(scopes[n] if scopes else _SCOPES, owner_key=_OWNER),
         )
     return graph, config
 
@@ -148,7 +153,10 @@ async def test_citations_are_stored_with_the_answer_and_come_back_in_history(
         _call("AgentAnswer", answer="Hello again.", confidence=0.9),
     )
 
-    graph, config = await _thread_runs(model, turns=2)
+    # The second turn may not search, so it uses no knowledge tool.
+    graph, config = await _thread_runs(
+        model, turns=2, scopes=[_SCOPES, _SCOPES - {"tools:search_knowledge"}]
+    )
 
     stored = (await graph.aget_state(config)).values["messages"]
     history = agent_service._public_thread_messages(stored)
