@@ -584,7 +584,16 @@ class _KnowledgeFirstMiddleware(AgentMiddleware[Any, Any]):
         if _model_calls_this_run(request.messages) == 0:
             search = [tool for tool in request.tools if _tool_name(tool) == _KNOWLEDGE_SEARCH]
             if search:
-                request = request.override(tools=search, tool_choice="any", response_format=None)
+                response = await handler(
+                    request.override(tools=search, tool_choice="any", response_format=None)
+                )
+                if not any(
+                    isinstance(m, AIMessage) and m.tool_calls
+                    for m in getattr(response, "result", [])
+                ):
+                    # A provider that ignores `tool_choice`: the answer is then ungrounded.
+                    logger.warning("knowledge_first_search_skipped")
+                return response
         return await handler(request)
 
 

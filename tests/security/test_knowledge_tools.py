@@ -312,6 +312,21 @@ async def test_a_caller_who_may_not_search_is_not_made_to(
     assert "AgentAnswer" in names
 
 
+async def test_a_first_call_that_does_not_search_is_logged_and_still_answers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A provider that ignores `tool_choice`: the run degrades to an ungrounded answer.
+    model = _Offered(messages=iter([AIMessage("From memory.")]))
+    monkeypatch.setattr(factory, "create_chat_model", lambda _: model)
+
+    with structlog.testing.capture_logs() as logs:
+        result = await _run(model)
+
+    assert result["answer"].answer == "From memory."
+    assert result["answer"].citations == []
+    assert "knowledge_first_search_skipped" in [entry["event"] for entry in logs]
+
+
 async def test_a_failed_search_can_be_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arguments that failed validation are the model's own, unchecked: they must neither end
     # the run nor make a corrected retry count as a repeat.
