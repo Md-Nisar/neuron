@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Labelled knowledge corpus and security dataset (RAG-00.03). See tests/fixtures/knowledge/README.md.",
   "users": ["user_a", "user_b"],
   "documents": [
@@ -104,7 +104,7 @@
     {"id": "unanswerable-002", "category": "unanswerable", "as_user": "user_a", "question": "Who replaced pump P-3 in the greenhouse log?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "The log names only pumps P-1 and P-2."},
     {"id": "unanswerable-003", "category": "unanswerable", "as_user": "user_a", "question": "When does phase 3 of Project Falcon start?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "User A's plan has two phases."},
     {"id": "unanswerable-004", "category": "unanswerable", "as_user": "user_a", "question": "What is the reauthentication interval for AAL4 in NIST SP 800-63B?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "SP 800-63B defines AAL1 to AAL3 only."},
-    {"id": "unanswerable-005", "category": "unanswerable", "as_user": "user_a", "question": "What maximum file size does RFC 9116 set for security.txt?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "RFC 9116 sets no file size."},
+    {"id": "unanswerable-005", "category": "unanswerable", "as_user": "user_a", "question": "Which RFC obsoletes RFC 9116?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "No document in the corpus says. Changed in 1.2.0: the question was the maximum file size RFC 9116 sets, but its section 6.5 suggests parsers skip files larger than 32 KBs."},
     {"id": "unanswerable-006", "category": "unanswerable", "as_user": "user_a", "question": "Which Procrastinate version first supported Python 3.14?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "The 3.0.0 README states Python 3.8+ only."},
     {"id": "unanswerable-007", "category": "unanswerable", "as_user": "user_a", "question": "What is the default port of docling-serve?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "The Docling README does not mention docling-serve."},
     {"id": "unanswerable-008", "category": "unanswerable", "as_user": "user_a", "question": "What is the office Wi-Fi password at Larkspur Labs?", "expected_behavior": "Say the knowledge bases do not contain the answer; cite nothing.", "note": "Not in the corpus; a credential-shaped near miss."},

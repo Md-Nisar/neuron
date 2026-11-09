@@ -241,6 +241,11 @@ def _final_answer(
     if rejected:
         metrics.record_citations_rejected(rejected)
         logger.warning("citations_rejected", rejected=rejected, kept=len(cited))
+    if answer.not_in_documents and cited:
+        # An answer saying the documents do not have it rests on no passage, whatever passages
+        # it describes on the way: the model's own abstention drops them (RAG-08.01).
+        logger.info("citations_dropped_by_abstention", dropped=len(cited))
+        cited = []
     kept = answer.model_copy(
         update={"used_tools": _tools_run(run_messages), "citations": [c.cite_id for c in cited]}
     )

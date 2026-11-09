@@ -544,6 +544,72 @@ class _StructuredOutputRetryMiddleware(AgentMiddleware[Any, Any]):
         raise AssertionError("unreachable")  # pragma: no cover
 
 
+def final_answer_middleware(max_model_calls: int) -> AgentMiddleware:
+    """Offer the model no tools on the run's last allowed model call, so that call answers.
+
+    A model that keeps calling tools otherwise ends the run with `agent_step_limit_exceeded` and
+    no answer: #480, and RAG-08.01's eval, where one sent the same refused search until the
+    limit. With no tools, `create_agent` binds only the structured answer (`tool_choice` "any"
+    for the tool strategy), so the model answers from what the run found. With a limit of one
+    call, that call is offered no tools: a tool result would have no call left to answer it.
+    """
+    return _FinalAnswerMiddleware(max_model_calls)
+
+
+class _FinalAnswerMiddleware(AgentMiddleware[Any, Any]):
+    def __init__(self, max_model_calls: int) -> None:
+        super().__init__()
+        self._max_model_calls = max_model_calls
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        if _model_calls_this_run(request.messages) >= self._max_model_calls - 1:
+            request = request.override(tools=[])
+        return await handler(request)
+
+
+def knowledge_first_middleware() -> AgentMiddleware:
+    """Make the run's first model call a knowledge search, when the caller may search.
+
+    The prompt asks for a search before a factual answer, but a model often answers from general
+    knowledge without one, which leaves the answer ungrounded (RAG-08.01's live eval). That call
+    is offered `search_knowledge` alone, with no structured answer, and must call it; the model
+    still writes the query. It sits inside the tool authorization middleware, so it sees only the
+    tools the caller may use, and inside the final-answer step, which wins on a one-call run.
+    """
+    return _KnowledgeFirstMiddleware()
+
+
+class _KnowledgeFirstMiddleware(AgentMiddleware[Any, Any]):
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        if _model_calls_this_run(request.messages) == 0:
+            search = [tool for tool in request.tools if _tool_name(tool) == _KNOWLEDGE_SEARCH]
+            if search:
+                response = await handler(
+                    request.override(tools=search, tool_choice="any", response_format=None)
+                )
+                if not any(
+                    isinstance(m, AIMessage) and m.tool_calls
+                    for m in getattr(response, "result", [])
+                ):
+                    # A provider that ignores `tool_choice`: the answer is then ungrounded.
+                    logger.warning("knowledge_first_search_skipped")
+                return response
+        return await handler(request)
+
+
+_KNOWLEDGE_SEARCH = "search_knowledge"
+
+
+def _model_calls_this_run(messages: Sequence[Any]) -> int:
+    """Model replies since the user's message: earlier turns are the thread's history."""
+    calls = 0
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage):
+            break
+        calls += isinstance(message, AIMessage)
+    return calls
+
+
 def _failed_answers_this_run(messages: Sequence[Any]) -> int:
     """Structured-output tool calls this run that were answered with an error, not accepted."""
     failed = 0
@@ -639,8 +705,10 @@ def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMi
         # Outside the tracing layer: each attempt is its own `chat` span.
         empty_reply_retry_middleware(),
         structured_output_retry_middleware(),
+        final_answer_middleware(settings.max_agent_iterations),
         tracing_middleware(settings),
         tool_authorization_middleware(registry),
+        knowledge_first_middleware(),
         *([approval] if approval else []),
         tool_failure_isolation_middleware(),
         tool_timeout_middleware(settings.tool_timeout_seconds),
@@ -716,20 +784,25 @@ class _FakeChatModel(FakeListChatModel):
     def _knowledge_step(self, messages: list[BaseMessage]) -> dict[str, Any] | None:
         """A scripted knowledge turn, for browser tests of citations (RAG-06.02): a `search: ...`
         user turn searches knowledge, and the search's result is answered citing its first
-        `cite_id` (read from the result text, as a model would). Needs `search_knowledge` and the
-        `AgentAnswer` output tool bound; otherwise the reply is the usual text."""
-        if not {"search_knowledge", _STRUCTURED_OUTPUT_TOOL} <= set(self.bound_tool_names):
-            return None
+        `cite_id` (read from the result text, as a model would). The search needs
+        `search_knowledge` bound, the answer the `AgentAnswer` output tool; otherwise the reply
+        is the usual text."""
+        bound = set(self.bound_tool_names)
         last = messages[-1] if messages else None
         prefix = "search:"
         if (
-            isinstance(last, HumanMessage)
+            _KNOWLEDGE_SEARCH in bound
+            and isinstance(last, HumanMessage)
             and isinstance(last.content, str)
             and last.content.startswith(prefix)
         ):
             query = last.content[len(prefix) :].strip()
             return {"name": "search_knowledge", "args": {"query": query}, "id": uuid.uuid4().hex}
-        if isinstance(last, ToolMessage) and last.name == "search_knowledge":
+        if (
+            _STRUCTURED_OUTPUT_TOOL in bound
+            and isinstance(last, ToolMessage)
+            and last.name == _KNOWLEDGE_SEARCH
+        ):
             found = _CITE_ID.search(str(last.content))
             answer = {
                 "answer": "From your documents." if found else "Your documents do not say.",

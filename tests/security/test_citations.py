@@ -4,6 +4,7 @@ survive into the answer, and they resolve to the passage they stand for."""
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -90,9 +91,10 @@ async def test_a_cite_id_copied_from_a_passage_is_dropped(
 async def test_without_a_knowledge_tool_every_citation_is_dropped(
     monkeypatch: pytest.MonkeyPatch, rejected: list[int]
 ) -> None:
+    # Without the search scope the first call is not made a search (`knowledge_first`).
     model = _model(monkeypatch, _answer("cite-1"))
 
-    result = await _run(model)
+    result = await _run(model, scopes=_SCOPES - {"tools:search_knowledge"})
 
     assert result["answer"].citations == []
     assert rejected == [1]
@@ -121,8 +123,11 @@ def test_only_successful_knowledge_tool_artifacts_mint_cite_ids() -> None:
     assert rejected == 2
 
 
-async def _thread_runs(model: Any, turns: int) -> tuple[Any, dict[str, Any]]:
-    """`turns` runs of one thread on a checkpointer; the graph and the thread's config."""
+async def _thread_runs(
+    model: Any, turns: int, scopes: Sequence[frozenset[str]] = ()
+) -> tuple[Any, dict[str, Any]]:
+    """`turns` runs of one thread on a checkpointer, each with its `scopes` (all by default);
+    the graph and the thread's config."""
     graph = main_graph.build_graph(
         Settings(env="test"),
         checkpointer=InMemorySaver(),
@@ -133,7 +138,7 @@ async def _thread_runs(model: Any, turns: int) -> tuple[Any, dict[str, Any]]:
         await graph.ainvoke(
             {"messages": [HumanMessage(content=f"turn {n}")]},
             config,
-            context=AuthorizationContext(_SCOPES, owner_key=_OWNER),
+            context=AuthorizationContext(scopes[n] if scopes else _SCOPES, owner_key=_OWNER),
         )
     return graph, config
 
@@ -148,7 +153,10 @@ async def test_citations_are_stored_with_the_answer_and_come_back_in_history(
         _call("AgentAnswer", answer="Hello again.", confidence=0.9),
     )
 
-    graph, config = await _thread_runs(model, turns=2)
+    # The second turn may not search, so it uses no knowledge tool.
+    graph, config = await _thread_runs(
+        model, turns=2, scopes=[_SCOPES, _SCOPES - {"tools:search_knowledge"}]
+    )
 
     stored = (await graph.aget_state(config)).values["messages"]
     history = agent_service._public_thread_messages(stored)
@@ -192,6 +200,30 @@ async def test_a_search_with_no_valid_citation_is_not_grounded(
         [],
         False,
     )
+
+
+async def test_an_answer_saying_the_documents_lack_it_keeps_no_citation(
+    monkeypatch: pytest.MonkeyPatch, rejected: list[int]
+) -> None:
+    # RAG-08.01: asked about a phase 3 that does not exist, the model said so and cited the
+    # plan's phases 1 and 2. Its abstention, not the absence of citations, decides.
+    abstained = _call(
+        "AgentAnswer",
+        answer="Your documents do not mention a phase 3; the plan lists phases 1 and 2.",
+        confidence=0.9,
+        citations=["cite-1", "cite-2", "forged"],
+        not_in_documents=True,
+    )
+    model = _model(monkeypatch, _call("search_knowledge", query="q"), abstained)
+
+    graph, config = await _thread_runs(model, turns=1)
+
+    answer = (await graph.aget_state(config)).values["messages"][1]
+    assert (answer.additional_kwargs["citations"], answer.additional_kwargs["grounded"]) == (
+        [],
+        False,
+    )
+    assert rejected == [1]  # the forged id is still counted; the valid ones are not
 
 
 def test_a_stamp_that_does_not_validate_is_ignored() -> None:

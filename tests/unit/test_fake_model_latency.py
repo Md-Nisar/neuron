@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import time
 
 import pytest
@@ -18,6 +19,9 @@ def _fake(**overrides: object) -> Settings:
 
 async def _stream(settings: Settings) -> tuple[float, int, float]:
     model = create_chat_model(settings)
+    # Collect earlier tests' garbage first: late in the suite a full collection takes ~0.3 s and
+    # would land inside the timed window, measuring the heap rather than the model.
+    gc.collect()
     start = time.perf_counter()
     first = 0.0
     count = 0
