@@ -65,6 +65,13 @@ class AgentAnswer(BaseModel):
         default_factory=list,
         description="The cite_id of each knowledge passage the answer relies on.",
     )
+    not_in_documents: bool = Field(
+        default=False,
+        description=(
+            "True when you searched the user's knowledge bases and they do not answer the "
+            "question. The answer then cites nothing."
+        ),
+    )
 
 
 class Citation(BaseModel):

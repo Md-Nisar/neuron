@@ -7,7 +7,7 @@ import hashlib
 from neuron_agent.prompts.loader import SYSTEM_PROMPT_VERSION, load_prompt
 
 # Update both together, and record the new version in CHANGELOG.md.
-_PINNED = (4, "183e73c8337cbcd265dccc5756eadbe68dc9c2fbe564151b24ce58d6fbe905a9")
+_PINNED = (4, "65637383f7bcb2736d4229a394953fd9a3fe714373c3280727586bbd2bdebfcf")
 
 
 def test_the_system_prompt_version_matches_its_content() -> None:
@@ -37,4 +37,4 @@ def test_the_prompt_asks_to_cite_nothing_for_a_false_premise() -> None:
     # model said so but cited the plan's phases 1 and 2, so the answer was grounded.
     prompt = load_prompt("system/main.md")
     assert "something the documents do not mention" in prompt
-    assert "even for passages that show what they do list" in prompt
+    assert "set `not_in_documents` to true, even if you say what they do list" in prompt

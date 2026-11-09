@@ -194,6 +194,30 @@ async def test_a_search_with_no_valid_citation_is_not_grounded(
     )
 
 
+async def test_an_answer_saying_the_documents_lack_it_keeps_no_citation(
+    monkeypatch: pytest.MonkeyPatch, rejected: list[int]
+) -> None:
+    # RAG-08.01: asked about a phase 3 that does not exist, the model said so and cited the
+    # plan's phases 1 and 2. Its abstention, not the absence of citations, decides.
+    abstained = _call(
+        "AgentAnswer",
+        answer="Your documents do not mention a phase 3; the plan lists phases 1 and 2.",
+        confidence=0.9,
+        citations=["cite-1", "cite-2"],
+        not_in_documents=True,
+    )
+    model = _model(monkeypatch, _call("search_knowledge", query="q"), abstained)
+
+    graph, config = await _thread_runs(model, turns=1)
+
+    answer = (await graph.aget_state(config)).values["messages"][1]
+    assert (answer.additional_kwargs["citations"], answer.additional_kwargs["grounded"]) == (
+        [],
+        False,
+    )
+    assert rejected == []  # dropped by the model's own abstention, not rejected as invalid
+
+
 def test_a_stamp_that_does_not_validate_is_ignored() -> None:
     message = AIMessage(content="x", additional_kwargs={"citations": [{"cite_id": 1}]})
 
