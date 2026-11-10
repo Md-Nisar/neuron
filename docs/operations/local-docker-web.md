@@ -58,3 +58,13 @@ make web-dev
 ```
 
 After changing the login theme in `keycloak-theme/`, run `docker compose up --build keycloak`.
+
+## 5. Checking the stack
+
+CI's `local-stack` job starts this stack from a clean checkout and checks upload → ask → cite
+through the API. To run the same check against your running stack (fake model, no key in
+`.env`):
+
+```bash
+SMOKE_TEST_TOKEN="$(make -s reference-token)" python3 scripts/smoke_test.py --knowledge http://127.0.0.1:8000
+```

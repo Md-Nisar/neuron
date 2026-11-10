@@ -8,6 +8,7 @@ deployment would see.
 from __future__ import annotations
 
 import importlib
+import json
 import socket
 import threading
 import time
@@ -277,3 +278,90 @@ def test_misuse_exits_two(capfd: pytest.CaptureFixture[str]) -> None:
 def test_malformed_url_exits_two_without_echoing_it(capfd: pytest.CaptureFixture[str]) -> None:
     assert smoke_test.main(["http://[bad-host"], {ENV_NAME: "t"}) == 2
     assert "bad-host" not in capfd.readouterr().err
+
+
+_DOC = "11111111-1111-1111-1111-111111111111"
+
+
+def _knowledge_stub(
+    *, status: str = "ready", cite_doc: str = _DOC
+) -> Callable[[str, str], tuple[int, dict[str, str], bytes]]:
+    """A stack that answers `--knowledge`'s requests; `status` and `cite_doc` break one step."""
+
+    def respond(method: str, path: str) -> tuple[int, dict[str, str], bytes]:
+        if path == "/health/ready":
+            return 200, {}, b'{"status": "ready"}'
+        if method == "DELETE":
+            return (202 if path.startswith("/v1/knowledge/") else 204), {}, b""
+        if path == "/v1/knowledge/bases":
+            return 201, {}, b'{"kb_id": "kb-1"}'
+        if path == "/v1/knowledge/bases/kb-1/documents":
+            return 202, {}, f'{{"doc_id": "{_DOC}"}}'.encode()
+        if path == f"/v1/knowledge/documents/{_DOC}":
+            return 200, {}, f'{{"status": "{status}"}}'.encode()
+        answer = {"answer": "ok", "thread_id": "t-1", "grounded": True}
+        answer["citations"] = [{"cite_id": "c1", "doc_id": cite_doc}]
+        return 200, {}, json.dumps(answer).encode()
+
+    return respond
+
+
+def _smoke_knowledge(url: str) -> int:
+    return smoke_test.main(["--knowledge", url], {ENV_NAME: "secret-token-value"})
+
+
+def test_knowledge_flow_uploads_asks_cites_and_deletes_the_base(
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    url, server, seen = _stub(_knowledge_stub())
+    try:
+        assert _smoke_knowledge(url) == 0
+    finally:
+        _stop(server)
+    out = capfd.readouterr().out
+    assert "knowledge-base, upload, ingest, cite, knowledge-cleanup" in out
+    assert ("POST", "/v1/knowledge/bases/kb-1/documents") in seen
+    assert ("DELETE", "/v1/knowledge/bases/kb-1") in seen
+
+
+@pytest.mark.parametrize(
+    ("stub", "step"),
+    [
+        (_knowledge_stub(status="failed"), "ingest: document is failed"),
+        (_knowledge_stub(cite_doc="someone-else"), "cite: the answer is not grounded"),
+    ],
+)
+def test_knowledge_flow_fails_and_still_deletes_the_base(
+    stub: Callable[[str, str], tuple[int, dict[str, str], bytes]],
+    step: str,
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    url, server, seen = _stub(stub)
+    try:
+        assert _smoke_knowledge(url) == 1
+    finally:
+        _stop(server)
+    out, err = capfd.readouterr()
+    assert step in err
+    assert "secret-token-value" not in out + err
+    assert ("DELETE", "/v1/knowledge/bases/kb-1") in seen
+
+
+def test_a_failed_cleanup_does_not_hide_the_failed_check(
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    broken = _knowledge_stub(status="failed")
+
+    def respond(method: str, path: str) -> tuple[int, dict[str, str], bytes]:
+        if method == "DELETE" and path.startswith("/v1/knowledge/"):
+            return 500, {}, b""
+        return broken(method, path)
+
+    url, server, _ = _stub(respond)
+    try:
+        assert _smoke_knowledge(url) == 1
+    finally:
+        _stop(server)
+    err = capfd.readouterr().err
+    assert "FAILED ingest: document is failed" in err
+    assert "warning: knowledge-cleanup: HTTP 500" in err

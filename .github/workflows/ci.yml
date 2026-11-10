@@ -187,6 +187,31 @@ jobs:
       - if: failure()
         run: tail -n 200 worker.log
 
+  # The one-command local stack (RAG-08.04): `docker compose up --build` from a clean checkout,
+  # then upload -> ask -> cite through the API as the realm's throwaway user `alice`. No provider
+  # key, so the fake model and fake embeddings keep it offline; docling-serve is not started.
+  local-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Start the stack
+        run: docker compose up --build --detach --wait --wait-timeout 600
+      - name: Upload, ask and cite
+        run: |
+          set -euo pipefail
+          token="$(sh scripts/reference_token.sh alice)"
+          echo "::add-mask::$token"
+          SMOKE_TEST_TOKEN="$token" python3 scripts/smoke_test.py --knowledge http://127.0.0.1:8000
+      - if: failure()
+        run: docker compose ps --all && docker compose logs --no-color --tail 200
+      - if: always()
+        run: docker compose down --volumes
+
   # Runs the real `promtool` and `otelcol-contrib` (pinned by version and SHA-256 in the script)
   # on the alert rules and the Collector config. Standard library Python only; no secret.
   observability-config:
