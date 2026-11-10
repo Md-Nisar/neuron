@@ -264,6 +264,19 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
     `neuron.knowledge.results` (a count), `neuron.owner_key_prefix` and `neuron.outcome`; a
     failure sets `error.type` (`embedding_error`, `persistence_error`, ...). Never the query, a
     passage, a title or file name, or a vector (RAG-08.03).
+  - `neuron.knowledge.upload`, one per document upload, with `neuron.knowledge.kb_id`,
+    `neuron.knowledge.bytes`, `neuron.knowledge.doc_id` and `neuron.outcome` (the document's
+    status, `queued` for a new one); a refused upload sets `error.type` (`unsupported_media_type`,
+    `byte_quota_exceeded`, ...). Never the file name (the document's title) or its content.
+  - In the worker, `neuron.knowledge.ingest`, one per ingestion attempt, with
+    `neuron.knowledge.doc_id`, `neuron.knowledge.kb_id`, `neuron.knowledge.chunks` and
+    `neuron.outcome` (`ready`, `failed`, `skipped`, or `retry` when the attempt is raised for
+    the queue to retry), and a child span per stage, `neuron.knowledge.ingest.<stage>` (`policy`,
+    `fetch`, `parse`, `embed`, `write`) with `neuron.knowledge.ingest.stage`. A failed stage sets
+    `error.type` to the document's stable error code (`parser_unavailable`, `no_text`,
+    `embedding_provider_unavailable`, ...), or `ingest_failed` for an error without one. The worker
+    exports only when `APP_OTEL_ENABLED=true`; give it its own `APP_OTEL_SERVICE_NAME` (for
+    example `neuron-worker`) so its series are not mistaken for the API's.
   - `neuron.stream` around an SSE stream (the parent of its `invoke_agent` span), with
     `neuron.stream.ttft_ms`, `neuron.stream.events` and `neuron.stream.termination`, which
     takes the `stream_completed` log's values plus `client_disconnect`.
@@ -307,6 +320,8 @@ are in seconds. Instruments:
 | `neuron.citations.rejected` | counter, `{citation}` | none. `cite_id`s an answer listed that no knowledge tool returned in its run (made up, or copied from a passage); they are dropped from the answer (log `citations_rejected`) |
 | `neuron.knowledge.search.duration` | histogram | `neuron.knowledge.search.mode` (`hybrid`, `dense`, `fts`), `neuron.outcome` (`success`, `error`), `error.type`. The embedding call and the database queries of one search; a hybrid search whose provider is down still succeeds, on full text (log `knowledge_search_dense_skipped`) |
 | `neuron.knowledge.search.results` | histogram, `{passage}` | `neuron.knowledge.search.mode`. Passages returned per successful search; a share of zeros means questions the documents do not answer, or bases that are empty or still ingesting |
+| `neuron.knowledge.ingest.duration` | histogram | `neuron.outcome` (`ready`, `failed`, `skipped`, `retry`). One ingestion attempt in the worker, from loading the row to the committed chunk set |
+| `neuron.knowledge.ingest.stage_errors` | counter, `{error}` | `neuron.knowledge.ingest.stage` (`policy`, `fetch`, `parse`, `embed`, `write`), `error.type` (the stable error code, or `ingest_failed`). A retryable failure counts on each attempt, so `parser_unavailable` or `embedding_provider_unavailable` rising means a service is down |
 | `neuron.checkpoint.duration` | histogram | `neuron.outcome`, `error.type` (the exception class) |
 | `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |
 | `http.server.request.body.size`, `http.server.response.body.size` | histogram | `http.route`, `http.response.status_code` |

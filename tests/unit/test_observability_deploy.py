@@ -59,7 +59,7 @@ def _attribute_constants() -> set[str]:
         "APPROVAL_SPAN",
         "FEEDBACK_SPAN",
         "MEMORY_SPAN",
-        "KNOWLEDGE_SEARCH_SPAN",
+        "KNOWLEDGE_",
         "OUTCOME_",
     )
     return {

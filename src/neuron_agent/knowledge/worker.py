@@ -46,6 +46,7 @@ from neuron_agent.knowledge.parsing import (
 from neuron_agent.knowledge.providers import create_embedding_provider
 from neuron_agent.knowledge.purge import Purger
 from neuron_agent.observability.logging import configure_logging
+from neuron_agent.observability.telemetry import configure_telemetry
 from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
 from neuron_agent.persistence.roles import AppRoleError, role_problems
 from neuron_agent.persistence.startup_checks import ROLE_NOT_APP_USER, StartupCheckError
@@ -305,6 +306,9 @@ def main(argv: list[str] | None = None) -> None:
         version=settings.version,
         environment=settings.env,
     )
+    # Spans and metrics over OTLP when `APP_OTEL_ENABLED`, as the API does (RAG-08.03); set
+    # `APP_OTEL_SERVICE_NAME` to tell the worker's series from the API's.
+    otel = configure_telemetry(settings)
     try:
         asyncio.run(run(settings))
     except StartupCheckError as exc:
@@ -314,3 +318,6 @@ def main(argv: list[str] | None = None) -> None:
         # The class only: a driver or library message can echo the host, the user or the DSN.
         print(f"worker failed: {type(exc).__name__}", file=sys.stderr)
         raise SystemExit(1) from None
+    finally:
+        if otel is not None:
+            otel.shutdown()  # flush what the last jobs recorded

@@ -63,7 +63,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 
 v1.1.0 scope (E00–E08): 33 stories, 28 done, 2 in progress (RAG-08.03, RAG-08.04), 3 pending. Of the pending ones, RAG-07.02 is ready; RAG-07.03 waits for RAG-07.02, and RAG-08.05 for all of them.
 
-**Recommended next action (2026-11-10):** RAG-08.03 in progress (#508): part 1, search telemetry, on branch `RAG-08.03-part1`; parts 2 (upload and ingestion) and 3 (queue age, alert, dashboards) follow. RAG-08.02 is Done: #504, #505 and #506 merged, #503 closed. RAG-08.04 part 2 is on branch `RAG-08.04` (no PR yet); parts 2 and 3 continue in parallel. RAG-07.02 is also ready.
+**Recommended next action (2026-11-10):** RAG-08.03 in progress (#508): part 1, search telemetry, merged (#509); part 2, upload and ingestion telemetry, on branch `RAG-08.03-part2`; part 3 (queue age, alert, dashboards) follows. RAG-08.02 is Done: #504, #505 and #506 merged, #503 closed. RAG-08.04 part 2 is on branch `RAG-08.04` (no PR yet); parts 2 and 3 continue in parallel. RAG-07.02 is also ready.
 
 ## GitHub synchronisation
 
@@ -385,7 +385,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-07.03 | Backup and restore drill covers knowledge | 1 | P1 | Pending | — | — | — |
 | RAG-08.01 | Retrieval and citation eval harness | 1 | P0 | Done | #498 | #499, #500, #501, #502 | AC1: all four metrics in the report (`test_live_knowledge_answers.py`); AC2: `test_postgres_knowledge_retrieval.py` gates recall@5 and MRR against `evals/baselines/knowledge_retrieval.json`; AC3: 0.938 cited correctly; AC4: 12 of 12 abstained (sixth live run, `docs/releases/v1.1.0-retrieval-eval.md`) |
 | RAG-08.02 | Knowledge security test suite | 1 | P0 | Done | #503 | #504, #505, #506 | AC3, `docs/security/threat-model.md` "Knowledge Engine (v1.1.0)"; the hidden-instruction case, `tests/security/test_knowledge_injection.py`; AC1, `tests/security/test_knowledge_security_suite.py`; AC2, `scripts/knowledge_mutations.py` (20 of 20 mutants caught in CI's `postgres-integration` on #506 and locally); `postgres-integration` green on #504, #505 and #506 |
-| RAG-08.03 | Knowledge telemetry and leak scan | 1 | P1 | In progress | #508 | part 1 | Partial: AC1 for search, `tests/integration/test_postgres_knowledge_telemetry.py` (span with ids, counts and timings, no query); AC2 for search (no query, passage, title or vector in spans, metrics or logs). Ingestion (part 2) and the queue-age alert, AC3 (part 3), to come |
+| RAG-08.03 | Knowledge telemetry and leak scan | 1 | P1 | In progress | #508 | #509, part 2 | Partial: AC1 for search, `tests/integration/test_postgres_knowledge_telemetry.py` (span with ids, counts and timings, no query); AC2 for search (no query, passage, title or vector in spans, metrics or logs). AC2 for upload and ingestion (part 2: upload span, ingest span per stage, no file name or text in telemetry). The queue-age alert, AC3 (part 3), to come |
 | RAG-08.04 | Reference stack, documentation and runbooks | 1 | P1 | In progress | #485 | #484 (part 1) | Partial: images for the one-command stack and the blob directory (#484, build evidence in the PR). AC1 (one command, upload → ask → cite) waits for part 2's compose file and part 3's CI smoke check; AC2 (`AGENTS.md`, `CLAUDE.md` state knowledge boundaries) not done; runbooks not done |
 | RAG-08.05 | v1.1.0 release verification | 1 | P0 | Pending | — | — | — |
 | RAG-09.01 | Optional reranker providers | 2 | P1 | Pending | — | — | — |
@@ -416,6 +416,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-10 | RAG-08.03 part 1 merged (#509); part 2, upload and ingestion telemetry, the worker exports telemetry | Claude session |
 | 2026-11-10 | RAG-08.03 In progress: issue #508 under #497; part 1, the `neuron.knowledge.search` span and search metrics, leak scan over a real search | Claude session |
 | 2026-11-10 | RAG-08.02 Done: #504, #505 and #506 merged; `postgres-integration` green on each, all 20 mutants caught in CI (AC2); #503 closed. Next: RAG-08.03 | Claude session |
 | 2026-11-10 | RAG-08.02 part 3: mutation check (AC2), 20 mutants all caught on CI's pgvector image; security review findings fixed; RAG-08.04 part 2 moved to branch `RAG-08.04` (reverted on the RAG-08.02 branch, force-push not allowed). Next: the PR | Claude session |

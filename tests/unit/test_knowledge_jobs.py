@@ -191,3 +191,27 @@ def test_an_unexpected_error_prints_only_its_class(
         get_settings.cache_clear()
     assert caught.value.code == 1
     assert capsys.readouterr().err == "worker failed: RuntimeError\n"
+
+
+def test_the_worker_exports_telemetry_and_flushes_it_on_exit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flushed: list[bool] = []
+
+    class _Telemetry:
+        def shutdown(self) -> None:
+            flushed.append(True)
+
+    async def done(_: Settings) -> None:
+        return None
+
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("APP_POSTGRES_WORKER_DSN", "postgresql://w@h/d")
+    monkeypatch.setattr(worker, "configure_telemetry", lambda settings: _Telemetry())
+    monkeypatch.setattr(worker, "run", done)
+    get_settings.cache_clear()
+    try:
+        worker.main([])
+    finally:
+        get_settings.cache_clear()
+    assert flushed == [True]
