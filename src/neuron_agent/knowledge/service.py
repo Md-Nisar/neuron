@@ -26,6 +26,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
+    AppError,
     IdempotencyKeyReusedError,
     IngestionConcurrencyError,
     KnowledgeBaseLimitError,
@@ -39,6 +40,7 @@ from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge.authorization import KnowledgeAuthorization
 from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.parsing import Limits, ParseError, accepted_type
+from neuron_agent.observability import semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
 from neuron_agent.schemas.knowledge import (
@@ -321,6 +323,33 @@ class KnowledgeBases:
         A refused file stores nothing. The document row and its job commit together; if they do
         not, the stored file is deleted.
         """
+        attributes: dict[str, str | int] = {
+            semconv.NEURON_KNOWLEDGE_KB_ID: str(kb_id),
+            semconv.NEURON_KNOWLEDGE_BYTES: len(data),
+        }
+        # Ids, the size and the outcome: never the title (the file name) or the content.
+        with telemetry.start_span(semconv.KNOWLEDGE_UPLOAD_SPAN, attributes=attributes) as span:
+            try:
+                accepted = await self._upload(
+                    owner_key, kb_id, data, claimed_type, title, idempotency_key
+                )
+            except Exception as exc:
+                code = exc.context.code if isinstance(exc, AppError) else "upload_failed"
+                telemetry.record_error(span, code)
+                raise
+            span.set_attribute(semconv.NEURON_KNOWLEDGE_DOC_ID, str(accepted.doc_id))
+            span.set_attribute(semconv.NEURON_OUTCOME, accepted.status)
+        return accepted
+
+    async def _upload(
+        self,
+        owner_key: str,
+        kb_id: uuid.UUID,
+        data: bytes,
+        claimed_type: str,
+        title: str,
+        idempotency_key: str | None,
+    ) -> DocumentAccepted:
         limits = Limits.from_settings(self._settings)
         try:
             media_type = await anyio.to_thread.run_sync(accepted_type, data, claimed_type, limits)

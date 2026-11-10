@@ -15,13 +15,16 @@ only; chunk text and exception messages are never logged or stored.
 
 from __future__ import annotations
 
+import time
 import uuid
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
 import psycopg
 import structlog
+from opentelemetry.trace import Span
 from psycopg.rows import dict_row
 
 from neuron_agent.config.settings import ProcessingPolicy
@@ -33,6 +36,7 @@ from neuron_agent.knowledge.providers import (
     EmbeddingProvider,
     ensure_processing_allowed,
 )
+from neuron_agent.observability import metrics, semconv, telemetry
 
 log = structlog.get_logger(__name__)
 
@@ -80,6 +84,9 @@ class _RefusedError(Exception):
         self.code = code
 
 
+_CODED = (ParseError, EmbeddingError, BlobStoreError, _RefusedError)
+
+
 @dataclass(frozen=True)
 class Ingestor:
     connect: Connect
@@ -96,18 +103,38 @@ class Ingestor:
         A retryable failure (a parser or embedding service that is down) is raised for the
         queue to retry, except on the last attempt, which records it as the document's error.
         """
+        started, outcome = time.perf_counter(), "retry"
+        attributes = {semconv.NEURON_KNOWLEDGE_DOC_ID: str(doc_id)}
+        with telemetry.start_span(semconv.KNOWLEDGE_INGEST_SPAN, attributes=attributes) as span:
+            try:
+                outcome = await self._ingest(doc_id, span, last_attempt=last_attempt)
+            except Exception as exc:
+                telemetry.record_error(span, _code(exc))
+                raise
+            finally:
+                span.set_attribute(semconv.NEURON_OUTCOME, outcome)
+                metrics.record_knowledge_ingest(time.perf_counter() - started, outcome=outcome)
+        return outcome
+
+    async def _ingest(self, doc_id: uuid.UUID, span: Span, *, last_attempt: bool) -> str:
         async with await self.connect() as conn:
             row = await self._start(conn, doc_id)
             if row is None:
                 log.info("knowledge.ingest.skipped", doc_id=str(doc_id))
                 return "skipped"
+            span.set_attribute(semconv.NEURON_KNOWLEDGE_KB_ID, str(row["kb_id"]))
             try:
                 # Before anything is read: docling-serve is part of the deployment (internal, no
                 # egress), so the setting governs the embedding provider, the only hosted step.
-                ensure_processing_allowed(row["processing"], self.embeddings.locality, self.policy)
+                with _stage("policy"):
+                    ensure_processing_allowed(
+                        row["processing"], self.embeddings.locality, self.policy
+                    )
                 chunks, parsed = await self._parse(row)
+                span.set_attribute(semconv.NEURON_KNOWLEDGE_CHUNKS, len(chunks))
                 await self._set(conn, doc_id, "embedding")
-                vectors = await self.embeddings.embed_documents([_passage(c) for c in chunks])
+                with _stage("embed"):
+                    vectors = await self.embeddings.embed_documents([_passage(c) for c in chunks])
             except (ParseError, EmbeddingError) as exc:
                 if exc.retryable and not last_attempt:
                     raise
@@ -119,7 +146,8 @@ class Ingestor:
                 return await self._fail_on(conn, doc_id, exc.code)
             except _RefusedError as exc:
                 return await self._fail_on(conn, doc_id, exc.code)
-            written = await self._write(conn, doc_id, row, chunks, vectors, parsed)
+            with _stage("write"):
+                written = await self._write(conn, doc_id, row, chunks, vectors, parsed)
         if not written:
             log.info("knowledge.ingest.skipped", doc_id=str(doc_id))  # tombstoned meanwhile
             return "skipped"
@@ -137,13 +165,15 @@ class Ingestor:
         return row
 
     async def _parse(self, row: dict[str, Any]) -> tuple[list[Chunk], tuple[str, int | None]]:
-        data = await self.blobs.get(row["blob_key"], row["sha256"])
-        parsed = await parse_document(data, row["mime_type"], self.limits, self.parsers)
-        chunks = chunk_document(parsed, self.chunk_max_tokens)
-        if not chunks:
-            raise _RefusedError("no_text")
-        if len(chunks) > MAX_CHUNKS:
-            raise _RefusedError("too_many_chunks")
+        with _stage("fetch"):
+            data = await self.blobs.get(row["blob_key"], row["sha256"])
+        with _stage("parse"):
+            parsed = await parse_document(data, row["mime_type"], self.limits, self.parsers)
+            chunks = chunk_document(parsed, self.chunk_max_tokens)
+            if not chunks:
+                raise _RefusedError("no_text")
+            if len(chunks) > MAX_CHUNKS:
+                raise _RefusedError("too_many_chunks")
         return chunks, (parsed.parser_version, parsed.page_count)
 
     async def _set(
@@ -215,6 +245,29 @@ class Ingestor:
             tokens = sum(estimate_tokens(_passage(chunk)) for chunk in chunks)
             await conn.execute(_READY, (*parsed, tokens, doc_id))
         return True
+
+
+# What a stage records for an error with no stable code; the worker stores the same code.
+_UNEXPECTED = "ingest_failed"
+
+
+def _code(exc: Exception) -> str:
+    """The stable code of one of our errors; any other `.code` (a provider's) is not trusted."""
+    return exc.code if isinstance(exc, _CODED) else _UNEXPECTED
+
+
+@contextmanager
+def _stage(name: str) -> Iterator[None]:
+    """A child span for one ingestion stage; a failure counts by its stable code only."""
+    span_name = f"{semconv.KNOWLEDGE_INGEST_SPAN}.{name}"
+    with telemetry.start_span(span_name, attributes={semconv.NEURON_KNOWLEDGE_STAGE: name}) as span:
+        try:
+            yield
+        except Exception as exc:
+            code = _code(exc)
+            telemetry.record_error(span, code)
+            metrics.record_knowledge_stage_error(name, code)
+            raise
 
 
 async def _lock(conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID) -> bool:

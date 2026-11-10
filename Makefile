@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak up down reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak up down reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration knowledge-mutations eval security build
 
 install:
 	uv sync --no-dev
@@ -90,6 +90,11 @@ test-resilience:
 
 test-integration:
 	uv run python -m pytest tests/integration -m integration
+
+# RAG-08.02 AC2: break each knowledge security control in a copy of src and require a test to
+# fail. Its Postgres cases need APP_TEST_POSTGRES_DSN (pgvector 0.7 or later); CI runs it.
+knowledge-mutations:
+	uv run python scripts/knowledge_mutations.py
 
 eval:
 	uv run python -m pytest tests/evals tests/integration/test_postgres_knowledge_retrieval.py -m eval

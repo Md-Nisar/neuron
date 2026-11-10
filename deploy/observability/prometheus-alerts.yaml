@@ -469,6 +469,19 @@ groups:
         annotations:
           summary: "expired run leases have not been cleaned up for 5 minutes"
           runbook_url: OPERATIONS.md#runbook-run-leases
+      # Every knowledge worker reports the same queue-wide age of the oldest runnable ingestion or
+      # purge job, so the alert takes the maximum. 30 minutes is twice the default parser timeout
+      # (APP_KNOWLEDGE_PARSER_TIMEOUT_SECONDS, 900): a long document delays the next one by at
+      # most that much, while a stopped queue only grows. A ticket: documents wait, nothing is lost.
+      - alert: NeuronKnowledgeQueueStuck
+        expr: max(neuron_knowledge_queue_oldest_age_seconds) > 1800
+        for: 15m
+        labels:
+          severity: ticket
+          signal: knowledge_queue
+        annotations:
+          summary: "a knowledge job has waited over 30 minutes in the queue for 15 minutes"
+          runbook_url: OPERATIONS.md#runbook-knowledge-queue
 
   # Rejections that a client causes, so they open a ticket and page nobody: above 5% of /v1
   # requests and above 0.05 requests/s (3 a minute) for 15m, they point at a retry storm, a client
