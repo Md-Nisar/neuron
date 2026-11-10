@@ -21,7 +21,7 @@ function setup(lists: Response[], initial: string[] = []) {
     Promise.resolve((lists[Math.min(call++, lists.length - 1)] ?? jsonResponse(500, {})).clone()),
   );
   const changes: string[][] = [];
-  function Harness() {
+  function Harness({ active = true }: { active?: boolean }) {
     const [selected, setSelected] = useState(initial);
     return (
       <KnowledgePicker
@@ -36,11 +36,17 @@ function setup(lists: Response[], initial: string[] = []) {
           changes.push(ids);
           setSelected(ids);
         }}
+        active={active}
       />
     );
   }
   const view = render(<Harness />);
-  return { view, changes, fetch, user: userEvent.setup() };
+  /** Leave the chat for another screen and come back, as the app's navigation does. */
+  const revisit = () => {
+    view.rerender(<Harness active={false} />);
+    view.rerender(<Harness />);
+  };
+  return { view, changes, fetch, revisit, user: userEvent.setup() };
 }
 
 const toggle = () => screen.findByRole("button", { name: /Knowledge to search/ });
@@ -95,6 +101,36 @@ describe("the knowledge picker", () => {
     await vi.waitFor(() => {
       expect(changes.at(-1)).toEqual([kb(1).kb_id]);
     });
+  });
+
+  it("appears when the first base is made on another screen, without a reload", async () => {
+    const { fetch, revisit } = setup([
+      jsonResponse(200, { bases: [] }),
+      jsonResponse(200, { bases: [kb(1)] }),
+    ]);
+    await vi.waitFor(() => {
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByRole("button")).toBeNull();
+
+    revisit();
+
+    expect(await toggle()).toHaveTextContent("All knowledge");
+  });
+
+  it("drops a base deleted on another screen before the next question, unopened", async () => {
+    const { changes, revisit } = setup(
+      [jsonResponse(200, { bases: [kb(1), kb(2)] }), jsonResponse(200, { bases: [kb(1)] })],
+      [kb(2).kb_id],
+    );
+    expect(await toggle()).toHaveTextContent("1 of 2 bases");
+
+    revisit();
+
+    await vi.waitFor(() => {
+      expect(changes.at(-1)).toEqual([]);
+    });
+    expect(await toggle()).toHaveTextContent("All knowledge");
   });
 
   it("keeps the list and the choice in view when a refresh fails", async () => {

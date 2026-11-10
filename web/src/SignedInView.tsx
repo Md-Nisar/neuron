@@ -281,6 +281,7 @@ export function SignedInView({ auth, apiUrl, maxChars }: SignedInViewProps) {
             maxChars={maxChars}
             feedback={dataDeps}
             toolbarStart={view === "chat" ? menu : null}
+            active={view === "chat"}
           />
         </div>
         {view !== "chat" && (
