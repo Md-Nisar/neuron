@@ -329,6 +329,7 @@ are in seconds. Instruments:
 | `neuron.service.ready` | observable gauge | none. `1` if the latest readiness evaluation (every 15 s) passed, `0` if it failed. Not reported before the first evaluation, while draining, or when the last evaluation is over 60 s old |
 | `neuron.db.pool.waiting` | observable gauge, `{request}` | none. Requests waiting for a Postgres pool connection (`requests_waiting` of the psycopg pool's `get_stats()`); reported only while a pool is open |
 | `neuron.knowledge.queue.oldest_age` | observable gauge, `s` | none. In the worker: seconds the oldest runnable job of the knowledge queue (ingestion and purges) has waited since it was queued, or since its retry became due; `0` when none waits. A job backing off before a retry, or running, does not count. Sampled with each stalled-job sweep (every `APP_WORKER_STALLED_SECONDS` / 3); every worker reports the same queue-wide value; not reported while the database is unreachable, nor when no worker runs |
+| `neuron.knowledge.reconciled` | counter, `{row}` | `neuron.outcome`: `ingest_requeued`, `ingest_stalled` or `purge_requeued`. In the worker: rows the reconcile task acted on (RAG-07.02). Any rise means work was lost between a row and its job; a steady `purge_requeued` means a purge keeps failing |
 
 `neuron.agent.cost` (estimated USD, ADR 0007 section 2) is not emitted: the estimated cost is
 deferred together with its pricing data.
@@ -1053,6 +1054,7 @@ Symptoms: uploads stay `queued`; an erasure's `purge_pending` stays true; `neuro
 1. Read the worker's last logs. At start it prints only an error class: a connection failure or `AppRoleError` means its DSN or role (Thread Persistence, "Ingestion worker"); `knowledge.worker.sweep_failed` means it lost the database.
 2. Restart it. Jobs held by a worker that died are put back by the next sweep of any running worker (`knowledge.worker.stalled_jobs_retried`), once its heartbeat is `APP_WORKER_STALLED_SECONDS` old; nothing needs re-queuing by hand.
 3. A worker that dies on the same document every time (a parser crash, out of memory) loses that job after 5 attempts: the document ends `failed` with `worker_lost`, and the worker carries on. Look for a large or unusual file, and raise the worker's memory if it was killed.
+   A document left in `queued`, `parsing` or `embedding` with no job at all (for example when recording its failure failed) is queued again by the reconcile task, every 10 minutes, once its row is `APP_WORKER_RECONCILE_AFTER_SECONDS` old (default `3600`; log `knowledge.reconcile.done`, metric `neuron.knowledge.reconciled`). After two such re-queues it ends `failed` with `ingest_stalled`. A tombstoned document or base whose purge used all its attempts gets its purge queued again the same way, with no limit, so an erasure is never left behind; a `purge_requeued` count that rises every run means a purge keeps failing (usually the blob store, `knowledge.purge.failed` with its error class) and needs fixing by hand.
 4. Confirm: `neuron-worker health` passes and `queued` documents move to `ready`.
 
 #### Parser down
@@ -1080,7 +1082,7 @@ Once the provider is back, retried jobs finish by themselves; documents that end
 
 There is no operator command to re-queue a document, and an operator cannot act for a user: the user (or the web app's Knowledge page) re-runs it.
 
-1. Read the document's `error_code`. A file problem (`encrypted_pdf`, `file_too_large`, `too_many_pages`, `no_text`, `unsupported_media_type`, `archive_refused`, `macro_refused`, ...) fails again on the same file: the user needs a different file. An outage code (`parser_unavailable`, `parser_timeout`, `embedding_provider_unavailable`, `embedding_quota_exhausted`, `worker_lost`, `blob_backend_error`) is worth a re-run once the cause is fixed.
+1. Read the document's `error_code`. A file problem (`encrypted_pdf`, `file_too_large`, `too_many_pages`, `no_text`, `unsupported_media_type`, `archive_refused`, `macro_refused`, ...) fails again on the same file: the user needs a different file. An outage code (`parser_unavailable`, `parser_timeout`, `embedding_provider_unavailable`, `embedding_quota_exhausted`, `worker_lost`, `ingest_stalled`, `blob_backend_error`) is worth a re-run once the cause is fixed.
 2. Delete the failed document (`DELETE /v1/knowledge/documents/{id}`, `202`), then upload the same file again. Uploading it without deleting returns the existing failed document, because uploads to a base are de-duplicated by content.
 3. The new document is queued under a new id; citations made before do not point to it.
 

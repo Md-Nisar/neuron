@@ -284,6 +284,7 @@ A document's `status` moves `queued` → `parsing` → `embedding` → `ready`, 
 | `embedding_*` | The embedding provider refused or failed for every retry |
 | `blob_not_found`, `blob_checksum_mismatch`, `blob_backend_error` | The stored original is missing, altered or unreachable |
 | `worker_lost`, `ingest_failed` | The worker died or failed unexpectedly on every attempt |
+| `ingest_stalled` | The document was left without a job and was queued again twice without finishing (the reconcile task) |
 
 ## Migrating from 0.3.x
 

@@ -275,6 +275,9 @@ class Settings(BaseSettings):
     worker_drain_seconds: float = Field(default=30.0, ge=0, le=600)
     # A job whose worker sent no heartbeat for this long is retried by another worker's sweep.
     worker_stalled_seconds: float = Field(default=30.0, ge=3, le=3600)
+    # A document left in a non-terminal status, or a tombstone left unpurged, with no live job
+    # for this long is queued again by the reconcile task (RAG-07.02).
+    worker_reconcile_after_seconds: float = Field(default=3600.0, ge=60, le=604_800)
     # Touched while the worker is healthy; the container health check reads its age. In the
     # user's home, not a world-writable directory.
     worker_health_file: str = Field(
