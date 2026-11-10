@@ -18,7 +18,7 @@ The purpose is to test the platform, not to ship three products. The set is chos
 | Trigger | A user asks | A user asks | An event from the helpdesk |
 | Writes | Low-risk notes and tasks | A request on the user's own behalf | A financial posting plus two updates |
 | Approval | User confirmation | User confirmation; manager approves inside the HR system | Second person above a threshold |
-| Problems covered (document 3) | 1, 14 | 2, 21 | 17 |
+| Problems covered (document 3) | 14 (the CRM part only) | 2, 21 | 17, and the cross-application reading of 1 and 14 |
 | Roadmap gate | Phase 2 exit | Phase 3 exit | Phase 4 exit |
 
 What each case proves:
@@ -263,7 +263,7 @@ flowchart TB
     L -- no --> ASK["Stop: ask the support agent to identify the order"]
     L -- yes --> G["Agent gathers order, shipment, invoice, account history"]
     G --> P["Agent proposes remedy + evidence"]
-    P --> D{"Deterministic checks:<br/>remedy allowed? amount <= invoice?"}
+    P --> D{"Deterministic checks:<br/>remedy allowed? amount within invoice total?"}
     D -- fail --> ASK2["Stop: explain, hand to a person"]
     D -- pass --> T{"Amount over threshold?"}
     T -- no --> A2["Tier 2: support agent confirms"]

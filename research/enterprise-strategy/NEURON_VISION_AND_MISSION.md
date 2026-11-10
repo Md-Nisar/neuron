@@ -11,7 +11,7 @@
 
 - **Neuron facts** come from `NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md` (a static read of `main` at `fa6f6cd`, v1.1.0) and spot checks of the repository made for this package. No test, load run or deployment was executed.
 - **Prior research used:** `NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md` and `NEURON_GLOBAL_AGENT_ARCHITECTURE_RESEARCH.md`. The brief also refers to an open-source ecosystem study, a commercial product intelligence report and an "advanced agent architecture patterns" report. **None of those is in this workspace.** Their ground is covered again here, more thinly than a dedicated study would.
-- **Market facts** come from 24 web searches run on 2026-11-10. I read search excerpts, not whole pages. Many results were trade press or vendor marketing.
+- **Market facts** come from 32 web searches run on 2026-11-10. I read search excerpts, not whole pages. Many results were trade press or vendor marketing.
 - **Evidence labels**, used in every document:
   - **[V]** the vendor's or project's own page appeared in the results.
   - **[S]** secondary source only (press, analyst, competitor blog).

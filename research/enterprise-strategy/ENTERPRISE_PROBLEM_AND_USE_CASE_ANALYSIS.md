@@ -24,7 +24,7 @@ Ratings:
 
 Before the list, the patterns that matter for the architecture:
 
-1. **Most value sits in reading across systems, not in writing.** Twenty of the thirty are mainly lookup, summary, investigation or drafting. Reads are also the safest place to start.
+1. **Most value sits in reading across systems, not in writing.** Twelve of the thirty (1, 2, 3, 9, 12, 13, 14, 16, 19, 26, 27, 28) are lookup, summary, investigation or drafting with no write, or with a single draft handed to a person. Most of the rest are the same reading work followed by one write. Reads are also the safest place to start.
 2. **Writes are usually one small, well-defined action** at the end of a long reading task: create a ticket, add a note, submit a request, post a credit note.
 3. **The approval usually already exists in a system of record.** Neuron should submit into that process, and add its own approval only where none exists.
 4. **Identity matching across systems is the hard part of every cross-application problem.** "The same customer" in CRM, ERP and helpdesk needs a declared key.

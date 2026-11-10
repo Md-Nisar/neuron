@@ -68,7 +68,7 @@ Move to this stage only with a customer who needs it.
 | **Tenant isolation** | Organisation id on every row, enforced in SQL and by row-level security, as the Knowledge Engine does per owner today. Per-organisation credentials, policies, quotas and encryption keys. Isolation tests in the security suite. |
 | **Horizontal scaling** | API replicas are already close to stateless once per-process stream slots and counters move to the database or disappear with durable runs. Workers scale by adding processes. |
 | **Background execution** | Durable runs on the job queue. Needed for approvals, events and long tasks. |
-| **Queue architecture** | Postgres job tables first: one fewer system to operate, transactional enqueue with business data. Known limits: throughput in the low thousands of jobs per second at best and vacuum pressure [K]. Neuron is far below that. |
+| **Queue architecture** | Postgres job tables first: one fewer system to operate, transactional enqueue with business data. Known limits of a database-backed queue are throughput and table bloat under heavy churn [K]. No figure is given here because none was measured; queue wait is one of the stage 2 triggers. |
 | **Event processing** | At-least-once delivery from the application; deduplication by event id; each event becomes at most one run through an idempotency key. |
 | **Distributed execution** | Workers claim jobs with a lease and heartbeat. Fencing tokens on writes so a stale worker cannot commit (assessment 7.4 notes leases have neither today). |
 | **Connection pooling** | Split pools now; PgBouncer in stage 2. |

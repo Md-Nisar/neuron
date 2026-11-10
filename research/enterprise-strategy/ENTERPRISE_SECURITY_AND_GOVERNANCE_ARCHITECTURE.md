@@ -34,7 +34,7 @@ What an enterprise integration platform adds, and Neuron lacks:
 
 | Topic | Design |
 | --- | --- |
-| **Single sign-on** | OIDC to Neuron. Customer IdPs that speak SAML or OIDC are federated through an identity broker. Neuron ships with Keycloak, which brokers both [K]. Neuron's code keeps verifying OIDC tokens only. |
+| **Single sign-on** | OIDC to Neuron. Customer IdPs that speak SAML or OIDC are federated through an identity broker. Neuron's reference stack already uses Keycloak, which brokers both [K]. Neuron's code keeps verifying OIDC tokens only. |
 | **Provisioning** | Just-in-time from token claims first. SCIM (the standard provisioning protocol) later, so that deactivating a user in the IdP removes access and revokes stored grants without waiting for a login. |
 | **Organisation model** | Organisation, department, user. Every stored row carries an organisation id. The owner key (HMAC of issuer and subject) stays the user identifier. |
 | **Roles (RBAC)** | A small fixed set in Neuron: member, approver, application owner, policy administrator, auditor, organisation administrator. Mapped from IdP groups. |
@@ -173,7 +173,7 @@ Tier assignment is policy data keyed on capability, arguments and context. The d
 3. **The approver sees facts, not the model's summary alone:** the exact capability, arguments, target records and the evidence the agent gathered, with links to the sources.
 4. **Approvals expire** and are single-use.
 5. **No blanket approvals for mutating actions** in the first releases. "Always allow" is how approval fatigue turns into no control; revisit with data.
-6. **Tainted runs raise the tier by one** for outbound actions.
+6. **Taint sets a floor, it does not stack.** In a run that has read untrusted or private content, any call that can carry data into another application needs at least tier 2 confirmation, even if it would otherwise be tier 0 or 1. Calls already at tier 2 or above keep their tier. This is the existing taint behaviour, restated in tiers.
 
 ### 7.3 By domain
 

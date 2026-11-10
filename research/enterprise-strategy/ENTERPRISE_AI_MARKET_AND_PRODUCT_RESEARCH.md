@@ -13,7 +13,7 @@ Each product entry states what is publicly documented and what it means for Neur
 ## 1. Summary
 
 1. **The market converged on one architecture in 2025 and 2026.** Almost every vendor now describes the same four parts: a registry of agents and tools, a gateway that enforces policy on tool calls, an identity for each agent, and a monitoring console. The names differ (Agent Fabric, Control Tower, Control Plane, Agent 365, AgentCore).
-2. **MCP became the standard way to expose an application to an agent, and vendors now ship their own servers.** ServiceNow, Workato, Boomi, MuleSoft, Microsoft, Glean, Palantir and Databricks all expose their platforms through MCP. An application's vendor is increasingly the supplier of its agent tools.
+2. **MCP became the standard way to expose an application to an agent, and vendors now ship their own servers.** ServiceNow, Workato, Boomi, MuleSoft, Microsoft, Glean and Palantir all expose their platforms through MCP, and Databricks connects its agents to outside systems through it. An application's vendor is increasingly the supplier of its agent tools.
 3. **Connector breadth is a solved, commoditised problem.** Counts above a thousand are common. A new entrant cannot win here.
 4. **Identity for agents is the active frontier.** Agent identities in the directory, token exchange on behalf of users, and IdP-managed authorization for MCP all shipped in 2026.
 5. **Application vendors keep agents inside their own permission model.** Oracle, Salesforce, SAP, ServiceNow, Workday and Palantir all state that agents inherit the application's roles and data permissions.

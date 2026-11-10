@@ -169,7 +169,7 @@ Status against each dimension. "Leaders" means the common practice in section 3,
 | 8 State | LangGraph checkpoints in Postgres; no threads table | Partial | Checkpoints double as the data model |
 | 9 Browser / computer | None; no shell or code tools, by policy | Missing (deliberate) | See section 6 |
 | 10 Approval | Human-in-the-loop for risky or tainted tool calls | Has | Approval is bound to the live run |
-| 11 Routing | One model per deployment; three providers | Partial | No per-task model, no fallback |
+| 11 Routing | One model per deployment, with an optional ordered fallback list (`APP_FALLBACK_MODELS`); three providers | Partial | No per-task or per-request model choice |
 | 12 Recovery | Atomic turn commit, leases, drain on SIGTERM | Partial | A crashed run is lost, not resumed |
 | 13 Evaluation | Suites for quality, security and approvals, with confidence intervals and baselines | Has | No trajectory grading; no production-trace loop |
 | 14 Observability | Structured logs, audit events, OpenTelemetry | Has | No user-facing run timeline |
@@ -197,7 +197,7 @@ Status against each dimension. "Leaders" means the common practice in section 3,
 - Background runs and resumable streams.
 - Any planning artefact.
 - Context-isolated sub-agents.
-- Per-task model routing and fallback.
+- Per-task model routing. (An operator-wide fallback list already exists.)
 - Trajectory evaluation fed by real traces.
 - Credential brokering for user-authorised third-party tools.
 - Code execution, browser and computer use (deliberately absent).
@@ -223,7 +223,7 @@ Ordered roughly by evidence strength. Each is developed in section 7.
 6. Add a plan/todo tool, not a planner node.
 7. Express tool authorisation as policy data, evaluated at one choke point.
 8. Make approvals durable and answerable out of band.
-9. Route sub-tasks to cheaper models and add fallback.
+9. Route sub-tasks to cheaper models, and account for fallback calls correctly.
 10. Grade trajectories, and build datasets from real traces.
 11. Broker third-party credentials so they never enter model context.
 
@@ -318,11 +318,11 @@ Complexity is relative to Neuron's code base: **S** about a week, **M** two to f
 - **Dependencies.** 1 and 3.
 - **Risks.** Stale approvals: the world changed between request and decision. Approvals need expiry and must bind to the exact arguments.
 
-### 9. Per-task model routing and fallback
+### 9. Per-task model routing, with correct fallback accounting
 
-- **Why it matters.** One model does everything, and a provider outage stops the service.
+- **Why it matters.** One model does everything. An ordered fallback list exists (`APP_FALLBACK_MODELS`), but it is one list for the whole deployment, and metrics label a call served by a fallback with the primary model's name.
 - **Evidence.** Anthropic's research system used a stronger lead and cheaper sub-agents [S]. Cursor found different models suited different roles [S]. Perplexity builds on routing [V].
-- **Benefits.** Lower cost for summarisation, titles and classification; resilience.
+- **Benefits.** Lower cost for summarisation, titles and classification; cost and quality figures that name the model that actually served the call.
 - **Complexity.** M. Requires splitting `models/factory.py`, which the assessment already flags.
 - **Dependencies.** The token ledger must account per model.
 - **Risks.** Behaviour differs across models, so every eval must run per route. Fallback to a weaker model must not weaken tool gating (it will not, since gating is in code).
