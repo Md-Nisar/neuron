@@ -1,12 +1,14 @@
-"""Knowledge search telemetry: ids, counts and timings, and no content (RAG-08.03, #508).
+"""Knowledge telemetry: ids, counts and timings, and no content (RAG-08.03, #508).
 
-A real search on Postgres, with spans, metrics and logs captured, then searched for what must
-never leave: the query, the passage text, the document title and the vector.
+A real search, upload and ingestion on Postgres, with spans, metrics and logs captured, then
+searched for what must never leave: the query, the text, the title or file name and the vector.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import json
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -16,6 +18,9 @@ from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from test_postgres_knowledge_api import _SCOPES, _create, api  # noqa: F401
+from test_postgres_knowledge_ingest import _document as _queued
+from test_postgres_knowledge_ingest import _Flaky, setup  # noqa: F401
 from test_postgres_knowledge_search import (
     _A,
     _FAKE,
@@ -25,9 +30,12 @@ from test_postgres_knowledge_search import (
     _migrator,
     _retriever,
 )
-from test_postgres_knowledge_tables import _knowledge_db
+from test_postgres_knowledge_tables import _knowledge_db, worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
+from tests.conftest import JwtApi, bearer
 
+from neuron_agent.knowledge.ingest import Ingestor
+from neuron_agent.knowledge.parsing import ParseError
 from neuron_agent.knowledge.providers import EmbeddingError, EmbeddingProvider
 from neuron_agent.observability import metrics, semconv, telemetry
 
@@ -164,3 +172,116 @@ async def test_an_unknown_mode_is_refused_before_it_labels_a_metric(
         await retriever.search(_A, _QUERY, k=5, mode="anything")  # type: ignore[arg-type]
     assert exporter.get_finished_spans() == ()
     assert reader.get_metrics_data() is None  # nothing recorded
+
+
+def _telemetry_text(exporter: InMemorySpanExporter, reader: InMemoryMetricReader, logs: Any) -> str:
+    spans = [{"name": s.name, **dict(s.attributes or {})} for s in exporter.get_finished_spans()]
+    data = reader.get_metrics_data()
+    return json.dumps([spans, logs], default=str) + (data.to_json() if data else "")
+
+
+async def test_an_upload_span_has_ids_and_size_but_no_file_name_or_content(
+    api: tuple[JwtApi, RoleDatabase],  # noqa: F811
+    make_token: Callable[..., str],
+    captured: tuple[InMemorySpanExporter, InMemoryMetricReader],
+) -> None:
+    exporter, reader = captured
+    client, _ = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    content = b"telemetry-marker-upload-content 9014"
+
+    with structlog.testing.capture_logs() as logs:
+        response = client.client.post(
+            f"/v1/knowledge/bases/{base['kb_id']}/documents",
+            files={"file": (_TITLE, content, "text/plain")},
+            headers=bearer(alice),
+        )
+
+    assert response.status_code == 202, response.text
+    [span] = [s for s in exporter.get_finished_spans() if s.name == semconv.KNOWLEDGE_UPLOAD_SPAN]
+    assert dict(span.attributes or {}) == {
+        semconv.NEURON_KNOWLEDGE_KB_ID: base["kb_id"],
+        semconv.NEURON_KNOWLEDGE_BYTES: len(content),
+        semconv.NEURON_KNOWLEDGE_DOC_ID: response.json()["doc_id"],
+        semconv.NEURON_OUTCOME: "queued",
+    }
+    text = _telemetry_text(exporter, reader, logs)
+    for secret in ("telemetry-marker-upload-content", "telemetry-marker-title"):
+        assert secret not in text, secret
+
+
+async def test_an_ingestion_has_a_span_per_stage_and_leaks_no_text(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    captured: tuple[InMemorySpanExporter, InMemoryMetricReader],
+) -> None:
+    exporter, reader = captured
+    db, ingestor = setup
+    doc = await _queued(db, ingestor, text=_TEXT)
+
+    with structlog.testing.capture_logs() as logs:
+        assert await ingestor.ingest(doc) == "ready"
+
+    spans = {s.name: s for s in exporter.get_finished_spans()}
+    stages = ("policy", "fetch", "parse", "embed", "write")
+    assert set(spans) == {semconv.KNOWLEDGE_INGEST_SPAN} | {
+        f"{semconv.KNOWLEDGE_INGEST_SPAN}.{stage}" for stage in stages
+    }
+    attributes = dict(spans[semconv.KNOWLEDGE_INGEST_SPAN].attributes or {})
+    assert attributes[semconv.NEURON_KNOWLEDGE_DOC_ID] == str(doc)
+    assert attributes[semconv.NEURON_KNOWLEDGE_CHUNKS] == 1
+    assert attributes[semconv.NEURON_OUTCOME] == "ready"
+    [duration] = _points(reader, semconv.METRIC_KNOWLEDGE_INGEST_DURATION)
+    assert dict(duration.attributes) == {semconv.NEURON_OUTCOME: "ready"}
+    text = _telemetry_text(exporter, reader, logs)
+    assert "telemetry-marker-passage" not in text
+
+
+async def test_a_failed_stage_counts_its_code_and_the_attempt_is_a_retry(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    captured: tuple[InMemorySpanExporter, InMemoryMetricReader],
+) -> None:
+    exporter, reader = captured
+    db, ingestor = setup
+    doc = await _queued(db, ingestor, text=_TEXT)
+    flaky = dataclasses.replace(ingestor, parsers=(_Flaky(),))
+
+    with pytest.raises(ParseError):
+        await flaky.ingest(doc, last_attempt=False)
+
+    spans = {s.name: s for s in exporter.get_finished_spans()}
+    parse = spans[f"{semconv.KNOWLEDGE_INGEST_SPAN}.parse"]
+    assert (parse.attributes or {})[semconv.ERROR_TYPE] == "parser_unavailable"
+    [errors] = _points(reader, semconv.METRIC_KNOWLEDGE_STAGE_ERRORS)
+    assert (errors.value, dict(errors.attributes)) == (
+        1,
+        {semconv.NEURON_KNOWLEDGE_STAGE: "parse", semconv.ERROR_TYPE: "parser_unavailable"},
+    )
+    [duration] = _points(reader, semconv.METRIC_KNOWLEDGE_INGEST_DURATION)
+    assert dict(duration.attributes) == {semconv.NEURON_OUTCOME: "retry"}
+
+
+async def test_an_unknown_errors_code_never_reaches_a_span(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    captured: tuple[InMemorySpanExporter, InMemoryMetricReader],
+) -> None:
+    exporter, reader = captured
+    db, ingestor = setup
+    doc = await _queued(db, ingestor, text=_TEXT)
+
+    class _ProviderError(Exception):
+        code = "telemetry-marker-remote-code"
+
+    class _Broken:
+        locality = "self_hosted"
+
+        async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            raise _ProviderError
+
+    with pytest.raises(_ProviderError):
+        await dataclasses.replace(ingestor, embeddings=_Broken()).ingest(doc)  # type: ignore[arg-type]
+
+    spans = {s.name: s for s in exporter.get_finished_spans()}
+    for name in (semconv.KNOWLEDGE_INGEST_SPAN, f"{semconv.KNOWLEDGE_INGEST_SPAN}.embed"):
+        assert (spans[name].attributes or {})[semconv.ERROR_TYPE] == "ingest_failed", name
+    assert "telemetry-marker-remote-code" not in _telemetry_text(exporter, reader, [])

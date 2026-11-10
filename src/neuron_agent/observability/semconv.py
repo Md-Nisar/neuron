@@ -36,6 +36,10 @@ MEMORY_SPAN_PREFIX = "neuron.memory"
 # One span per knowledge search (RAG-08.03): ids, counts and timings only. Never the query, a
 # passage, a document title or file name, or a vector.
 KNOWLEDGE_SEARCH_SPAN = "neuron.knowledge.search"
+# One span per upload, and per ingestion with a child span per stage (fetch, parse, embed,
+# write): ids, sizes, counts and codes only, never a file name, title or text.
+KNOWLEDGE_UPLOAD_SPAN = "neuron.knowledge.upload"
+KNOWLEDGE_INGEST_SPAN = "neuron.knowledge.ingest"
 
 GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
 GEN_AI_AGENT_NAME = "gen_ai.agent.name"
@@ -77,6 +81,11 @@ NEURON_KNOWLEDGE_SEARCH_MODE = "neuron.knowledge.search.mode"  # hybrid, dense o
 NEURON_KNOWLEDGE_SEARCH_PATH = "neuron.knowledge.search.path"  # exact, hnsw or none
 NEURON_KNOWLEDGE_KB_IDS = "neuron.knowledge.kb_ids"  # the bases searched
 NEURON_KNOWLEDGE_RESULTS = "neuron.knowledge.results"
+NEURON_KNOWLEDGE_KB_ID = "neuron.knowledge.kb_id"
+NEURON_KNOWLEDGE_DOC_ID = "neuron.knowledge.doc_id"
+NEURON_KNOWLEDGE_BYTES = "neuron.knowledge.bytes"
+NEURON_KNOWLEDGE_CHUNKS = "neuron.knowledge.chunks"
+NEURON_KNOWLEDGE_STAGE = "neuron.knowledge.ingest.stage"  # fetch, parse, embed or write
 
 # HTTP attributes kept on the FastAPI HTTP metrics; every other one is dropped (ADR 0007).
 HTTP_ROUTE = "http.route"
@@ -96,6 +105,10 @@ METRIC_CITATIONS_REJECTED = "neuron.citations.rejected"
 # each successful search returned (RAG-08.03).
 METRIC_KNOWLEDGE_SEARCH_DURATION = "neuron.knowledge.search.duration"
 METRIC_KNOWLEDGE_SEARCH_RESULTS = "neuron.knowledge.search.results"
+# Ingestion attempts by `neuron.outcome` (ready, failed, skipped, retry), and failed stages by
+# `neuron.knowledge.ingest.stage` and `error.type` (the document's stable error code).
+METRIC_KNOWLEDGE_INGEST_DURATION = "neuron.knowledge.ingest.duration"
+METRIC_KNOWLEDGE_STAGE_ERRORS = "neuron.knowledge.ingest.stage_errors"
 # Model fallbacks, by the configured model ids switched from and to (bounded, operator-chosen).
 METRIC_MODEL_FALLBACKS = "neuron.model.fallbacks"
 # Approval requests and decisions by `neuron.approval.decision`; memory operations by
@@ -139,5 +152,6 @@ METRIC_ATTRIBUTE_ALLOW_LIST = frozenset(
         NEURON_FEEDBACK_REASON,
         NEURON_MEMORY_OPERATION,
         NEURON_KNOWLEDGE_SEARCH_MODE,
+        NEURON_KNOWLEDGE_STAGE,
     }
 )

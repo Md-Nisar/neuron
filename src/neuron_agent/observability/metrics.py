@@ -64,6 +64,8 @@ FAST_OPERATION_BUCKETS = (
 )
 # Passages returned per knowledge search; `retrieval.MAX_K` caps a search at 50.
 KNOWLEDGE_RESULT_BUCKETS = (0.0, 1.0, 2.0, 3.0, 5.0, 8.0, 10.0, 20.0, 50.0)
+# One ingestion attempt, up to the worker's 900 s parser deadline and an embedding run after it.
+INGEST_BUCKETS = (0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 900.0, 1800.0)
 # Token counts per model call, powers of 4 as the GenAI conventions advise.
 TOKEN_BUCKETS = tuple(float(4**n) for n in range(14))
 
@@ -87,6 +89,10 @@ def metric_views() -> list[View]:
         View(instrument_name=semconv.METRIC_TOOL_DURATION, aggregation=fast),
         View(instrument_name=semconv.METRIC_CHECKPOINT_DURATION, aggregation=fast),
         View(instrument_name=semconv.METRIC_KNOWLEDGE_SEARCH_DURATION, aggregation=fast),
+        View(
+            instrument_name=semconv.METRIC_KNOWLEDGE_INGEST_DURATION,
+            aggregation=ExplicitBucketHistogramAggregation(INGEST_BUCKETS),
+        ),
         View(
             instrument_name=semconv.METRIC_KNOWLEDGE_SEARCH_RESULTS,
             aggregation=ExplicitBucketHistogramAggregation(KNOWLEDGE_RESULT_BUCKETS),
@@ -128,6 +134,8 @@ class _Instruments:
     checkpoint_duration: metrics.Histogram
     knowledge_search_duration: metrics.Histogram
     knowledge_search_results: metrics.Histogram
+    knowledge_ingest_duration: metrics.Histogram
+    knowledge_stage_errors: metrics.Counter
     budget_settle_failures: metrics.Counter
     service_ready: metrics.ObservableGauge
     db_pool_waiting: metrics.ObservableGauge
@@ -241,6 +249,14 @@ def _build(meter: metrics.Meter) -> _Instruments:
             semconv.METRIC_KNOWLEDGE_SEARCH_RESULTS,
             unit="{passage}",
             description="Passages returned per successful knowledge search",
+        ),
+        knowledge_ingest_duration=meter.create_histogram(
+            semconv.METRIC_KNOWLEDGE_INGEST_DURATION, unit="s", description="Ingestion attempt"
+        ),
+        knowledge_stage_errors=meter.create_counter(
+            semconv.METRIC_KNOWLEDGE_STAGE_ERRORS,
+            unit="{error}",
+            description="Failed ingestion stages by stage and error code",
         ),
         budget_settle_failures=meter.create_counter(
             semconv.METRIC_BUDGET_SETTLE_FAILURES,
@@ -384,6 +400,18 @@ def record_knowledge_search(
     )
     if results is not None:
         instruments.knowledge_search_results.record(results, attributes)
+
+
+def record_knowledge_ingest(seconds: float, *, outcome: str) -> None:
+    """One ingestion attempt: `ready`, `failed`, `skipped`, or `retry` (raised for the queue)."""
+    _instruments().knowledge_ingest_duration.record(seconds, {semconv.NEURON_OUTCOME: outcome})
+
+
+def record_knowledge_stage_error(stage: str, error_type: str) -> None:
+    """Count one failed ingestion stage by its stable error code (a document's `error_code`)."""
+    _instruments().knowledge_stage_errors.add(
+        1, {semconv.NEURON_KNOWLEDGE_STAGE: stage, semconv.ERROR_TYPE: error_type}
+    )
 
 
 def record_budget_settle_failure() -> None:
