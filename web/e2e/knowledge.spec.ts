@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 import { expect, test, type Page } from "@playwright/test";
@@ -189,5 +190,101 @@ test(
     const sheet = page.getByRole("region", { name: /^1\. / });
     await expect(sheet.getByText(/Source not available/)).toBeVisible();
     await expect(sheet.locator("blockquote")).toHaveCount(0);
+  },
+);
+
+// The chat stays mounted behind the Knowledge screen: its picker must still see a base made
+// there (it used to stay hidden until a reload) and drop one deleted there (it used to send the
+// deleted id, so the question searched nothing).
+test(
+  "the picker follows bases made and deleted on the Knowledge screen",
+  { tag: ["@knowledge"] },
+  async ({ page }) => {
+    await signIn(page, `kp${Date.now().toString(36)}`);
+    const toggle = page.getByRole("button", { name: /Knowledge to search/ });
+    await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
+    await expect(toggle).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await addBase(page, "Policies", "leave-policy.txt", "Leave policy\n\n25 days of paid leave.\n");
+    await addBase(page, "Travel", "travel.txt", "Travel\n\nTrains are booked in second class.\n");
+    await page.getByRole("button", { name: "Chat", exact: true }).click();
+    await expect(toggle).toContainText("All knowledge");
+
+    await toggle.click();
+    await page.getByRole("checkbox", { name: "Travel" }).check();
+    await expect(toggle).toContainText("1 of 2 bases");
+    await toggle.click();
+
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await page.getByRole("button", { name: "Delete Travel" }).click();
+    await page.getByRole("button", { name: "Confirm delete" }).click();
+    await expect(page.getByRole("button", { name: "Travel", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Chat", exact: true }).click();
+    await expect(toggle).toContainText("All knowledge");
+
+    await ask(page, "search: paid leave");
+    const log = page.getByRole("log", { name: "Messages" });
+    await expect(log.getByText("From your documents.")).toBeVisible();
+    await expect(log.getByText("leave-policy.txt")).toBeVisible();
+  },
+);
+
+test(
+  "a user's knowledge is in their export and goes when they erase their data",
+  { tag: ["@knowledge", "@data-rights"] },
+  async ({ page }) => {
+    const user = `kd${Date.now().toString(36)}`;
+    await signIn(page, user);
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await addBase(page, "Handbook", "leave-policy.txt", "Leave policy\n\n25 days of paid leave.\n");
+
+    await page.getByRole("button", { name: "Your data" }).click();
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download my data" }).click();
+    const exported = JSON.parse(readFileSync(await (await download).path(), "utf8")) as {
+      knowledge_bases: { name: string; documents: { title: string; status: string }[] }[];
+    };
+    expect(exported.knowledge_bases).toEqual([
+      expect.objectContaining({
+        name: "Handbook",
+        documents: [expect.objectContaining({ title: "leave-policy.txt", status: "ready" })],
+      }),
+    ]);
+
+    // The worker purges files after the request, so the first erase may ask to be repeated;
+    // the user is signed out only once everything is gone.
+    const signInButton = page.getByRole("button", { name: /sign in/i });
+    await expect(async () => {
+      if (await signInButton.isVisible()) return;
+      await page.getByRole("textbox", { name: /erase my data/ }).fill("erase my data");
+      await page.getByRole("button", { name: "Erase all my data" }).click();
+      await expect(signInButton).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 60_000 });
+
+    await signIn(page, user);
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await expect(page.getByText("No knowledge bases yet.")).toBeVisible();
+  },
+);
+
+test(
+  "markup in a document is shown as text in its source, and never runs",
+  { tag: ["@knowledge", "@security"] },
+  async ({ page }) => {
+    await signIn(page, `ks${Date.now().toString(36)}`);
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    const hostile =
+      "# Pumps\n\nPump 7 is serviced monthly." +
+      ' <img src="x" onerror="window.__ran=1"> <script>window.__ran=1</script>\n';
+    await addBase(page, "Plant", "pumps.txt", hostile);
+
+    await page.getByRole("button", { name: "Chat", exact: true }).click();
+    await ask(page, "search: serviced monthly");
+    await page.getByRole("list", { name: "Sources" }).first().getByRole("button").first().click();
+    const sheet = page.getByRole("region", { name: /^1\. pumps\.txt/ });
+    await expect(sheet.getByText(/onerror="window\.__ran=1"/)).toBeVisible();
+    await expect(sheet.locator("img, script")).toHaveCount(0);
+    expect(await page.evaluate(() => (window as { __ran?: number }).__ran)).toBeUndefined();
   },
 );

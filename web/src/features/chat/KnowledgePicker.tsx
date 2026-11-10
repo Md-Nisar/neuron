@@ -27,18 +27,23 @@ export function KnowledgePicker({
   deps,
   selected,
   onChange,
+  active = true,
 }: {
   deps: DataDeps;
   selected: string[];
   onChange: (ids: string[]) => void;
+  /** False while the chat is hidden behind another screen; each return reloads the list. */
+  active?: boolean;
 }) {
   const [bases, setBases] = useState<KnowledgeBase[]>([]);
   const [open, setOpen] = useState(false);
   const [retries, setRetries] = useState(0);
   const panelId = useId();
 
-  // Loaded on mount and each time the list is opened, so a base made meanwhile appears.
+  // Loaded on mount, each time the list is opened and each time the chat is shown again, so a
+  // base made or deleted on the Knowledge screen meanwhile is seen before the next question.
   useEffect(() => {
+    if (!active) return;
     let live = true;
     let retry: ReturnType<typeof setTimeout> | undefined;
     listBases(deps).then(
@@ -64,7 +69,7 @@ export function KnowledgePicker({
     };
     // `deps` is stable; `selected` is read only to prune it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, retries]);
+  }, [open, retries, active]);
 
   if (bases.length === 0) return null;
   const label =

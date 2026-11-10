@@ -219,12 +219,15 @@ export function ChatView({
   maxChars,
   feedback,
   toolbarStart,
+  active = true,
 }: {
   chat: Chat;
   maxChars: number;
   feedback?: DataDeps;
   /** Shown at the start of the conversation's toolbar (the page's menu button). */
   toolbarStart?: ReactNode;
+  /** False while another screen covers the chat (it stays mounted). */
+  active?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const [problem, setProblem] = useState<DraftProblem | null>(null);
@@ -393,6 +396,7 @@ export function ChatView({
                   deps={feedback}
                   selected={chat.knowledgeBaseIds}
                   onChange={chat.setKnowledgeBaseIds}
+                  active={active}
                 />
               )}
               <p
