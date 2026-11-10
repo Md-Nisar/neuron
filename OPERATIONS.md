@@ -1042,6 +1042,48 @@ Assumptions to confirm in the Render account: the PITR window of the chosen plan
 
   Rehearsed on the local reference stack in v0.9.0 (`scripts/dr_drill.py`; `docs/releases/v0.9.0-release-verification.md`): database usable 6.2 s after the restore started, smoke test passed 22.5 s after, newest restored data 2 s before the target time, the `UNLOGGED` rate table empty, the erased user's threads back until the replay. A restore on Render has not been rehearsed (deferred until after v1.0.0). Keep the WAL archive readable by the restoring container, and note that segments older than the base backup's first file are not needed.
 
+### Knowledge Engine
+
+For `APP_KNOWLEDGE_ENABLED=true` (RAG-08.04). The ingestion worker (`neuron-worker`) parses and embeds uploads from a Postgres queue; docling-serve parses PDF and Office files; the embedding provider embeds passages at ingestion and queries at search. A document's `status` and `error_code` (`GET /v1/knowledge/documents/{id}`, the Knowledge page) say where it stopped. A job is tried up to 5 times, waiting 5, 25, 125 and 625 seconds between tries (about 13 minutes in all); only `parser_unavailable`, `embedding_provider_unavailable`, an unreachable blob store and a lost worker are retried, every other code fails the document at once. For uploads that wait, see "Runbook: knowledge queue" (`NeuronKnowledgeQueueStuck`).
+
+#### Worker down
+
+Symptoms: uploads stay `queued`; an erasure's `purge_pending` stays true; `neuron-worker health` exits non-zero (its heartbeat file is older than `APP_WORKER_STALLED_SECONDS`, default 30). With no worker at all there is no queue-age series, so `NeuronKnowledgeQueueStuck` cannot fire: watch the worker's health check.
+
+1. Read the worker's last logs. At start it prints only an error class: a connection failure or `AppRoleError` means its DSN or role (Thread Persistence, "Ingestion worker"); `knowledge.worker.sweep_failed` means it lost the database.
+2. Restart it. Jobs held by a worker that died are put back by the next sweep of any running worker (`knowledge.worker.stalled_jobs_retried`), once its heartbeat is `APP_WORKER_STALLED_SECONDS` old; nothing needs re-queuing by hand.
+3. A worker that dies on the same document every time (a parser crash, out of memory) loses that job after 5 attempts: the document ends `failed` with `worker_lost`, and the worker carries on. Look for a large or unusual file, and raise the worker's memory if it was killed.
+4. Confirm: `neuron-worker health` passes and `queued` documents move to `ready`.
+
+#### Parser down
+
+Symptoms: PDF and Office uploads stay in `parsing` and then fail; text and Markdown files are unaffected (the worker parses them itself). `neuron_knowledge_ingest_stage_errors_total{neuron_knowledge_ingest_stage="parse"}` by `error_type`:
+
+| `error_code` | Meaning | Action |
+| --- | --- | --- |
+| `parser_unavailable` | docling-serve refused the connection or answered 408, 429, 502, 503 or 504; retried for about 13 minutes | Check the docling-serve service and its health endpoint, its memory (it loads models at start, about 2.5 minutes on 4 CPUs) and the internal network between it and the worker. |
+| `parser_timeout` | No answer within `APP_KNOWLEDGE_PARSER_TIMEOUT_SECONDS` (default 900); not retried | One large or complex document, or an overloaded parser. Look at its load; give it more CPU, or raise the timeout (`NeuronKnowledgeQueueStuck` is tied to twice the default). |
+| `parser_not_configured` | `APP_KNOWLEDGE_PARSER_URL` is empty on the worker | Set it, or accept that PDF and Office files are refused. In the local stack: `COMPOSE_PROFILES=pdf` (README). |
+| `parser_failed`, `parser_output_invalid`, `parser_output_too_large` | The parser answered, but not with a usable document | A file problem in most cases; if every PDF fails, check the docling-serve version against the one pinned in the reference stack. |
+
+docling-serve must stay on an internal network with no route out and no published port (ADR 0014 K2): never fix an outage by giving it egress. Documents that failed while it was down stay failed; see "Re-running a failed document".
+
+#### Embedding provider outage
+
+Ingestion: `embedding_provider_unavailable` (timeouts, 5xx, rate limits after the provider client's own retries) is retried like a parser outage; `embedding_quota_exhausted` (no credit) and `embedding_provider_rejected` (a bad key, model or request: a configuration change, see "Runbook: error classes") fail at once. The `embed` stage's errors show which. `processing_locality_forbidden` is not an outage: the base asks for `self_hosted` processing and the provider is hosted (RAG-02.03).
+
+Search keeps working: a hybrid search whose query cannot be embedded falls back to full text and logs `knowledge_search_dense_skipped` with the error code; only an explicit `dense` search fails. Answers may cite fewer or different passages until the provider is back. A chat-model outage is separate: "Runbook: provider-errors".
+
+Once the provider is back, retried jobs finish by themselves; documents that ended `failed` need a re-run (below). Every re-run is charged by the provider again (`embedding_tokens` adds up).
+
+#### Re-running a failed document
+
+There is no operator command to re-queue a document, and an operator cannot act for a user: the user (or the web app's Knowledge page) re-runs it.
+
+1. Read the document's `error_code`. A file problem (`encrypted_pdf`, `file_too_large`, `too_many_pages`, `no_text`, `unsupported_media_type`, `archive_refused`, `macro_refused`, ...) fails again on the same file: the user needs a different file. An outage code (`parser_unavailable`, `parser_timeout`, `embedding_provider_unavailable`, `embedding_quota_exhausted`, `worker_lost`, `blob_backend_error`) is worth a re-run once the cause is fixed.
+2. Delete the failed document (`DELETE /v1/knowledge/documents/{id}`, `202`), then upload the same file again. Uploading it without deleting returns the existing failed document, because uploads to a base are de-duplicated by content.
+3. The new document is queued under a new id; citations made before do not point to it.
+
 ### Capacity
 
 **Measured throughput (v0.9.0, not hosted capacity).** `docs/releases/v0.9.0-gate/load-baseline.json`, from the reference stack (two replicas, Postgres, Keycloak, 4 CPUs shared with the load generator) and the fake model at 800 ms to first token, 40 tokens/s, 200 tokens: about 11 to 16 runs/s inside the SLOs (new thread 12.5, follow-up 11.2, approval 15.9, mix 12.4); with real-model latency (2000 ms to first token, 10 tokens/s, 75 tokens; `load-baseline-real-latency.json`) 15.6 to 21.6 runs/s. The real model was not load tested: the free NVIDIA key allows 40 requests per minute. The first failure is `503 too_many_streams` once about 200 streams are open (`APP_MAX_CONCURRENT_STREAMS`, 100 per process). Steps were 90 s, not 10 minutes. Repeat with `make reference-up` and `make load`, and compare with `python -m loadtest.baseline compare` (same host and profile only). A load user needs a higher `APP_USER_TOKEN_BUDGET` than the default or its budget, not the stack, sets the rate.
