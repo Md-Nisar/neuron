@@ -1,47 +1,81 @@
-# Local development stack: the API with Postgres-backed thread persistence (ADR 0005).
-# Credentials here are for local use only; production injects APP_POSTGRES_DSN from a
-# secret manager (see OPERATIONS.md#thread-persistence-postgres).
+# The whole local stack in one command: `docker compose up --build` (or `make up`).
+#
+#   Web app   http://localhost:5173   sign in as alice / dev-only-alice (bob / dev-only-bob reads only)
+#   API       http://127.0.0.1:8000
+#   Keycloak  http://localhost:8180   admin / admin-local-only
+#
+# Postgres with pgvector and the production database roles, the `setup` step, Keycloak with the
+# realm and login theme, the API, the knowledge ingestion worker and the web app. Development
+# only: throwaway credentials, every port on loopback, nothing here is a deployment.
+#
+# With no provider key the API answers with the fake development model, and documents are
+# embedded with the fake provider, so the stack makes no external call. To use a real model,
+# put a key and model in `.env` next to this file (compose reads it), for example:
+#   NVIDIA_API_KEY=nvapi-...
+#   APP_DEFAULT_MODEL=nvidia:nvidia/nemotron-3-ultra-550b-a55b
+#   APP_KNOWLEDGE_EMBEDDING_PROVIDER=nvidia   # documents are sent to NVIDIA's API
+#
+# Text and Markdown files are parsed by the worker itself. PDF and Office files need
+# docling-serve, a 7.6 GB image. To add it, put these two lines in `.env`:
+#   COMPOSE_PROFILES=pdf
+#   APP_KNOWLEDGE_PARSER_URL=http://docling:5001
+# Without it those files fail with a "processing unavailable" message.
+#
+# `docker compose down` stops it; `docker compose down -v` also deletes the data.
+x-neuron-image: &neuron-image
+  image: neuron:local
+  build: .
+
+x-api-env: &api-env
+  APP_ENV: development
+  APP_AUTH_MODE: jwt
+  APP_AUTH_ISSUER: http://localhost:8180/realms/neuron
+  APP_AUTH_AUDIENCE: neuron-api
+  # Fetched over the compose network; the token's issuer stays the host-visible URL.
+  APP_AUTH_JWKS_URL: http://keycloak:8080/realms/neuron/protocol/openid-connect/certs
+  APP_AUTH_ALGORITHMS: '["RS256"]'
+  APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:get_document_excerpt","tools:list_knowledge_bases","tools:recall","tools:remember","tools:search_knowledge"],"neuron-reader":["threads:read"]}'
+  APP_IDENTITY_HASH_KEY: local-stack-identity-key-local-only-0001
+  APP_CHECKPOINTER: postgres
+  APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@postgres:5432/neuron?sslmode=disable
+  APP_MEMORY_ENABLED: "true"
+  APP_KNOWLEDGE_ENABLED: "true"
+  APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
+  APP_KNOWLEDGE_EMBEDDING_PROVIDER: ${APP_KNOWLEDGE_EMBEDDING_PROVIDER:-fake}
+  APP_DEFAULT_MODEL: ${APP_DEFAULT_MODEL:-openai:gpt-5.4-mini}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  APP_ALLOWED_HOSTS: '["localhost","127.0.0.1"]'
+  APP_CORS_ALLOWED_ORIGINS: '["http://localhost:5173"]'
+
 services:
   postgres:
-    # PostgreSQL 16 with pgvector, so APP_KNOWLEDGE_ENABLED=true works locally (ADR 0014).
+    # PostgreSQL 16 with pgvector (ADR 0014). The init scripts create the migrator, app and
+    # worker roles (throwaway passwords) and the knowledge schema, once, on a new volume.
     image: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
+    # Parallel HNSW index builds need more than Docker's 64 MB default /dev/shm (RAG-00.02).
+    shm_size: 256mb
     environment:
-      POSTGRES_USER: neuron
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-neuron-local-only}
+      POSTGRES_USER: neuron_owner
+      POSTGRES_PASSWORD: owner-local-only
       POSTGRES_DB: neuron
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/reference/init-roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+      - ./deploy/reference/init-knowledge.sql:/docker-entrypoint-initdb.d/20-knowledge.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U neuron -d neuron"]
+      test: ["CMD-SHELL", "pg_isready -U neuron_owner -d neuron"]
       interval: 2s
       timeout: 3s
       retries: 30
 
-  api:
-    build: .
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      APP_ENV: development
-      APP_CHECKPOINTER: postgres
-      APP_POSTGRES_DSN: postgresql://neuron:${POSTGRES_PASSWORD:-neuron-local-only}@postgres:5432/neuron
-      # Development only: refused when APP_ENV is staging or production.
-      APP_CHECKPOINTER_SETUP_ON_STARTUP: "true"
-    ports:
-      # Loopback only: APP_ENV=development serves without authentication.
-      - "127.0.0.1:8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Development identity provider for the web application (ADR 0010, decision 5). Opt in with
-  # `docker compose --profile keycloak up keycloak`; `make dev-keycloak` prints the API settings.
-  # The realm export holds only throwaway development users; no real credentials.
+  # Development identity provider (ADR 0010, decision 5) with the realm `neuron` and its login
+  # theme, built into the image. The realm export holds only throwaway users.
   keycloak:
-    profiles: ["keycloak"]
-    image: quay.io/keycloak/keycloak:26.0.7
-    command: ["start-dev", "--import-realm"]
+    image: neuron-keycloak:local
+    build: ./keycloak-theme
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-local-only}
@@ -49,11 +83,122 @@ services:
       KC_HOSTNAME: http://localhost:8180
     volumes:
       - ./deploy/keycloak/neuron-realm.json:/opt/keycloak/data/import/neuron-realm.json:ro
-      # The realm's `neuron` login theme; build it first (keycloak-theme/README.md).
-      - ./keycloak-theme/dist_keycloak:/opt/keycloak/providers:ro
     ports:
       # Loopback only: start-dev is not hardened.
       - "127.0.0.1:8180:8080"
+    healthcheck:
+      # The image has no curl; a bare TCP request to the realm endpoint is enough.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/neuron HTTP/1.0\\r\\nHost: localhost:8180\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q '200'"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  # Schema, migrations and grants, as the migrator; runs once and exits.
+  setup:
+    <<: *neuron-image
+    command: ["python", "-m", "neuron_agent.persistence.cli", "setup"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *api-env
+      # Schema work needs no model or embedding provider: keep the keys out of this container.
+      OPENAI_API_KEY: ""
+      NVIDIA_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      APP_POSTGRES_MIGRATION_DSN: postgresql://neuron_migrator:migrator-local-only@postgres:5432/neuron?sslmode=disable
+
+  api:
+    <<: *neuron-image
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+    environment: *api-env
+    volumes:
+      - knowledge-blobs:/var/lib/neuron/knowledge-blobs
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  # Parses and embeds uploaded documents (RAG-02.01). It handles untrusted files, so it holds
+  # only its own DSN, never the app or migration DSN, the identity key or the auth settings.
+  worker:
+    <<: *neuron-image
+    command: ["neuron-worker"]
+    restart: unless-stopped
+    # SIGTERM drains for APP_WORKER_DRAIN_SECONDS (30 s); Docker must wait longer than that.
+    stop_grace_period: 40s
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      docling:
+        condition: service_healthy
+        required: false
+    # Postgres on the default network; docling-serve only on `parser`.
+    networks: [default, parser]
+    environment:
+      APP_ENV: development
+      APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker@postgres:5432/neuron?sslmode=disable
+      # libpq reads the password from here (the throwaway one from init-roles.sql).
+      PGPASSWORD: worker-local-only
+      APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
+      # Empty unless `.env` sets it with the `pdf` profile (see the top of this file): with no
+      # parser, PDF and Office files fail at once instead of retrying as an outage.
+      APP_KNOWLEDGE_PARSER_URL: ${APP_KNOWLEDGE_PARSER_URL:-}
+      APP_KNOWLEDGE_EMBEDDING_PROVIDER: ${APP_KNOWLEDGE_EMBEDDING_PROVIDER:-fake}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+    volumes:
+      - knowledge-blobs:/var/lib/neuron/knowledge-blobs
+    healthcheck:
+      test: ["CMD", "neuron-worker", "health"]
+      interval: 10s
+      # The command imports the package, which takes about 4 s on a small machine.
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+  # PDF and Office parsing (ADR 0014 K2; RAG-02.02), opt in with `--profile pdf`. It parses
+  # hostile files, so it is only on `parser`, an internal network with no route out, publishes
+  # no port, and runs read-only without capabilities.
+  docling:
+    image: quay.io/docling-project/docling-serve-cpu@sha256:7a480a1604fa3b42efeddc7db9527690d9f9bc903226136013e2bfe6b1a4dfb0
+    restart: unless-stopped
+    profiles: ["pdf"]
+    networks: [parser]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "false"
+      DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "false"
+      DOCLING_SERVE_ALLOW_EXTERNAL_PLUGINS: "false"
+      DOCLING_SERVE_MAX_SYNC_WAIT: "900"
+      HF_HUB_OFFLINE: "1"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      # It loads its models first: about 2.5 minutes on a 4-CPU machine.
+      start_period: 300s
+      retries: 3
+
+  web:
+    image: neuron-web:local
+    build: ./web
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      # The one origin Keycloak's client and the API's CORS list accept.
+      - "127.0.0.1:5173:8080"
+
+networks:
+  parser:
+    internal: true
 
 volumes:
-  pgdata:
+  postgres-data:
+  knowledge-blobs:

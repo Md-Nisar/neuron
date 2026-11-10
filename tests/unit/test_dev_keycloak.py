@@ -149,4 +149,10 @@ def test_realm_uses_the_neuron_login_theme_that_keycloak_loads(
     assert realm["loginTheme"] == "neuron"
     assert 'themeName: "neuron"' in theme_config
     compose = (root / compose_file).read_text(encoding="utf-8")
-    assert "./keycloak-theme/dist_keycloak:/opt/keycloak/providers:ro" in compose
+    if compose_file == "docker-compose.yml":
+        # The local stack builds the theme JAR into its Keycloak image.
+        dockerfile = (root / "keycloak-theme" / "Dockerfile").read_text(encoding="utf-8")
+        assert "build: ./keycloak-theme" in compose
+        assert "/opt/keycloak/providers/" in dockerfile
+    else:
+        assert "./keycloak-theme/dist_keycloak:/opt/keycloak/providers:ro" in compose
