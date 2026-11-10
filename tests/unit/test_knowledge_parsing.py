@@ -159,6 +159,15 @@ def test_a_zip_bomb_is_refused_by_its_inflated_size() -> None:
     )
 
 
+def test_a_zip_bomb_split_across_members_is_refused_by_its_total() -> None:
+    # Each member is under the per-member cap; only the total and the ratio give it away.
+    parts = {f"word/media/zeros{n}.bin": bytes(190_000) for n in range(5)}
+    bomb = _zip({**_DOCX, **parts})
+    assert _code(bomb, DOCX, Limits(max_bytes=200_000, max_pages=10, max_page_chars=2_000)) == (
+        "decompression_limit"
+    )
+
+
 def test_zip_entries_are_counted_before_the_directory_is_read() -> None:
     many = _zip({**_DOCX, **{f"word/media/{i}.xml": b"" for i in range(10_001)}})
     assert _code(many, DOCX, Limits(10_000_000, 10, 2_000)) == "decompression_limit"

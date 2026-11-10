@@ -60,7 +60,7 @@ results), API to Postgres (two roles: migrator and app), API to identity provide
 | --- | --- | --- | --- | --- |
 | ASI01 | Agent Goal Hijack | Partial | As LLM01: injected text cannot widen scopes or tools; approval shows the exact arguments; tool output and notes are data. Once a thread has read an MCP result or the user's notes, every further MCP call (`read` included) needs approval, or is refused where no run can pause (`taints_run`, ADR 0009 amendment). | As LLM01, plus `approval` and security evals, `test_tainted_egress`. Limits: no quarantined reader model; MCP output reaches the model unwrapped (security review 2026-10-30). |
 | ASI02 | Tool Misuse and Exploitation | Covered | Scope per tool; `mutating` default for MCP tools; MCP arguments checked against the pinned schema before the server is contacted (local `$ref`s only, no server-written regex run here); approval, also for MCP calls after untrusted or private data; size and time caps; `approval_when` refuses calls that cannot be valid (`remember` quotes the user). | `test_mcp_abuse`, `test_mcp_client`, `test_tainted_egress`, `test_approval_api`, `test_memory_tools`, `test_tool_egress`. |
-| ASI03 | Identity and Privilege Abuse | Partial | Identity only from a verified JWT; the model never sees identity; owner key in the runtime context; request `user_id` ignored; per-tool scopes; the app database role has DML only. | `test_authorization`, `test_agent_server_auth`, `test_multi_user_isolation`, role-grant tests in `test_migrations_policy`. Limits: no token revocation (`SECURITY.md`); MCP calls use one operator token per server, not the caller's (no on-behalf-of exchange); owner isolation is in application code, not database row-level security (security review 2026-10-30, R3 and R5). |
+| ASI03 | Identity and Privilege Abuse | Partial | Identity only from a verified JWT; the model never sees identity; owner key in the runtime context; request `user_id` ignored; per-tool scopes; the app database role has DML only. | `test_authorization`, `test_agent_server_auth`, `test_multi_user_isolation`, role-grant tests in `test_migrations_policy`. Limits: no token revocation (`SECURITY.md`); MCP calls use one operator token per server, not the caller's (no on-behalf-of exchange); owner isolation is in application code, not database row-level security (security review 2026-10-30, R3 and R5), except knowledge chunks and embeddings, which have row-level security from v1.1.0. |
 | ASI04 | Agentic Supply Chain Vulnerabilities | Partial | As LLM04; MCP: https to public hosts, no stdio, no sampling, no redirects off origin, definition pins; `neuron-mcp-pin` shows the description and input schema for review. | `test_mcp_pins`, `test_mcp_abuse`, `test_mcp_wiring`. Limit: a pinned tool proves the definition, not the server's behaviour. |
 | ASI05 | Unexpected Code Execution (RCE) | Covered | No tool executes code or a shell; dangerous names are deny-listed; the image runs as a non-root user; Bandit in CI. | `test_tool_denial` (deny-list), `make security` (Bandit). |
 | ASI06 | Memory & Context Poisoning | Covered | Notes are the user's own words, approved, per-user, size-limited, escaped as data, listable and deletable; thread history is owner-scoped. | `test_memory_tools`, `test_memory_api`, `approval` eval. Limit: the item limit can be exceeded by concurrent writes. |
@@ -83,11 +83,18 @@ ADR 0014, RAG-08.02 (#503). The twelve cases of the Phase 1 security gate, each 
 and the tests that fail without it. Tests marked *Postgres* need pgvector and run in CI's
 `postgres-integration` job, which fails on any skipped test. `tests/security/test_knowledge_security_suite.py`
 names the exact test functions per case and checks in `make test` that each exists and runs in
-one of the two, and that this table lists the same twelve cases.
+one of the two, and that this table lists the same twelve cases. `scripts/knowledge_mutations.py`
+(`make knowledge-mutations`, run by `postgres-integration`) removes each control in a copy of the
+package, every layer of it where it has several (the owner filter is in `allowed_kbs` and again in
+the SQL; `nosniff` is set by the route and by the header middleware), and requires one of the
+case's tests to fail on an assertion, not on broken code. The security eval dataset
+(`tests/fixtures/eval_security_cases.json`) has no knowledge case: its runner has no knowledge
+database, and the injection documents are played through the agent loop in
+`test_knowledge_injection.py` instead.
 
 | Case | Control | Tests |
 | --- | --- | --- |
-| Foreign `kb_id` or `doc_id` | Every statement filters on the owner key; another user's id is the same `404` as an unknown one | `test_postgres_knowledge_api.py` BOLA matrix (Postgres), `test_knowledge_api.py` |
+| Foreign `kb_id` or `doc_id` | Every route resolves ids through the caller's allowed bases (`allowed_kbs`) and the base's owner key; another user's id is the same `404` as an unknown one | `test_postgres_knowledge_api.py` BOLA matrix (Postgres), `test_knowledge_api.py` |
 | Same text in two users' bases | `allowed_kbs` in the query and RLS (`kb_scope`, `SET LOCAL neuron.kb_ids`) | `test_postgres_knowledge_search.py`, `test_postgres_knowledge_tables.py` (Postgres) |
 | Access revoked while a citation is open | The chunk and file routes re-check access on every read | `test_postgres_knowledge_download.py` (Postgres), `SourceSheet.test.tsx` |
 | Delete during purge | Tombstones hide data from every read path at once; purge retries until nothing is left | `test_postgres_knowledge_purge.py` (Postgres) |
