@@ -20,12 +20,13 @@ Use Python 3.13. The local machine may have newer Python versions, but CI and de
 
 `docker-compose.yml`, the reference stack and CI's Postgres job use `pgvector/pgvector:pg16`
 (PostgreSQL 16 with pgvector, pinned by digest; ADR 0014). Neuron runs on plain `postgres:16`
-while `APP_KNOWLEDGE_ENABLED` is off. With it on, the development stack's `neuron` superuser lets
-`setup` create the `vector` extension and `knowledge` schema itself; in staging and production a
+while `APP_KNOWLEDGE_ENABLED` is off. With it on, a superuser creates the `vector` extension and
+`knowledge` schema before `setup` runs: in `docker-compose.yml` and the reference stack,
+`deploy/reference/init-knowledge.sql` does it on a new volume; in staging and production a
 superuser creates them first (`OPERATIONS.md`, "Database roles"). Run the Postgres tests against
 the same image: `docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=... pgvector/pgvector:pg16`.
 
-To run the API in Docker with the web app and the development Keycloak, see
+To run the whole stack in Docker with one command (`docker compose up --build`), see
 [docs/operations/local-docker-web.md](docs/operations/local-docker-web.md).
 
 ## Commands
@@ -88,7 +89,7 @@ Run `make api` for HTTP debugging or `make run` for LangGraph Studio-compatible 
 
 The default `APP_AUTH_MODE=none` needs no token. To exercise real JWT authentication locally, run `make dev-auth >> .env` once, keep `make dev-jwks` running, and send `Authorization: Bearer $(make -s dev-token)` (README "Authentication"). These tools refuse to run unless `APP_ENV=development`. Tests never use them: they mint tokens with the `make_token` fixture in `tests/conftest.py`.
 
-For the web application (ADR 0010) there is a development Keycloak instead: `docker compose --profile keycloak up keycloak`, then `make dev-keycloak >> .env` (use this *or* `make dev-auth`, not both). It imports the realm `neuron` from `deploy/keycloak/neuron-realm.json`: a public PKCE client `neuron-web`, tokens with `aud=neuron-api` and a top-level `roles` claim, and two throwaway users, `alice` (`neuron-user`, every development permission) and `bob` (`neuron-reader`, `threads:read` only). It listens on `127.0.0.1:8180` only and is development-only: staging and production still refuse an HTTP `APP_AUTH_JWKS_URL`. `APP_AUTH_REQUIRE_TYP` is not set by `make dev-keycloak`. `tests/integration/test_keycloak.py` (marker `integration`) checks real tokens against a running instance.
+For the web application (ADR 0010) there is a development Keycloak instead: `docker compose up --build keycloak` (its image builds the login theme, so no Node, Maven or JDK is needed on the host; `docker compose up --build` starts the whole stack), then `make dev-keycloak >> .env` (use this *or* `make dev-auth`, not both). It imports the realm `neuron` from `deploy/keycloak/neuron-realm.json`: a public PKCE client `neuron-web`, tokens with `aud=neuron-api` and a top-level `roles` claim, and two throwaway users, `alice` (`neuron-user`, every development permission) and `bob` (`neuron-reader`, `threads:read` only). It listens on `127.0.0.1:8180` only and is development-only: staging and production still refuse an HTTP `APP_AUTH_JWKS_URL`. `APP_AUTH_REQUIRE_TYP` is not set by `make dev-keycloak`. `tests/integration/test_keycloak.py` (marker `integration`) checks real tokens against a running instance.
 
 The web application lives in `web/` (ADR 0010; see `web/README.md`). With the Node version in `web/.nvmrc`: `make web-install` installs from the lockfile, `make web-dev` serves `http://localhost:5173`, and `make web` runs every gate that CI runs (format check, lint, typecheck, Vitest, build, `npm audit`). `make web-e2e` runs the Playwright flows in `web/e2e/` in Chromium against the built app, a real API process on the fake model and a stand-in sign-in provider (`web/e2e/fake_idp.py`); it needs `uv sync` and `npx playwright install chromium` once, and needs no Docker or Keycloak. `make test-e2e` walks every API flow over HTTP against a real server process (`tests/e2e/`) and is part of `make test`. Each end-to-end test names the flows it covers (`@pytest.mark.flow("approval")` in Python, `{ tag: ["@approval"] }` in Playwright), and `make flows` prints which flows have API and browser tests; CI prints the same table at the end of the `web-e2e` job. It is a report, not a gate. A new flow goes in `FLOWS` in `scripts/flow_report.py`. The page signs in against the development Keycloak above (`web/README.md`, "Sign-in") and chats with the API at `http://127.0.0.1:8000` (`make api`; add `http://localhost:5173` to `APP_CORS_ALLOWED_ORIGINS`, or, against the reference stack, start it with `CORS_ALLOWED_ORIGINS='["http://localhost:5173"]'`). `python scripts/web_headers.py --development --api-origin http://127.0.0.1:8000 --issuer http://localhost:8180/realms/neuron` prints the headers for serving a build locally.
 
