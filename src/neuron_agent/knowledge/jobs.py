@@ -30,6 +30,9 @@ class Task(StrEnum):
     INGEST_DOCUMENT = "ingest_document"
     PURGE_DOCUMENT = "purge_document"
     PURGE_KNOWLEDGE_BASE = "purge_knowledge_base"
+    # Periodic, queued by the worker itself (RAG-07.02); it carries only Procrastinate's timestamp.
+    RECONCILE = "reconcile_knowledge"
+    SWEEP_BLOBS = "sweep_knowledge_blobs"
 
 
 # Procrastinate's `procrastinate_job_to_defer_v1`: queue, task, priority, lock, queueing lock,

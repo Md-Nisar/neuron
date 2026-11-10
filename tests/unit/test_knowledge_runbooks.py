@@ -11,6 +11,7 @@ _RUNBOOKS = (
     "Parser down",
     "Embedding provider outage",
     "Re-running a failed document",
+    "Drift between files, rows and jobs",
 )
 
 

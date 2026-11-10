@@ -136,6 +136,7 @@ class _Instruments:
     knowledge_search_results: metrics.Histogram
     knowledge_ingest_duration: metrics.Histogram
     knowledge_stage_errors: metrics.Counter
+    knowledge_reconciled: metrics.Counter
     budget_settle_failures: metrics.Counter
     service_ready: metrics.ObservableGauge
     db_pool_waiting: metrics.ObservableGauge
@@ -257,6 +258,11 @@ def _build(meter: metrics.Meter) -> _Instruments:
             semconv.METRIC_KNOWLEDGE_STAGE_ERRORS,
             unit="{error}",
             description="Failed ingestion stages by stage and error code",
+        ),
+        knowledge_reconciled=meter.create_counter(
+            semconv.METRIC_KNOWLEDGE_RECONCILED,
+            unit="{row}",
+            description="Rows the reconcile task acted on and orphan files deleted",
         ),
         budget_settle_failures=meter.create_counter(
             semconv.METRIC_BUDGET_SETTLE_FAILURES,
@@ -412,6 +418,13 @@ def record_knowledge_stage_error(stage: str, error_type: str) -> None:
     _instruments().knowledge_stage_errors.add(
         1, {semconv.NEURON_KNOWLEDGE_STAGE: stage, semconv.ERROR_TYPE: error_type}
     )
+
+
+def record_knowledge_reconciled(counts: dict[str, int]) -> None:
+    """Count the rows one reconcile run acted on, by action (RAG-07.02)."""
+    for action, count in counts.items():
+        if count:
+            _instruments().knowledge_reconciled.add(count, {semconv.NEURON_OUTCOME: action})
 
 
 def record_budget_settle_failure() -> None:

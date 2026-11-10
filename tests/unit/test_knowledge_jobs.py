@@ -103,7 +103,78 @@ def test_every_task_is_registered_by_name() -> None:
     assert {task.value for task in jobs.Task} <= set(app.tasks)
     for task in jobs.Task:
         assert app.tasks[task.value].queue == jobs.QUEUE
-        assert app.tasks[task.value].retry_strategy == worker.RETRY
+        periodic = task in {jobs.Task.RECONCILE, jobs.Task.SWEEP_BLOBS}
+        assert app.tasks[task.value].retry_strategy == (None if periodic else worker.RETRY)
+    # The periodic tasks are not retried: the next run replaces a failed one.
+    assert {(p.task.name, p.cron) for p in app.periodic_registry.periodic_tasks.values()} == {
+        (jobs.Task.RECONCILE.value, worker.RECONCILE_CRON),
+        (jobs.Task.SWEEP_BLOBS.value, worker.SWEEP_BLOBS_CRON),
+    }
+
+
+async def test_a_blob_sweep_counts_deletions_and_raises_the_class_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(env="test", postgres_worker_dsn=SecretStr("postgresql://w@h/d"))
+    func = worker.build_app(settings, _Ingestor()).tasks[jobs.Task.SWEEP_BLOBS.value].func  # type: ignore[arg-type]
+    calls: list[float] = []
+    recorded: list[dict[str, int]] = []
+    monkeypatch.setattr(worker.metrics, "record_knowledge_reconciled", recorded.append)
+
+    async def sweep(connect: Any, blobs: Any, grace: float) -> int:
+        calls.append(grace)
+        if len(calls) > 1:
+            raise OSError("/var/lib/neuron/knowledge-blobs/ab12")
+        return 3
+
+    monkeypatch.setattr(worker, "sweep_blobs", sweep)
+    await func(timestamp=0)
+    assert (calls, recorded) == ([86_400.0], [{"blob_deleted": 3}])
+    with pytest.raises(worker.ReconcileError) as raised:
+        await func(timestamp=0)
+    assert str(raised.value) == "OSError"
+
+
+async def test_a_reconcile_run_counts_its_actions_and_raises_the_class_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(env="test", postgres_worker_dsn=SecretStr("postgresql://w@h/d"))
+    func = worker.build_app(settings, _Ingestor()).tasks[jobs.Task.RECONCILE.value].func  # type: ignore[arg-type]
+    calls: list[Any] = []
+    recorded: list[dict[str, int]] = []
+    monkeypatch.setattr(worker.metrics, "record_knowledge_reconciled", recorded.append)
+
+    async def reconcile(connect: Any, seconds: float) -> dict[str, int]:
+        calls.append(seconds)
+        if len(calls) > 1:
+            raise RuntimeError("detail that could echo a row")
+        return {"ingest_requeued": 1, "ingest_stalled": 0, "purge_requeued": 2}
+
+    monkeypatch.setattr(worker, "reconcile", reconcile)
+    await func(timestamp=0)
+    assert calls == [settings.worker_reconcile_after_seconds]
+    assert recorded == [{"ingest_requeued": 1, "ingest_stalled": 0, "purge_requeued": 2}]
+    with pytest.raises(worker.ReconcileError) as raised:
+        await func(timestamp=0)
+    assert str(raised.value) == "RuntimeError"
+
+
+def test_reconciled_rows_are_counted_by_action_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    monkeypatch.setattr(metrics, "_meter", lambda: provider.get_meter("test"))
+    metrics.record_knowledge_reconciled({"ingest_requeued": 2, "ingest_stalled": 0})
+    data = reader.get_metrics_data()
+    assert data is not None
+    [counter] = [
+        m
+        for r in data.resource_metrics
+        for s in r.scope_metrics
+        for m in s.metrics
+        if m.name == semconv.METRIC_KNOWLEDGE_RECONCILED
+    ]
+    [point] = counter.data.data_points
+    assert (point.value, dict(point.attributes)) == (2, {semconv.NEURON_OUTCOME: "ingest_requeued"})
 
 
 class _Purges:
