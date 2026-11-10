@@ -257,6 +257,13 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
     (a count). None of them carries tool arguments, note text, an approval or memory ID or an
     owner key. No alert rule changes: approvals and memory add no failure mode the existing
     error-rate and latency alerts miss, and a pause is not counted as a failed stream.
+  - `neuron.knowledge.search`, one per knowledge search (under the `search_knowledge` tool span,
+    or the HTTP span of a search through the API), with `neuron.knowledge.search.mode`
+    (`hybrid`, `dense`, `fts`), `neuron.knowledge.search.path` (`exact`, `hnsw`, or `none` when
+    the dense path did not run), `neuron.knowledge.kb_ids` (the bases searched),
+    `neuron.knowledge.results` (a count), `neuron.owner_key_prefix` and `neuron.outcome`; a
+    failure sets `error.type` (`embedding_error`, `persistence_error`, ...). Never the query, a
+    passage, a title or file name, or a vector (RAG-08.03).
   - `neuron.stream` around an SSE stream (the parent of its `invoke_agent` span), with
     `neuron.stream.ttft_ms`, `neuron.stream.events` and `neuron.stream.termination`, which
     takes the `stream_completed` log's values plus `client_disconnect`.
@@ -298,6 +305,8 @@ are in seconds. Instruments:
 | `neuron.model.fallbacks` | counter | `neuron.fallback.from`, `neuron.fallback.to`: the configured model ids switched from and to |
 | `neuron.agent.policy.blocks` | counter | `neuron.rule`: `empty_message`, `message_too_long`, `control_characters`, `token_budget`, `concurrent_runs`, `concurrent_streams`, `request_rate`, `insufficient_scope`, `unknown_tool` |
 | `neuron.citations.rejected` | counter, `{citation}` | none. `cite_id`s an answer listed that no knowledge tool returned in its run (made up, or copied from a passage); they are dropped from the answer (log `citations_rejected`) |
+| `neuron.knowledge.search.duration` | histogram | `neuron.knowledge.search.mode` (`hybrid`, `dense`, `fts`), `neuron.outcome` (`success`, `error`), `error.type`. The embedding call and the database queries of one search; a hybrid search whose provider is down still succeeds, on full text (log `knowledge_search_dense_skipped`) |
+| `neuron.knowledge.search.results` | histogram, `{passage}` | `neuron.knowledge.search.mode`. Passages returned per successful search; a share of zeros means questions the documents do not answer, or bases that are empty or still ingesting |
 | `neuron.checkpoint.duration` | histogram | `neuron.outcome`, `error.type` (the exception class) |
 | `http.server.request.duration` | histogram | `http.route`, `http.response.status_code` |
 | `http.server.request.body.size`, `http.server.response.body.size` | histogram | `http.route`, `http.response.status_code` |

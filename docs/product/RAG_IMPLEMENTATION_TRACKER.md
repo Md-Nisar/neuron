@@ -5,7 +5,7 @@ acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT
 research in `docs/research/rag/`.
 
 **Last verified:** 2026-11-10, RAG-08.02 Done: #504, #505 and #506 merged into `main` (`7c208a2`), #503 closed; `postgres-integration` green on each, all 20 mutants caught in CI. Earlier the same day: full backlog review against `main` at `470ff3e` (RAG-08.01 Done: #502 merged 2026-11-09, #498 closed; no open PR; no RAG PR or pushed RAG branch since #502; RAG-08.04 part 2 has no PR or pushed branch). Earlier: 2026-11-09, against `44bdb1a` (RAG-07.01 Done: #496 merged, its Postgres tests passed in CI; RAG-08.01 In progress, issue #498, epic #497. Earlier the same day, full backlog review against `a12b778`: RAG-08.04 In progress, part 1 #484 merged, issue #485; RAG-E06 follow-ups #481, #482, #483, #486 merged after the epic closed; bug issue #480 mapped below; no other RAG PR since `3960add`. Earlier: RAG-06.02 Done: #475, #476, #477, #478; RAG-06.01 Done: #468 to #473; RAG-04.04 Done: #465; RAG-04.03 Done: #462, #463; RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed) and RAG-08.04 (#485, open); no issue yet for the other stories of RAG-E07 and RAG-E08. The Project board has not been created.
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, open) and RAG-08.04 (#485, open); no issue yet for the other stories of RAG-E07 and RAG-E08. The Project board has not been created.
 
 ## New session protocol
 
@@ -54,16 +54,16 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E05 | Server-validated citations | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 1 | 0 | 0 | 2 | RAG-07.02 (ready) |
-| RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 2 | 1 | 0 | 2 | RAG-08.04 in progress; RAG-08.03 (ready) |
+| RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 2 | 2 | 0 | 1 | RAG-08.03 in progress; RAG-08.04 in progress |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.02 (Phase 2) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **28** | **1** | **0** | **27** | **RAG-08.03** (ready) |
+| **Total** | | | | **56** | **28** | **2** | **0** | **26** | **RAG-08.03** (in progress) |
 
-v1.1.0 scope (E00–E08): 33 stories, 28 done, 1 in progress (RAG-08.04), 4 pending. Of the pending ones, RAG-07.02 and RAG-08.03 are ready; RAG-07.03 waits for RAG-07.02, and RAG-08.05 for all of them.
+v1.1.0 scope (E00–E08): 33 stories, 28 done, 2 in progress (RAG-08.03, RAG-08.04), 3 pending. Of the pending ones, RAG-07.02 is ready; RAG-07.03 waits for RAG-07.02, and RAG-08.05 for all of them.
 
-**Recommended next action (2026-11-10):** RAG-08.03 (knowledge telemetry and leak scan, P1, ready; no issue yet). RAG-08.02 is Done: #504, #505 and #506 merged, #503 closed. RAG-08.04 part 2 is on branch `RAG-08.04` (no PR yet); parts 2 and 3 continue in parallel. RAG-07.02 is also ready.
+**Recommended next action (2026-11-10):** RAG-08.03 in progress (#508): part 1, search telemetry, on branch `RAG-08.03-part1`; parts 2 (upload and ingestion) and 3 (queue age, alert, dashboards) follow. RAG-08.02 is Done: #504, #505 and #506 merged, #503 closed. RAG-08.04 part 2 is on branch `RAG-08.04` (no PR yet); parts 2 and 3 continue in parallel. RAG-07.02 is also ready.
 
 ## GitHub synchronisation
 
@@ -71,7 +71,7 @@ v1.1.0 scope (E00–E08): 33 stories, 28 done, 1 in progress (RAG-08.04), 4 pend
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
 | Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), all closed; RAG-E07 (#494, open, 1 of 3 ticked); RAG-E08 (#497, open, 1 of 5 ticked); RAG-E09 to RAG-E12 not created |
-| Story issues (56) | All 25 stories of RAG-E00 to RAG-E06 (closed; see the issue map); RAG-07.01 (#495, closed); RAG-08.01 (#498, closed); RAG-08.02 (#503, closed); RAG-08.04 (#485, open, titled without the brackets the de-duplication matches on: `RAG-08.04 …`, not `[RAG-08.04] …`); the other 27 not created |
+| Story issues (56) | All 25 stories of RAG-E00 to RAG-E06 (closed; see the issue map); RAG-07.01 (#495, closed); RAG-08.01 (#498, closed); RAG-08.02 (#503, closed); RAG-08.03 (#508, open); RAG-08.04 (#485, open, titled without the brackets the de-duplication matches on: `RAG-08.04 …`, not `[RAG-08.04] …`); the other 27 not created |
 | Related issues | #480 (bug, `rag`, open): findings from running the full Docker Compose stack; its items are mapped to stories under RAG-E08 |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
@@ -109,6 +109,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-E08 | #497 | Not on a board |
 | RAG-08.01 | #498 | Not on a board |
 | RAG-08.02 | #503 | Not on a board |
+| RAG-08.03 | #508 | Not on a board |
 | RAG-08.04 | #485 | Not on a board |
 | RAG-E09 … RAG-E12, and the other stories | — | — |
 
@@ -316,7 +317,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Status (RAG-08.01 part 3, 2026-11-09, branch `ccr-50c38b2f-kg5e9i`): `tests/integration/test_live_knowledge_answers.py` (marker `integration`) asks the 64 answerable and 12 unanswerable cases through `AgentService` with the knowledge tools on Postgres and writes all four metrics (AC1 evidenced). First run, `nemotron-3-ultra-550b-a55b`, no infrastructure errors: `cited_correctly` 0.812 (AC3 needs 0.9), `citation_precision` 0.683, abstention 4 of 12 (AC4 needs all); six runs hit the agent step limit (#480's looping). A similarity floor cannot separate the unanswerable questions (top similarity 0.13 to 0.51 against 0.34 to 0.77 for answerable ones), so it stays 0.0. AC3 and AC4 are measured and not met: the story stays In progress. Details: `docs/releases/v1.1.0-retrieval-eval.md`. Second run after the fixes (prompt version 3, repeated-search refusal, dataset 1.1.0): `cited_correctly` 0.906 (AC3 met), `citation_precision` 0.767, abstention 7 of 12 (AC4 not met: three false-premise answers cite what does exist, one loop past the refusal, one dataset error); part 4 addresses them. Part 4 (2026-11-09, branch `ccr-50c38b2f-kg5e9i`, after #501): final model call offered no tools, system prompt version 4, `AgentAnswer.not_in_documents` (citations dropped in code), dataset 1.2.0 (unanswerable-005 replaced). Third run 0.938 cited correctly, 9 of 12 abstained; fourth run 0.891, 10 of 12; no step-limit endings. The flag was set on no answerable case. AC3 at its gate and AC4 not met: the story stays In progress.
   - Done (RAG-08.01, 2026-11-09, #502): owner decision to force the first search. Sixth live run: `cited_correctly` 0.938 (AC3), 12 of 12 abstained (AC4), no infrastructure errors; AC1 (all four metrics in the report) and AC2 (the part 2 baseline gate in `make eval` and CI) were evidenced earlier. Follow-ups, not blocking: a slow embedding call may exceed the 20-second tool timeout and fail the run (two transient `ToolExecutionError`s in the fifth run, not reproduced); nearly every knowledge-enabled run is now tainted, so MCP calls need approval in it (SECURITY.md); one trial per case, so `cited_correctly` varies 0.891 to 0.952 between runs.
 - **Plan and open point (RAG-08.02, #503):** three parts. Part 1, the injection cases and the threat model; part 2, one index that names the twelve cases and their tests, checked in `make test`; part 3, the mutation check (each guard removed, its case fails, in `test_security_harness.py`'s pattern) and security eval cases. Seven of the twelve cases need Postgres with pgvector and run in CI's `postgres-integration`, not `make test`, so AC1 is read as: `make test` checks every case maps to an existing test and runs the non-Postgres ones; `postgres-integration` runs the rest with 0 skipped. Owner agreed 2026-11-10. The security eval harness (`run_security_suite`) has in-memory threads and no knowledge database, so no knowledge case is added to `tests/fixtures/eval_security_cases.json`; the injection documents run through the agent loop in `test_knowledge_injection.py` instead (recorded in the threat model; raised with the owner on #504, merged without objection). Security review (parts 1 to 3): no blocking findings. Fixed: owner-filter mutants cast their parameter, so they fail on the missing check rather than on a Postgres type error (the first version's catch of one was such an error); a catch must be an assertion failure; a mutant per layer where a control has two (owner filter in `allowed_kbs` and the SQL, `nosniff` in route and middleware); mutants for `remember`, framing, the chunk path, the page cap, encrypted PDFs and the start-up locality check; a per-mutant timeout; the threat model's "every statement filters on the owner key" overclaim and the stale ASI03 RLS note. Accepted: the "listed while deleting" mutant is caught by the response schema refusing `deleting` (a 500, not a leak), a genuine third layer; the script passes its environment to the tests (CI holds only a throwaway DSN).
-- **Next recommended story:** RAG-08.03 (ready, no issue yet). RAG-08.04 parts 2 and 3 continue in parallel.
+- **Next recommended story:** RAG-08.03 (in progress, #508). RAG-08.04 parts 2 and 3 continue in parallel.
 
 ### RAG-E09 Retrieval quality and sharing
 
@@ -384,7 +385,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-07.03 | Backup and restore drill covers knowledge | 1 | P1 | Pending | — | — | — |
 | RAG-08.01 | Retrieval and citation eval harness | 1 | P0 | Done | #498 | #499, #500, #501, #502 | AC1: all four metrics in the report (`test_live_knowledge_answers.py`); AC2: `test_postgres_knowledge_retrieval.py` gates recall@5 and MRR against `evals/baselines/knowledge_retrieval.json`; AC3: 0.938 cited correctly; AC4: 12 of 12 abstained (sixth live run, `docs/releases/v1.1.0-retrieval-eval.md`) |
 | RAG-08.02 | Knowledge security test suite | 1 | P0 | Done | #503 | #504, #505, #506 | AC3, `docs/security/threat-model.md` "Knowledge Engine (v1.1.0)"; the hidden-instruction case, `tests/security/test_knowledge_injection.py`; AC1, `tests/security/test_knowledge_security_suite.py`; AC2, `scripts/knowledge_mutations.py` (20 of 20 mutants caught in CI's `postgres-integration` on #506 and locally); `postgres-integration` green on #504, #505 and #506 |
-| RAG-08.03 | Knowledge telemetry and leak scan | 1 | P1 | Pending | — | — | — |
+| RAG-08.03 | Knowledge telemetry and leak scan | 1 | P1 | In progress | #508 | part 1 | Partial: AC1 for search, `tests/integration/test_postgres_knowledge_telemetry.py` (span with ids, counts and timings, no query); AC2 for search (no query, passage, title or vector in spans, metrics or logs). Ingestion (part 2) and the queue-age alert, AC3 (part 3), to come |
 | RAG-08.04 | Reference stack, documentation and runbooks | 1 | P1 | In progress | #485 | #484 (part 1) | Partial: images for the one-command stack and the blob directory (#484, build evidence in the PR). AC1 (one command, upload → ask → cite) waits for part 2's compose file and part 3's CI smoke check; AC2 (`AGENTS.md`, `CLAUDE.md` state knowledge boundaries) not done; runbooks not done |
 | RAG-08.05 | v1.1.0 release verification | 1 | P0 | Pending | — | — | — |
 | RAG-09.01 | Optional reranker providers | 2 | P1 | Pending | — | — | — |
@@ -415,6 +416,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-10 | RAG-08.03 In progress: issue #508 under #497; part 1, the `neuron.knowledge.search` span and search metrics, leak scan over a real search | Claude session |
 | 2026-11-10 | RAG-08.02 Done: #504, #505 and #506 merged; `postgres-integration` green on each, all 20 mutants caught in CI (AC2); #503 closed. Next: RAG-08.03 | Claude session |
 | 2026-11-10 | RAG-08.02 part 3: mutation check (AC2), 20 mutants all caught on CI's pgvector image; security review findings fixed; RAG-08.04 part 2 moved to branch `RAG-08.04` (reverted on the RAG-08.02 branch, force-push not allowed). Next: the PR | Claude session |
 | 2026-11-10 | RAG-08.02 part 2: suite index in `make test` (AC1, owner agreed the reading for Postgres-only cases) | Claude session |

@@ -19,11 +19,12 @@ orders by the indexed expression with bitmap scans and sorts priced out.
 
 from __future__ import annotations
 
+import time
 import uuid
 from collections.abc import AsyncIterator, Callable, Collection, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 import psycopg
 import structlog
@@ -31,13 +32,14 @@ from psycopg import sql
 from psycopg_pool import AsyncConnectionPool
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import KnowledgeDisabledError, PersistenceError
+from neuron_agent.errors.base import AppError, KnowledgeDisabledError, PersistenceError
 from neuron_agent.knowledge.authorization import KnowledgeAuthorization
 from neuron_agent.knowledge.providers import (
     EmbeddingError,
     EmbeddingProvider,
     ensure_processing_allowed,
 )
+from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
 from neuron_agent.security.authorization import AuthorizationContext
@@ -195,6 +197,49 @@ class Retriever:
         if not 1 <= k <= MAX_K or not query.strip() or len(query) > MAX_QUERY_CHARS:
             raise ValueError("search needs 1 <= k <= 50 and a query of 1 to 2,000 characters")
         mode = mode or self._settings.knowledge_search_mode
+        if mode not in get_args(SearchMode):  # it labels a metric: keep it bounded
+            raise ValueError("search mode must be hybrid, dense or fts")
+        attributes = {
+            semconv.NEURON_KNOWLEDGE_SEARCH_MODE: mode,
+            semconv.NEURON_OWNER_KEY_PREFIX: owner_key[:12],
+        }
+        started = time.perf_counter()
+        # Ids, counts and timings only: the query, passages and titles never reach telemetry.
+        with telemetry.start_span(semconv.KNOWLEDGE_SEARCH_SPAN, attributes=attributes) as span:
+            try:
+                result, searched = await self._search(owner_key, query, k, kb_ids, mode)
+            except Exception as exc:
+                code = exc.context.code if isinstance(exc, AppError) else type(exc).__name__
+                telemetry.record_error(span, code)
+                metrics.record_knowledge_search(
+                    time.perf_counter() - started,
+                    mode=mode,
+                    outcome="error",
+                    error_type=code,
+                    results=None,
+                )
+                raise
+            span.set_attribute(semconv.NEURON_KNOWLEDGE_KB_IDS, [str(kb) for kb in searched])
+            span.set_attribute(semconv.NEURON_KNOWLEDGE_SEARCH_PATH, result.path)
+            span.set_attribute(semconv.NEURON_KNOWLEDGE_RESULTS, len(result.passages))
+            span.set_attribute(semconv.NEURON_OUTCOME, "success")
+        metrics.record_knowledge_search(
+            time.perf_counter() - started,
+            mode=mode,
+            outcome="success",
+            error_type=None,
+            results=len(result.passages),
+        )
+        return result
+
+    async def _search(
+        self,
+        owner_key: str,
+        query: str,
+        k: int,
+        kb_ids: Collection[uuid.UUID] | None,
+        mode: SearchMode,
+    ) -> tuple[SearchResult, list[uuid.UUID]]:
         vector: str | None = None
         if mode != "fts":
             # The query is embedded before the search transaction, so no connection is held
@@ -234,7 +279,7 @@ class Retriever:
             resource_type="knowledge_base",
             count=len(passages),
         )
-        return SearchResult(passages, path)
+        return SearchResult(passages, path), [row["kb_id"] for row in bases]
 
     @staticmethod
     async def _bases(
