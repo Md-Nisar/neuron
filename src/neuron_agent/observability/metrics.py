@@ -431,3 +431,18 @@ def observe_expired_leases(read: Callable[[], int]) -> None:
         unit="{lease}",
         description="Run leases past expires_at that are not yet deleted",
     )
+
+
+def observe_knowledge_queue_age(read: Callable[[], float | None]) -> None:
+    """Report `read()` as the knowledge queue-age gauge; None (not sampled yet) reports nothing."""
+
+    def observe(_: CallbackOptions) -> list[Observation]:
+        value = read()
+        return [] if value is None else [Observation(value)]
+
+    _meter().create_observable_gauge(
+        semconv.METRIC_KNOWLEDGE_QUEUE_AGE,
+        callbacks=[observe],
+        unit="s",
+        description="Seconds the oldest runnable job of the knowledge queue has waited",
+    )

@@ -226,3 +226,46 @@ async def test_the_document_of_a_job_that_keeps_stalling_ends_failed(stack: _Sta
         (doc,),
     )
     assert rows == [("failed", "worker_lost")]
+
+
+async def _age_events(stack: _Stack, job: int, seconds: int, sql: str = "") -> None:
+    """Date `job`'s events `seconds` back, then run `sql` on it (RAG-08.03 queue age)."""
+    async with await psycopg.AsyncConnection.connect(stack.role_db.migrator_dsn) as conn:
+        await conn.execute(
+            "UPDATE knowledge.procrastinate_events SET at = now() - make_interval(secs => %s)"
+            " WHERE job_id = %s",
+            (seconds, job),
+        )
+        if sql:
+            await conn.execute(sql, (job,))
+
+
+async def test_queue_age_is_the_wait_of_the_oldest_runnable_job(stack: _Stack) -> None:
+    assert await neuron_worker.oldest_queued_seconds(stack.worker_dsn) == 0
+    waiting = await stack.defer_sleep(1)
+    await _age_events(stack, waiting, 600)
+    # Older, but not waiting: one runs, one is a retry backing off until later.
+    await _age_events(
+        stack,
+        await stack.defer_sleep(1),
+        3600,
+        "UPDATE knowledge.procrastinate_jobs SET status = 'doing' WHERE id = %s",
+    )
+    await _age_events(
+        stack,
+        await stack.defer_sleep(1),
+        3600,
+        "UPDATE knowledge.procrastinate_jobs SET scheduled_at = now() + interval '1 hour'"
+        " WHERE id = %s",
+    )
+    assert 600 <= await neuron_worker.oldest_queued_seconds(stack.worker_dsn) < 660
+
+    # A retry waits from the time it was scheduled for, not from its first defer.
+    await _age_events(
+        stack,
+        waiting,
+        3600,
+        "UPDATE knowledge.procrastinate_jobs SET scheduled_at = now() - interval '60 seconds'"
+        " WHERE id = %s",
+    )
+    assert 60 <= await neuron_worker.oldest_queued_seconds(stack.worker_dsn) < 120

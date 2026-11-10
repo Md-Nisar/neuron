@@ -109,6 +109,9 @@ METRIC_KNOWLEDGE_SEARCH_RESULTS = "neuron.knowledge.search.results"
 # `neuron.knowledge.ingest.stage` and `error.type` (the document's stable error code).
 METRIC_KNOWLEDGE_INGEST_DURATION = "neuron.knowledge.ingest.duration"
 METRIC_KNOWLEDGE_STAGE_ERRORS = "neuron.knowledge.ingest.stage_errors"
+# Seconds the oldest runnable job of the knowledge queue has waited (0 when none waits), sampled
+# by each worker; every worker reports the same queue-wide value. No attributes.
+METRIC_KNOWLEDGE_QUEUE_AGE = "neuron.knowledge.queue.oldest_age"
 # Model fallbacks, by the configured model ids switched from and to (bounded, operator-chosen).
 METRIC_MODEL_FALLBACKS = "neuron.model.fallbacks"
 # Approval requests and decisions by `neuron.approval.decision`; memory operations by
