@@ -55,7 +55,8 @@ _DOCUMENT_FILTER = (
 _ANY_OWNER = Edit(
     _AUTHZ, "g.subject = %(owner)s AND b.owner_key = %(owner)s", "%(owner)s::text IS NOT NULL"
 )
-_PARSING = "knowledge/parsing.py"
+_PARSING, _MAIN = "knowledge/parsing.py", "api/main.py"
+_HIDDEN, _BOMB = "Instructions hidden in a document", "Zip bomb, page bomb, encrypted or macro file"
 
 MUTANTS = [
     Mutant(
@@ -136,7 +137,7 @@ MUTANTS = [
         ),
     ),
     Mutant(
-        "Instructions hidden in a document",
+        _HIDDEN,
         "forget needs no approval",
         (
             Edit(
@@ -147,7 +148,7 @@ MUTANTS = [
         ),
     ),
     Mutant(
-        "Instructions hidden in a document",
+        _HIDDEN,
         "remember takes any text",
         (
             Edit(
@@ -158,7 +159,7 @@ MUTANTS = [
         ),
     ),
     Mutant(
-        "Instructions hidden in a document",
+        _HIDDEN,
         "framing keeps <",
         (Edit("tools/framing.py", '.replace("<", chr(92) + "u003c")', ""),),
     ),
@@ -186,18 +187,18 @@ MUTANTS = [
     Mutant(
         "HTML or SVG download",
         "inline",
-        (Edit("api/main.py", 'return f"attachment; filename=', 'return f"inline; filename='),),
+        (Edit(_MAIN, 'return f"attachment; filename=', 'return f"inline; filename='),),
     ),
     Mutant(
         "HTML or SVG download",
         "no nosniff",
         (
-            Edit("api/main.py", ', "X-Content-Type-Options": "nosniff"}', "}"),
-            Edit("api/main.py", 'response.headers["X-Content-Type-Options"] = "nosniff"', "pass"),
+            Edit(_MAIN, ', "X-Content-Type-Options": "nosniff"}', "}"),
+            Edit(_MAIN, 'response.headers["X-Content-Type-Options"] = "nosniff"', "pass"),
         ),
     ),
     Mutant(
-        "Zip bomb, page bomb, encrypted or macro file",
+        _BOMB,
         "no total inflate check",
         (
             Edit(
@@ -209,12 +210,12 @@ MUTANTS = [
         ),
     ),
     Mutant(
-        "Zip bomb, page bomb, encrypted or macro file",
+        _BOMB,
         "no page cap",
         (Edit(_PARSING, "if max(page_count, len(pages)) > limits.max_pages:", "if False:"),),
     ),
     Mutant(
-        "Zip bomb, page bomb, encrypted or macro file",
+        _BOMB,
         "encrypted PDF accepted",
         (Edit(_PARSING, "if _ENCRYPT.search(data):", "if False:"),),
     ),
