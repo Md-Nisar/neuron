@@ -229,7 +229,7 @@ flowchart TB
     V --> P{"Policy decision<br/>(principal, agent, capability,<br/>arguments, data labels, taint)"}
     P -- deny --> D["Denied: recorded, model told 'not permitted'"]
     P -- "require approval" --> Q["Approval request<br/>bound to exact arguments, with expiry"]
-    Q -- rejected / expired --> D
+    Q -- "rejected or expired" --> D
     Q -- approved --> X
     P -- allow --> X["Executor: obtain credential, call application"]
     X --> R{"Application response"}

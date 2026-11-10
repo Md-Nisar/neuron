@@ -20,7 +20,7 @@ Three specific problems with the claim:
 
 ## 2. Competitor analysis
 
-Scope note: "Deployment" and "Pricing" state only what the research found. Blank means not found, not "none".
+Scope note: the last column states what the research found, with prices from secondary sources. The deployment entries for UiPath, Palantir, MuleSoft, Boomi and the cloud-only vendors are background knowledge [K], not re-checked. Blank means not found, not "none".
 
 | Product | Does exceptionally well | Integration strength | Domain limits | Ecosystem advantage | Security | Deployment and price signals |
 | --- | --- | --- | --- | --- | --- | --- |
