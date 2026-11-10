@@ -10,7 +10,7 @@
 | **v0.8.0** | User Application           | ✅ Released (gate #293 closed 2026-10-29; the owner reports the real browser and Keycloak run is done) |
 | **v0.9.0** | Production Candidate       | ✅ Released (local reference stack only) |
 | **v1.0.0** | Production AI Application  | ✅ Released 2026-11-02 without a production environment ([record](releases/v1.0.0-release-verification.md)) |
-| **v1.1.0** | Personal Knowledge         | Planned: private knowledge bases, document upload, cited answers ([ADR 0014](decisions/0014-knowledge-engine.md), Accepted) |
+| **v1.1.0** | Personal Knowledge         | ✅ Released 2026-11-10 as "Knowledge Engine" without a production environment: private knowledge bases, document upload, cited answers ([record](releases/v1.1.0-release-verification.md), [ADR 0014](decisions/0014-knowledge-engine.md)) |
 
 v0.5.0 is designed in [ADR 0007](decisions/0007-evaluation-and-observability.md) and tracked by the issues labelled `v0.5.0`.
 
@@ -24,7 +24,7 @@ v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (resear
 
 v1.0.0 is the v0.9.0 candidate plus fixes, tests and the login theme, with no contract change. The owner released it directly, without the `v1.0.0-rc.N` candidates of ADR 0012 decision 12, because no production environment exists; the load re-run against the v0.9.0 baseline is still to be done ([record](releases/v1.0.0-release-verification.md)).
 
-v1.1.0 ("Personal Knowledge") is designed in [ADR 0014](decisions/0014-knowledge-engine.md), Accepted 2026-11-02. Scope: RAG-E00 to RAG-E08 in the [RAG backlog](product/NEURON_RAG_PRODUCT_BACKLOG.md); status in the [tracker](product/RAG_IMPLEMENTATION_TRACKER.md). v1.2.0 (RAG-E09, sharing and retrieval quality) is a proposal.
+v1.1.0 ("Personal Knowledge") is designed in [ADR 0014](decisions/0014-knowledge-engine.md), Accepted 2026-11-02. Released 2026-11-10 (tag `v1.1.0`). Scope: RAG-E00 to RAG-E08 in the [RAG backlog](product/NEURON_RAG_PRODUCT_BACKLOG.md); status in the [tracker](product/RAG_IMPLEMENTATION_TRACKER.md). v1.2.0 (RAG-E09, sharing and retrieval quality) is a proposal.
 
 ## Deferred until after v1.0.0
 
