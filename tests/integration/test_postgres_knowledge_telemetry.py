@@ -278,8 +278,9 @@ async def test_an_unknown_errors_code_never_reaches_a_span(
         async def embed_documents(self, texts: list[str]) -> list[list[float]]:
             raise _ProviderError
 
+    broken = dataclasses.replace(ingestor, embeddings=_Broken())  # type: ignore[arg-type]
     with pytest.raises(_ProviderError):
-        await dataclasses.replace(ingestor, embeddings=_Broken()).ingest(doc)  # type: ignore[arg-type]
+        await broken.ingest(doc)
 
     spans = {s.name: s for s in exporter.get_finished_spans()}
     for name in (semconv.KNOWLEDGE_INGEST_SPAN, f"{semconv.KNOWLEDGE_INGEST_SPAN}.embed"):
