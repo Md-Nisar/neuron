@@ -81,7 +81,9 @@ results), API to Postgres (two roles: migrator and app), API to identity provide
 
 ADR 0014, RAG-08.02 (#503). The twelve cases of the Phase 1 security gate, each with its control
 and the tests that fail without it. Tests marked *Postgres* need pgvector and run in CI's
-`postgres-integration` job.
+`postgres-integration` job, which fails on any skipped test. `tests/security/test_knowledge_security_suite.py`
+names the exact test functions per case and checks in `make test` that each exists and runs in
+one of the two, and that this table lists the same twelve cases.
 
 | Case | Control | Tests |
 | --- | --- | --- |
