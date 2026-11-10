@@ -113,7 +113,7 @@ METRIC_KNOWLEDGE_STAGE_ERRORS = "neuron.knowledge.ingest.stage_errors"
 # by each worker; every worker reports the same queue-wide value. No attributes.
 METRIC_KNOWLEDGE_QUEUE_AGE = "neuron.knowledge.queue.oldest_age"
 # Rows the reconcile task acted on, by `neuron.outcome`: `ingest_requeued`, `ingest_stalled` or
-# `purge_requeued` (RAG-07.02).
+# `purge_requeued`; and orphan files the blob sweep deleted, `blob_deleted` (RAG-07.02).
 METRIC_KNOWLEDGE_RECONCILED = "neuron.knowledge.reconciled"
 # Model fallbacks, by the configured model ids switched from and to (bounded, operator-chosen).
 METRIC_MODEL_FALLBACKS = "neuron.model.fallbacks"

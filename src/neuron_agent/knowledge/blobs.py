@@ -23,6 +23,7 @@ import re
 import secrets
 from collections.abc import AsyncIterable, AsyncIterator
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -86,6 +87,8 @@ class BlobStore(Protocol):
     async def delete(self, key: str) -> None: ...
 
     async def exists(self, key: str) -> bool: ...
+
+    def older_than(self, cutoff: datetime) -> AsyncIterator[list[str]]: ...
 
 
 def _backend_error(operation: str, exc: Exception) -> BlobStoreError:
@@ -175,6 +178,20 @@ class _ObjectBlobStore:
         except Exception as exc:
             raise _backend_error("exists", exc) from None
         return True
+
+    async def older_than(self, cutoff: datetime) -> AsyncIterator[list[str]]:
+        """Keys of blobs last written before `cutoff`, in batches; other objects are skipped."""
+        try:
+            async for batch in obstore.list(self._store, chunk_size=500):
+                keys = [
+                    meta["path"]
+                    for meta in batch
+                    if _KEY.fullmatch(meta["path"]) and meta["last_modified"] < cutoff
+                ]
+                if keys:
+                    yield keys
+        except Exception as exc:
+            raise _backend_error("list", exc) from None
 
 
 class LocalBlobStore(_ObjectBlobStore):

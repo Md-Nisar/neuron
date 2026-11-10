@@ -278,6 +278,9 @@ class Settings(BaseSettings):
     # A document left in a non-terminal status, or a tombstone left unpurged, with no live job
     # for this long is queued again by the reconcile task (RAG-07.02).
     worker_reconcile_after_seconds: float = Field(default=3600.0, ge=60, le=604_800)
+    # A stored file no document names is deleted once it is this old (RAG-07.02). At least an
+    # hour, well past an upload's 300 s body deadline, so an upload in flight keeps its file.
+    worker_orphan_blob_grace_seconds: float = Field(default=86_400.0, ge=3600, le=2_592_000)
     # Touched while the worker is healthy; the container health check reads its age. In the
     # user's home, not a world-writable directory.
     worker_health_file: str = Field(

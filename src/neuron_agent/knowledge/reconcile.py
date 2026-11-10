@@ -15,15 +15,21 @@ sweep cannot see, rows left without a live (`todo` or `doing`) job:
 A row that still has a live job is never touched, so this task and the sweep never retry the
 same work. One run at a time, under an advisory lock, in one transaction: each job is queued
 in the transaction that reads its row (`jobs.defer`).
+
+`sweep_blobs`, a separate hourly task, deletes stored files that no document row names (an
+upload that crashed between storing its file and committing its row) once they are older than
+the grace period.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
 
 from neuron_agent.knowledge import jobs
+from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.ingest import Connect
 
 # Jobs queued for a stuck document after its first; then it fails with `ingest_stalled`. Counted
@@ -82,6 +88,8 @@ WHERE d.deleted_at < now() - make_interval(secs => %(seconds)s) AND b.deleted_at
         SELECT 1 FROM {_jobs(jobs.Task.PURGE_DOCUMENT, "doc_id", "d.doc_id", live=True)})
 ORDER BY d.deleted_at LIMIT {BATCH}
 """  # noqa: S608  # nosec B608 - constants only
+# No index on `blob_key`: one scan of the documents per batch of listed blobs, once an hour.
+_NAMED = "SELECT blob_key FROM knowledge.documents WHERE blob_key = ANY(%(keys)s)"
 
 
 async def reconcile(connect: Connect, stuck_seconds: float) -> dict[str, int]:
@@ -112,6 +120,27 @@ async def reconcile(connect: Connect, stuck_seconds: float) -> dict[str, int]:
                 await jobs.defer(conn, task, **{name: tombstone["id"]})
                 counts["purge_requeued"] += 1
     return counts
+
+
+async def sweep_blobs(connect: Connect, blobs: BlobStore, grace_seconds: float) -> int:
+    """Delete blobs older than the grace period that no document row names; return how many.
+
+    A row of any status keeps its blob, a tombstoned one too: its purge deletes the file. The
+    grace period covers an upload between storing its file and committing its row, so a blob is
+    never deleted while its upload may still commit.
+    """
+    cutoff = datetime.now(UTC) - timedelta(seconds=grace_seconds)
+    deleted = 0
+    async with await connect() as conn:
+        async for keys in blobs.older_than(cutoff):
+            async with conn.transaction():
+                rows = await _fetch(conn, _NAMED, {"keys": keys})
+            named = {row["blob_key"] for row in rows}
+            for key in keys:
+                if key not in named:
+                    await blobs.delete(key)
+                    deleted += 1
+    return deleted
 
 
 async def _fetch(

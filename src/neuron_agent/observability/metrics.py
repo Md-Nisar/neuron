@@ -262,7 +262,7 @@ def _build(meter: metrics.Meter) -> _Instruments:
         knowledge_reconciled=meter.create_counter(
             semconv.METRIC_KNOWLEDGE_RECONCILED,
             unit="{row}",
-            description="Documents and tombstones the reconcile task re-queued or failed",
+            description="Rows the reconcile task acted on and orphan files deleted",
         ),
         budget_settle_failures=meter.create_counter(
             semconv.METRIC_BUDGET_SETTLE_FAILURES,

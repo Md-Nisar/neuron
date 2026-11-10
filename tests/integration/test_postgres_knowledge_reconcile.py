@@ -1,4 +1,4 @@
-"""The reconcile task on Postgres as the worker role (RAG-07.02 AC2, AC4).
+"""The reconcile task and the orphan-blob sweep on Postgres as the worker role (RAG-07.02).
 
 Rows are written as the migrator and aged by moving `updated_at` or `deleted_at` back; the
 task runs as the worker role, as in the worker.
@@ -6,8 +6,11 @@ task runs as the worker role, as in the worker.
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
+from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -25,7 +28,7 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge import worker as neuron_worker
 from neuron_agent.knowledge.ingest import Ingestor
-from neuron_agent.knowledge.reconcile import STUCK_REQUEUES, reconcile
+from neuron_agent.knowledge.reconcile import STUCK_REQUEUES, reconcile, sweep_blobs
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -38,10 +41,15 @@ async def _sql(db: RoleDatabase, query: str, *args: Any) -> None:
 
 
 async def _document(
-    db: RoleDatabase, kb: uuid.UUID, status: str, age: float, deleted: float | None = None
+    db: RoleDatabase,
+    kb: uuid.UUID,
+    status: str,
+    age: float,
+    deleted: float | None = None,
+    key: str | None = None,
 ) -> uuid.UUID:
     """A document updated `age` seconds ago, and tombstoned `deleted` seconds ago if given."""
-    doc, sha, key = uuid.uuid4(), uuid.uuid4().hex * 2, uuid.uuid4().hex
+    doc, sha, key = uuid.uuid4(), uuid.uuid4().hex * 2, key or uuid.uuid4().hex
     await _sql(
         db,
         "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type, size_bytes,"
@@ -153,3 +161,39 @@ async def test_the_worker_schedules_one_reconcile_run_per_tick_and_runs_it(
     doc = await _document(db, await _base(db), "embedding", age=2 * _AFTER)
     await app.tasks[task].func(**args)
     assert await _status(db, doc) == ("queued", None)
+
+
+async def _stored(ingestor: Ingestor, tmp_path: Path, age: float) -> str:
+    """A file in the local store, last written `age` seconds ago."""
+
+    async def body() -> AsyncIterator[bytes]:
+        yield b"bytes"
+
+    key = (await ingestor.blobs.put(body(), max_bytes=100)).key
+    then = time.time() - age
+    os.utime(tmp_path / "blobs" / key, (then, then))
+    return key
+
+
+async def test_only_old_blobs_no_row_names_are_deleted(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    tmp_path: Path,
+) -> None:
+    db, ingestor = setup
+    grace = 3600.0
+    old_orphan = await _stored(ingestor, tmp_path, 2 * grace)
+    new_orphan = await _stored(ingestor, tmp_path, grace / 2)
+    live = await _stored(ingestor, tmp_path, 2 * grace)
+    tombstoned = await _stored(ingestor, tmp_path, 2 * grace)
+    kb = await _base(db)
+    await _document(db, kb, "ready", age=0, key=live)
+    await _document(db, kb, "deleting", age=0, deleted=2 * grace, key=tombstoned)
+    # Not a blob key: something else in the directory is never touched.
+    (tmp_path / "blobs" / "README").write_text("operator note")
+    os.utime(tmp_path / "blobs" / "README", (0, 0))
+    assert await sweep_blobs(ingestor.connect, ingestor.blobs, grace) == 1
+    assert not await ingestor.blobs.exists(old_orphan)  # AC1
+    for key in (new_orphan, live, tombstoned):  # AC3; a row of any status keeps its file
+        assert await ingestor.blobs.exists(key)
+    assert (tmp_path / "blobs" / "README").exists()
+    assert await sweep_blobs(ingestor.connect, ingestor.blobs, grace) == 0

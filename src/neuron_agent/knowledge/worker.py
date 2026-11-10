@@ -45,7 +45,7 @@ from neuron_agent.knowledge.parsing import (
 )
 from neuron_agent.knowledge.providers import create_embedding_provider
 from neuron_agent.knowledge.purge import Purger
-from neuron_agent.knowledge.reconcile import reconcile
+from neuron_agent.knowledge.reconcile import reconcile, sweep_blobs
 from neuron_agent.observability import metrics
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.observability.telemetry import configure_telemetry
@@ -62,6 +62,8 @@ RETRY = procrastinate.RetryStrategy(max_attempts=MAX_ATTEMPTS, exponential_wait=
 _OPTIONS = "-c search_path=knowledge"
 # The reconcile task's schedule: every ten minutes, queued once across all workers.
 RECONCILE_CRON = "*/10 * * * *"
+# The orphan-blob sweep lists the whole store, so it runs hourly.
+SWEEP_BLOBS_CRON = "23 * * * *"
 # The advisory lock key that serialises the stalled-job sweep across workers.
 _SWEEP = 0x4E52_5357
 # How long the oldest runnable job has waited: since its defer or retry, or since the time it was
@@ -179,9 +181,23 @@ def build_app(settings: Settings, ingestor: Ingestor | None = None) -> procrasti
         if any(counts.values()):
             log.info("knowledge.reconcile.done", **counts)
 
-    app.periodic(cron=RECONCILE_CRON)(
-        app.task(name=Task.RECONCILE.value, queue=QUEUE)(reconcile_knowledge)
-    )
+    async def sweep_knowledge_blobs(timestamp: int) -> None:
+        try:
+            deleted = await sweep_blobs(
+                ingestor.connect, ingestor.blobs, settings.worker_orphan_blob_grace_seconds
+            )
+        except Exception as exc:
+            log.warning("knowledge.blob_sweep.failed", error=type(exc).__name__)
+            raise ReconcileError(type(exc).__name__) from None
+        metrics.record_knowledge_reconciled({"blob_deleted": deleted})
+        if deleted:
+            log.info("knowledge.blob_sweep.done", deleted=deleted)
+
+    for name, cron, periodic in (
+        (Task.RECONCILE, RECONCILE_CRON, reconcile_knowledge),
+        (Task.SWEEP_BLOBS, SWEEP_BLOBS_CRON, sweep_knowledge_blobs),
+    ):
+        app.periodic(cron=cron)(app.task(name=name.value, queue=QUEUE)(periodic))
     return app
 
 
