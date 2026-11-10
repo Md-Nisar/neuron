@@ -37,20 +37,17 @@ async def _sql(db: RoleDatabase, query: str, *args: Any) -> None:
         await conn.execute(query, args)  # type: ignore[arg-type]
 
 
-async def _document(db: RoleDatabase, kb: uuid.UUID, status: str, age: float) -> uuid.UUID:
-    doc = uuid.uuid4()
+async def _document(
+    db: RoleDatabase, kb: uuid.UUID, status: str, age: float, deleted: float | None = None
+) -> uuid.UUID:
+    """A document updated `age` seconds ago, and tombstoned `deleted` seconds ago if given."""
+    doc, sha, key = uuid.uuid4(), uuid.uuid4().hex * 2, uuid.uuid4().hex
     await _sql(
         db,
         "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type, size_bytes,"
-        " sha256, blob_key, status, updated_at) VALUES (%s, %s, %s, 't', 'text/plain', 1, %s,"
-        " %s, %s, now() - make_interval(secs => %s))",
-        doc,
-        kb,
-        _OWNER,
-        uuid.uuid4().hex * 2,
-        uuid.uuid4().hex,
-        status,
-        age,
+        " sha256, blob_key, status, updated_at, deleted_at) VALUES (%s, %s, %s, 't', 'text/plain',"
+        " 1, %s, %s, %s, now() - make_interval(secs => %s), now() - make_interval(secs => %s))",
+        *(doc, kb, _OWNER, sha, key, status, age, deleted),
     )
     return doc
 
@@ -114,22 +111,14 @@ async def test_an_unfinished_purge_is_queued_again_once(
 ) -> None:
     db, ingestor = setup
     deleted_base, live_base = await _base(db), await _base(db)
-    in_deleted_base = await _document(db, deleted_base, "deleting", age=0)
-    deleted_doc = await _document(db, live_base, "deleting", age=0)
-    fresh_doc = await _document(db, live_base, "deleting", age=0)
+    await _document(db, deleted_base, "deleting", age=0, deleted=2 * _AFTER)
+    deleted_doc = await _document(db, live_base, "deleting", age=0, deleted=2 * _AFTER)
+    await _document(db, live_base, "deleting", age=0, deleted=_AFTER / 2)  # inside the timeout
     await _sql(
         db,
         "UPDATE knowledge.bases SET deleted_at = now() - interval '1 day' WHERE kb_id = %s",
         deleted_base,
     )
-    await _sql(
-        db,
-        "UPDATE knowledge.documents SET deleted_at = now() - interval '1 day'"
-        " WHERE doc_id IN (%s, %s)",
-        in_deleted_base,
-        deleted_doc,
-    )
-    await _sql(db, "UPDATE knowledge.documents SET deleted_at = now() WHERE doc_id = %s", fresh_doc)
     assert (await reconcile(ingestor.connect, _AFTER))["purge_requeued"] == 2
     assert sorted(await _jobs(db), key=str) == sorted(
         [
