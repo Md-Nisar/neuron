@@ -6,6 +6,7 @@ task runs as the worker role, as in the worker.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 import uuid
@@ -13,6 +14,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
+import anyio
 import psycopg
 import pytest
 from procrastinate.periodic import PeriodicDeferrer
@@ -229,3 +231,38 @@ async def test_a_sweep_stops_at_its_limit_and_past_a_failed_delete(
     with pytest.raises(OSError, match="store down"):
         await sweep_blobs(ingestor.connect, failing, 3600)  # type: ignore[arg-type]
     assert [await ingestor.blobs.exists(key) for key in left] == [True, False]
+
+
+async def test_check_blobs_reports_orphans_and_flags_live_documents_without_a_file(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    worker: tuple[str, str],  # noqa: F811
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """RAG-07.03 AC2: a database and a store from different moments, as after a restore."""
+    db, ingestor = setup
+    kb, gone_kb = await _base(db), await _base(db)
+    await _document(db, kb, "ready", age=0, key=await _stored(ingestor, tmp_path, 0))
+    orphan = await _stored(ingestor, tmp_path, 0)
+    missing = await _document(db, kb, "ready", age=0)  # no file was stored
+    await _document(db, kb, "deleting", age=0, deleted=1)  # tombstoned: the purge's
+    await _document(db, gone_kb, "ready", age=0)  # its base is tombstoned below
+    await _sql(db, "UPDATE knowledge.bases SET deleted_at = now() WHERE kb_id = %s", gone_kb)
+    (tmp_path / "blobs" / "README").write_text("operator note")
+    dsn = make_conninfo(_DSN or "", dbname=db.name, user=worker[0], password=worker[1])
+    settings = Settings(
+        env="test",
+        postgres_worker_dsn=SecretStr(dsn),
+        knowledge_blob_root=str(tmp_path / "blobs"),
+    )
+    code = await anyio.to_thread.run_sync(neuron_worker._check_blobs, settings)
+    assert code == 1
+    assert json.loads(capsys.readouterr().out) == {
+        "blobs": 2,
+        "documents": 4,
+        "orphan_blobs": 1,
+        "missing_blobs": [str(missing)],
+    }
+    assert await ingestor.blobs.exists(orphan)  # read-only
+    await _sql(db, "DELETE FROM knowledge.documents WHERE doc_id = %s", missing)
+    assert await anyio.to_thread.run_sync(neuron_worker._check_blobs, settings) == 0

@@ -244,6 +244,37 @@ def test_a_connection_error_prints_no_dsn(
         assert secret not in err
 
 
+def test_check_blobs_prints_only_the_error_class_and_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    async def boom(*_: object) -> None:
+        raise RuntimeError("postgresql://neuron_worker:s3cret@db.internal/n")
+
+    settings = Settings(
+        env="test",
+        postgres_worker_dsn=SecretStr("postgresql://w@h/d"),
+        knowledge_blob_root=str(tmp_path),
+    )
+    monkeypatch.setattr(worker, "get_settings", lambda: settings)
+    monkeypatch.setattr(worker, "check_blobs", boom)
+    with pytest.raises(SystemExit) as caught:
+        worker.main(["check-blobs"])
+    assert caught.value.code == 2
+    assert capsys.readouterr() == ("", "check-blobs failed: RuntimeError\n")
+    # A missing local root is not created: it would report every document as missing.
+    gone = tmp_path / "unmounted"
+    monkeypatch.setattr(
+        worker,
+        "get_settings",
+        lambda: settings.model_copy(update={"knowledge_blob_root": str(gone)}),
+    )
+    with pytest.raises(SystemExit) as caught:
+        worker.main(["check-blobs"])
+    assert caught.value.code == 2
+    assert "APP_KNOWLEDGE_BLOB_ROOT does not exist" in capsys.readouterr().err
+    assert not gone.exists()
+
+
 def test_the_worker_dsn_needs_tls_in_production() -> None:
     plaintext = SecretStr("postgresql://w@db/n")
     with pytest.raises(ValidationError, match="APP_POSTGRES_WORKER_DSN must set sslmode"):

@@ -41,13 +41,15 @@ x-api: &api
     APP_AUTH_AUDIENCE: neuron-api
     APP_AUTH_JWKS_URL: http://keycloak:8080/realms/neuron/protocol/openid-connect/certs
     APP_AUTH_ALGORITHMS: '["RS256"]'
-    APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:recall","tools:remember"],"neuron-reader":["threads:read"]}'
+    APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:get_document_excerpt","tools:list_knowledge_bases","tools:recall","tools:remember","tools:search_knowledge"],"neuron-reader":["threads:read"]}'
     APP_IDENTITY_HASH_KEY: reference-stack-identity-key-local-only-0001
     APP_CHECKPOINTER: postgres
     APP_MEMORY_ENABLED: "true"
     # Off unless set; with it on, `--profile knowledge` adds the ingestion worker (RAG-02.01).
     APP_KNOWLEDGE_ENABLED: ${KNOWLEDGE_ENABLED:-false}
     APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
+    # No provider key on this stack: the fake embedding provider, as for the chat model.
+    APP_KNOWLEDGE_EMBEDDING_PROVIDER: ${KNOWLEDGE_EMBEDDING_PROVIDER:-fake}
     APP_LIMITS_BACKEND: postgres
     APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@postgres:5432/neuron?sslmode=disable
     APP_ALLOWED_HOSTS: '["localhost","127.0.0.1","api1","api2"]'
@@ -162,6 +164,7 @@ services:
       APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker@postgres:5432/neuron?sslmode=disable
       APP_KNOWLEDGE_PARSER_URL: http://docling:5001
       APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
+      APP_KNOWLEDGE_EMBEDDING_PROVIDER: ${KNOWLEDGE_EMBEDDING_PROVIDER:-fake}
       # libpq reads the password from here (the throwaway one from init-roles.sql).
       PGPASSWORD: worker-local-only
     volumes:

@@ -5,6 +5,9 @@
 
 neuron-worker           run jobs until SIGTERM or SIGINT
 neuron-worker health    exit 0 while the health file is fresh (the container health check)
+neuron-worker check-blobs
+                        after a restore, report orphan files and live documents whose file is
+                        missing as JSON; exit 1 if any file is missing. Deletes nothing.
 
 It connects as the worker role (`APP_POSTGRES_WORKER_DSN`) with its own pool, runs the tasks
 named in `jobs.Task`, and sweeps jobs left `doing` by a worker that stopped sending heartbeats
@@ -16,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 import time
 import uuid
@@ -45,7 +49,7 @@ from neuron_agent.knowledge.parsing import (
 )
 from neuron_agent.knowledge.providers import create_embedding_provider
 from neuron_agent.knowledge.purge import Purger
-from neuron_agent.knowledge.reconcile import reconcile, sweep_blobs
+from neuron_agent.knowledge.reconcile import check_blobs, reconcile, sweep_blobs
 from neuron_agent.observability import metrics
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.observability.telemetry import configure_telemetry
@@ -360,15 +364,38 @@ def healthy(settings: Settings) -> bool:
     return age <= settings.worker_stalled_seconds
 
 
+def _check_blobs(settings: Settings) -> int:
+    assert settings.postgres_worker_dsn is not None  # nosec B101 - main() checks it
+    # Read-only in the session too, not only in the code: the worker role may write.
+    options = f"{_OPTIONS} -c default_transaction_read_only=on"
+    connect = connector(settings.postgres_worker_dsn.get_secret_value(), options)
+    root = Path(settings.knowledge_blob_root)
+    if settings.knowledge_blob_backend == "local" and not root.is_dir():
+        # The store would create it, and an empty root reports every document as missing.
+        print("check-blobs failed: APP_KNOWLEDGE_BLOB_ROOT does not exist", file=sys.stderr)
+        return 2
+    try:
+        report = asyncio.run(check_blobs(connect, build_blob_store(settings)))
+    except Exception as exc:  # noqa: BLE001 - the class only, as below
+        print(f"check-blobs failed: {type(exc).__name__}", file=sys.stderr)
+        return 2
+    print(json.dumps(report, indent=2))
+    return 1 if report["missing_blobs"] else 0
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="neuron-worker")
-    parser.add_argument("command", nargs="?", choices=("run", "health"), default="run")
+    parser.add_argument(
+        "command", nargs="?", choices=("run", "health", "check-blobs"), default="run"
+    )
     command = parser.parse_args(argv).command
     settings = get_settings()
     if command == "health":
         raise SystemExit(0 if healthy(settings) else 1)
     if settings.postgres_worker_dsn is None:
         raise SystemExit("neuron-worker needs APP_POSTGRES_WORKER_DSN")
+    if command == "check-blobs":
+        raise SystemExit(_check_blobs(settings))
     configure_logging(
         level=settings.log_level,
         service=f"{settings.name}-worker",
