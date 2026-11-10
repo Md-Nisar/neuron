@@ -37,7 +37,9 @@ x-api-env: &api-env
   APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:get_document_excerpt","tools:list_knowledge_bases","tools:recall","tools:remember","tools:search_knowledge"],"neuron-reader":["threads:read"]}'
   APP_IDENTITY_HASH_KEY: local-stack-identity-key-local-only-0001
   APP_CHECKPOINTER: postgres
-  APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@postgres:5432/neuron?sslmode=disable
+  APP_POSTGRES_DSN: postgresql://neuron_app@postgres:5432/neuron?sslmode=disable
+  # libpq reads the password from here (the throwaway one from init-roles.sql).
+  PGPASSWORD: app-local-only
   APP_MEMORY_ENABLED: "true"
   APP_KNOWLEDGE_ENABLED: "true"
   APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
@@ -107,7 +109,9 @@ services:
       OPENAI_API_KEY: ""
       NVIDIA_API_KEY: ""
       ANTHROPIC_API_KEY: ""
-      APP_POSTGRES_MIGRATION_DSN: postgresql://neuron_migrator:migrator-local-only@postgres:5432/neuron?sslmode=disable
+      APP_POSTGRES_MIGRATION_DSN: postgresql://neuron_migrator@postgres:5432/neuron?sslmode=disable
+      # `setup` connects only as the migrator, so its password replaces the app's here.
+      PGPASSWORD: migrator-local-only
 
   api:
     <<: *neuron-image
