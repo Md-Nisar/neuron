@@ -10,7 +10,7 @@ Upgrade note: system prompt version 4. When the caller may search, a run's first
 
 Known issues:
 - **No production environment exists**, as for 1.0.0: no hosted deployment, staging run or production-model run. The GitHub Release is published by hand from this section.
-- The live answer and citation eval was not re-run on the release commit; the last run (RAG-08.01, its sixth run, 2026-11-09) cited a correct page for 0.938 of answerable questions and abstained on 12 of 12. One trial per case: runs ranged from 0.891 to 0.952.
+- The live answer and citation eval runs one trial per case. The release run (2026-11-10) cited a correct page for 0.953 of answerable questions and abstained on 12 of 12; runs since the fixes ranged from 0.891 to 0.953, so a re-run can land near the 0.9 gate.
 - Ingestion and search figures are for one local host with the fake embedding provider and the Markdown parser (`docs/releases/v1.1.0-gate/knowledge-load.json`); no load gate in this release, and the ADR 0012 comparison with v0.9.0 was not run.
 - No story yet for a worker settings profile or for checking the worker role's column grants in production.
 - A slow embedding call can outlast the 20-second tool timeout and fail a run instead of reporting knowledge unavailable.
@@ -21,7 +21,7 @@ Upgrade note: `validate_safe_url` now accepts `https` only unless called with `a
 Upgrade note: `docker-compose.yml` is now the whole local stack and signs in through Keycloak (no unauthenticated API). Its Postgres data is in a new volume, `postgres-data`, created with the production roles; the old `pgdata` volume is not used and can be removed with `docker volume rm neuron_pgdata`.
 
 Changes:
-- Release: v1.1.0 verification (RAG-08.05, #520). `scripts/knowledge_load.py` records ingestion and search figures on the reference stack: 80 Markdown documents of 16 KB from 8 users ingested at about 250 a minute (each in 4.8 s at p50, 7.3 s at p95), and 384 searches at 6.4 a second with 156 ms at p95.
+- Release: v1.1.0 verification (RAG-08.05, #520). `scripts/knowledge_load.py` records ingestion and search figures on the reference stack: 80 Markdown documents of 16 KB from 8 users ingested at about 250 a minute (each in 4.8 s at p50, 7.3 s at p95), and 384 searches at 6.4 a second with 156 ms at p95. The live answer eval on the release code passed: 0.953 cited correctly, 12 of 12 abstained.
 - Operations: the restore drill covers knowledge (RAG-07.03, #518). New read-only command `neuron-worker check-blobs`. Run with the worker's settings after a restore and before the worker starts, it prints the number of files, rows and orphan files and the ids of live documents whose file is missing. It exits 1 if any file is missing and 2 if the check fails, and deletes nothing. It is now step 4 of "Backups and restore" in OPERATIONS.md. `scripts/dr_drill.py` now:
   - ingests a known document before the backup;
   - uploads and deletes documents after T;
