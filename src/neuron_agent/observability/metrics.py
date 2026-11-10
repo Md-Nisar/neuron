@@ -62,6 +62,8 @@ FAST_OPERATION_BUCKETS = (
     30.0,
     60.0,
 )
+# Passages returned per knowledge search; `retrieval.MAX_K` caps a search at 50.
+KNOWLEDGE_RESULT_BUCKETS = (0.0, 1.0, 2.0, 3.0, 5.0, 8.0, 10.0, 20.0, 50.0)
 # Token counts per model call, powers of 4 as the GenAI conventions advise.
 TOKEN_BUCKETS = tuple(float(4**n) for n in range(14))
 
@@ -84,6 +86,11 @@ def metric_views() -> list[View]:
         View(instrument_name=semconv.METRIC_STREAM_TTFT, aggregation=latency),
         View(instrument_name=semconv.METRIC_TOOL_DURATION, aggregation=fast),
         View(instrument_name=semconv.METRIC_CHECKPOINT_DURATION, aggregation=fast),
+        View(instrument_name=semconv.METRIC_KNOWLEDGE_SEARCH_DURATION, aggregation=fast),
+        View(
+            instrument_name=semconv.METRIC_KNOWLEDGE_SEARCH_RESULTS,
+            aggregation=ExplicitBucketHistogramAggregation(KNOWLEDGE_RESULT_BUCKETS),
+        ),
         View(
             instrument_name=semconv.METRIC_USAGE,
             aggregation=ExplicitBucketHistogramAggregation(TOKEN_BUCKETS),
@@ -119,6 +126,8 @@ class _Instruments:
     feedback: metrics.Counter
     memory_operations: metrics.Counter
     checkpoint_duration: metrics.Histogram
+    knowledge_search_duration: metrics.Histogram
+    knowledge_search_results: metrics.Histogram
     budget_settle_failures: metrics.Counter
     service_ready: metrics.ObservableGauge
     db_pool_waiting: metrics.ObservableGauge
@@ -224,6 +233,14 @@ def _build(meter: metrics.Meter) -> _Instruments:
         ),
         checkpoint_duration=meter.create_histogram(
             semconv.METRIC_CHECKPOINT_DURATION, unit="s", description="Checkpointer operation"
+        ),
+        knowledge_search_duration=meter.create_histogram(
+            semconv.METRIC_KNOWLEDGE_SEARCH_DURATION, unit="s", description="Knowledge search"
+        ),
+        knowledge_search_results=meter.create_histogram(
+            semconv.METRIC_KNOWLEDGE_SEARCH_RESULTS,
+            unit="{passage}",
+            description="Passages returned per successful knowledge search",
         ),
         budget_settle_failures=meter.create_counter(
             semconv.METRIC_BUDGET_SETTLE_FAILURES,
@@ -354,6 +371,19 @@ def record_checkpoint(seconds: float, *, outcome: str, error_type: str | None) -
         seconds,
         {semconv.NEURON_OUTCOME: outcome, **_error(error_type)},
     )
+
+
+def record_knowledge_search(
+    seconds: float, *, mode: str, outcome: str, error_type: str | None, results: int | None
+) -> None:
+    """One knowledge search's duration and, when it succeeded, how many passages it returned."""
+    attributes = {semconv.NEURON_KNOWLEDGE_SEARCH_MODE: mode}
+    instruments = _instruments()
+    instruments.knowledge_search_duration.record(
+        seconds, {**attributes, semconv.NEURON_OUTCOME: outcome, **_error(error_type)}
+    )
+    if results is not None:
+        instruments.knowledge_search_results.record(results, attributes)
 
 
 def record_budget_settle_failure() -> None:
