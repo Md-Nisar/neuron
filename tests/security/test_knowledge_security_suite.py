@@ -135,7 +135,8 @@ def test_every_named_test_runs_in_make_test_or_the_postgres_job(node: str) -> No
     if path.startswith("tests/integration/"):
         source = (_ROOT / path).read_text(encoding="utf-8")
         marks = re.search(r"^pytestmark = \[(.*)\]$", source, re.MULTILINE)
-        assert marks and "pytest.mark.postgres" in marks.group(1), path
+        assert marks, path
+        assert "pytest.mark.postgres" in marks.group(1), path
     else:
         assert path.startswith(_MAKE_TEST), path
 
@@ -145,5 +146,6 @@ def test_the_threat_model_names_only_test_files_that_exist() -> None:
     section = text.split("## Knowledge Engine (v1.1.0)", 1)[1].split("\n## ", 1)[0]
     named = set(re.findall(r"`(test_[a-z0-9_]+\.py)`", section))
     present = {p.name for p in (_ROOT / "tests").rglob("test_*.py")}
-    assert named and named <= present, named - present
+    assert named
+    assert named <= present, named - present
     assert all(Path(node.split("::")[0]).name in named for node in _NODES)
