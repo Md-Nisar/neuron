@@ -24,18 +24,6 @@ Since v0.3.0, conversations are stateful and responses can be streamed (ADR 0005
 - `uv` 0.11 or newer
 - Optional: `OPENAI_API_KEY`, or `NVIDIA_API_KEY` for free-tier development models, for live model calls
 
-## Run everything with Docker
-
-One command starts the whole local stack: Postgres with pgvector, Keycloak with the login theme, the API, the knowledge worker and the web app. You need only Docker with Compose v2.
-
-```bash
-docker compose up --build    # or: make up (detached; make down stops it)
-```
-
-Open http://localhost:5173 and sign in as `alice` / `dev-only-alice` (`bob` / `dev-only-bob` can only read threads). The API is on http://127.0.0.1:8000 and Keycloak on http://localhost:8180 (`admin` / `admin-local-only`). Every port binds to loopback and every credential is a throwaway one, so this is for development only.
-
-With no key the stack uses the fake development model and fake embeddings, and makes no external call. For a real model, put `NVIDIA_API_KEY` (or `OPENAI_API_KEY`) and `APP_DEFAULT_MODEL` in `.env`; add `APP_KNOWLEDGE_EMBEDDING_PROVIDER=nvidia` to embed documents with NVIDIA too. PDF and Office files need docling-serve, a 7.6 GB image that takes about 2.5 minutes to start: add `COMPOSE_PROFILES=pdf` and `APP_KNOWLEDGE_PARSER_URL=http://docling:5001` to `.env`. The top of `docker-compose.yml` lists every option. `docker compose down -v` deletes the data.
-
 ## Setup
 
 Unix (bash/zsh):
@@ -165,7 +153,7 @@ Export returns only user and assistant text and is bounded by `APP_USER_DATA_EXP
 
 Persistence is selected with `APP_CHECKPOINTER`:
 - `auto` (the default) keeps threads in memory in development and test. They're lost on restart.
-- `postgres` is the setting for anything durable: see `OPERATIONS.md#thread-persistence-postgres`, or run `docker compose up` for the whole local stack on Postgres.
+- `postgres` is the setting for anything durable: see `OPERATIONS.md#thread-persistence-postgres`, or run `docker compose up` for a local API backed by Postgres.
 
 ### Streaming
 

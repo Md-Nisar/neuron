@@ -161,8 +161,7 @@ services:
     healthcheck:
       test: ["CMD", "neuron-worker", "health"]
       interval: 10s
-      # The command imports the package, which takes about 4 s on a small machine.
-      timeout: 10s
+      timeout: 3s
       start_period: 20s
       retries: 3
 

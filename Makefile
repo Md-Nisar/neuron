@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak up down reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration eval security build
 
 install:
 	uv sync --no-dev
@@ -17,14 +17,6 @@ db-setup:
 
 prune-threads:
 	uv run python -m neuron_agent.persistence.cli prune
-
-# The whole local stack (docker-compose.yml): Postgres, Keycloak, API, worker and web app.
-# http://localhost:5173, alice / dev-only-alice. Development only.
-up:
-	docker compose up --build -d --wait
-
-down:
-	docker compose down
 
 # The v0.9.0 reference stack (ADR 0012): two API replicas, Postgres and Keycloak, from an
 # image passed in. `NEURON_IMAGE=neuron:ref make reference-up`; local use only.
