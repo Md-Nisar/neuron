@@ -1,0 +1,65 @@
+{
+  "memories_seeded": 0,
+  "knowledge_cited_on_source": true,
+  "backup_taken": "2026-11-10T15:34:14.130810+00:00",
+  "erasure_after_T": {
+    "http": 200,
+    "body": {
+      "erased_count": 3,
+      "skipped_busy_count": 0,
+      "erased_memory_count": 0,
+      "knowledge": {
+        "erased_base_count": 0,
+        "erased_document_count": 0,
+        "purge_pending": false,
+        "complete": true
+      },
+      "complete": true
+    }
+  },
+  "restore_usable_seconds": 2.1,
+  "check_blobs": {
+    "exit": 1,
+    "blobs": 8,
+    "documents": 8,
+    "orphan_blobs": 1,
+    "missing_blobs": [
+      "2d4d9ef8-6eed-4d43-abfb-4fe6bbec4b9c"
+    ]
+  },
+  "smoke_test": "smoke_test: passed (ready, invoke, cleanup)",
+  "restore_to_smoke_test_passed_seconds": 24.3,
+  "threads_alice_bob_before_backup": [
+    38,
+    3
+  ],
+  "threads_alice_bob_at_incident": [
+    41,
+    0
+  ],
+  "threads_alice_bob_restored_before_replay": [
+    40,
+    3
+  ],
+  "threads_alice_bob_restored_after_replay": [
+    40,
+    0
+  ],
+  "erasure_replay_http": 200,
+  "rate_bucket_rows_source": 2,
+  "rate_bucket_rows_restored": 0,
+  "newest_thread_restored": "2026-11-10 15:34:26.20105+00",
+  "newest_thread_source": "2026-11-10 15:34:36.362116+00",
+  "knowledge_cited_after_restore": true,
+  "knowledge_documents": {
+    "known": "249941ea-e730-41f8-bb7f-69c30609535c",
+    "deleted_after_T": "2d4d9ef8-6eed-4d43-abfb-4fe6bbec4b9c",
+    "uploaded_after_T": "fd3b2502-d64e-4ee2-b51d-fce3a94fe705"
+  },
+  "pitr_target": "2026-11-10 15:34:28.320565+00",
+  "incident_at": "2026-11-10T15:34:37.873181+00:00",
+  "rpo_note": "restored to T; newest write at the incident was after it (2026-11-10 15:34:28.431172+00)",
+  "result": "passed",
+  "restored_containers_deleted_at": "2026-11-10T15:35:06.372218+00:00",
+  "started_at": "2026-11-10T15:33:20.089563+00:00"
+}

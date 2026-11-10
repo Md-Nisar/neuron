@@ -3,7 +3,9 @@
 
 """Restore drill on the reference stack (ADR 0012 decision 8, #332). Local use only.
 
-    NEURON_IMAGE=neuron:ref make reference-up
+    KNOWLEDGE_ENABLED=true NEURON_IMAGE=neuron:ref make reference-up
+    KNOWLEDGE_ENABLED=true NEURON_IMAGE=neuron:ref docker compose \
+        -f docker-compose.reference.yml --profile knowledge up -d --no-deps worker
     NEURON_IMAGE=neuron:ref uv run python -m scripts.dr_drill
 
 Follows OPERATIONS.md, "Backups and restore", on the reference stack's Postgres (WAL archiving
@@ -12,6 +14,13 @@ one user's data after T, then restore to T into a *new* container, run `setup`, 
 throwaway API replica at it and run the smoke test, replay the erasure, check the `UNLOGGED`
 rate-limit table came back empty, and delete everything the drill created. Prints the template
 fields of the runbook, including RTO and RPO. Needs Docker and the running reference stack.
+
+Knowledge (RAG-07.03): a known Markdown document and one more are ingested before the backup.
+After T one document is uploaded and the other deleted, then the blob volume is copied: files
+and database from different moments. After the restore, `neuron-worker check-blobs` must report
+the orphan file and flag the deleted document's missing file, and the staging replica must cite
+the known document for its question. The worker needs only the Markdown parser, so docling-serve
+is not started (`--no-deps`).
 """
 
 from __future__ import annotations
@@ -30,14 +39,21 @@ from pathlib import Path
 from typing import Any
 
 from loadtest.identity import TokenSource, provision_users, username
+from scripts.smoke_test import KNOWLEDGE_DOCUMENT, KNOWLEDGE_QUESTION, _request
 
 COMPOSE = ["docker", "compose", "-f", "docker-compose.reference.yml"]
-POSTGRES_IMAGE = "postgres:16"
+# The reference stack's image: the knowledge tables need pgvector.
+POSTGRES_IMAGE = (
+    "pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f"
+)
 API = "http://127.0.0.1:8101"
 RESTORE = "neuron-dr-restore"
 STAGING_API = "neuron-dr-staging"
 RESTORE_API_PORT = 8199
 NETWORK = "neuron_default"
+BLOB_ROOT = "/var/lib/neuron/knowledge-blobs"
+BLOB_VOLUME = "neuron_knowledge-blobs"
+RESTORED_BLOBS = "neuron-dr-blobs"
 MIGRATOR_PASSWORD = "migrator-local-only"  # noqa: S105  # nosec B105  (reference stack)
 APP_PASSWORD = "app-local-only"  # noqa: S105  # nosec B105
 ALICE, BOB = username(900), username(901)
@@ -96,18 +112,49 @@ def stream(token: str, message: str, base: str = API) -> dict[str, Any]:
     return last
 
 
-def seed(token: str, threads: int, memories: int) -> None:
+def seed(token: str, threads: int, memories: int) -> int:
+    """Seed threads and memories; return how many memories were saved.
+
+    With knowledge on, a run's first model call must search, so the fake model's scripted
+    `remember:` turn ends without asking to save a memory, as a plain thread."""
     for index in range(threads):
         stream(token, f"hello {index}")
+    saved = 0
     for index in range(memories):
         paused = stream(token, f"remember: drill note {index}")
-        path = f"/v1/threads/{paused['thread_id']}/approvals/{paused['approval']['approval_id']}"
-        api("POST", path, token, {"decision": "approve"})
+        if "approval" in paused:
+            path = (
+                f"/v1/threads/{paused['thread_id']}/approvals/{paused['approval']['approval_id']}"
+            )
+            saved += api("POST", path, token, {"decision": "approve"})[0] == 200
+    return saved
 
 
 def thread_total(token: str, base: str = API) -> int:
     status, text = api("GET", "/v1/me/threads?limit=1", token, base=base)
     return int(json.loads(text)["total"]) if status == 200 else -1
+
+
+def upload(token: str, kb_id: str, name: str, content: bytes) -> str:
+    """Upload a Markdown file and wait until it is ready; return its id."""
+    path = f"/v1/knowledge/bases/{kb_id}/documents"
+    doc_id = str(
+        _request("upload", "POST", API, path, 60, token=token, upload=(name, content))["doc_id"]
+    )
+    wait_for(f"{name} to be ready", lambda: document(token, doc_id).get("status") == "ready")
+    return doc_id
+
+
+def document(token: str, doc_id: str) -> dict[str, Any]:
+    status, text = api("GET", f"/v1/knowledge/documents/{doc_id}", token)
+    return json.loads(text) if status == 200 else {"http": status}
+
+
+def cited(token: str, kb_id: str, base: str) -> list[str]:
+    """The documents the answer to the known question cites."""
+    body = {"message": KNOWLEDGE_QUESTION, "knowledge_base_ids": [kb_id]}
+    reply = _request("cite", "POST", base, "/v1/agent/invoke", 60, token=token, body=body)
+    return [str(c["doc_id"]) for c in reply.get("citations") or []] if reply.get("grounded") else []
 
 
 def wait_for(description: str, check: Any, seconds: int = 120) -> None:
@@ -131,8 +178,15 @@ def main() -> int:
     steps: dict[str, Any] = {}
     try:
         # 1. Seed, then take a base backup (pg_basebackup) while WAL archiving runs.
-        seed(alice.get(), threads=3, memories=2)
+        steps["memories_seeded"] = seed(alice.get(), threads=3, memories=2)
         seed(bob.get(), threads=3, memories=0)
+        kb_id = str(
+            _request("base", "POST", API, "/v1/knowledge/bases", 60, token=alice.get(),
+                     body={"name": "restore drill"})["kb_id"]
+        )  # fmt: skip
+        known = upload(alice.get(), kb_id, "known.md", KNOWLEDGE_DOCUMENT)
+        doomed = upload(alice.get(), kb_id, "deleted.md", b"# Drill\n\nDeleted after T.\n")
+        steps["knowledge_cited_on_source"] = known in cited(alice.get(), kb_id, API)
         before_backup = thread_total(alice.get()), thread_total(bob.get())
         psql(source, "SELECT pg_switch_wal()")
         run("docker", "exec", "-u", "postgres", source, "rm", "-rf", "/var/lib/postgresql/backup")
@@ -158,6 +212,17 @@ def main() -> int:
         time.sleep(2)
         status, erased = api("DELETE", "/v1/me/threads", bob.get())
         seed(alice.get(), threads=1, memories=0)
+        late = upload(alice.get(), kb_id, "late.md", b"# Drill\n\nUploaded after T.\n")
+        api("DELETE", f"/v1/knowledge/documents/{doomed}", alice.get())
+        # The purge deletes the file and the row; the restored row at T keeps pointing to it.
+        wait_for("the purge", lambda: document(alice.get(), doomed).get("http") == 404)
+        # The file backup, taken at the incident: a later moment than the database's T.
+        run("docker", "volume", "rm", "-f", RESTORED_BLOBS, check=False)
+        run(
+            "docker", "run", "--rm", "-u", "0", "--entrypoint", "cp",
+            "-v", f"{BLOB_VOLUME}:/from:ro", "-v", f"{RESTORED_BLOBS}:/to",
+            os.environ["NEURON_IMAGE"], "-a", "/from/.", "/to/",
+        )  # fmt: skip
         rate_rows_source = int(psql(source, "SELECT count(*) FROM neuron_rate_buckets"))
         incident_at = datetime.now(UTC)
         psql(source, "SELECT pg_switch_wal()")
@@ -185,7 +250,10 @@ def main() -> int:
         try:
             wait_for("the restored database", lambda: psql_ready(RESTORE), seconds=300)
         except SystemExit:
-            print(run("sh", "-c", f"docker logs --tail 60 {RESTORE} 2>&1", check=False), file=sys.stderr)
+            print(
+                run("sh", "-c", f"docker logs --tail 60 {RESTORE} 2>&1", check=False),
+                file=sys.stderr,
+            )
             raise
         steps["restore_usable_seconds"] = round(time.monotonic() - restore_started, 1)
         # Counted before any replica touches the database: the limiter writes to this table.
@@ -201,16 +269,33 @@ def main() -> int:
             "?sslmode=disable",
             os.environ["NEURON_IMAGE"], "python", "-m", "neuron_agent.persistence.cli", "setup",
         )  # fmt: skip
+        # 4b. Files and rows from different moments: check before any worker runs on them.
+        check = subprocess.run(  # noqa: S603  # nosec B603
+            ["docker", "run", "--rm", "--network", NETWORK, "-v", f"{RESTORED_BLOBS}:{BLOB_ROOT}",
+             "-e", "APP_ENV=development", "-e", f"APP_KNOWLEDGE_BLOB_ROOT={BLOB_ROOT}",
+             "-e", f"APP_POSTGRES_WORKER_DSN=postgresql://neuron_worker@{RESTORE}:5432/neuron"
+             "?sslmode=disable", "-e", f"PGPASSWORD={worker_password()}",
+             os.environ["NEURON_IMAGE"], "neuron-worker", "check-blobs"],
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        try:
+            report = json.loads(check.stdout)
+        except ValueError:  # the check failed: its exit code and stderr say why
+            report = {"stderr": check.stderr[-400:]}
+        steps["check_blobs"] = {"exit": check.returncode, **report}
         run("docker", "rm", "-f", STAGING_API, check=False)
         run(
             "docker", "run", "-d", "--name", STAGING_API, "--network", NETWORK,
             "-p", f"127.0.0.1:{RESTORE_API_PORT}:8000", *env_args(env),
+            "-v", f"{RESTORED_BLOBS}:{BLOB_ROOT}",
             "-e", f"APP_POSTGRES_DSN=postgresql://neuron_app:{APP_PASSWORD}@{RESTORE}:5432/neuron"
             "?sslmode=disable",
             os.environ["NEURON_IMAGE"],
         )  # fmt: skip
         staging = f"http://127.0.0.1:{RESTORE_API_PORT}"
-        wait_for("the staging replica", lambda: api("GET", "/health/ready", "x", base=staging)[0] == 200)
+        wait_for(
+            "the staging replica", lambda: api("GET", "/health/ready", "x", base=staging)[0] == 200
+        )
         smoke = subprocess.run(  # noqa: S603  # nosec B603
             [sys.executable, "scripts/smoke_test.py", staging],
             env={**os.environ, "SMOKE_TEST_TOKEN": alice.get()},
@@ -220,7 +305,10 @@ def main() -> int:
         steps["restore_to_smoke_test_passed_seconds"] = round(time.monotonic() - restore_started, 1)
 
         # 5. Counts, the erasure replay, and the UNLOGGED table.
-        restored_before_replay = thread_total(alice.get(), staging), thread_total(bob.get(), staging)
+        restored_before_replay = (
+            thread_total(alice.get(), staging),
+            thread_total(bob.get(), staging),
+        )
         replay_status, _ = api("DELETE", "/v1/me/threads", bob.get(), base=staging)
         restored_after_replay = thread_total(alice.get(), staging), thread_total(bob.get(), staging)
         newest_restored = psql(RESTORE, "SELECT max(updated_at) FROM neuron_thread_meta")
@@ -236,19 +324,33 @@ def main() -> int:
             newest_thread_restored=newest_restored,
             newest_thread_source=newest_source,
         )
+        # After the counts above: the answer adds a thread to the restored database.
+        steps["knowledge_cited_after_restore"] = known in cited(alice.get(), kb_id, staging)
+        steps["knowledge_documents"] = {
+            "known": known,
+            "deleted_after_T": doomed,
+            "uploaded_after_T": late,
+        }
         steps["pitr_target"] = point_in_time
         steps["incident_at"] = incident_at.isoformat()
-        steps["rpo_note"] = f"restored to T; newest write at the incident was after it ({newest_before_t})"
+        steps["rpo_note"] = (
+            f"restored to T; newest write at the incident was after it ({newest_before_t})"
+        )
         ok = (
             "passed" in steps["smoke_test"]
             and rate_rows_restored == 0
             and restored_before_replay[1] > 0
             and restored_after_replay[1] == 0
+            and steps["knowledge_cited_after_restore"]
+            and check.returncode == 1
+            and report.get("missing_blobs") == [doomed]
+            and report.get("orphan_blobs", 0) >= 1
         )
         steps["result"] = "passed" if ok else "FAILED"
         return 0 if ok else 1
     finally:
         run("docker", "rm", "-f", STAGING_API, RESTORE, check=False)
+        run("docker", "volume", "rm", "-f", RESTORED_BLOBS, check=False)
         shutil.rmtree(work, ignore_errors=True)
         steps["restored_containers_deleted_at"] = datetime.now(UTC).isoformat()
         steps["started_at"] = started_at.isoformat()
@@ -267,9 +369,15 @@ def psql_ready(target: str) -> bool:
 
 
 def reference_env() -> dict[str, str]:
-    """The reference replicas' settings, read back from a running replica (no secrets on argv)."""
+    """The reference replicas' settings, read from a running replica (throwaway local values)."""
     raw = run("docker", "inspect", "-f", "{{json .Config.Env}}", container("api1"))
     return dict(item.split("=", 1) for item in json.loads(raw) if item.startswith("APP_"))
+
+
+def worker_password() -> str:
+    """The worker's throwaway database password, read from the running worker."""
+    raw = run("docker", "inspect", "-f", "{{json .Config.Env}}", container("worker"))
+    return next(i.split("=", 1)[1] for i in json.loads(raw) if i.startswith("PGPASSWORD="))
 
 
 def env_args(env: dict[str, str]) -> list[str]:

@@ -1029,8 +1029,9 @@ Assumptions to confirm in the Render account: the PITR window of the chosen plan
   1. Start the restore to a new Render Postgres instance from the Dashboard (point in time or latest backup). Keep `ipAllowList: []`.
   2. Create the roles with `roles.sql` and run `setup` as the migrator (it adds grants and is idempotent); the identity key must be the same value as production or every thread is orphaned.
   3. Point a staging copy of the service at it (never production) and run the smoke test; count threads: `SELECT count(*) FROM checkpoints;`.
-  4. Record the restore start, the time it was usable (RTO) and the age of the newest restored data (RPO), using the template below.
-  5. Delete the restored instance after the drill, and record the deletion.
+  4. With knowledge on: restore the blob bucket or volume from as close to the same moment as possible, keep the worker stopped, and run `neuron-worker check-blobs` with the worker's settings against the restored database and store. It deletes nothing and prints JSON. Exit 0: every live document has its file. Exit 1: `missing_blobs` lists the live documents whose file is gone (the store is older than the database). Their passages are in the database, so search and citations still work, but the original cannot be parsed again: the user re-uploads it if a re-run is ever needed. `orphan_blobs` counts files no row names (the store is newer than the database): the worker's hourly sweep deletes them once they pass the grace period, which is right only if those uploads are meant to be lost with the database. Exit 2: the check itself failed (its error class is printed). A report with no files and every document missing usually means a wrong or unmounted store, not a lost one. If the orphan files hold uploads to keep, copy them out before starting the worker. The report lists every missing id, so it can be long on a big store. Start the worker only once the report is understood.
+  5. Record the restore start, the time it was usable (RTO) and the age of the newest restored data (RPO), using the template below.
+  6. Delete the restored instance after the drill, and record the deletion.
 
   | Field | Value |
   | --- | --- |
@@ -1041,7 +1042,7 @@ Assumptions to confirm in the Render account: the PITR window of the chosen plan
   | Smoke test result | |
   | Restored instance deleted at | |
 
-  Rehearsed on the local reference stack in v0.9.0 (`scripts/dr_drill.py`; `docs/releases/v0.9.0-release-verification.md`): database usable 6.2 s after the restore started, smoke test passed 22.5 s after, newest restored data 2 s before the target time, the `UNLOGGED` rate table empty, the erased user's threads back until the replay. A restore on Render has not been rehearsed (deferred until after v1.0.0). Keep the WAL archive readable by the restoring container, and note that segments older than the base backup's first file are not needed.
+  Rehearsed on the local reference stack in v0.9.0 (`scripts/dr_drill.py`; `docs/releases/v0.9.0-release-verification.md`): database usable 6.2 s after the restore started, smoke test passed 22.5 s after, newest restored data 2 s before the target time, the `UNLOGGED` rate table empty, the erased user's threads back until the replay. Rehearsed again with knowledge in v1.1.0 (RAG-07.03; `docs/releases/v1.1.0-restore-drill.md`): the restored replica cited the known document for its question, and `check-blobs`, given a file copy from after the restore point, flagged the one document deleted after it and counted the one file uploaded after it. A restore on Render has not been rehearsed (deferred until after v1.0.0). Keep the WAL archive readable by the restoring container, and note that segments older than the base backup's first file are not needed.
 
 ### Knowledge Engine
 
@@ -1096,7 +1097,7 @@ The worker repairs these itself (RAG-07.02); this is what to watch and when to s
 1. Watch `neuron_knowledge_reconciled_total` by `neuron_outcome` (`ingest_requeued`, `ingest_stalled`, `purge_requeued`, `blob_deleted`). Occasional counts are expected after a crash. A rise in `ingest_stalled` means documents keep losing their jobs: read the worker's logs around those documents. A `purge_requeued` count that rises every run means a purge keeps failing, usually the blob store (`knowledge.purge.failed` with its error class): fix the store and the next runs finish it.
 2. A failed run logs `knowledge.reconcile.failed` or `knowledge.blob_sweep.failed` with the error class only. A blob store error there stops the sweep for that hour and deletes nothing more; it is safe to leave until the store is back.
 3. Never shorten the grace period below the longest an upload can take, or the sweep can delete the file of an upload still in progress.
-4. A run deletes at most 1,000 files (`knowledge.blob_sweep.limit_reached` when it stops there); the next hour continues. Seeing that warning without a known backlog of orphans means the worker may read the wrong database: stop the worker and check `APP_POSTGRES_WORKER_DSN` before more files go. Never point two environments at one bucket or directory, and after restoring the database to an earlier point, keep the worker stopped until the store and the database match again (files uploaded after the restore point have no row and would be swept).
+4. A run deletes at most 1,000 files (`knowledge.blob_sweep.limit_reached` when it stops there); the next hour continues. Seeing that warning without a known backlog of orphans means the worker may read the wrong database: stop the worker and check `APP_POSTGRES_WORKER_DSN` before more files go. Never point two environments at one bucket or directory, and after restoring the database to an earlier point, keep the worker stopped until `neuron-worker check-blobs` has been read (Backups and restore, step 4): files uploaded after the restore point have no row and would be swept.
 
 ### Capacity
 

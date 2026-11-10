@@ -19,6 +19,9 @@ in the transaction that reads its row (`jobs.defer`).
 `sweep_blobs`, a separate hourly task, deletes stored files that no document row names (an
 upload that crashed between storing its file and committing its row) once they are older than
 the grace period.
+
+`check_blobs`, run by an operator after a restore (`neuron-worker check-blobs`), deletes
+nothing: it counts orphan files and lists live documents whose file is missing (RAG-07.03).
 """
 
 from __future__ import annotations
@@ -95,6 +98,10 @@ ORDER BY d.deleted_at LIMIT {BATCH}
 """  # noqa: S608  # nosec B608 - constants only
 # No index on `blob_key`: one scan of the documents per batch of listed blobs, once an hour.
 _NAMED = "SELECT blob_key FROM knowledge.documents WHERE blob_key = ANY(%(keys)s)"
+_ROWS = (
+    "SELECT d.doc_id, d.blob_key, d.deleted_at IS NULL AND b.deleted_at IS NULL AS live"
+    " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+)
 
 
 async def reconcile(connect: Connect, stuck_seconds: float) -> dict[str, int]:
@@ -163,6 +170,28 @@ async def sweep_blobs(
     if failed is not None:
         raise failed
     return deleted
+
+
+async def check_blobs(connect: Connect, blobs: BlobStore) -> dict[str, Any]:
+    """Compare the store with the document rows; delete nothing.
+
+    Returns the number of files, rows and orphan files, and the ids of live documents whose
+    file is missing. Rows are read before the store is listed: an upload stores its file
+    before it commits its row, so an upload in progress can show as an orphan, never as
+    missing. A tombstoned row is not flagged; its purge expects the file may be gone.
+    """
+    async with await connect() as conn:
+        rows = await _fetch(conn, _ROWS, {})
+    stored: set[str] = set()
+    async for keys in blobs.older_than(datetime.now(UTC)):
+        stored.update(keys)
+    missing = sorted(str(r["doc_id"]) for r in rows if r["live"] and r["blob_key"] not in stored)
+    return {
+        "blobs": len(stored),
+        "documents": len(rows),
+        "orphan_blobs": len(stored - {row["blob_key"] for row in rows}),
+        "missing_blobs": missing,
+    }
 
 
 async def _fetch(

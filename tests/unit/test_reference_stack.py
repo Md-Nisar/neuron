@@ -83,6 +83,7 @@ def test_the_worker_runs_as_its_own_role_only_with_knowledge() -> None:
         "APP_POSTGRES_WORKER_DSN",
         "APP_KNOWLEDGE_PARSER_URL",
         "APP_KNOWLEDGE_BLOB_ROOT",
+        "APP_KNOWLEDGE_EMBEDDING_PROVIDER",
         "PGPASSWORD",
     }
     assert "neuron_worker" in (_ROOT / "deploy/reference/init-roles.sql").read_text("utf-8")
