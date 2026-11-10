@@ -1228,7 +1228,7 @@ Exit gate (Claude report §12): zero cross-user results in the security suite; �
 - Runbooks: worker down, parser down, provider outage, stuck jobs, re-running a failed document.
 
 **Acceptance criteria**
-- Given a clean checkout, when `make reference-up` runs, then the stack starts and the upload → ask → cite flow works with the fake or development model.
+- Given a clean checkout, when `docker compose up --build` (`make up`) runs, then the whole local stack, web app included, starts and the upload → ask → cite flow works with the fake or development model (owner's direction on #485, 2026-11-06).
 - Given the docs, when a reader looks for knowledge module boundaries, then `AGENTS.md` and `CLAUDE.md` state them.
 
 **Technical tasks**
