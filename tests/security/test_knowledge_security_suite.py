@@ -4,7 +4,8 @@ One list names each case and the tests that prove it. This file checks, in `make
 named test exists and will run: tests outside `tests/integration` are collected by `make test`;
 those inside it need Postgres with pgvector and carry the `postgres` marker, so CI's
 `postgres-integration` job runs them and fails on any skip (`scripts/require_postgres_tests.py`).
-The threat model's "Knowledge Engine" table lists the same twelve cases.
+The threat model's "Knowledge Engine" table lists the same twelve cases, and
+`scripts/knowledge_mutations.py` breaks each case's control and requires one of its tests to fail.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from functools import cache
 from pathlib import Path
 
 import pytest
+from scripts import knowledge_mutations
 
 _ROOT = Path(__file__).parents[2]
 _MAKE_TEST = ("tests/unit/", "tests/graph/", "tests/security/", "tests/resilience/", "tests/e2e/")
@@ -46,12 +48,14 @@ SUITE: dict[str, list[str]] = {
         f"{_PURGE}::test_a_deleted_documents_chunks_are_unreachable_until_purged",
         f"{_PURGE}::test_a_purge_stopped_half_way_completes_on_retry",
         f"{_PURGE}::test_an_upload_committing_during_the_base_delete_is_tombstoned_with_it",
+        f"{_DOWNLOAD}::test_a_chunk_of_a_document_not_ready_or_deleted_is_not_found",
     ],
     "Instructions hidden in a document": [
         f"{_INJECTION}::test_every_injection_case_of_the_dataset_is_played_here",
         f"{_INJECTION}::test_the_planted_instruction_reaches_the_model_only_as_framed_data",
         f"{_INJECTION}::test_a_hidden_pdf_instruction_to_forget_waits_for_the_user",
         f"{_INJECTION}::test_a_table_cell_instruction_saves_no_note",
+        "tests/security/test_knowledge_tools.py::test_a_search_finds_framed_passages_as_the_caller",
     ],
     "Fake or planted cite_id": [
         f"{_CITATIONS}::test_a_cite_id_no_tool_returned_is_dropped_and_counted",
@@ -73,6 +77,7 @@ SUITE: dict[str, list[str]] = {
     ],
     "Zip bomb, page bomb, encrypted or macro file": [
         f"{_PARSING}::test_a_zip_bomb_is_refused_by_its_inflated_size",
+        f"{_PARSING}::test_a_zip_bomb_split_across_members_is_refused_by_its_total",
         f"{_PARSING}::test_page_and_block_bombs_are_refused",
         f"{_PARSING}::test_unsafe_or_mislabelled_files_are_refused_before_parsing",
         "tests/unit/test_knowledge_docling_serve.py::test_a_document_past_the_page_cap_is_refused",
@@ -149,3 +154,13 @@ def test_the_threat_model_names_only_test_files_that_exist() -> None:
     assert named
     assert named <= present, named - present
     assert all(Path(node.split("::")[0]).name in named for node in _NODES)
+
+
+def test_every_case_has_a_mutant_whose_text_is_in_the_code() -> None:
+    # The mutation check itself (AC2) runs in the postgres-integration job; this keeps its table
+    # in step with the suite and the code on every change.
+    assert {m.case for m in knowledge_mutations.MUTANTS} == set(SUITE)
+    for mutant in knowledge_mutations.MUTANTS:
+        for edit in mutant.edits:
+            source = (knowledge_mutations.PACKAGE / edit.path).read_text(encoding="utf-8")
+            assert source.count(edit.old) == 1, (mutant.case, mutant.name)
