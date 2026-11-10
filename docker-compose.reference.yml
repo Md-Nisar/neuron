@@ -30,6 +30,10 @@ x-api: &api
       condition: service_completed_successfully
     keycloak:
       condition: service_healthy
+  # Uploaded files (RAG-08.04): one volume shared by both replicas and the worker, so a file
+  # uploaded through either replica is the one the worker parses.
+  volumes:
+    - knowledge-blobs:/var/lib/neuron/knowledge-blobs
   environment: &api-env
     APP_ENV: development
     APP_AUTH_MODE: jwt
@@ -43,6 +47,7 @@ x-api: &api
     APP_MEMORY_ENABLED: "true"
     # Off unless set; with it on, `--profile knowledge` adds the ingestion worker (RAG-02.01).
     APP_KNOWLEDGE_ENABLED: ${KNOWLEDGE_ENABLED:-false}
+    APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
     APP_LIMITS_BACKEND: postgres
     APP_POSTGRES_DSN: postgresql://neuron_app:app-local-only@postgres:5432/neuron?sslmode=disable
     APP_ALLOWED_HOSTS: '["localhost","127.0.0.1","api1","api2"]'
@@ -156,8 +161,11 @@ services:
       APP_ENV: development
       APP_POSTGRES_WORKER_DSN: postgresql://neuron_worker@postgres:5432/neuron?sslmode=disable
       APP_KNOWLEDGE_PARSER_URL: http://docling:5001
+      APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
       # libpq reads the password from here (the throwaway one from init-roles.sql).
       PGPASSWORD: worker-local-only
+    volumes:
+      - knowledge-blobs:/var/lib/neuron/knowledge-blobs
     healthcheck:
       test: ["CMD", "neuron-worker", "health"]
       interval: 10s
@@ -197,3 +205,6 @@ services:
 networks:
   parser:
     internal: true
+
+volumes:
+  knowledge-blobs:
