@@ -54,7 +54,6 @@ NETWORK = "neuron_default"
 BLOB_ROOT = "/var/lib/neuron/knowledge-blobs"
 BLOB_VOLUME = "neuron_knowledge-blobs"
 RESTORED_BLOBS = "neuron-dr-blobs"
-WORKER_PASSWORD = "worker-local-only"  # noqa: S105  # nosec B105  (reference stack)
 MIGRATOR_PASSWORD = "migrator-local-only"  # noqa: S105  # nosec B105  (reference stack)
 APP_PASSWORD = "app-local-only"  # noqa: S105  # nosec B105
 ALICE, BOB = username(900), username(901)
@@ -275,7 +274,7 @@ def main() -> int:
             ["docker", "run", "--rm", "--network", NETWORK, "-v", f"{RESTORED_BLOBS}:{BLOB_ROOT}",
              "-e", "APP_ENV=development", "-e", f"APP_KNOWLEDGE_BLOB_ROOT={BLOB_ROOT}",
              "-e", f"APP_POSTGRES_WORKER_DSN=postgresql://neuron_worker@{RESTORE}:5432/neuron"
-             "?sslmode=disable", "-e", f"PGPASSWORD={WORKER_PASSWORD}",
+             "?sslmode=disable", "-e", f"PGPASSWORD={worker_password()}",
              os.environ["NEURON_IMAGE"], "neuron-worker", "check-blobs"],
             capture_output=True, text=True, check=False,
         )  # fmt: skip
@@ -373,6 +372,12 @@ def reference_env() -> dict[str, str]:
     """The reference replicas' settings, read from a running replica (throwaway local values)."""
     raw = run("docker", "inspect", "-f", "{{json .Config.Env}}", container("api1"))
     return dict(item.split("=", 1) for item in json.loads(raw) if item.startswith("APP_"))
+
+
+def worker_password() -> str:
+    """The worker's throwaway database password, read from the running worker."""
+    raw = run("docker", "inspect", "-f", "{{json .Config.Env}}", container("worker"))
+    return next(i.split("=", 1)[1] for i in json.loads(raw) if i.startswith("PGPASSWORD="))
 
 
 def env_args(env: dict[str, str]) -> list[str]:

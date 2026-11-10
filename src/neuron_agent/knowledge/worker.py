@@ -376,7 +376,8 @@ def _check_blobs(settings: Settings) -> int:
         return 2
     try:
         report = asyncio.run(check_blobs(connect, build_blob_store(settings)))
-    except Exception as exc:  # noqa: BLE001 - the class only, as below
+    except Exception as exc:  # noqa: BLE001
+        # Any failure: print the class only, as below.
         print(f"check-blobs failed: {type(exc).__name__}", file=sys.stderr)
         return 2
     print(json.dumps(report, indent=2))
