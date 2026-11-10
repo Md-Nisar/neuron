@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from pydantic import SecretStr, ValidationError
 from tests.unit.test_production_feature_guards import jwt_settings
 
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.knowledge import jobs, worker
 from neuron_agent.knowledge.parsing import PDF, ParseError
+from neuron_agent.observability import metrics, semconv
 
 pytestmark = pytest.mark.anyio
 
@@ -215,3 +220,58 @@ def test_the_worker_exports_telemetry_and_flushes_it_on_exit(
     finally:
         get_settings.cache_clear()
     assert flushed == [True]
+
+
+async def test_the_worker_reports_queue_age_after_each_sample_and_nothing_on_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    gauge: list[Callable[[], float | None]] = []
+    reads: list[float | None] = []
+    ages: list[Any] = [12.5, RuntimeError("database down")]
+
+    async def sweep(dsn: str, seconds: float) -> int:
+        return 0
+
+    async def oldest(dsn: str) -> float:
+        age = ages.pop(0)
+        if isinstance(age, Exception):
+            raise age
+        return float(age)
+
+    async def tick(seconds: float) -> None:
+        reads.append(gauge[0]())
+        if not ages:
+            raise asyncio.CancelledError
+        (tmp_path / "health").unlink()  # the next iteration must touch it again
+
+    monkeypatch.setattr(worker, "sweep", sweep)
+    monkeypatch.setattr(worker, "oldest_queued_seconds", oldest)
+    monkeypatch.setattr(worker.metrics, "observe_knowledge_queue_age", gauge.append)
+    monkeypatch.setattr(worker.asyncio, "sleep", tick)
+    settings = Settings(
+        env="test",
+        postgres_worker_dsn=SecretStr("postgresql://w@h/d"),
+        worker_health_file=str(tmp_path / "health"),
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await worker._maintain(settings)
+    assert reads == [12.5, None]  # a failed sample reports nothing rather than a stale age
+    assert (tmp_path / "health").exists()  # and does not make the worker unhealthy
+
+
+def test_the_queue_age_gauge_is_in_seconds_without_attributes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    monkeypatch.setattr(metrics, "_meter", lambda: provider.get_meter("test"))
+    sampled: list[float | None] = [None]
+    metrics.observe_knowledge_queue_age(lambda: sampled[0])
+    assert reader.get_metrics_data() is None  # not sampled yet: no point
+    sampled[0] = 42.0
+    data = reader.get_metrics_data()
+    assert data is not None
+    [gauge] = [m for r in data.resource_metrics for s in r.scope_metrics for m in s.metrics]
+    assert gauge.name == semconv.METRIC_KNOWLEDGE_QUEUE_AGE and gauge.unit == "s"
+    [point] = gauge.data.data_points
+    assert point.value == 42.0 and not point.attributes

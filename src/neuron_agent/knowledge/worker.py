@@ -45,6 +45,7 @@ from neuron_agent.knowledge.parsing import (
 )
 from neuron_agent.knowledge.providers import create_embedding_provider
 from neuron_agent.knowledge.purge import Purger
+from neuron_agent.observability import metrics
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.observability.telemetry import configure_telemetry
 from neuron_agent.persistence.dsn_redaction import install_dsn_redaction
@@ -60,6 +61,19 @@ RETRY = procrastinate.RetryStrategy(max_attempts=MAX_ATTEMPTS, exponential_wait=
 _OPTIONS = "-c search_path=knowledge"
 # The advisory lock key that serialises the stalled-job sweep across workers.
 _SWEEP = 0x4E52_5357
+# How long the oldest runnable job has waited: since its defer or retry, or since the time it was
+# scheduled for if that is later. A job scheduled for later (a retry's back-off) does not count.
+_OLDEST_QUEUED = """
+SELECT COALESCE(EXTRACT(EPOCH FROM now() - min(GREATEST(j.scheduled_at, e.at))), 0)::float8
+    AS age
+FROM procrastinate_jobs j
+CROSS JOIN LATERAL (
+    SELECT max(at) AS at FROM procrastinate_events
+    WHERE job_id = j.id AND type IN ('deferred', 'deferred_for_retry', 'retried')
+) e
+WHERE j.queue_name = %s AND j.status = 'todo'
+    AND (j.scheduled_at IS NULL OR j.scheduled_at <= now())
+"""
 
 
 class IngestError(Exception):
@@ -227,6 +241,16 @@ async def sweep(dsn: str, stalled_seconds: float) -> int:
     return len(stalled)
 
 
+async def oldest_queued_seconds(dsn: str) -> float:
+    """Seconds the oldest runnable job of the queue has waited; 0 when none waits (RAG-08.03)."""
+    async with await psycopg.AsyncConnection.connect(
+        dsn, row_factory=dict_row, options=_OPTIONS
+    ) as conn:
+        cursor = await conn.execute(_OLDEST_QUEUED, (QUEUE,))
+        row = await cursor.fetchone()
+    return float(row["age"]) if row else 0.0
+
+
 async def _worker_lost(conn: psycopg.AsyncConnection[Any], args: object) -> None:
     """The document of a job that killed its worker five times ends `failed`, not `parsing`."""
     try:
@@ -242,18 +266,25 @@ async def _worker_lost(conn: psycopg.AsyncConnection[Any], args: object) -> None
 
 async def _maintain(settings: Settings) -> None:
     assert settings.postgres_worker_dsn is not None  # nosec B101
+    dsn = settings.postgres_worker_dsn.get_secret_value()
     health = Path(settings.worker_health_file)
+    # The queue-age gauge: reported after each sample, nothing while the database is unreachable.
+    age: list[float | None] = [None]
+    metrics.observe_knowledge_queue_age(lambda: age[0])
     while True:
         try:
-            retried = await sweep(
-                settings.postgres_worker_dsn.get_secret_value(), settings.worker_stalled_seconds
-            )
+            retried = await sweep(dsn, settings.worker_stalled_seconds)
         except Exception as exc:  # noqa: BLE001 - the health file goes stale instead
             log.warning("knowledge.worker.sweep_failed", error=type(exc).__name__)
         else:
             if retried:
                 log.info("knowledge.worker.stalled_jobs_retried", count=retried)
             health.touch()
+        try:  # a metric only: its failure leaves the worker healthy
+            age[0] = await oldest_queued_seconds(dsn)
+        except Exception as exc:  # noqa: BLE001
+            age[0] = None
+            log.warning("knowledge.worker.queue_age_failed", error=type(exc).__name__)
         await asyncio.sleep(settings.worker_stalled_seconds / 3)
 
 
