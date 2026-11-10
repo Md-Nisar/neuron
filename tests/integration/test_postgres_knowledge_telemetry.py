@@ -7,7 +7,6 @@ never leave: the query, the passage text, the document title and the vector.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -40,14 +39,14 @@ _TITLE = "telemetry-marker-title-5592.pdf"
 
 
 @pytest.fixture
-def captured(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[InMemorySpanExporter, Any]]:
+def captured(monkeypatch: pytest.MonkeyPatch) -> tuple[InMemorySpanExporter, Any]:
     exporter, reader = InMemorySpanExporter(), InMemoryMetricReader()
     tracer_provider = TracerProvider()
     tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
     meter_provider = MeterProvider(metric_readers=[reader], views=metrics.metric_views())
     monkeypatch.setattr(telemetry, "tracer", lambda: tracer_provider.get_tracer(__name__))
     monkeypatch.setattr(metrics, "_meter", lambda: meter_provider.get_meter(__name__))
-    yield exporter, reader
+    return exporter, reader
 
 
 def _search_span(exporter: InMemorySpanExporter) -> ReadableSpan:
@@ -88,7 +87,8 @@ async def test_a_search_span_has_ids_counts_and_timings_only(
         semconv.NEURON_KNOWLEDGE_RESULTS: 1,
         semconv.NEURON_OUTCOME: "success",
     }
-    assert span.end_time is not None and span.start_time is not None
+    assert span.end_time is not None
+    assert span.start_time is not None
     assert span.end_time > span.start_time
     [duration] = _points(reader, semconv.METRIC_KNOWLEDGE_SEARCH_DURATION)
     assert duration.count == 1
@@ -159,7 +159,8 @@ async def test_an_unknown_mode_is_refused_before_it_labels_a_metric(
     captured: tuple[InMemorySpanExporter, InMemoryMetricReader],
 ) -> None:
     exporter, reader = captured
+    retriever = _retriever(role_db)
     with pytest.raises(ValueError, match="search mode"):
-        await _retriever(role_db).search(_A, _QUERY, k=5, mode="anything")  # type: ignore[arg-type]
+        await retriever.search(_A, _QUERY, k=5, mode="anything")  # type: ignore[arg-type]
     assert exporter.get_finished_spans() == ()
     assert reader.get_metrics_data() is None  # nothing recorded
