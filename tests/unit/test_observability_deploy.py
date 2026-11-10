@@ -297,7 +297,8 @@ def test_knowledge_queue_alert_reads_the_worker_gauge_above_twice_the_parser_tim
     # A gauge in `s` gains `_seconds` in Prometheus; every worker reports the queue-wide value.
     name = _prometheus_name(semconv.METRIC_KNOWLEDGE_QUEUE_AGE) + "_seconds"
     threshold = 2 * Settings.model_fields["knowledge_parser_timeout_seconds"].default
-    assert alert["expr"] == f"max({name}) > {threshold}" and alert["for"] == "15m"
+    assert alert["expr"] == f"max({name}) > {threshold}"
+    assert alert["for"] == "15m"
 
 
 def test_rejection_alerts_use_the_error_class_metric_and_real_error_codes() -> None:

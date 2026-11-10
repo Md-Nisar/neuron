@@ -272,6 +272,8 @@ def test_the_queue_age_gauge_is_in_seconds_without_attributes(
     data = reader.get_metrics_data()
     assert data is not None
     [gauge] = [m for r in data.resource_metrics for s in r.scope_metrics for m in s.metrics]
-    assert gauge.name == semconv.METRIC_KNOWLEDGE_QUEUE_AGE and gauge.unit == "s"
+    assert gauge.name == semconv.METRIC_KNOWLEDGE_QUEUE_AGE
+    assert gauge.unit == "s"
     [point] = gauge.data.data_points
-    assert point.value == 42.0 and not point.attributes
+    assert point.value == 42.0
+    assert not point.attributes
