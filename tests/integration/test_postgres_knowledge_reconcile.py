@@ -188,12 +188,44 @@ async def test_only_old_blobs_no_row_names_are_deleted(
     kb = await _base(db)
     await _document(db, kb, "ready", age=0, key=live)
     await _document(db, kb, "deleting", age=0, deleted=2 * grace, key=tombstoned)
-    # Not a blob key: something else in the directory is never touched.
-    (tmp_path / "blobs" / "README").write_text("operator note")
-    os.utime(tmp_path / "blobs" / "README", (0, 0))
+    # Not blob keys: anything else in the directory is never touched.
+    others = ("README", "A" * 32, f"nested/{'a' * 32}")
+    for name in others:
+        (tmp_path / "blobs" / name).parent.mkdir(exist_ok=True)
+        (tmp_path / "blobs" / name).write_text("operator note")
+        os.utime(tmp_path / "blobs" / name, (0, 0))
     assert await sweep_blobs(ingestor.connect, ingestor.blobs, grace) == 1
     assert not await ingestor.blobs.exists(old_orphan)  # AC1
     for key in (new_orphan, live, tombstoned):  # AC3; a row of any status keeps its file
         assert await ingestor.blobs.exists(key)
-    assert (tmp_path / "blobs" / "README").exists()
+    assert all((tmp_path / "blobs" / name).exists() for name in others)
     assert await sweep_blobs(ingestor.connect, ingestor.blobs, grace) == 0
+
+
+class _Failing:
+    """The store, with `delete` failing for one key."""
+
+    def __init__(self, blobs: Any, key: str) -> None:
+        self.blobs, self.key = blobs, key
+        self.older_than = blobs.older_than
+
+    async def delete(self, key: str) -> None:
+        if key == self.key:
+            raise OSError("store down")
+        await self.blobs.delete(key)
+
+
+async def test_a_sweep_stops_at_its_limit_and_past_a_failed_delete(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    tmp_path: Path,
+) -> None:
+    db, ingestor = setup
+    orphans = [await _stored(ingestor, tmp_path, 7200) for _ in range(3)]
+    # A worker reading the wrong (here: empty) database deletes at most the limit per run.
+    assert await sweep_blobs(ingestor.connect, ingestor.blobs, 3600, max_deletes=1) == 1
+    left = [key for key in orphans if await ingestor.blobs.exists(key)]
+    assert len(left) == 2
+    failing = _Failing(ingestor.blobs, left[0])
+    with pytest.raises(OSError, match="store down"):
+        await sweep_blobs(ingestor.connect, failing, 3600)  # type: ignore[arg-type]
+    assert [await ingestor.blobs.exists(key) for key in left] == [True, False]

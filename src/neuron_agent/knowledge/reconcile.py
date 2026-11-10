@@ -27,16 +27,21 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
+import structlog
 
 from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.ingest import Connect
+
+log = structlog.get_logger(__name__)
 
 # Jobs queued for a stuck document after its first; then it fails with `ingest_stalled`. Counted
 # from the queue's rows, which are never deleted (a job retention policy would reset the count).
 STUCK_REQUEUES = 2
 # Rows handled per kind and run, so one run stays short; the next run takes the rest.
 BATCH = 500
+# Orphan files deleted per blob sweep at most; the next hourly run continues.
+MAX_BLOB_DELETES = 1000
 # The advisory lock key that serialises reconcile runs.
 _LOCK = 0x4E52_5243
 
@@ -122,24 +127,41 @@ async def reconcile(connect: Connect, stuck_seconds: float) -> dict[str, int]:
     return counts
 
 
-async def sweep_blobs(connect: Connect, blobs: BlobStore, grace_seconds: float) -> int:
+async def sweep_blobs(
+    connect: Connect,
+    blobs: BlobStore,
+    grace_seconds: float,
+    max_deletes: int = MAX_BLOB_DELETES,
+) -> int:
     """Delete blobs older than the grace period that no document row names; return how many.
 
     A row of any status keeps its blob, a tombstoned one too: its purge deletes the file. The
     grace period covers an upload between storing its file and committing its row, so a blob is
-    never deleted while its upload may still commit.
+    never deleted while its upload may still commit. At most `max_deletes` per run, so a worker
+    pointed at the wrong or an empty database cannot empty the store in one run. A file that
+    cannot be deleted does not stop the others; the first error is raised at the end.
     """
     cutoff = datetime.now(UTC) - timedelta(seconds=grace_seconds)
-    deleted = 0
+    deleted, failed = 0, None
     async with await connect() as conn:
         async for keys in blobs.older_than(cutoff):
             async with conn.transaction():
                 rows = await _fetch(conn, _NAMED, {"keys": keys})
             named = {row["blob_key"] for row in rows}
             for key in keys:
-                if key not in named:
+                if key in named:
+                    continue
+                if deleted >= max_deletes:
+                    log.warning("knowledge.blob_sweep.limit_reached", deleted=deleted)
+                    return deleted
+                try:
                     await blobs.delete(key)
+                except Exception as exc:  # noqa: BLE001 - raised below
+                    failed = failed or exc
+                else:
                     deleted += 1
+    if failed is not None:
+        raise failed
     return deleted
 
 

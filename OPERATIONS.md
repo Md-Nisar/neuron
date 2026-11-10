@@ -1096,6 +1096,7 @@ The worker repairs these itself (RAG-07.02); this is what to watch and when to s
 1. Watch `neuron_knowledge_reconciled_total` by `neuron_outcome` (`ingest_requeued`, `ingest_stalled`, `purge_requeued`, `blob_deleted`). Occasional counts are expected after a crash. A rise in `ingest_stalled` means documents keep losing their jobs: read the worker's logs around those documents. A `purge_requeued` count that rises every run means a purge keeps failing, usually the blob store (`knowledge.purge.failed` with its error class): fix the store and the next runs finish it.
 2. A failed run logs `knowledge.reconcile.failed` or `knowledge.blob_sweep.failed` with the error class only. A blob store error there stops the sweep for that hour and deletes nothing more; it is safe to leave until the store is back.
 3. Never shorten the grace period below the longest an upload can take, or the sweep can delete the file of an upload still in progress.
+4. A run deletes at most 1,000 files (`knowledge.blob_sweep.limit_reached` when it stops there); the next hour continues. Seeing that warning without a known backlog of orphans means the worker may read the wrong database: stop the worker and check `APP_POSTGRES_WORKER_DSN` before more files go. Never point two environments at one bucket or directory, and after restoring the database to an earlier point, keep the worker stopped until the store and the database match again (files uploaded after the restore point have no row and would be swept).
 
 ### Capacity
 
