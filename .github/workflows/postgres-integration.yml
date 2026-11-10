@@ -68,3 +68,7 @@ jobs:
       # A skipped test exits 0, and an unset DSN skips every test, so count outcomes.
       - name: Require executed Postgres tests
         run: uv run python scripts/require_postgres_tests.py postgres-junit.xml
+      # RAG-08.02 AC2: each knowledge security case's control is removed in a copy of the
+      # package, and one of its tests must fail. A skipped or passing case fails this step.
+      - name: Knowledge security mutation check
+        run: uv run python scripts/knowledge_mutations.py
