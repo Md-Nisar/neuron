@@ -82,9 +82,20 @@ def test_the_worker_runs_as_its_own_role_only_with_knowledge() -> None:
         "APP_ENV",
         "APP_POSTGRES_WORKER_DSN",
         "APP_KNOWLEDGE_PARSER_URL",
+        "APP_KNOWLEDGE_BLOB_ROOT",
         "PGPASSWORD",
     }
     assert "neuron_worker" in (_ROOT / "deploy/reference/init-roles.sql").read_text("utf-8")
+
+
+def test_replicas_and_worker_share_one_blob_volume() -> None:
+    """RAG-08.04: a file uploaded through either replica is the one the worker reads."""
+    mount = "knowledge-blobs:/var/lib/neuron/knowledge-blobs"
+    for name in (*_API, "worker"):
+        service = _SERVICES[name]
+        assert service["volumes"] == [mount], name
+        assert service["environment"]["APP_KNOWLEDGE_BLOB_ROOT"] == mount.split(":")[1], name
+    assert "knowledge-blobs" in _COMPOSE["volumes"]
 
 
 def test_the_parser_has_no_route_out() -> None:
