@@ -1,0 +1,17 @@
+{
+  "run": "2026-11-10",
+  "stack": "docker-compose.reference.yml at b52272f, pgvector/pgvector:pg16 by digest",
+  "before": {
+    "image": "v1.0.0 source (tag v1.0.0), KNOWLEDGE_ENABLED=false",
+    "migrations": 16,
+    "threads_seeded": 3
+  },
+  "after": {
+    "image": "main at b52272f, KNOWLEDGE_ENABLED=true, worker started",
+    "setup": "exit 0",
+    "migrations": 27,
+    "vector_extension": "0.8.7",
+    "threads_of_the_seeded_user": 3,
+    "smoke_test_knowledge": "passed (ready, invoke, cleanup, knowledge-base, upload, ingest, cite, knowledge-cleanup)"
+  }
+}

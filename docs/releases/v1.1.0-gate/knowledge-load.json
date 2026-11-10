@@ -1,0 +1,38 @@
+{
+  "run": "2026-11-10",
+  "commit": "b52272f",
+  "host": {
+    "cpus": 4,
+    "memory_gb": 15
+  },
+  "stack": "docker-compose.reference.yml, KNOWLEDGE_ENABLED=true, worker --no-deps (Markdown parser only), fake embeddings",
+  "script": "scripts/knowledge_load.py",
+  "ingestion": {
+    "users": 8,
+    "documents": 80,
+    "ready": 80,
+    "failed": 0,
+    "uploads_refused_429": 10,
+    "bytes_per_document": 16351,
+    "in_flight_per_user": 5,
+    "wall_seconds": 19.1,
+    "documents_per_minute": 251.6,
+    "seconds_p50": 4.776,
+    "seconds_p95": 7.263,
+    "seconds_max": 7.722
+  },
+  "search": {
+    "users": 8,
+    "seconds": 60,
+    "calls": 384,
+    "ok": 384,
+    "statuses": [
+      200
+    ],
+    "per_second": 6.4,
+    "latency_p50": 0.078,
+    "latency_p95": 0.156,
+    "latency_p99": 0.236,
+    "latency_mean": 0.092
+  }
+}

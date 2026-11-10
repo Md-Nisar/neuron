@@ -1,12 +1,27 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
+
+"Knowledge Engine". Users can upload documents to their own knowledge bases and get answers that cite the passages they came from. Uploads are ingested by a separate worker (`neuron-worker`) into Postgres with pgvector; hybrid search runs inside the user's authorisation; citations are checked by the server; the web app gets a Knowledge page, source chips and a knowledge-base picker. Knowledge is off by default (`APP_KNOWLEDGE_ENABLED`). With it off, no knowledge route, tool, worker or migration is active. The `/v1` API and stream protocol version 1 stay compatible: the `/v1/knowledge/*` routes and the citation fields are additions, and existing `APP_*` settings keep their names. Verification: `docs/releases/v1.1.0-release-verification.md`.
+
+Upgrade note: migrations 17 to 27 (the `knowledge` schema, tables, row-level security, the job queue, quotas) run in `setup` only with `APP_KNOWLEDGE_ENABLED=true`, and need Postgres with the `vector` extension (`pgvector/pgvector:pg16`, the image of every compose file here). An upgrade from 1.0.0 to 1.1.0 with knowledge on was run on the reference stack: `docs/releases/v1.1.0-gate/upgrade-from-v1.0.0.json`. Turning knowledge on also needs the worker role and process (OPERATIONS.md, "Knowledge Engine").
+
+Upgrade note: system prompt version 4. When the caller may search, a run's first model call must call `search_knowledge`, so nearly every knowledge-enabled run is tainted and an MCP or other taint-gated tool call in it waits for approval.
+
+Known issues:
+- **No production environment exists**, as for 1.0.0: no hosted deployment, staging run or production-model run. The GitHub Release is published by hand from this section.
+- The live answer and citation eval runs one trial per case. The release run (2026-11-10) cited a correct page for 0.953 of answerable questions and abstained on 12 of 12; runs since the fixes ranged from 0.891 to 0.953, so a re-run can land near the 0.9 gate.
+- Ingestion and search figures are for one local host with the fake embedding provider and the Markdown parser (`docs/releases/v1.1.0-gate/knowledge-load.json`); no load gate in this release, and the ADR 0012 comparison with v0.9.0 was not run.
+- No story yet for a worker settings profile or for checking the worker role's column grants in production.
+- A slow embedding call can outlast the 20-second tool timeout and fail a run instead of reporting knowledge unavailable.
+- #480 stays open; not every item in it was re-checked for this release.
 
 Upgrade note: `validate_safe_url` now accepts `https` only unless called with `allow_http=True` (#366). Staging and production already required `https` for MCP servers and the JWKS URL, so no setting changes.
 
 Upgrade note: `docker-compose.yml` is now the whole local stack and signs in through Keycloak (no unauthenticated API). Its Postgres data is in a new volume, `postgres-data`, created with the production roles; the old `pgdata` volume is not used and can be removed with `docker volume rm neuron_pgdata`.
 
 Changes:
+- Release: v1.1.0 verification (RAG-08.05, #520). `scripts/knowledge_load.py` records ingestion and search figures on the reference stack: 80 Markdown documents of 16 KB from 8 users ingested at about 250 a minute (each in 4.8 s at p50, 7.3 s at p95), and 384 searches at 6.4 a second with 156 ms at p95. The live answer eval on the release code passed: 0.953 cited correctly, 12 of 12 abstained.
 - Operations: the restore drill covers knowledge (RAG-07.03, #518). New read-only command `neuron-worker check-blobs`. Run with the worker's settings after a restore and before the worker starts, it prints the number of files, rows and orphan files and the ids of live documents whose file is missing. It exits 1 if any file is missing and 2 if the check fails, and deletes nothing. It is now step 4 of "Backups and restore" in OPERATIONS.md. `scripts/dr_drill.py` now:
   - ingests a known document before the backup;
   - uploads and deletes documents after T;
