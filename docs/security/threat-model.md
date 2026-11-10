@@ -32,10 +32,12 @@ new design. *Open*: no control or test; filed as an issue.
 | Access token | Browser memory (private field), `Authorization` header | The signed-in user |
 | Identity hash key, DSNs, provider keys | Environment of the deployment | The operator |
 | Tool set | Registry in code, MCP pins | The operator; the model only requests calls |
+| Knowledge bases, documents, original files (v1.1.0) | Postgres `knowledge` schema (owner key, row-level security on chunks and embeddings); blob store under random keys | The owner only (404 for others); the worker for ingestion and purge |
+| Chunks and embeddings (v1.1.0) | `knowledge.chunks`, `knowledge.embeddings` | Read under RLS scoped to the caller's allowed bases; sent to the embedding provider only as the base's processing locality allows |
 
 Boundaries: browser to API (untrusted client), API to model provider (untrusted output), agent to
 tools (the model is not a security boundary), tools to MCP servers (pinned definitions, untrusted
-results), API to Postgres (two roles: migrator and app), API to identity provider (JWKS).
+results), API to Postgres (two roles: migrator and app), API to identity provider (JWKS). Added in v1.1.0: uploaded file to parser (docling-serve on an internal network with no egress), worker to Postgres (its own `neuron_worker` role, no rights in `public`), worker to embedding provider (hosted or self-hosted, per base), retrieved passage to model (untrusted document text, framed as data).
 
 ## OWASP Top 10 for LLM Applications 2026
 
@@ -45,11 +47,11 @@ results), API to Postgres (two roles: migrator and app), API to identity provide
 | LLM02:2026 | Sensitive Information Disclosure | Covered | Logs carry IDs, names and codes only; telemetry allow-lists; trace content hidden unless approved; thread isolation; output policy for the system prompt; errors are fixed codes. | `test_telemetry_leaks`, `test_output_policy`, `test_conversation_security`, `test_multi_user_isolation`. |
 | LLM03:2026 | Excessive Agency | Covered | Read-only tools by default; scope per tool; `mutating` tools need a human approval of the exact arguments, once, bound to owner and thread; high-impact names deny-listed; no shell or `eval` tools; recursion and iteration limits. | `test_tool_denial`, `test_approval_api`, `test_approval_stream`, `test_authorization`, graph `test_approvals`, `approval` eval. |
 | LLM04:2026 | Supply Chain | Partial | `uv.lock` with `pip-audit` in `make security`; 90-day rule for new dependencies (Python and npm); image pinned by digest, scanned and attested; MCP tool definitions pinned by SHA-256, operator-only server list. | `check_new_dependencies`, `check_new_npm_dependencies`, `test_mcp_pins`, `test_mcp_abuse`, the image-publish workflow. Limit: the attestation was never verified on a deployed image. |
-| LLM05:2026 | Data and Model Poisoning | Partial | No training or fine-tuning, and no retrieval corpus. The writable stores are memory (user's own words, approved, per-user) and threads. A provider model is trusted as a supplier. | `test_memory_tools`, `test_memory_api`, memory security cases. Limit: no check on the provider's model. |
+| LLM05:2026 | Data and Model Poisoning | Partial | No training or fine-tuning. The writable stores are memory (user's own words, approved, per-user), threads and, from v1.1.0, the user's own knowledge bases (a poisoned document reaches only its owner's runs; see "Knowledge Engine" below). A provider model is trusted as a supplier. | `test_memory_tools`, `test_memory_api`, memory security cases. Limit: no check on the provider's model. |
 | LLM06:2026 | Unbounded Consumption | Covered | Token-bucket rate limit, per-user concurrent runs and rolling token budget (Postgres-shared), request body and prompt limits, provider and tool timeouts, run timeout, capped retries, stream cap, pool limits. v0.9.0 adds a measured load baseline. | `test_rate_limit_keys`, `test_shared_rate_limit`, `test_resource_limits`, `test_request_body_limit`, `test_token_attacks`; `docs/releases/v0.9.0-gate/load-baseline.json`. |
 | LLM07:2026 | Misinformation | Partial | Structured answers with `refused` and `clarification_needed`; the quality eval suite. Correctness of a model's content is not guaranteed and the UI shows the model's words as text. | `tests/evals/test_agent_quality.py`, live eval baseline. Limit: live runs use the development model only. |
 | LLM08:2026 | Hidden Context Exposure | Partial | System prompt is a versioned asset and never carries secrets; an output guard blocks a verbatim run of eight words of it; secrets stay in settings, not prompts. | `test_output_policy`, prompt-leak security cases. Limit: the guard is verbatim only (`SECURITY.md`). |
-| LLM09:2026 | Vector and Embedding Weaknesses | Not applicable | There is no retrieval, embedding or vector store. ADR 0001, 0002 and 0005 forbid adding one without a requirement and a new ADR. | No test keeps retrieval out; the control is the ADR requirement in `CLAUDE.md` and `AGENTS.md`. Revisit if retrieval is ever added. |
+| LLM09:2026 | Vector and Embedding Weaknesses | Covered | From v1.1.0 (ADR 0014): authorisation in the retrieval query and RLS on chunks and embeddings; per-base processing locality for the embedding provider; dimension and finite checks on vectors; one index profile per base. | See "Knowledge Engine" below. |
 | LLM10:2026 | Improper Output Handling | Covered | The API returns structured JSON and typed SSE events; the browser renders Markdown as React elements (no raw HTML, no images, restricted links) under a strict CSP; the approval card is built from the validated event only. | `Markdown.test.tsx`, `ChatScreen.test.tsx`, `ApprovalCard.test.tsx`, `test_web_headers`, `test_http_hardening`. Limit: the CSP was never enforced by a real browser (deferred). |
 
 ## OWASP Top 10 for Agentic Applications for 2026
@@ -74,6 +76,31 @@ results), API to Postgres (two roles: migrator and app), API to identity provide
 | Memory (v0.7.0) | Poisoning, cross-user recall, injection through a note, bulk write | ASI06 above; `test_memory_api`, `test_memory_tools`, security dataset v5 |
 | Approvals and mutating tools (v0.7.0) | Forged, replayed or cross-user decision; approving something unread | ASI09, LLM03 above; `test_approval_api`, `ApprovalCard.test.tsx` |
 | Browser and OIDC (v0.8.0) | Script injection, token theft, sign-in CSRF and mix-up, clickjacking, third-party calls | `SECURITY.md`, "Browser Application"; `session.test.ts`, `network.test.tsx`, `test_web_headers` |
+
+## Knowledge Engine (v1.1.0)
+
+ADR 0014, RAG-08.02 (#503). The twelve cases of the Phase 1 security gate, each with its control
+and the tests that fail without it. Tests marked *Postgres* need pgvector and run in CI's
+`postgres-integration` job.
+
+| Case | Control | Tests |
+| --- | --- | --- |
+| Foreign `kb_id` or `doc_id` | Every statement filters on the owner key; another user's id is the same `404` as an unknown one | `test_postgres_knowledge_api.py` BOLA matrix (Postgres), `test_knowledge_api.py` |
+| Same text in two users' bases | `allowed_kbs` in the query and RLS (`kb_scope`, `SET LOCAL neuron.kb_ids`) | `test_postgres_knowledge_search.py`, `test_postgres_knowledge_tables.py` (Postgres) |
+| Access revoked while a citation is open | The chunk and file routes re-check access on every read | `test_postgres_knowledge_download.py` (Postgres), `SourceSheet.test.tsx` |
+| Delete during purge | Tombstones hide data from every read path at once; purge retries until nothing is left | `test_postgres_knowledge_purge.py` (Postgres) |
+| Instructions hidden in a document (white PDF text, alt text, table cell) | Passages are framed as data with `<` escaped; knowledge tools taint the run, so MCP calls need approval; `forget` needs approval; `remember` accepts only the user's words | `test_knowledge_injection.py`, `test_knowledge_tools.py` |
+| Fake or planted `cite_id` | Only ids a knowledge tool minted in this run survive validation | `test_citations.py`, `test_knowledge_injection.py` |
+| Exfiltration to MCP after a search | `taints_run` on the knowledge tools | `test_knowledge_tools.py`, `test_tainted_egress.py` |
+| Worker killed during ingestion | Procrastinate job with a stalled-job sweep; idempotent chunk-set replace | `test_postgres_knowledge_worker.py`, `test_postgres_knowledge_ingest.py` (Postgres) |
+| HTML or SVG download | Attachment, `nosniff`, safe type, CSP | `test_postgres_knowledge_download.py` (Postgres), `web/e2e/download.spec.ts` |
+| Zip bomb, page bomb, encrypted or macro file | Content sniffing, byte, page and character caps, parser in a container without egress | `test_knowledge_parsing.py`, `test_knowledge_docling_serve.py`, `test_reference_stack.py` |
+| Erase everything | Erase tombstones and purges all of the owner's knowledge; `complete` only when no row is left | `test_postgres_knowledge_erase.py` (Postgres), `test_thread_lifecycle.py` |
+| Hosted provider under a self-hosted policy | `ensure_processing_allowed` before every embedding call; refused at settings load in staging and production | `test_knowledge_providers.py`, `test_postgres_knowledge_ingest.py` |
+
+Limits: a passage can still mislead the answer itself (containment, not prevention, as LLM01);
+downloads have no concurrency cap of their own (bounded by the upload cap and the `/v1` rate
+limit); nothing was tested on a hosted deployment.
 
 ## Known gaps and where they are filed
 
