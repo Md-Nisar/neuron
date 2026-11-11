@@ -1507,6 +1507,17 @@ def main() -> None:
         raise SystemExit(
             f"Refusing to bind {settings.host}: set APP_ENV explicitly for a non-loopback host."
         )
+    if (
+        not _is_loopback(settings.host)
+        and settings.auth_mode == "none"
+        and not settings.allow_unauthenticated_public_bind
+    ):
+        # Checked here, not in Settings: the worker loads the same settings but binds nothing.
+        raise SystemExit(
+            f"Refusing to serve an unauthenticated API on {settings.host}: set "
+            "APP_AUTH_MODE=jwt, APP_HOST=127.0.0.1, or APP_ALLOW_UNAUTHENTICATED_PUBLIC_BIND=true "
+            "for a development container published on loopback only."
+        )
     _run(build_server(settings))
 
 

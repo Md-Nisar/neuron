@@ -306,6 +306,10 @@ class Settings(BaseSettings):
     thread_retention_days: int = Field(default=30, ge=1, le=3650)
     user_data_export_max_bytes: int = Field(default=5_000_000, ge=65_536, le=50_000_000)
     auth_mode: AuthMode = "none"
+    # Development only (staging and production refuse APP_AUTH_MODE=none): lets `neuron-api`
+    # serve without authentication on a non-loopback APP_HOST, such as 0.0.0.0 in a container
+    # whose port is published on loopback only. Anyone who can reach the port has full access.
+    allow_unauthenticated_public_bind: bool = False
     auth_issuer: str | None = None
     auth_issuer_id: str = Field(
         default="default", min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$"

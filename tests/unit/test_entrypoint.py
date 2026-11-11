@@ -132,11 +132,25 @@ def test_main_starts_on_a_public_bind_with_an_explicit_app_env(
     clean_env.setattr(api_main, "_run", lambda server: ran.append(server.config))
     clean_env.setenv("APP_ENV", "development")
     clean_env.setenv("APP_HOST", PUBLIC)
-    clean_env.setattr(api_main, "settings", _settings())
+    clean_env.setattr(api_main, "settings", _settings(allow_unauthenticated_public_bind=True))
 
     api_main.main()
 
     assert [(run.host, run.port) for run in ran] == [(PUBLIC, 8000)]
+
+
+def test_main_refuses_an_unauthenticated_public_bind_without_the_opt_in(
+    clean_env: pytest.MonkeyPatch,
+) -> None:
+    ran: list[uvicorn.Config] = []
+    clean_env.setattr(api_main, "_run", lambda server: ran.append(server.config))
+    clean_env.setattr(api_main, "settings", _settings(env="development", host=PUBLIC))
+
+    with pytest.raises(SystemExit) as exit_info:
+        api_main.main()
+
+    assert "APP_ALLOW_UNAUTHENTICATED_PUBLIC_BIND" in str(exit_info.value.code)
+    assert ran == []
 
 
 def test_main_runs_the_draining_server_with_the_configured_options(

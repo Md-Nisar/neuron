@@ -589,7 +589,8 @@ def test_open_auth_on_a_public_bind_is_refused_in_test(host: str) -> None:
 
 
 def test_open_auth_on_a_public_bind_stays_allowed_in_development() -> None:
-    # The image binds 0.0.0.0 inside the container; compose publishes it on loopback only.
+    # The worker loads these settings in the image (0.0.0.0) and binds nothing; `neuron-api`
+    # itself refuses this bind without APP_ALLOW_UNAUTHENTICATED_PUBLIC_BIND (test_entrypoint).
     settings = Settings(_env_file=None, env="development", auth_mode="none", host="0.0.0.0")  # type: ignore[call-arg]  # noqa: S104
     assert settings.host == "0.0.0.0"  # noqa: S104
 

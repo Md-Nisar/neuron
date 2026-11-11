@@ -211,7 +211,7 @@ Not covered, by design or by limit:
 - **v0.7.0 not exercised in staging or production.** Approvals, MCP, memory and the Anthropic provider are unit-, graph- and integration-tested (Postgres 16 locally) and verified with fakes or the NVIDIA development model. Anthropic was never called live (no funded key). Production and staging settings are validated but unrun.
 - **MCP trust is the pin, not the server.** A pinned definition proves the tool is the one reviewed, not that the server behaves well. Results are untrusted data, but a server that is allowed a tool can still return misleading text; mark anything with side effects `mutating`.
 - **Memory concurrency.** The item limit is checked before the write, so concurrent writes by one user can exceed it by the number in flight. Memory is not available on the Agent Server path.
-- **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`, and `neuron-api` refuses a non-loopback bind unless `APP_ENV` is set explicitly. Accepted residual risk: an explicit `APP_ENV=development` on a public host still serves unauthenticated.
+- **`AUTH_MODE=none` is unauthenticated.** Any caller can claim any `user_id`. Settings reject it in staging and production; `make api` binds to `127.0.0.1`, and `neuron-api` refuses a non-loopback bind unless `APP_ENV` is set explicitly. It also refuses to serve `AUTH_MODE=none` on a non-loopback host unless `APP_ALLOW_UNAUTHENTICATED_PUBLIC_BIND=true` (development only), so `docker run -e APP_ENV=development` no longer serves an open API by accident. Residual risk: an operator who sets that opt-in on a reachable host still serves unauthenticated.
 
 ## Secrets
 
