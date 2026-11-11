@@ -77,8 +77,8 @@ def test_routes_without_required_permissions_return_insufficient_scope(
         ),
         ("GET", "/v1/me/threads", None, "threads:read"),
         ("GET", "/v1/me/export", None, "threads:read"),
-        ("DELETE", "/v1/me/threads", None, "threads:delete"),
-        ("DELETE", "/v1/me/knowledge", None, "threads:delete"),
+        ("DELETE", "/v1/me/threads", None, "data:erase"),
+        ("DELETE", "/v1/me/knowledge", None, "data:erase"),
     ]
     try:
         with TestClient(api_main.app) as client:
@@ -195,7 +195,7 @@ def test_each_route_succeeds_with_its_required_permission(
         ),
         ("GET", "/v1/me/threads", None, "threads:read"),
         ("GET", "/v1/me/export", None, "threads:read"),
-        ("DELETE", "/v1/me/threads", None, "threads:delete"),
+        ("DELETE", "/v1/me/threads", None, "data:erase"),
     ]
     try:
         with TestClient(api_main.app) as client:

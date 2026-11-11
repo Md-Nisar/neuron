@@ -30,10 +30,10 @@ AUDIENCE = "neuron-api"
 APP_ORIGIN = "http://localhost:5173"
 KID = "browser-e2e"
 PERMISSIONS = (
-    "agent:approve agent:invoke feedback:write knowledge:read knowledge:write memories:read "
-    "memories:write threads:delete threads:read threads:write tools:calculator tools:forget "
-    "tools:get_document_excerpt tools:list_knowledge_bases tools:recall tools:remember "
-    "tools:search_knowledge"
+    "agent:approve agent:invoke data:erase feedback:write knowledge:read knowledge:write "
+    "memories:read memories:write threads:delete threads:read threads:write tools:calculator "
+    "tools:forget tools:get_document_excerpt tools:list_knowledge_bases tools:recall "
+    "tools:remember tools:search_knowledge"
 )
 
 KEY = ec.generate_private_key(ec.SECP256R1())

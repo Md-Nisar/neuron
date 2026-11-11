@@ -1252,7 +1252,7 @@ class AgentService:
                 with self._persistence_errors():
                     erased_memories = await self._memory.erase(owner_key)
                 self._audit_memory(
-                    "memories_erased", owner_key, action="threads:erase_all", count=erased_memories
+                    "memories_erased", owner_key, action="data:erase", count=erased_memories
                 )
             if self._settings.knowledge_enabled and owner_key is not None:
                 knowledge = await self._knowledge.erase(owner_key)
@@ -1268,7 +1268,7 @@ class AgentService:
                     else None
                 ),
                 issuer_id=self._settings.auth_issuer_id,
-                action="threads:erase_all",
+                action="data:erase",
                 resource_type="user_data",
                 count=erased,
                 reason="erasure_failed"

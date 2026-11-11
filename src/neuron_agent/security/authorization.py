@@ -22,6 +22,7 @@ DEV_PERMISSIONS = frozenset(
         "threads:write",
         "feedback:write",
         "threads:delete",
+        "data:erase",
         "memories:read",
         "memories:write",
         "tools:calculator",

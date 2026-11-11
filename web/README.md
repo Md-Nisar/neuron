@@ -168,7 +168,7 @@ wording in `messages.ts`; an unknown code gets a general message.
 
 The "Your data" page (opened from the nav; the chat stays mounted so a draft survives a visit) uses
 the existing `/v1/me/*` routes and needs the scopes `memories:read`, `memories:write`,
-`threads:read` and `threads:delete`.
+`threads:read` and `data:erase` (erase).
 
 - **Memories:** list (paged, shown as text), and delete in two steps. If memory is off on the
   server the page says so.

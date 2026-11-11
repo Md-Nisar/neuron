@@ -16,7 +16,7 @@ from neuron_agent.security.auth import Principal, principal_owner_key
 
 _READ = "agent:invoke threads:read memories:read"
 _WRITE = "agent:invoke threads:read threads:delete memories:write"
-_ALL = "agent:invoke threads:read threads:delete memories:read memories:write"
+_ALL = "agent:invoke threads:read threads:delete data:erase memories:read memories:write"
 _TEXT = "my locker code is 4417-sigma"  # noqa: S105 - test text, not a credential
 
 
