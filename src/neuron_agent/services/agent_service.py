@@ -312,10 +312,13 @@ class AgentService:
             if self._settings.auth_mode == "jwt"
             else {"user_id_hash": owner_key}
         )
-        if request.thread_id is not None and self._can_pause():
+        if request.thread_id is not None and self._persistence.checkpointer is not None:
             try:
                 with self._persistence_errors():
-                    if await self._pending_interrupts(thread_id):
+                    # Read again now that the thread is held: a delete or an erase may have
+                    # removed it between the ownership check and the claim.
+                    snapshot = await self._owned_snapshot(thread_id, owner_key)
+                    if self._can_pause() and any(task.interrupts for task in snapshot.tasks):
                         raise ApprovalPendingError("the thread waits for a decision on a tool call")
             except BaseException:
                 await lease.release()
@@ -432,10 +435,6 @@ class AgentService:
         return ApprovalRequiredResponse(
             request_id=str(uuid.uuid4()), thread_id=thread_id, approval=approval
         )
-
-    async def _pending_interrupts(self, thread_id: str) -> list[Interrupt]:
-        snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
-        return [interrupt for task in snapshot.tasks for interrupt in task.interrupts]
 
     def _approval_required(
         self, run: PreparedRun, interrupt: Interrupt
@@ -625,14 +624,19 @@ class AgentService:
     async def _execute(self, run: PreparedRun) -> AgentResponse | ApprovalRequiredResponse:
         """Run a prepared run to its end or to a pause for approval, then settle and release."""
         try:
-            with self._persistence_errors():
-                async with asyncio.timeout(self._settings.run_timeout_seconds):
-                    result = await self.graph.ainvoke(
-                        run.graph_input, config=run.config, context=run.authorization
-                    )
-        except TimeoutError as exc:
-            logger.warning("agent_run_timed_out")
-            raise RunTimeoutError("agent run exceeded its time budget") from exc
+            try:
+                with self._persistence_errors():
+                    async with asyncio.timeout(self._settings.run_timeout_seconds):
+                        result = await self.graph.ainvoke(
+                            run.graph_input, config=run.config, context=run.authorization
+                        )
+            except TimeoutError as exc:
+                logger.warning("agent_run_timed_out")
+                raise RunTimeoutError("agent run exceeded its time budget") from exc
+            # While the thread is still held, as the stream does: an erase that finds the
+            # thread free must find its title too, not have it written afterwards.
+            self._audit_thread_created(run)
+            await self._name_new_thread(run)
         finally:
             try:
                 await self._finish_usage(run)
@@ -644,8 +648,6 @@ class AgentService:
             if (interrupts := result.get("__interrupt__"))
             else _response(run, result["answer"], _answer_message(result["messages"]))
         )
-        self._audit_thread_created(run)
-        await self._name_new_thread(run)
         return response
 
     async def stream(

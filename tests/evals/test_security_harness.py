@@ -69,9 +69,10 @@ async def test_runner_reports_a_failure_when_isolation_breaks(
         snapshot = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
         if not snapshot.values:
             raise ThreadNotFoundError("thread not found")
-        return snapshot.values
+        return snapshot
 
-    monkeypatch.setattr(AgentService, "_owned_thread_state", any_owner)
+    # Where the comparison lives: `prepare` reads it before and after it claims the thread.
+    monkeypatch.setattr(AgentService, "_owned_snapshot", any_owner)
     results = await run_security_suite(
         SECURITY_CASES, AgentService(jwt_settings(memory_enabled=True))
     )
