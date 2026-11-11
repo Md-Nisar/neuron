@@ -514,6 +514,9 @@ class Settings(BaseSettings):
                     "APP_KNOWLEDGE_EMBEDDING_BASE_URL must be an http(s) URL with a host and "
                     "no credentials, query or fragment"
                 )
+            if self.env == "production" and parts.scheme != "https":
+                # Document text goes to this server; never in clear text in production (L-10).
+                raise ValueError("APP_KNOWLEDGE_EMBEDDING_BASE_URL must use https in production")
             if (
                 self.env in {"staging", "production"}
                 and parts.scheme != "https"
@@ -544,6 +547,14 @@ class Settings(BaseSettings):
                 "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
                 "self_hosted)"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_knowledge_parser(self) -> Settings:
+        """Refuse a clear-text parser URL in production: every uploaded file goes to it (L-10)."""
+        url = self.knowledge_parser_url
+        if self.env == "production" and url is not None and urlsplit(url).scheme != "https":
+            raise ValueError("APP_KNOWLEDGE_PARSER_URL must use https in production")
         return self
 
     @model_validator(mode="after")

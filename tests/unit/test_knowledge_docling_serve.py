@@ -17,6 +17,8 @@ from typing import Any
 import anyio
 import httpx2
 import pytest
+from pydantic import ValidationError
+from tests.unit.test_production_feature_guards import jwt_settings
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.knowledge.docling_serve import DoclingServeParser
@@ -249,6 +251,20 @@ async def test_one_spelling_per_reference(ref: str) -> None:
 def test_the_parser_url_has_no_credentials() -> None:
     with pytest.raises(ValueError, match="knowledge_parser_url"):
         Settings(env="test", knowledge_parser_url="http://user:secret@docling:5001")
+
+
+def test_production_needs_https_for_the_parser() -> None:
+    """Audit L-10: document text must not cross the network in clear text in production."""
+    with pytest.raises(ValidationError, match="APP_KNOWLEDGE_PARSER_URL must use https"):
+        jwt_settings(env="production", knowledge_parser_url="http://docling:5001")
+    https = jwt_settings(env="production", knowledge_parser_url="https://docling:5001")
+    assert https.knowledge_parser_url == "https://docling:5001"
+
+
+@pytest.mark.parametrize("env", ["development", "test"])
+def test_local_and_ci_may_reach_the_parser_over_http(env: str) -> None:
+    settings = Settings(env=env, knowledge_parser_url="http://docling:5001")  # type: ignore[arg-type]
+    assert settings.knowledge_parser_url == "http://docling:5001"
 
 
 def test_the_parser_needs_its_url() -> None:
