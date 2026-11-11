@@ -41,7 +41,7 @@ x-api: &api
     APP_AUTH_AUDIENCE: neuron-api
     APP_AUTH_JWKS_URL: http://keycloak:8080/realms/neuron/protocol/openid-connect/certs
     APP_AUTH_ALGORITHMS: '["RS256"]'
-    APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:get_document_excerpt","tools:list_knowledge_bases","tools:recall","tools:remember","tools:search_knowledge"],"neuron-reader":["threads:read"]}'
+    APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","data:erase","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:get_document_excerpt","tools:list_knowledge_bases","tools:recall","tools:remember","tools:search_knowledge"],"neuron-reader":["threads:read"]}'
     APP_IDENTITY_HASH_KEY: reference-stack-identity-key-local-only-0001
     APP_CHECKPOINTER: postgres
     APP_MEMORY_ENABLED: "true"

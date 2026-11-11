@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+Upgrade note: erasing all of a user's data needs the new `data:erase` scope (audit L-01). `DELETE /v1/me/threads` and `DELETE /v1/me/knowledge` required `threads:delete`, although they also remove memories and knowledge. `DELETE /v1/threads/{id}` still requires `threads:delete`. Add `data:erase` to the role or client that should be able to erase everything (the web app's "Your data" page needs it); without it these routes return `403`. The compose files grant it to `neuron-user`. The `user_data_erased`, `memories_erased` and `knowledge_erased` audit events now record `action` `data:erase` (was `threads:erase_all` or `threads:delete`); update audit queries that filter on the old values.
+
 ## 1.1.0
 
 "Knowledge Engine". Users can upload documents to their own knowledge bases and get answers that cite the passages they came from. Uploads are ingested by a separate worker (`neuron-worker`) into Postgres with pgvector; hybrid search runs inside the user's authorisation; citations are checked by the server; the web app gets a Knowledge page, source chips and a knowledge-base picker. Knowledge is off by default (`APP_KNOWLEDGE_ENABLED`). With it off, no knowledge route, tool, worker or migration is active. The `/v1` API and stream protocol version 1 stay compatible: the `/v1/knowledge/*` routes and the citation fields are additions, and existing `APP_*` settings keep their names. Verification: `docs/releases/v1.1.0-release-verification.md`.

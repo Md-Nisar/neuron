@@ -555,7 +555,7 @@ class KnowledgeBases:
                 await jobs.defer(conn, jobs.Task.PURGE_KNOWLEDGE_BASE, kb_id=row["kb_id"])
             cursor = await conn.execute(_STORED, {"owner": owner_key})
             stored = await cursor.fetchone()
-        self._audit("knowledge_erased", owner_key, "threads:delete", count=len(erased))
+        self._audit("knowledge_erased", owner_key, "data:erase", count=len(erased))
         return KnowledgeErasureResponse(
             erased_base_count=len(erased),
             erased_document_count=documents,

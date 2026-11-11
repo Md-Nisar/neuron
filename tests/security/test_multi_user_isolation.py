@@ -270,7 +270,7 @@ _ROUTE_PERMISSION = {
     "/v1/threads/{id}": "threads:delete",
     "/v1/me/threads:GET": "threads:read",
     "/v1/me/export": "threads:read",
-    "/v1/me/threads:DELETE": "threads:delete",
+    "/v1/me/threads:DELETE": "data:erase",
 }
 
 
@@ -281,12 +281,26 @@ def _permission(method: str, path: str, thread_id: str) -> str:
 
 @pytest.mark.parametrize(
     "revoked",
-    ["agent:invoke", "threads:read", "threads:write", "threads:delete", "feedback:write"],
+    [
+        "agent:invoke",
+        "threads:read",
+        "threads:write",
+        "threads:delete",
+        "data:erase",
+        "feedback:write",
+    ],
 )
 def test_revoked_permission_is_enforced_on_the_next_token(
     jwt_api: JwtApi, make_token: Callable[..., str], revoked: str
 ) -> None:
-    granted = {"agent:invoke", "threads:read", "threads:write", "threads:delete", "feedback:write"}
+    granted = {
+        "agent:invoke",
+        "threads:read",
+        "threads:write",
+        "threads:delete",
+        "data:erase",
+        "feedback:write",
+    }
     alice = make_token("alice", scopes=" ".join(sorted(granted)))
     thread_id = _owned_thread(jwt_api, alice)
     reduced = make_token("alice", scopes=" ".join(sorted(granted - {revoked})))
@@ -304,7 +318,8 @@ def test_revoked_permission_is_enforced_on_the_next_token(
         "agent:invoke": 2,
         "threads:read": 3,
         "threads:write": 1,
-        "threads:delete": 2,
+        "threads:delete": 1,
+        "data:erase": 1,
         "feedback:write": 1,
     }
     assert checked == expected[revoked]

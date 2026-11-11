@@ -19,7 +19,7 @@ from neuron_agent.tools.registry import ToolRegistry, ToolSpec, builtin_registry
 
 _ran: list[str] = []
 _USAGE = {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
-_OWNER = "agent:invoke agent:approve threads:read threads:delete tools:note_taker"
+_OWNER = "agent:invoke agent:approve threads:read threads:delete data:erase tools:note_taker"
 _NOT_FOUND = {"detail": "approval_not_found"}
 
 

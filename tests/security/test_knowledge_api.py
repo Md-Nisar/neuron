@@ -155,7 +155,7 @@ def test_with_knowledge_off_data_rights_leave_knowledge_out(
     jwt_api: JwtApi, make_token: Callable[..., str]
 ) -> None:
     """RAG-07.01: erase-everything and export work as before, with an empty knowledge part."""
-    token = make_token("alice", scopes="threads:read threads:delete")
+    token = make_token("alice", scopes="threads:read data:erase")
     erased = jwt_api.client.delete("/v1/me/knowledge", headers=bearer(token))
     assert (erased.status_code, erased.json()) == (404, {"detail": "knowledge_disabled"})
     everything = jwt_api.client.delete("/v1/me/threads", headers=bearer(token)).json()

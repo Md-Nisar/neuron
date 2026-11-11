@@ -1348,7 +1348,7 @@ async def delete_knowledge_document(
 
 @app.delete("/v1/me/threads", response_model=UserDataErasureResponse)
 async def erase_my_threads(
-    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("data:erase"))] = None,
     user_id: str | None = _UserIdHeader,
 ) -> UserDataErasureResponse:
     """Delete all discoverable caller-owned threads; active threads are skipped."""
@@ -1360,7 +1360,7 @@ async def erase_my_threads(
 
 @app.delete("/v1/me/knowledge", response_model=KnowledgeErasureResponse)
 async def erase_my_knowledge(
-    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("data:erase"))] = None,
     user_id: str | None = _UserIdHeader,
 ) -> KnowledgeErasureResponse:
     """Tombstone all of the caller's knowledge and queue its purge; repeat until `complete`."""
