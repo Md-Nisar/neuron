@@ -6,8 +6,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import structlog
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from neuron_agent.observability.audit import audit
@@ -27,6 +29,21 @@ WHERE checkpoint_ns = ''
 GROUP BY thread_id
 HAVING max((checkpoint->>'ts')::timestamptz) < %s
 """
+
+
+async def _active_since(
+    checkpointer: BaseCheckpointSaver[Any], thread_id: str, cutoff: datetime
+) -> bool:
+    """Whether the thread's latest checkpoint is at or after `cutoff`.
+
+    The stale list is read once and a run can finish on a listed thread before the job reaches
+    it. With a run guard this is read under the job's hold, so no run can follow it; without
+    one (the guard is per process) it narrows that window to this read and the delete.
+    """
+    latest = await checkpointer.aget_tuple(
+        {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    )
+    return latest is not None and datetime.fromisoformat(latest.checkpoint["ts"]) >= cutoff
 
 
 async def _prune_leases(persistence: Persistence) -> int:
@@ -128,7 +145,9 @@ async def prune_threads(
         stale = [thread_id for thread_id, ts in last_activity.items() if ts < cutoff]
     stale_to_delete: list[str] = []
     skipped_busy = 0
+    skipped_active = 0
     for thread_id in stale:
+        lease = None
         if run_guard is not None:
             if await run_guard.is_thread_active(thread_id):
                 logger.warning("retention_prune_skipped_busy", thread_id=thread_id)
@@ -142,14 +161,17 @@ async def prune_threads(
                 logger.warning("retention_prune_skipped_busy", thread_id=thread_id)
                 skipped_busy += 1
                 continue
-            try:
-                await checkpointer.adelete_thread(thread_id)
-                stale_to_delete.append(thread_id)
-            finally:
-                await lease.release()
-        else:
+        try:
+            # Read again: a turn may have completed on it since it was listed as stale.
+            if await _active_since(checkpointer, thread_id, cutoff):
+                logger.info("retention_prune_skipped_active", thread_id=thread_id)
+                skipped_active += 1
+                continue
             await checkpointer.adelete_thread(thread_id)
             stale_to_delete.append(thread_id)
+        finally:
+            if lease is not None:
+                await lease.release()
     await persistence.thread_titles.forget_threads(stale_to_delete)
     await persistence.feedback.forget_threads(stale_to_delete)
     expired_leases = await _prune_leases(persistence) if delete_leases else 0
@@ -159,6 +181,7 @@ async def prune_threads(
         "thread_prune_job_completed",
         count=len(stale_to_delete),
         skipped_busy=skipped_busy,
+        skipped_active=skipped_active,
         retention_days=older_than.days,
         expired_leases=expired_leases,
         expired_ledger_minutes=ledger_minutes,
