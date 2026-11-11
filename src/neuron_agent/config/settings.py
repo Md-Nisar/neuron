@@ -226,6 +226,9 @@ class Settings(BaseSettings):
     # Uploads one API process reads at once (RAG-03.02): each holds up to
     # APP_KNOWLEDGE_PARSE_MAX_BYTES in memory while its type is checked. More are `429`.
     knowledge_upload_concurrency: int = Field(default=4, ge=1, le=64)
+    # Downloads one API process sends at once: each holds the whole file in memory. More are
+    # `429`. Uploads and downloads also cap one owner at two slots each.
+    knowledge_download_concurrency: int = Field(default=4, ge=1, le=64)
     # What one user may hold (RAG-02.05; ADR 0014 requirement 7), checked before an upload is
     # stored. Stored bytes, documents and parsed pages count every document until it is purged;
     # documents being ingested (queued, parsing, embedding) count while their base is live.

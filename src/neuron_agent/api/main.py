@@ -46,6 +46,7 @@ from neuron_agent.errors.base import (
     AppError,
     AuthenticationError,
     ConcurrentRunsExceededError,
+    DownloadBusyError,
     IngestionConcurrencyError,
     KnowledgeDisabledError,
     PersistenceError,
@@ -236,24 +237,60 @@ def upload_body_limit() -> int:
     return settings.knowledge_parse_max_bytes + _UPLOAD_OVERHEAD_BYTES
 
 
-class _UploadSlots:
-    """Uploads this process is reading; each holds its file in memory while it is checked."""
+# One owner may hold this many of a process's upload or download slots, so a single
+# account cannot take every slot and turn every other tenant's request into a `429`.
+_SLOTS_PER_OWNER = 2
 
-    def __init__(self) -> None:
+
+class _MemorySlots:
+    """Files this process holds in memory at once (uploads being checked, downloads being
+    sent), capped in total and per owner; a request over either cap raises `busy`."""
+
+    def __init__(self, limit: Callable[[], int], busy: type[AppError]) -> None:
+        self._limit = limit
+        self._busy = busy
         self.in_flight = 0
+        self._by_owner: dict[str, int] = {}
+
+    def acquire(self, owner_key: str) -> None:
+        if self.in_flight >= self._limit() or self._by_owner.get(owner_key, 0) >= _SLOTS_PER_OWNER:
+            raise self._busy("too many transfers in progress")
+        self.in_flight += 1
+        self._by_owner[owner_key] = self._by_owner.get(owner_key, 0) + 1
+
+    def release(self, owner_key: str) -> None:
+        self.in_flight -= 1
+        if (held := self._by_owner[owner_key] - 1) == 0:
+            del self._by_owner[owner_key]
+        else:
+            self._by_owner[owner_key] = held
 
     @contextmanager
-    def take(self) -> Iterator[None]:
-        if self.in_flight >= settings.knowledge_upload_concurrency:
-            raise UploadBusyError("too many uploads in progress")
-        self.in_flight += 1
+    def take(self, owner_key: str) -> Iterator[None]:
+        self.acquire(owner_key)
         try:
             yield
         finally:
-            self.in_flight -= 1
+            self.release(owner_key)
 
 
-_upload_slots = _UploadSlots()
+_upload_slots = _MemorySlots(lambda: settings.knowledge_upload_concurrency, UploadBusyError)
+_download_slots = _MemorySlots(lambda: settings.knowledge_download_concurrency, DownloadBusyError)
+
+
+class _ReleasingResponse(Response):
+    """A `Response` that runs `on_close` however sending ends: Starlette skips `background`
+    when sending fails, and a download slot must be held until the body has been sent."""
+
+    def __init__(self, *args: Any, on_close: Callable[[], None], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_close = on_close
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            self._on_close()
 
 
 class _RequestBodyLimitMiddleware:
@@ -1146,7 +1183,7 @@ async def upload_knowledge_document(
         owner_key = _knowledge_owner(principal, user_id)
         if (replay := await knowledge.check_upload(owner_key, kb_id, idempotency_key)) is not None:
             return replay
-        with _upload_slots.take():
+        with _upload_slots.take(owner_key):
             # A slow body would hold the slot: the whole body must arrive within the deadline.
             with anyio.move_on_after(_UPLOAD_READ_SECONDS) as deadline:
                 upload = await read_upload(
@@ -1270,13 +1307,21 @@ async def download_knowledge_document(
     """The original file, always as an attachment with `nosniff` and a type no browser renders
     as a page (RAG-03.04)."""
     try:
-        title, mime_type, data = await knowledge.file(_knowledge_owner(principal, user_id), doc_id)
+        owner_key = _knowledge_owner(principal, user_id)
+        # Held until the body is sent: the whole file is in memory until then.
+        _download_slots.acquire(owner_key)
+        try:
+            title, mime_type, data = await knowledge.file(owner_key, doc_id)
+        except BaseException:
+            _download_slots.release(owner_key)
+            raise
     except AppError as exc:
         raise _http_error("knowledge_document_download_failed", exc) from exc
-    return Response(
+    return _ReleasingResponse(
         content=data,
         media_type=_DOWNLOAD_TYPES.get(mime_type, "application/octet-stream"),
         headers={"Content-Disposition": _attachment(title), "X-Content-Type-Options": "nosniff"},
+        on_close=functools.partial(_download_slots.release, owner_key),
     )
 
 
@@ -1336,7 +1381,9 @@ def _http_error(event: str, exc: AppError) -> HTTPException:
 def _retry_headers(exc: AppError) -> dict[str, str] | None:
     if isinstance(exc, QuotaExceededError):
         return {"Retry-After": str(exc.retry_after_seconds)}
-    if isinstance(exc, ConcurrentRunsExceededError | ShuttingDownError | UploadBusyError):
+    if isinstance(
+        exc, ConcurrentRunsExceededError | ShuttingDownError | UploadBusyError | DownloadBusyError
+    ):
         # Shutting down: a retry goes to another instance once the platform routes there.
         return {"Retry-After": "1"}
     if isinstance(exc, IngestionConcurrencyError):

@@ -108,8 +108,8 @@ database, and the injection documents are played through the agent loop in
 | Hosted provider under a self-hosted policy | `ensure_processing_allowed` before every embedding call; refused at settings load in staging and production | `test_knowledge_providers.py`, `test_postgres_knowledge_ingest.py` |
 
 Limits: a passage can still mislead the answer itself (containment, not prevention, as LLM01);
-downloads have no concurrency cap of their own (bounded by the upload cap and the `/v1` rate
-limit); nothing was tested on a hosted deployment.
+downloads are capped per process (`APP_KNOWLEDGE_DOWNLOAD_CONCURRENCY`) and per owner (two
+slots, as uploads; `test_knowledge_api.py`) but still buffer each file whole in memory; nothing was tested on a hosted deployment.
 
 ## Known gaps and where they are filed
 
