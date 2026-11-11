@@ -134,7 +134,7 @@ def test_self_hosted_only_accepts_a_declared_self_hosted_server() -> None:
     settings = _production(
         knowledge_processing_policy="self_hosted_only",
         knowledge_embedding_provider="openai_compatible",
-        knowledge_embedding_base_url="http://tei:80/v1",
+        knowledge_embedding_base_url="https://tei:443/v1",
         knowledge_embedding_locality="self_hosted",
     )
     assert settings.knowledge_embedding_locality_effective == "self_hosted"
@@ -184,6 +184,26 @@ def test_a_keyed_embedding_server_needs_https_in_production() -> None:
             knowledge_embedding_base_url="http://tei.internal/v1",
             knowledge_embedding_api_key="tei-key",
         )
+
+
+def test_production_needs_https_for_the_embedding_server_even_without_a_key() -> None:
+    """Audit L-10: document text must not cross the network in clear text in production."""
+    with pytest.raises(ValidationError, match="must use https in production"):
+        _production(
+            knowledge_embedding_provider="openai_compatible",
+            knowledge_embedding_base_url="http://tei:80/v1",
+            knowledge_embedding_locality="self_hosted",
+        )
+
+
+@pytest.mark.parametrize("env", ["development", "test"])
+def test_local_and_ci_may_reach_the_embedding_server_over_http(env: str) -> None:
+    settings = Settings(
+        env=env,  # type: ignore[arg-type]
+        knowledge_embedding_provider="openai_compatible",
+        knowledge_embedding_base_url="http://tei:80/v1",
+    )
+    assert settings.knowledge_embedding_base_url == "http://tei:80/v1"
 
 
 def test_dimensions_above_halfvec_hnsw_limit_are_refused() -> None:

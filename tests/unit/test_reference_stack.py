@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -119,3 +120,16 @@ def test_the_parser_has_no_route_out() -> None:
     assert worker["environment"]["APP_KNOWLEDGE_PARSER_URL"] == "http://docling:5001"
     assert worker["depends_on"]["docling"]["condition"] == "service_healthy"
     assert not {"ports", "expose"} & set(worker)  # nothing for a compromised parser to call
+
+
+@pytest.mark.parametrize("name", ["docker-compose.yml", "docker-compose.reference.yml"])
+def test_every_third_party_image_is_pinned_by_digest(name: str) -> None:
+    """A tag can be moved; a digest cannot (audit L-04: Keycloak was pulled by tag only)."""
+    compose = yaml.safe_load((_ROOT / name).read_text(encoding="utf-8"))
+    images = [service["image"] for service in compose["services"].values() if "image" in service]
+    third_party = [
+        image for image in images if not image.startswith("${") and not image.endswith(":local")
+    ]
+    assert third_party
+    for image in third_party:
+        assert re.fullmatch(r"[^@\s]+@sha256:[0-9a-f]{64}", image), (name, image)

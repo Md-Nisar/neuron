@@ -365,6 +365,15 @@ def test_overly_broad_trusted_proxy_ranges_are_refused(env: str, broad: str) -> 
 
 
 @_BOTH
+def test_cloudflare_proxy_ranges_are_checked_like_trusted_proxies(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_CLOUDFLARE_PROXIES must not contain"):
+        _hardened(env, cloudflare_proxies=["0.0.0.0/0"])
+    with pytest.raises(ValidationError, match="APP_CLOUDFLARE_PROXIES contains an entry"):
+        _hardened(env, cloudflare_proxies=["cloudflare"])
+    assert _hardened(env, cloudflare_proxies=["173.245.48.0/20", "2400:cb00::/32"])
+
+
+@_BOTH
 def test_disabled_rate_limit_is_refused(env: str) -> None:
     with pytest.raises(ValidationError, match="APP_RATE_LIMIT_ENABLED"):
         _hardened(env, rate_limit_enabled=False)
@@ -588,7 +597,8 @@ def test_open_auth_on_a_public_bind_is_refused_in_test(host: str) -> None:
 
 
 def test_open_auth_on_a_public_bind_stays_allowed_in_development() -> None:
-    # The image binds 0.0.0.0 inside the container; compose publishes it on loopback only.
+    # The worker loads these settings in the image (0.0.0.0) and binds nothing; `neuron-api`
+    # itself refuses this bind without APP_ALLOW_UNAUTHENTICATED_PUBLIC_BIND (test_entrypoint).
     settings = Settings(_env_file=None, env="development", auth_mode="none", host="0.0.0.0")  # type: ignore[call-arg]  # noqa: S104
     assert settings.host == "0.0.0.0"  # noqa: S104
 

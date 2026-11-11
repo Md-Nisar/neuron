@@ -4,7 +4,9 @@ conformance to them (ADR 0010, decision 7)."""
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess  # nosec B404
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -216,6 +218,68 @@ class TestFormats:
         assert 'add_header Cache-Control "no-cache" always;' in blocks[0]
         assert "immutable" in blocks[1]
         assert "Cache-Control" not in blocks[2]
+
+
+# --- the hosted build ships the policy for its own origins (audit L-05) ---------------------
+
+
+def test_no_hand_written_headers_file_ships_with_every_build() -> None:
+    """Vite copies `public/` into every build, so a fixed `_headers` would carry origins that
+    are not the deployment's (it once hardcoded loopback) and bypass this generator."""
+    assert not (WEB / "public" / "_headers").exists()
+
+
+def _hosted_build(tmp_path: Path, api: str, issuer: str) -> subprocess.CompletedProcess[str]:
+    """Run the real `make web-hosted` recipe with a stand-in `npm` that only creates `dist/`."""
+    (tmp_path / "scripts").symlink_to(ROOT / "scripts")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    npm = bin_dir / "npm"
+    npm.write_text("#!/bin/sh\nmkdir -p web/dist && touch npm-ran\n", encoding="utf-8")
+    npm.chmod(0o755)
+    env = {
+        "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        "VITE_API_URL": api,
+        "VITE_OIDC_ISSUER": issuer,
+    }
+    return subprocess.run(  # noqa: S603  # nosec B603 B607
+        ["make", "-s", "-f", str(ROOT / "Makefile"), "web-hosted"],  # noqa: S607
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_the_hosted_build_writes_headers_for_the_origins_it_was_built_with(
+    tmp_path: Path,
+) -> None:
+    result = _hosted_build(tmp_path, API, ISSUER)
+
+    assert result.returncode == 0, result.stderr
+    text = (tmp_path / "web" / "dist" / "_headers").read_text(encoding="utf-8")
+    assert text == web_headers.render_headers_file(
+        web_headers.security_headers(api_origin=API, issuer=ISSUER)
+    )
+
+
+@pytest.mark.parametrize(
+    ("api", "issuer"),
+    [
+        ("http://api.example.com", ISSUER),
+        (DEV_API, DEV_ISSUER),
+        (API, "https://id.example.com; script-src *"),
+    ],
+)
+def test_the_hosted_build_stops_before_building_on_an_unsafe_origin(
+    tmp_path: Path, api: str, issuer: str
+) -> None:
+    result = _hosted_build(tmp_path, api, issuer)
+
+    assert result.returncode != 0
+    assert not (tmp_path / "npm-ran").exists()
+    assert not (tmp_path / "web" / "dist" / "_headers").exists()
 
 
 # --- the web source conforms to the policy -------------------------------------------------

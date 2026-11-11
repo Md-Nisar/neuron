@@ -18,8 +18,8 @@ from neuron_agent.agents.factory import build_registry
 from neuron_agent.models import factory
 
 _SCOPES = (
-    "agent:invoke agent:approve threads:read threads:delete memories:read memories:write "
-    "tools:remember tools:recall tools:forget tools:mcp.units.convert_units"
+    "agent:invoke agent:approve threads:read threads:delete data:erase memories:read "
+    "memories:write tools:remember tools:recall tools:forget tools:mcp.units.convert_units"
 )
 _NOTE = "my locker code is 4417-sigma"  # noqa: S105 - test text, not a credential
 

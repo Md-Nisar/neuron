@@ -136,6 +136,9 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     trusted_proxies: list[str] = Field(default_factory=list)
+    # Cloudflare's published edge ranges. CF-Connecting-IP is read only from these peers:
+    # every other proxy forwards a client-supplied value unchanged. Empty ignores the header.
+    cloudflare_proxies: list[str] = Field(default_factory=list)
     enable_langsmith: bool = False
     # Outside development, LangSmith traces carry no prompts or answers unless this is true.
     langsmith_content_approved: bool = False
@@ -223,6 +226,9 @@ class Settings(BaseSettings):
     # Uploads one API process reads at once (RAG-03.02): each holds up to
     # APP_KNOWLEDGE_PARSE_MAX_BYTES in memory while its type is checked. More are `429`.
     knowledge_upload_concurrency: int = Field(default=4, ge=1, le=64)
+    # Downloads one API process sends at once: each holds the whole file in memory. More are
+    # `429`. Uploads and downloads also cap one owner at two slots each.
+    knowledge_download_concurrency: int = Field(default=4, ge=1, le=64)
     # What one user may hold (RAG-02.05; ADR 0014 requirement 7), checked before an upload is
     # stored. Stored bytes, documents and parsed pages count every document until it is purged;
     # documents being ingested (queued, parsing, embedding) count while their base is live.
@@ -300,6 +306,10 @@ class Settings(BaseSettings):
     thread_retention_days: int = Field(default=30, ge=1, le=3650)
     user_data_export_max_bytes: int = Field(default=5_000_000, ge=65_536, le=50_000_000)
     auth_mode: AuthMode = "none"
+    # Development only (staging and production refuse APP_AUTH_MODE=none): lets `neuron-api`
+    # serve without authentication on a non-loopback APP_HOST, such as 0.0.0.0 in a container
+    # whose port is published on loopback only. Anyone who can reach the port has full access.
+    allow_unauthenticated_public_bind: bool = False
     auth_issuer: str | None = None
     auth_issuer_id: str = Field(
         default="default", min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$"
@@ -514,6 +524,9 @@ class Settings(BaseSettings):
                     "APP_KNOWLEDGE_EMBEDDING_BASE_URL must be an http(s) URL with a host and "
                     "no credentials, query or fragment"
                 )
+            if self.env == "production" and parts.scheme != "https":
+                # Document text goes to this server; never in clear text in production (L-10).
+                raise ValueError("APP_KNOWLEDGE_EMBEDDING_BASE_URL must use https in production")
             if (
                 self.env in {"staging", "production"}
                 and parts.scheme != "https"
@@ -544,6 +557,14 @@ class Settings(BaseSettings):
                 "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
                 "self_hosted)"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_knowledge_parser(self) -> Settings:
+        """Refuse a clear-text parser URL in production: every uploaded file goes to it (L-10)."""
+        url = self.knowledge_parser_url
+        if self.env == "production" and url is not None and urlsplit(url).scheme != "https":
+            raise ValueError("APP_KNOWLEDGE_PARSER_URL must use https in production")
         return self
 
     @model_validator(mode="after")
@@ -754,18 +775,21 @@ class Settings(BaseSettings):
                 "APP_TRUSTED_PROXIES must be set in staging/production "
                 "(an explicit [] means no trusted proxy)"
             )
-        for proxy in self.trusted_proxies:
-            try:
-                network = ipaddress.ip_network(proxy.strip(), strict=False)
-            except ValueError:
-                raise ValueError(
-                    "APP_TRUSTED_PROXIES contains an entry that is not an IP address or CIDR range"
-                ) from None
-            if network.prefixlen < (8 if network.version == 4 else 16):
-                raise ValueError(
-                    "APP_TRUSTED_PROXIES must not contain a range broader than "
-                    "/8 (IPv4) or /16 (IPv6)"
-                )
+        for name, proxies in (
+            ("APP_TRUSTED_PROXIES", self.trusted_proxies),
+            ("APP_CLOUDFLARE_PROXIES", self.cloudflare_proxies),
+        ):
+            for proxy in proxies:
+                try:
+                    network = ipaddress.ip_network(proxy.strip(), strict=False)
+                except ValueError:
+                    raise ValueError(
+                        f"{name} contains an entry that is not an IP address or CIDR range"
+                    ) from None
+                if network.prefixlen < (8 if network.version == 4 else 16):
+                    raise ValueError(
+                        f"{name} must not contain a range broader than /8 (IPv4) or /16 (IPv6)"
+                    )
         for host in self.allowed_hosts:
             if host == "*" or (host.startswith("*.") and host.count(".") < 2):
                 raise ValueError(

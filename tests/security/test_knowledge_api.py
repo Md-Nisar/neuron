@@ -8,8 +8,16 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
+import anyio
 import pytest
 from tests.conftest import JwtApi, bearer
+
+from neuron_agent.api import main as api_main
+from neuron_agent.errors.base import (
+    DownloadBusyError,
+    KnowledgeDocumentNotFoundError,
+    UploadBusyError,
+)
 
 _KB = f"/v1/knowledge/bases/{uuid.uuid4()}"
 
@@ -147,7 +155,7 @@ def test_with_knowledge_off_data_rights_leave_knowledge_out(
     jwt_api: JwtApi, make_token: Callable[..., str]
 ) -> None:
     """RAG-07.01: erase-everything and export work as before, with an empty knowledge part."""
-    token = make_token("alice", scopes="threads:read threads:delete")
+    token = make_token("alice", scopes="threads:read data:erase")
     erased = jwt_api.client.delete("/v1/me/knowledge", headers=bearer(token))
     assert (erased.status_code, erased.json()) == (404, {"detail": "knowledge_disabled"})
     everything = jwt_api.client.delete("/v1/me/threads", headers=bearer(token)).json()
@@ -184,3 +192,93 @@ def test_only_the_upload_route_takes_a_large_body(
         headers={**bearer(token), "Content-Type": "multipart/form-data; boundary=x"},
     )
     assert (response.status_code, response.json()) == (404, {"detail": "knowledge_disabled"})
+
+
+class _OneFile:
+    """Stands in for `KnowledgeBases.file`: one readable document, anything else is `404`."""
+
+    def __init__(self, doc_id: uuid.UUID) -> None:
+        self.doc_id = doc_id
+
+    async def file(self, owner_key: str, doc_id: uuid.UUID) -> tuple[str, str, bytes]:
+        if doc_id != self.doc_id:
+            raise KnowledgeDocumentNotFoundError("knowledge document not found")
+        return "notes.txt", "text/plain", b"hello"
+
+
+@pytest.fixture
+def download_slots(monkeypatch: pytest.MonkeyPatch) -> api_main._MemorySlots:
+    slots = api_main._MemorySlots(lambda: 1, DownloadBusyError)
+    monkeypatch.setattr(api_main, "_download_slots", slots)
+    return slots
+
+
+def test_a_download_frees_its_slot_once_sent_or_refused(
+    jwt_api: JwtApi,
+    make_token: Callable[..., str],
+    monkeypatch: pytest.MonkeyPatch,
+    download_slots: api_main._MemorySlots,
+) -> None:
+    doc_id = uuid.uuid4()
+    monkeypatch.setattr(api_main, "knowledge", _OneFile(doc_id))
+    auth = bearer(make_token("alice", scopes="knowledge:read"))
+    for _ in range(2):  # with one slot, the second download needs the first one freed
+        sent = jwt_api.client.get(f"/v1/knowledge/documents/{doc_id}/file", headers=auth)
+        assert (sent.status_code, sent.content) == (200, b"hello")
+        missing = jwt_api.client.get(f"/v1/knowledge/documents/{uuid.uuid4()}/file", headers=auth)
+        assert missing.status_code == 404
+    assert download_slots.in_flight == 0
+
+
+def test_a_download_over_the_process_cap_is_429(
+    jwt_api: JwtApi,
+    make_token: Callable[..., str],
+    monkeypatch: pytest.MonkeyPatch,
+    download_slots: api_main._MemorySlots,
+) -> None:
+    doc_id = uuid.uuid4()
+    monkeypatch.setattr(api_main, "knowledge", _OneFile(doc_id))
+    download_slots.acquire("another owner")
+    response = jwt_api.client.get(
+        f"/v1/knowledge/documents/{doc_id}/file",
+        headers=bearer(make_token("alice", scopes="knowledge:read")),
+    )
+    assert (response.status_code, response.json()) == (429, {"detail": "download_busy"})
+    assert response.headers["retry-after"] == "1"
+    assert download_slots.in_flight == 1
+
+
+@pytest.mark.anyio
+async def test_a_download_that_is_never_read_frees_its_slot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api_main, "_DOWNLOAD_SEND_SECONDS", 0.05)
+    released: list[bool] = []
+    response = api_main._ReleasingResponse(b"x", on_close=lambda: released.append(True))
+
+    async def stalled_send(message: object) -> None:
+        await anyio.sleep_forever()  # a client that stops reading
+
+    await response({"type": "http"}, None, stalled_send)  # type: ignore[arg-type]
+    assert released == [True]
+
+
+def test_one_owner_cannot_hold_every_transfer_slot() -> None:
+    slots = api_main._MemorySlots(lambda: 4, UploadBusyError)
+    slots.acquire("alice")
+    slots.acquire("alice")
+    with pytest.raises(UploadBusyError):
+        slots.acquire("alice")
+    slots.acquire("bob")  # another tenant still gets a slot
+    slots.release("alice")
+    slots.acquire("alice")
+    assert slots.in_flight == 3
+
+
+def test_transfer_slots_are_freed_when_the_body_fails() -> None:
+    slots = api_main._MemorySlots(lambda: 1, UploadBusyError)
+    with pytest.raises(RuntimeError), slots.take("alice"):
+        raise RuntimeError
+    with slots.take("bob"):
+        assert slots.in_flight == 1
+    assert slots.in_flight == 0

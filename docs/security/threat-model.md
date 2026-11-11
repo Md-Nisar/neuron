@@ -37,7 +37,7 @@ new design. *Open*: no control or test; filed as an issue.
 
 Boundaries: browser to API (untrusted client), API to model provider (untrusted output), agent to
 tools (the model is not a security boundary), tools to MCP servers (pinned definitions, untrusted
-results), API to Postgres (two roles: migrator and app), API to identity provider (JWKS). Added in v1.1.0: uploaded file to parser (docling-serve on an internal network with no egress), worker to Postgres (its own `neuron_worker` role, no rights in `public`), worker to embedding provider (hosted or self-hosted, per base), retrieved passage to model (untrusted document text, framed as data).
+results), API to Postgres (two roles: migrator and app), API to identity provider (JWKS). Added in v1.1.0: uploaded file to parser (docling-serve on an internal network with no egress; `https` required in production, audit L-10), worker to Postgres (its own `neuron_worker` role, no rights in `public`), worker to embedding provider (hosted or self-hosted, per base; `https` required in production), retrieved passage to model (untrusted document text, framed as data).
 
 ## OWASP Top 10 for LLM Applications 2026
 
@@ -108,8 +108,8 @@ database, and the injection documents are played through the agent loop in
 | Hosted provider under a self-hosted policy | `ensure_processing_allowed` before every embedding call; refused at settings load in staging and production | `test_knowledge_providers.py`, `test_postgres_knowledge_ingest.py` |
 
 Limits: a passage can still mislead the answer itself (containment, not prevention, as LLM01);
-downloads have no concurrency cap of their own (bounded by the upload cap and the `/v1` rate
-limit); nothing was tested on a hosted deployment.
+downloads are capped per process (`APP_KNOWLEDGE_DOWNLOAD_CONCURRENCY`) and per owner (two
+slots, as uploads; `test_knowledge_api.py`) but still buffer each file whole in memory; nothing was tested on a hosted deployment.
 
 ## Known gaps and where they are filed
 

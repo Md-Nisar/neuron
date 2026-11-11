@@ -1089,14 +1089,18 @@ class AgentService:
                     raise ExportTooLargeError("reduce the thread or message page size and retry")
                 exported.append(item)
                 has_more_messages |= message_offset + message_limit < len(messages)
+        # The route needs only threads:read, so each other section needs its own scope.
         memories = (
             [_memory_item(m) for m in await self._memory.list(owner_key)]
-            if self._memory is not None and offset == 0
+            if self._memory is not None and offset == 0 and _holds(principal, "memories:read")
             else []
         )
         knowledge_bases = (
             await self._knowledge.export(owner_key)
-            if self._settings.knowledge_enabled and owner_key is not None and offset == 0
+            if self._settings.knowledge_enabled
+            and owner_key is not None
+            and offset == 0
+            and _holds(principal, "knowledge:read")
             else []
         )
         response = UserDataExportResponse(
@@ -1252,7 +1256,7 @@ class AgentService:
                 with self._persistence_errors():
                     erased_memories = await self._memory.erase(owner_key)
                 self._audit_memory(
-                    "memories_erased", owner_key, action="threads:erase_all", count=erased_memories
+                    "memories_erased", owner_key, action="data:erase", count=erased_memories
                 )
             if self._settings.knowledge_enabled and owner_key is not None:
                 knowledge = await self._knowledge.erase(owner_key)
@@ -1268,7 +1272,7 @@ class AgentService:
                     else None
                 ),
                 issuer_id=self._settings.auth_issuer_id,
-                action="threads:erase_all",
+                action="data:erase",
                 resource_type="user_data",
                 count=erased,
                 reason="erasure_failed"
@@ -1422,6 +1426,11 @@ def _response(run: PreparedRun, answer: AgentAnswer, message: BaseMessage | None
         refused=answer.refused,
         clarification_needed=answer.clarification_needed,
     )
+
+
+def _holds(principal: Principal | None, scope: str) -> bool:
+    """Whether the caller holds `scope`; without authentication every caller holds them all."""
+    return principal is None or scope in principal.scopes
 
 
 def _memory_item(memory: Memory) -> MemoryItem:

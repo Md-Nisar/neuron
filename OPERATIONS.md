@@ -138,7 +138,7 @@ Staging and production require `APP_AUTH_MODE=jwt`: every `/v1/*` request carrie
 ### Connecting an IdP
 
 1. **Register the API** as a resource (API, audience or resource server, depending on the IdP), with an identifier such as `neuron-api`. Access tokens must carry it in `aud`, be JWTs (not opaque tokens), be signed with RS256/384/512 or ES256/384/512 with a `kid` header, and contain all of `iss`, `aud`, `sub`, `exp`, `nbf` and `iat`; a token missing any of them is rejected (`auth_failed`, `reason="invalid_claims"`). Check that the IdP includes `nbf`, since some omit it by default. ID tokens carry the client ID in `aud`, so they are rejected.
-2. **Define the scopes** `agent:invoke`, `agent:approve` (only if you use tools that need approval), `threads:read`, `threads:write` (rename), `feedback:write` (rate answers), `threads:delete` and `tools:calculator` (see README "Authentication"), and grant them to the client applications that need them. If the IdP models permissions as roles instead, map roles to scopes with `APP_AUTH_ROLES_CLAIM` and `APP_AUTH_ROLE_PERMISSIONS`; a role grants nothing unless it's mapped.
+2. **Define the scopes** `agent:invoke`, `agent:approve` (only if you use tools that need approval), `threads:read`, `threads:write` (rename), `feedback:write` (rate answers), `threads:delete`, `data:erase` (erase all of a user's data) and `tools:calculator` (see README "Authentication"), and grant them to the client applications that need them. If the IdP models permissions as roles instead, map roles to scopes with `APP_AUTH_ROLES_CLAIM` and `APP_AUTH_ROLE_PERMISSIONS`; a role grants nothing unless it's mapped.
 3. **Service accounts** use the client-credentials grant and the same scopes. There is no separate API-key path.
 4. **Configure Neuron** from the IdP's discovery document (`<issuer>/.well-known/openid-configuration`): `issuer` becomes `APP_AUTH_ISSUER` (compared exactly, including any trailing slash) and `jwks_uri` becomes `APP_AUTH_JWKS_URL`.
 
@@ -773,7 +773,7 @@ With the Node version in `web/.nvmrc`: `make web-install` (installs from the loc
 ### The API side
 
 - **CORS:** put the UI's exact origin in `APP_CORS_ALLOWED_ORIGINS` (for example `["https://app.example.com"]`; see HTTP Surface). The app sends only `GET`, `POST` and `DELETE` with `Authorization`, `Content-Type` and `Accept`, and reads `Retry-After`; all are already allowed or exposed. Cookies are never used.
-- **Scopes:** the UI needs `agent:invoke`, `agent:approve`, `threads:read`, `threads:write`, `feedback:write`, `threads:delete`, `memories:read` and `memories:write`. A user with fewer sees the matching action refused, not a broken page.
+- **Scopes:** the UI needs `agent:invoke`, `agent:approve`, `threads:read`, `threads:write`, `feedback:write`, `threads:delete`, `data:erase`, `memories:read` and `memories:write`. A user with fewer sees the matching action refused, not a broken page.
 
 ### The identity provider (Keycloak)
 
@@ -792,6 +792,13 @@ With the Node version in `web/.nvmrc`: `make web-install` (installs from the loc
 ```bash
 python scripts/web_headers.py --api-origin https://api.example.com \
     --issuer https://id.example.com/realms/neuron --format nginx
+```
+
+On a static host that reads `_headers` (Netlify, Cloudflare Pages), build with `make web-hosted` and the same two settings the app is built with, then publish `web/dist`. It writes `web/dist/_headers` from `VITE_API_URL` and `VITE_OIDC_ISSUER`, so the policy always lists the origins the bundle really talks to. It checks both before building: plain HTTP, or a value that could change the policy, fails it. There is no `_headers` in `web/public`: a fixed file is copied into every build whatever its origins, and the one that was there listed only loopback origins with a weaker policy (audit L-05).
+
+```bash
+VITE_API_URL=https://api.example.com VITE_OIDC_ISSUER=https://id.example.com/realms/neuron \
+    make web-hosted
 ```
 
 The policy: `default-src 'none'`; scripts, styles, images and fonts from `'self'` only (no inline script or style, no `eval`, no `data:`); `connect-src` limited to the API and the identity provider; `frame-src` to `'self'` and the identity provider; `base-uri`, `form-action`, `object-src` and `worker-src` `'none'`; `upgrade-insecure-requests`. With it: `Referrer-Policy: no-referrer` (the sign-in callback URL carries a one-time code), `X-Content-Type-Options: nosniff`, `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` `same-origin`, a `Permissions-Policy` that turns off device APIs, and HSTS. `index.html` is `no-cache`; `/assets/*` is hashed and `immutable`.
@@ -857,6 +864,8 @@ The address is the client's IPv4 address, or its IPv6 `/64` network (`ip:2001:db
 Behind a trusted proxy, all `X-Forwarded-For` lines are joined and read right to left, skipping trusted hops. Each entry may be a bare IP, `ip:port` (IPv4), `[v6]` or `[v6]:port`; a valid port (0-65535) is stripped. The first entry that does not parse (`203.0.113.8:`, `[2001:db8::1]:x`, `2001:db8::1]:443`, a port above 65535) ends the walk, and the last address read is the key; nothing to the left of it is believed. A bare IPv6 address cannot carry a port.
 
 By default, `X-Forwarded-For` is ignored. Set `APP_TRUSTED_PROXIES` to a JSON list of trusted proxy IP addresses/CIDRs only when the app is reachable exclusively through those proxies. Do not configure Uvicorn's `--forwarded-allow-ips`: `neuron-api` turns Uvicorn's proxy-header rewriting off, so the app's `_client_ip` is the only place proxy headers are parsed. The app uses forwarded addresses only when its immediate peer is in `APP_TRUSTED_PROXIES`, preventing clients from choosing their own IP bucket.
+
+`CF-Connecting-IP` is read only when the immediate peer is in `APP_CLOUDFLARE_PROXIES` (empty by default, so the header is ignored). List Cloudflare's published edge ranges there, and only when Cloudflare connects to the app directly (behind another load balancer the peer is that balancer, so the header is ignored and `APP_TRUSTED_PROXIES` applies) and the origin accepts traffic from Cloudflare alone: only Cloudflare overwrites the header, and any other proxy (Render's, nginx, a cloud load balancer) forwards a client-supplied value unchanged. A malformed value keys on the peer address. Staging and production check its entries like `APP_TRUSTED_PROXIES`.
 
 **Shared rate limiting in Postgres (#148).** With `APP_LIMITS_BACKEND=postgres` both limiters keep their buckets in one table, `neuron_rate_buckets (key, tokens, refilled_at, allowed)`, so a burst split across replicas is limited to `APP_RATE_LIMIT_BURST` in total.
    - **One write per request.** Each rate-limited request is one `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` in a short transaction (`lock_timeout` 2 s, `statement_timeout` 5 s), with the time taken from the database clock (`clock_timestamp()`), never from a replica. A refused request writes too. In front of it, for requests that carry no valid identity (`AUTH_MODE=none` and failed JWT authentication), a bounded in-memory IP limiter with the same limits runs first, so a flood from one address is refused after one burst without any database write; authenticated requests go straight to the shared limiter.
@@ -1069,7 +1078,7 @@ Symptoms: PDF and Office uploads stay in `parsing` and then fail; text and Markd
 | `parser_not_configured` | `APP_KNOWLEDGE_PARSER_URL` is empty on the worker | Set it, or accept that PDF and Office files are refused. In the local stack: `COMPOSE_PROFILES=pdf` (README). |
 | `parser_failed`, `parser_output_invalid`, `parser_output_too_large` | The parser answered, but not with a usable document | A file problem in most cases; if every PDF fails, check the docling-serve version against the one pinned in the reference stack. |
 
-docling-serve must stay on an internal network with no route out and no published port (ADR 0014 K2): never fix an outage by giving it egress. Documents that failed while it was down stay failed; see "Re-running a failed document".
+docling-serve must stay on an internal network with no route out and no published port (ADR 0014 K2): never fix an outage by giving it egress. With `APP_ENV=production` the API and worker refuse to start unless `APP_KNOWLEDGE_PARSER_URL` and a self-hosted `APP_KNOWLEDGE_EMBEDDING_BASE_URL` use `https` (audit L-10), because every uploaded file and passage crosses those links; put a TLS-terminating proxy in front of docling-serve or the embedding server if they serve `http` only. Development and test (the compose stacks and CI) may use `http`. Documents that failed while it was down stay failed; see "Re-running a failed document".
 
 #### Embedding provider outage
 

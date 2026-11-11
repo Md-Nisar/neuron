@@ -157,7 +157,7 @@ async def test_export_and_erase_everything_include_knowledge(
         "_knowledge",
         KnowledgeBases(settings, lambda: connections),  # type: ignore[arg-type,return-value]
     )
-    alice = make_token("alice", scopes=f"{_SCOPES} threads:read threads:delete")
+    alice = make_token("alice", scopes=f"{_SCOPES} threads:read data:erase")
     bob = make_token("bob", scopes=f"{_SCOPES} threads:read")
     kept = _create(client, alice, "Taxes")
     _create(client, alice, "Empty")

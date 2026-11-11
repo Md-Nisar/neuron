@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Upgrade note: erasing all of a user's data needs the new `data:erase` scope (audit L-01). `DELETE /v1/me/threads` and `DELETE /v1/me/knowledge` required `threads:delete`, although they also remove memories and knowledge. `DELETE /v1/threads/{id}` still requires `threads:delete`. Add `data:erase` to the role or client that should be able to erase everything (the web app's "Your data" page needs it); without it these routes return `403`. The compose files grant it to `neuron-user`. The `user_data_erased`, `memories_erased` and `knowledge_erased` audit events now record `action` `data:erase` (was `threads:erase_all` or `threads:delete`); update audit queries that filter on the old values.
+
+Upgrade note: with `APP_ENV=production`, `APP_KNOWLEDGE_PARSER_URL` and `APP_KNOWLEDGE_EMBEDDING_BASE_URL` must use `https`, with or without an embedding API key (audit L-10). Uploaded files and their passages cross these links, so production no longer allows them in clear text. Development and test, which the compose stacks and CI use, still accept `http`; staging keeps its previous rule (embedding `https` only when a key is set). A production deployment that reaches docling-serve or a self-hosted embedding server over `http` refuses to start until a TLS endpoint is configured.
+
 Upgrade note: `APP_AUTH_REQUIRE_TYP=true` is required with `APP_ENV=production`; the API refuses to start without it (audit L-06). Production then accepts only RFC 9068 access tokens (header `typ: at+jwt`), so an ID token or another JWT the issuer signed for the same audience is rejected. Configure the identity provider to issue that header before upgrading (Keycloak: `access.token.header.type.rfc9068`, already on in `deploy/keycloak/neuron-realm.json`). Staging and development are unchanged.
 
 ## 1.1.0

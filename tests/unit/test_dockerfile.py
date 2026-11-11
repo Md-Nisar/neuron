@@ -113,3 +113,10 @@ def test_dependency_layer_precedes_source_and_syncs_use_the_lockfile_only() -> N
         "uv sync --locked --no-dev --no-install-project",
         "uv sync --locked --no-dev --no-editable",
     ]
+
+
+def test_the_local_stack_images_are_pinned_by_digest_too() -> None:
+    """The web and Keycloak images of the local stack (audit L-04: Keycloak once fell behind)."""
+    for path in (Path("web/Dockerfile"), Path("keycloak-theme/Dockerfile")):
+        for image in _from_images(path.read_text("utf-8")):
+            assert re.fullmatch(r"[^@\s]+:[^@\s]+@sha256:[0-9a-f]{64}", image), (path, image)

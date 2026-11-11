@@ -126,9 +126,17 @@ class UploadRefusedError(AppError):
 
 
 class UploadBusyError(AppError):
-    """This process is reading as many uploads as `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` allows."""
+    """This process is reading as many uploads as `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` allows,
+    or the caller already holds its share of them."""
 
     context = ErrorContext(code="upload_busy", http_status=429, retryable=True)
+
+
+class DownloadBusyError(AppError):
+    """This process is sending as many downloads as `APP_KNOWLEDGE_DOWNLOAD_CONCURRENCY` allows,
+    or the caller already holds its share of them."""
+
+    context = ErrorContext(code="download_busy", http_status=429, retryable=True)
 
 
 class IngestionConcurrencyError(AppError):

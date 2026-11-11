@@ -111,6 +111,8 @@ def fresh_rate_limiter(monkeypatch: pytest.MonkeyPatch) -> None:
                 window_seconds=settings.rate_limit_window_seconds,
             ),
         )
+    # A readiness result cached by one test must not answer another test's probe.
+    monkeypatch.setattr(api_main, "_readiness", api_main._ReadinessCache())
 
 
 class HistoryEchoAgent:
@@ -291,8 +293,8 @@ JWT_ISSUER = "https://issuer.example.test"
 JWT_AUDIENCE = "neuron-api"
 JWKS_URL = "https://issuer.example.test/.well-known/jwks.json"
 ALL_SCOPES = (
-    "agent:invoke agent:approve threads:read threads:write threads:delete feedback:write "
-    "memories:read memories:write tools:calculator"
+    "agent:invoke agent:approve threads:read threads:write threads:delete data:erase "
+    "feedback:write memories:read memories:write tools:calculator"
 )
 
 
