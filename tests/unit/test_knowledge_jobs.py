@@ -379,3 +379,12 @@ def test_the_queue_age_gauge_is_in_seconds_without_attributes(
     [point] = gauge.data.data_points
     assert point.value == 42.0
     assert not point.attributes
+
+
+@pytest.mark.parametrize("attempts", range(worker.MAX_ATTEMPTS + 1))
+def test_the_queue_stops_retrying_at_the_run_the_task_treats_as_its_last(attempts: int) -> None:
+    # `attempts` is the number of earlier runs. The run the task records as failed must be one
+    # the queue does not retry, or a `failed` document is ingested again later.
+    last_attempt = attempts + 1 >= worker.MAX_ATTEMPTS
+    decision = worker.RETRY.get_retry_decision(exception=RuntimeError(), job=_context(attempts).job)
+    assert (decision is None) == last_attempt
