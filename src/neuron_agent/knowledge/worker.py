@@ -61,7 +61,9 @@ log = structlog.get_logger(__name__)
 
 # A job released by a drain or a failure runs again; jobs are idempotent (ADR 0014 K4).
 MAX_ATTEMPTS = 5
-RETRY = procrastinate.RetryStrategy(max_attempts=MAX_ATTEMPTS, exponential_wait=5)
+# Procrastinate retries while `job.attempts < max_attempts`, and `attempts` is 0 on the first
+# run, so `max_attempts` is the number of retries: one less than the runs a job gets.
+RETRY = procrastinate.RetryStrategy(max_attempts=MAX_ATTEMPTS - 1, exponential_wait=5)
 # Queue functions and tables are in `knowledge` (migration 25); the role has nothing elsewhere.
 _OPTIONS = "-c search_path=knowledge"
 # The reconcile task's schedule: every ten minutes, queued once across all workers.
@@ -262,7 +264,7 @@ async def sweep(dsn: str, stalled_seconds: float) -> int:
         )
         stalled = await cursor.fetchall()
         for job in stalled:
-            if job["attempts"] + 1 >= RETRY.max_attempts:
+            if job["attempts"] + 1 >= MAX_ATTEMPTS:
                 await conn.execute(
                     queries["finish_job"],
                     {"job_id": job["id"], "status": "failed", "delete_job": False},
