@@ -143,6 +143,21 @@ async def test_an_unfinished_purge_is_queued_again_once(
     assert (await reconcile(ingestor.connect, _AFTER))["purge_requeued"] == 2
 
 
+# Fixed clocks on the hour's fifth and twenty-fifth minute. A deferrer that starts queues each
+# task's last tick if it is at most `max_delay` (600 s) old: the ten-minute reconcile always
+# has one, the hourly blob sweep (minute 23) only until minute 33.
+_HOUR = 1_800_000_000
+assert _HOUR % 3600 == 0
+_AT_05, _AT_25 = _HOUR + 5 * 60, _HOUR + 25 * 60
+
+
+async def _defer_twice(app: Any, at: float) -> None:
+    """Two workers' deferrers starting at `at`, as the worker role."""
+    for _ in range(2):
+        deferrer = PeriodicDeferrer(registry=app.periodic_registry, max_delay=600)
+        await deferrer.defer_jobs(deferrer.get_previous_tasks(at=at))
+
+
 async def test_the_worker_schedules_one_reconcile_run_per_tick_and_runs_it(
     setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
     worker: tuple[str, str],  # noqa: F811
@@ -154,15 +169,30 @@ async def test_the_worker_schedules_one_reconcile_run_per_tick_and_runs_it(
     )
     app = neuron_worker.build_app(settings, ingestor)
     async with app.open_async():
-        # Two workers' deferrers for the same tick queue one job, as the worker role.
-        for _ in range(2):
-            deferrer = PeriodicDeferrer(registry=app.periodic_registry, max_delay=600)
-            await deferrer.defer_jobs(deferrer.get_previous_tasks(at=time.time()))
+        await _defer_twice(app, _AT_05)
     [(task, args)] = await _jobs(db)
     assert task == jobs.Task.RECONCILE.value
     doc = await _document(db, await _base(db), "embedding", age=2 * _AFTER)
     await app.tasks[task].func(**args)
     assert await _status(db, doc) == ("queued", None)
+
+
+async def test_a_worker_starting_after_the_blob_sweeps_tick_queues_it_once_too(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+    worker: tuple[str, str],  # noqa: F811
+) -> None:
+    # A worker restarted at minute 25 still runs that hour's sweep, once across workers.
+    db, ingestor = setup
+    dsn = make_conninfo(_DSN or "", dbname=db.name, user=worker[0], password=worker[1])
+    app = neuron_worker.build_app(
+        Settings(env="test", postgres_worker_dsn=SecretStr(dsn)), ingestor
+    )
+    async with app.open_async():
+        await _defer_twice(app, _AT_25)
+    assert sorted(await _jobs(db), key=str) == [
+        (jobs.Task.RECONCILE.value, {"timestamp": _HOUR + 20 * 60}),
+        (jobs.Task.SWEEP_BLOBS.value, {"timestamp": _HOUR + 23 * 60}),
+    ]
 
 
 async def _stored(ingestor: Ingestor, tmp_path: Path, age: float) -> str:
