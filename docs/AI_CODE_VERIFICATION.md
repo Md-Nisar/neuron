@@ -101,8 +101,14 @@ Approving means you would have been comfortable writing this code yourself.
 
 ## One-time GitHub setup
 
-1. Make sure the `NVIDIA_API_KEY` repository secret exists (it is already used by
-   `nightly-eval`; get a free key at build.nvidia.com). Optionally set the repository
+1. Create the environment `ai-review` (Settings, Environments). Under "Deployment branches
+   and tags" choose "Selected branches and tags" and add `main` only. Add `NVIDIA_API_KEY`
+   as a secret of that environment (get a free key at build.nvidia.com), then delete any
+   `NVIDIA_API_KEY` repository secret. A repository secret is readable by any workflow on
+   any branch, including one added in a PR; an environment secret limited to `main` is
+   readable only by `ai-review` (which runs from `main` through `pull_request_target`) and
+   `nightly-eval` (audit L-08). `ai-review` never checks out or runs the PR: it reads the
+   PR's commits only through `git diff`, and reviews against the base branch's checklists. Optionally set the repository
    variable `AI_REVIEW_MODELS` to a comma-separated list of model ids to try in order;
    the default is `z-ai/glm-5.3,moonshotai/kimi-k3,deepseek-ai/deepseek-v4.1-flash`.
    Free-tier models change often, so confirm the ids with
@@ -115,7 +121,10 @@ Approving means you would have been comfortable writing this code yourself.
    job re-run. No second key is needed (ADR 0008, question 17). Both workflows stay
    within NVIDIA's API terms and rate limits (see "Automated runs and NVIDIA's terms"
    in `EVALUATION.md`).
-2. Create the labels `large-pr-approved` and `new-dependency-approved`.
+2. Create the labels `large-pr-approved` and `new-dependency-approved`. An override counts
+   only when its latest `labeled` event was by an admin or maintainer (the
+   `override-labels` job); a label added by someone with triage rights is ignored, with a
+   warning.
 3. Enable the dependency graph and, for a private repository, GitHub Advanced Security
    (needed by `dependency-review` and CodeQL).
 4. Protect `main`: run `scripts/setup_branch_protection.sh` (needs the `gh` CLI with admin
