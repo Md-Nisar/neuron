@@ -8,9 +8,17 @@ name: ai-review
 # variable AI_REVIEW_FAIL_ON_ERROR=true to make that fail the job). Uses the same NVIDIA_API_KEY secret as nightly-eval, so it skips itself during the nightly
 # eval window (EVALUATION.md, "Automated runs"); set the
 # optional AI_REVIEW_MODELS repository variable (comma-separated ids from build.nvidia.com) to choose
-# models. Fork PRs get no secrets, so they are skipped.
+# models. Fork PRs are skipped.
+#
+# Trust (audit L-08): `pull_request_target` runs this file and scripts/ai_review.py as they are
+# on the base branch, and so are the checklists it reads. The PR is never checked out or run:
+# its commits are fetched as git objects and read only through `git diff`, so changing the
+# script, a checklist or this workflow in a PR cannot reach the key. The key lives in the
+# `ai-review` environment, which only `main` may use (docs/AI_CODE_VERIFICATION.md), so a
+# workflow added on a PR branch cannot read it either. Never add a step that checks out,
+# installs or runs anything from the PR head here.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, ready_for_review, reopened]
 
 permissions:
@@ -22,8 +30,9 @@ concurrency:
 
 jobs:
   review:
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    environment: ai-review
     timeout-minutes: 30
     permissions:
       contents: read
@@ -43,11 +52,18 @@ jobs:
             echo "::notice::Skipped: the nightly eval uses the shared NVIDIA key from $NIGHTLY_WINDOW_START_UTC to $NIGHTLY_WINDOW_END_UTC UTC. Push a commit or re-run this job after the window for a review."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
+      # The base branch (the default for pull_request_target): never the PR head.
       - if: steps.window.outputs.skip != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+      # Data only: the head's commits become objects for `git diff`; nothing is checked out.
+      - name: Fetch the pull request head as data
+        if: steps.window.outputs.skip != 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: git fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/head"
       - if: steps.window.outputs.skip != 'true'
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
