@@ -414,6 +414,7 @@ PRODUCTION_PROFILE: dict[str, Any] = {
     "allowed_hosts": ["api.example.test", "testserver"],
     "trusted_proxies": [],
     "hsts_max_age_seconds": 31_536_000,
+    "auth_require_typ": True,
 }
 
 

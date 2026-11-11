@@ -114,7 +114,7 @@ JWT validation uses PyJWT and PyJWKClient with these rules:
 - issuer and audience are exact configured matches;
 - clock leeway is configurable and bounded, defaulting to 30 seconds;
 - `typ=at+jwt` validation is configurable and disabled by default for
-  interoperability with existing providers;
+  interoperability with existing providers; production requires it (2026-11-11, audit L-06);
 - encoded tokens have a bounded size before parsing;
 - JWKS keys are cached for a bounded TTL; an unknown `kid` triggers at most one
   bounded refresh for that request;

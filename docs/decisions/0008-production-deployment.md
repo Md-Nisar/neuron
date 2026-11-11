@@ -543,6 +543,10 @@ In staging and production, start-up fails when:
 no identity provider is chosen, and a refusal would force `at+jwt` on providers that
 do not issue it. Issuer, audience, scope and expiry checks apply either way; set
 `APP_AUTH_REQUIRE_TYP=true` once the provider is known to issue RFC 9068 tokens.
+**Superseded (2026-11-11, security audit L-06):** production now refuses
+`APP_AUTH_REQUIRE_TYP=false`. The reference identity provider (Keycloak) issues `at+jwt`,
+and without the check an ID token for the same audience is accepted. Staging and
+development keep the default.
 
 At every start-up the effective limit values (rate, burst, concurrency, budget,
 timeouts, limits backend) are logged once. Start-up database checks (decision 15)
