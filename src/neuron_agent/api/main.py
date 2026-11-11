@@ -622,11 +622,37 @@ async def live() -> dict[str, str]:
     return {"status": "ok"}
 
 
+_READY_TTL_SECONDS = 2.0
+
+
+class _ReadinessCache:
+    """`/health/ready` is anonymous and each evaluation borrows a pool connection, so the
+    database sees at most one evaluation per TTL however many probes arrive. Draining is
+    checked on every probe, so shutdown still turns the probe to `503` at once."""
+
+    def __init__(self) -> None:
+        self._value = False
+        self._at: float | None = None
+        self._lock = asyncio.Lock()
+
+    async def get(self) -> bool:
+        if service.draining:
+            return False
+        async with self._lock:  # concurrent probes share one evaluation
+            if self._at is None or time.monotonic() - self._at >= _READY_TTL_SECONDS:
+                self._value = await service.is_ready() and await auth_verifier.ready()
+                self._at = time.monotonic()
+            return self._value
+
+
+_readiness = _ReadinessCache()
+
+
 @app.get("/health/ready")
 async def ready() -> JSONResponse:
-    if not await service.is_ready() or not await auth_verifier.ready():
+    if not await _readiness.get():
         return JSONResponse(status_code=503, content={"status": "not_ready"})
-    return JSONResponse(content={"status": "ready", "environment": settings.env})
+    return JSONResponse(content={"status": "ready"})
 
 
 @app.post(
