@@ -375,6 +375,7 @@ uv run pytest tests/integration/test_live_openai_smoke.py -m integration -q
 
 ## Documentation
 
+- [Product Documentation Suite (ISO/IEC/IEEE 26514 & Diátaxis)](docs/product_documentation/README.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [DEVELOPMENT.md](DEVELOPMENT.md)
 - [OPERATIONS.md](OPERATIONS.md)
