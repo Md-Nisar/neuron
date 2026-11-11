@@ -541,7 +541,7 @@ Every event carries `request_id`, `thread_id` and `run_id`. None of them contain
 | `checkpoint_operation_slow` | warning | `operation`, `backend`, `duration_ms` | a checkpointer read or write took at least 250 ms |
 | `checkpoint_operation_failed` | warning | `operation`, `backend`, `error_type`, `duration_ms` | a checkpointer read or write raised |
 | `checkpointer_unreachable` | warning | `backend`, `error_type` | readiness probe failed |
-| `thread_prune_job_completed` | info | `count`, `retention_days` | the retention job finished |
+| `thread_prune_job_completed` | info | `count`, `retention_days`, `skipped_busy`, `skipped_active` | the retention job finished |
 | `threads_pruned` | audit | `count` | the retention run's security audit record |
 
 Suggested alerts:
@@ -817,6 +817,7 @@ The headers are tested as a policy (`tests/unit/test_web_headers.py`), together 
   - It deletes threads whose last checkpoint is older than `APP_THREAD_RETENTION_DAYS` (default `30`); `--older-than-days N` overrides that.
   - It's idempotent and logs `thread_prune_job_completed` with a count and emits the `threads_pruned` audit record.
   - On Postgres it selects stale threads with one aggregate query over root-namespace checkpoints.
+  - A thread that gets a new turn while the job runs is kept: each listed thread's latest checkpoint is read again just before its delete (`retention_prune_skipped_active`, counted as `skipped_active` in `thread_prune_job_completed`). With `APP_LIMITS_BACKEND=postgres` the job also holds the thread for the delete, and skips one with a run in flight (`retention_prune_skipped_busy`); with `memory` the job is a separate process that cannot see runs, so a run that starts between that read and the delete can still lose its thread.
 - **User deletion requests.** Handle them with `DELETE /v1/threads/{thread_id}` (`204`). It returns `409 thread_busy` while a run is in flight; retry after it finishes.
 - **Backups.** Database backups keep deleted threads until the backups expire. Size backup retention against your data-retention policy.
 
