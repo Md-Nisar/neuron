@@ -1089,14 +1089,18 @@ class AgentService:
                     raise ExportTooLargeError("reduce the thread or message page size and retry")
                 exported.append(item)
                 has_more_messages |= message_offset + message_limit < len(messages)
+        # The route needs only threads:read, so each other section needs its own scope.
         memories = (
             [_memory_item(m) for m in await self._memory.list(owner_key)]
-            if self._memory is not None and offset == 0
+            if self._memory is not None and offset == 0 and _holds(principal, "memories:read")
             else []
         )
         knowledge_bases = (
             await self._knowledge.export(owner_key)
-            if self._settings.knowledge_enabled and owner_key is not None and offset == 0
+            if self._settings.knowledge_enabled
+            and owner_key is not None
+            and offset == 0
+            and _holds(principal, "knowledge:read")
             else []
         )
         response = UserDataExportResponse(
@@ -1422,6 +1426,11 @@ def _response(run: PreparedRun, answer: AgentAnswer, message: BaseMessage | None
         refused=answer.refused,
         clarification_needed=answer.clarification_needed,
     )
+
+
+def _holds(principal: Principal | None, scope: str) -> bool:
+    """Whether the caller holds `scope`; without authentication every caller holds them all."""
+    return principal is None or scope in principal.scopes
 
 
 def _memory_item(memory: Memory) -> MemoryItem:
