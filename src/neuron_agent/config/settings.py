@@ -136,6 +136,9 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_burst: int = Field(default=20, ge=1, le=10_000)
     trusted_proxies: list[str] = Field(default_factory=list)
+    # Cloudflare's published edge ranges. CF-Connecting-IP is read only from these peers:
+    # every other proxy forwards a client-supplied value unchanged. Empty ignores the header.
+    cloudflare_proxies: list[str] = Field(default_factory=list)
     enable_langsmith: bool = False
     # Outside development, LangSmith traces carry no prompts or answers unless this is true.
     langsmith_content_approved: bool = False
@@ -754,18 +757,21 @@ class Settings(BaseSettings):
                 "APP_TRUSTED_PROXIES must be set in staging/production "
                 "(an explicit [] means no trusted proxy)"
             )
-        for proxy in self.trusted_proxies:
-            try:
-                network = ipaddress.ip_network(proxy.strip(), strict=False)
-            except ValueError:
-                raise ValueError(
-                    "APP_TRUSTED_PROXIES contains an entry that is not an IP address or CIDR range"
-                ) from None
-            if network.prefixlen < (8 if network.version == 4 else 16):
-                raise ValueError(
-                    "APP_TRUSTED_PROXIES must not contain a range broader than "
-                    "/8 (IPv4) or /16 (IPv6)"
-                )
+        for name, proxies in (
+            ("APP_TRUSTED_PROXIES", self.trusted_proxies),
+            ("APP_CLOUDFLARE_PROXIES", self.cloudflare_proxies),
+        ):
+            for proxy in proxies:
+                try:
+                    network = ipaddress.ip_network(proxy.strip(), strict=False)
+                except ValueError:
+                    raise ValueError(
+                        f"{name} contains an entry that is not an IP address or CIDR range"
+                    ) from None
+                if network.prefixlen < (8 if network.version == 4 else 16):
+                    raise ValueError(
+                        f"{name} must not contain a range broader than /8 (IPv4) or /16 (IPv6)"
+                    )
         for host in self.allowed_hosts:
             if host == "*" or (host.startswith("*.") and host.count(".") < 2):
                 raise ValueError(

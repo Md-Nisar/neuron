@@ -365,6 +365,15 @@ def test_overly_broad_trusted_proxy_ranges_are_refused(env: str, broad: str) -> 
 
 
 @_BOTH
+def test_cloudflare_proxy_ranges_are_checked_like_trusted_proxies(env: str) -> None:
+    with pytest.raises(ValidationError, match="APP_CLOUDFLARE_PROXIES must not contain"):
+        _hardened(env, cloudflare_proxies=["0.0.0.0/0"])
+    with pytest.raises(ValidationError, match="APP_CLOUDFLARE_PROXIES contains an entry"):
+        _hardened(env, cloudflare_proxies=["cloudflare"])
+    assert _hardened(env, cloudflare_proxies=["173.245.48.0/20", "2400:cb00::/32"])
+
+
+@_BOTH
 def test_disabled_rate_limit_is_refused(env: str) -> None:
     with pytest.raises(ValidationError, match="APP_RATE_LIMIT_ENABLED"):
         _hardened(env, rate_limit_enabled=False)

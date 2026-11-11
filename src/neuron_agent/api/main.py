@@ -484,7 +484,8 @@ app.openapi = _openapi  # type: ignore[method-assign]
 
 
 def _client_ip(request: Request) -> str:
-    """Rate-limit key for the client: X-Forwarded-For counts only behind a trusted proxy.
+    """Rate-limit key for the client: X-Forwarded-For counts only behind a trusted proxy, and
+    CF-Connecting-IP only from a peer in `APP_CLOUDFLARE_PROXIES`.
 
     IPv4-mapped IPv6 is unmapped and IPv6 is aggregated by /64, so one subscriber cannot
     mint a fresh bucket per address. Walking the header from the right stops at the first
@@ -495,16 +496,12 @@ def _client_ip(request: Request) -> str:
         address = _unmapped(ipaddress.ip_address(peer))
     except ValueError:
         return peer
-    if _trusted_proxy(address):
-        cf_connecting_ip = request.headers.get("CF-Connecting-IP")
-        if cf_connecting_ip:
-            try:
-                cf_address = _unmapped(ipaddress.ip_address(cf_connecting_ip.strip()))
-                if isinstance(cf_address, ipaddress.IPv6Address):
-                    return str(ipaddress.IPv6Network((int(cf_address), 64), strict=False))
-                return str(cf_address)
-            except ValueError:
-                pass
+    cf_connecting_ip = request.headers.get("CF-Connecting-IP")
+    if cf_connecting_ip and _in_networks(address, settings.cloudflare_proxies):
+        # Only Cloudflare overwrites this header; a malformed value keys on the peer.
+        with suppress(ValueError):
+            address = _unmapped(ipaddress.ip_address(cf_connecting_ip.strip()))
+    elif _trusted_proxy(address):
         entries = ",".join(request.headers.getlist("X-Forwarded-For")).split(",")
         while entries and _trusted_proxy(address):
             try:
@@ -550,9 +547,15 @@ def _unmapped(
 
 
 def _trusted_proxy(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    for proxy in settings.trusted_proxies:
+    return _in_networks(address, settings.trusted_proxies)
+
+
+def _in_networks(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address, networks: list[str]
+) -> bool:
+    for network in networks:
         try:
-            if address in ipaddress.ip_network(proxy, strict=False):
+            if address in ipaddress.ip_network(network, strict=False):
                 return True
         except ValueError:
             continue
