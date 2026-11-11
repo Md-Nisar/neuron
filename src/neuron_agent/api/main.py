@@ -1317,13 +1317,12 @@ async def download_knowledge_document(
         _download_slots.acquire(owner_key)
         try:
             title, mime_type, data = await knowledge.file(owner_key, doc_id)
+            disposition = _attachment(title)
+            headers = {"Content-Disposition": disposition, "X-Content-Type-Options": "nosniff"}
             return _ReleasingResponse(
                 content=data,
                 media_type=_DOWNLOAD_TYPES.get(mime_type, "application/octet-stream"),
-                headers={
-                    "Content-Disposition": _attachment(title),
-                    "X-Content-Type-Options": "nosniff",
-                },
+                headers=headers,
                 on_close=functools.partial(_download_slots.release, owner_key),
             )
         except BaseException:
