@@ -73,7 +73,7 @@ APP_AUTH_ALGORITHMS='["RS256", "ES256"]'
 
 # Secret HMAC key for deriving owner identifiers (at least 32 random bytes)
 # Generate with: openssl rand -hex 32
-APP_IDENTITY_HASH_KEY=7f8c9b2a1e3d4f5061728394a5b6c7d8e9f0123456789abcdef0123456789abc
+APP_IDENTITY_HASH_KEY=<your-secret-32-byte-hex-key>
 
 # Mandatory in production (APP_ENV=production enforces APP_AUTH_REQUIRE_TYP=true)
 APP_AUTH_REQUIRE_TYP=true
