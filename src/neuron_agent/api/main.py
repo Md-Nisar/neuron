@@ -231,6 +231,8 @@ _UPLOAD_PATH = re.compile(r"/v1/knowledge/bases/[^/]+/documents")
 _UPLOAD_OVERHEAD_BYTES = 65_536
 # 50 MB at about 1.4 Mbit/s; a body still arriving after this frees its upload slot.
 _UPLOAD_READ_SECONDS = 300
+# The same budget for sending a download, so a slow reader cannot keep its slot.
+_DOWNLOAD_SEND_SECONDS = 300
 
 
 def upload_body_limit() -> int:
@@ -280,7 +282,8 @@ _download_slots = _MemorySlots(lambda: settings.knowledge_download_concurrency, 
 
 class _ReleasingResponse(Response):
     """A `Response` that runs `on_close` however sending ends: Starlette skips `background`
-    when sending fails, and a download slot must be held until the body has been sent."""
+    when sending fails, and a download slot must be held until the body has been sent. A
+    body not sent within `_DOWNLOAD_SEND_SECONDS` is abandoned, so a slow reader frees it."""
 
     def __init__(self, *args: Any, on_close: Callable[[], None], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -288,7 +291,8 @@ class _ReleasingResponse(Response):
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         try:
-            await super().__call__(scope, receive, send)
+            with anyio.move_on_after(_DOWNLOAD_SEND_SECONDS):
+                await super().__call__(scope, receive, send)
         finally:
             self._on_close()
 
@@ -1313,17 +1317,20 @@ async def download_knowledge_document(
         _download_slots.acquire(owner_key)
         try:
             title, mime_type, data = await knowledge.file(owner_key, doc_id)
+            return _ReleasingResponse(
+                content=data,
+                media_type=_DOWNLOAD_TYPES.get(mime_type, "application/octet-stream"),
+                headers={
+                    "Content-Disposition": _attachment(title),
+                    "X-Content-Type-Options": "nosniff",
+                },
+                on_close=functools.partial(_download_slots.release, owner_key),
+            )
         except BaseException:
             _download_slots.release(owner_key)
             raise
     except AppError as exc:
         raise _http_error("knowledge_document_download_failed", exc) from exc
-    return _ReleasingResponse(
-        content=data,
-        media_type=_DOWNLOAD_TYPES.get(mime_type, "application/octet-stream"),
-        headers={"Content-Disposition": _attachment(title), "X-Content-Type-Options": "nosniff"},
-        on_close=functools.partial(_download_slots.release, owner_key),
-    )
 
 
 @app.delete("/v1/knowledge/documents/{doc_id}", status_code=202)

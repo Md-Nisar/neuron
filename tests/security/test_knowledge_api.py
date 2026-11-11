@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
+import anyio
 import pytest
 from tests.conftest import JwtApi, bearer
 
@@ -245,6 +246,21 @@ def test_a_download_over_the_process_cap_is_429(
     assert (response.status_code, response.json()) == (429, {"detail": "download_busy"})
     assert response.headers["retry-after"] == "1"
     assert download_slots.in_flight == 1
+
+
+@pytest.mark.anyio
+async def test_a_download_that_is_never_read_frees_its_slot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api_main, "_DOWNLOAD_SEND_SECONDS", 0.05)
+    released: list[bool] = []
+    response = api_main._ReleasingResponse(b"x", on_close=lambda: released.append(True))
+
+    async def stalled_send(message: object) -> None:
+        await anyio.sleep_forever()  # a client that stops reading
+
+    await response({"type": "http"}, None, stalled_send)  # type: ignore[arg-type]
+    assert released == [True]
 
 
 def test_one_owner_cannot_hold_every_transfer_slot() -> None:
