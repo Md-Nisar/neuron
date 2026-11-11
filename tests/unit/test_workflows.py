@@ -344,3 +344,42 @@ def test_typecheck_covers_the_typed_test_directories() -> None:
     make = Path("Makefile").read_text("utf-8").split("typecheck:\n", 1)[1].split("\n", 1)[0]
     for path in typed:
         assert path in ci.split() and path in make.split(), path
+
+
+def test_ai_review_never_checks_out_or_runs_pull_request_code() -> None:
+    """Audit L-08: the job holds the NVIDIA key, so the PR is data for `git diff` only."""
+    review = _load("ai-review.yml")
+    assert set(review[True]) == {"pull_request_target"}
+    job = review["jobs"]["review"]
+    assert job["environment"] == "ai-review"
+    assert "github.event.pull_request.head.repo.full_name == github.repository" in job["if"]
+    for step in job["steps"]:
+        if step.get("uses", "").startswith("actions/checkout@"):
+            assert "ref" not in step["with"] and step["with"]["persist-credentials"] is False
+    runs = [step["run"] for step in job["steps"] if "run" in step]
+    assert "python scripts/ai_review.py" in runs
+    for run in runs:
+        assert not re.search(r"\b(pip|uv|npm|npx|make|checkout|bash|sh)\b", run), run
+        assert "python" not in run or run == "python scripts/ai_review.py"
+
+
+def test_the_nvidia_key_is_read_only_in_jobs_bound_to_the_ai_review_environment() -> None:
+    """Only `main` may use the environment, so a workflow on a PR branch cannot read the key."""
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        for name, job in yaml.safe_load(path.read_text("utf-8"))["jobs"].items():
+            if "secrets.NVIDIA_API_KEY" in yaml.safe_dump(job):
+                assert job.get("environment") == "ai-review", f"{path.name}:{name}"
+
+
+def test_override_labels_count_only_when_an_admin_or_maintainer_applied_them() -> None:
+    verification = _load("ai-code-verification.yml")
+    text = (WORKFLOWS / "ai-code-verification.yml").read_text("utf-8")
+    assert "contains(github.event.pull_request.labels" not in text
+    check = verification["jobs"]["override-labels"]["steps"][0]["run"]
+    assert '[ "$role" = admin ] || [ "$role" = maintain ]' in check
+    for name in ("new-dependencies", "pr-hygiene"):
+        job = verification["jobs"][name]
+        # A skipped required check counts as passing, so these run even if the check fails.
+        assert job["needs"] == "override-labels" and job["if"] == "${{ !cancelled() }}"
+    assert "needs.override-labels.outputs.large-pr" in text
+    assert text.count("needs.override-labels.outputs.new-dependency") == 3

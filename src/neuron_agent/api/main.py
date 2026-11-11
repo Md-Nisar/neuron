@@ -46,6 +46,7 @@ from neuron_agent.errors.base import (
     AppError,
     AuthenticationError,
     ConcurrentRunsExceededError,
+    DownloadBusyError,
     IngestionConcurrencyError,
     KnowledgeDisabledError,
     PersistenceError,
@@ -230,30 +231,70 @@ _UPLOAD_PATH = re.compile(r"/v1/knowledge/bases/[^/]+/documents")
 _UPLOAD_OVERHEAD_BYTES = 65_536
 # 50 MB at about 1.4 Mbit/s; a body still arriving after this frees its upload slot.
 _UPLOAD_READ_SECONDS = 300
+# The same budget for sending a download, so a slow reader cannot keep its slot.
+_DOWNLOAD_SEND_SECONDS = 300
 
 
 def upload_body_limit() -> int:
     return settings.knowledge_parse_max_bytes + _UPLOAD_OVERHEAD_BYTES
 
 
-class _UploadSlots:
-    """Uploads this process is reading; each holds its file in memory while it is checked."""
+# One owner may hold this many of a process's upload or download slots, so a single
+# account cannot take every slot and turn every other tenant's request into a `429`.
+_SLOTS_PER_OWNER = 2
 
-    def __init__(self) -> None:
+
+class _MemorySlots:
+    """Files this process holds in memory at once (uploads being checked, downloads being
+    sent), capped in total and per owner; a request over either cap raises `busy`."""
+
+    def __init__(self, limit: Callable[[], int], busy: type[AppError]) -> None:
+        self._limit = limit
+        self._busy = busy
         self.in_flight = 0
+        self._by_owner: dict[str, int] = {}
+
+    def acquire(self, owner_key: str) -> None:
+        if self.in_flight >= self._limit() or self._by_owner.get(owner_key, 0) >= _SLOTS_PER_OWNER:
+            raise self._busy("too many transfers in progress")
+        self.in_flight += 1
+        self._by_owner[owner_key] = self._by_owner.get(owner_key, 0) + 1
+
+    def release(self, owner_key: str) -> None:
+        self.in_flight -= 1
+        if (held := self._by_owner[owner_key] - 1) == 0:
+            del self._by_owner[owner_key]
+        else:
+            self._by_owner[owner_key] = held
 
     @contextmanager
-    def take(self) -> Iterator[None]:
-        if self.in_flight >= settings.knowledge_upload_concurrency:
-            raise UploadBusyError("too many uploads in progress")
-        self.in_flight += 1
+    def take(self, owner_key: str) -> Iterator[None]:
+        self.acquire(owner_key)
         try:
             yield
         finally:
-            self.in_flight -= 1
+            self.release(owner_key)
 
 
-_upload_slots = _UploadSlots()
+_upload_slots = _MemorySlots(lambda: settings.knowledge_upload_concurrency, UploadBusyError)
+_download_slots = _MemorySlots(lambda: settings.knowledge_download_concurrency, DownloadBusyError)
+
+
+class _ReleasingResponse(Response):
+    """A `Response` that runs `on_close` however sending ends: Starlette skips `background`
+    when sending fails, and a download slot must be held until the body has been sent. A
+    body not sent within `_DOWNLOAD_SEND_SECONDS` is abandoned, so a slow reader frees it."""
+
+    def __init__(self, *args: Any, on_close: Callable[[], None], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_close = on_close
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            with anyio.move_on_after(_DOWNLOAD_SEND_SECONDS):
+                await super().__call__(scope, receive, send)
+        finally:
+            self._on_close()
 
 
 class _RequestBodyLimitMiddleware:
@@ -484,7 +525,8 @@ app.openapi = _openapi  # type: ignore[method-assign]
 
 
 def _client_ip(request: Request) -> str:
-    """Rate-limit key for the client: X-Forwarded-For counts only behind a trusted proxy.
+    """Rate-limit key for the client: X-Forwarded-For counts only behind a trusted proxy, and
+    CF-Connecting-IP only from a peer in `APP_CLOUDFLARE_PROXIES`.
 
     IPv4-mapped IPv6 is unmapped and IPv6 is aggregated by /64, so one subscriber cannot
     mint a fresh bucket per address. Walking the header from the right stops at the first
@@ -495,16 +537,12 @@ def _client_ip(request: Request) -> str:
         address = _unmapped(ipaddress.ip_address(peer))
     except ValueError:
         return peer
-    if _trusted_proxy(address):
-        cf_connecting_ip = request.headers.get("CF-Connecting-IP")
-        if cf_connecting_ip:
-            try:
-                cf_address = _unmapped(ipaddress.ip_address(cf_connecting_ip.strip()))
-                if isinstance(cf_address, ipaddress.IPv6Address):
-                    return str(ipaddress.IPv6Network((int(cf_address), 64), strict=False))
-                return str(cf_address)
-            except ValueError:
-                pass
+    cf_connecting_ip = request.headers.get("CF-Connecting-IP")
+    if cf_connecting_ip and _in_networks(address, settings.cloudflare_proxies):
+        # Only Cloudflare overwrites this header; a malformed value keys on the peer.
+        with suppress(ValueError):
+            address = _unmapped(ipaddress.ip_address(cf_connecting_ip.strip()))
+    elif _trusted_proxy(address):
         entries = ",".join(request.headers.getlist("X-Forwarded-For")).split(",")
         while entries and _trusted_proxy(address):
             try:
@@ -550,9 +588,15 @@ def _unmapped(
 
 
 def _trusted_proxy(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    for proxy in settings.trusted_proxies:
+    return _in_networks(address, settings.trusted_proxies)
+
+
+def _in_networks(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address, networks: list[str]
+) -> bool:
+    for network in networks:
         try:
-            if address in ipaddress.ip_network(proxy, strict=False):
+            if address in ipaddress.ip_network(network, strict=False):
                 return True
         except ValueError:
             continue
@@ -622,11 +666,38 @@ async def live() -> dict[str, str]:
     return {"status": "ok"}
 
 
+_READY_TTL_SECONDS = 2.0
+
+
+class _ReadinessCache:
+    """`/health/ready` is anonymous and each evaluation borrows a pool connection, so the
+    database sees at most one evaluation per TTL however many probes arrive. Draining is
+    checked on every probe, so shutdown still turns the probe to `503` at once."""
+
+    def __init__(self) -> None:
+        self._value = False
+        self._at: float | None = None
+        self._lock = asyncio.Lock()
+        self._clock = time.monotonic
+
+    async def get(self) -> bool:
+        if service.draining:
+            return False
+        async with self._lock:  # concurrent probes share one evaluation
+            if self._at is None or self._clock() - self._at >= _READY_TTL_SECONDS:
+                self._value = await service.is_ready() and await auth_verifier.ready()
+                self._at = self._clock()
+            return self._value
+
+
+_readiness = _ReadinessCache()
+
+
 @app.get("/health/ready")
 async def ready() -> JSONResponse:
-    if not await service.is_ready() or not await auth_verifier.ready():
+    if not await _readiness.get():
         return JSONResponse(status_code=503, content={"status": "not_ready"})
-    return JSONResponse(content={"status": "ready", "environment": settings.env})
+    return JSONResponse(content={"status": "ready"})
 
 
 @app.post(
@@ -1117,7 +1188,7 @@ async def upload_knowledge_document(
         owner_key = _knowledge_owner(principal, user_id)
         if (replay := await knowledge.check_upload(owner_key, kb_id, idempotency_key)) is not None:
             return replay
-        with _upload_slots.take():
+        with _upload_slots.take(owner_key):
             # A slow body would hold the slot: the whole body must arrive within the deadline.
             with anyio.move_on_after(_UPLOAD_READ_SECONDS) as deadline:
                 upload = await read_upload(
@@ -1241,14 +1312,24 @@ async def download_knowledge_document(
     """The original file, always as an attachment with `nosniff` and a type no browser renders
     as a page (RAG-03.04)."""
     try:
-        title, mime_type, data = await knowledge.file(_knowledge_owner(principal, user_id), doc_id)
+        owner_key = _knowledge_owner(principal, user_id)
+        # Held until the body is sent: the whole file is in memory until then.
+        _download_slots.acquire(owner_key)
+        try:
+            title, mime_type, data = await knowledge.file(owner_key, doc_id)
+            disposition = _attachment(title)
+            headers = {"Content-Disposition": disposition, "X-Content-Type-Options": "nosniff"}
+            return _ReleasingResponse(
+                content=data,
+                media_type=_DOWNLOAD_TYPES.get(mime_type, "application/octet-stream"),
+                headers=headers,
+                on_close=functools.partial(_download_slots.release, owner_key),
+            )
+        except BaseException:
+            _download_slots.release(owner_key)
+            raise
     except AppError as exc:
         raise _http_error("knowledge_document_download_failed", exc) from exc
-    return Response(
-        content=data,
-        media_type=_DOWNLOAD_TYPES.get(mime_type, "application/octet-stream"),
-        headers={"Content-Disposition": _attachment(title), "X-Content-Type-Options": "nosniff"},
-    )
 
 
 @app.delete("/v1/knowledge/documents/{doc_id}", status_code=202)
@@ -1267,7 +1348,7 @@ async def delete_knowledge_document(
 
 @app.delete("/v1/me/threads", response_model=UserDataErasureResponse)
 async def erase_my_threads(
-    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("data:erase"))] = None,
     user_id: str | None = _UserIdHeader,
 ) -> UserDataErasureResponse:
     """Delete all discoverable caller-owned threads; active threads are skipped."""
@@ -1279,7 +1360,7 @@ async def erase_my_threads(
 
 @app.delete("/v1/me/knowledge", response_model=KnowledgeErasureResponse)
 async def erase_my_knowledge(
-    principal: Annotated[Principal | None, Depends(require_permission("threads:delete"))] = None,
+    principal: Annotated[Principal | None, Depends(require_permission("data:erase"))] = None,
     user_id: str | None = _UserIdHeader,
 ) -> KnowledgeErasureResponse:
     """Tombstone all of the caller's knowledge and queue its purge; repeat until `complete`."""
@@ -1307,7 +1388,9 @@ def _http_error(event: str, exc: AppError) -> HTTPException:
 def _retry_headers(exc: AppError) -> dict[str, str] | None:
     if isinstance(exc, QuotaExceededError):
         return {"Retry-After": str(exc.retry_after_seconds)}
-    if isinstance(exc, ConcurrentRunsExceededError | ShuttingDownError | UploadBusyError):
+    if isinstance(
+        exc, ConcurrentRunsExceededError | ShuttingDownError | UploadBusyError | DownloadBusyError
+    ):
         # Shutting down: a retry goes to another instance once the platform routes there.
         return {"Retry-After": "1"}
     if isinstance(exc, IngestionConcurrencyError):
@@ -1430,6 +1513,17 @@ def main() -> None:
         # Unset, APP_ENV means development with no authentication.
         raise SystemExit(
             f"Refusing to bind {settings.host}: set APP_ENV explicitly for a non-loopback host."
+        )
+    if (
+        not _is_loopback(settings.host)
+        and settings.auth_mode == "none"
+        and not settings.allow_unauthenticated_public_bind
+    ):
+        # Checked here, not in Settings: the worker loads the same settings but binds nothing.
+        raise SystemExit(
+            f"Refusing to serve an unauthenticated API on {settings.host}: set "
+            "APP_AUTH_MODE=jwt, APP_HOST=127.0.0.1, or APP_ALLOW_UNAUTHENTICATED_PUBLIC_BIND=true "
+            "for a development container published on loopback only."
         )
     _run(build_server(settings))
 

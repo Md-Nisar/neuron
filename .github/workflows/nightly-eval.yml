@@ -25,6 +25,8 @@ env:
 jobs:
   live-eval:
     runs-on: ubuntu-latest
+    # NVIDIA_API_KEY is an `ai-review` environment secret that only `main` may use (audit L-08).
+    environment: ai-review
     # 3 trials of every suite take about 74 minutes (run 39225629460) at the default 30 model
     # calls per minute (EVALUATION.md). The cap leaves 36 minutes over that; a 75 minute cap
     # cut a run off before the compare step. ai-review skips 03:00 to 05:30 UTC, which covers

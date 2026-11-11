@@ -212,25 +212,41 @@ def test_empty_forwarded_entry_keeps_the_last_good_address(
     assert api_main._client_ip(_request("10.2.3.4", b"203.0.113.8, ,10.9.9.9")) == "10.9.9.9"
 
 
-def test_cf_connecting_ip_behind_trusted_proxy_is_honored(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
-
-    request = Request(
+def _cf_request(peer: str, cf_connecting_ip: bytes) -> Request:
+    return Request(
         {
             "type": "http",
             "method": "GET",
             "path": "/",
             "headers": [
-                (b"cf-connecting-ip", b"203.0.113.195"),
+                (b"cf-connecting-ip", cf_connecting_ip),
                 (b"x-forwarded-for", b"198.51.100.77"),
             ],
-            "client": ("10.2.3.4", 1234),
+            "client": (peer, 1234),
             "server": ("test", 80),
         }
     )
-    assert api_main._client_ip(request) == "203.0.113.195"
+
+
+def test_cf_connecting_ip_from_a_non_cloudflare_trusted_proxy_is_ignored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A generic load balancer forwards a client-supplied CF-Connecting-IP unchanged.
+    monkeypatch.setattr(api_main.settings, "trusted_proxies", ["10.0.0.0/8"])
+
+    for spoofed in (b"203.0.113.1", b"203.0.113.2"):
+        assert api_main._client_ip(_cf_request("10.2.3.4", spoofed)) == "198.51.100.77"
+
+
+def test_cf_connecting_ip_from_a_cloudflare_peer_is_honored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api_main.settings, "cloudflare_proxies", ["173.245.48.0/20"])
+
+    assert api_main._client_ip(_cf_request("173.245.48.1", b"203.0.113.195")) == "203.0.113.195"
+    assert api_main._client_ip(_cf_request("173.245.48.1", b"2001:db8::1")) == "2001:db8::/64"
+    # A malformed value keys on the Cloudflare peer, never on X-Forwarded-For.
+    assert api_main._client_ip(_cf_request("173.245.48.1", b"nonsense")) == "173.245.48.1"
 
 
 def test_cf_connecting_ip_from_untrusted_peer_is_ignored() -> None:

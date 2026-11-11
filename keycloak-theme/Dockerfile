@@ -17,7 +17,7 @@ RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run build-keycloak-theme
 
-# quay.io/keycloak/keycloak:26.0.7
-FROM quay.io/keycloak/keycloak:26.0.7@sha256:4388e2379b7e870a447adbe7b80bd61f5fbf04e925832b19669fda4957f05a81
+# quay.io/keycloak/keycloak:26.8.1
+FROM quay.io/keycloak/keycloak:26.8.1@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332
 COPY --from=build /theme/dist_keycloak/neuron-theme.jar /opt/keycloak/providers/
 USER 1000

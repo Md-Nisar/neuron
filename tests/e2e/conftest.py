@@ -27,8 +27,9 @@ ISSUER = "http://localhost/neuron-e2e"
 AUDIENCE = "neuron-api"
 KID = "e2e-key"
 PERMISSIONS = (
-    "agent:approve agent:invoke feedback:write memories:read memories:write threads:delete "
-    "threads:read threads:write tools:calculator tools:forget tools:recall tools:remember"
+    "agent:approve agent:invoke data:erase feedback:write memories:read memories:write "
+    "threads:delete threads:read threads:write tools:calculator tools:forget tools:recall "
+    "tools:remember"
 )
 
 

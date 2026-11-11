@@ -15,6 +15,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  override-labels:
+    # `large-pr-approved` and `new-dependency-approved` skip a gate, and anyone with triage
+    # rights can add a label. An override counts only when its latest `labeled` event was by
+    # an admin or maintainer (audit L-08).
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: read
+    outputs:
+      large-pr: ${{ steps.check.outputs.large-pr }}
+      new-dependency: ${{ steps.check.outputs.new-dependency }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          approved() {
+            printf '%s' "$LABELS" | jq -e --arg l "$1" 'index($l) != null' > /dev/null || return 1
+            actor=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/events" \
+              --jq ".[] | select(.event == \"labeled\" and .label.name == \"$1\") | .actor.login" | tail -n 1)
+            [ -n "$actor" ] || return 1
+            role=$(gh api "repos/$REPO/collaborators/$actor/permission" --jq .role_name)
+            if [ "$role" = admin ] || [ "$role" = maintain ]; then
+              echo "'$1' was applied by $actor ($role)."
+            else
+              echo "::warning::'$1' was applied by $actor (${role:-unknown}), not an admin or maintainer: ignored."
+              return 1
+            fi
+          }
+          for pair in large-pr:large-pr-approved new-dependency:new-dependency-approved; do
+            if approved "${pair#*:}"; then value=true; else value=false; fi
+            echo "${pair%%:*}=$value" >> "$GITHUB_OUTPUT"
+          done
+
   secrets-scan:
     runs-on: ubuntu-latest
     steps:
@@ -40,6 +77,10 @@ jobs:
 
   new-dependencies:
     # Hallucinated or brand-new packages ("slopsquatting").
+    needs: override-labels
+    # Run even if the label check failed: a skipped required check counts as passing, and an
+    # empty output is not "true", so the gate stays enforced.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,14 +92,14 @@ jobs:
       - name: Check packages added to pyproject.toml
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-          ALLOW_YOUNG_PACKAGES: ${{ contains(github.event.pull_request.labels.*.name, 'new-dependency-approved') }}
+          ALLOW_YOUNG_PACKAGES: ${{ needs.override-labels.outputs.new-dependency }}
         run: |
           git show "origin/${BASE_REF}:pyproject.toml" > "$RUNNER_TEMP/base-pyproject.toml"
           python scripts/check_new_dependencies.py "$RUNNER_TEMP/base-pyproject.toml" pyproject.toml
       - name: Check npm packages added to web/ (manifest and lockfile)
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-          ALLOW_YOUNG_PACKAGES: ${{ contains(github.event.pull_request.labels.*.name, 'new-dependency-approved') }}
+          ALLOW_YOUNG_PACKAGES: ${{ needs.override-labels.outputs.new-dependency }}
         run: |
           # The base may not have web/ yet (the PR that creates it): an empty manifest then.
           git show "origin/${BASE_REF}:web/package.json" > "$RUNNER_TEMP/base-package.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/base-package.json"
@@ -69,7 +110,7 @@ jobs:
       - name: Check npm packages added to keycloak-theme/ (manifest and lockfile)
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-          ALLOW_YOUNG_PACKAGES: ${{ contains(github.event.pull_request.labels.*.name, 'new-dependency-approved') }}
+          ALLOW_YOUNG_PACKAGES: ${{ needs.override-labels.outputs.new-dependency }}
         run: |
           # The base may not have keycloak-theme/ yet (the PR that creates it): an empty manifest then.
           git show "origin/${BASE_REF}:keycloak-theme/package.json" > "$RUNNER_TEMP/base-theme-package.json" 2>/dev/null || echo '{}' > "$RUNNER_TEMP/base-theme-package.json"
@@ -80,6 +121,10 @@ jobs:
 
   pr-hygiene:
     # Small batches and an honest PR description keep human review meaningful.
+    needs: override-labels
+    # Run even if the label check failed: a skipped required check counts as passing, and an
+    # empty output is not "true", so the gate stays enforced.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -88,7 +133,7 @@ jobs:
       - name: Limit the size of the change
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-          LARGE_OK: ${{ contains(github.event.pull_request.labels.*.name, 'large-pr-approved') }}
+          LARGE_OK: ${{ needs.override-labels.outputs.large-pr }}
         run: |
           # Lockfiles and recorded eval baselines are generated, so they do not count.
           changed=$(git diff --numstat "origin/${BASE_REF}...HEAD" -- . ':(exclude)uv.lock' ':(exclude)web/package-lock.json' ':(exclude)keycloak-theme/package-lock.json' ':(exclude)evals/baselines/**' \

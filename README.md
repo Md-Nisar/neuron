@@ -71,7 +71,8 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `threads:read` | `GET /v1/threads/{id}/messages`, `GET /v1/me/threads`, `GET /v1/me/export` |
 | `threads:write` | `PATCH /v1/threads/{id}` (rename a conversation) |
 | `feedback:write` | `POST /v1/threads/{id}/runs/{run_id}/feedback` (rate an answer) |
-| `threads:delete` | `DELETE /v1/threads/{id}`, `DELETE /v1/me/threads`, `DELETE /v1/me/knowledge` |
+| `threads:delete` | `DELETE /v1/threads/{id}` (delete one conversation) |
+| `data:erase` | `DELETE /v1/me/threads` (erase all of the caller's conversations, memories and knowledge), `DELETE /v1/me/knowledge` (erase all of the caller's knowledge) |
 | `memories:read` | `GET /v1/me/memories` |
 | `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |
 | `knowledge:read` | `GET /v1/knowledge/bases`, `GET /v1/knowledge/bases/{kb_id}/documents`, `GET /v1/knowledge/documents/{doc_id}`, `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`, `GET /v1/knowledge/documents/{doc_id}/file`, `POST /v1/knowledge/search` (in development, v1.1.0) |
@@ -254,7 +255,7 @@ Upload rules:
 - The file's **content** decides its type; the type the client sends only chooses between Markdown and plain text. Anything else, HTML or XML among them (except inside Markdown), is `415 unsupported_media_type`; a mislabelled, encrypted, macro-enabled or non-Office archive file gets the matching code below with `415`. An empty file is `422 empty_file`.
 - A file over `APP_KNOWLEDGE_PARSE_MAX_BYTES` (50 MB) is `413 file_too_large`, and a body declared over that plus 64 KiB is `413 payload_too_large` before it is read. A refused file stores nothing.
 - The same `Idempotency-Key` again returns the first document without reading the body (`409 idempotency_key_reused` if that key was used for another base or a deleted document). The same content again in the same base returns the existing document.
-- Each API process reads at most `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` (4) uploads at once, since each is held in memory while its type is checked; more get `429 upload_busy` with `Retry-After`, and a body that has not fully arrived after 300 seconds is `408 upload_timeout`.
+- Each API process reads at most `APP_KNOWLEDGE_UPLOAD_CONCURRENCY` (4) uploads at once, since each is held in memory while its type is checked; more get `429 upload_busy` with `Retry-After`. Downloads are capped the same way by `APP_KNOWLEDGE_DOWNLOAD_CONCURRENCY` (4; `429 download_busy`), and one user holds at most two upload and two download slots, and a body that has not fully arrived after 300 seconds is `408 upload_timeout`.
 - Per-user quotas (RAG-02.05), checked before the file is stored and again under a per-owner lock when its row is inserted: stored bytes (`APP_KNOWLEDGE_MAX_BYTES_PER_USER`, 1 GB) are `413 byte_quota_exceeded`, documents (`APP_KNOWLEDGE_MAX_DOCUMENTS_PER_USER`, 1,000) `413 document_quota_exceeded`, parsed pages (`APP_KNOWLEDGE_MAX_PAGES_PER_USER`, 20,000) `413 page_quota_exceeded`, and documents still being ingested (`APP_KNOWLEDGE_MAX_INGESTING_PER_USER`, 5) `429 ingestion_concurrency_exceeded` with `Retry-After: 30`. Bytes, documents and pages count a deleted base's documents until the purge removes them; a page count is known only after parsing, so the page quota can be passed by the documents still being ingested. The same content again returns the existing document and uses no quota.
 - The file name is used only as the default title; it never reaches a storage key or a log line.
 
