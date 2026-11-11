@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+Upgrade note: `APP_AUTH_REQUIRE_TYP=true` is required with `APP_ENV=production`; the API refuses to start without it (audit L-06). Production then accepts only RFC 9068 access tokens (header `typ: at+jwt`), so an ID token or another JWT the issuer signed for the same audience is rejected. Configure the identity provider to issue that header before upgrading (Keycloak: `access.token.header.type.rfc9068`, already on in `deploy/keycloak/neuron-realm.json`). Staging and development are unchanged.
+
 ## 1.1.0
 
 "Knowledge Engine". Users can upload documents to their own knowledge bases and get answers that cite the passages they came from. Uploads are ingested by a separate worker (`neuron-worker`) into Postgres with pgvector; hybrid search runs inside the user's authorisation; citations are checked by the server; the web app gets a Knowledge page, source chips and a knowledge-base picker. Knowledge is off by default (`APP_KNOWLEDGE_ENABLED`). With it off, no knowledge route, tool, worker or migration is active. The `/v1` API and stream protocol version 1 stay compatible: the `/v1/knowledge/*` routes and the citation fields are additions, and existing `APP_*` settings keep their names. Verification: `docs/releases/v1.1.0-release-verification.md`.

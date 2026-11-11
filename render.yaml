@@ -272,6 +272,8 @@ envVarGroups:
       # One year; the API is served over TLS only (ADR 0008 open question 13).
       - key: APP_HSTS_MAX_AGE_SECONDS
         value: "31536000"
+      - key: APP_AUTH_REQUIRE_TYP
+        value: "true"
       - key: APP_OTEL_ENABLED
         value: "true"
       - key: APP_OTEL_SERVICE_NAME
@@ -305,6 +307,8 @@ envVarGroups:
         value: "[]"
       - key: APP_HSTS_MAX_AGE_SECONDS
         value: "31536000"
+      - key: APP_AUTH_REQUIRE_TYP
+        value: "true"
 
   - name: neuron-collector-production
     envVars:

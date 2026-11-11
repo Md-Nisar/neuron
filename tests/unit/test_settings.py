@@ -457,6 +457,14 @@ def test_production_requires_hsts_and_staging_does_not() -> None:
     assert _hardened("staging", hsts_max_age_seconds=0).hsts_max_age_seconds == 0
 
 
+def test_production_requires_the_access_token_typ_check_and_staging_does_not() -> None:
+    """Audit L-06: production accepts only RFC 9068 access tokens, never an ID token."""
+    with pytest.raises(ValidationError, match="APP_AUTH_REQUIRE_TYP"):
+        _hardened("production", auth_require_typ=False)
+    assert _hardened("production").auth_require_typ is True
+    assert _hardened("staging", auth_require_typ=False).auth_require_typ is False
+
+
 @_BOTH
 @pytest.mark.parametrize(
     "host",

@@ -790,6 +790,12 @@ class Settings(BaseSettings):
                 "APP_HSTS_MAX_AGE_SECONDS must be greater than 0 in production "
                 "(the API is served over TLS only)"
             )
+        if production and not self.auth_require_typ:
+            # Without it any token for this audience is accepted, an ID token included (L-06).
+            raise ValueError(
+                "APP_AUTH_REQUIRE_TYP=true is required in production (accept RFC 9068 access "
+                "tokens only)"
+            )
         if (
             production
             and self.langsmith_content_approved
