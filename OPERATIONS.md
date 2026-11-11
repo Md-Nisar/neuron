@@ -794,6 +794,13 @@ python scripts/web_headers.py --api-origin https://api.example.com \
     --issuer https://id.example.com/realms/neuron --format nginx
 ```
 
+On a static host that reads `_headers` (Netlify, Cloudflare Pages), build with `make web-hosted` and the same two settings the app is built with, then publish `web/dist`. It writes `web/dist/_headers` from `VITE_API_URL` and `VITE_OIDC_ISSUER`, so the policy always lists the origins the bundle really talks to. It checks both before building: plain HTTP, or a value that could change the policy, fails it. There is no `_headers` in `web/public`: a fixed file is copied into every build whatever its origins, and the one that was there listed only loopback origins with a weaker policy (audit L-05).
+
+```bash
+VITE_API_URL=https://api.example.com VITE_OIDC_ISSUER=https://id.example.com/realms/neuron \
+    make web-hosted
+```
+
 The policy: `default-src 'none'`; scripts, styles, images and fonts from `'self'` only (no inline script or style, no `eval`, no `data:`); `connect-src` limited to the API and the identity provider; `frame-src` to `'self'` and the identity provider; `base-uri`, `form-action`, `object-src` and `worker-src` `'none'`; `upgrade-insecure-requests`. With it: `Referrer-Policy: no-referrer` (the sign-in callback URL carries a one-time code), `X-Content-Type-Options: nosniff`, `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` `same-origin`, a `Permissions-Policy` that turns off device APIs, and HSTS. `index.html` is `no-cache`; `/assets/*` is hashed and `immutable`.
 
 Two things to know:
