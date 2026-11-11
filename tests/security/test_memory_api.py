@@ -147,6 +147,18 @@ def test_export_carries_the_memories_on_the_first_page_only(
     assert later["memories"] == []
 
 
+def test_export_leaves_the_memories_out_without_memories_read(
+    api: JwtApi, make_token: Callable[..., str]
+) -> None:
+    """A token narrowed to threads:read (the `neuron-reader` role) cannot read memories here."""
+    _store(api, "alice", "secret")
+    reader = make_token("alice", scopes="threads:read")
+
+    assert api.client.get("/v1/me/memories", headers=bearer(reader)).status_code == 403
+    export = api.client.get("/v1/me/export", headers=bearer(reader))
+    assert (export.status_code, export.json()["memories"]) == (200, [])
+
+
 def test_erasing_the_users_data_deletes_the_memories_too_but_deleting_a_thread_does_not(
     api: JwtApi, make_token: Callable[..., str]
 ) -> None:

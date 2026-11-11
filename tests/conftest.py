@@ -111,6 +111,8 @@ def fresh_rate_limiter(monkeypatch: pytest.MonkeyPatch) -> None:
                 window_seconds=settings.rate_limit_window_seconds,
             ),
         )
+    # A readiness result cached by one test must not answer another test's probe.
+    monkeypatch.setattr(api_main, "_readiness", api_main._ReadinessCache())
 
 
 class HistoryEchoAgent:

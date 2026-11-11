@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import pytest
@@ -269,6 +270,32 @@ def test_ready_endpoint_consults_the_jwks_probe_without_a_model_call(
     response = TestClient(app).get("/health/ready")
     assert response.status_code == 503
     assert probes == ["jwks"]
+
+
+@pytest.mark.anyio
+async def test_concurrent_ready_probes_share_one_evaluation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    async def counted(self: object) -> bool:
+        calls.append(1)
+        await asyncio.sleep(0.01)
+        return True
+
+    monkeypatch.setattr(api_main.AgentService, "is_ready", counted)
+    results = await asyncio.gather(*(api_main._readiness.get() for _ in range(100)))
+    assert all(results)
+    assert len(calls) == 1
+
+
+def test_ready_response_names_no_environment_and_draining_is_not_cached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = TestClient(app)
+    assert client.get("/health/ready").json() == {"status": "ready"}
+    monkeypatch.setattr(type(api_main.service), "draining", property(lambda self: True))
+    assert client.get("/health/ready").status_code == 503
 
 
 def test_lifespan_opens_and_closes_service(monkeypatch: pytest.MonkeyPatch) -> None:
