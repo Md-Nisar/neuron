@@ -37,7 +37,7 @@ new design. *Open*: no control or test; filed as an issue.
 
 Boundaries: browser to API (untrusted client), API to model provider (untrusted output), agent to
 tools (the model is not a security boundary), tools to MCP servers (pinned definitions, untrusted
-results), API to Postgres (two roles: migrator and app), API to identity provider (JWKS). Added in v1.1.0: uploaded file to parser (docling-serve on an internal network with no egress), worker to Postgres (its own `neuron_worker` role, no rights in `public`), worker to embedding provider (hosted or self-hosted, per base), retrieved passage to model (untrusted document text, framed as data).
+results), API to Postgres (two roles: migrator and app), API to identity provider (JWKS). Added in v1.1.0: uploaded file to parser (docling-serve on an internal network with no egress; `https` required in production, audit L-10), worker to Postgres (its own `neuron_worker` role, no rights in `public`), worker to embedding provider (hosted or self-hosted, per base; `https` required in production), retrieved passage to model (untrusted document text, framed as data).
 
 ## OWASP Top 10 for LLM Applications 2026
 

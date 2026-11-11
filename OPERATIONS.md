@@ -1078,7 +1078,7 @@ Symptoms: PDF and Office uploads stay in `parsing` and then fail; text and Markd
 | `parser_not_configured` | `APP_KNOWLEDGE_PARSER_URL` is empty on the worker | Set it, or accept that PDF and Office files are refused. In the local stack: `COMPOSE_PROFILES=pdf` (README). |
 | `parser_failed`, `parser_output_invalid`, `parser_output_too_large` | The parser answered, but not with a usable document | A file problem in most cases; if every PDF fails, check the docling-serve version against the one pinned in the reference stack. |
 
-docling-serve must stay on an internal network with no route out and no published port (ADR 0014 K2): never fix an outage by giving it egress. Documents that failed while it was down stay failed; see "Re-running a failed document".
+docling-serve must stay on an internal network with no route out and no published port (ADR 0014 K2): never fix an outage by giving it egress. With `APP_ENV=production` the API and worker refuse to start unless `APP_KNOWLEDGE_PARSER_URL` and a self-hosted `APP_KNOWLEDGE_EMBEDDING_BASE_URL` use `https` (audit L-10), because every uploaded file and passage crosses those links; put a TLS-terminating proxy in front of docling-serve or the embedding server if they serve `http` only. Development and test (the compose stacks and CI) may use `http`. Documents that failed while it was down stay failed; see "Re-running a failed document".
 
 #### Embedding provider outage
 
