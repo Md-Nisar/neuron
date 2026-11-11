@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak up down reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration knowledge-mutations eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak up down reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-hosted web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration knowledge-mutations eval security build
 
 install:
 	uv sync --no-dev
@@ -142,6 +142,21 @@ web-e2e:
 
 web-build:
 	npm --prefix web run build
+
+# A build for a static host that reads `_headers` (Netlify, Cloudflare Pages). The bundle and
+# its headers come from the same VITE_API_URL and VITE_OIDC_ISSUER, so the content security
+# policy always lists the origins the app really talks to (audit L-05). The origins are checked
+# before the build starts; plain HTTP or a value that could change the policy fails it.
+web-hosted:
+	@set -eu; \
+	headers=$$(mktemp); \
+	trap 'rm -f "$$headers"' EXIT; \
+	python3 scripts/web_headers.py --api-origin "$$VITE_API_URL" --issuer "$$VITE_OIDC_ISSUER" \
+		--format headers > "$$headers"; \
+	npm --prefix web run build; \
+	chmod 644 "$$headers"; \
+	mv "$$headers" web/dist/_headers; \
+	echo "web/dist/_headers written for $$VITE_API_URL and $$VITE_OIDC_ISSUER"
 
 web-audit:
 	npm --prefix web audit --audit-level=low
