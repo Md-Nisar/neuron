@@ -455,6 +455,7 @@ async def test_health_ready_alone_recovers_after_a_jwks_outage(
     verifier._client = client
     clock = [100.0]
     verifier._clock = lambda: clock[0]
+    api_main._readiness._clock = lambda: clock[0]  # the probe caches its result for 2 s
     monkeypatch.setattr(api_main, "settings", _settings())
     monkeypatch.setattr(api_main, "auth_verifier", verifier)
 

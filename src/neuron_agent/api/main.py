@@ -674,14 +674,15 @@ class _ReadinessCache:
         self._value = False
         self._at: float | None = None
         self._lock = asyncio.Lock()
+        self._clock = time.monotonic
 
     async def get(self) -> bool:
         if service.draining:
             return False
         async with self._lock:  # concurrent probes share one evaluation
-            if self._at is None or time.monotonic() - self._at >= _READY_TTL_SECONDS:
+            if self._at is None or self._clock() - self._at >= _READY_TTL_SECONDS:
                 self._value = await service.is_ready() and await auth_verifier.ready()
-                self._at = time.monotonic()
+                self._at = self._clock()
             return self._value
 
 
