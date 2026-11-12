@@ -43,7 +43,7 @@ test(
   async ({ page }) => {
     const user = `kb${Date.now().toString(36)}`;
     await signIn(page, user);
-    await page.getByRole("button", { name: "Knowledge" }).click();
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
 
     await page.getByLabel("New knowledge base").fill("Handbook");
     await page.getByRole("button", { name: "Create" }).click();
@@ -306,7 +306,7 @@ test(
     const user = `ks${Date.now().toString(36)}`;
     const role = `team-${user}`;
     await signIn(page, user);
-    await page.getByRole("button", { name: "Knowledge" }).click();
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
     await page.getByLabel("New knowledge base").fill("Team handbook");
     await page.getByRole("button", { name: "Create" }).click();
 
@@ -324,7 +324,7 @@ test(
 
     const member = await (await browser.newContext()).newPage();
     await signIn(member, `${user}m`, role);
-    await member.getByRole("button", { name: "Knowledge" }).click();
+    await member.getByRole("button", { name: "Knowledge", exact: true }).click();
     await member.getByRole("button", { name: "Team handbook", exact: true }).click();
     await expect(member.getByText("Shared with you · Read")).toBeVisible();
     await expect(member.getByText(/shared with you to read/)).toBeVisible();
