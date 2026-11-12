@@ -354,12 +354,12 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Security review (RAG-09.03 part 1): no high or medium findings. Applied: erase takes the uploads lock too, so an upload to a shared base cannot land between its tombstone and its check; tests for a stray owner grant and a revoked writer's replay; the ADR states revocation's limits (per request; thread history keeps passages already returned). Left: export does not include a user's uploads to others' bases (follow-up); the audit does not yet say whether access came from a role (part 2).
   - Questions for RAG-09.03 (owner, 2026-11-12, answered above), before code: (1) when a member uploads to someone else's shared base, does erasing the member's data remove those uploads, and does erasing the owner's data remove the members' uploads with the base? (2) Are roles namespaced by issuer (one issuer is configured today)? (3) For a read-only member, is an upload `403` (the base is visible to them) or `404`? Proposed: (1) the base's owner erases the base with everything in it; a member's erase removes their own uploads in shared bases; (2) plain role names, as only one issuer is accepted; (3) `403`, as the base is listed for them.
   - RAG-09.04 (2026-11-12): profile 1 is fixed in retrieval, ingestion and setup, and search embeds queries with the one model in settings. A re-index needs both the old and new models configured during the build, which is an ADR 0014 amendment before code.
-  - RAG-09.04 plan (2026-11-12): the ADR 0014 amendment first, in its own PR, for the owner's review. It proposes:
+  - RAG-09.04 plan (2026-11-12): the ADR 0014 amendment first, in its own PR (#561); the owner accepted all three proposals ("go with your proposals for 09.04"). It decides:
     - one active profile for the whole deployment, swapped for every base in one transaction (not per base, which would mix vector spaces in one search);
     - `APP_KNOWLEDGE_REINDEX_EMBEDDING_*` settings for the target model, which both processes hold during a re-index;
     - an operator command `persistence.cli reindex start|status|cancel`, with `reindex_kb` jobs, dual-written uploads, a swap under a profile-row lock, and retirement with cleanup on failure.
 
-    Code follows in parts once the amendment is accepted.
+    Code follows in parts.
   - Finding (2026-11-12, #480): NVIDIA's embeddings endpoint now accepts batches of 2, 4, 8 and 32 real-size corpus passages (`nemotron-3.5-embed-1b`); #553's default of batch 1 for `nvidia` is now only slower. Owner to decide whether to return it to 32.
 - **Next recommended story:** RAG-09.04 (needs an ADR 0014 amendment first), or RAG-09.06 to RAG-09.08.
 

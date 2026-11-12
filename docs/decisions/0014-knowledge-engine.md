@@ -421,7 +421,7 @@ alone never grant access: the caller still needs an owner key, and the route its
   upload's transaction runs (milliseconds) does not stop that upload. Passages a member already
   received stay in their thread history; revocation stops new searches and excerpts only.
 
-### Amendment: re-index to a new profile (RAG-09.04, proposed 2026-11-12)
+### Amendment: re-index to a new profile (RAG-09.04, 2026-11-12, owner decision)
 
 K3 said a model or dimension change is a re-index into a new profile. Until now, profile 1 was
 fixed in setup, ingestion and retrieval, and `setup` refused other settings
