@@ -63,7 +63,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 
-**Recommended next action (2026-11-12):** RAG-09.05 Done on merge (#549): a nightly retrieval gate with the live query embeddings and reranker. RAG-09.01 Done (#555, #556). Next: RAG-09.03 (sharing by role), once the owner answers its questions (see RAG-E09 decisions); RAG-09.04 (re-index) needs an ADR 0014 amendment first. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and a race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554 and #555 and passing on a rerun each time; not reproduced locally in 28 runs, with or without a delayed logout or discovery.
+**Recommended next action (2026-11-12):** RAG-09.05 Done on merge (#549): a nightly retrieval gate with the live query embeddings and reranker. RAG-09.01 Done (#555, #556). Next: RAG-09.03 (sharing by role), once the owner answers its questions (see RAG-E09 decisions); RAG-09.04 (re-index) needs an ADR 0014 amendment first. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; the test now waits for that round trip (#560).
 
 ## GitHub synchronisation
 

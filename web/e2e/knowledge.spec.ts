@@ -256,12 +256,19 @@ test(
     // The worker purges files after the request, so the first erase may ask to be repeated;
     // the user is signed out only once everything is gone.
     const signInButton = page.getByRole("button", { name: /sign in/i });
+    // Sign-out shows the signed-out page first, then goes to the provider's logout and back to
+    // `/`: signing in again before that round trip ends collides with its navigation.
+    const loggedOut = page.waitForResponse((r) => r.url().includes("/openid-connect/logout"), {
+      timeout: 60_000,
+    });
     await expect(async () => {
       if (await signInButton.isVisible()) return;
       await page.getByRole("textbox", { name: /erase my data/ }).fill("erase my data");
       await page.getByRole("button", { name: "Erase all my data" }).click();
       await expect(signInButton).toBeVisible({ timeout: 3_000 });
     }).toPass({ timeout: 60_000 });
+    await loggedOut;
+    await page.waitForURL("http://localhost:5173/", { waitUntil: "load" });
 
     await signIn(page, user);
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
