@@ -222,7 +222,7 @@ class Settings(BaseSettings):
     knowledge_search_min_similarity: float = Field(default=0.0, ge=-1.0, le=1.0)
     knowledge_search_mode: Literal["hybrid", "dense", "fts"] = "hybrid"
     # Reranking of the fused candidates (RAG-09.01). Unset means `nvidia` when the embeddings are
-    # NVIDIA's and NVIDIA_API_KEY is set (RAG-09.01's eval showed a gain),
+    # NVIDIA's and NVIDIA_API_KEY is set (the eval's gain, docs/releases/v1.2.0-rerank-eval.md),
     # else `none`. The reranker is hosted: the policy and each base's setting apply as for
     # embeddings. A timeout or error keeps the RRF order.
     knowledge_reranker: Literal["none", "nvidia"] | None = None

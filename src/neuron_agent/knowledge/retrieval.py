@@ -19,6 +19,8 @@ orders by the indexed expression with bitmap scans and sorts priced out.
 
 from __future__ import annotations
 
+import asyncio
+import dataclasses
 import time
 import uuid
 from collections.abc import AsyncIterator, Callable, Collection, Sequence
@@ -39,6 +41,7 @@ from neuron_agent.knowledge.providers import (
     EmbeddingProvider,
     ensure_processing_allowed,
 )
+from neuron_agent.knowledge.reranking import Reranker, RerankError
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
@@ -51,6 +54,8 @@ CANDIDATES = 80
 MAX_K = 50
 MAX_QUERY_CHARS = 2_000
 RRF_K = 60
+# A reranker reorders this many fused candidates, then the best `k` are kept (RAG-09.01).
+RERANK_CANDIDATES = 40
 
 # The readable bases, and whether each may be searched by meaning: its index profile must be the
 # active one this process embeds queries for.
@@ -140,6 +145,8 @@ class SearchResult:
     passages: list[Passage]
     # `exact` or `hnsw` for the dense path taken, `none` when it did not run.
     path: Literal["exact", "hnsw", "none"]
+    # True when a reranker ordered the passages; False when none ran or it fell back to RRF.
+    reranked: bool = False
 
     @property
     def status(self) -> Literal["ok", "no_relevant_results"]:
@@ -161,10 +168,12 @@ class Retriever:
         settings: Settings,
         pool: Callable[[], AsyncConnectionPool[Any] | None],
         embeddings: EmbeddingProvider,
+        reranker: Reranker | None = None,
     ) -> None:
         self._settings = settings
         self._pool = pool
         self._embeddings = embeddings
+        self._reranker = reranker
 
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
@@ -222,6 +231,7 @@ class Retriever:
             span.set_attribute(semconv.NEURON_KNOWLEDGE_KB_IDS, [str(kb) for kb in searched])
             span.set_attribute(semconv.NEURON_KNOWLEDGE_SEARCH_PATH, result.path)
             span.set_attribute(semconv.NEURON_KNOWLEDGE_RESULTS, len(result.passages))
+            span.set_attribute(semconv.NEURON_KNOWLEDGE_RERANKED, result.reranked)
             span.set_attribute(semconv.NEURON_OUTCOME, "success")
         metrics.record_knowledge_search(
             time.perf_counter() - started,
@@ -267,9 +277,11 @@ class Retriever:
             if vector is not None and (dense := self._dense_bases(bases)):
                 path, ranked = await self._dense(conn, owner_key, dense, vector)
                 rankings.insert(0, ranked)
-            fused = fuse(rankings)[:k]
+            fused = fuse(rankings)[: max(k, RERANK_CANDIDATES) if self._reranker else k]
             # Primary-key lookups, which those settings leave alone.
             passages = await self._passages(conn, owner_key, bases, fused)
+        # After the transaction: no connection is held during the reranker's call.
+        passages, reranked = await self._rerank(query, bases, passages, k)
         audit(
             "knowledge_searched",
             outcome="allowed",
@@ -279,7 +291,38 @@ class Retriever:
             resource_type="knowledge_base",
             count=len(passages),
         )
-        return SearchResult(passages, path), [row["kb_id"] for row in bases]
+        return SearchResult(passages, path, reranked), [row["kb_id"] for row in bases]
+
+    async def _rerank(
+        self, query: str, bases: Sequence[dict[str, Any]], passages: list[Passage], k: int
+    ) -> tuple[list[Passage], bool]:
+        """The best `k` passages by the reranker, or by RRF if there is none or it fails.
+
+        Every candidate's base must allow its passages to go to the reranker, as for the
+        embedding provider; a search over any base that forbids it keeps the RRF order.
+        """
+        if self._reranker is None or not passages:
+            return passages[:k], False
+        processing = {row["kb_id"]: row["processing"] for row in bases}
+        try:
+            for kb_id in {passage.kb_id for passage in passages}:
+                ensure_processing_allowed(
+                    processing[kb_id],
+                    self._reranker.locality,
+                    self._settings.knowledge_processing_policy,
+                )
+            texts = [
+                " > ".join(p.headings) + "\n" + p.text if p.headings else p.text for p in passages
+            ]
+            async with asyncio.timeout(self._settings.knowledge_reranker_timeout_seconds):
+                order = await self._reranker.rerank(query, texts)
+        except (EmbeddingError, RerankError) as exc:
+            log.warning("knowledge_rerank_skipped", error_code=exc.code)
+            return passages[:k], False
+        except TimeoutError:
+            log.warning("knowledge_rerank_skipped", error_code="rerank_timeout")
+            return passages[:k], False
+        return [dataclasses.replace(passages[i], score=score) for i, score in order[:k]], True
 
     @staticmethod
     async def _bases(

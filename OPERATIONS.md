@@ -1068,6 +1068,13 @@ Symptoms: uploads stay `queued`; an erasure's `purge_pending` stays true; `neuro
    A document left in `queued`, `parsing` or `embedding` with no job at all (for example when recording its failure failed) is queued again by the reconcile task, and after two such re-queues ends `failed` with `ingest_stalled`; see "Drift between files, rows and jobs".
 4. Confirm: `neuron-worker health` passes and `queued` documents move to `ready`.
 
+#### Reranker failing or slow
+
+Search keeps working: a reranker error or timeout leaves the RRF order. Symptoms: `knowledge_rerank_skipped` warnings with an `error_code` (`rerank_timeout`, `rerank_unavailable`, `rerank_failed`, `rerank_output_invalid`, or `processing_locality_forbidden` for a search over a base kept off hosted processing, which is expected), `reranked: false` from `POST /v1/knowledge/search`, and `neuron.knowledge.reranked=false` on search spans. Searches slow by up to `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` (3 s) while it times out.
+
+1. A burst of `rerank_failed` or `rerank_unavailable` is NVIDIA's endpoint; `rerank_failed` from the first search after a deploy is more likely the key or the model name (`APP_KNOWLEDGE_RERANKER_MODEL`): NVIDIA retires model endpoints with `410`.
+2. To stop reranking, set `APP_KNOWLEDGE_RERANKER=none` and restart the API. Answers then use the RRF order, which was the v1.1.0 behaviour (`docs/releases/v1.2.0-rerank-eval.md` has the difference).
+
 #### Parser down
 
 Symptoms: PDF and Office uploads stay in `parsing` and then fail; text and Markdown files are unaffected (the worker parses them itself). `neuron_knowledge_ingest_stage_errors_total{neuron_knowledge_ingest_stage="parse"}` by `error_type`:

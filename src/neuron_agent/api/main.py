@@ -58,6 +58,7 @@ from neuron_agent.errors.base import (
 from neuron_agent.knowledge.blobs import build_blob_store
 from neuron_agent.knowledge.parsing import DOCX, MARKDOWN, PDF, PPTX, TEXT, XLSX
 from neuron_agent.knowledge.providers import create_embedding_provider
+from neuron_agent.knowledge.reranking import create_reranker
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.observability import metrics
@@ -135,7 +136,12 @@ knowledge = KnowledgeBases(
 # Built on first search: the embedding provider can need credentials a deployment without
 # knowledge never sets.
 retriever = functools.cache(
-    lambda: Retriever(settings, lambda: persistence.pool, create_embedding_provider(settings))
+    lambda: Retriever(
+        settings,
+        lambda: persistence.pool,
+        create_embedding_provider(settings),
+        create_reranker(settings),
+    )
 )
 auth_verifier = get_shared_token_verifier(settings)
 
@@ -1282,6 +1288,7 @@ async def search_knowledge(
         raise _http_error("knowledge_search_failed", exc) from exc
     return KnowledgeSearchResponse(
         status=result.status,
+        reranked=result.reranked,
         results=[
             KnowledgeSearchHit.model_validate(passage, from_attributes=True)
             for passage in result.passages

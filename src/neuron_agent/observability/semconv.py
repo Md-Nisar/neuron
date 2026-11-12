@@ -81,6 +81,7 @@ NEURON_KNOWLEDGE_SEARCH_MODE = "neuron.knowledge.search.mode"  # hybrid, dense o
 NEURON_KNOWLEDGE_SEARCH_PATH = "neuron.knowledge.search.path"  # exact, hnsw or none
 NEURON_KNOWLEDGE_KB_IDS = "neuron.knowledge.kb_ids"  # the bases searched
 NEURON_KNOWLEDGE_RESULTS = "neuron.knowledge.results"
+NEURON_KNOWLEDGE_RERANKED = "neuron.knowledge.reranked"  # a reranker ordered the results
 NEURON_KNOWLEDGE_KB_ID = "neuron.knowledge.kb_id"
 NEURON_KNOWLEDGE_DOC_ID = "neuron.knowledge.doc_id"
 NEURON_KNOWLEDGE_BYTES = "neuron.knowledge.bytes"
