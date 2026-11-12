@@ -54,11 +54,12 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeChunk,
     KnowledgeDocument,
     KnowledgeErasureResponse,
+    KnowledgeGrant,
 )
 
 log = structlog.get_logger(__name__)
 
-_READ, _WRITE = "knowledge:read", "knowledge:write"
+_READ, _WRITE, _ADMIN = "knowledge:read", "knowledge:write", "knowledge:admin"
 
 _LIST = (
     "SELECT kb_id, name, processing, created_at FROM knowledge.bases"
@@ -80,6 +81,22 @@ _RENAME = (
 _TOMBSTONE = (
     "UPDATE knowledge.bases SET deleted_at = now()"
     " WHERE kb_id = %s AND owner_key = %s AND deleted_at IS NULL RETURNING kb_id"
+)
+# A base's role grants (RAG-09.03); the owner grant is not one of them.
+_ROLE_GRANTS = (
+    "SELECT subject AS role, access FROM knowledge.grants"
+    " WHERE kb_id = %s AND subject_type = 'role' ORDER BY subject"
+)
+# NO KEY: serialises grant edits and the base's delete without holding off uploads to it.
+_LOCK_BASE = (
+    "SELECT 1 FROM knowledge.bases WHERE kb_id = %s AND deleted_at IS NULL FOR NO KEY UPDATE"
+)
+_REVOKE = "DELETE FROM knowledge.grants WHERE kb_id = %s AND subject_type = 'role' AND subject = %s"
+_UPSERT_GRANT = (
+    "INSERT INTO knowledge.grants (kb_id, subject_type, subject, access, granted_by)"
+    " VALUES (%s, 'role', %s, %s, %s) ON CONFLICT (kb_id, subject_type, subject)"
+    " DO UPDATE SET access = excluded.access, granted_by = excluded.granted_by,"
+    " created_at = now()"
 )
 _TOMBSTONE_DOCUMENTS = (
     "UPDATE knowledge.documents SET deleted_at = now(), status = 'deleting', updated_at = now()"
@@ -302,6 +319,47 @@ class KnowledgeBases:
             raise KnowledgeBaseNotFoundError("knowledge base not found")
         self._audit("knowledge_base_renamed", owner_key, _WRITE, kb_id)
         return KnowledgeBase(**row)
+
+    async def grants(
+        self, owner_key: str, kb_id: uuid.UUID, roles: frozenset[str] = frozenset()
+    ) -> builtins.list[KnowledgeGrant]:
+        """A base's role grants, for those who administer it."""
+        async with self._transaction() as conn:
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            _require(allowed, kb_id, allowed.admin)
+            cursor = await conn.execute(_ROLE_GRANTS, (kb_id,))
+            return [KnowledgeGrant(**row) for row in await cursor.fetchall()]
+
+    async def set_grants(
+        self,
+        owner_key: str,
+        kb_id: uuid.UUID,
+        grants: Sequence[KnowledgeGrant],
+        roles: frozenset[str] = frozenset(),
+    ) -> builtins.list[KnowledgeGrant]:
+        """Replace a base's role grants; each change is audited with its role and access level
+        (`none` for a revoke). The change counts from the next request (`allowed_kbs`)."""
+        async with self._transaction() as conn:
+            # Locked before the access check, so an edit that revoked the caller's admin access
+            # while this one waited is seen.
+            await conn.execute(_LOCK_BASE, (kb_id,))
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            _require(allowed, kb_id, allowed.admin)
+            cursor = await conn.execute(_ROLE_GRANTS, (kb_id,))
+            before = {row["role"]: row["access"] for row in await cursor.fetchall()}
+            after = {grant.role: grant.access for grant in grants}
+            changes = [(role, "none") for role in sorted(before.keys() - after.keys())]
+            changes += [(r, a) for r, a in sorted(after.items()) if before.get(r) != a]
+            for role, access in changes:
+                if access == "none":
+                    await conn.execute(_REVOKE, (kb_id, role))
+                else:
+                    await conn.execute(_UPSERT_GRANT, (kb_id, role, access, owner_key))
+        for role, access in changes:
+            self._audit(
+                "knowledge_grant_changed", owner_key, _ADMIN, kb_id, role=role, access=access
+            )
+        return [KnowledgeGrant(role=r, access=a) for r, a in sorted(after.items())]
 
     async def delete(
         self, owner_key: str, kb_id: uuid.UUID, roles: frozenset[str] = frozenset()
@@ -654,6 +712,8 @@ class KnowledgeBases:
         *,
         count: int | None = None,
         resource: str = "knowledge_base",
+        role: str | None = None,
+        access: str | None = None,
     ) -> None:
         audit(
             event,
@@ -664,4 +724,6 @@ class KnowledgeBases:
             resource_type=resource,
             resource_id=str(kb_id) if kb_id else None,
             count=count,
+            role=role,
+            access=access,
         )

@@ -49,6 +49,46 @@ class KnowledgeBaseUpdate(BaseModel):
         return _plain_title(value)
 
 
+# A role as the token carries it (RAG-09.02): no control characters, no outer spaces.
+_ROLE_PATTERN = r"^[^\x00-\x1f\x7f\s](?:[^\x00-\x1f\x7f]*[^\x00-\x1f\x7f\s])?$"
+MAX_ROLE_GRANTS = 50
+
+
+class KnowledgeGrant(BaseModel):
+    """One role grant on a base (RAG-09.03)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: str = Field(min_length=1, max_length=200, pattern=_ROLE_PATTERN)
+    access: Literal["read", "write", "admin"]
+
+    @field_validator("role")
+    @classmethod
+    def _visible(cls, value: str) -> str:
+        # Unicode controls, format (zero-width, bidi) and unassigned characters too: the role is
+        # shown in the editor and written to the audit log.
+        if any(unicodedata.category(char).startswith("C") for char in value):
+            raise ValueError("the role has an invisible or control character")
+        return value
+
+
+class KnowledgeGrants(BaseModel):
+    """`GET` and `PUT /v1/knowledge/bases/{kb_id}/grants`: every role grant of the base. A `PUT`
+    replaces them all; a role left out loses its access. The owner's own access is not listed and
+    cannot be changed."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    grants: list[KnowledgeGrant] = Field(max_length=MAX_ROLE_GRANTS)
+
+    @field_validator("grants")
+    @classmethod
+    def _one_per_role(cls, value: list[KnowledgeGrant]) -> list[KnowledgeGrant]:
+        if len({grant.role for grant in value}) != len(value):
+            raise ValueError("each role may appear once")
+        return value
+
+
 class KnowledgeBase(BaseModel):
     kb_id: uuid.UUID
     name: str

@@ -102,6 +102,7 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeDocument,
     KnowledgeDocumentsResponse,
     KnowledgeErasureResponse,
+    KnowledgeGrants,
     KnowledgeSearchHit,
     KnowledgeSearchRequest,
     KnowledgeSearchResponse,
@@ -1155,6 +1156,41 @@ async def delete_knowledge_base(
     except AppError as exc:
         raise _http_error("knowledge_base_delete_failed", exc) from exc
     return Response(status_code=202)
+
+
+@app.get("/v1/knowledge/bases/{kb_id}/grants", response_model=KnowledgeGrants)
+async def get_knowledge_grants(
+    kb_id: uuid.UUID,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:admin"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeGrants:
+    """The base's role grants (RAG-09.03), for its owner or an `admin` role; else `403`, or
+    `404` for a base the caller cannot see."""
+    try:
+        grants = await knowledge.grants(
+            _knowledge_owner(principal, user_id), kb_id, _roles(principal)
+        )
+    except AppError as exc:
+        raise _http_error("knowledge_grants_get_failed", exc) from exc
+    return KnowledgeGrants(grants=grants)
+
+
+@app.put("/v1/knowledge/bases/{kb_id}/grants", response_model=KnowledgeGrants)
+async def put_knowledge_grants(
+    kb_id: uuid.UUID,
+    body: KnowledgeGrants,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:admin"))] = None,
+    user_id: str | None = _UserIdHeader,
+) -> KnowledgeGrants:
+    """Replace the base's role grants; a role left out loses its access from the next request.
+    Each change is audited (`knowledge_grant_changed`) with the role and access level."""
+    try:
+        grants = await knowledge.set_grants(
+            _knowledge_owner(principal, user_id), kb_id, body.grants, _roles(principal)
+        )
+    except AppError as exc:
+        raise _http_error("knowledge_grants_put_failed", exc) from exc
+    return KnowledgeGrants(grants=grants)
 
 
 _IdempotencyKey = Header(

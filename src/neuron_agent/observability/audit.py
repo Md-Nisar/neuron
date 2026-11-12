@@ -30,6 +30,8 @@ def audit(
     run_id: str | None = None,
     reason: str | None = None,
     count: int | None = None,
+    role: str | None = None,
+    access: str | None = None,
 ) -> None:
     """Emit exactly the audit schema; callers must pass only allowlisted identifiers/codes."""
     context = correlation_context()
@@ -45,5 +47,9 @@ def audit(
         run_id=run_id or context.get("run_id"),
         reason=reason,
         count=count,
+        # A knowledge grant's role and access level (RAG-09.03): set by the base's admin, not
+        # a user's token roles, which are never logged.
+        role=role,
+        access=access,
         timestamp=datetime.now(UTC).isoformat(),
     ).info(event)

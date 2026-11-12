@@ -34,7 +34,7 @@ x-api-env: &api-env
   # Fetched over the compose network; the token's issuer stays the host-visible URL.
   APP_AUTH_JWKS_URL: http://keycloak:8080/realms/neuron/protocol/openid-connect/certs
   APP_AUTH_ALGORITHMS: '["RS256"]'
-  APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","data:erase","feedback:write","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:get_document_excerpt","tools:list_knowledge_bases","tools:recall","tools:remember","tools:search_knowledge"],"neuron-reader":["threads:read"]}'
+  APP_AUTH_ROLE_PERMISSIONS: '{"neuron-user":["agent:approve","agent:invoke","data:erase","feedback:write","knowledge:admin","knowledge:read","knowledge:write","memories:read","memories:write","threads:delete","threads:read","threads:write","tools:calculator","tools:forget","tools:get_document_excerpt","tools:list_knowledge_bases","tools:recall","tools:remember","tools:search_knowledge"],"neuron-reader":["threads:read"]}'
   APP_IDENTITY_HASH_KEY: local-stack-identity-key-local-only-0001
   APP_CHECKPOINTER: postgres
   APP_POSTGRES_DSN: postgresql://neuron_app@postgres:5432/neuron?sslmode=disable

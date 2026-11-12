@@ -306,6 +306,15 @@ Responses returning `429 Too Many Requests` or temporary capacity `503 Service U
 - **Description:** Tombstones the knowledge base and queues background purge.  
 - **Response:** `202 Accepted`
 
+### 8.4a Share a Knowledge Base by Role
+`GET /v1/knowledge/bases/{kb_id}/grants` and `PUT /v1/knowledge/bases/{kb_id}/grants`  
+- **Scope Required:** `knowledge:admin`, and the base's owner or a role with `admin` access to it (RAG-09.03).  
+- **Request Body (`KnowledgeGrants`, `PUT`):** `{"grants": [{"role": "finance", "access": "read"}]}`. Replaces every role grant of the base: a role left out loses its access from the next request. At most 50, each role once, 1 to 200 characters without control characters or outer spaces; `access` is `read` (list, search, cite, download), `write` (also upload and delete documents) or `admin` (also rename and manage grants).  
+- **Response (`200 OK`, `KnowledgeGrants`):** The base's role grants, sorted by role. The owner's own access is not listed.  
+- **Errors:** `403 knowledge_access_denied` for a member without `admin` access; `404 knowledge_base_not_found` for a base the caller cannot see. Each change is audited as `knowledge_grant_changed` with the role and access level (`none` for a revoke).
+
+A role grant shares a base with every holder of that role in a verified token (`APP_AUTH_ROLES_CLAIM`). Members see it in `GET /v1/knowledge/bases` and in search; an action their access does not allow is `403 knowledge_access_denied`. Only the owner deletes a base.
+
 ### 8.5 Upload Document
 `POST /v1/knowledge/bases/{kb_id}/documents`  
 - **Scope Required:** `knowledge:write`  
