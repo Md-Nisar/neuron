@@ -19,7 +19,7 @@ import hashlib
 import uuid
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
 import anyio
 import psycopg
@@ -237,6 +237,15 @@ def _require(allowed: AllowedKbs, kb_id: uuid.UUID, needed: frozenset[uuid.UUID]
         raise KnowledgeAccessDeniedError("knowledge base access denied")
 
 
+def _access(allowed: AllowedKbs, kb_id: uuid.UUID) -> Literal["owner", "admin", "write", "read"]:
+    """The caller's strongest access to a base they can see."""
+    if kb_id in allowed.owned:
+        return "owner"
+    if kb_id in allowed.admin:
+        return "admin"
+    return "write" if kb_id in allowed.write else "read"
+
+
 def _accepted(row: dict[str, Any]) -> DocumentAccepted:
     return DocumentAccepted(
         doc_id=row["doc_id"],
@@ -281,7 +290,10 @@ class KnowledgeBases:
         async with self._transaction() as conn:
             allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
             cursor = await conn.execute(_LIST, (list(allowed.read),))
-            bases = [KnowledgeBase(**row) for row in await cursor.fetchall()]
+            bases = [
+                KnowledgeBase(**row, access=_access(allowed, row["kb_id"]))
+                for row in await cursor.fetchall()
+            ]
         self._audit("knowledge_bases_read", owner_key, _READ, count=len(bases))
         return bases
 
@@ -302,7 +314,7 @@ class KnowledgeBases:
             created = await cursor.fetchone()
             assert created is not None  # nosec B101
             await conn.execute(_OWNER_GRANT, (created["kb_id"], owner_key, owner_key))
-        base = KnowledgeBase(**created)
+        base = KnowledgeBase(**created, access="owner")
         self._audit("knowledge_base_created", owner_key, _WRITE, base.kb_id)
         return base
 
@@ -318,7 +330,7 @@ class KnowledgeBases:
         if row is None:
             raise KnowledgeBaseNotFoundError("knowledge base not found")
         self._audit("knowledge_base_renamed", owner_key, _WRITE, kb_id)
-        return KnowledgeBase(**row)
+        return KnowledgeBase(**row, access=_access(allowed, kb_id))
 
     async def grants(
         self, owner_key: str, kb_id: uuid.UUID, roles: frozenset[str] = frozenset()
@@ -650,7 +662,7 @@ class KnowledgeBases:
             documents = [KnowledgeDocument(**row) for row in await cursor.fetchall()]
         return [
             ExportedKnowledgeBase(
-                **base, documents=[d for d in documents if d.kb_id == base["kb_id"]]
+                **base, access="owner", documents=[d for d in documents if d.kb_id == base["kb_id"]]
             )
             for base in bases
         ]

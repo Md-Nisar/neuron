@@ -3,6 +3,9 @@ import { count, list, record, str } from "@/features/data/parse";
 /** Shape checks for the knowledge responses (RAG-03). A wrong shape throws; nothing is half-trusted. */
 
 export type Processing = "hosted" | "self_hosted";
+/** The caller's access to a base (RAG-09.03): the server enforces it; the screen follows it. */
+export type BaseAccess = "owner" | "admin" | "write" | "read";
+export type GrantAccess = Exclude<BaseAccess, "owner">;
 export type DocumentStatus = "queued" | "parsing" | "embedding" | "ready" | "failed";
 
 export interface KnowledgeBase {
@@ -11,6 +14,13 @@ export interface KnowledgeBase {
   name: string;
   processing: Processing;
   created_at: string;
+  access: BaseAccess;
+}
+
+/** A role's access to a base. The role is text the base's admin typed: shown as text. */
+export interface Grant {
+  role: string;
+  access: GrantAccess;
 }
 
 export interface KnowledgeDocument {
@@ -48,6 +58,8 @@ export interface Passage {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CODE = /^[a-z0-9_]{1,64}$/;
 const PROCESSING: readonly Processing[] = ["hosted", "self_hosted"];
+const ACCESS: readonly BaseAccess[] = ["owner", "admin", "write", "read"];
+const GRANT_ACCESS: readonly GrantAccess[] = ["read", "write", "admin"];
 const STATUSES: readonly DocumentStatus[] = ["queued", "parsing", "embedding", "ready", "failed"];
 
 function id(source: Record<string, unknown>, key: string): string {
@@ -73,6 +85,7 @@ export function parseBase(body: unknown): KnowledgeBase {
     name: str(base, "name"),
     processing: oneOf(base, "processing", PROCESSING),
     created_at: str(base, "created_at"),
+    access: oneOf(base, "access", ACCESS),
   };
 }
 
@@ -129,4 +142,11 @@ export function parsePassage(body: unknown): Passage {
     page_start: page(chunk, "page_start"),
     page_end: page(chunk, "page_end"),
   };
+}
+
+export function parseGrants(body: unknown): Grant[] {
+  return list(record(body), "grants").map((item) => {
+    const grant = record(item);
+    return { role: str(grant, "role"), access: oneOf(grant, "access", GRANT_ACCESS) };
+  });
 }

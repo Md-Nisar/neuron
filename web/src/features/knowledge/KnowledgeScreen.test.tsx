@@ -7,11 +7,12 @@ import { jsonResponse } from "@/test/sse";
 
 import { KnowledgeScreen } from "./KnowledgeScreen";
 
-const kb = (n: number, name: string, processing = "hosted") => ({
+const kb = (n: number, name: string, processing = "hosted", access = "owner") => ({
   kb_id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
   name,
   processing,
   created_at: "2026-11-01T10:00:00Z",
+  access,
 });
 
 /** A fetch that answers `GET` with the bases and any change with `reply`. */
@@ -22,7 +23,9 @@ function setup(bases: unknown[], reply?: { status: number; body: unknown }) {
         ? jsonResponse(reply?.status ?? 201, reply?.body)
         : (input instanceof URL ? input.pathname : "").endsWith("/bases")
           ? jsonResponse(200, { bases })
-          : jsonResponse(200, { documents: [], total: 0 }),
+          : (input instanceof URL ? input.pathname : "").endsWith("/grants")
+            ? jsonResponse(200, { grants: [] })
+            : jsonResponse(200, { documents: [], total: 0 }),
     ),
   );
   const user = userEvent.setup();
@@ -178,6 +181,29 @@ describe("knowledge bases", () => {
 
     expect(await accessibilityViolations(view.container)).toEqual([]);
   });
+});
+
+describe("bases shared with the user (RAG-09.03)", () => {
+  it.each([
+    ["owner", "", true, true, true, true],
+    ["admin", "Shared with you · Manage", true, false, true, true],
+    ["write", "Shared with you · Read and edit", false, false, false, true],
+    ["read", "Shared with you · Read", false, false, false, false],
+  ])(
+    "with %s access, offers only what the server allows",
+    async (access, badge, rename, remove, sharing, upload) => {
+      const { user } = setup([kb(1, "Policies", "hosted", access)]);
+      await user.click(await screen.findByRole("button", { name: "Policies" }));
+      await screen.findByRole("heading", { name: "Documents in Policies" });
+
+      if (badge !== "") expect(screen.getByText(badge)).toBeInTheDocument();
+      else expect(screen.queryByText(/Shared with you/)).toBeNull();
+      expect(screen.queryByRole("button", { name: "Rename Policies" }) !== null).toBe(rename);
+      expect(screen.queryByRole("button", { name: "Delete Policies" }) !== null).toBe(remove);
+      expect(screen.queryByRole("heading", { name: "Sharing Policies" }) !== null).toBe(sharing);
+      expect(screen.queryByLabelText(/Drop files here/) !== null).toBe(upload);
+    },
+  );
 });
 
 describe("loading the list after a passing refusal (UX-01)", () => {

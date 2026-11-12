@@ -149,6 +149,8 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
   }
 
   const name = displaySafe(base.name);
+  // A read-only grant (RAG-09.03): the server would refuse an upload or a delete.
+  const canWrite = base.access !== "read";
   return (
     <section aria-labelledby="documents-heading" className="space-y-3">
       <h3
@@ -163,41 +165,48 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
         <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         {PROCESSING_TEXT[base.processing].detail}
       </p>
-      <label
-        className={cn(
-          "flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-6 text-center text-sm focus-within:ring-[3px] focus-within:ring-ring/50",
-          dragging && "border-primary bg-accent",
-        )}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => {
-          setDragging(false);
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          setDragging(false);
-          void upload([...event.dataTransfer.files]);
-        }}
-      >
-        <FileUp aria-hidden="true" className="size-5 text-muted-foreground" />
-        <span className="font-medium">Drop files here, or choose files</span>
-        <span className="text-xs text-muted-foreground">
-          PDF, Word, Excel, PowerPoint, text or Markdown
-        </span>
-        <input
-          type="file"
-          multiple
-          className="sr-only"
-          accept=".pdf,.docx,.xlsx,.pptx,.txt,.md"
-          onChange={(event) => {
-            const files = [...(event.target.files ?? [])];
-            event.target.value = "";
-            void upload(files);
+      {!canWrite && (
+        <p className="text-sm text-muted-foreground">
+          This knowledge base is shared with you to read. You can't add or delete its documents.
+        </p>
+      )}
+      {canWrite && (
+        <label
+          className={cn(
+            "flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-6 text-center text-sm focus-within:ring-[3px] focus-within:ring-ring/50",
+            dragging && "border-primary bg-accent",
+          )}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
           }}
-        />
-      </label>
+          onDragLeave={() => {
+            setDragging(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            void upload([...event.dataTransfer.files]);
+          }}
+        >
+          <FileUp aria-hidden="true" className="size-5 text-muted-foreground" />
+          <span className="font-medium">Drop files here, or choose files</span>
+          <span className="text-xs text-muted-foreground">
+            PDF, Word, Excel, PowerPoint, text or Markdown
+          </span>
+          <input
+            type="file"
+            multiple
+            className="sr-only"
+            accept=".pdf,.docx,.xlsx,.pptx,.txt,.md"
+            onChange={(event) => {
+              const files = [...(event.target.files ?? [])];
+              event.target.value = "";
+              void upload(files);
+            }}
+          />
+        </label>
+      )}
       <p role="status" className="text-sm text-muted-foreground empty:hidden">
         {uploading > 0 ? "Uploading…" : ""}
       </p>
@@ -244,22 +253,24 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
                     </Button>
                   </span>
                 ) : (
-                  <Button
-                    ref={(node) => {
-                      if (node) trash.current.set(doc.doc_id, node);
-                      else trash.current.delete(doc.doc_id);
-                    }}
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    aria-label={`Delete ${title}`}
-                    className="hover:text-destructive"
-                    onClick={() => {
-                      setConfirming(doc.doc_id);
-                    }}
-                  >
-                    <Trash2 />
-                  </Button>
+                  canWrite && (
+                    <Button
+                      ref={(node) => {
+                        if (node) trash.current.set(doc.doc_id, node);
+                        else trash.current.delete(doc.doc_id);
+                      }}
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      aria-label={`Delete ${title}`}
+                      className="hover:text-destructive"
+                      onClick={() => {
+                        setConfirming(doc.doc_id);
+                      }}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )
                 )}
               </div>
               {doc.status === "failed" && (

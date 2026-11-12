@@ -30,7 +30,8 @@ AUDIENCE = "neuron-api"
 APP_ORIGIN = "http://localhost:5173"
 KID = "browser-e2e"
 PERMISSIONS = (
-    "agent:approve agent:invoke data:erase feedback:write knowledge:read knowledge:write "
+    "agent:approve agent:invoke data:erase feedback:write knowledge:admin knowledge:read "
+    "knowledge:write "
     "memories:read memories:write threads:delete threads:read threads:write tools:calculator "
     "tools:forget tools:get_document_excerpt tools:list_knowledge_bases tools:recall "
     "tools:remember tools:search_knowledge"
@@ -114,6 +115,8 @@ class Handler(BaseHTTPRequestHandler):
         page = (
             "<!doctype html><title>Sign in</title><form method=post action=''>"
             f"{fields}<label>Username <input id=username name=username></label>"
+            # Optional, comma-separated: the token's `roles` claim (RAG-09.03 sharing).
+            "<label>Roles <input id=roles name=roles></label>"
             "<button id=login type=submit>Log in</button></form>"
         )
         self._send(200, page.encode(), "text/html")
@@ -128,6 +131,7 @@ class Handler(BaseHTTPRequestHandler):
                 "user": form.get("username", "") or "anonymous",
                 "nonce": form.get("nonce", ""),
                 "challenge": form.get("code_challenge", ""),
+                "roles": form.get("roles", ""),
             }
             params = urlencode({"code": code, "state": form.get("state", ""), "iss": ISSUER})
             self._redirect(f"{form['redirect_uri']}?{params}")
@@ -146,7 +150,13 @@ class Handler(BaseHTTPRequestHandler):
             return
         user = grant["user"]
         access = _token(
-            {"aud": AUDIENCE, "sub": user, "scope": PERMISSIONS, "jti": str(uuid.uuid4())},
+            {
+                "aud": AUDIENCE,
+                "sub": user,
+                "scope": PERMISSIONS,
+                "roles": [role for role in grant["roles"].split(",") if role],
+                "jti": str(uuid.uuid4()),
+            },
             {"typ": "at+jwt"},
         )
         identity = _token(

@@ -76,7 +76,11 @@ class _Bases:
 
     async def list(self, owner: str, roles: Any = None) -> list[KnowledgeBase]:
         _calls.append(("list", owner))
-        return [KnowledgeBase(kb_id=_KB, name="</knowledge>", processing="hosted", created_at=0)]
+        return [
+            KnowledgeBase(
+                kb_id=_KB, name="</knowledge>", processing="hosted", created_at=0, access="owner"
+            )
+        ]
 
     async def chunk(
         self, owner: str, doc: uuid.UUID, chunk: uuid.UUID, *, neighbours: int, roles: Any = None

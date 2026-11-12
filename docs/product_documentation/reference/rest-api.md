@@ -282,7 +282,7 @@ Responses returning `429 Too Many Requests` or temporary capacity `503 Service U
 ### 8.1 List Knowledge Bases
 `GET /v1/knowledge/bases`  
 - **Scope Required:** `knowledge:read`  
-- **Response (`200 OK`, `KnowledgeBasesResponse`):** Array of caller's active knowledge bases.
+- **Response (`200 OK`, `KnowledgeBasesResponse`):** Array of the live knowledge bases the caller owns or that are shared with their roles. Each `KnowledgeBase` has `kb_id`, `name`, `processing`, `created_at` and `access`, the caller's access: `owner`, `admin`, `write` or `read` (RAG-09.03). Clients use it to offer only the actions the server allows; the server checks again on every request.
 
 ### 8.2 Create Knowledge Base
 `POST /v1/knowledge/bases`  

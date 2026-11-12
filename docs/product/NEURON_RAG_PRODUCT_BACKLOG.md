@@ -1359,9 +1359,9 @@ Exit gate (Claude report §12): recall@5 and MRR at or above Phase 1 on the same
 - Given a grant change, when the audit log is read, then it has the actor, KB id, role and access level, with no content.
 
 **Technical tasks**
-- [ ] Route, service and authorisation changes.
-- [ ] UI editor.
-- [ ] Tests.
+- [x] Route, service and authorisation changes.
+- [x] UI editor.
+- [x] Tests.
 
 **Changes.** API: one route, one permission. Database: `grants` role rows. UI: grants editor.
 
