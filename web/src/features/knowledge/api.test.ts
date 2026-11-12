@@ -14,7 +14,13 @@ import {
 
 const KB = "0b6f1c1e-6c8e-4c36-9d2b-6a1f2f3e4d5c";
 const DOC = "7d1e2f3a-4b5c-4d6e-8f70-819203a4b5c6";
-const base = { kb_id: KB, name: "Policies", processing: "hosted", created_at: "2026-11-01" };
+const base = {
+  kb_id: KB,
+  name: "Policies",
+  processing: "hosted",
+  created_at: "2026-11-01",
+  access: "owner",
+};
 const doc = { doc_id: DOC, kb_id: KB, title: "a.pdf", size_bytes: 1, page_count: null };
 const queued = { ...doc, status: "queued", error_code: null };
 

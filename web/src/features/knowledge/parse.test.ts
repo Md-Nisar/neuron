@@ -9,6 +9,7 @@ const base = {
   name: "Policies",
   processing: "hosted",
   created_at: "2026-11-01T10:00:00Z",
+  access: "owner",
 };
 const doc = {
   doc_id: DOC,

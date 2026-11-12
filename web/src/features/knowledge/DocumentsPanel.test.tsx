@@ -7,7 +7,7 @@ import { jsonResponse } from "@/test/sse";
 
 import { DocumentsPanel, POLL_MS, pollDelay } from "./DocumentsPanel";
 import { documentFailureText } from "./messages";
-import type { Processing } from "./parse";
+import type { BaseAccess, Processing } from "./parse";
 
 const KB = "0b6f1c1e-6c8e-4c36-9d2b-6a1f2f3e4d5c";
 const doc = (status: string, error_code: string | null = null) => ({
@@ -30,7 +30,12 @@ afterEach(() => {
  */
 function setup(
   lists: (unknown[] | Error)[],
-  options: { processing?: Processing; uploads?: Response[]; remove?: Response } = {},
+  options: {
+    processing?: Processing;
+    uploads?: Response[];
+    remove?: Response;
+    access?: BaseAccess;
+  } = {},
 ) {
   let call = 0;
   let posted = 0;
@@ -53,6 +58,7 @@ function setup(
     name: "Policies",
     processing: options.processing ?? "hosted",
     created_at: "",
+    access: options.access ?? "owner",
   };
   const user = userEvent.setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {});
   const view = render(

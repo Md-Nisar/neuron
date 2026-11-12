@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { displaySafe } from "@/features/chat/displaySafe";
 
-import { PROCESSING_TEXT } from "./messages";
+import { ACCESS_TEXT, PROCESSING_TEXT } from "./messages";
 import type { KnowledgeBase } from "./parse";
 
 export interface BaseRowProps {
@@ -19,7 +19,10 @@ export interface BaseRowProps {
   onDelete: () => void;
 }
 
-/** One knowledge base: its name as text, where it is processed, rename, and a two-step delete. */
+/**
+ * One knowledge base: its name as text, where it is processed, and how it is shared with the
+ * caller. Rename shows for those who administer it, the two-step delete for its owner only.
+ */
 export function BaseRow({ base, open, onOpen, onRename, onDelete }: BaseRowProps) {
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
   const [draft, setDraft] = useState("");
@@ -27,6 +30,7 @@ export function BaseRow({ base, open, onOpen, onRename, onDelete }: BaseRowProps
   const deleteButton = useRef<HTMLButtonElement>(null);
   const back = useRef<"rename" | "delete" | null>(null);
   const name = displaySafe(base.name);
+  const canRename = base.access === "owner" || base.access === "admin";
 
   // Leaving the form or the confirm step removes the focused control: return to its button.
   useEffect(() => {
@@ -87,6 +91,9 @@ export function BaseRow({ base, open, onOpen, onRename, onDelete }: BaseRowProps
         {name}
       </button>
       <Badge variant="secondary">{PROCESSING_TEXT[base.processing].label}</Badge>
+      {base.access !== "owner" && (
+        <Badge variant="outline">Shared with you · {ACCESS_TEXT[base.access].label}</Badge>
+      )}
       {mode === "confirm" ? (
         <>
           <Button type="button" autoFocus variant="destructive" size="xs" onClick={onDelete}>
@@ -105,32 +112,36 @@ export function BaseRow({ base, open, onOpen, onRename, onDelete }: BaseRowProps
         </>
       ) : (
         <>
-          <Button
-            ref={renameButton}
-            type="button"
-            variant="ghost"
-            size="xs"
-            aria-label={`Rename ${name}`}
-            onClick={() => {
-              setDraft(base.name);
-              setMode("rename");
-            }}
-          >
-            <Pencil />
-          </Button>
-          <Button
-            ref={deleteButton}
-            type="button"
-            variant="ghost"
-            size="xs"
-            aria-label={`Delete ${name}`}
-            className="hover:text-destructive"
-            onClick={() => {
-              setMode("confirm");
-            }}
-          >
-            <Trash2 />
-          </Button>
+          {canRename && (
+            <Button
+              ref={renameButton}
+              type="button"
+              variant="ghost"
+              size="xs"
+              aria-label={`Rename ${name}`}
+              onClick={() => {
+                setDraft(base.name);
+                setMode("rename");
+              }}
+            >
+              <Pencil />
+            </Button>
+          )}
+          {base.access === "owner" && (
+            <Button
+              ref={deleteButton}
+              type="button"
+              variant="ghost"
+              size="xs"
+              aria-label={`Delete ${name}`}
+              className="hover:text-destructive"
+              onClick={() => {
+                setMode("confirm");
+              }}
+            >
+              <Trash2 />
+            </Button>
+          )}
         </>
       )}
     </>

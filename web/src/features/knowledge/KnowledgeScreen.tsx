@@ -12,6 +12,7 @@ import { ApiError } from "@/lib/request";
 import { createBase, deleteBase, listBases, renameBase } from "./api";
 import { BaseRow } from "./BaseRow";
 import { DocumentsPanel } from "./DocumentsPanel";
+import { GrantsPanel } from "./GrantsPanel";
 import { knowledgeErrorText, NAME_MAX_CHARS, PROCESSING_TEXT } from "./messages";
 import type { KnowledgeBase, Processing } from "./parse";
 
@@ -140,7 +141,8 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Knowledge</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upload your own documents so the assistant can answer from them. Only you can see them.
+          Upload your own documents so the assistant can answer from them. Only you can see them,
+          unless you share a knowledge base with a role.
         </p>
       </div>
       <Card asSection aria-labelledby="bases-heading" className="gap-4">
@@ -232,6 +234,12 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
             .filter((base) => base.kb_id === openId)
             .map((base) => (
               <DocumentsPanel key={base.kb_id} deps={deps} base={base} />
+            ))}
+          {bases
+            .filter((base) => base.kb_id === openId)
+            .filter((base) => base.access === "owner" || base.access === "admin")
+            .map((base) => (
+              <GrantsPanel key={base.kb_id} deps={deps} base={base} />
             ))}
         </CardContent>
       </Card>

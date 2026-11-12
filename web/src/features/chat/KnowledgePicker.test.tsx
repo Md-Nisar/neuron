@@ -13,6 +13,7 @@ const kb = (n: number) => ({
   name: `Base ${String(n)}`,
   processing: "hosted",
   created_at: "",
+  access: "owner",
 });
 
 function setup(lists: Response[], initial: string[] = []) {

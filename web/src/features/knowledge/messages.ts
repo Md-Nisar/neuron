@@ -1,7 +1,7 @@
 import { dataErrorText } from "@/features/data/messages";
 import { ApiError } from "@/lib/request";
 
-import type { Processing } from "./parse";
+import type { GrantAccess, Processing } from "./parse";
 
 /** Fixed wording for a failed knowledge call. Server text is never shown. */
 export function knowledgeErrorText(error: unknown): string {
@@ -15,6 +15,8 @@ export function knowledgeErrorText(error: unknown): string {
         return "That document no longer exists.";
       case "knowledge_base_limit_reached":
         return "You have reached the limit of knowledge bases. Delete one to create another.";
+      case "knowledge_access_denied":
+        return "Your access to this knowledge base doesn't allow that.";
     }
     if (error.kind === "invalid_request")
       return "That name can't be used. Use 1 to 80 plain characters.";
@@ -24,6 +26,13 @@ export function knowledgeErrorText(error: unknown): string {
 }
 
 export const NAME_MAX_CHARS = 80;
+
+/** What each role grant allows (ADR 0014, "Amendment: sharing by role"). */
+export const ACCESS_TEXT: Record<GrantAccess, { label: string; detail: string }> = {
+  read: { label: "Read", detail: "Search it, open its documents and cite them." },
+  write: { label: "Read and edit", detail: "Also upload documents and delete them." },
+  admin: { label: "Manage", detail: "Also rename it and change who it is shared with." },
+};
 
 /** Where a base's text is processed, said before anything is uploaded to it. */
 export const PROCESSING_TEXT: Record<Processing, { label: string; detail: string }> = {

@@ -7,10 +7,11 @@ import { expect, test, type Page } from "@playwright/test";
 
 const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
 
-async function signIn(page: Page, user: string): Promise<void> {
+async function signIn(page: Page, user: string, roles = ""): Promise<void> {
   await page.goto("/");
   await page.getByRole("button", { name: /sign in/i }).click();
   await page.locator("#username").fill(user);
+  await page.locator("#roles").fill(roles);
   await page.locator("#login").click();
   await expect(page.getByText(`Signed in as ${user}`)).toBeVisible();
 }
@@ -286,5 +287,58 @@ test(
     await expect(sheet.getByText(/onerror="window\.__ran=1"/)).toBeVisible();
     await expect(sheet.locator("img, script")).toHaveCount(0);
     expect(await page.evaluate(() => (window as { __ran?: number }).__ran)).toBeUndefined();
+  },
+);
+
+// RAG-09.03: the owner shares a base with a role, a member of it sees it read-only, and a revoke
+// takes it away on the member's next request.
+test(
+  "an owner shares a base with a role and stops sharing it",
+  { tag: ["@knowledge"] },
+  async ({ page, browser }) => {
+    const user = `ks${Date.now().toString(36)}`;
+    const role = `team-${user}`;
+    await signIn(page, user);
+    await page.getByRole("button", { name: "Knowledge" }).click();
+    await page.getByLabel("New knowledge base").fill("Team handbook");
+    await page.getByRole("button", { name: "Create" }).click();
+
+    const sharing = page.getByRole("region", { name: "Sharing Team handbook" });
+    await expect(sharing.getByText("Not shared with any role.")).toBeVisible();
+    await sharing.getByLabel("Role", { exact: true }).fill(role);
+    await sharing.getByRole("button", { name: "Share" }).click();
+    const access = sharing.getByRole("combobox", { name: `Access for ${role}` });
+    await expect(access).toHaveValue("read");
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${scheme}\\b`));
+      expect(await violations(page), `${scheme} theme`).toEqual([]);
+    }
+
+    const member = await (await browser.newContext()).newPage();
+    await signIn(member, `${user}m`, role);
+    await member.getByRole("button", { name: "Knowledge" }).click();
+    await member.getByRole("button", { name: "Team handbook", exact: true }).click();
+    await expect(member.getByText("Shared with you · Read")).toBeVisible();
+    await expect(member.getByText(/shared with you to read/)).toBeVisible();
+    await expect(member.getByLabel(/Drop files here/)).toHaveCount(0);
+    await expect(member.getByRole("button", { name: "Delete Team handbook" })).toHaveCount(0);
+    await expect(member.getByRole("region", { name: /^Sharing/ })).toHaveCount(0);
+
+    // A role with `admin` access may manage the sharing too.
+    await access.selectOption("admin");
+    // The list shows the stored grant once the server has it.
+    await expect(access).toHaveValue("admin");
+    await member.getByRole("button", { name: "Chat" }).click();
+    await member.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await member.getByRole("button", { name: "Team handbook", exact: true }).click();
+    await expect(member.getByText("Shared with you · Manage")).toBeVisible();
+    await expect(member.getByRole("region", { name: "Sharing Team handbook" })).toBeVisible();
+
+    await sharing.getByRole("button", { name: `Stop sharing with ${role}` }).click();
+    await expect(sharing.getByText("Not shared with any role.")).toBeVisible();
+    await member.getByRole("button", { name: "Chat" }).click();
+    await member.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await expect(member.getByText("No knowledge bases yet.")).toBeVisible();
   },
 );

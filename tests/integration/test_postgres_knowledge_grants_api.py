@@ -140,3 +140,29 @@ async def test_an_invalid_grant_list_is_422_and_changes_nothing(
     assert _get(client, alice, base["kb_id"]).json() == {
         "grants": [{"role": "legal", "access": "read"}]
     }
+
+
+async def test_each_base_says_the_callers_access(
+    api: tuple[JwtApi, RoleDatabase],  # noqa: F811
+    make_token: Callable[..., str],
+) -> None:
+    """The client offers rename, delete and sharing only where the server would allow them."""
+    client, _ = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice, "Budget")
+    assert base["access"] == "owner"
+    kb = base["kb_id"]
+
+    def access(token: str) -> list[str]:
+        listed = client.client.get("/v1/knowledge/bases", headers=bearer(token)).json()
+        return [b["access"] for b in listed["bases"]]
+
+    for level in ("read", "write", "admin"):
+        _put(client, alice, kb, [{"role": "finance", "access": level}])
+        bob = make_token("bob", scopes=_SCOPES, roles=["finance"])
+        assert access(bob) == [level]
+    renamed = client.client.patch(
+        f"/v1/knowledge/bases/{kb}", json={"name": "Budget 2027"}, headers=bearer(bob)
+    )
+    assert renamed.json()["access"] == "admin"
+    assert access(alice) == ["owner"]

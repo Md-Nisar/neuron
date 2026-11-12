@@ -115,7 +115,9 @@ def test_allowed_origin_can_read_responses(
 
 @pytest.mark.parametrize(
     ("method", "allowed"),
-    [("GET", True), ("POST", True), ("DELETE", True), ("PATCH", True), ("PUT", False)],
+    # PUT replaces a knowledge base's grants from the sharing editor (RAG-09.03).
+    [("GET", True), ("POST", True), ("DELETE", True), ("PATCH", True), ("PUT", True)]
+    + [("TRACE", False), ("CONNECT", False)],
 )
 def test_preflight_allows_the_methods_the_web_app_uses(
     jwt_api_factory: Callable[..., JwtApi], method: str, allowed: bool
@@ -207,7 +209,7 @@ def test_upload_preflight_allows_the_idempotency_key(
     "headers",
     [
         {"Origin": "https://evil.example.com", "Access-Control-Request-Method": "POST"},
-        {"Origin": _APP_ORIGIN, "Access-Control-Request-Method": "PUT"},
+        {"Origin": _APP_ORIGIN, "Access-Control-Request-Method": "TRACE"},
         {
             "Origin": _APP_ORIGIN,
             "Access-Control-Request-Method": "POST",

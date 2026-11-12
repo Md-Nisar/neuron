@@ -18,7 +18,7 @@ export interface RequestOptions<T> {
   baseUrl: string;
   path: string;
   token: string;
-  method: "GET" | "DELETE" | "PATCH" | "POST";
+  method: "GET" | "DELETE" | "PATCH" | "POST" | "PUT";
   /** A JSON request body (sent with `PATCH` or `POST`). */
   body?: unknown;
   /** A `multipart/form-data` body instead of JSON; the browser sets its boundary. */

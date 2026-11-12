@@ -94,6 +94,9 @@ class KnowledgeBase(BaseModel):
     name: str
     processing: Literal["hosted", "self_hosted"]
     created_at: datetime
+    # The caller's access (RAG-09.03), so a client offers only what the server would allow:
+    # `owner` alone deletes the base; `admin` renames it and manages its grants.
+    access: Literal["owner", "admin", "write", "read"]
 
 
 DocumentStatus = Literal["queued", "parsing", "embedding", "ready", "failed"]

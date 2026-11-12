@@ -5,8 +5,10 @@ import {
   parseBase,
   parseBases,
   parseDocuments,
+  parseGrants,
   parsePassage,
   type DocumentAccepted,
+  type Grant,
   type DocumentsPage,
   type KnowledgeBase,
   type Passage,
@@ -88,4 +90,19 @@ export function deleteDocument(deps: DataDeps, docId: string): Promise<undefined
 export function getPassage(deps: DataDeps, docId: string, chunkId: string): Promise<Passage> {
   const path = `/v1/knowledge/documents/${encodeURIComponent(docId)}/chunks/${encodeURIComponent(chunkId)}`;
   return call(deps, { path, method: "GET", parse: parsePassage });
+}
+
+/** A base's role grants; only its owner and `admin` roles may read them. */
+export function getGrants(deps: DataDeps, kbId: string): Promise<Grant[]> {
+  return call(deps, { path: `${base(kbId)}/grants`, method: "GET", parse: parseGrants });
+}
+
+/** Replace every role grant of a base: a role left out loses its access from its next request. */
+export function setGrants(deps: DataDeps, kbId: string, grants: Grant[]): Promise<Grant[]> {
+  return call(deps, {
+    path: `${base(kbId)}/grants`,
+    method: "PUT",
+    body: { grants },
+    parse: parseGrants,
+  });
 }
