@@ -14,7 +14,7 @@ COPY src ./src
 RUN uv sync --locked --no-dev --no-editable
 
 # python:3.13-slim-trixie
-FROM python:3.13-slim-trixie@sha256:98ce6fb13b3803744fbca11434f00818f1e300e4e48a4f204e07b2c928b6218e
+FROM python:3.13-slim-trixie@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
 # Build arguments are recorded by provenance: labels only, never a secret.
 ARG GIT_SHA=unknown
 ARG VERSION=1.1.0
@@ -27,6 +27,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     APP_HOST=0.0.0.0 \
     APP_PORT=8000
 WORKDIR /app
+# The newest base digest already carries the apt fix but not the Debian zlib1g security update
+# (1:1.3.dfsg+really1.3.1-1+deb13u1), and Trivy fails image-publish on it. Upgrade that one
+# package; remove this step once the base digest ships the fixed version.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends --only-upgrade zlib1g \
+    && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin appuser
 COPY --from=builder /app/.venv /app/.venv
