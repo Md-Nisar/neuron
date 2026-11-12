@@ -421,6 +421,83 @@ alone never grant access: the caller still needs an owner key, and the route its
   upload's transaction runs (milliseconds) does not stop that upload. Passages a member already
   received stay in their thread history; revocation stops new searches and excerpts only.
 
+### Amendment: re-index to a new profile (RAG-09.04, 2026-11-12, owner decision)
+
+K3 said a model or dimension change is a re-index into a new profile. Until now, profile 1 was
+fixed in setup, ingestion and retrieval, and `setup` refused other settings
+(`knowledge_profile_mismatch`). This amendment says how a change happens without mixing vector
+spaces or stopping search.
+
+- **One active profile for the deployment, swapped all at once.** The backlog says "the KB's
+  active profile", but a search spans bases and embeds the query once, so per-base swaps would
+  mix vector spaces in one search, which K3 rejects. Instead, every live base moves in one
+  transaction:
+  - the `building` profile becomes `active`;
+  - the old profile becomes `retired`;
+  - every base's `profile_id` is updated.
+
+  At most one profile can be `building` (a partial unique index).
+- **Two models while it runs.** The `APP_KNOWLEDGE_EMBEDDING_*` settings stay the active
+  profile's model. The optional `APP_KNOWLEDGE_REINDEX_EMBEDDING_*` settings name the target:
+  provider, model, dimensions, base URL, key and locality. Both the API and the worker get both
+  sets.
+  - A process maps a profile row to whichever configured model matches its provider, model and
+    dimensions.
+  - It embeds queries for the active profile, so the swap takes effect from the next search with
+    no restart.
+  - `setup` accepts settings in which either model matches the active profile.
+  - Afterwards the operator moves the target settings into the main ones and removes the
+    re-index settings (runbook).
+  - A process that has no model matching the active profile searches by text only and logs
+    `knowledge_profile_mismatch`, rather than embedding into the wrong space.
+- **Operator command, no API.** `python -m neuron_agent.persistence.cli reindex start` runs as
+  the migration role, because it needs DDL.
+  - It inserts the next profile (`building`) and builds its partial HNSW index concurrently.
+  - It defers one `reindex_kb` job for each live base.
+  - It refuses to start if any live base's `processing` setting, or the operator's policy,
+    forbids the target model. Such a base would otherwise lose meaning search after the swap.
+    Refusing at start is the processing rule of K8.
+
+  `reindex status` reports progress. `reindex cancel` stops a re-index (see failure below).
+- **The job.** `reindex_kb` embeds every ready document's chunks with the target model and
+  writes the embeddings under the new profile.
+  - It is idempotent per `(doc_id, profile_id)`: documents already covered are skipped.
+  - The worker scopes it to the base as it scopes ingestion (`neuron.kb_ids`, RLS).
+  - The tokens it uses are recorded on each document, as a re-run's are (RAG-02.05). It is
+    never refused for a member's quota: the re-index is the operator's choice.
+- **Uploads during a re-index** are embedded for both the active and the building profile.
+  - Ingestion's write transaction locks the profile rows it wrote for (`FOR SHARE`).
+  - If the set of non-retired profiles changed while it was embedding, the job retries, so a
+    document never ends up with only one profile's vectors.
+- **The swap.** The job that finishes the last base attempts the swap; a periodic check retries
+  it.
+  - It locks the building profile (`FOR UPDATE`) and checks that every ready chunk of every live
+    base has an embedding under it.
+  - If any chunk is missing one, it defers `reindex_kb` for those bases and leaves the old
+    profile active.
+  - Because the lock is held while it checks, no ingestion can commit between the check and the
+    swap.
+- **Failure.** If a `reindex_kb` job exhausts its retries, or the operator cancels, the
+  building profile becomes `retired` and the old profile stays active throughout.
+  - Retired embeddings, after a failure or after a successful swap, are deleted in batches by a
+    worker job.
+  - The next `setup` drops the HNSW index of every retired profile.
+- **Search** keeps using exactly one profile: the active one, as a literal in the query.
+  Retrieval reads the active profile's id and dimensions in the transaction it searches in,
+  instead of the constant `1`.
+- **Roles.** The worker gains `UPDATE` on `index_profiles.status` and on `bases.profile_id`,
+  for the swap. It gets no other new privileges, and the API's privileges are unchanged.
+- **Audit.** `knowledge_reindex_started`, `knowledge_reindex_swapped` and
+  `knowledge_reindex_failed` record the profile ids and the base and chunk counts, and no
+  content.
+- **Cost.** During a re-index, uploads are embedded twice, and the operator pays to embed
+  every chunk once more.
+- **Rejected:**
+  - per-base swaps, which mix vector spaces in one search;
+  - a new column beside the old one (a schema change per model, which K3 rejects);
+  - stopping search during the build;
+  - a public API for re-indexing (an operator task, with no user need).
+
 ## Consequences
 
 - One more process (`neuron-worker`) and one or two more containers (docling-serve; an embedding
