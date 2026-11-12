@@ -388,6 +388,33 @@ forbids hosted processing is not reranked. Any error or timeout
 `reranked: false`. On by default with NVIDIA embeddings and a key, from the measured gain
 (`docs/releases/v1.2.0-rerank-eval.md`).
 
+### Amendment: sharing by role (RAG-09.03, 2026-11-12)
+
+Requirement 2's "owner predicate everywhere" becomes "the caller's grants everywhere". A base is
+visible to its owner (the `owner` grant written with it) and to the holders of a verified token
+role with a `role` grant on it (`read`, `write` or `admin`; roles from RAG-09.02, ADR 0006
+amendment). `allowed_kbs` reads both in the same transaction as the statement it guards, and
+every query on `bases`, `documents`, `chunks` and `embeddings` filters on its result instead of
+on the owner key, so revoking a grant counts from the next request; nothing is cached. Roles
+alone never grant access: the caller still needs an owner key, and the route its permission.
+
+- **Access.** `read`: list, search, cite and download. `write`: also upload and delete
+  documents. `admin`: also rename (and, in the grants API, manage role grants). Deleting a base
+  stays with its owner, as do export and erase of the base.
+- **Errors.** A base the caller cannot see is `404`, as before. One they can see but not change
+  that way is `403` (`knowledge_access_denied`): its existence is no secret from them.
+- **Role names** are the token's values as they are, with no issuer prefix: one issuer is
+  accepted (ADR 0006). A second issuer would need prefixed grant subjects first.
+- **Quotas** stay per uploader (RAG-02.05): a member's upload to a shared base counts against
+  the member.
+- **Erase** (RAG-07.01): erasing a user's knowledge removes their bases with every upload in
+  them, members' included, and their own uploads to bases shared with them. Export still covers
+  the user's own bases only (with members' document metadata in them), not the user's uploads to
+  others' bases: a follow-up.
+- **Limits of revocation.** It is checked per request, not inside one: a grant revoked while an
+  upload's transaction runs (milliseconds) does not stop that upload. Passages a member already
+  received stay in their thread history; revocation stops new searches and excerpts only.
+
 ## Consequences
 
 - One more process (`neuron-worker`) and one or two more containers (docling-serve; an embedding

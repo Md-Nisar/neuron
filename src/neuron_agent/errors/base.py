@@ -105,6 +105,13 @@ class KnowledgeBaseNotFoundError(AppError):
     context = ErrorContext(code="knowledge_base_not_found", http_status=404)
 
 
+class KnowledgeAccessDeniedError(AppError):
+    """The caller may see this knowledge base but not change it this way (RAG-09.03): a base
+    they cannot see at all is `knowledge_base_not_found` instead."""
+
+    context = ErrorContext(code="knowledge_access_denied", http_status=403)
+
+
 class KnowledgeDocumentNotFoundError(AppError):
     """The caller has no live document with this ID (missing, deleted or someone else's)."""
 

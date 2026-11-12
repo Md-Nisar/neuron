@@ -17,7 +17,7 @@
 
 - Only three layers import it: `api/` (the `/v1/knowledge` routes and their wiring), `services/` (`AgentService` adds the knowledge tools and erases a user's knowledge) and `graphs/`, which uses `knowledge/citations.py` only.
 - It never imports `api/`, `services/`, `graphs/`, `agents/` or `models/`. It may use `config/`, `errors/`, `observability/`, `persistence/`, `schemas/`, `security/` and `tools/` (the registry and framing).
-- Every query filters on the caller's HMAC owner key, and `knowledge.chunks` and `knowledge.embeddings` also have row-level security. Never accept a base or document id without that check.
+- Every query filters on the bases the caller may use (`allowed_kbs`: their HMAC owner key's bases and those shared with their verified roles, ADR 0014 amendment "sharing by role"), and `knowledge.chunks` and `knowledge.embeddings` also have row-level security. Never accept a base or document id without that check.
 - Retrieved text is untrusted. It reaches the model only inside the framed `<knowledge>` block (`tools/framing.py`), and a knowledge tool call taints the run, so gated tools then need approval. Citations are checked on the server: an answer keeps only the `cite_id`s its own run's tools issued.
 - `neuron-worker` (`knowledge/worker.py`) is a separate process with its own database role (`APP_POSTGRES_WORKER_DSN`). Never give it the app or migration DSN, the identity key or the auth settings.
 - docling-serve parses files on an internal network with no route out. The embedding provider is the only hosted step, and each base's processing setting governs it (`hosted` or `self_hosted`; `SECURITY.md`, "Knowledge Embedding Egress").
