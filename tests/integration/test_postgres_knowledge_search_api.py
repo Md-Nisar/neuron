@@ -67,7 +67,7 @@ async def test_a_foreign_kb_id_is_ignored_as_not_found(
     for kb_ids in ([theirs["kb_id"]], [str(uuid.uuid4())]):
         assert _search(client, mallory, query="greenhouse", kb_ids=kb_ids) == (
             200,
-            {"status": "no_relevant_results", "results": []},
+            {"status": "no_relevant_results", "results": [], "reranked": False},
         )
     # Alice's own search does find it: the id was ignored for Mallory, not missing.
     status, body = _search(client, alice, query="greenhouse", kb_ids=[theirs["kb_id"]])

@@ -93,6 +93,7 @@ async def test_a_search_span_has_ids_counts_and_timings_only(
         semconv.NEURON_KNOWLEDGE_KB_IDS: (str(kb),),
         semconv.NEURON_KNOWLEDGE_SEARCH_PATH: result.path,
         semconv.NEURON_KNOWLEDGE_RESULTS: 1,
+        semconv.NEURON_KNOWLEDGE_RERANKED: False,
         semconv.NEURON_OUTCOME: "success",
     }
     assert span.end_time is not None

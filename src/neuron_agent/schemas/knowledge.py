@@ -193,3 +193,5 @@ class KnowledgeSearchResponse(BaseModel):
 
     status: Literal["ok", "no_relevant_results"]
     results: list[KnowledgeSearchHit]
+    # True when a reranker ordered the results (RAG-09.01); false with none or after a fallback.
+    reranked: bool = False

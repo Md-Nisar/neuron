@@ -376,6 +376,18 @@ This ADR amends:
 - **ADR 0005**: rejected run queues stay rejected; the job queue here is for ingestion only and
   does not queue agent runs.
 
+### Amendment: reranking (RAG-09.01, 2026-11-12)
+
+Hybrid search may rerank its fused top 40 before keeping the best `k`
+(`knowledge/reranking.py`). The reranker only reorders passages the authorised SQL already
+returned, so it adds no access path. It is a new hosted destination for the query and passages
+(NVIDIA's retrieval API, the same provider as the default embeddings): the processing policy and
+each base's `processing` setting apply to it as to embeddings, and a search over any base that
+forbids hosted processing is not reranked. Any error or timeout
+(`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, 3 s) keeps the RRF order and reports
+`reranked: false`. On by default with NVIDIA embeddings and a key, from the measured gain
+(`docs/releases/v1.2.0-rerank-eval.md`).
+
 ## Consequences
 
 - One more process (`neuron-worker`) and one or two more containers (docling-serve; an embedding

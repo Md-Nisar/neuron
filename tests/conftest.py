@@ -76,6 +76,15 @@ from neuron_agent.services.agent_service import AgentService  # noqa: E402
 
 
 @pytest.fixture
+def live_nvidia_key() -> str:
+    """The developer's NVIDIA key, for live tests that call NVIDIA directly; skip without one."""
+    key = _LIVE_ENV.get("NVIDIA_API_KEY") or _LIVE_ENV.get("APP_NVIDIA_API_KEY")
+    if not key:
+        pytest.skip("NVIDIA_API_KEY is not configured")
+    return key
+
+
+@pytest.fixture
 def live_provider(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     """Restore the developer's model and provider key for a live test; skip without a key.
 
