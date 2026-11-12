@@ -200,7 +200,9 @@ class _OneFile:
     def __init__(self, doc_id: uuid.UUID) -> None:
         self.doc_id = doc_id
 
-    async def file(self, owner_key: str, doc_id: uuid.UUID) -> tuple[str, str, bytes]:
+    async def file(
+        self, owner_key: str, doc_id: uuid.UUID, roles: object = None
+    ) -> tuple[str, str, bytes]:
         if doc_id != self.doc_id:
             raise KnowledgeDocumentNotFoundError("knowledge document not found")
         return "notes.txt", "text/plain", b"hello"

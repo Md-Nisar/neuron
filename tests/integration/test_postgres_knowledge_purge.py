@@ -175,6 +175,7 @@ async def test_an_upload_committing_during_the_base_delete_is_tombstoned_with_it
                 "blob": "b" * 32,
                 "key": None,
                 "kb": kb,
+                "kbs": [kb],
             },
         )
         async with anyio.create_task_group() as tasks:

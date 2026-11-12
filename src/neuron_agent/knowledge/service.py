@@ -1,10 +1,12 @@
 # Copyright 2026 Md Nisar Ahmed
 # SPDX-License-Identifier: Apache-2.0
 
-"""Knowledge base management for the API (ADR 0014; RAG-03.01).
+"""Knowledge base management for the API (ADR 0014; RAG-03.01, RAG-09.03).
 
-Every statement filters on the caller's owner key (ADR 0014 requirement 2), so another user's
-base, a deleted one and an unknown id are the same `knowledge_base_not_found`. Delete is a
+Every statement filters on the bases the caller may read or write (`allowed_kbs`: their own and
+those shared with their verified roles; ADR 0014 requirement 2), so a base they cannot see, a
+deleted one and an unknown id are the same `knowledge_base_not_found`. A base they can see but
+not change that way is `knowledge_access_denied` (403). Delete is a
 tombstone: `deleted_at` hides the base and its documents from every query at once, and the purge
 job, queued in the same transaction, removes them with their chunks and files (RAG-03.03).
 """
@@ -29,6 +31,7 @@ from neuron_agent.errors.base import (
     AppError,
     IdempotencyKeyReusedError,
     IngestionConcurrencyError,
+    KnowledgeAccessDeniedError,
     KnowledgeBaseLimitError,
     KnowledgeBaseNotFoundError,
     KnowledgeDisabledError,
@@ -37,7 +40,7 @@ from neuron_agent.errors.base import (
     UploadRefusedError,
 )
 from neuron_agent.knowledge import jobs
-from neuron_agent.knowledge.authorization import KnowledgeAuthorization
+from neuron_agent.knowledge.authorization import AllowedKbs, KnowledgeAuthorization
 from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.parsing import Limits, ParseError, accepted_type
 from neuron_agent.observability import semconv, telemetry
@@ -52,7 +55,6 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeDocument,
     KnowledgeErasureResponse,
 )
-from neuron_agent.security.authorization import AuthorizationContext
 
 log = structlog.get_logger(__name__)
 
@@ -60,7 +62,7 @@ _READ, _WRITE = "knowledge:read", "knowledge:write"
 
 _LIST = (
     "SELECT kb_id, name, processing, created_at FROM knowledge.bases"
-    " WHERE kb_id = ANY(%s) AND owner_key = %s AND deleted_at IS NULL ORDER BY created_at, kb_id"
+    " WHERE kb_id = ANY(%s) AND deleted_at IS NULL ORDER BY created_at, kb_id"
 )
 _COUNT = "SELECT count(*) AS n FROM knowledge.bases WHERE owner_key = %s AND deleted_at IS NULL"
 _CREATE = (
@@ -72,8 +74,7 @@ _OWNER_GRANT = (
     " VALUES (%s, 'owner', %s, 'admin', %s)"
 )
 _RENAME = (
-    "UPDATE knowledge.bases SET name = %s"
-    " WHERE kb_id = %s AND owner_key = %s AND deleted_at IS NULL"
+    "UPDATE knowledge.bases SET name = %s WHERE kb_id = %s AND deleted_at IS NULL"
     " RETURNING kb_id, name, processing, created_at"
 )
 _TOMBSTONE = (
@@ -85,11 +86,11 @@ _TOMBSTONE_DOCUMENTS = (
     " WHERE kb_id = %s AND deleted_at IS NULL"
 )
 
-# Documents are found through the bases the caller may read (`allowed_kbs`) and the base's owner
-# (ADR 0014 requirement 2); a tombstoned document or base is never shown.
+# Documents are found through the bases the caller may read (`allowed_kbs`; ADR 0014
+# requirement 2); a tombstoned document or base is never shown.
 _DOCUMENT_FILTER = (
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
-    " WHERE d.kb_id = ANY(%(kbs)s) AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+    " WHERE d.kb_id = ANY(%(kbs)s) AND b.deleted_at IS NULL"
     " AND d.deleted_at IS NULL AND d.status <> 'deleting'"
 )
 _DOCUMENT_COLUMNS = (
@@ -108,7 +109,7 @@ _PASSAGE = "SELECT c.chunk_id, c.ordinal, c.text, c.headings, c.page_start, c.pa
 _CHUNK = _PASSAGE + (
     ", d.doc_id, d.kb_id FROM knowledge.chunks c JOIN knowledge.documents d ON d.doc_id = c.doc_id"
     " AND d.kb_id = c.kb_id JOIN knowledge.bases b ON b.kb_id = d.kb_id"
-    " WHERE d.kb_id = ANY(%(kbs)s) AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+    " WHERE d.kb_id = ANY(%(kbs)s) AND b.deleted_at IS NULL"
     " AND d.deleted_at IS NULL AND d.status = 'ready' AND d.doc_id = %(doc)s"
     " AND c.chunk_id = %(chunk)s"
 )
@@ -122,7 +123,7 @@ _SCOPE = "SELECT set_config('neuron.kb_ids', %s, true)"
 _TOMBSTONE_DOCUMENT = (
     "UPDATE knowledge.documents d SET deleted_at = now(), status = 'deleting', updated_at = now()"
     " FROM knowledge.bases b WHERE b.kb_id = d.kb_id AND d.kb_id = ANY(%(kbs)s)"
-    " AND b.owner_key = %(owner)s AND b.deleted_at IS NULL AND d.deleted_at IS NULL"
+    " AND b.deleted_at IS NULL AND d.deleted_at IS NULL"
     " AND d.status <> 'deleting' AND d.doc_id = %(doc)s RETURNING d.doc_id"
 )
 _DOCUMENTS = (
@@ -132,32 +133,30 @@ _DOCUMENTS = (
 )
 _DOCUMENT_COUNT = "SELECT count(*) AS n" + _DOCUMENT_FILTER + " AND d.kb_id = %(kb)s"
 
-_LIVE_BASE = (
-    "SELECT kb_id FROM knowledge.bases WHERE kb_id = %s AND owner_key = %s AND deleted_at IS NULL"
-)
 # An `Idempotency-Key` is the caller's, across bases (the index is per uploader): a replay is
-# honoured only for the same base while the document and base are live.
+# honoured only for the same base while the document and base are live. The caller's write access
+# to the base is checked first.
 _BY_KEY = (
     "SELECT d.doc_id, d.kb_id, d.status, d.kb_id = %(kb)s AND d.deleted_at IS NULL"
-    " AND b.deleted_at IS NULL AND b.owner_key = %(owner)s AS replayable"
+    " AND b.deleted_at IS NULL AS replayable"
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
     " WHERE d.uploaded_by = %(owner)s AND d.idempotency_key = %(key)s"
 )
 _BY_SHA = (
     "SELECT d.doc_id, d.kb_id, d.status"
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
-    " WHERE d.kb_id = %(kb)s AND d.sha256 = %(sha)s AND d.deleted_at IS NULL"
-    " AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+    " WHERE d.kb_id = %(kb)s AND d.kb_id = ANY(%(kbs)s) AND d.sha256 = %(sha)s"
+    " AND d.deleted_at IS NULL AND b.deleted_at IS NULL"
 )
-# Into a live base of the caller's only. A concurrent upload of the same content or key loses on
-# the unique indexes and returns the winner's document. FOR SHARE holds off the base's delete
-# until this commits, so the delete tombstones this document too, and its purge finds it.
+# Into a live base the caller may write only. A concurrent upload of the same content or key
+# loses on the unique indexes and returns the winner's document. FOR SHARE holds off the base's
+# delete until this commits, so the delete tombstones this document too, and its purge finds it.
 _INSERT_DOCUMENT = (
     "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type, size_bytes,"
     " sha256, blob_key, idempotency_key, status)"
     " SELECT %(doc)s, kb_id, %(owner)s, %(title)s, %(mime)s, %(size)s, %(sha)s, %(blob)s,"
     " %(key)s, 'queued' FROM knowledge.bases"
-    " WHERE kb_id = %(kb)s AND owner_key = %(owner)s AND deleted_at IS NULL FOR SHARE"
+    " WHERE kb_id = %(kb)s AND kb_id = ANY(%(kbs)s) AND deleted_at IS NULL FOR SHARE"
     " ON CONFLICT DO NOTHING RETURNING doc_id"
 )
 # What the uploader holds (ADR 0014 requirement 7; RAG-02.05). Bytes, documents and pages count
@@ -182,6 +181,21 @@ _ERASE_DOCUMENTS = (
     "UPDATE knowledge.documents SET deleted_at = now(), status = 'deleting', updated_at = now()"
     " WHERE kb_id = ANY(%s) AND deleted_at IS NULL"
 )
+# The caller's uploads to bases shared with them (RAG-09.03): their own bases' documents are
+# tombstoned with the bases just before, so these are the rest.
+_ERASE_UPLOADS = (
+    "UPDATE knowledge.documents SET deleted_at = now(), status = 'deleting', updated_at = now()"
+    " WHERE uploaded_by = %s AND deleted_at IS NULL"
+)
+# Every tombstoned upload of the caller in a live base with no purge waiting or running: those
+# just erased, and any whose purge used all its attempts. A deleted base's purge removes the rest.
+_UNPURGED_UPLOADS = (
+    "SELECT d.doc_id FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " WHERE d.uploaded_by = %s AND d.deleted_at IS NOT NULL AND b.deleted_at IS NULL"
+    " AND NOT EXISTS (SELECT 1 FROM knowledge.procrastinate_jobs j"
+    " WHERE j.task_name = 'purge_document' AND j.args->>'doc_id' = d.doc_id::text"
+    " AND j.status IN ('todo', 'doing'))"
+)
 # Every tombstoned base of the owner with no purge waiting or running: those just erased, and
 # any whose earlier purge used all its attempts, so a repeated erase finishes what one left.
 _UNPURGED_BASES = (
@@ -196,6 +210,14 @@ _STORED = (
     " OR EXISTS (SELECT 1 FROM knowledge.documents WHERE uploaded_by = %(owner)s) AS stored"
 )
 _EXPORT_DOCUMENTS = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " ORDER BY d.created_at, d.doc_id"
+
+
+def _require(allowed: AllowedKbs, kb_id: uuid.UUID, needed: frozenset[uuid.UUID]) -> None:
+    """`404` for a base the caller cannot see; `403` for one they see without this access."""
+    if kb_id not in allowed.read:
+        raise KnowledgeBaseNotFoundError("knowledge base not found")
+    if kb_id not in needed:
+        raise KnowledgeAccessDeniedError("knowledge base access denied")
 
 
 def _accepted(row: dict[str, Any]) -> DocumentAccepted:
@@ -236,14 +258,12 @@ class KnowledgeBases:
             log.warning("knowledge_operation_failed", error_type=type(exc).__name__)
             raise PersistenceError("knowledge persistence failed") from exc
 
-    async def list(self, owner_key: str) -> list[KnowledgeBase]:
+    async def list(
+        self, owner_key: str, roles: frozenset[str] = frozenset()
+    ) -> list[KnowledgeBase]:
         async with self._transaction() as conn:
-            allowed = await KnowledgeAuthorization.allowed_kbs(
-                conn, AuthorizationContext(frozenset(), owner_key=owner_key)
-            )
-            # Phase 1: the grants and the owner predicate agree. Role grants (Phase 2) must keep
-            # `allowed_kbs` as the filter, and rename and delete must check `allowed.write`.
-            cursor = await conn.execute(_LIST, (list(allowed.read), owner_key))
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            cursor = await conn.execute(_LIST, (list(allowed.read),))
             bases = [KnowledgeBase(**row) for row in await cursor.fetchall()]
         self._audit("knowledge_bases_read", owner_key, _READ, count=len(bases))
         return bases
@@ -269,19 +289,28 @@ class KnowledgeBases:
         self._audit("knowledge_base_created", owner_key, _WRITE, base.kb_id)
         return base
 
-    async def rename(self, owner_key: str, kb_id: uuid.UUID, name: str) -> KnowledgeBase:
+    async def rename(
+        self, owner_key: str, kb_id: uuid.UUID, name: str, roles: frozenset[str] = frozenset()
+    ) -> KnowledgeBase:
+        """Rename a base the caller administers (its owner, or an `admin` role grant)."""
         async with self._transaction() as conn:
-            cursor = await conn.execute(_RENAME, (name, kb_id, owner_key))
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            _require(allowed, kb_id, allowed.admin)
+            cursor = await conn.execute(_RENAME, (name, kb_id))
             row = await cursor.fetchone()
         if row is None:
             raise KnowledgeBaseNotFoundError("knowledge base not found")
         self._audit("knowledge_base_renamed", owner_key, _WRITE, kb_id)
         return KnowledgeBase(**row)
 
-    async def delete(self, owner_key: str, kb_id: uuid.UUID) -> None:
+    async def delete(
+        self, owner_key: str, kb_id: uuid.UUID, roles: frozenset[str] = frozenset()
+    ) -> None:
         """Tombstone the base and its documents and queue its purge; a second delete finds
-        nothing to delete."""
+        nothing to delete. Only the owner may delete a base, even with an `admin` role grant."""
         async with self._transaction() as conn:
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            _require(allowed, kb_id, allowed.owned)
             cursor = await conn.execute(_TOMBSTONE, (kb_id, owner_key))
             if await cursor.fetchone() is None:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
@@ -290,11 +319,18 @@ class KnowledgeBases:
         self._audit("knowledge_base_deleted", owner_key, _WRITE, kb_id)
 
     async def check_upload(
-        self, owner_key: str, kb_id: uuid.UUID, idempotency_key: str | None
+        self,
+        owner_key: str,
+        kb_id: uuid.UUID,
+        idempotency_key: str | None,
+        roles: frozenset[str] = frozenset(),
     ) -> DocumentAccepted | None:
         """Before the body is read: the first document of a repeated `Idempotency-Key`, or None
-        when the upload may go ahead. `404` unless the base is the caller's and live."""
+        when the upload may go ahead. `404` unless the caller can see the live base, `403` unless
+        they may write to it."""
         async with self._transaction() as conn:
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            _require(allowed, kb_id, allowed.write)
             if idempotency_key is not None:
                 cursor = await conn.execute(
                     _BY_KEY, {"kb": kb_id, "owner": owner_key, "key": idempotency_key}
@@ -303,9 +339,6 @@ class KnowledgeBases:
                     if not row["replayable"]:
                         raise IdempotencyKeyReusedError("idempotency key reused")
                     return _accepted(row)
-            cursor = await conn.execute(_LIVE_BASE, (kb_id, owner_key))
-            if await cursor.fetchone() is None:
-                raise KnowledgeBaseNotFoundError("knowledge base not found")
         return None
 
     async def upload(
@@ -317,6 +350,7 @@ class KnowledgeBases:
         claimed_type: str,
         title: str,
         idempotency_key: str | None,
+        roles: frozenset[str] = frozenset(),
     ) -> DocumentAccepted:
         """Check the file, store it and queue its ingestion, or return the base's existing copy.
 
@@ -331,7 +365,7 @@ class KnowledgeBases:
         with telemetry.start_span(semconv.KNOWLEDGE_UPLOAD_SPAN, attributes=attributes) as span:
             try:
                 accepted = await self._upload(
-                    owner_key, kb_id, data, claimed_type, title, idempotency_key
+                    owner_key, roles, kb_id, data, claimed_type, title, idempotency_key
                 )
             except Exception as exc:
                 code = exc.context.code if isinstance(exc, AppError) else "upload_failed"
@@ -344,6 +378,7 @@ class KnowledgeBases:
     async def _upload(
         self,
         owner_key: str,
+        roles: frozenset[str],
         kb_id: uuid.UUID,
         data: bytes,
         claimed_type: str,
@@ -357,7 +392,7 @@ class KnowledgeBases:
             raise UploadRefusedError(exc.code, _UPLOAD_STATUS.get(exc.code, 415)) from None
         sha256 = hashlib.sha256(data).hexdigest()
         if (
-            existing := await self._existing(owner_key, kb_id, sha256, idempotency_key)
+            existing := await self._existing(owner_key, roles, kb_id, sha256, idempotency_key)
         ) is not None:
             return existing
         async with self._transaction() as conn:
@@ -374,6 +409,7 @@ class KnowledgeBases:
                     (f"knowledge.documents:{owner_key}",),
                 )
                 await self._check_quota(conn, owner_key, blob.size)
+                allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
                 cursor = await conn.execute(
                     _INSERT_DOCUMENT,
                     {
@@ -386,6 +422,7 @@ class KnowledgeBases:
                         "blob": blob.key,
                         "key": idempotency_key,
                         "kb": kb_id,
+                        "kbs": [*allowed.write],
                     },
                 )
                 if await cursor.fetchone() is not None:
@@ -399,7 +436,7 @@ class KnowledgeBases:
         if not queued:
             # Lost a race on the same content or key, or the base was deleted meanwhile.
             log.info("knowledge_upload_not_inserted", kb_id=str(kb_id))
-            existing = await self._existing(owner_key, kb_id, sha256, idempotency_key)
+            existing = await self._existing(owner_key, roles, kb_id, sha256, idempotency_key)
             if existing is None:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
             return existing
@@ -426,24 +463,39 @@ class KnowledgeBases:
             raise IngestionConcurrencyError("too many documents being ingested")
 
     async def _existing(
-        self, owner_key: str, kb_id: uuid.UUID, sha256: str, idempotency_key: str | None
+        self,
+        owner_key: str,
+        roles: frozenset[str],
+        kb_id: uuid.UUID,
+        sha256: str,
+        idempotency_key: str | None,
     ) -> DocumentAccepted | None:
-        if (replay := await self.check_upload(owner_key, kb_id, idempotency_key)) is not None:
+        replay = await self.check_upload(owner_key, kb_id, idempotency_key, roles)
+        if replay is not None:
             return replay
         async with self._transaction() as conn:
-            cursor = await conn.execute(_BY_SHA, {"kb": kb_id, "sha": sha256, "owner": owner_key})
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            cursor = await conn.execute(
+                _BY_SHA, {"kb": kb_id, "kbs": [*allowed.write], "sha": sha256}
+            )
             row = await cursor.fetchone()
         return _accepted(row) if row is not None else None
 
     async def documents(
-        self, owner_key: str, kb_id: uuid.UUID, *, limit: int, offset: int
+        self,
+        owner_key: str,
+        kb_id: uuid.UUID,
+        *,
+        limit: int,
+        offset: int,
+        roles: frozenset[str] = frozenset(),
     ) -> tuple[Sequence[KnowledgeDocument], int]:
         """A page of a readable base's documents and their total; any other base is `404`."""
         async with self._transaction() as conn:
-            kbs = await self._readable(conn, owner_key)
+            kbs = await self._readable(conn, owner_key, roles)
             if kb_id not in kbs:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
-            params = {"kbs": kbs, "owner": owner_key, "kb": kb_id}
+            params = {"kbs": kbs, "kb": kb_id}
             cursor = await conn.execute(_DOCUMENTS, {**params, "limit": limit, "offset": offset})
             documents = [KnowledgeDocument(**row) for row in await cursor.fetchall()]
             cursor = await conn.execute(_DOCUMENT_COUNT, params)
@@ -451,25 +503,33 @@ class KnowledgeBases:
         self._audit("knowledge_documents_read", owner_key, _READ, kb_id, count=len(documents))
         return documents, int(total["n"]) if total else 0
 
-    async def document(self, owner_key: str, doc_id: uuid.UUID) -> KnowledgeDocument:
+    async def document(
+        self, owner_key: str, doc_id: uuid.UUID, roles: frozenset[str] = frozenset()
+    ) -> KnowledgeDocument:
         """One document of a readable base; any other id is `404`."""
         async with self._transaction() as conn:
-            kbs = await self._readable(conn, owner_key)
-            cursor = await conn.execute(_DOCUMENT, {"kbs": kbs, "owner": owner_key, "doc": doc_id})
+            kbs = await self._readable(conn, owner_key, roles)
+            cursor = await conn.execute(_DOCUMENT, {"kbs": kbs, "doc": doc_id})
             row = await cursor.fetchone()
         if row is None:
             raise KnowledgeDocumentNotFoundError("knowledge document not found")
         return KnowledgeDocument(**row)
 
     async def chunk(
-        self, owner_key: str, doc_id: uuid.UUID, chunk_id: uuid.UUID, *, neighbours: int = 0
+        self,
+        owner_key: str,
+        doc_id: uuid.UUID,
+        chunk_id: uuid.UUID,
+        *,
+        neighbours: int = 0,
+        roles: frozenset[str] = frozenset(),
     ) -> KnowledgeChunk:
         """A chunk of a ready document of a readable base, with up to `neighbours` chunks on
         each side; access is checked on every call, and any other id is `404`."""
         async with self._transaction() as conn:
-            kbs = await self._readable(conn, owner_key)
+            kbs = await self._readable(conn, owner_key, roles)
             await conn.execute(_SCOPE, (",".join(map(str, kbs)),))
-            params = {"kbs": kbs, "owner": owner_key, "doc": doc_id, "chunk": chunk_id}
+            params = {"kbs": kbs, "doc": doc_id, "chunk": chunk_id}
             row = await (await conn.execute(_CHUNK, params)).fetchone()
             if row is None:
                 raise KnowledgeDocumentNotFoundError("knowledge chunk not found")
@@ -480,14 +540,14 @@ class KnowledgeBases:
         self._audit("knowledge_chunk_read", owner_key, _READ, doc_id, resource="knowledge_document")
         return KnowledgeChunk(**row, neighbours=[ChunkPassage(**n) for n in nearby])
 
-    async def file(self, owner_key: str, doc_id: uuid.UUID) -> tuple[str, str, bytes]:
+    async def file(
+        self, owner_key: str, doc_id: uuid.UUID, roles: frozenset[str] = frozenset()
+    ) -> tuple[str, str, bytes]:
         """A readable document's title, stored media type and original bytes; any other id is
         `404`. The bytes are checked against the SHA-256 recorded at upload."""
         async with self._transaction() as conn:
-            kbs = await self._readable(conn, owner_key)
-            row = await (
-                await conn.execute(_FILE, {"kbs": kbs, "owner": owner_key, "doc": doc_id})
-            ).fetchone()
+            kbs = await self._readable(conn, owner_key, roles)
+            row = await (await conn.execute(_FILE, {"kbs": kbs, "doc": doc_id})).fetchone()
         if row is None:
             raise KnowledgeDocumentNotFoundError("knowledge document not found")
         assert self._blobs is not None  # nosec B101 - wired with knowledge on
@@ -497,17 +557,21 @@ class KnowledgeBases:
         )
         return row["title"], row["mime_type"], data
 
-    async def delete_document(self, owner_key: str, doc_id: uuid.UUID) -> None:
+    async def delete_document(
+        self, owner_key: str, doc_id: uuid.UUID, roles: frozenset[str] = frozenset()
+    ) -> None:
         """Tombstone a document of a writable base and queue its purge; a second delete finds
-        nothing to delete (`404`) and queues nothing."""
+        nothing to delete (`404`) and queues nothing. A document the caller may only read is
+        `403`."""
         async with self._transaction() as conn:
-            allowed = await KnowledgeAuthorization.allowed_kbs(
-                conn, AuthorizationContext(frozenset(), owner_key=owner_key)
-            )
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
             cursor = await conn.execute(
-                _TOMBSTONE_DOCUMENT, {"kbs": [*allowed.write], "owner": owner_key, "doc": doc_id}
+                _TOMBSTONE_DOCUMENT, {"kbs": [*allowed.write], "doc": doc_id}
             )
             if await cursor.fetchone() is None:
+                cursor = await conn.execute(_DOCUMENT, {"kbs": [*allowed.read], "doc": doc_id})
+                if await cursor.fetchone() is not None:
+                    raise KnowledgeAccessDeniedError("knowledge base access denied")
                 raise KnowledgeDocumentNotFoundError("knowledge document not found")
             await jobs.defer(conn, jobs.Task.PURGE_DOCUMENT, doc_id=doc_id)
         self._audit(
@@ -520,10 +584,11 @@ class KnowledgeBases:
         Bounded by the per-user base and document limits; no file contents.
         """
         async with self._transaction() as conn:
-            kbs = await self._readable(conn, owner_key)
-            cursor = await conn.execute(_LIST, (kbs, owner_key))
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key)
+            kbs = [*allowed.owned]
+            cursor = await conn.execute(_LIST, (kbs,))
             bases = await cursor.fetchall()
-            cursor = await conn.execute(_EXPORT_DOCUMENTS, {"kbs": kbs, "owner": owner_key})
+            cursor = await conn.execute(_EXPORT_DOCUMENTS, {"kbs": kbs})
             documents = [KnowledgeDocument(**row) for row in await cursor.fetchall()]
         return [
             ExportedKnowledgeBase(
@@ -533,23 +598,34 @@ class KnowledgeBases:
         ]
 
     async def erase(self, owner_key: str) -> KnowledgeErasureResponse:
-        """Tombstone all of the owner's bases and documents and queue their purge (RAG-07.01).
+        """Tombstone all of the owner's bases and documents, and their uploads to bases shared
+        with them, and queue their purge (RAG-07.01, RAG-09.03). Members' uploads to the owner's
+        bases go with those bases.
 
-        Idempotent: a repeat tombstones nothing new, re-queues the purge of any base whose purge
-        is no longer waiting or running, and reports `purge_pending` until nothing is stored.
+        Idempotent: a repeat tombstones nothing new, re-queues the purge of any base or upload
+        whose purge is no longer waiting or running, and reports `purge_pending` until nothing is
+        stored.
         Queued ingest jobs stay in the queue: they carry ids only, and the worker skips a
         tombstoned or purged document.
         """
         async with self._transaction() as conn:
-            # Serialises with the owner's creates, so none lands between tombstone and check.
-            await conn.execute(
-                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                (f"knowledge.bases:{owner_key}",),
-            )
+            # Serialises with the owner's creates and uploads (also to shared bases), so none
+            # lands between tombstone and check. Create takes only the first lock, upload only
+            # the second, so the order cannot deadlock.
+            for lock in ("knowledge.bases", "knowledge.documents"):
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                    (f"{lock}:{owner_key}",),
+                )
             cursor = await conn.execute(_ERASE_BASES, (owner_key,))
             erased = [row["kb_id"] for row in await cursor.fetchall()]
             cursor = await conn.execute(_ERASE_DOCUMENTS, (erased,))
             documents = cursor.rowcount
+            cursor = await conn.execute(_ERASE_UPLOADS, (owner_key,))
+            documents += cursor.rowcount
+            cursor = await conn.execute(_UNPURGED_UPLOADS, (owner_key,))
+            for row in await cursor.fetchall():
+                await jobs.defer(conn, jobs.Task.PURGE_DOCUMENT, doc_id=row["doc_id"])
             cursor = await conn.execute(_UNPURGED_BASES, (owner_key,))
             for row in await cursor.fetchall():
                 await jobs.defer(conn, jobs.Task.PURGE_KNOWLEDGE_BASE, kb_id=row["kb_id"])
@@ -563,10 +639,10 @@ class KnowledgeBases:
         )
 
     @staticmethod
-    async def _readable(conn: psycopg.AsyncConnection[Any], owner_key: str) -> Sequence[uuid.UUID]:
-        allowed = await KnowledgeAuthorization.allowed_kbs(
-            conn, AuthorizationContext(frozenset(), owner_key=owner_key)
-        )
+    async def _readable(
+        conn: psycopg.AsyncConnection[Any], owner_key: str, roles: frozenset[str]
+    ) -> Sequence[uuid.UUID]:
+        allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
         return [*allowed.read]
 
     def _audit(

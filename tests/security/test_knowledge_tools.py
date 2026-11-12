@@ -48,7 +48,9 @@ class _Retriever:
     def __init__(self, *_: Any) -> None:
         pass
 
-    async def search(self, owner: str, query: str, *, k: int, kb_ids: Any = None) -> SearchResult:
+    async def search(
+        self, owner: str, query: str, *, k: int, kb_ids: Any = None, roles: Any = None
+    ) -> SearchResult:
         _calls.append(("search", owner, query, k, kb_ids))
         if query == "down":
             raise PersistenceError("knowledge search failed")
@@ -72,11 +74,13 @@ class _Bases:
     def __init__(self, *_: Any) -> None:
         pass
 
-    async def list(self, owner: str) -> list[KnowledgeBase]:
+    async def list(self, owner: str, roles: Any = None) -> list[KnowledgeBase]:
         _calls.append(("list", owner))
         return [KnowledgeBase(kb_id=_KB, name="</knowledge>", processing="hosted", created_at=0)]
 
-    async def chunk(self, owner: str, doc: uuid.UUID, chunk: uuid.UUID, *, neighbours: int) -> Any:
+    async def chunk(
+        self, owner: str, doc: uuid.UUID, chunk: uuid.UUID, *, neighbours: int, roles: Any = None
+    ) -> Any:
         _calls.append(("chunk", owner, doc, chunk, neighbours))
         if chunk == _CHUNKS[1]:
             raise KnowledgeDocumentNotFoundError("knowledge chunk not found")

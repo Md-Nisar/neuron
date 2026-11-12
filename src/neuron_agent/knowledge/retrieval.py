@@ -5,10 +5,10 @@
 
 Authorisation comes before ranking, in SQL: the search transaction finds the caller's readable
 bases (`allowed_kbs`), sets `neuron.kb_ids` to them with `SET LOCAL` (row-level security repeats
-the filter), and every candidate query filters on those bases, the base's owner and a live,
-`ready` document. Dense candidates (cosine, the active index profile only) and full-text
-candidates (`websearch_to_tsquery` in each base's text-search config) are fused with reciprocal
-rank fusion.
+the filter), and every candidate query filters on those bases and a live, `ready` document.
+The bases include those shared with the caller's verified roles (RAG-09.03). Dense candidates
+(cosine, the active index profile only) and full-text candidates (`websearch_to_tsquery` in each
+base's text-search config) are fused with reciprocal rank fusion.
 
 The dense path is chosen in code, never by the planner (RAG-00.02): an exact scan when the
 allowed set has at most `knowledge_exact_scan_max_chunks` embeddings, which always returns every
@@ -45,7 +45,6 @@ from neuron_agent.knowledge.reranking import Reranker, RerankError
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
-from neuron_agent.security.authorization import AuthorizationContext
 
 log = structlog.get_logger(__name__)
 
@@ -63,14 +62,14 @@ _BASES = (
     "SELECT b.kb_id, b.processing, b.ts_config::text AS ts_config,"
     " b.profile_id = %(profile)s AND p.status = 'active' AS dense"
     " FROM knowledge.bases b JOIN knowledge.index_profiles p ON p.profile_id = b.profile_id"
-    " WHERE b.kb_id = ANY(%(kbs)s) AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+    " WHERE b.kb_id = ANY(%(kbs)s) AND b.deleted_at IS NULL"
 )
 _SCOPE = "SELECT set_config('neuron.kb_ids', %s, true)"
-# A chunk counts only through a live, ready document of a live base of the caller's.
+# A chunk counts only through a live, ready document of a live base the caller may read.
 _LIVE = (
     " JOIN knowledge.documents d ON d.doc_id = c.doc_id AND d.kb_id = c.kb_id"
     " JOIN knowledge.bases b ON b.kb_id = d.kb_id"
-    " WHERE b.owner_key = %(owner)s AND b.deleted_at IS NULL"
+    " WHERE b.kb_id = ANY(%(kbs)s) AND b.deleted_at IS NULL"
     " AND d.deleted_at IS NULL AND d.status = 'ready'"
 )
 _CHUNKS = " FROM knowledge.chunks c"
@@ -197,6 +196,7 @@ class Retriever:
         k: int,
         kb_ids: Collection[uuid.UUID] | None = None,
         mode: SearchMode | None = None,
+        roles: frozenset[str] = frozenset(),
     ) -> SearchResult:
         """The `k` best passages for `query` in the caller's readable bases, or only those of
         them in `kb_ids`: any other id there is ignored, as an unknown one is.
@@ -216,7 +216,7 @@ class Retriever:
         # Ids, counts and timings only: the query, passages and titles never reach telemetry.
         with telemetry.start_span(semconv.KNOWLEDGE_SEARCH_SPAN, attributes=attributes) as span:
             try:
-                result, searched = await self._search(owner_key, query, k, kb_ids, mode)
+                result, searched = await self._search(owner_key, roles, query, k, kb_ids, mode)
             except Exception as exc:
                 code = exc.context.code if isinstance(exc, AppError) else type(exc).__name__
                 telemetry.record_error(span, code)
@@ -245,6 +245,7 @@ class Retriever:
     async def _search(
         self,
         owner_key: str,
+        roles: frozenset[str],
         query: str,
         k: int,
         kb_ids: Collection[uuid.UUID] | None,
@@ -255,7 +256,7 @@ class Retriever:
             # The query is embedded before the search transaction, so no connection is held
             # during the provider call; the bases are read again inside it.
             async with self._transaction() as conn:
-                bases = await self._bases(conn, owner_key, kb_ids)
+                bases = await self._bases(conn, owner_key, roles, kb_ids)
             if self._dense_bases(bases):
                 try:
                     values = await self._embeddings.embed_query(query)
@@ -267,7 +268,7 @@ class Retriever:
                 else:
                     vector = "[" + ",".join(repr(float(value)) for value in values) + "]"
         async with self._transaction() as conn:
-            bases = await self._bases(conn, owner_key, kb_ids)
+            bases = await self._bases(conn, owner_key, roles, kb_ids)
             await conn.execute(_SCOPE, (",".join(str(row["kb_id"]) for row in bases),))
             rankings: list[list[uuid.UUID]] = []
             path: Literal["exact", "hnsw", "none"] = "none"
@@ -328,15 +329,12 @@ class Retriever:
     async def _bases(
         conn: psycopg.AsyncConnection[Any],
         owner_key: str,
+        roles: frozenset[str],
         kb_ids: Collection[uuid.UUID] | None,
     ) -> list[dict[str, Any]]:
-        allowed = await KnowledgeAuthorization.allowed_kbs(
-            conn, AuthorizationContext(frozenset(), owner_key=owner_key)
-        )
+        allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
         kbs = allowed.read if kb_ids is None else allowed.read & set(kb_ids)
-        cursor = await conn.execute(
-            _BASES, {"kbs": [*kbs], "owner": owner_key, "profile": KNOWLEDGE_PROFILE_ID}
-        )
+        cursor = await conn.execute(_BASES, {"kbs": [*kbs], "profile": KNOWLEDGE_PROFILE_ID})
         return list(await cursor.fetchall())
 
     def _dense_bases(self, bases: Sequence[dict[str, Any]]) -> list[uuid.UUID]:

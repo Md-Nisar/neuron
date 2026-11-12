@@ -1094,6 +1094,11 @@ def _knowledge_owner(principal: Principal | None, user_id: str | None) -> str:
     return owner_key
 
 
+def _roles(principal: Principal | None) -> frozenset[str]:
+    """The verified token's roles, for bases shared by role (RAG-09.03); none without a token."""
+    return principal.roles if principal is not None else frozenset()
+
+
 @app.get("/v1/knowledge/bases", response_model=KnowledgeBasesResponse)
 async def list_knowledge_bases(
     principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
@@ -1102,7 +1107,7 @@ async def list_knowledge_bases(
     """The caller's knowledge bases, oldest first (ADR 0014; RAG-03.01)."""
     try:
         return KnowledgeBasesResponse(
-            bases=await knowledge.list(_knowledge_owner(principal, user_id))
+            bases=await knowledge.list(_knowledge_owner(principal, user_id), _roles(principal))
         )
     except AppError as exc:
         raise _http_error("knowledge_bases_list_failed", exc) from exc
@@ -1131,7 +1136,9 @@ async def rename_knowledge_base(
 ) -> KnowledgeBase:
     """Rename one of the caller's knowledge bases; any other id is the same `404`."""
     try:
-        return await knowledge.rename(_knowledge_owner(principal, user_id), kb_id, body.name)
+        return await knowledge.rename(
+            _knowledge_owner(principal, user_id), kb_id, body.name, _roles(principal)
+        )
     except AppError as exc:
         raise _http_error("knowledge_base_rename_failed", exc) from exc
 
@@ -1144,7 +1151,7 @@ async def delete_knowledge_base(
 ) -> Response:
     """Tombstone one of the caller's knowledge bases and queue its purge; `202`."""
     try:
-        await knowledge.delete(_knowledge_owner(principal, user_id), kb_id)
+        await knowledge.delete(_knowledge_owner(principal, user_id), kb_id, _roles(principal))
     except AppError as exc:
         raise _http_error("knowledge_base_delete_failed", exc) from exc
     return Response(status_code=202)
@@ -1192,7 +1199,9 @@ async def upload_knowledge_document(
     """
     try:
         owner_key = _knowledge_owner(principal, user_id)
-        if (replay := await knowledge.check_upload(owner_key, kb_id, idempotency_key)) is not None:
+        roles = _roles(principal)
+        replay = await knowledge.check_upload(owner_key, kb_id, idempotency_key, roles)
+        if replay is not None:
             return replay
         with _upload_slots.take(owner_key):
             # A slow body would hold the slot: the whole body must arrive within the deadline.
@@ -1215,6 +1224,7 @@ async def upload_knowledge_document(
                 claimed_type=upload.content_type,
                 title=title,
                 idempotency_key=idempotency_key,
+                roles=roles,
             )
     except AppError as exc:
         raise _http_error("knowledge_document_upload_failed", exc) from exc
@@ -1231,7 +1241,9 @@ async def list_knowledge_documents(
     """A page of one of the caller's knowledge bases' documents, with their status."""
     try:
         owner_key = _knowledge_owner(principal, user_id)
-        documents, total = await knowledge.documents(owner_key, kb_id, limit=limit, offset=offset)
+        documents, total = await knowledge.documents(
+            owner_key, kb_id, limit=limit, offset=offset, roles=_roles(principal)
+        )
     except AppError as exc:
         raise _http_error("knowledge_documents_list_failed", exc) from exc
     return KnowledgeDocumentsResponse(
@@ -1247,7 +1259,9 @@ async def get_knowledge_document(
 ) -> KnowledgeDocument:
     """One document's metadata and status; any id the caller cannot read is the same `404`."""
     try:
-        return await knowledge.document(_knowledge_owner(principal, user_id), doc_id)
+        return await knowledge.document(
+            _knowledge_owner(principal, user_id), doc_id, _roles(principal)
+        )
     except AppError as exc:
         raise _http_error("knowledge_document_get_failed", exc) from exc
 
@@ -1264,7 +1278,9 @@ async def get_knowledge_chunk(
     side; access is re-checked on every call, and a chunk of another document is `404`."""
     try:
         owner_key = _knowledge_owner(principal, user_id)
-        return await knowledge.chunk(owner_key, doc_id, chunk_id, neighbours=neighbours)
+        return await knowledge.chunk(
+            owner_key, doc_id, chunk_id, neighbours=neighbours, roles=_roles(principal)
+        )
     except AppError as exc:
         raise _http_error("knowledge_chunk_get_failed", exc) from exc
 
@@ -1282,7 +1298,11 @@ async def search_knowledge(
         if not settings.knowledge_enabled:
             raise KnowledgeDisabledError("knowledge is not enabled")
         result = await retriever().search(
-            _knowledge_owner(principal, user_id), body.query, k=body.limit, kb_ids=body.kb_ids
+            _knowledge_owner(principal, user_id),
+            body.query,
+            k=body.limit,
+            kb_ids=body.kb_ids,
+            roles=_roles(principal),
         )
     except AppError as exc:
         raise _http_error("knowledge_search_failed", exc) from exc
@@ -1323,7 +1343,7 @@ async def download_knowledge_document(
         # Held until the body is sent: the whole file is in memory until then.
         _download_slots.acquire(owner_key)
         try:
-            title, mime_type, data = await knowledge.file(owner_key, doc_id)
+            title, mime_type, data = await knowledge.file(owner_key, doc_id, _roles(principal))
             disposition = _attachment(title)
             headers = {"Content-Disposition": disposition, "X-Content-Type-Options": "nosniff"}
             return _ReleasingResponse(
@@ -1347,7 +1367,9 @@ async def delete_knowledge_document(
 ) -> Response:
     """Tombstone one of the caller's documents and queue its purge; `202`."""
     try:
-        await knowledge.delete_document(_knowledge_owner(principal, user_id), doc_id)
+        await knowledge.delete_document(
+            _knowledge_owner(principal, user_id), doc_id, _roles(principal)
+        )
     except AppError as exc:
         raise _http_error("knowledge_document_delete_failed", exc) from exc
     return Response(status_code=202)

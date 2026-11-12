@@ -27,7 +27,6 @@ from neuron_agent.knowledge.blobs import LocalBlobStore
 from neuron_agent.knowledge.providers import EmbeddingProvider, FakeEmbeddings
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
-from neuron_agent.security.authorization import AuthorizationContext
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -239,16 +238,11 @@ async def test_allowed_kbs_is_the_owners_live_bases(
         db.migrator_dsn, "SELECT subject_type, access FROM knowledge.grants ORDER BY created_at"
     ) == [("owner", "admin"), ("owner", "admin")]
     async with await psycopg.AsyncConnection.connect(db.app_dsn, row_factory=dict_row) as conn:
-        allowed = await KnowledgeAuthorization.allowed_kbs(
-            conn, AuthorizationContext(frozenset(), owner_key=owner[0])
-        )
-        other = await KnowledgeAuthorization.allowed_kbs(
-            conn, AuthorizationContext(frozenset(), owner_key="b" * 64)
-        )
-        anonymous = await KnowledgeAuthorization.allowed_kbs(
-            conn, AuthorizationContext(frozenset())
-        )
-    assert allowed.read == allowed.write == {uuid.UUID(kept["kb_id"])}
+        allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner[0])
+        other = await KnowledgeAuthorization.allowed_kbs(conn, "b" * 64)
+        anonymous = await KnowledgeAuthorization.allowed_kbs(conn, None, frozenset({"finance"}))
+    assert allowed.read == allowed.write == allowed.admin == allowed.owned
+    assert allowed.read == {uuid.UUID(kept["kb_id"])}
     assert other.read == other.write == anonymous.read == frozenset()
 
 

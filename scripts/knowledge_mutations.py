@@ -47,10 +47,6 @@ class Mutant:
 
 
 _SERVICE, _AUTHZ = "knowledge/service.py", "knowledge/authorization.py"
-_DOCUMENT_FILTER = (
-    '" WHERE d.kb_id = ANY(%(kbs)s) AND b.owner_key = %(owner)s AND b.deleted_at IS NULL"\n'
-    "    \" AND d.deleted_at IS NULL AND d.status <> 'deleting'\"\n)"
-)
 # Any user's grants count as the caller's (the cast keeps the parameter typed for Postgres).
 _ANY_OWNER = Edit(
     _AUTHZ, "g.subject = %(owner)s AND b.owner_key = %(owner)s", "%(owner)s::text IS NOT NULL"
@@ -62,44 +58,17 @@ MUTANTS = [
     Mutant(
         "Foreign kb_id or doc_id",
         "rename ignores the owner",
-        (
-            Edit(
-                _SERVICE,
-                '" WHERE kb_id = %s AND owner_key = %s AND deleted_at IS NULL"\n'
-                '    " RETURNING kb_id, name',
-                '" WHERE kb_id = %s AND %s::text IS NOT NULL AND deleted_at IS NULL"\n'
-                '    " RETURNING kb_id, name',
-            ),
-        ),
+        (Edit(_SERVICE, "_require(allowed, kb_id, allowed.admin)", "pass"),),
     ),
     Mutant(
         "Foreign kb_id or doc_id",
         "documents of any owner",
-        (
-            _ANY_OWNER,
-            Edit(
-                _SERVICE,
-                _DOCUMENT_FILTER,
-                _DOCUMENT_FILTER.replace("b.owner_key = %(owner)s", "%(owner)s::text IS NOT NULL"),
-            ),
-        ),
+        (_ANY_OWNER,),
     ),
     Mutant(
         "Same text in two users' bases",
         "the search ignores the owner",
-        (
-            _ANY_OWNER,
-            Edit(
-                "knowledge/retrieval.py",
-                "ANY(%(kbs)s) AND b.owner_key = %(owner)s",
-                "ANY(%(kbs)s) AND %(owner)s::text IS NOT NULL",
-            ),
-            Edit(
-                "knowledge/retrieval.py",
-                '" WHERE b.owner_key = %(owner)s AND b.deleted_at IS NULL"',
-                '" WHERE %(owner)s::text IS NOT NULL AND b.deleted_at IS NULL"',
-            ),
-        ),
+        (_ANY_OWNER,),
     ),
     Mutant(
         "Access revoked while a citation is open",
@@ -107,10 +76,17 @@ MUTANTS = [
         (
             Edit(
                 _AUTHZ,
-                '"SELECT g.kb_id, g.access FROM knowledge.grants g'
-                ' JOIN knowledge.bases b USING (kb_id)"\n'
-                "    \" WHERE g.subject_type = 'owner' AND g.subject = %(owner)s AND",
-                '"SELECT b.kb_id, \'admin\' AS access FROM knowledge.bases b"\n    " WHERE',
+                '"SELECT g.kb_id, g.access, g.subject_type FROM knowledge.grants g"\n'
+                '    " JOIN knowledge.bases b USING (kb_id) WHERE b.deleted_at IS NULL AND ("\n'
+                "    \"(g.subject_type = 'owner' AND g.subject = %(owner)s AND",
+                "\"SELECT b.kb_id, 'admin' AS access, 'owner' AS subject_type\"\n"
+                '    " FROM knowledge.bases b WHERE b.deleted_at IS NULL AND ("\n'
+                '    "(%(owner)s::text IS NOT NULL AND',
+            ),
+            Edit(
+                _AUTHZ,
+                "\" OR (g.subject_type = 'role' AND g.subject = ANY(%(roles)s::text[])))\"",
+                '" OR %(roles)s::text[] IS NULL)"',
             ),
         ),
     ),

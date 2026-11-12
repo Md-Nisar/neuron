@@ -72,6 +72,12 @@ def _owner(runtime: ToolRuntime[Any, Any]) -> str:
     return context.owner_key
 
 
+def _roles(runtime: ToolRuntime[Any, Any]) -> frozenset[str]:
+    """The verified principal's roles, from the trusted context (RAG-09.03); none without one."""
+    context = runtime.context
+    return context.roles if isinstance(context, AuthorizationContext) else frozenset()
+
+
 def _scope(runtime: ToolRuntime[Any, Any]) -> frozenset[uuid.UUID] | None:
     """The bases the request narrowed the run to, from the trusted context; None for all."""
     context = runtime.context
@@ -192,7 +198,7 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         kb_id and name."""
         owner = _owner(runtime)
         try:
-            found = await bases.list(owner)
+            found = await bases.list(owner, _roles(runtime))
         except AppError:
             raise ToolException(_UNAVAILABLE) from None
         if (scope := _scope(runtime)) is not None:
@@ -222,7 +228,9 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             # The model's `kb_ids` narrow the request's bases further, never widen them.
             kb_ids = [kb for kb in kb_ids or () if kb in scope] or sorted(scope, key=str)
         try:
-            result = await retriever().search(owner, query, k=limit, kb_ids=kb_ids)
+            result = await retriever().search(
+                owner, query, k=limit, kb_ids=kb_ids, roles=_roles(runtime)
+            )
         except AppError:  # an embedding failure too
             raise ToolException(_UNAVAILABLE) from None
         if result.status == "no_relevant_results":
@@ -248,7 +256,13 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             raise ToolException(_NO_PASSAGE)
         doc_id = uuid.UUID(ref["doc_id"])
         try:
-            chunk = await bases.chunk(owner, doc_id, uuid.UUID(ref["chunk_id"]), neighbours=window)
+            chunk = await bases.chunk(
+                owner,
+                doc_id,
+                uuid.UUID(ref["chunk_id"]),
+                neighbours=window,
+                roles=_roles(runtime),
+            )
         except KnowledgeDocumentNotFoundError:
             raise ToolException(_NO_PASSAGE) from None
         except AppError:
