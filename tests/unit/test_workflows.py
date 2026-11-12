@@ -40,7 +40,11 @@ def test_ai_review_skips_during_the_nightly_window() -> None:
     cron = nightly[True]["schedule"][0]["cron"]
     minute, hour = (int(part) for part in cron.split()[:2])
     start_run = hour * 60 + minute
-    cap = nightly["jobs"]["live-eval"]["timeout-minutes"]
+    # The jobs run one after another (RAG-09.05), so the window must cover all their caps.
+    jobs = nightly["jobs"]
+    assert jobs["live-eval"]["needs"] == "knowledge-retrieval"
+    assert "needs" not in jobs["knowledge-retrieval"]
+    cap = sum(job["timeout-minutes"] for job in jobs.values())
 
     steps = review["jobs"]["review"]["steps"]
     guard = next(s for s in steps if s.get("id") == "window")
