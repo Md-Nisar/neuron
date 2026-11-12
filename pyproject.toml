@@ -139,7 +139,9 @@ pytest_add_cli_args_test_selection = ["tests/security/", "tests/unit/"]
 # mutmut already copies tests/, pyproject.toml and uv.lock into mutants/; listing tests/conftest.py
 # or tests/fixtures/ here crashes, because they are copied before mutants/tests/ exists.
 also_copy = [
-  "scripts/", "loadtest/", "deploy/", ".github/", "docs/", ".env.example", "langgraph.json",
+  "scripts/", "loadtest/", "deploy/", ".github/", "docs/", "web/", "keycloak-theme/", "evals/",
+  ".env.example", "langgraph.json", "Makefile", "docker-compose.yml", "docker-compose.reference.yml",
   "Dockerfile", ".dockerignore", ".trivyignore.yaml", "render.yaml",
-  "OPERATIONS.md", "SECURITY.md", "CHANGELOG.md",
+  "AGENTS.md", "CLAUDE.md", "ARCHITECTURE.md", "README.md", "DEVELOPMENT.md", "EVALUATION.md",
+  "CONTRIBUTING.md", "OPERATIONS.md", "SECURITY.md", "CHANGELOG.md",
 ]
