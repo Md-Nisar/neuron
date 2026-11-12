@@ -221,6 +221,18 @@ class Settings(BaseSettings):
     # the search is `no_relevant_results`.
     knowledge_search_min_similarity: float = Field(default=0.0, ge=-1.0, le=1.0)
     knowledge_search_mode: Literal["hybrid", "dense", "fts"] = "hybrid"
+    # Reranking of the fused candidates (RAG-09.01). Unset means `nvidia` when the embeddings are
+    # NVIDIA's and NVIDIA_API_KEY is set (RAG-09.01's eval showed a gain),
+    # else `none`. The reranker is hosted: the policy and each base's setting apply as for
+    # embeddings. A timeout or error keeps the RRF order.
+    knowledge_reranker: Literal["none", "nvidia"] | None = None
+    knowledge_reranker_model: str = Field(
+        default="nvidia/llama-nemotron-rerank-vl-1b-v2",
+        min_length=1,
+        max_length=200,
+        pattern=r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
+    )
+    knowledge_reranker_timeout_seconds: float = Field(default=3.0, ge=0.5, le=30.0)
     # Knowledge bases one user may have (RAG-03.01; ADR 0014 requirement 7). Tombstoned ones
     # do not count.
     knowledge_max_bases_per_user: int = Field(default=20, ge=1, le=1_000)
@@ -499,6 +511,15 @@ class Settings(BaseSettings):
             return self.knowledge_embedding_batch_size
         return 1 if self.knowledge_embedding_provider == "nvidia" else 32
 
+    @property
+    def knowledge_reranker_effective(self) -> Literal["none", "nvidia"]:
+        """The reranker in use: the setting, else `nvidia` with NVIDIA embeddings and a key."""
+        if self.knowledge_reranker is not None:
+            return self.knowledge_reranker
+        if self.knowledge_embedding_provider == "nvidia" and self.nvidia_api_key is not None:
+            return "nvidia"
+        return "none"
+
     @model_validator(mode="after")
     def validate_knowledge_embedding(self) -> Settings:
         """Refuse an embedding setup that cannot work or would send text where policy forbids.
@@ -568,6 +589,25 @@ class Settings(BaseSettings):
                 f"{provider} embedding provider in staging/production; configure a "
                 "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
                 "self_hosted)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_knowledge_reranker(self) -> Settings:
+        """Refuse a hosted reranker the policy forbids, or one without its key, where it counts.
+
+        Runs after the embedding check, so an embedding setup the policy forbids is reported
+        as such rather than as the reranker it implies."""
+        if self.env not in {"staging", "production"} or self.knowledge_reranker_effective == "none":
+            return self
+        if self.knowledge_processing_policy == "self_hosted_only":
+            raise ValueError(
+                "APP_KNOWLEDGE_PROCESSING_POLICY=self_hosted_only forbids the hosted nvidia "
+                "reranker in staging/production"
+            )
+        if self.knowledge_enabled and self.nvidia_api_key is None:
+            raise ValueError(
+                "APP_KNOWLEDGE_RERANKER=nvidia needs NVIDIA_API_KEY in staging/production"
             )
         return self
 
