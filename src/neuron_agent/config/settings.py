@@ -204,6 +204,17 @@ class Settings(BaseSettings):
     knowledge_embedding_batch_size: int | None = Field(default=None, ge=1, le=256)
     knowledge_embedding_timeout_seconds: int = Field(default=30, ge=1, le=300)
     knowledge_embedding_max_retries: int = Field(default=3, ge=0, le=8)
+    # The model a re-index builds a new index profile with (RAG-09.04, ADR 0014 amendment):
+    # set on the API and the worker for the whole re-index, then moved into the settings above.
+    # Batch size, timeout and retries are shared with the active model.
+    knowledge_reindex_embedding_provider: EmbeddingProviderName | None = None
+    knowledge_reindex_embedding_model: str | None = Field(
+        default=None, min_length=1, max_length=200
+    )
+    knowledge_reindex_embedding_dimensions: int | None = Field(default=None, ge=1, le=4000)
+    knowledge_reindex_embedding_base_url: str | None = None
+    knowledge_reindex_embedding_api_key: SecretStr | None = None
+    knowledge_reindex_embedding_locality: ProcessingLocality = "hosted"
     # `self_hosted_only` forbids hosted embedding for every knowledge base.
     knowledge_processing_policy: ProcessingPolicy = "allow_hosted"
     # Original uploaded files (ADR 0014; RAG-01.03). `local` is a directory, normally a volume;
@@ -390,6 +401,8 @@ class Settings(BaseSettings):
         "langsmith_api_key",
         "knowledge_embedding_api_key",
         "knowledge_embedding_base_url",
+        "knowledge_reindex_embedding_api_key",
+        "knowledge_reindex_embedding_base_url",
         "knowledge_parser_url",
         mode="before",
     )
@@ -522,6 +535,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_knowledge_embedding(self) -> Settings:
+        self._check_knowledge_embedding()
+        return self
+
+    def _check_knowledge_embedding(self) -> None:
         """Refuse an embedding setup that cannot work or would send text where policy forbids.
 
         The endpoint is operator-configured, so it is checked here and not routed through
@@ -570,7 +587,7 @@ class Settings(BaseSettings):
                     "APP_KNOWLEDGE_EMBEDDING_API_KEY is set in staging/production"
                 )
         if self.env not in {"staging", "production"}:
-            return self
+            return
         if provider == "fake":
             raise ValueError(
                 "APP_KNOWLEDGE_EMBEDDING_PROVIDER=fake is refused in staging/production"
@@ -590,6 +607,47 @@ class Settings(BaseSettings):
                 "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
                 "self_hosted)"
             )
+
+    def knowledge_reindex_settings(self) -> Settings | None:
+        """These settings with the re-index model in place of the active one, or None."""
+        if self.knowledge_reindex_embedding_provider is None:
+            return None
+        update: dict[str, object] = {
+            "knowledge_embedding_provider": self.knowledge_reindex_embedding_provider,
+            "knowledge_embedding_model": self.knowledge_reindex_embedding_model,
+            "knowledge_embedding_dimensions": self.knowledge_reindex_embedding_dimensions,
+            "knowledge_embedding_base_url": self.knowledge_reindex_embedding_base_url,
+            "knowledge_embedding_api_key": self.knowledge_reindex_embedding_api_key,
+            "knowledge_embedding_locality": self.knowledge_reindex_embedding_locality,
+            "knowledge_reindex_embedding_provider": None,
+        }
+        copy = self.model_copy(update=update)
+        # `model_copy` keeps the original's set fields: an explicit locality counts as set.
+        if "knowledge_reindex_embedding_locality" in self.model_fields_set:
+            copy.model_fields_set.add("knowledge_embedding_locality")
+        else:
+            copy.model_fields_set.discard("knowledge_embedding_locality")
+        return copy
+
+    @model_validator(mode="after")
+    def validate_knowledge_reindex_embedding(self) -> Settings:
+        """The re-index model passes the same checks as the active one (RAG-09.04)."""
+        if self.knowledge_reindex_embedding_provider is None:
+            return self
+        if (
+            self.knowledge_reindex_embedding_model is None
+            or self.knowledge_reindex_embedding_dimensions is None
+        ):
+            raise ValueError(
+                "APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER needs "
+                "APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL and _DIMENSIONS"
+            )
+        reindex = self.knowledge_reindex_settings()
+        assert reindex is not None  # nosec B101
+        try:
+            reindex._check_knowledge_embedding()
+        except ValueError as exc:
+            raise ValueError(f"the re-index embedding model: {exc}") from None
         return self
 
     @model_validator(mode="after")

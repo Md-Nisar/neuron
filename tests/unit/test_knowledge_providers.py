@@ -20,8 +20,11 @@ from neuron_agent.knowledge.providers import (
     EmbeddingProvider,
     FakeEmbeddings,
     create_embedding_provider,
+    create_reindex_embedding_provider,
     ensure_processing_allowed,
+    provider_for,
 )
+from neuron_agent.persistence.migrations import KnowledgeProfile
 
 pytestmark = pytest.mark.anyio
 
@@ -427,3 +430,68 @@ def test_openai_compatible_client_uses_the_configured_server() -> None:
         assert client.openai_api_base == "http://tei:80/v1"
         assert client.model_kwargs == {}
     assert provider.locality == "self_hosted"
+
+
+# RAG-09.04: the re-index model, a second provider beside the active one.
+_REINDEX = {
+    "knowledge_reindex_embedding_provider": "openai_compatible",
+    "knowledge_reindex_embedding_model": "next-embed",
+    "knowledge_reindex_embedding_dimensions": 768,
+    "knowledge_reindex_embedding_base_url": "http://tei:80/v1",
+    "knowledge_reindex_embedding_locality": "self_hosted",
+}
+
+
+def test_the_reindex_model_is_a_provider_for_its_own_profile() -> None:
+    settings = Settings(env="test", **_REINDEX)  # type: ignore[arg-type]
+    active = create_embedding_provider(settings)
+    reindex = create_reindex_embedding_provider(settings)
+    assert reindex is not None
+    assert reindex.profile == KnowledgeProfile("openai_compatible", "next-embed", 768)
+    assert (reindex.dimensions, reindex.locality) == (768, "self_hosted")
+    assert active.profile == KnowledgeProfile()
+    assert provider_for(reindex.profile, active, reindex) is reindex
+    assert provider_for(KnowledgeProfile(), active, reindex) is active
+    assert provider_for(KnowledgeProfile(model="other"), active, reindex) is None
+    assert create_reindex_embedding_provider(Settings(env="test")) is None
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        (
+            {"knowledge_reindex_embedding_model": None},
+            "needs APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL and _DIMENSIONS",
+        ),
+        (
+            {"knowledge_reindex_embedding_base_url": None},
+            "the re-index embedding model: APP_KNOWLEDGE_EMBEDDING_BASE_URL is required",
+        ),
+        (
+            {
+                "knowledge_reindex_embedding_provider": "nvidia",
+                "knowledge_reindex_embedding_locality": "self_hosted",
+            },
+            "the re-index embedding model: APP_KNOWLEDGE_EMBEDDING_LOCALITY=self_hosted is refused",
+        ),
+    ],
+)
+def test_the_reindex_model_is_checked_like_the_active_one(
+    overrides: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        Settings(env="test", **{**_REINDEX, **overrides})  # type: ignore[arg-type]
+
+
+def test_an_unset_reindex_locality_is_not_taken_as_set() -> None:
+    """For nvidia, only an explicit locality is refused; the default must not trip it."""
+    settings = Settings(
+        env="test",
+        knowledge_reindex_embedding_provider="nvidia",
+        knowledge_reindex_embedding_model="nvidia/other-embed",
+        knowledge_reindex_embedding_dimensions=2048,
+    )
+    reindex = settings.knowledge_reindex_settings()
+    assert reindex is not None
+    assert "knowledge_embedding_locality" not in reindex.model_fields_set
+    assert reindex.knowledge_embedding_locality_effective == "hosted"

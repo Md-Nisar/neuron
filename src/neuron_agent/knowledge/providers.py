@@ -25,6 +25,7 @@ from pydantic import SecretStr
 
 from neuron_agent.config.settings import ProcessingLocality, ProcessingPolicy, Settings
 from neuron_agent.errors.base import AppError, ConfigurationError, ErrorContext
+from neuron_agent.persistence.migrations import KnowledgeProfile
 
 logger = structlog.get_logger(__name__)
 
@@ -80,10 +81,15 @@ class EmbeddingProvider:
         batch_size: int,
         max_retries: int,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        profile: KnowledgeProfile | None = None,
     ) -> None:
         self._documents = documents
         self._queries = queries
         self.dimensions = dimensions
+        # The index profile these vectors belong to; unset, the default model at `dimensions`.
+        self.profile = profile or KnowledgeProfile(dimensions=dimensions)
+        if self.profile.dimensions != dimensions:
+            raise ValueError("the profile's dimensions differ from the provider's")
         self.locality = locality
         self._batch_size = batch_size
         self._max_retries = max_retries
@@ -220,4 +226,22 @@ def _provider(
         locality=locality,
         batch_size=settings.knowledge_embedding_batch_size_effective,
         max_retries=settings.knowledge_embedding_max_retries,
+        profile=KnowledgeProfile(
+            provider=settings.knowledge_embedding_provider,
+            model=settings.knowledge_embedding_model,
+            dimensions=settings.knowledge_embedding_dimensions,
+        ),
     )
+
+
+def create_reindex_embedding_provider(settings: Settings) -> EmbeddingProvider | None:
+    """The re-index model's provider (RAG-09.04), or None when no re-index model is set."""
+    reindex = settings.knowledge_reindex_settings()
+    return None if reindex is None else create_embedding_provider(reindex)
+
+
+def provider_for(
+    profile: KnowledgeProfile, *providers: EmbeddingProvider | None
+) -> EmbeddingProvider | None:
+    """The configured provider that embeds into `profile`'s vector space, if any."""
+    return next((p for p in providers if p is not None and p.profile == profile), None)

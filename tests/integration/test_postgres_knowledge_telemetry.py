@@ -38,6 +38,7 @@ from neuron_agent.knowledge.ingest import Ingestor
 from neuron_agent.knowledge.parsing import ParseError
 from neuron_agent.knowledge.providers import EmbeddingError, EmbeddingProvider
 from neuron_agent.observability import metrics, semconv, telemetry
+from neuron_agent.persistence.migrations import KnowledgeProfile
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -275,6 +276,7 @@ async def test_an_unknown_errors_code_never_reaches_a_span(
 
     class _Broken:
         locality = "self_hosted"
+        profile = KnowledgeProfile()
 
         async def embed_documents(self, texts: list[str]) -> list[list[float]]:
             raise _ProviderError

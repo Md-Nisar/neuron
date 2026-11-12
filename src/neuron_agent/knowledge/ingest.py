@@ -35,8 +35,10 @@ from neuron_agent.knowledge.providers import (
     EmbeddingError,
     EmbeddingProvider,
     ensure_processing_allowed,
+    provider_for,
 )
 from neuron_agent.observability import metrics, semconv, telemetry
+from neuron_agent.persistence.migrations import KnowledgeProfile
 
 log = structlog.get_logger(__name__)
 
@@ -44,8 +46,9 @@ Connect = Callable[[], Awaitable[psycopg.AsyncConnection[dict[str, Any]]]]
 
 _LOAD = (
     "SELECT d.kb_id, d.mime_type, d.blob_key, d.sha256, b.processing,"
-    " b.ts_config::text AS ts_config, b.profile_id"
+    " b.ts_config::text AS ts_config, b.profile_id, p.provider, p.model, p.dimensions"
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " JOIN knowledge.index_profiles p ON p.profile_id = b.profile_id"
     " WHERE d.doc_id = %s AND d.deleted_at IS NULL AND d.status <> 'deleting'"
     " AND b.deleted_at IS NULL"
 )
@@ -96,6 +99,8 @@ class Ingestor:
     limits: Limits
     chunk_max_tokens: int
     policy: ProcessingPolicy
+    # The re-index model (RAG-09.04), used for a base whose profile it embeds into.
+    reindex: EmbeddingProvider | None = None
 
     async def ingest(self, doc_id: uuid.UUID, *, last_attempt: bool = True) -> str:
         """Run the document's ingestion and return its final status, or `skipped`.
@@ -127,14 +132,13 @@ class Ingestor:
                 # Before anything is read: docling-serve is part of the deployment (internal, no
                 # egress), so the setting governs the embedding provider, the only hosted step.
                 with _stage("policy"):
-                    ensure_processing_allowed(
-                        row["processing"], self.embeddings.locality, self.policy
-                    )
+                    model = self._model(row)
+                    ensure_processing_allowed(row["processing"], model.locality, self.policy)
                 chunks, parsed = await self._parse(row)
                 span.set_attribute(semconv.NEURON_KNOWLEDGE_CHUNKS, len(chunks))
                 await self._set(conn, doc_id, "embedding")
                 with _stage("embed"):
-                    vectors = await self.embeddings.embed_documents([_passage(c) for c in chunks])
+                    vectors = await model.embed_documents([_passage(c) for c in chunks])
             except (ParseError, EmbeddingError) as exc:
                 if exc.retryable and not last_attempt:
                     raise
@@ -153,6 +157,15 @@ class Ingestor:
             return "skipped"
         log.info("knowledge.ingest.ready", doc_id=str(doc_id), chunks=len(chunks))
         return "ready"
+
+    def _model(self, row: dict[str, Any]) -> EmbeddingProvider:
+        """The configured model for the base's index profile. None configured is retried: the
+        operator may be moving settings after a re-index (RAG-09.04)."""
+        profile = KnowledgeProfile(row["provider"], row["model"], row["dimensions"])
+        model = provider_for(profile, self.embeddings, self.reindex)
+        if model is None:
+            raise EmbeddingError("knowledge_profile_mismatch", retryable=True)
+        return model
 
     async def _start(
         self, conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID

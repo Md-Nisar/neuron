@@ -686,6 +686,7 @@ async def run_setup(
     knowledge: bool = False,
     knowledge_profile: KnowledgeProfile | None = None,
     worker_role: str | None = None,
+    knowledge_reindex_profile: KnowledgeProfile | None = None,
 ) -> list[int]:
     """Run LangGraph's `setup()`, then every unapplied migration. Returns the versions applied.
 
@@ -756,7 +757,9 @@ async def run_setup(
         if knowledge and knowledge_profile is not None:
             await _verify_knowledge_schema(conn, _runtime_roles(target))
             await _verify_row_security(conn)
-            await _seed_profile(conn, knowledge_profile, timeout_ms, concurrent_ms)
+            await _seed_profile(
+                conn, knowledge_profile, knowledge_reindex_profile, timeout_ms, concurrent_ms
+            )
         if identity_hash_key:
             await _check_identity(conn, identity_hash_key, rotate_identity_key)
         else:
@@ -1262,14 +1265,17 @@ async def _verify_row_security(conn: psycopg.AsyncConnection[dict[str, object]])
 async def _seed_profile(
     conn: psycopg.AsyncConnection[dict[str, object]],
     profile: KnowledgeProfile,
+    reindex: KnowledgeProfile | None,
     timeout_ms: int,
     concurrent_ms: int,
 ) -> None:
-    """Record index profile 1 once, refuse a different one, and build its HNSW index.
+    """Record index profile 1 once, refuse settings with no model for the active profile, and
+    build the HNSW index of every profile in use.
 
-    The index casts to the profile's dimension (`halfvec` has no typmod in the table), so it is
-    built here rather than in a migration. Concurrently: a rebuild after a failed build must not
-    block writers.
+    After a re-index (RAG-09.04) the active profile may be the one the re-index settings name,
+    until the operator moves them into the main ones. Each index casts to its profile's
+    dimension (`halfvec` has no typmod in the table), so it is built here rather than in a
+    migration. Concurrently: a rebuild after a failed build must not block writers.
     """
     cursor = await conn.execute(
         "INSERT INTO knowledge.index_profiles"
@@ -1287,42 +1293,55 @@ async def _seed_profile(
     if cursor.rowcount:
         logger.info("knowledge_profile_seeded", profile_id=KNOWLEDGE_PROFILE_ID)
     cursor = await conn.execute(
-        "SELECT provider, model, dimensions FROM knowledge.index_profiles WHERE profile_id = %s",
-        (KNOWLEDGE_PROFILE_ID,),
+        "SELECT profile_id, provider, model, dimensions, status FROM knowledge.index_profiles"
+        " WHERE status <> 'retired' ORDER BY profile_id"
     )
-    row = await cursor.fetchone()
-    assert row is not None  # nosec B101
-    stored = KnowledgeProfile(str(row["provider"]), str(row["model"]), int(str(row["dimensions"])))
-    if stored != profile:
+    rows = await cursor.fetchall()
+    active = [_profile(row) for row in rows if row["status"] == "active"]
+    if not active or active[0] not in {profile, reindex}:
         raise StartupCheckError(
-            "the embedding provider, model or dimensions differ from index profile 1, which "
-            "this database was set up with; changing them needs a re-index",
+            "the embedding provider, model or dimensions differ from the active index "
+            "profile, which this database uses; changing them needs a re-index",
             KNOWLEDGE_PROFILE_MISMATCH,
         )
-    index = f"embeddings_p{KNOWLEDGE_PROFILE_ID}_hnsw"
     await _set_lock_timeout(conn, concurrent_ms)
     try:
-        if await _index_is_invalid(conn, f"{KNOWLEDGE_SCHEMA}.{index}"):
-            logger.warning("invalid_index_rebuilt", index=index)
-            await conn.execute(
-                sql.SQL("DROP INDEX CONCURRENTLY IF EXISTS {}").format(
-                    sql.Identifier(KNOWLEDGE_SCHEMA, index)
-                )
-            )
-        await conn.execute(
-            sql.SQL(
-                "CREATE INDEX CONCURRENTLY IF NOT EXISTS {index} ON {table}"
-                " USING hnsw ((embedding::halfvec({dims})) halfvec_cosine_ops)"
-                " WHERE profile_id = {id}"
-            ).format(
-                index=sql.Identifier(index),
-                table=sql.Identifier(KNOWLEDGE_SCHEMA, "embeddings"),
-                dims=sql.Literal(stored.dimensions),
-                id=sql.Literal(KNOWLEDGE_PROFILE_ID),
-            )
-        )
+        for row in rows:
+            await _build_hnsw(conn, int(str(row["profile_id"])), int(str(row["dimensions"])))
     finally:
         await _set_lock_timeout(conn, timeout_ms)
+
+
+def _profile(row: dict[str, object]) -> KnowledgeProfile:
+    return KnowledgeProfile(str(row["provider"]), str(row["model"]), int(str(row["dimensions"])))
+
+
+async def _build_hnsw(
+    conn: psycopg.AsyncConnection[dict[str, object]],
+    profile_id: int,
+    dimensions: int,
+) -> None:
+    """The partial HNSW index of one profile, rebuilt if a concurrent build left it invalid."""
+    index = f"embeddings_p{profile_id}_hnsw"
+    if await _index_is_invalid(conn, f"{KNOWLEDGE_SCHEMA}.{index}"):
+        logger.warning("invalid_index_rebuilt", index=index)
+        await conn.execute(
+            sql.SQL("DROP INDEX CONCURRENTLY IF EXISTS {}").format(
+                sql.Identifier(KNOWLEDGE_SCHEMA, index)
+            )
+        )
+    await conn.execute(
+        sql.SQL(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS {index} ON {table}"
+            " USING hnsw ((embedding::halfvec({dims})) halfvec_cosine_ops)"
+            " WHERE profile_id = {id}"
+        ).format(
+            index=sql.Identifier(index),
+            table=sql.Identifier(KNOWLEDGE_SCHEMA, "embeddings"),
+            dims=sql.Literal(dimensions),
+            id=sql.Literal(profile_id),
+        )
+    )
 
 
 async def _acquire_lock(conn: psycopg.AsyncConnection[dict[str, object]], wait: float) -> None:

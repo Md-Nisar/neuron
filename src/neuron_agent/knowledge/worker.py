@@ -47,7 +47,10 @@ from neuron_agent.knowledge.parsing import (
     ParseError,
     PlainTextParser,
 )
-from neuron_agent.knowledge.providers import create_embedding_provider
+from neuron_agent.knowledge.providers import (
+    create_embedding_provider,
+    create_reindex_embedding_provider,
+)
 from neuron_agent.knowledge.purge import Purger
 from neuron_agent.knowledge.reconcile import check_blobs, reconcile, sweep_blobs
 from neuron_agent.observability import metrics
@@ -123,6 +126,7 @@ def build_ingestor(settings: Settings) -> Ingestor:
         limits=Limits.from_settings(settings),
         chunk_max_tokens=settings.knowledge_chunk_max_tokens,
         policy=settings.knowledge_processing_policy,
+        reindex=create_reindex_embedding_provider(settings),
     )
 
 

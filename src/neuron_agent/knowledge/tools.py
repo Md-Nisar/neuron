@@ -28,7 +28,10 @@ from pydantic import Field
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import AppError, KnowledgeDocumentNotFoundError
 from neuron_agent.knowledge.citations import minted
-from neuron_agent.knowledge.providers import create_embedding_provider
+from neuron_agent.knowledge.providers import (
+    create_embedding_provider,
+    create_reindex_embedding_provider,
+)
 from neuron_agent.knowledge.reranking import create_reranker
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
@@ -188,7 +191,11 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
     # Built on first search, as for the API route: a provider that cannot be built is retried.
     retriever = functools.cache(
         lambda: Retriever(
-            settings, pool, create_embedding_provider(settings), create_reranker(settings)
+            settings,
+            pool,
+            create_embedding_provider(settings),
+            create_reranker(settings),
+            create_reindex_embedding_provider(settings),
         )
     )
 
