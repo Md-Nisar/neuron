@@ -41,6 +41,8 @@ _KB = f"/v1/knowledge/bases/{uuid.uuid4()}"
         ),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}/file", None, "knowledge:read"),
         ("POST", "/v1/knowledge/search", {"query": "q"}, "knowledge:read"),
+        ("GET", f"{_KB}/grants", None, "knowledge:admin"),
+        ("PUT", f"{_KB}/grants", {"grants": []}, "knowledge:admin"),
     ],
 )
 def test_a_token_without_the_routes_permission_is_refused(
@@ -51,8 +53,9 @@ def test_a_token_without_the_routes_permission_is_refused(
     body: dict[str, str] | None,
     permission: str,
 ) -> None:
-    other = "knowledge:read" if permission == "knowledge:write" else "knowledge:write"
-    token = make_token("alice", scopes=f"agent:invoke {other}")
+    # Every other knowledge permission, so only the route's own is missing.
+    others = {"knowledge:read", "knowledge:write", "knowledge:admin"} - {permission}
+    token = make_token("alice", scopes=" ".join(["agent:invoke", *sorted(others)]))
     response = jwt_api.client.request(method, path, json=body, headers=bearer(token))
     assert (response.status_code, response.json()) == (403, {"detail": "authorization_error"})
     assert f'scope="{permission}"' in response.headers["www-authenticate"]
@@ -91,6 +94,11 @@ def test_a_token_without_the_routes_permission_is_refused(
         ("POST", "/v1/knowledge/search", {"query": "q", "kb_ids": ["not-a-uuid"]}),
         ("POST", "/v1/knowledge/search", {"query": "q", "limit": 11}),
         ("POST", "/v1/knowledge/search", {"query": "q", "limit": 0}),
+        ("GET", "/v1/knowledge/bases/not-a-uuid/grants", None),
+        ("PUT", "/v1/knowledge/bases/not-a-uuid/grants", {"grants": []}),
+        ("PUT", f"{_KB}/grants", {}),
+        ("PUT", f"{_KB}/grants", {"grants": [{"role": "r", "access": "owner"}]}),
+        ("PUT", f"{_KB}/grants", {"grants": [{"role": "r", "access": "read"}] * 2}),
     ],
     ids=[
         "unknown-field",
@@ -119,6 +127,11 @@ def test_a_token_without_the_routes_permission_is_refused(
         "search-bad-kb-id",
         "search-limit-over-10",
         "search-limit-0",
+        "grants-bad-id",
+        "grants-put-bad-id",
+        "grants-no-list",
+        "grants-owner-access",
+        "grants-duplicate-role",
     ],
 )
 def test_an_invalid_request_is_422(
@@ -128,7 +141,7 @@ def test_an_invalid_request_is_422(
     path: str,
     body: dict[str, str] | None,
 ) -> None:
-    token = make_token("alice", scopes="knowledge:read knowledge:write")
+    token = make_token("alice", scopes="knowledge:read knowledge:write knowledge:admin")
     response = jwt_api.client.request(method, path, json=body, headers=bearer(token))
     assert response.status_code == 422, response.text
 
@@ -136,7 +149,7 @@ def test_an_invalid_request_is_422(
 def test_with_knowledge_off_every_route_is_404(
     jwt_api: JwtApi, make_token: Callable[..., str]
 ) -> None:
-    token = make_token("alice", scopes="knowledge:read knowledge:write")
+    token = make_token("alice", scopes="knowledge:read knowledge:write knowledge:admin")
     for method, path, body in [
         ("GET", "/v1/knowledge/bases", None),
         ("POST", "/v1/knowledge/bases", {"name": "kb"}),
@@ -146,6 +159,8 @@ def test_with_knowledge_off_every_route_is_404(
         ("POST", f"{_KB}/documents", None),
         ("GET", f"/v1/knowledge/documents/{uuid.uuid4()}", None),
         ("POST", "/v1/knowledge/search", {"query": "q"}),
+        ("GET", f"{_KB}/grants", None),
+        ("PUT", f"{_KB}/grants", {"grants": []}),
     ]:
         response = jwt_api.client.request(method, path, json=body, headers=bearer(token))
         assert (response.status_code, response.json()) == (404, {"detail": "knowledge_disabled"})
