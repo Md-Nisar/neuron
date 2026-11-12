@@ -1022,5 +1022,8 @@ def classify_agent_error(exc: Exception) -> AppError:
 def _split_model_identifier(identifier: str) -> tuple[str, str]:
     provider, separator, model_name = identifier.partition(":")
     if not separator or not provider or not model_name:
-        raise ConfigurationError("model identifier must use provider:model format")
+        raise ConfigurationError(
+            "model identifier must use provider:model format, "
+            "for example APP_DEFAULT_MODEL=nvidia:<model-id>"
+        )
     return provider, model_name

@@ -50,6 +50,8 @@ try {
 Authorization Code + PKCE (S256), written out in about 400 lines so each check is testable; no
 OAuth library. Against the development Keycloak (`docker compose --profile keycloak up keycloak`,
 `make dev-keycloak >> .env`, then `make web-dev`), sign in as `alice` / `dev-only-alice`.
+Run the API with `APP_AUTH_MODE=jwt`, as that step sets: in `none` mode it does not know who
+signed in, so the knowledge routes answer `401` and the page shows "Your session ended" (#480).
 
 Settings (build time, `web/.env.local`, both optional): `VITE_OIDC_ISSUER` (default
 `http://localhost:8180/realms/neuron`; plain HTTP is accepted on loopback only) and
@@ -158,6 +160,8 @@ The "Knowledge" page lists the user's knowledge bases and creates, renames and d
 takes two steps and also deletes the base's documents. Creating one says first where its text is
 processed (`hosted` or `self_hosted`). It uses `/v1/knowledge/*` and needs `knowledge:read` and
 `knowledge:write`; with knowledge off on the server it says so. Names are shown as text.
+If loading the list is refused for a while (`429` or `503`), the page says so and tries again
+after the server's `Retry-After` (5 seconds without one), at most three times.
 Opening a base shows its documents and, above the upload area, where their text is processed.
 Files are uploaded by drop or picker, one request each with its own `Idempotency-Key`, and the list
 is fetched again every 2 seconds while any document is still queued or being processed.

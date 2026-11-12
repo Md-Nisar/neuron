@@ -196,7 +196,7 @@ def create_embedding_provider(settings: Settings) -> EmbeddingProvider:
             dimensions=dimensions,
             # Send raw text: tiktoken counts are not this model's tokens.
             check_embedding_ctx_length=False,
-            chunk_size=settings.knowledge_embedding_batch_size,
+            chunk_size=settings.knowledge_embedding_batch_size_effective,
             request_timeout=settings.knowledge_embedding_timeout_seconds,
             max_retries=0,
             **options,
@@ -218,6 +218,6 @@ def _provider(
         queries,
         dimensions=settings.knowledge_embedding_dimensions,
         locality=locality,
-        batch_size=settings.knowledge_embedding_batch_size,
+        batch_size=settings.knowledge_embedding_batch_size_effective,
         max_retries=settings.knowledge_embedding_max_retries,
     )
