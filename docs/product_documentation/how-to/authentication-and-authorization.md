@@ -41,6 +41,7 @@ The following permissions can be granted directly via the token's `scope` claim 
 | `tools:forget` | Permits agent execution of the memory note deletion tool |
 | `knowledge:read` | `GET /v1/knowledge/bases`, `GET /v1/knowledge/bases/{kb_id}/documents`, `GET /v1/knowledge/documents/{doc_id}`, `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`, `GET /v1/knowledge/documents/{doc_id}/file`, `POST /v1/knowledge/search` |
 | `knowledge:write` | `POST /v1/knowledge/bases`, `PATCH /v1/knowledge/bases/{kb_id}`, `DELETE /v1/knowledge/bases/{kb_id}`, `POST /v1/knowledge/bases/{kb_id}/documents`, `DELETE /v1/knowledge/documents/{doc_id}` |
+| `knowledge:admin` | `GET` and `PUT /v1/knowledge/bases/{kb_id}/grants`: share a base with a token role, for its owner or an `admin` role (RAG-09.03) |
 | `tools:list_knowledge_bases` | Permits agent execution of the `list_knowledge_bases` tool |
 | `tools:search_knowledge` | Permits agent execution of the `search_knowledge` tool |
 | `tools:get_document_excerpt` | Permits agent execution of the `get_document_excerpt` tool |
@@ -88,7 +89,7 @@ APP_AUTH_ROLE_PERMISSIONS='{
     "agent:invoke", "agent:approve", "threads:read", "threads:write",
     "feedback:write", "threads:delete", "data:erase", "memories:read",
     "memories:write", "tools:calculator", "knowledge:read", "knowledge:write",
-    "tools:list_knowledge_bases", "tools:search_knowledge", "tools:get_document_excerpt"
+    "knowledge:admin", "tools:list_knowledge_bases", "tools:search_knowledge", "tools:get_document_excerpt"
   ],
   "user": [
     "agent:invoke", "agent:approve", "threads:read", "threads:write",

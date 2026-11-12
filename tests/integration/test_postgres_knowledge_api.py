@@ -30,7 +30,7 @@ from neuron_agent.knowledge.service import KnowledgeBases
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
-_SCOPES = "knowledge:read knowledge:write"
+_SCOPES = "knowledge:read knowledge:write knowledge:admin"
 _PDF = b"%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n"
 _MAX_BYTES = 4_096
 
@@ -112,6 +112,12 @@ def _requests(
         ("GET", f"/v1/knowledge/documents/{doc_id}/chunks/{chunk_id}", None),
         ("GET", f"/v1/knowledge/documents/{doc_id}/file", None),
         ("DELETE", f"/v1/knowledge/documents/{doc_id}", None),
+        ("GET", f"/v1/knowledge/bases/{kb_id}/grants", None),
+        (
+            "PUT",
+            f"/v1/knowledge/bases/{kb_id}/grants",
+            {"grants": [{"role": "r", "access": "admin"}]},
+        ),
         ("PATCH", f"/v1/knowledge/bases/{kb_id}", {"name": "taken over"}),
         ("DELETE", f"/v1/knowledge/bases/{kb_id}", None),
     ]

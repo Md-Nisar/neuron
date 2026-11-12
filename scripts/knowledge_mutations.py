@@ -58,7 +58,13 @@ MUTANTS = [
     Mutant(
         "Foreign kb_id or doc_id",
         "rename ignores the owner",
-        (Edit(_SERVICE, "_require(allowed, kb_id, allowed.admin)", "pass"),),
+        (
+            Edit(
+                _SERVICE,
+                "_require(allowed, kb_id, allowed.admin)\n            cursor = await conn.execute(_RENAME",
+                "cursor = await conn.execute(_RENAME",
+            ),
+        ),
     ),
     Mutant(
         "Foreign kb_id or doc_id",

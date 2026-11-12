@@ -405,6 +405,12 @@ alone never grant access: the caller still needs an owner key, and the route its
   that way is `403` (`knowledge_access_denied`): its existence is no secret from them.
 - **Role names** are the token's values as they are, with no issuer prefix: one issuer is
   accepted (ADR 0006). A second issuer would need prefixed grant subjects first.
+- **Grants API** (`GET`/`PUT /v1/knowledge/bases/{kb_id}/grants`, `knowledge:admin`): the owner
+  or an `admin` role replaces the role grants, at most 50 per base. Each change is audited as
+  `knowledge_grant_changed` with the actor, base, role and access level. A grant's role is a name
+  the base's admin chose, not a user's token roles, which stay unlogged (RAG-09.02).
+  An `admin` role may revoke any role grant, its own included, but never the owner's access.
+  Role names may not contain control or invisible characters.
 - **Quotas** stay per uploader (RAG-02.05): a member's upload to a shared base counts against
   the member.
 - **Erase** (RAG-07.01): erasing a user's knowledge removes their bases with every upload in
