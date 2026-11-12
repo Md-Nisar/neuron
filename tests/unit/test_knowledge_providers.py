@@ -117,7 +117,8 @@ def _no_provider_keys(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.parametrize("env", ["staging", "production"])
 def test_self_hosted_only_refuses_nvidia_at_startup(env: str) -> None:
     overrides = {"knowledge_processing_policy": "self_hosted_only", "nvidia_api_key": "nvapi-x"}
-    with pytest.raises(ValidationError, match="self_hosted_only forbids the hosted nvidia"):
+    # The embedding provider's own check, not the reranker's, which refuses the same settings.
+    with pytest.raises(ValidationError, match="forbids the hosted nvidia embedding provider"):
         _production(env, **overrides)
 
 

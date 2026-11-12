@@ -521,22 +521,6 @@ class Settings(BaseSettings):
         return "none"
 
     @model_validator(mode="after")
-    def validate_knowledge_reranker(self) -> Settings:
-        """Refuse a hosted reranker the policy forbids, or one without its key, where it counts."""
-        if self.env not in {"staging", "production"} or self.knowledge_reranker_effective == "none":
-            return self
-        if self.knowledge_processing_policy == "self_hosted_only":
-            raise ValueError(
-                "APP_KNOWLEDGE_PROCESSING_POLICY=self_hosted_only forbids the hosted nvidia "
-                "reranker in staging/production"
-            )
-        if self.knowledge_enabled and self.nvidia_api_key is None:
-            raise ValueError(
-                "APP_KNOWLEDGE_RERANKER=nvidia needs NVIDIA_API_KEY in staging/production"
-            )
-        return self
-
-    @model_validator(mode="after")
     def validate_knowledge_embedding(self) -> Settings:
         """Refuse an embedding setup that cannot work or would send text where policy forbids.
 
@@ -605,6 +589,25 @@ class Settings(BaseSettings):
                 f"{provider} embedding provider in staging/production; configure a "
                 "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
                 "self_hosted)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_knowledge_reranker(self) -> Settings:
+        """Refuse a hosted reranker the policy forbids, or one without its key, where it counts.
+
+        Runs after the embedding check, so an embedding setup the policy forbids is reported
+        as such rather than as the reranker it implies."""
+        if self.env not in {"staging", "production"} or self.knowledge_reranker_effective == "none":
+            return self
+        if self.knowledge_processing_policy == "self_hosted_only":
+            raise ValueError(
+                "APP_KNOWLEDGE_PROCESSING_POLICY=self_hosted_only forbids the hosted nvidia "
+                "reranker in staging/production"
+            )
+        if self.knowledge_enabled and self.nvidia_api_key is None:
+            raise ValueError(
+                "APP_KNOWLEDGE_RERANKER=nvidia needs NVIDIA_API_KEY in staging/production"
             )
         return self
 
