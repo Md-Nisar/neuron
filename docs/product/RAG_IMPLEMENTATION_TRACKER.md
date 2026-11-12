@@ -5,7 +5,7 @@ acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT
 research in `docs/research/rag/`.
 
 **Last verified:** 2026-11-12, against `main` at `8c6ea29`: v1.1.0 released (tag `v1.1.0` at `26295d5`); all story and epic issues of RAG-E00 to RAG-E08 closed (#398 to #520); the only open `rag` issue is #480; no open RAG PR. Since the release, `main` has had the 2026-11-11 security audit fixes (#526 to #532) and the concurrency review fixes (#534 to #538); those touching knowledge are in the change log. Earlier verifications are in the change log.
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). The Project board has not been created.
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). RAG-E09 (#544) and its eight stories (#545 to #552) created 2026-11-12, open. The Project board has not been created.
 
 ## New session protocol
 
@@ -70,8 +70,8 @@ v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), RAG-E07 (#494), RAG-E08 (#497), all closed; RAG-E09 to RAG-E12 not created |
-| Story issues (56) | All 33 stories of RAG-E00 to RAG-E08, closed (see the issue map); the 23 stories of RAG-E09 to RAG-E12 not created |
+| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), RAG-E07 (#494), RAG-E08 (#497), all closed; RAG-E09 (#544, open, 0 of 8 ticked); RAG-E10 to RAG-E12 not created |
+| Story issues (56) | All 33 stories of RAG-E00 to RAG-E08, closed; the 8 stories of RAG-E09 (#545 to #552, open, sub-issues of #544); see the issue map. The 15 stories of RAG-E10 to RAG-E12 not created |
 | Related issues | #480 (bug, `rag`, open): findings from running the full Docker Compose stack; its items are mapped to stories under RAG-E08 |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
@@ -114,7 +114,16 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-08.03 | #508 | Not on a board |
 | RAG-08.04 | #485 | Not on a board |
 | RAG-08.05 | #520 | Not on a board |
-| RAG-E09 … RAG-E12, and the other stories | — | — |
+| RAG-E09 | #544 | Not on a board |
+| RAG-09.01 | #545 | Not on a board |
+| RAG-09.02 | #546 | Not on a board |
+| RAG-09.03 | #547 | Not on a board |
+| RAG-09.04 | #548 | Not on a board |
+| RAG-09.05 | #549 | Not on a board |
+| RAG-09.06 | #550 | Not on a board |
+| RAG-09.07 | #551 | Not on a board |
+| RAG-09.08 | #552 | Not on a board |
+| RAG-E10 … RAG-E12 and their stories | — | — |
 
 ## Epic detail
 
@@ -333,7 +342,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 - **Stories:** 8 total · 0 done · 0 in progress · 0 blocked · 8 pending
 - **Implemented functionality:** none.
 - **Outstanding work:** RAG-09.01 to RAG-09.08.
-- **Blockers and decisions:** Phase 2 starts after v1.1.0. Release v1.2.0 is a proposal.
+- **Blockers and decisions:** Phase 2 starts after v1.1.0. Release v1.2.0 is a proposal. Epic and story issues created 2026-11-12 at the owner's request (#544 to #552).
 - **Next recommended story:** RAG-09.01 by the selection rule, or RAG-09.02, which the backlog marks as the Phase 2 start (owner to choose; see "Recommended next action").
 
 ### RAG-E10 External knowledge sources
@@ -397,14 +406,14 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-08.03 | Knowledge telemetry and leak scan | 1 | P1 | Done | #508 | #509, #510, part 3 | AC1: `tests/integration/test_postgres_knowledge_telemetry.py` (search span with ids, counts and timings, no query). AC2: the same file scans spans, metrics and logs of a real search, upload and ingestion for the query, passage, title, file name and vector. AC3: `neuron.knowledge.queue.oldest_age` (`tests/integration/test_postgres_knowledge_worker.py::test_queue_age_is_the_wait_of_the_oldest_runnable_job`, `tests/unit/test_knowledge_jobs.py`), alert `NeuronKnowledgeQueueStuck` (`tests/unit/test_observability_deploy.py`, promtool in CI) and its runbook and dashboard in `OPERATIONS.md` |
 | RAG-08.04 | Reference stack, documentation and runbooks | 1 | P1 | Done | #485 | #484 (part 1), #512 (part 2), #513 (part 3), #514 (part 4), #515 (part 5) | AC1: CI's `local-stack` job (#513): `docker compose up --build --wait` from a clean checkout, then `scripts/smoke_test.py --knowledge` (upload → ready → `search:` turn → grounded answer citing the file). AC2: `AGENTS.md` "Knowledge Engine Boundaries" and `CLAUDE.md`'s module list, enforced by `tests/unit/test_knowledge_boundaries.py` (#515). Runbooks: `OPERATIONS.md` "Knowledge Engine" (#514, `tests/unit/test_knowledge_runbooks.py`) and "Runbook: knowledge queue". Reference stack: `api1`, `api2` and `worker` share the `knowledge-blobs` volume (`tests/unit/test_reference_stack.py`); parser isolation in both compose files |
 | RAG-08.05 | v1.1.0 release verification | 1 | P0 | Done | #520 | #521, #522 | `docs/releases/v1.1.0-release-verification.md`: AC1 `check-release --tag v1.1.0` passes; AC2 each exit criterion Met or Not run with evidence (only hosted deployment Not run); live eval 0.953, 12 of 12 (`v1.1.0-gate/live-knowledge-answers.json`); owner signed off 2026-11-10. Load figures `v1.1.0-gate/knowledge-load.json`, upgrade from v1.0.0 `v1.1.0-gate/upgrade-from-v1.0.0.json`. Manual release testing (58 scenarios: 55 passed; PICK-02 and PICK-03 fixed in #522 with new e2e journeys; UX-01 open). Tag `v1.1.0` at `26295d5`; GitHub Release published 2026-11-10 |
-| RAG-09.01 | Optional reranker providers | 2 | P1 | Pending | — | — | — |
-| RAG-09.02 | Keep verified roles in Principal | 2 | P1 | Pending | — | — | — |
-| RAG-09.03 | Grants API and UI | 2 | P1 | Pending | — | — | — |
-| RAG-09.04 | Re-index to a new index profile | 2 | P1 | Pending | — | — | — |
-| RAG-09.05 | Nightly retrieval regression gate | 2 | P1 | Pending | — | — | — |
-| RAG-09.06 | Load test for ingestion and search | 2 | P1 | Pending | — | — | — |
-| RAG-09.07 | Link feedback to citations | 2 | P2 | Pending | — | — | — |
-| RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Pending | — | — | — |
+| RAG-09.01 | Optional reranker providers | 2 | P1 | Pending | #545 | — | — |
+| RAG-09.02 | Keep verified roles in Principal | 2 | P1 | Pending | #546 | — | — |
+| RAG-09.03 | Grants API and UI | 2 | P1 | Pending | #547 | — | — |
+| RAG-09.04 | Re-index to a new index profile | 2 | P1 | Pending | #548 | — | — |
+| RAG-09.05 | Nightly retrieval regression gate | 2 | P1 | Pending | #549 | — | — |
+| RAG-09.06 | Load test for ingestion and search | 2 | P1 | Pending | #550 | — | — |
+| RAG-09.07 | Link feedback to citations | 2 | P2 | Pending | #551 | — | — |
+| RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Pending | #552 | — | — |
 | RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Pending | — | — | — |
 | RAG-10.02 | Web page ingestion | 3 | P2 | Pending | — | — | — |
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | — | — | — |
@@ -425,6 +434,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-12 | v1.2.0 opened at the owner's request: epic RAG-E09 (#544) and story issues RAG-09.01 to RAG-09.08 (#545 to #552) as its sub-issues, labelled `rag`, `phase:2`, `v1.2.0` and their priority | Claude session |
 | 2026-11-12 | Tracker caught up with `main` at `8c6ea29`: RAG-08.04 part 5 is #515; E07 and E08 sections show the epics done; epic issues #494 and #497 and story issues #516, #518 and #520 closed and in the issue map. Post-release fixes on `main` that touch knowledge: the queue no longer re-runs an ingest the worker recorded as failed (C-02, #536); production refuses http parser and embedding URLs (L-10, #531); both erase routes need the new `data:erase` scope (L-01, #530). No story status changed | Claude session |
 | 2026-11-10 | RAG-08.05 Done: v1.1.0 released (tag `v1.1.0` at `26295d5`, GitHub Release). #522 fixed the picker bugs found in manual release testing and added e2e journeys (picker, export and erase, inert markup). #520 and epic #497 closed; E00 to E08 complete | Claude session |
 | 2026-11-10 | RAG-07.03 Done (#519 merged, #518 and epic #494 closed). RAG-08.05 In progress (#520): version 1.1.0, CHANGELOG section, release record with ingestion and search figures (`scripts/knowledge_load.py`) and an upgrade run from v1.0.0 on the reference stack. Live eval on the release code passed (0.953, 12 of 12); owner signed off. Left: tag, Release | Claude session |
