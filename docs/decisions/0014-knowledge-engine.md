@@ -378,7 +378,7 @@ This ADR amends:
 
 ### Amendment: reranking (RAG-09.01, 2026-11-12)
 
-Hybrid search may rerank its fused top 40 before keeping the best `k`
+Hybrid search may rerank its fused top 40 (or `k`, if larger) before keeping the best `k`
 (`knowledge/reranking.py`). The reranker only reorders passages the authorised SQL already
 returned, so it adds no access path. It is a new hosted destination for the query and passages
 (NVIDIA's retrieval API, the same provider as the default embeddings): the processing policy and

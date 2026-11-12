@@ -31,7 +31,8 @@ from neuron_agent.knowledge.reranking import create_reranker
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.retrieval_metrics import Located, first_hit_rank, retrieval_report
 
-pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
+# Not `postgres`: the postgres-integration job fails on any skip, and this needs a key.
+pytestmark = [pytest.mark.integration, pytest.mark.anyio]
 
 
 async def test_reranking_beats_rrf_on_the_corpus(
