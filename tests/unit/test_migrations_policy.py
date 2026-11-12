@@ -326,6 +326,7 @@ def test_setup_passes_the_role_and_key_and_requires_the_split_in_production(
         "knowledge": False,
         "knowledge_profile": KnowledgeProfile(),
         "worker_role": "neuron_worker",
+        "knowledge_reindex_profile": None,
     }
 
 

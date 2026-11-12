@@ -143,6 +143,7 @@ class Persistence:
     knowledge_enabled: bool = False
     check_knowledge: bool = False
     knowledge_profile: KnowledgeProfile | None = None
+    knowledge_reindex_profile: KnowledgeProfile | None = None
     # Set with `APP_LIMITS_BACKEND=postgres`: readiness also needs the guard tables, because the
     # guards fail closed on every request when `setup` has not created them.
     check_guard_tables: bool = False
@@ -293,12 +294,19 @@ class Persistence:
 
 
 def knowledge_profile(settings: Settings) -> KnowledgeProfile:
-    """Index profile 1 as settings describe it; `setup` seeds it and refuses a change."""
+    """The active model as settings describe it; `setup` seeds profile 1 from it and refuses
+    settings with no model for the active profile."""
     return KnowledgeProfile(
         provider=settings.knowledge_embedding_provider,
         model=settings.knowledge_embedding_model,
         dimensions=settings.knowledge_embedding_dimensions,
     )
+
+
+def knowledge_reindex_profile(settings: Settings) -> KnowledgeProfile | None:
+    """The re-index model (RAG-09.04), or None when no re-index model is set."""
+    reindex = settings.knowledge_reindex_settings()
+    return None if reindex is None else knowledge_profile(reindex)
 
 
 def build_persistence(settings: Settings) -> Persistence:
@@ -346,6 +354,7 @@ def build_persistence(settings: Settings) -> Persistence:
         knowledge_enabled=settings.knowledge_enabled,
         check_knowledge=hardened and settings.knowledge_enabled,
         knowledge_profile=knowledge_profile(settings),
+        knowledge_reindex_profile=knowledge_reindex_profile(settings),
         serde=serde,
         app_role=settings.postgres_app_role if settings.env == "production" else None,
         require_tls=hardened,
@@ -374,6 +383,7 @@ async def setup_schema(persistence: Persistence) -> None:
                 memory_store=persistence.memory_enabled,
                 knowledge=persistence.knowledge_enabled,
                 knowledge_profile=persistence.knowledge_profile,
+                knowledge_reindex_profile=persistence.knowledge_reindex_profile,
             )
         except Exception as exc:
             # Driver messages can echo DSN fragments; keep only the class name. Raised

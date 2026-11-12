@@ -23,7 +23,11 @@ import psycopg
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.persistence import migrations
-from neuron_agent.persistence.checkpointer import build_persistence, knowledge_profile
+from neuron_agent.persistence.checkpointer import (
+    build_persistence,
+    knowledge_profile,
+    knowledge_reindex_profile,
+)
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.persistence.startup_checks import StartupCheckError
 
@@ -77,6 +81,7 @@ def _setup(settings: Settings, *, rotate_identity_key: bool) -> None:
                 knowledge=settings.knowledge_enabled,
                 knowledge_profile=knowledge_profile(settings),
                 worker_role=settings.postgres_worker_role,
+                knowledge_reindex_profile=knowledge_reindex_profile(settings),
             )
         )
     except Exception as exc:

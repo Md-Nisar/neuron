@@ -279,8 +279,7 @@ async def test_the_code_forces_the_dense_path_it_chose(role_db: RoleDatabase) ->
         "n": retrieval.CANDIDATES,
         "profile": 1,
     }
-    retriever = _retriever(role_db)
-    hnsw = await _plan(role_db, retriever.ann_query(), params, retrieval._ANN_SETTINGS)
+    hnsw = await _plan(role_db, retrieval.ann_query(1, 1024), params, retrieval._ANN_SETTINGS)
     exact = await _plan(
         role_db, retrieval._EXACT, params, retrieval._ANN_SETTINGS, "SET LOCAL enable_seqscan = off"
     )

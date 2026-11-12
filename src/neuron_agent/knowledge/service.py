@@ -45,7 +45,6 @@ from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.parsing import Limits, ParseError, accepted_type
 from neuron_agent.observability import semconv, telemetry
 from neuron_agent.observability.audit import audit
-from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
 from neuron_agent.schemas.knowledge import (
     ChunkPassage,
     DocumentAccepted,
@@ -66,9 +65,11 @@ _LIST = (
     " WHERE kb_id = ANY(%s) AND deleted_at IS NULL ORDER BY created_at, kb_id"
 )
 _COUNT = "SELECT count(*) AS n FROM knowledge.bases WHERE owner_key = %s AND deleted_at IS NULL"
+# A new base takes the active index profile (RAG-09.04): setup seeds one, so there is a row.
 _CREATE = (
     "INSERT INTO knowledge.bases (kb_id, owner_key, name, processing, profile_id)"
-    " VALUES (%s, %s, %s, %s, %s) RETURNING kb_id, name, processing, created_at"
+    " SELECT %s, %s, %s, %s, profile_id FROM knowledge.index_profiles WHERE status = 'active'"
+    " RETURNING kb_id, name, processing, created_at"
 )
 _OWNER_GRANT = (
     "INSERT INTO knowledge.grants (kb_id, subject_type, subject, access, granted_by)"
@@ -308,9 +309,7 @@ class KnowledgeBases:
             row = await cursor.fetchone()
             if row is not None and row["n"] >= self._settings.knowledge_max_bases_per_user:
                 raise KnowledgeBaseLimitError("knowledge base limit reached")
-            cursor = await conn.execute(
-                _CREATE, (uuid.uuid4(), owner_key, name, processing, KNOWLEDGE_PROFILE_ID)
-            )
+            cursor = await conn.execute(_CREATE, (uuid.uuid4(), owner_key, name, processing))
             created = await cursor.fetchone()
             assert created is not None  # nosec B101
             await conn.execute(_OWNER_GRANT, (created["kb_id"], owner_key, owner_key))

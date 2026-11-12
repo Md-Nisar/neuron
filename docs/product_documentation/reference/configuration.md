@@ -108,6 +108,10 @@ All configuration parameters are read from environment variables (or `.env` in d
 | `APP_KNOWLEDGE_EMBEDDING_PROVIDER` | `nvidia` \| `openai_compatible` \| `fake` | `nvidia` | Embedding model provider. |
 | `APP_KNOWLEDGE_EMBEDDING_MODEL` | string | `nvidia/nemotron-3.5-embed-1b` | Model identifier for generating embeddings. |
 | `APP_KNOWLEDGE_EMBEDDING_DIMENSIONS` | integer (1–4000) | `1024` | Vector dimension size indexed in pgvector `halfvec`. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER` | `nvidia` \| `openai_compatible` \| `fake` | `None` | The model a re-index builds a new index profile with (RAG-09.04). Set on the API and the worker for the whole re-index, then moved into the `APP_KNOWLEDGE_EMBEDDING_*` settings. Needs `_MODEL` and `_DIMENSIONS`. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL` | string | `None` | The re-index model's identifier. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_DIMENSIONS` | integer (1–4000) | `None` | The re-index model's vector dimensions. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_BASE_URL`, `_API_KEY`, `_LOCALITY` | as the `APP_KNOWLEDGE_EMBEDDING_*` ones | `None`, `None`, `hosted` | The re-index model's server, key and locality, checked as for the active model. |
 | `APP_KNOWLEDGE_SEARCH_MODE` | `hybrid` \| `dense` \| `fts` | `hybrid` | Search candidate retrieval mode. |
 | `APP_KNOWLEDGE_PARSER_URL` | string (URL) | `None` | Endpoint of `docling-serve` container on internal network. |
 | `APP_KNOWLEDGE_PARSER_TIMEOUT_SECONDS` | integer (10–7200) | `900` | Total parsing deadline per file sent to `docling-serve`. |

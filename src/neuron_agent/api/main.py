@@ -57,7 +57,10 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.knowledge.blobs import build_blob_store
 from neuron_agent.knowledge.parsing import DOCX, MARKDOWN, PDF, PPTX, TEXT, XLSX
-from neuron_agent.knowledge.providers import create_embedding_provider
+from neuron_agent.knowledge.providers import (
+    create_embedding_provider,
+    create_reindex_embedding_provider,
+)
 from neuron_agent.knowledge.reranking import create_reranker
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
@@ -142,6 +145,7 @@ retriever = functools.cache(
         lambda: persistence.pool,
         create_embedding_provider(settings),
         create_reranker(settings),
+        create_reindex_embedding_provider(settings),
     )
 )
 auth_verifier = get_shared_token_verifier(settings)

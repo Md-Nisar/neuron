@@ -40,11 +40,12 @@ from neuron_agent.knowledge.providers import (
     EmbeddingError,
     EmbeddingProvider,
     ensure_processing_allowed,
+    provider_for,
 )
 from neuron_agent.knowledge.reranking import Reranker, RerankError
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
-from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
+from neuron_agent.persistence.migrations import KnowledgeProfile
 
 log = structlog.get_logger(__name__)
 
@@ -56,11 +57,11 @@ RRF_K = 60
 # A reranker reorders this many fused candidates, then the best `k` are kept (RAG-09.01).
 RERANK_CANDIDATES = 40
 
-# The readable bases, and whether each may be searched by meaning: its index profile must be the
-# active one this process embeds queries for.
+# The readable bases with their index profile. A base is searched by meaning only on the active
+# profile, with the configured model that embeds into it (RAG-09.04).
 _BASES = (
-    "SELECT b.kb_id, b.processing, b.ts_config::text AS ts_config,"
-    " b.profile_id = %(profile)s AND p.status = 'active' AS dense"
+    "SELECT b.kb_id, b.processing, b.ts_config::text AS ts_config, b.profile_id,"
+    " p.status = 'active' AS active, p.provider, p.model, p.dimensions"
     " FROM knowledge.bases b JOIN knowledge.index_profiles p ON p.profile_id = b.profile_id"
     " WHERE b.kb_id = ANY(%(kbs)s) AND b.deleted_at IS NULL"
 )
@@ -98,7 +99,7 @@ _EXACT = (
 # The top candidates are taken before the live-document join, so a document not yet purged can
 # take a slot (recall only: the join drops it). The dimension is a type modifier and the profile
 # must match the partial index's predicate even in a generic plan, so both are literals (from
-# settings and a constant, never user input).
+# the profile row, never user input).
 _NEAREST = " FROM (SELECT e.chunk_id, e.kb_id,"
 _ANN = sql.SQL(
     "SELECT c.chunk_id, 1 - a.distance AS similarity"
@@ -161,6 +162,11 @@ def fuse(rankings: Sequence[Sequence[uuid.UUID]], k: int = RRF_K) -> list[tuple[
     return sorted(scores.items(), key=lambda pair: (-pair[1], str(pair[0])))
 
 
+def ann_query(profile_id: int, dimensions: int) -> sql.Composed:
+    """The HNSW query for one profile; both values come from its row, never from input."""
+    return _ANN.format(dims=sql.Literal(dimensions), profile=sql.Literal(profile_id))
+
+
 class Retriever:
     def __init__(
         self,
@@ -168,11 +174,14 @@ class Retriever:
         pool: Callable[[], AsyncConnectionPool[Any] | None],
         embeddings: EmbeddingProvider,
         reranker: Reranker | None = None,
+        reindex: EmbeddingProvider | None = None,
     ) -> None:
         self._settings = settings
         self._pool = pool
         self._embeddings = embeddings
         self._reranker = reranker
+        # The re-index model (RAG-09.04): it embeds queries once its profile is the active one.
+        self._reindex = reindex
 
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
@@ -252,14 +261,18 @@ class Retriever:
         mode: SearchMode,
     ) -> tuple[SearchResult, list[uuid.UUID]]:
         vector: str | None = None
+        profile_id: int | None = None
+        model: EmbeddingProvider | None = None
         if mode != "fts":
             # The query is embedded before the search transaction, so no connection is held
-            # during the provider call; the bases are read again inside it.
+            # during the provider call; the bases are read again inside it, and only those still
+            # on the profile the query was embedded for are searched by meaning.
             async with self._transaction() as conn:
                 bases = await self._bases(conn, owner_key, roles, kb_ids)
-            if self._dense_bases(bases):
+            profile_id, model = self._model(bases)
+            if model is not None and self._dense_bases(bases, profile_id, model):
                 try:
-                    values = await self._embeddings.embed_query(query)
+                    values = await model.embed_query(query)
                 except EmbeddingError as exc:
                     if mode == "dense":
                         raise
@@ -275,8 +288,13 @@ class Retriever:
             # Full text first: the HNSW path's planner settings would price out its GIN scan.
             if mode != "dense":
                 rankings.extend(await self._fts(conn, owner_key, bases, query))
-            if vector is not None and (dense := self._dense_bases(bases)):
-                path, ranked = await self._dense(conn, owner_key, dense, vector)
+            if (
+                vector is not None
+                and model is not None
+                and (dense := self._dense_bases(bases, profile_id, model))
+            ):
+                assert profile_id is not None  # nosec B101
+                path, ranked = await self._dense(conn, dense, vector, profile_id, model.dimensions)
                 rankings.insert(0, ranked)
             fused = fuse(rankings)[: max(k, RERANK_CANDIDATES) if self._reranker else k]
             # Primary-key lookups, which those settings leave alone.
@@ -334,20 +352,39 @@ class Retriever:
     ) -> list[dict[str, Any]]:
         allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
         kbs = allowed.read if kb_ids is None else allowed.read & set(kb_ids)
-        cursor = await conn.execute(_BASES, {"kbs": [*kbs], "profile": KNOWLEDGE_PROFILE_ID})
+        cursor = await conn.execute(_BASES, {"kbs": [*kbs]})
         return list(await cursor.fetchall())
 
-    def _dense_bases(self, bases: Sequence[dict[str, Any]]) -> list[uuid.UUID]:
-        """Bases searched by meaning: on the active profile, and whose processing setting and
-        the operator's policy allow the query to go to this embedding provider."""
+    def _model(
+        self, bases: Sequence[dict[str, Any]]
+    ) -> tuple[int | None, EmbeddingProvider | None]:
+        """The active profile among the bases, and the configured model that embeds into it.
+
+        One profile is active at a time (ADR 0014 amendment, RAG-09.04). Without a model for
+        it, the search runs on text only rather than compare vectors from two models.
+        """
+        row = next((row for row in bases if row["active"]), None)
+        if row is None:
+            return None, None
+        profile = KnowledgeProfile(row["provider"], row["model"], row["dimensions"])
+        model = provider_for(profile, self._embeddings, self._reindex)
+        if model is None:
+            log.warning("knowledge_profile_mismatch", profile_id=row["profile_id"])
+        return row["profile_id"], model
+
+    def _dense_bases(
+        self, bases: Sequence[dict[str, Any]], profile_id: int | None, model: EmbeddingProvider
+    ) -> list[uuid.UUID]:
+        """Bases searched by meaning: on the profile `model` embeds into, while it is active,
+        and whose processing setting and the operator's policy allow the query to go to it."""
         allowed = []
         for row in bases:
-            if not row["dense"]:
+            if not row["active"] or row["profile_id"] != profile_id:
                 continue
             try:
                 ensure_processing_allowed(
                     row["processing"],
-                    self._embeddings.locality,
+                    model.locality,
                     self._settings.knowledge_processing_policy,
                 )
             except EmbeddingError:
@@ -358,35 +395,30 @@ class Retriever:
     async def _dense(
         self,
         conn: psycopg.AsyncConnection[Any],
-        owner_key: str,
         kbs: list[uuid.UUID],
         vector: str,
+        profile_id: int,
+        dimensions: int,
     ) -> tuple[Literal["exact", "hnsw"], list[uuid.UUID]]:
         threshold = self._settings.knowledge_exact_scan_max_chunks
-        params = {"owner": owner_key, "kbs": kbs, "v": vector, "n": CANDIDATES}
+        params = {"kbs": kbs, "v": vector, "n": CANDIDATES}
         cursor = await conn.execute(
             _ALLOWED_VECTORS,
-            {"profile": KNOWLEDGE_PROFILE_ID, "kbs": kbs, "limit": threshold + 1},
+            {"profile": profile_id, "kbs": kbs, "limit": threshold + 1},
         )
         count = await cursor.fetchone()
         if count is not None and count["n"] <= threshold:
-            cursor = await conn.execute(_EXACT, {**params, "profile": KNOWLEDGE_PROFILE_ID})
+            cursor = await conn.execute(_EXACT, {**params, "profile": profile_id})
             path: Literal["exact", "hnsw"] = "exact"
         else:
             # After the FTS query (see `search`): these settings would price out its GIN scan.
             await conn.execute(_ANN_SETTINGS)
-            cursor = await conn.execute(self.ann_query(), params)
+            cursor = await conn.execute(ann_query(profile_id, dimensions), params)
             path = "hnsw"
         floor = self._settings.knowledge_search_min_similarity
         return path, [
             row["chunk_id"] for row in await cursor.fetchall() if row["similarity"] >= floor
         ]
-
-    def ann_query(self) -> sql.Composed:
-        return _ANN.format(
-            dims=sql.Literal(self._embeddings.dimensions),
-            profile=sql.Literal(KNOWLEDGE_PROFILE_ID),
-        )
 
     @staticmethod
     async def _fts(
