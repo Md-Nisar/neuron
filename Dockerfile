@@ -32,8 +32,8 @@ WORKDIR /app
 # package; remove this step once the base digest ships the fixed version.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends --only-upgrade zlib1g \
-    && rm -rf /var/lib/apt/lists/*
-RUN groupadd --gid 10001 appuser \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin appuser
 COPY --from=builder /app/.venv /app/.venv
 # The app runs from /app/.venv, which has no pip. The base image's own pip and setuptools
