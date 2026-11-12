@@ -387,6 +387,31 @@ def test_nvidia_clients_send_input_type_and_dimensions() -> None:
     assert provider.locality == "hosted"
 
 
+@pytest.mark.parametrize(
+    ("overrides", "batch"),
+    [
+        # NVIDIA's catalog answers 500 to any batch of 2 or more real-size chunks (#480).
+        ({"nvidia_api_key": "nvapi-test"}, 1),
+        ({"nvidia_api_key": "nvapi-test", "knowledge_embedding_batch_size": 8}, 8),
+        (
+            {
+                "knowledge_embedding_provider": "openai_compatible",
+                "knowledge_embedding_base_url": "http://tei:80/v1",
+                "knowledge_embedding_locality": "self_hosted",
+            },
+            32,
+        ),
+    ],
+)
+def test_the_batch_size_defaults_to_one_for_nvidia_only(
+    overrides: dict[str, object], batch: int
+) -> None:
+    provider = create_embedding_provider(Settings(env="test", **overrides))  # type: ignore[arg-type]
+    assert provider._batch_size == batch
+    assert isinstance(provider._documents, OpenAIEmbeddings)
+    assert provider._documents.chunk_size == batch
+
+
 def test_openai_compatible_client_uses_the_configured_server() -> None:
     settings = Settings(
         env="test",

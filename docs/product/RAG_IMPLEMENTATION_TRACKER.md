@@ -4,8 +4,8 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-10, RAG-08.02 Done: #504, #505 and #506 merged into `main` (`7c208a2`), #503 closed; `postgres-integration` green on each, all 20 mutants caught in CI. Earlier the same day: full backlog review against `main` at `470ff3e` (RAG-08.01 Done: #502 merged 2026-11-09, #498 closed; no open PR; no RAG PR or pushed RAG branch since #502; RAG-08.04 part 2 has no PR or pushed branch). Earlier: 2026-11-09, against `44bdb1a` (RAG-07.01 Done: #496 merged, its Postgres tests passed in CI; RAG-08.01 In progress, issue #498, epic #497. Earlier the same day, full backlog review against `a12b778`: RAG-08.04 In progress, part 1 #484 merged, issue #485; RAG-E06 follow-ups #481, #482, #483, #486 merged after the epic closed; bug issue #480 mapped below; no other RAG PR since `3960add`. Earlier: RAG-06.02 Done: #475, #476, #477, #478; RAG-06.01 Done: #468 to #473; RAG-04.04 Done: #465; RAG-04.03 Done: #462, #463; RAG-05.02 Done: #460; RAG-05.01 Done: #458; RAG-04.02 Done: #453, #454, #455; RAG-03.05 Done: #451; RAG-04.01 Done: #447, #448, #449; RAG-03.04 Done: #443, #444; RAG-03.03 Done: #440, #441; RAG-03.01 Done: #433; RAG-03.02 Done: #435, #436; RAG-02.05 Done: #437, #438).
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). The Project board has not been created.
+**Last verified:** 2026-11-12, against `main` at `8c6ea29`: v1.1.0 released (tag `v1.1.0` at `26295d5`); all story and epic issues of RAG-E00 to RAG-E08 closed (#398 to #520); the only open `rag` issue is #480; no open RAG PR. Since the release, `main` has had the 2026-11-11 security audit fixes (#526 to #532) and the concurrency review fixes (#534 to #538); those touching knowledge are in the change log. Earlier verifications are in the change log.
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). RAG-E09 (#544) and its eight stories (#545 to #552) created 2026-11-12, open. The Project board has not been created.
 
 ## New session protocol
 
@@ -55,24 +55,24 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
-| RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.02 (Phase 2) |
+| RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.01 or RAG-09.02 (owner to choose) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **33** | **0** | **0** | **23** | **RAG-09.02** (Phase 2) |
+| **Total** | | | | **56** | **33** | **0** | **0** | **23** | **RAG-09.01 or RAG-09.02** (owner to choose) |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 
-**Recommended next action (2026-11-10):** v1.1.0 is released: tag `v1.1.0` at `26295d5` and the GitHub Release "v1.1.0 — Knowledge Engine". RAG-08.05 Done (#521 and #522 merged, #520 and epic #497 closed); E00 to E08 complete. Next: decide on v1.2.0 (RAG-E09 is a proposal; its first story is RAG-09.02), and on the open follow-ups: #480, UX-01 (the Knowledge list does not retry after a 429, found in manual release testing), the worker settings profile and production verification of the worker's column grants.
+**Recommended next action (2026-11-12):** v1.1.0 is released and E00 to E08 are complete. Next: v1.2.0 (RAG-E09). Every E09 story except RAG-09.03 (needs RAG-09.02) has its dependencies Done. By the selection rule (phase, priority, then order in the epic) the next is RAG-09.01; the backlog marks RAG-09.02 as the Phase 2 start and this tracker has named it since. The owner chooses. Open follow-ups with no story: the worker settings profile and production verification of the worker's column grants. #480 and UX-01 are fixed in the PR from `ccr-7c4dd17f-k9sle9` (2026-11-12).
 
 ## GitHub synchronisation
 
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), all closed; RAG-E07 (#494, open, 2 of 3 ticked); RAG-E08 (#497, open, 3 of 5 ticked); RAG-E09 to RAG-E12 not created |
-| Story issues (56) | All 25 stories of RAG-E00 to RAG-E06 (closed; see the issue map); RAG-07.01 (#495, closed); RAG-08.01 (#498, closed); RAG-08.02 (#503, closed); RAG-08.03 (#508, closed); RAG-08.04 (#485, open, titled without the brackets the de-duplication matches on: `RAG-08.04 …`, not `[RAG-08.04] …`); the other 27 not created |
-| Related issues | #480 (bug, `rag`, open): findings from running the full Docker Compose stack; its items are mapped to stories under RAG-E08 |
+| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), RAG-E07 (#494), RAG-E08 (#497), all closed; RAG-E09 (#544, open, 0 of 8 ticked); RAG-E10 to RAG-E12 not created |
+| Story issues (56) | All 33 stories of RAG-E00 to RAG-E08, closed; the 8 stories of RAG-E09 (#545 to #552, open, sub-issues of #544); see the issue map. The 15 stories of RAG-E10 to RAG-E12 not created |
+| Related issues | #480 (bug, `rag`): findings from running the full Docker Compose stack; every item fixed or answered, closed by the PR from `ccr-7c4dd17f-k9sle9` (item by item under RAG-E08) |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
 ### Issue map
@@ -106,12 +106,24 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-05.02 | #459 | Not on a board |
 | RAG-E07 | #494 | Not on a board |
 | RAG-07.01 | #495 | Not on a board |
+| RAG-07.02 | #516 | Not on a board |
+| RAG-07.03 | #518 | Not on a board |
 | RAG-E08 | #497 | Not on a board |
 | RAG-08.01 | #498 | Not on a board |
 | RAG-08.02 | #503 | Not on a board |
 | RAG-08.03 | #508 | Not on a board |
 | RAG-08.04 | #485 | Not on a board |
-| RAG-E09 … RAG-E12, and the other stories | — | — |
+| RAG-08.05 | #520 | Not on a board |
+| RAG-E09 | #544 | Not on a board |
+| RAG-09.01 | #545 | Not on a board |
+| RAG-09.02 | #546 | Not on a board |
+| RAG-09.03 | #547 | Not on a board |
+| RAG-09.04 | #548 | Not on a board |
+| RAG-09.05 | #549 | Not on a board |
+| RAG-09.06 | #550 | Not on a board |
+| RAG-09.07 | #551 | Not on a board |
+| RAG-09.08 | #552 | Not on a board |
+| RAG-E10 … RAG-E12 and their stories | — | — |
 
 ## Epic detail
 
@@ -293,11 +305,11 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Decision (RAG-07.01): queued ingest jobs are not deleted (the app role has no `DELETE` on the queue, and the jobs hold ids only); the worker skips a tombstoned or purged document. `complete` is measured on rows: the purge deletes each file before its row, so no row means no file from a purge, but a file stored without a row (a crash during upload) is RAG-07.02's. Erase-everything with knowledge off reports `knowledge: null` and does not touch knowledge data; `SECURITY.md` says to erase before turning knowledge off. Export lists only live bases and documents (tombstoned ones are hidden from every read path); it is on page 1 whole, about 0.4 MB at the default 1,000 documents, so at the configured maximum (100,000) it would exceed `APP_USER_DATA_EXPORT_MAX_BYTES`, which page sizes cannot fix (accepted; paginate if the limits are raised).
   - CI evidence (RAG-07.01): `postgres-integration` on #496 ran `tests/integration/test_postgres_knowledge_erase.py` and passed (218 selected, 0 skipped). Before that, not run in the session: the knowledge Postgres tests need pgvector ≥ 0.7 for `halfvec`; the session had only the distribution's 0.6.0 and could not build a newer one. Run instead: the new SQL against stand-in tables (owner scoping, the failed-purge re-queue, no duplicate while a purge waits, the stored check), and the existing Postgres erase/export tests (checkpointer, run guard, roles: 67 passed, 0 skipped) on Postgres 16. `make format lint typecheck test security` passed (2,377 passed), web lint, types and Vitest (599 passed).
   - Security review (RAG-07.01): no blocking findings; no cross-owner path and no `complete: true` while a row is stored. Low, recorded above: knowledge off leaves data, files without a row, export size at the maximum limits, and the permission choice. Also low, left as is: in erase-everything a thread or memory failure stops before the knowledge erase (audited as `erasure_failed`; every step is idempotent, so a retry finishes); the re-queue check scans `procrastinate_jobs.args` without an index, bounded by the owner's tombstoned bases.
-- **Next recommended story:** RAG-07.02 (P1; RAG-E08's P0 stories come first by the selection rule).
+- **Next recommended story:** — (epic done).
 
 ### RAG-E08 Quality, security and release
 
-- **Stories:** 5 total · 4 done · 1 in progress · 0 blocked · 0 pending
+- **Stories:** 5 total · 5 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-08.01 (#498; #499, #500, #501, #502): `src/neuron_agent/retrieval_metrics.py` (recall@k, MRR, citation precision, `cited_correctly`, abstention accuracy, the report's optional `retrieval` section, `below_baseline`); the committed eval corpus parse and vectors (`tests/fixtures/knowledge/eval/`, `scripts/build_knowledge_eval.py`); `tests/integration/test_postgres_knowledge_retrieval.py` (markers `eval`, `postgres`, run by `make eval`) gating recall@5 and MRR against `evals/baselines/knowledge_retrieval.json` (0.938, 0.801); `tests/integration/test_live_knowledge_answers.py` (marker `integration`) for the live answer run; agent changes from parts 3 and 4: system prompt version 4, a final model call with no tools, `AgentAnswer.not_in_documents`, a repeated-search refusal and a forced first knowledge search. Record: `docs/releases/v1.1.0-retrieval-eval.md`.
   RAG-08.02 part 1 (#503, PR #504): `tests/security/test_knowledge_injection.py` plays the dataset's four injection documents (`injection-001` to `004`, text as the parsers extracted it) through the real agent loop with a model that obeys them: framed as data, MCP and `forget` wait for approval, `remember` saves nothing, planted `cite_id`s dropped; `docs/security/threat-model.md` gains the knowledge assets, boundaries and a twelve-case table (AC3).
   RAG-08.02 part 2 (#503, PR #505): `tests/security/test_knowledge_security_suite.py` names the twelve cases and their test functions and checks in `make test` that each exists and runs in `make test` or carries the `postgres` marker (the `postgres-integration` job fails on any skip), and that the threat model lists the same twelve cases (AC1, as the owner agreed).
@@ -307,9 +319,10 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 - **Blockers and decisions:**
   - Inconsistency (RAG-08.04): the backlog's AC1 says `make reference-up` and the reference stack's lean profile; #485 records the owner's direction (2026-11-06) that the whole local stack, web app included, starts with one compose command, and #484 says part 2 replaces `docker-compose.yml`. The issue is the newer statement; the backlog's AC1 was updated with part 2 (2026-11-10). The reference stack still needs its blob volume.
   - Issue #480 (open), mapped 2026-11-09: fixed on `main`: the citation without pages crash (#478, `test_a_citation_without_pages_or_title_reaches_the_response_and_history`). Partly fixed: the blob directory exists in the image (#484), but `APP_KNOWLEDGE_BLOB_ROOT` still defaults to the relative `var/knowledge-blobs`, so the volume and setting are part 2's. RAG-08.04 part 2: the dev stack's worker, docling and roles, the worker health-check timeout, the reference stack's shared blob volume, the Keycloak `127.0.0.1:5173` redirect (not in `deploy/keycloak/neuron-realm.json`), the JWKS URL inside Docker, CORS and `APP_AUTH_MODE=none` notes in the docs. RAG-08.01 (Done): the agent looping is addressed by the repeated-search refusal, the final no-tools step and the forced first search (no step-limit endings from the third live run on); the NVIDIA embedding batch failure was worked around, not fixed: the eval vectors were built with `APP_KNOWLEDGE_EMBEDDING_BATCH_SIZE=1`, and the setting still defaults to 32 (`config/settings.py`), so ingestion against the NVIDIA endpoint can still fail. That item now has no owning story (see gaps below). Not owned by any story: the provider-less model id error message, the Windows `scripts` import, the API/worker version labels (both read package metadata, so the 0.4.0 is likely a stale install), the collation warning. Tick #480's items as their PRs land.
+  - Issue #480 closed out 2026-11-12, item by item against `main` at `8c6ea29`: fixed earlier: citation without pages (#478); blob directory, dev-stack worker, docling, roles, worker health-check timeout and in-Docker JWKS URL (#484, #512); reference stack blob volume (#515); agent looping (RAG-08.01). Fixed in this PR: the NVIDIA batch default (above); the provider-less model id error names `APP_DEFAULT_MODEL=nvidia:<model-id>` (`test_create_chat_model_rejects_malformed_model_identifier`); `web/README.md` says the web app needs `APP_AUTH_MODE=jwt`. Answered, no change: `127.0.0.1:5173` stays refused by design, the one origin is `http://localhost:5173` (`web/vite.config.ts`, DEVELOPMENT.md, the compose `web` port); CORS is set by the compose stack and documented in DEVELOPMENT.md for `make api`; `make test` runs `python -m pytest`, so the Windows `scripts` namespace clash does not affect it; API and worker both log `neuron_agent.__version__` from package metadata, so differing versions mean a stale install; the collation warning is the local volume's; `knowledge_rls_not_enforced` is expected with the dev stack's single role. UX-01 (Knowledge list after a `429`) fixed in the same PR: `KnowledgeScreen.test.tsx`, "loading the list after a passing refusal".
   - Gaps found in the 2026-11-10 review (no story owns them; decide whether to fold them in when the issues are written):
     - RAG-08.02 names `evals/eval_security_cases.json`; the file is `tests/fixtures/eval_security_cases.json` (path corrected in #503).
-    - The NVIDIA embedding batch failure (#480): the default batch size of 32 is unproven against the default provider. Candidate home: RAG-08.04 (documented setting for the stack) or a bug issue.
+    - The NVIDIA embedding batch failure (#480): the default batch size of 32 is unproven against the default provider. Candidate home: RAG-08.04 (documented setting for the stack) or a bug issue. Fixed 2026-11-12: unset, the batch size is 1 for `nvidia` and 32 otherwise (`Settings.knowledge_embedding_batch_size_effective`, `test_the_batch_size_defaults_to_one_for_nvidia_only`).
     - RAG-08.01's follow-ups (#498): a slow embedding call should return "knowledge unavailable" instead of a tool timeout that fails the run; grade the live eval over several trials per case. Candidate home: RAG-09.05 (nightly live gate) for the trials; the timeout behaviour is a small bug fix.
     - RAG-08.05 asks for load figures for ingestion and search, and RAG-09.06 is the load test with a gate. Not a duplicate (figures only in v1.1.0, gate in v1.2.0); keep that split.
     - The worker settings profile (RAG-E02 follow-up) and production verification of the worker's column grants have no story; RAG-08.05's known-issues list must name them if they stay open.
@@ -323,15 +336,15 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Status (RAG-08.01 part 3, 2026-11-09, branch `ccr-50c38b2f-kg5e9i`): `tests/integration/test_live_knowledge_answers.py` (marker `integration`) asks the 64 answerable and 12 unanswerable cases through `AgentService` with the knowledge tools on Postgres and writes all four metrics (AC1 evidenced). First run, `nemotron-3-ultra-550b-a55b`, no infrastructure errors: `cited_correctly` 0.812 (AC3 needs 0.9), `citation_precision` 0.683, abstention 4 of 12 (AC4 needs all); six runs hit the agent step limit (#480's looping). A similarity floor cannot separate the unanswerable questions (top similarity 0.13 to 0.51 against 0.34 to 0.77 for answerable ones), so it stays 0.0. AC3 and AC4 are measured and not met: the story stays In progress. Details: `docs/releases/v1.1.0-retrieval-eval.md`. Second run after the fixes (prompt version 3, repeated-search refusal, dataset 1.1.0): `cited_correctly` 0.906 (AC3 met), `citation_precision` 0.767, abstention 7 of 12 (AC4 not met: three false-premise answers cite what does exist, one loop past the refusal, one dataset error); part 4 addresses them. Part 4 (2026-11-09, branch `ccr-50c38b2f-kg5e9i`, after #501): final model call offered no tools, system prompt version 4, `AgentAnswer.not_in_documents` (citations dropped in code), dataset 1.2.0 (unanswerable-005 replaced). Third run 0.938 cited correctly, 9 of 12 abstained; fourth run 0.891, 10 of 12; no step-limit endings. The flag was set on no answerable case. AC3 at its gate and AC4 not met: the story stays In progress.
   - Done (RAG-08.01, 2026-11-09, #502): owner decision to force the first search. Sixth live run: `cited_correctly` 0.938 (AC3), 12 of 12 abstained (AC4), no infrastructure errors; AC1 (all four metrics in the report) and AC2 (the part 2 baseline gate in `make eval` and CI) were evidenced earlier. Follow-ups, not blocking: a slow embedding call may exceed the 20-second tool timeout and fail the run (two transient `ToolExecutionError`s in the fifth run, not reproduced); nearly every knowledge-enabled run is now tainted, so MCP calls need approval in it (SECURITY.md); one trial per case, so `cited_correctly` varies 0.891 to 0.952 between runs.
 - **Plan and open point (RAG-08.02, #503):** three parts. Part 1, the injection cases and the threat model; part 2, one index that names the twelve cases and their tests, checked in `make test`; part 3, the mutation check (each guard removed, its case fails, in `test_security_harness.py`'s pattern) and security eval cases. Seven of the twelve cases need Postgres with pgvector and run in CI's `postgres-integration`, not `make test`, so AC1 is read as: `make test` checks every case maps to an existing test and runs the non-Postgres ones; `postgres-integration` runs the rest with 0 skipped. Owner agreed 2026-11-10. The security eval harness (`run_security_suite`) has in-memory threads and no knowledge database, so no knowledge case is added to `tests/fixtures/eval_security_cases.json`; the injection documents run through the agent loop in `test_knowledge_injection.py` instead (recorded in the threat model; raised with the owner on #504, merged without objection). Security review (parts 1 to 3): no blocking findings. Fixed: owner-filter mutants cast their parameter, so they fail on the missing check rather than on a Postgres type error (the first version's catch of one was such an error); a catch must be an assertion failure; a mutant per layer where a control has two (owner filter in `allowed_kbs` and the SQL, `nosniff` in route and middleware); mutants for `remember`, framing, the chunk path, the page cap, encrypted PDFs and the start-up locality check; a per-mutant timeout; the threat model's "every statement filters on the owner key" overclaim and the stale ASI03 RLS note. Accepted: the "listed while deleting" mutant is caught by the response schema refusing `deleting` (a 500, not a leak), a genuine third layer; the script passes its environment to the tests (CI holds only a throwaway DSN).
-- **Next recommended story:** RAG-08.04 parts 2 and 3 (#485); RAG-07.02 is also ready.
+- **Next recommended story:** — (epic done).
 
 ### RAG-E09 Retrieval quality and sharing
 
 - **Stories:** 8 total · 0 done · 0 in progress · 0 blocked · 8 pending
 - **Implemented functionality:** none.
 - **Outstanding work:** RAG-09.01 to RAG-09.08.
-- **Blockers and decisions:** Phase 2 starts after v1.1.0. Release v1.2.0 is a proposal.
-- **Next recommended story:** RAG-09.02.
+- **Blockers and decisions:** Phase 2 starts after v1.1.0. Release v1.2.0 is a proposal. Epic and story issues created 2026-11-12 at the owner's request (#544 to #552).
+- **Next recommended story:** RAG-09.01 by the selection rule, or RAG-09.02, which the backlog marks as the Phase 2 start (owner to choose; see "Recommended next action").
 
 ### RAG-E10 External knowledge sources
 
@@ -392,16 +405,16 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-08.01 | Retrieval and citation eval harness | 1 | P0 | Done | #498 | #499, #500, #501, #502 | AC1: all four metrics in the report (`test_live_knowledge_answers.py`); AC2: `test_postgres_knowledge_retrieval.py` gates recall@5 and MRR against `evals/baselines/knowledge_retrieval.json`; AC3: 0.938 cited correctly; AC4: 12 of 12 abstained (sixth live run, `docs/releases/v1.1.0-retrieval-eval.md`) |
 | RAG-08.02 | Knowledge security test suite | 1 | P0 | Done | #503 | #504, #505, #506 | AC3, `docs/security/threat-model.md` "Knowledge Engine (v1.1.0)"; the hidden-instruction case, `tests/security/test_knowledge_injection.py`; AC1, `tests/security/test_knowledge_security_suite.py`; AC2, `scripts/knowledge_mutations.py` (20 of 20 mutants caught in CI's `postgres-integration` on #506 and locally); `postgres-integration` green on #504, #505 and #506 |
 | RAG-08.03 | Knowledge telemetry and leak scan | 1 | P1 | Done | #508 | #509, #510, part 3 | AC1: `tests/integration/test_postgres_knowledge_telemetry.py` (search span with ids, counts and timings, no query). AC2: the same file scans spans, metrics and logs of a real search, upload and ingestion for the query, passage, title, file name and vector. AC3: `neuron.knowledge.queue.oldest_age` (`tests/integration/test_postgres_knowledge_worker.py::test_queue_age_is_the_wait_of_the_oldest_runnable_job`, `tests/unit/test_knowledge_jobs.py`), alert `NeuronKnowledgeQueueStuck` (`tests/unit/test_observability_deploy.py`, promtool in CI) and its runbook and dashboard in `OPERATIONS.md` |
-| RAG-08.04 | Reference stack, documentation and runbooks | 1 | P1 | Done (on merge of part 5) | #485 | #484 (part 1), #512 (part 2), #513 (part 3), #514 (part 4), part 5 | AC1: CI's `local-stack` job (#513): `docker compose up --build --wait` from a clean checkout, then `scripts/smoke_test.py --knowledge` (upload → ready → `search:` turn → grounded answer citing the file). AC2: `AGENTS.md` "Knowledge Engine Boundaries" and `CLAUDE.md`'s module list, enforced by `tests/unit/test_knowledge_boundaries.py`. Runbooks: `OPERATIONS.md` "Knowledge Engine" (#514, `tests/unit/test_knowledge_runbooks.py`) and "Runbook: knowledge queue". Reference stack: `api1`, `api2` and `worker` share the `knowledge-blobs` volume (`tests/unit/test_reference_stack.py`); parser isolation in both compose files |
+| RAG-08.04 | Reference stack, documentation and runbooks | 1 | P1 | Done | #485 | #484 (part 1), #512 (part 2), #513 (part 3), #514 (part 4), #515 (part 5) | AC1: CI's `local-stack` job (#513): `docker compose up --build --wait` from a clean checkout, then `scripts/smoke_test.py --knowledge` (upload → ready → `search:` turn → grounded answer citing the file). AC2: `AGENTS.md` "Knowledge Engine Boundaries" and `CLAUDE.md`'s module list, enforced by `tests/unit/test_knowledge_boundaries.py` (#515). Runbooks: `OPERATIONS.md` "Knowledge Engine" (#514, `tests/unit/test_knowledge_runbooks.py`) and "Runbook: knowledge queue". Reference stack: `api1`, `api2` and `worker` share the `knowledge-blobs` volume (`tests/unit/test_reference_stack.py`); parser isolation in both compose files |
 | RAG-08.05 | v1.1.0 release verification | 1 | P0 | Done | #520 | #521, #522 | `docs/releases/v1.1.0-release-verification.md`: AC1 `check-release --tag v1.1.0` passes; AC2 each exit criterion Met or Not run with evidence (only hosted deployment Not run); live eval 0.953, 12 of 12 (`v1.1.0-gate/live-knowledge-answers.json`); owner signed off 2026-11-10. Load figures `v1.1.0-gate/knowledge-load.json`, upgrade from v1.0.0 `v1.1.0-gate/upgrade-from-v1.0.0.json`. Manual release testing (58 scenarios: 55 passed; PICK-02 and PICK-03 fixed in #522 with new e2e journeys; UX-01 open). Tag `v1.1.0` at `26295d5`; GitHub Release published 2026-11-10 |
-| RAG-09.01 | Optional reranker providers | 2 | P1 | Pending | — | — | — |
-| RAG-09.02 | Keep verified roles in Principal | 2 | P1 | Pending | — | — | — |
-| RAG-09.03 | Grants API and UI | 2 | P1 | Pending | — | — | — |
-| RAG-09.04 | Re-index to a new index profile | 2 | P1 | Pending | — | — | — |
-| RAG-09.05 | Nightly retrieval regression gate | 2 | P1 | Pending | — | — | — |
-| RAG-09.06 | Load test for ingestion and search | 2 | P1 | Pending | — | — | — |
-| RAG-09.07 | Link feedback to citations | 2 | P2 | Pending | — | — | — |
-| RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Pending | — | — | — |
+| RAG-09.01 | Optional reranker providers | 2 | P1 | Pending | #545 | — | — |
+| RAG-09.02 | Keep verified roles in Principal | 2 | P1 | Pending | #546 | — | — |
+| RAG-09.03 | Grants API and UI | 2 | P1 | Pending | #547 | — | — |
+| RAG-09.04 | Re-index to a new index profile | 2 | P1 | Pending | #548 | — | — |
+| RAG-09.05 | Nightly retrieval regression gate | 2 | P1 | Pending | #549 | — | — |
+| RAG-09.06 | Load test for ingestion and search | 2 | P1 | Pending | #550 | — | — |
+| RAG-09.07 | Link feedback to citations | 2 | P2 | Pending | #551 | — | — |
+| RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Pending | #552 | — | — |
 | RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Pending | — | — | — |
 | RAG-10.02 | Web page ingestion | 3 | P2 | Pending | — | — | — |
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | — | — | — |
@@ -422,6 +435,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-12 | #480 and UX-01 fixed (PR from `ccr-7c4dd17f-k9sle9`): NVIDIA embedding batch default 1, model id error names the setting, web README notes jwt, the Knowledge list retries a `429`/`503`; the other #480 items were already fixed or are answered (RAG-E08 section). No story status changed | Claude session |
+| 2026-11-12 | v1.2.0 opened at the owner's request: epic RAG-E09 (#544) and story issues RAG-09.01 to RAG-09.08 (#545 to #552) as its sub-issues, labelled `rag`, `phase:2`, `v1.2.0` and their priority | Claude session |
+| 2026-11-12 | Tracker caught up with `main` at `8c6ea29`: RAG-08.04 part 5 is #515; E07 and E08 sections show the epics done; epic issues #494 and #497 and story issues #516, #518 and #520 closed and in the issue map. Post-release fixes on `main` that touch knowledge: the queue no longer re-runs an ingest the worker recorded as failed (C-02, #536); production refuses http parser and embedding URLs (L-10, #531); both erase routes need the new `data:erase` scope (L-01, #530). No story status changed | Claude session |
 | 2026-11-10 | RAG-08.05 Done: v1.1.0 released (tag `v1.1.0` at `26295d5`, GitHub Release). #522 fixed the picker bugs found in manual release testing and added e2e journeys (picker, export and erase, inert markup). #520 and epic #497 closed; E00 to E08 complete | Claude session |
 | 2026-11-10 | RAG-07.03 Done (#519 merged, #518 and epic #494 closed). RAG-08.05 In progress (#520): version 1.1.0, CHANGELOG section, release record with ingestion and search figures (`scripts/knowledge_load.py`) and an upgrade run from v1.0.0 on the reference stack. Live eval on the release code passed (0.953, 12 of 12); owner signed off. Left: tag, Release | Claude session |
 | 2026-11-10 | RAG-07.02 Done (#517 merged, #516 closed). RAG-07.03 Done (on merge, #518): `neuron-worker check-blobs` and the restore drill with knowledge, run and passed. E07: 3 of 3 done. Next: RAG-08.05 | Claude session |

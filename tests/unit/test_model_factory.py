@@ -156,9 +156,10 @@ def test_create_chat_model_rejects_unsupported_provider() -> None:
 
 def test_create_chat_model_rejects_malformed_model_identifier() -> None:
     settings = _production_settings(
-        default_model="not-a-valid-identifier",
+        default_model="nvidia/nemotron-3.5-lightning-30b-a3b",
     )
-    with pytest.raises(ConfigurationError):
+    # The id alone is an easy mistake (#480): the error names the setting and the form.
+    with pytest.raises(ConfigurationError, match=r"APP_DEFAULT_MODEL=nvidia:<model-id>"):
         create_chat_model(settings)
 
 

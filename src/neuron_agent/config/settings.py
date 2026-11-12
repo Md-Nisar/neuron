@@ -200,7 +200,8 @@ class Settings(BaseSettings):
     knowledge_embedding_api_key: SecretStr | None = None
     # Where `openai_compatible` processes text. Unset means hosted, which fails closed below.
     knowledge_embedding_locality: ProcessingLocality = "hosted"
-    knowledge_embedding_batch_size: int = Field(default=32, ge=1, le=256)
+    # Texts per embedding request. Unset means 1 for `nvidia` and 32 otherwise (see the property).
+    knowledge_embedding_batch_size: int | None = Field(default=None, ge=1, le=256)
     knowledge_embedding_timeout_seconds: int = Field(default=30, ge=1, le=300)
     knowledge_embedding_max_retries: int = Field(default=3, ge=0, le=8)
     # `self_hosted_only` forbids hosted embedding for every knowledge base.
@@ -486,6 +487,17 @@ class Settings(BaseSettings):
         if self.knowledge_embedding_provider == "nvidia":
             return "hosted"
         return self.knowledge_embedding_locality
+
+    @property
+    def knowledge_embedding_batch_size_effective(self) -> int:
+        """Texts per embedding request: the setting, else 1 for `nvidia` and 32 otherwise.
+
+        NVIDIA's API catalog answers `500` to every request with two or more real-size chunks
+        (#480), so batching there only fails ingestion after all its retries.
+        """
+        if self.knowledge_embedding_batch_size is not None:
+            return self.knowledge_embedding_batch_size
+        return 1 if self.knowledge_embedding_provider == "nvidia" else 32
 
     @model_validator(mode="after")
     def validate_knowledge_embedding(self) -> Settings:

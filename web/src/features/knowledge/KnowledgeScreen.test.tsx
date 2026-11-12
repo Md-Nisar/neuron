@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -177,5 +177,67 @@ describe("knowledge bases", () => {
     await screen.findByText("Policies");
 
     expect(await accessibilityViolations(view.container)).toEqual([]);
+  });
+});
+
+describe("loading the list after a passing refusal (UX-01)", () => {
+  /** A fetch whose `GET /bases` calls get `replies` in order, then the last one again. */
+  function loading(replies: Response[]) {
+    let call = 0;
+    const fetch = vi.fn<typeof globalThis.fetch>(() =>
+      Promise.resolve((replies[Math.min(call++, replies.length - 1)] as Response).clone()),
+    );
+    render(
+      <KnowledgeScreen
+        deps={{
+          apiUrl: "http://127.0.0.1:8000",
+          getAccessToken: () => "tok-1",
+          onSessionEnded: vi.fn(),
+          fetch,
+        }}
+      />,
+    );
+    return fetch;
+  }
+
+  it("waits for Retry-After, tries again and shows the list", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      loading([
+        jsonResponse(429, { detail: "rate_limited" }, { "Retry-After": "2" }),
+        jsonResponse(200, { bases: [kb(1, "Policies")] }),
+      ]);
+      expect(await screen.findByText(/Too many requests/)).toBeInTheDocument();
+
+      await act(() => vi.advanceTimersByTimeAsync(2000));
+
+      expect(await screen.findByText("Policies")).toBeInTheDocument();
+      expect(screen.queryByText(/Too many requests/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("gives up after three tries and keeps the message", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetch = loading([jsonResponse(503, {})]);
+      for (let step = 0; step < 6; step++) await act(() => vi.advanceTimersByTimeAsync(5000));
+      expect(fetch).toHaveBeenCalledTimes(4);
+      expect(screen.getByText(/unavailable right now/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not try again when it is not permitted", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetch = loading([jsonResponse(403, {}), jsonResponse(200, { bases: [] })]);
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+      expect(fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

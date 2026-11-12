@@ -20,6 +20,10 @@ const nameProblem = (name: string): string | null =>
     ? `Use 1 to ${String(NAME_MAX_CHARS)} characters.`
     : null;
 
+/** Without a Retry-After, a passing refusal of the list is tried again after this, this often. */
+const RETRY_SECONDS = 5;
+const RETRIES = 3;
+
 /** The user's knowledge bases (RAG-06.01). */
 export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
   const [bases, setBases] = useState<KnowledgeBase[]>([]);
@@ -28,29 +32,46 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
   const [name, setName] = useState("");
   const [processing, setProcessing] = useState<Processing>("hosted");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [retries, setRetries] = useState(0);
   const busy = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     let mounted = true;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     listBases(deps).then(
       (found) => {
         if (!mounted) return;
         setBases(found);
+        if (retries > 0) setError(null);
         setLoaded(true);
       },
       (failure: unknown) => {
         if (!mounted) return;
         setError(knowledgeErrorText(failure));
         setLoaded(true);
+        // A passing refusal (rate limit, a restart) is tried again after the server's
+        // Retry-After, or the list would stay empty until the page is reloaded (UX-01).
+        if (
+          failure instanceof ApiError &&
+          (failure.kind === "rate_limited" || failure.kind === "unavailable") &&
+          retries < RETRIES
+        )
+          retry = setTimeout(
+            () => {
+              setRetries((n) => n + 1);
+            },
+            Math.max(1, failure.retryAfterSeconds ?? RETRY_SECONDS) * 1000,
+          );
       },
     );
     return () => {
       mounted = false;
+      clearTimeout(retry);
     };
-    // Load once when the screen appears; `deps` is stable for the life of the page.
+    // Load when the screen appears, and again for each retry; `deps` is stable for the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retries]);
 
   /**
    * One change at a time: a second click while the first is in flight does nothing. Resolves
