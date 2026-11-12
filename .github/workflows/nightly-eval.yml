@@ -23,14 +23,81 @@ env:
   APP_DEFAULT_MODEL: nvidia:nvidia/nemotron-3-ultra-550b-a55b
 
 jobs:
+  # RAG-09.05: retrieval with the live query embeddings and reranker, gated against
+  # evals/baselines/knowledge_retrieval_live.json. It runs before live-eval, never beside it, so
+  # one job at a time uses the key; ai-review's window covers both caps (tests/unit/test_workflows.py).
+  knowledge-retrieval:
+    runs-on: ubuntu-latest
+    environment: ai-review
+    # About 5 minutes of calls (64 cases at 30 calls a minute) plus set-up.
+    timeout-minutes: 15
+    env:
+      # The image postgres-integration pins; the test creates its own database roles.
+      POSTGRES_IMAGE: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
+      APP_TEST_POSTGRES_DSN: postgresql://postgres:ci-only-throwaway@localhost:5432/postgres
+    steps:
+      - name: Check the provider secret
+        id: provider
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          if [ -n "$NVIDIA_API_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::NVIDIA_API_KEY is not configured; skipping the live retrieval gate."
+          fi
+      - if: steps.provider.outputs.configured == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Start Postgres
+        if: steps.provider.outputs.configured == 'true'
+        run: |
+          docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=ci-only-throwaway "$POSTGRES_IMAGE"
+          for _ in $(seq 30); do
+            docker exec postgres pg_isready -h 127.0.0.1 -U postgres && exit 0
+            sleep 2
+          done
+          docker logs postgres >&2
+          exit 1
+      - if: steps.provider.outputs.configured == 'true'
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - if: steps.provider.outputs.configured == 'true'
+        run: |
+          uv python install 3.13
+          uv sync
+      - name: Run the live retrieval gate
+        if: steps.provider.outputs.configured == 'true'
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          APP_KNOWLEDGE_EVAL_REPORT: knowledge-retrieval.json
+        # A failure names the metric that dropped (recall_at_5 or mrr) and the baseline.
+        run: >-
+          uv run python -m pytest tests/integration/test_live_knowledge_retrieval.py
+          -m integration -rs -o faulthandler_timeout=600 --junitxml=knowledge-junit.xml
+      # A skip exits 0, so require the test to have run.
+      - name: Require an executed gate
+        if: steps.provider.outputs.configured == 'true'
+        run: uv run python scripts/require_postgres_tests.py knowledge-junit.xml
+      - name: Upload the report
+        if: always() && steps.provider.outputs.configured == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: knowledge-retrieval-report
+          path: knowledge-retrieval.json
+          if-no-files-found: warn
+          retention-days: 90
+
   live-eval:
+    needs: knowledge-retrieval
+    # The agent evals run whatever the retrieval gate's outcome.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     # NVIDIA_API_KEY is an `ai-review` environment secret that only `main` may use (audit L-08).
     environment: ai-review
     # 3 trials of every suite take about 74 minutes (run 39225629460) at the default 30 model
     # calls per minute (EVALUATION.md). The cap leaves 36 minutes over that; a 75 minute cap
     # cut a run off before the compare step. ai-review skips 03:00 to 05:30 UTC, which covers
-    # the 03:17 start plus this cap, so keep the two in step (tests/unit/test_workflows.py).
+    # the 03:17 start plus this cap and knowledge-retrieval's, so keep them in step
+    # (tests/unit/test_workflows.py).
     timeout-minutes: 110
     steps:
       - name: Check the provider secret
