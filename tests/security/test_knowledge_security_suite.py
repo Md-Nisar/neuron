@@ -11,6 +11,7 @@ The threat model's "Knowledge Engine" table lists the same twelve cases, and
 from __future__ import annotations
 
 import ast
+import os
 import re
 from functools import cache
 from pathlib import Path
@@ -156,6 +157,10 @@ def test_the_threat_model_names_only_test_files_that_exist() -> None:
     assert all(Path(node.split("::")[0]).name in named for node in _NODES)
 
 
+@pytest.mark.skipif(
+    bool(os.environ.get("MUTANT_UNDER_TEST")),
+    reason="mutmut has already rewritten security/ and tools/; the source text differs",
+)
 def test_every_case_has_a_mutant_whose_text_is_in_the_code() -> None:
     # The mutation check itself (AC2) runs in the postgres-integration job; this keeps its table
     # in step with the suite and the code on every change.
