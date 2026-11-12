@@ -49,6 +49,11 @@ class AuthorizationContext:
     # The knowledge bases the request narrowed this run to (RAG-04.04); None means all readable.
     knowledge_base_ids: frozenset[uuid.UUID] | None = None
 
+    @property
+    def roles(self) -> frozenset[str]:
+        """The verified principal's roles; none without one (ADR 0006 amendment, RAG-09.02)."""
+        return self.principal.roles if self.principal is not None else frozenset()
+
 
 UNKNOWN_MODEL = "unknown"
 

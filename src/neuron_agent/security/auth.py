@@ -10,7 +10,7 @@ import hashlib
 import hmac
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, cast
 
@@ -62,6 +62,9 @@ class _FetchFailedWithCachedKeys(PyJWKClientConnectionError):
 
 
 _shared_token_verifier: TokenVerifier | None = None
+# Bounds on the roles a principal keeps (RAG-09.02): RAG-09.03 matches them against grant rows.
+_MAX_ROLES = 100
+_MAX_ROLE_CHARS = 256
 
 
 @dataclass(frozen=True)
@@ -73,6 +76,9 @@ class Principal:
     scopes: frozenset[str]
     token_id: str | None
     expires_at: datetime
+    # The verified values of APP_AUTH_ROLES_CLAIM, for sharing by role (ADR 0006 amendment,
+    # RAG-09.02). They grant no permission by themselves and are never logged.
+    roles: frozenset[str] = field(default=frozenset(), repr=False)
 
 
 def principal_owner_key(principal: Principal, identity_hash_key: str) -> str:
@@ -337,16 +343,19 @@ class TokenVerifier:
         else:
             scopes = frozenset()
         role_claim = self._settings.auth_roles_claim
-        roles = claims.get(role_claim, []) if role_claim else []
-        if isinstance(roles, str):
-            roles = [roles]
-        if isinstance(roles, list):
-            scopes = scopes | frozenset(
-                permission
-                for role in roles
-                if isinstance(role, str)
-                for permission in self._settings.auth_role_permissions.get(role, [])
-            )
+        raw_roles = claims.get(role_claim, []) if role_claim else []
+        if isinstance(raw_roles, str):
+            raw_roles = [raw_roles]
+        roles = (
+            [role for role in raw_roles if isinstance(role, str) and role]
+            if isinstance(raw_roles, list)
+            else []
+        )
+        scopes = scopes | frozenset(
+            permission
+            for role in roles
+            for permission in self._settings.auth_role_permissions.get(role, [])
+        )
         token_id = claims.get("jti")
         if token_id is not None and not isinstance(token_id, str):
             token_id = None
@@ -356,7 +365,28 @@ class TokenVerifier:
             scopes=scopes,
             token_id=token_id,
             expires_at=datetime.fromtimestamp(expires_at, tz=UTC),
+            roles=self._kept_roles(frozenset(roles)),
         )
+
+    def _kept_roles(self, roles: frozenset[str]) -> frozenset[str]:
+        """The roles kept for sharing; an oversized claim keeps none (fails closed)."""
+        reason = (
+            "too_many_roles"
+            if len(roles) > _MAX_ROLES
+            else "role_too_long"
+            if any(len(role) > _MAX_ROLE_CHARS for role in roles)
+            else None
+        )
+        if reason is None:
+            return roles
+        audit(
+            "auth_roles_dropped",
+            outcome="denied",
+            issuer_id=self._settings.auth_issuer_id,
+            reason=reason,
+            count=len(roles),
+        )
+        return frozenset()
 
     def _reject(self, reason: str) -> AuthenticationError:
         audit(

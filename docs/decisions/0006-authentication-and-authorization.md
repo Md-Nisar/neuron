@@ -4,6 +4,9 @@
 
 Accepted.
 
+> **Amended** by "Amendment: verified roles in `Principal`" below (RAG-09.02, proposed
+> 2026-11-12; accepted by the owner when its PR merges).
+
 ## Problem
 
 v0.3.0 protects conversation state with an owner value, but the caller chooses
@@ -202,6 +205,32 @@ metadata or a derived owner key and never raw claims.
 The Agent Server/LangGraph Studio integration uses the same verifier and
 principal rules through a custom auth handler. It must not create a second
 authentication or ownership model; that integration is implemented in issue #58.
+
+## Amendment: verified roles in `Principal` (RAG-09.02)
+
+Until now the roles claim only augmented permissions: `APP_AUTH_ROLES_CLAIM`'s values were
+mapped through `APP_AUTH_ROLE_PERMISSIONS` and then dropped. Sharing a knowledge base with a
+role (ADR 0014, RAG-09.03) needs the roles themselves, so the verified principal now keeps them.
+
+- `Principal.roles` holds the non-empty string values of `APP_AUTH_ROLES_CLAIM` (a string or a
+  list of strings; anything else in the claim is ignored), read only from a token that passed
+  verification against the one configured issuer, audience and JWKS. With the claim setting
+  unset, no roles are kept. `AuthorizationContext.roles` reads them from the principal and is
+  empty without one (Agent Server runs and `APP_AUTH_MODE=none`).
+- Roles never come from a request body, header, query or graph state. Request schemas refuse
+  unknown fields, so a `roles` field is a `422`; headers are not read for roles.
+- Roles grant no permission by themselves. Permissions still come only from the scope claim and
+  the role-to-permission map, unchanged. Roles say which shared resources a caller may reach,
+  and each route still needs its permission first.
+- Bounds: at most 100 roles of at most 256 characters each. A claim beyond either keeps no roles
+  (the token and its permissions are still accepted) and is audited as `auth_roles_dropped` with
+  `reason` `too_many_roles` or `role_too_long` and the number of values, never the values.
+  Dropping all of them fails closed: a role can only add access to a shared resource. Values
+  are counted once each. The role-to-permission map still applies to such a claim, so
+  permissions are exactly as before this amendment.
+- Roles are never logged, audited by value, put in prompts, checkpoints or graph state, or
+  passed to Agent Server. The `Non-goals` item on sharing between principals still holds for
+  threads; knowledge-base sharing is ADR 0014's.
 
 ## Migration and rollout
 
