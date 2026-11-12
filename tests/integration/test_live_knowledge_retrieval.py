@@ -12,8 +12,10 @@ an hour at the nightly's request rate. A model change re-embeds them with
 
 Live and billed, so marked `integration`; it skips without `NVIDIA_API_KEY` or
 `APP_TEST_POSTGRES_DSN` (the nightly job fails on a skip). Calls are paced to 30 a minute, the
-nightly's throttle. `APP_KNOWLEDGE_EVAL_REPORT` and `APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1` work as
-in the cached-vector gate.
+nightly's throttle. The gate measures order, not latency: the reranker gets 15 seconds instead of
+the production 3 (some calls take longer than 3 seconds), and a case that still falls back is
+tried once more before the run counts as inconclusive. `APP_KNOWLEDGE_EVAL_REPORT` and
+`APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1` work as in the cached-vector gate.
 """
 
 from __future__ import annotations
@@ -56,9 +58,9 @@ async def test_live_recall_and_mrr_hold_the_baseline(
 ) -> None:
     dataset = json.loads(DATASET.read_text(encoding="utf-8"))
     index, vectors = load_vectors()
-    settings = Settings(env="development", nvidia_api_key=live_nvidia_key).model_copy(
-        update={"knowledge_enabled": True}
-    )
+    settings = Settings(
+        env="development", nvidia_api_key=live_nvidia_key, knowledge_reranker_timeout_seconds=15
+    ).model_copy(update={"knowledge_enabled": True})
     assert (index["model"], index["dimensions"]) == (
         settings.knowledge_embedding_model,
         settings.knowledge_embedding_dimensions,
@@ -77,15 +79,18 @@ async def test_live_recall_and_mrr_hold_the_baseline(
     for case in dataset["cases"]:
         if case["category"] != "answerable":
             continue
-        started = time.monotonic()
-        result = await retriever.search(owners[case["as_user"]], case["question"], k=10)
-        assert result.reranked, "the reranker fell back: the run is inconclusive"
+        for _ in range(2):
+            started = time.monotonic()
+            result = await retriever.search(owners[case["as_user"]], case["question"], k=10)
+            await anyio.sleep(max(0.0, SECONDS_PER_CASE - (time.monotonic() - started)))
+            if result.reranked:
+                break
+        assert result.reranked, "the reranker fell back twice: the run is inconclusive"
         located = [
             Located(names[p.doc_id], p.page_start, p.page_end, tuple(p.headings), p.text)
             for p in result.passages
         ]
         ranks.append(first_hit_rank(case, located))
-        await anyio.sleep(max(0.0, SECONDS_PER_CASE - (time.monotonic() - started)))
 
     report = retrieval_report(dataset["version"], ranks)
     metrics = {name: report[name] for name in ("recall_at_5", "mrr")}

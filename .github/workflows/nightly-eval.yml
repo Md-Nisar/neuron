@@ -34,7 +34,8 @@ jobs:
     env:
       # The image postgres-integration pins; the test creates its own database roles.
       POSTGRES_IMAGE: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
-      APP_TEST_POSTGRES_DSN: postgresql://postgres:ci-only-throwaway@localhost:5432/postgres
+      # The checkout's source, as the project itself is not installed (no build step, below).
+      PYTHONPATH: src
     steps:
       - name: Check the provider secret
         id: provider
@@ -50,8 +51,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Start Postgres
         if: steps.provider.outputs.configured == 'true'
+        # A random password per run: the database lives only as long as the job.
         run: |
-          docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=ci-only-throwaway "$POSTGRES_IMAGE"
+          password="$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "APP_TEST_POSTGRES_DSN=postgresql://postgres:$password@localhost:5432/postgres" >> "$GITHUB_ENV"
+          docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD="$password" "$POSTGRES_IMAGE"
           for _ in $(seq 30); do
             docker exec postgres pg_isready -h 127.0.0.1 -U postgres && exit 0
             sleep 2
@@ -60,10 +65,12 @@ jobs:
           exit 1
       - if: steps.provider.outputs.configured == 'true'
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      # Locked, and no package or project is built, so no setup script runs. forbiddenfruit has
+      # no wheel and this test does not need it.
       - if: steps.provider.outputs.configured == 'true'
         run: |
           uv python install 3.13
-          uv sync
+          uv sync --locked --no-build --no-install-project --no-install-package forbiddenfruit
       - name: Run the live retrieval gate
         if: steps.provider.outputs.configured == 'true'
         env:
@@ -71,12 +78,12 @@ jobs:
           APP_KNOWLEDGE_EVAL_REPORT: knowledge-retrieval.json
         # A failure names the metric that dropped (recall_at_5 or mrr) and the baseline.
         run: >-
-          uv run python -m pytest tests/integration/test_live_knowledge_retrieval.py
+          .venv/bin/python -m pytest tests/integration/test_live_knowledge_retrieval.py
           -m integration -rs -o faulthandler_timeout=600 --junitxml=knowledge-junit.xml
       # A skip exits 0, so require the test to have run.
       - name: Require an executed gate
         if: steps.provider.outputs.configured == 'true'
-        run: uv run python scripts/require_postgres_tests.py knowledge-junit.xml
+        run: .venv/bin/python scripts/require_postgres_tests.py knowledge-junit.xml
       - name: Upload the report
         if: always() && steps.provider.outputs.configured == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
