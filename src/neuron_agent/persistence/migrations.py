@@ -592,6 +592,26 @@ CREATE POLICY kb_scope ON knowledge.embeddings
         " ADD COLUMN IF NOT EXISTS embedding_tokens bigint NOT NULL DEFAULT 0",
         feature="knowledge",
     ),
+    # At most one active and one building index profile (RAG-09.04, ADR 0014 amendment):
+    # search, ingestion and new bases each take "the" active one.
+    Migration(
+        version=28,
+        name="index_profiles_one_active",
+        sql="CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS index_profiles_one_active"
+        " ON knowledge.index_profiles ((true)) WHERE status = 'active'",
+        concurrent=True,
+        index="knowledge.index_profiles_one_active",
+        feature="knowledge",
+    ),
+    Migration(
+        version=29,
+        name="index_profiles_one_building",
+        sql="CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS index_profiles_one_building"
+        " ON knowledge.index_profiles ((true)) WHERE status = 'building'",
+        concurrent=True,
+        index="knowledge.index_profiles_one_building",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"

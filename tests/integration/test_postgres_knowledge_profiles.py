@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 
+import psycopg
 import pytest
 import structlog
 from langchain_core.embeddings import Embeddings
@@ -190,3 +191,21 @@ async def test_setup_needs_a_model_for_the_active_profile_and_indexes_it(
         "embeddings_p1_hnsw",
         "embeddings_p2_hnsw",
     ]
+
+
+@pytest.mark.parametrize("status", ["active", "building"])
+async def test_the_database_holds_at_most_one_profile_per_status(
+    role_db: RoleDatabase,  # noqa: F811
+    status: str,
+) -> None:
+    """Two active rows would give a new base two profiles, and search an arbitrary one."""
+    await _knowledge_db(role_db)
+    if status == "building":  # profile 1 is the active one already
+        await _new_profile(role_db)
+    with pytest.raises(psycopg.errors.UniqueViolation):
+        await _migrator(
+            role_db,
+            "INSERT INTO knowledge.index_profiles (profile_id, provider, model, dimensions,"
+            " chunker, status) VALUES (3, 'fake', 'third', 8, 'neuron-headings-v1', %s)",
+            status,
+        )
