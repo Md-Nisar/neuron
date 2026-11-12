@@ -102,6 +102,97 @@ async def test_verify_maps_configured_scope_claim_and_roles_to_permissions() -> 
     assert principal.scopes == {"agent:invoke", "threads:delete"}
 
 
+def _role_verifier(public: Any, roles_claim: str | None = "groups") -> TokenVerifier:
+    settings = _settings()
+    settings.auth_roles_claim = roles_claim
+    settings.auth_role_permissions = {"operators": ["threads:delete"]}
+    verifier = TokenVerifier(settings)
+    verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
+    return verifier
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("claim", "roles"),
+    [
+        (["operators", "finance"], {"operators", "finance"}),
+        ("operators", {"operators"}),
+        # Only non-empty strings are roles; anything else in the claim is ignored.
+        (["operators", 3, "", None, ["nested"]], {"operators"}),
+        ({"operators": True}, set()),
+    ],
+)
+async def test_verify_keeps_the_configured_claims_roles(claim: object, roles: set[str]) -> None:
+    """RAG-09.02 AC2: the principal keeps the configured claim's values as roles."""
+    private, public = _key_pair()
+    principal = await _role_verifier(public).verify(f"Bearer {_token(private, groups=claim)}")
+
+    assert principal.roles == roles
+    # Roles still grant only what the role map says, as before.
+    assert ("threads:delete" in principal.scopes) == ("operators" in roles)
+
+
+@pytest.mark.anyio
+async def test_roles_come_only_from_the_configured_claim_and_issuer() -> None:
+    """RAG-09.02 AC1: no roles from another issuer, another claim, or with the claim unset."""
+    private, public = _key_pair()
+    verifier = _role_verifier(public)
+    with pytest.raises(AuthenticationError):
+        await verifier.verify(
+            f"Bearer {_token(private, iss='https://other.example.test', groups=['operators'])}"
+        )
+
+    other_claim = await verifier.verify(f"Bearer {_token(private, roles=['operators'])}")
+    assert other_claim.roles == frozenset()
+
+    unset = _role_verifier(public, roles_claim=None)
+    assert (await unset.verify(f"Bearer {_token(private, groups=['operators'])}")).roles == (
+        frozenset()
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("claim", "reason"),
+    [
+        ([f"role-{n}" for n in range(101)] + ["operators"], "too_many_roles"),
+        (["operators", "r" * 257], "role_too_long"),
+    ],
+)
+async def test_an_oversized_roles_claim_keeps_no_roles(claim: list[str], reason: str) -> None:
+    """Over 100 roles, or one over 256 characters: none kept, the token still accepted."""
+    private, public = _key_pair()
+    with structlog.testing.capture_logs() as logs:
+        principal = await _role_verifier(public).verify(f"Bearer {_token(private, groups=claim)}")
+
+    assert principal.roles == frozenset()
+    # Permissions are unchanged: the role map still applies to a claim whose roles are dropped.
+    assert {"agent:invoke", "threads:read", "threads:delete"} <= principal.scopes
+    assert "operators" not in repr(principal)
+    dropped = [entry for entry in logs if entry["event"] == "auth_roles_dropped"]
+    assert len(dropped) == 1
+    assert dropped[0]["reason"] == reason
+    assert dropped[0]["count"] == len(set(claim))
+    assert "role-1" not in str(logs) and "r" * 257 not in str(logs)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "claim",
+    [
+        [f"role-{n}" for n in range(100)],
+        # Duplicates count once.
+        [f"role-{n % 100}" for n in range(150)],
+        ["operators", "r" * 256],
+    ],
+    ids=["count", "duplicates", "length"],
+)
+async def test_roles_at_the_limits_are_kept(claim: list[str]) -> None:
+    private, public = _key_pair()
+    principal = await _role_verifier(public).verify(f"Bearer {_token(private, groups=claim)}")
+    assert principal.roles == frozenset(claim)
+
+
 @pytest.mark.anyio
 async def test_verify_unknown_permission_claim_grants_nothing() -> None:
     private, public = _key_pair()

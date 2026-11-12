@@ -55,15 +55,15 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
-| RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 0 | 0 | 0 | 8 | RAG-09.01 or RAG-09.02 (owner to choose) |
+| RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 1 | 0 | 0 | 7 | RAG-09.01 or RAG-09.03 (owner to choose) |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **33** | **0** | **0** | **23** | **RAG-09.01 or RAG-09.02** (owner to choose) |
+| **Total** | | | | **56** | **34** | **0** | **0** | **22** | **RAG-09.01 or RAG-09.03** (owner to choose) |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 
-**Recommended next action (2026-11-12):** v1.1.0 is released and E00 to E08 are complete. Next: v1.2.0 (RAG-E09). Every E09 story except RAG-09.03 (needs RAG-09.02) has its dependencies Done. By the selection rule (phase, priority, then order in the epic) the next is RAG-09.01; the backlog marks RAG-09.02 as the Phase 2 start and this tracker has named it since. The owner chooses. Open follow-ups with no story: the worker settings profile and production verification of the worker's column grants. #480 and UX-01 are fixed in the PR from `ccr-7c4dd17f-k9sle9` (2026-11-12).
+**Recommended next action (2026-11-12):** RAG-09.02 Done on merge of its PR (#546; the merge is the owner's acceptance of the ADR 0006 amendment). Next in v1.2.0: RAG-09.01 by the selection rule (phase, priority, order in the epic; its dependencies are Done), or RAG-09.03, which RAG-09.02 unblocks and which completes role sharing. The owner chooses. Open follow-ups with no story: the worker settings profile and production verification of the worker's column grants. #480 and UX-01 were fixed by #553.
 
 ## GitHub synchronisation
 
@@ -340,11 +340,14 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E09 Retrieval quality and sharing
 
-- **Stories:** 8 total · 0 done · 0 in progress · 0 blocked · 8 pending
-- **Implemented functionality:** none.
-- **Outstanding work:** RAG-09.01 to RAG-09.08.
+- **Stories:** 8 total · 1 done · 0 in progress · 0 blocked · 7 pending
+- **Implemented functionality:** RAG-09.02 (#546): `Principal.roles` keeps the non-empty string values of `APP_AUTH_ROLES_CLAIM` from a verified token (`security/auth.py`), hidden from `repr`; `AuthorizationContext.roles` reads them from the principal, empty without one. Over 100 distinct roles, or one over 256 characters, keeps none and audits `auth_roles_dropped` (reason and count only). Roles grant no permission; the role-to-permission map is unchanged, also for a dropped claim. ADR 0006 amended.
+- **Outstanding work:** RAG-09.01, RAG-09.03 to RAG-09.08.
 - **Blockers and decisions:** Phase 2 starts after v1.1.0. Release v1.2.0 is a proposal. Epic and story issues created 2026-11-12 at the owner's request (#544 to #552).
-- **Next recommended story:** RAG-09.01 by the selection rule, or RAG-09.02, which the backlog marks as the Phase 2 start (owner to choose; see "Recommended next action").
+  - Decisions (RAG-09.02, proposed by Claude 2026-11-12 and taken as the owner's go-ahead "continue with the next story you want"; the PR merge accepts them with the ADR amendment): at most 100 roles of at most 256 characters, else none kept and the token still accepted (fails closed: a role only adds access to a shared resource); a top-level claim only, no dotted paths such as Keycloak's `realm_access.roles` (the reference realm already maps roles to `roles`); roles are not passed to Agent Server, where the knowledge tools are off (RAG-04.02 AC6).
+  - Note (RAG-09.02): with the default `APP_AUTH_TOKEN_MAX_BYTES` (16 KB) a token cannot carry 100 roles of 256 characters; both bounds still apply when an operator raises the token limit (up to 128 KB).
+  - Security review (RAG-09.02): no high or medium findings. Applied: roles counted once each, `roles` left out of `Principal`'s `repr`, the unchanged permission mapping for a dropped claim pinned by a test and stated in the ADR. Left: whether LangSmith traces include the run's runtime context (and so the principal's subject and roles) is unconfirmed; this predates the story, as the subject was already there.
+- **Next recommended story:** RAG-09.01 by the selection rule, or RAG-09.03, which RAG-09.02 unblocks (owner to choose; see "Recommended next action").
 
 ### RAG-E10 External knowledge sources
 
@@ -408,7 +411,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-08.04 | Reference stack, documentation and runbooks | 1 | P1 | Done | #485 | #484 (part 1), #512 (part 2), #513 (part 3), #514 (part 4), #515 (part 5) | AC1: CI's `local-stack` job (#513): `docker compose up --build --wait` from a clean checkout, then `scripts/smoke_test.py --knowledge` (upload → ready → `search:` turn → grounded answer citing the file). AC2: `AGENTS.md` "Knowledge Engine Boundaries" and `CLAUDE.md`'s module list, enforced by `tests/unit/test_knowledge_boundaries.py` (#515). Runbooks: `OPERATIONS.md` "Knowledge Engine" (#514, `tests/unit/test_knowledge_runbooks.py`) and "Runbook: knowledge queue". Reference stack: `api1`, `api2` and `worker` share the `knowledge-blobs` volume (`tests/unit/test_reference_stack.py`); parser isolation in both compose files |
 | RAG-08.05 | v1.1.0 release verification | 1 | P0 | Done | #520 | #521, #522 | `docs/releases/v1.1.0-release-verification.md`: AC1 `check-release --tag v1.1.0` passes; AC2 each exit criterion Met or Not run with evidence (only hosted deployment Not run); live eval 0.953, 12 of 12 (`v1.1.0-gate/live-knowledge-answers.json`); owner signed off 2026-11-10. Load figures `v1.1.0-gate/knowledge-load.json`, upgrade from v1.0.0 `v1.1.0-gate/upgrade-from-v1.0.0.json`. Manual release testing (58 scenarios: 55 passed; PICK-02 and PICK-03 fixed in #522 with new e2e journeys; UX-01 open). Tag `v1.1.0` at `26295d5`; GitHub Release published 2026-11-10 |
 | RAG-09.01 | Optional reranker providers | 2 | P1 | Pending | #545 | — | — |
-| RAG-09.02 | Keep verified roles in Principal | 2 | P1 | Pending | #546 | — | — |
+| RAG-09.02 | Keep verified roles in Principal | 2 | P1 | Done (on merge) | #546 | PR from `ccr-7c4dd17f-k9sle9` | `tests/unit/test_auth.py`: a token from another issuer is refused, so no roles; another claim or the claim unset keeps none (AC1); the roles equal the configured claim's values, string or list, non-strings and empty strings ignored (AC2); over 100 distinct roles or one over 256 characters keeps none, audits `auth_roles_dropped` without values, permissions unchanged; the limits themselves kept. `tests/security/test_principal_roles.py` through the real verifier and `/v1/agent/invoke`: the run's `AuthorizationContext.roles` equal the token's (AC2); a `roles`, `role` or `groups` body field is `422`, and `X-Roles`-style headers change nothing (AC3). ADR 0006 amendment; `security-reviewer` run |
 | RAG-09.03 | Grants API and UI | 2 | P1 | Pending | #547 | — | — |
 | RAG-09.04 | Re-index to a new index profile | 2 | P1 | Pending | #548 | — | — |
 | RAG-09.05 | Nightly retrieval regression gate | 2 | P1 | Pending | #549 | — | — |
@@ -435,6 +438,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-12 | #553 merged (#480 closed with every item ticked). RAG-09.02 Done (on merge, #546): verified roles in `Principal` and `AuthorizationContext`, ADR 0006 amended. E09: 1 of 8. Next: RAG-09.01 or RAG-09.03 (owner) | Claude session |
 | 2026-11-12 | #480 and UX-01 fixed (PR from `ccr-7c4dd17f-k9sle9`): NVIDIA embedding batch default 1, model id error names the setting, web README notes jwt, the Knowledge list retries a `429`/`503`; the other #480 items were already fixed or are answered (RAG-E08 section). No story status changed | Claude session |
 | 2026-11-12 | v1.2.0 opened at the owner's request: epic RAG-E09 (#544) and story issues RAG-09.01 to RAG-09.08 (#545 to #552) as its sub-issues, labelled `rag`, `phase:2`, `v1.2.0` and their priority | Claude session |
 | 2026-11-12 | Tracker caught up with `main` at `8c6ea29`: RAG-08.04 part 5 is #515; E07 and E08 sections show the epics done; epic issues #494 and #497 and story issues #516, #518 and #520 closed and in the issue map. Post-release fixes on `main` that touch knowledge: the queue no longer re-runs an ingest the worker recorded as failed (C-02, #536); production refuses http parser and embedding URLs (L-10, #531); both erase routes need the new `data:erase` scope (L-01, #530). No story status changed | Claude session |
