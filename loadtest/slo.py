@@ -51,3 +51,16 @@ def summarise_step(stats: Any, users: int, seconds: float) -> StepSummary:
         elif name.startswith("ttft:"):
             ttft_p90 = max(ttft_p90, entry.get_response_time_percentile(0.90) or 0.0)
     return StepSummary(users, seconds, runs, failures, ttft_p90, run_p95)
+
+
+def request_percentiles(stats: Any) -> dict[str, dict[str, float]]:
+    """Count, failures, p50 and p95 per request name, for the scenarios that are not runs."""
+    return {
+        name: {
+            "requests": entry.num_requests,
+            "failures": entry.num_failures,
+            "p50_ms": entry.get_response_time_percentile(0.5) or 0.0,
+            "p95_ms": entry.get_response_time_percentile(0.95) or 0.0,
+        }
+        for (name, _), entry in stats.entries.items()
+    }

@@ -18,7 +18,7 @@ from pathlib import Path
 from locust import LoadTestShape
 from locust.stats import StatsError
 
-from loadtest.slo import breaches, summarise_step
+from loadtest.slo import breaches, request_percentiles, summarise_step
 
 STEP_SECONDS = float(os.environ.get("LOAD_STEP_SECONDS", "600"))
 STEP_USERS = int(os.environ.get("LOAD_STEP_USERS", "5"))
@@ -46,6 +46,7 @@ class StepShape(LoadTestShape):
             label = f"{error.name}: {StatsError.parse_error(error.error)}"
             errors[label] = errors.get(label, 0) + error.occurrences
         record = {**asdict(summary), "breaches": found, "errors": errors}
+        record["requests"] = request_percentiles(self.runner.stats)
         record["ended_at"] = time.time()  # lets loadtest.resources line resource samples up
         with RESULTS.open("a", encoding="utf-8") as out:
             out.write(json.dumps(record) + "\n")
