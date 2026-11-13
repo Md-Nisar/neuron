@@ -17,7 +17,7 @@ RUN uv sync --locked --no-dev --no-editable
 FROM python:3.13-slim-trixie@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
 # Build arguments are recorded by provenance: labels only, never a secret.
 ARG GIT_SHA=unknown
-ARG VERSION=1.2.0
+ARG VERSION=1.3.0
 LABEL org.opencontainers.image.source="https://github.com/Md-Nisar/neuron" \
       org.opencontainers.image.revision="${GIT_SHA}" \
       org.opencontainers.image.version="${VERSION}"
