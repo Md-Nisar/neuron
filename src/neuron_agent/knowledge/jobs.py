@@ -33,6 +33,9 @@ class Task(StrEnum):
     # Periodic, queued by the worker itself (RAG-07.02); it carries only Procrastinate's timestamp.
     RECONCILE = "reconcile_knowledge"
     SWEEP_BLOBS = "sweep_knowledge_blobs"
+    # The re-index (RAG-09.04): one job per base, and the periodic swap check.
+    REINDEX_KB = "reindex_kb"
+    REINDEX_SWAP = "reindex_swap"
 
 
 # Procrastinate's `procrastinate_job_to_defer_v1`: queue, task, priority, lock, queueing lock,

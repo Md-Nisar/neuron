@@ -226,7 +226,7 @@ class Ingestor:
     ) -> str:
         """`failed` with `code`, and no chunks: a failed re-run leaves no stale set behind."""
         async with conn.transaction():
-            if not await _lock(conn, doc_id):
+            if not await lock_document(conn, doc_id):
                 return "skipped"
             await conn.execute("DELETE FROM knowledge.chunks WHERE doc_id = %s", (doc_id,))
             await conn.execute(_STATUS, ("failed", code, doc_id))
@@ -249,7 +249,7 @@ class Ingestor:
         """
         kb_id = row["kb_id"]
         async with conn.transaction():
-            if not await _lock(conn, doc_id):
+            if not await lock_document(conn, doc_id):
                 return False
             current = await (await conn.execute(PROFILES + " FOR SHARE")).fetchall()
             if current != row["profiles"]:
@@ -312,7 +312,7 @@ def _stage(name: str) -> Iterator[None]:
             raise
 
 
-async def _lock(conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID) -> bool:
+async def lock_document(conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID) -> bool:
     """Lock a live document's row and scope the transaction to its knowledge base.
 
     False when it was tombstoned. RLS on chunks and embeddings then admits only that base, so

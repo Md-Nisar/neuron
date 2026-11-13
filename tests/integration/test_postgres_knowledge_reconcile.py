@@ -170,8 +170,10 @@ async def test_the_worker_schedules_one_reconcile_run_per_tick_and_runs_it(
     app = neuron_worker.build_app(settings, ingestor)
     async with app.open_async():
         await _defer_twice(app, _AT_05)
-    [(task, args)] = await _jobs(db)
+    # And the re-index swap check's last tick, at minute 55 (RAG-09.04).
+    [(task, args), swap] = sorted(await _jobs(db), key=str)
     assert task == jobs.Task.RECONCILE.value
+    assert swap == (jobs.Task.REINDEX_SWAP.value, {"timestamp": _HOUR - 5 * 60})
     doc = await _document(db, await _base(db), "embedding", age=2 * _AFTER)
     await app.tasks[task].func(**args)
     assert await _status(db, doc) == ("queued", None)
@@ -191,6 +193,7 @@ async def test_a_worker_starting_after_the_blob_sweeps_tick_queues_it_once_too(
         await _defer_twice(app, _AT_25)
     assert sorted(await _jobs(db), key=str) == [
         (jobs.Task.RECONCILE.value, {"timestamp": _HOUR + 20 * 60}),
+        (jobs.Task.REINDEX_SWAP.value, {"timestamp": _HOUR + 15 * 60}),
         (jobs.Task.SWEEP_BLOBS.value, {"timestamp": _HOUR + 23 * 60}),
     ]
 

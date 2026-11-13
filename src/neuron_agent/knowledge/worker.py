@@ -48,11 +48,13 @@ from neuron_agent.knowledge.parsing import (
     PlainTextParser,
 )
 from neuron_agent.knowledge.providers import (
+    EmbeddingError,
     create_embedding_provider,
     create_reindex_embedding_provider,
 )
 from neuron_agent.knowledge.purge import Purger
 from neuron_agent.knowledge.reconcile import check_blobs, reconcile, sweep_blobs
+from neuron_agent.knowledge.reindex import Reindexer, ReindexRefusedError
 from neuron_agent.observability import metrics
 from neuron_agent.observability.logging import configure_logging
 from neuron_agent.observability.telemetry import configure_telemetry
@@ -73,6 +75,8 @@ _OPTIONS = "-c search_path=knowledge"
 RECONCILE_CRON = "*/10 * * * *"
 # The orphan-blob sweep lists the whole store, so it runs hourly.
 SWEEP_BLOBS_CRON = "23 * * * *"
+# The re-index swap check (RAG-09.04), between the reconcile runs.
+REINDEX_SWAP_CRON = "5-59/10 * * * *"
 # The advisory lock key that serialises the stalled-job sweep across workers.
 _SWEEP = 0x4E52_5357
 # How long the oldest runnable job has waited: since its defer or retry, or since the time it was
@@ -100,6 +104,10 @@ class PurgeError(Exception):
 
 class ReconcileError(Exception):
     """What a failed reconcile run raises to the queue: the class name only."""
+
+
+class ReindexError(Exception):
+    """What a failed re-index job raises to the queue, to be retried: the class name only."""
 
 
 class _Unconfigured:
@@ -130,7 +138,9 @@ def build_ingestor(settings: Settings) -> Ingestor:
     )
 
 
-def build_app(settings: Settings, ingestor: Ingestor | None = None) -> procrastinate.App:
+def build_app(
+    settings: Settings, ingestor: Ingestor | None = None, reindexer: Reindexer | None = None
+) -> procrastinate.App:
     """A Procrastinate app on the worker DSN with every `Task` registered by name."""
     assert settings.postgres_worker_dsn is not None  # nosec B101 - main() checks it
     ingestor = ingestor or build_ingestor(settings)
@@ -180,6 +190,41 @@ def build_app(settings: Settings, ingestor: Ingestor | None = None) -> procrasti
     ):
         app.task(name=task.value, queue=QUEUE, retry=RETRY)(func)
 
+    reindexer = reindexer or Reindexer(
+        connect=ingestor.connect,
+        embeddings=ingestor.embeddings,
+        reindex=ingestor.reindex,
+        policy=ingestor.policy,
+    )
+
+    async def reindex_kb(context: procrastinate.JobContext, kb_id: str) -> None:
+        try:
+            parsed = uuid.UUID(kb_id)
+        except ValueError:
+            log.warning("knowledge.job.invalid_argument")
+            return
+        try:
+            done = await reindexer.reindex_base(parsed)
+        except ReindexRefusedError as exc:
+            await reindexer.fail(exc.code)  # retrying cannot fix it
+            return
+        except Exception as exc:
+            if context.job.attempts + 1 >= MAX_ATTEMPTS:
+                code = exc.code if isinstance(exc, EmbeddingError) else "reindex_failed"
+                await reindexer.fail(code)
+            log.warning("knowledge.reindex.job_failed", kb_id=kb_id, error=type(exc).__name__)
+            raise ReindexError(type(exc).__name__) from None
+        log.info("knowledge.reindex.base_done", kb_id=kb_id, documents=done)
+
+    app.task(name=Task.REINDEX_KB.value, queue=QUEUE, retry=RETRY, pass_context=True)(reindex_kb)
+
+    async def reindex_swap(timestamp: int) -> None:
+        try:
+            await reindexer.swap()
+        except Exception as exc:
+            log.warning("knowledge.reindex.swap_failed", error=type(exc).__name__)
+            raise ReconcileError(type(exc).__name__) from None
+
     async def reconcile_knowledge(timestamp: int) -> None:
         # Not retried: the next run, ten minutes later, starts over.
         try:
@@ -206,6 +251,7 @@ def build_app(settings: Settings, ingestor: Ingestor | None = None) -> procrasti
     for name, cron, periodic in (
         (Task.RECONCILE, RECONCILE_CRON, reconcile_knowledge),
         (Task.SWEEP_BLOBS, SWEEP_BLOBS_CRON, sweep_knowledge_blobs),
+        (Task.REINDEX_SWAP, REINDEX_SWAP_CRON, reindex_swap),
     ):
         app.periodic(cron=cron)(app.task(name=name.value, queue=QUEUE)(periodic))
     return app
