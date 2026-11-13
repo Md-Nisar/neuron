@@ -1,0 +1,46 @@
+{
+  "run": "2026-11-13",
+  "commit": "e14773d",
+  "image": "neuron:ref, the v1.1.0 image with src/ from e14773d (dependencies unchanged since v1.1.0)",
+  "stack": "docker-compose.reference.yml (two API replicas), KNOWLEDGE_ENABLED=true, worker --no-deps (no docling: the plain-text parser), fake embeddings, fake chat model",
+  "command": "LOAD_RESOURCES=1 LOAD_SECONDS=180 LOAD_UPLOAD_USERS=12 LOAD_UPLOAD_SECONDS=1.5 LOAD_SEARCH_USERS=8 LOAD_CHAT_USERS=30 loadtest/run_knowledge.sh",
+  "host": "Linux x86_64, 4 CPUs",
+  "memory_gb": 16,
+  "note": "worker without docling (plain-text parser), fake embeddings, fake chat model; generator on the same host",
+  "search": {
+    "users": 8,
+    "seconds": 180,
+    "calls": 1160,
+    "failures": 0,
+    "rejected_429": 0,
+    "p50_ms": 47,
+    "p95_ms": 110
+  },
+  "ingestion": {
+    "documents": 973,
+    "ready": 973,
+    "failed": 0,
+    "unsettled": 0,
+    "pages": 7784,
+    "span_seconds": 180.3,
+    "pages_per_minute": 2589.8,
+    "documents_per_minute": 323.7,
+    "document_seconds_p50": 0.187,
+    "document_seconds_p95": 0.369,
+    "pages_per_document": 8,
+    "uploads_accepted": 981,
+    "uploads_refused_429": 479,
+    "note": "uploads_accepted includes the 8 search users' seed documents; every refusal was upload_busy (4 upload slots per API process), so the upload path, not the worker, set the rate"
+  },
+  "chat_with_search": {
+    "chat_users": 30,
+    "search_users": 8,
+    "chat_runs_alone": 870,
+    "chat_runs_beside_search": 870,
+    "chat_run_p95_ms_alone": 7200,
+    "chat_run_p95_ms_beside_search": 7700,
+    "chat_run_p95_change": 0.069,
+    "search_p95_ms_beside_chat": 110,
+    "note": "one 180 s run each; p95 is bucketed to 100 ms by Locust. Postgres CPU mean 9.8% alone, 14.9% beside search; active connections about 1.2 in both (knowledge-load-steps/*.resources.json)"
+  }
+}
