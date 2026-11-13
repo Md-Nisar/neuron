@@ -8,7 +8,7 @@ Upgrade note: migrations 28 and 29 (at most one `active` and one `building` inde
 
 Known issues:
 - **No production environment exists**, as for 1.0.0 and 1.1.0: no hosted deployment, staging run or production-model run. The GitHub Release is published by hand from this section.
-- The live answer and citation eval runs one trial per case, so a re-run can land near the 0.9 gate.
+- The live answer and citation eval runs one trial per case. The release run (2026-11-13) cited a correct page for 0.969 of answerable questions and abstained on 12 of 12 (`docs/releases/v1.2.0-gate/live-knowledge-answers.json`); a re-run can land nearer the 0.9 gate.
 - Load figures are for one local host with fake embeddings and the plain-text parser (`docs/releases/v1.2.0-gate/knowledge-load-baseline.json`); the reranker's latency (about 0.7 s at p95 per search) was measured separately.
 - German word search finds only a third of the evaluation's answers with the `german` configuration (`docs/releases/v1.2.0-gate/multilingual-fts.json`); `pg_textsearch` BM25 was not measured, since it needs PostgreSQL 17 or later.
 - No story yet for a worker settings profile or for checking the worker role's column grants in production.
