@@ -26,6 +26,7 @@ from typing import Annotated, Literal, Protocol
 from urllib.parse import unquote
 
 import anyio
+import trafilatura
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from neuron_agent.config.settings import Settings
@@ -37,8 +38,10 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 TEXT = "text/plain"
 MARKDOWN = "text/markdown"
+# A fetched web page (RAG-10.02), never an upload: `accepted_type` never picks it.
+HTML = "text/html"
 _ZIP = "application/zip"
-SUPPORTED = frozenset({PDF, DOCX, XLSX, PPTX, TEXT, MARKDOWN})
+SUPPORTED = frozenset({PDF, DOCX, XLSX, PPTX, TEXT, MARKDOWN, HTML})
 # The main part's content type: exactly the non-macro, non-template document for each format.
 _OOXML_MAIN = {kind: f'ContentType="{kind}.main+xml"'.encode() for kind in (DOCX, XLSX, PPTX)}
 # Active content, by content type or part name (lowercased, percent-decoded).
@@ -219,7 +222,7 @@ def check_input(data: bytes, declared: str, limits: Limits) -> str:
     if sniffed == _ZIP:
         _check_office_zip(data, declared, limits)
         return declared
-    if sniffed == TEXT and declared in {TEXT, MARKDOWN}:
+    if sniffed == TEXT and declared in {TEXT, MARKDOWN, HTML}:
         return declared
     raise ParseError("media_type_mismatch")
 
@@ -359,6 +362,36 @@ class PlainTextParser:
             },
             limits,
         )
+
+
+class HtmlParser:
+    """A fetched web page in the worker (RAG-10.02): Trafilatura keeps the main text, without
+    navigation, comments, links or images, as Markdown, which is then split like `.md`. Its
+    lxml parser reads HTML only, never fetches, and gets bytes already under the byte cap."""
+
+    media_types = frozenset({HTML})
+    version = f"trafilatura/{trafilatura.__version__}"
+
+    async def parse(self, data: bytes, media_type: str, limits: Limits) -> ParsedDocument:
+        return await anyio.to_thread.run_sync(self._parse, data, limits)
+
+    def _parse(self, data: bytes, limits: Limits) -> ParsedDocument:
+        markdown = trafilatura.extract(
+            data.decode("utf-8-sig"),
+            output_format="markdown",
+            include_comments=False,
+            include_links=False,
+            include_images=False,
+            include_tables=True,
+        )
+        if not markdown or not markdown.strip():
+            raise ParseError("no_text")
+        blocks: list[dict[str, object]] = []
+        for block in _blocks(markdown, markdown=True):
+            if len(blocks) == limits.max_blocks:
+                raise ParseError("too_many_blocks")
+            blocks.append(block)
+        return validate_output({"parser_version": self.version, "blocks": blocks}, limits)
 
 
 def _flush(paragraph: list[str], kind: str = "text") -> Iterator[dict[str, object]]:

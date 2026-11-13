@@ -56,10 +56,10 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 8 | 0 | 0 | 0 | — |
-| RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 2 | 0 | 0 | 3 | RAG-10.02 |
+| RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 2 | 1 | 0 | 2 | RAG-10.02 |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **43** | **0** | **0** | **13** | **RAG-10.02** |
+| **Total** | | | | **56** | **43** | **1** | **0** | **12** | **RAG-10.02** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
@@ -382,7 +382,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E10 External knowledge sources
 
-- **Stories:** 5 total · 2 done · 0 in progress · 0 blocked · 3 pending
+- **Stories:** 5 total · 2 done · 1 in progress · 0 blocked · 2 pending
 - **Implemented functionality:** RAG-10.01: `fetch_public_https` in `security/egress.py`, the one way ingestion fetches a user's URL. It checks the URL's text, then uses `LimitedTransport` (moved from the MCP client, which now subclasses it): `PublicOnlyBackend` on every connection, https on every hop, no proxy from the environment, a byte cap with compression refused, a redirect cap and a total deadline. Failures have stable codes; a DNS failure is `fetch_failed`, not a refusal. No caller yet: RAG-10.02 adds the worker's. RAG-10.05: `openai_compatible:<model>` chat models at `APP_OPENAI_COMPATIBLE_BASE_URL` with an optional `APP_OPENAI_COMPATIBLE_API_KEY`; the URL is checked like the embedding base URL (`_check_operator_base_url`, shared); no fake-model fallback; the key is always passed, so `OPENAI_API_KEY` never reaches the server.
 - **Outstanding work:** RAG-10.02 to RAG-10.04.
 - **Blockers and decisions:** RAG-10.01 blocks RAG-10.02, RAG-10.03 and RAG-11.02.
@@ -451,10 +451,10 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-09.07 | Link feedback to citations | 2 | P2 | Done | #551 | #569 | `python -m neuron_agent.persistence.cli feedback-report`. `tests/integration/test_postgres_feedback_report.py` (Postgres): a real run stamped with two citations and rated down is listed with its run ID and both chunk IDs, a thumbs-up and an uncited thumbs-down are not (AC1); the command's printed JSON holds no query, citation title, heading or owner (AC2). `tests/unit/test_feedback_report.py`: only the rated run's IDs, invalid citations skipped, Postgres checkpointer required |
 | RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Done | #552 | #570, #571 | AC1 (#570): `POST /v1/knowledge/bases` takes `language`, one of Postgres's 29 built-in text search configurations, stored as `bases.ts_config` and fixed at creation; the Knowledge screen's create form has a selector. `test_postgres_knowledge_ingest.py::test_a_base_language_sets_the_text_search_config_of_its_chunks`, `test_postgres_knowledge_api.py::test_a_base_keeps_the_language_it_was_created_with`. AC2: `tests/integration/test_postgres_knowledge_multilingual.py` on `tests/fixtures/knowledge/multilingual/cases.json` (30 questions, 5 languages): text-channel recall@5 `simple` 0.00 everywhere; own config English 1.00, German 0.33, French 0.67, Spanish 0.83, Hindi 0.83 (`docs/releases/v1.2.0-gate/multilingual-fts.json`). Decision in ADR 0014, amendment "text search language": keep built-in FTS; `pg_textsearch` not adopted (PostgreSQL 17+ only; not measured, no PostgreSQL 17 in the evaluation environment; owner decision) |
 | RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Done | #578 | #584 | `tests/security/test_egress.py`: a name resolving to `10.0.0.1` or `169.254.169.254` is refused and nothing is connected, a private literal is refused before any lookup (AC1); a redirect to a private address and a redirect to `http` are refused after only the public address was connected (AC2); a changed second DNS answer is never looked up or connected (AC3); `http` URLs are refused in every environment, loopback included (AC4). Also: proxy settings ignored, body and redirect caps, non-200, DNS failure as `fetch_failed`, final URL without userinfo or fragment. `security-reviewer` run: no critical or high findings; three low ones fixed in the PR |
-| RAG-10.02 | Web page ingestion | 3 | P2 | Pending | #579 | — | — |
+| RAG-10.02 | Web page ingestion | 3 | P2 | In progress | #579 | this PR (part 1 of 4) | Part 1: `HtmlParser` (Trafilatura) in `tests/unit/test_knowledge_parsing.py`: main text, headings and tables kept, scripts, navigation and footers dropped, `no_text`, block cap, never an upload type. Parts 2 to 4 (worker fetch, add-by-URL route, web citations and UI) carry the acceptance criteria |
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | #580 | — | — |
 | RAG-10.04 | MCP document connectors | 3 | P2 | Pending | #581 | — | — |
-| RAG-10.05 | OpenAI-compatible chat model provider | 3 | P2 | Done | #582 | this PR | `tests/unit/test_model_factory.py`: with `APP_DEFAULT_MODEL=openai_compatible:local-model` and a base URL, a call reaches a local OpenAI-compatible server at `/v1/chat/completions` and returns its answer, and `OPENAI_API_KEY` from the environment is not sent (AC1); an `http` non-loopback base URL fails settings validation in production (AC2). Also: base URL required (default and fallback models), own key used, keyless `http` private server allowed in staging, keyed one refused |
+| RAG-10.05 | OpenAI-compatible chat model provider | 3 | P2 | Done | #582 | #585 | `tests/unit/test_model_factory.py`: with `APP_DEFAULT_MODEL=openai_compatible:local-model` and a base URL, a call reaches a local OpenAI-compatible server at `/v1/chat/completions` and returns its answer, and `OPENAI_API_KEY` from the environment is not sent (AC1); an `http` non-loopback base URL fails settings validation in production (AC2). Also: base URL required (default and fallback models), own key used, keyless `http` private server allowed in staging, keyed one refused |
 | RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | Pending | — | — | — |
 | RAG-11.02 | `research_web` tool | 4 | P2 | Pending | — | — | — |
 | RAG-11.03 | Mutating knowledge tools with approval | 4 | P2 | Pending | — | — | — |
@@ -470,6 +470,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-13 | RAG-10.02 started (#579), part 1: HTML parser with Trafilatura. Plan: part 2 worker fetch and migration, part 3 add-by-URL route, part 4 web citations and UI | Claude session |
 | 2026-11-13 | RAG-10.05 Done (#582): `openai_compatible` chat model provider. E10: 2 of 5. Next: RAG-10.02 | Claude session |
 | 2026-11-13 | RAG-10.01 Done (#578): `fetch_public_https` and the shared `LimitedTransport` in `security/egress.py`. E10: 1 of 5. Next: RAG-10.05 | Claude session |
 | 2026-11-13 | Phase 3 planned with the owner: RAG-E10 epic #577 and stories #578 to #582; ADR 0014 amendment "external sources"; v1.3.0 scope web pages and the self-hosted chat model, GitHub and MCP deferred. Next: RAG-10.01 | Claude session |
