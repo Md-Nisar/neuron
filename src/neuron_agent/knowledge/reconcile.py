@@ -101,6 +101,7 @@ _NAMED = "SELECT blob_key FROM knowledge.documents WHERE blob_key = ANY(%(keys)s
 _ROWS = (
     "SELECT d.doc_id, d.blob_key, d.deleted_at IS NULL AND b.deleted_at IS NULL AS live"
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " WHERE d.blob_key IS NOT NULL"  # a web page not fetched yet has no file to miss
 )
 
 

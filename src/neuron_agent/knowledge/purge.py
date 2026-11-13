@@ -67,7 +67,8 @@ class Purger:
         failed: Exception | None = None
         for document in documents:
             try:
-                await self.blobs.delete(document["blob_key"])
+                if document["blob_key"] is not None:  # a web page deleted before its fetch
+                    await self.blobs.delete(document["blob_key"])
                 async with conn.transaction():
                     await conn.execute(_DELETE_DOCUMENT, (document["doc_id"],))
             except Exception as exc:  # noqa: BLE001 - raised below

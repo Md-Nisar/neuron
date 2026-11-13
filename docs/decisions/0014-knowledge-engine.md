@@ -560,6 +560,8 @@ spaces or stopping search.
   the fetch time and the content hash (`sha256`) of the fetched bytes, which are stored as its
   blob like an upload. A web citation names the URL and fetch time instead of a page. Every chunk
   maps to one fetched version; fetching again makes a new version.
+- **Storage (RAG-10.02).** A page is queued with its URL and no file; the worker's role may set
+  the file once (a trigger refuses any later change). Roll back past this only once no page waits.
 - **Extraction (RAG-10.02).** `trafilatura` 2.3.1 (Apache-2.0) is a core dependency, since the
   worker runs from the API image. It adds `lxml`, `lxml-html-clean`, `justext`, `courlan`,
   `htmldate`, `dateparser`, `babel`, `pytz`, `tld` and `tzlocal`. `HtmlParser` keeps the main

@@ -7,10 +7,10 @@ LangGraph's `AsyncPostgresSaver.setup()` owns the checkpoint tables. Everything 
 on top is an ordered `Migration` here, applied after LangGraph's `setup()` by `run_setup`.
 
 Compatibility rule (expand/contract): a release's migrations must leave the previous release
-working. Add tables, nullable columns and concurrent indexes; remove or rename only in a
-later release, as a migration with `contract_release` naming the release whose image stopped
-using the old shape. There are no down-migrations: rollback is redeploying the previous image.
-`tests/unit/test_migrations_policy.py` enforces the rule.
+working. Add tables, nullable columns and concurrent indexes, or relax a `NOT NULL`; remove
+or rename only in a later release, as a migration with `contract_release` naming the release
+whose image stopped using the old shape. There are no down-migrations: rollback is
+redeploying the previous image. `tests/unit/test_migrations_policy.py` enforces the rule.
 """
 
 from __future__ import annotations
@@ -612,6 +612,30 @@ CREATE POLICY kb_scope ON knowledge.embeddings
         index="knowledge.index_profiles_one_building",
         feature="knowledge",
     ),
+    # Web pages (RAG-10.02, ADR 0014 amendment for RAG-E10): a page is queued with its URL and
+    # no file; the worker fetches it, stores it as the document's blob and records when. Every
+    # other document keeps its file and hash from the start.
+    Migration(
+        version=30,
+        name="documents_web_pages",
+        sql="ALTER TABLE knowledge.documents ALTER COLUMN blob_key DROP NOT NULL,"
+        " ALTER COLUMN sha256 DROP NOT NULL,"
+        " ADD COLUMN IF NOT EXISTS fetched_at timestamptz,"
+        " ADD CONSTRAINT documents_file_or_url CHECK ((blob_key IS NOT NULL AND sha256 IS NOT NULL)"
+        " OR (source_type = 'web' AND source_ref IS NOT NULL)) NOT VALID;\n"
+        # The worker may record a page's file (RAG-10.02), but no role may change a file once
+        # recorded: a document never moves to other content.
+        "CREATE OR REPLACE FUNCTION knowledge.documents_file_set_once() RETURNS trigger"
+        " LANGUAGE plpgsql SET search_path = pg_catalog AS $f$ BEGIN"
+        " RAISE EXCEPTION 'a document''s file is set once' USING ERRCODE = 'check_violation';"
+        " END $f$;\n"
+        "CREATE TRIGGER documents_file_set_once BEFORE UPDATE OF blob_key, sha256, size_bytes"
+        " ON knowledge.documents FOR EACH ROW WHEN (OLD.blob_key IS NOT NULL"
+        " AND (NEW.blob_key, NEW.sha256, NEW.size_bytes)"
+        " IS DISTINCT FROM (OLD.blob_key, OLD.sha256, OLD.size_bytes))"
+        " EXECUTE FUNCTION knowledge.documents_file_set_once()",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"
@@ -645,7 +669,8 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         # swap.
         "bases": frozenset({"SELECT", "DELETE"}),
         "grants": frozenset(),
-        # Plus UPDATE on the progress columns only: never `kb_id`, `blob_key` or the owner.
+        # Plus UPDATE on the progress columns and a fetched page's file: never `kb_id` or the
+        # owner.
         "documents": frozenset({"SELECT", "DELETE"}),
         "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
         # DELETE also for the purge of retired profiles' vectors (RAG-09.04).
@@ -676,6 +701,11 @@ _WORKER_COLUMNS = {
         "page_count",
         "embedding_tokens",
         "updated_at",
+        # A web page's, set once when it is fetched (RAG-10.02).
+        "blob_key",
+        "sha256",
+        "size_bytes",
+        "fetched_at",
     ),
     "index_profiles": ("status",),
     "bases": ("profile_id",),

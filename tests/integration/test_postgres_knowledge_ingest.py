@@ -206,6 +206,10 @@ async def test_a_parser_error_fails_the_document_and_leaves_no_chunks(
 
     blob = await ingestor.blobs.put(body(), max_bytes=1_000)
     async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        # A file is set once (RAG-10.02): the table's owner lifts that to simulate the swap.
+        await conn.execute(
+            "ALTER TABLE knowledge.documents DISABLE TRIGGER documents_file_set_once"
+        )
         await conn.execute(
             "UPDATE knowledge.documents SET blob_key = %s, sha256 = %s WHERE doc_id = %s",
             (blob.key, blob.sha256, doc),

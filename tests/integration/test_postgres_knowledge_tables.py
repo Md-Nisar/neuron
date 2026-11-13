@@ -210,7 +210,7 @@ async def test_grants_are_exactly_what_each_role_needs(
         "chunks": {"SELECT", "INSERT", "DELETE"},
         "embeddings": {"SELECT", "INSERT", "DELETE"},
     }
-    # The worker records progress on a document but cannot move it or repoint its blob.
+    # Progress, and a fetched page's file (RAG-10.02, set once): never the base or the owner.
     assert await _rows(
         role_db.migrator_dsn,
         "SELECT c FROM unnest(%s::text[]) c"
@@ -227,14 +227,21 @@ async def test_grants_are_exactly_what_each_role_needs(
                 "blob_key",
                 "sha256",
                 "uploaded_by",
+                "size_bytes",
+                "fetched_at",
+                "source_ref",
             ],
             worker[0],
         ),
     ) == [
+        ("blob_key",),
         ("embedding_tokens",),
         ("error_code",),
+        ("fetched_at",),
         ("page_count",),
         ("parser_version",),
+        ("sha256",),
+        ("size_bytes",),
         ("status",),
         ("updated_at",),
     ]

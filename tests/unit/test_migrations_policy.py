@@ -16,7 +16,8 @@ from neuron_agent.persistence.migrations import MIGRATIONS, KnowledgeProfile, Mi
 _RELEASE = re.compile(r"\d+\.\d+\.\d+")
 _IDENT = r'(?:"[^"]+"|\w+)'
 _UNSAFE = [
-    ("DROP", r"\bDROP\b"),
+    # Relaxing NOT NULL is an expand step: the previous release only ever writes values.
+    ("DROP", r"\bDROP\b(?!\s+NOT\s+NULL\b)"),
     ("TRUNCATE", r"\bTRUNCATE\b"),
     ("RENAME", r"\bRENAME\b"),
     ("ALTER ... TYPE", rf"\bALTER\s+(?:COLUMN\s+)?{_IDENT}\s+(?:SET\s+DATA\s+)?TYPE\b"),
@@ -87,6 +88,8 @@ def check(migration: Migration) -> list[str]:
         ("ALTER TABLE t SET UNLOGGED", "SET LOGGED/UNLOGGED"),
         # Bypass attempts: comments, odd whitespace, optional COLUMN, quoted identifiers.
         ("DROP/* x */TABLE t", "DROP"),
+        ("ALTER TABLE t ALTER COLUMN a DROP NOT NULL, DROP COLUMN b", "DROP"),
+        ("ALTER TABLE t DROP CONSTRAINT not_null_a", "DROP"),
         ("ALTER TABLE t ALTER a TYPE bigint", "ALTER ... TYPE"),
         ("ALTER TABLE t ALTER COLUMN a SET DATA TYPE bigint", "ALTER ... TYPE"),
         ('ALTER TABLE t ALTER COLUMN "a b" TYPE bigint', "ALTER ... TYPE"),
@@ -134,6 +137,7 @@ def test_unsafe_sql_is_detected_and_needs_a_contract_marker(sql: str, expected: 
         "CREATE TABLE s.t (a int); CREATE INDEX i ON ONLY s.t (a)",
         'CREATE TABLE "Q" (a int); CREATE INDEX i ON "Q" (a)',
         "CREATE TABLE T (a int); CREATE INDEX i ON t (a)",
+        "ALTER TABLE t ALTER COLUMN a DROP NOT NULL",
     ],
 )
 def test_expand_steps_pass(sql: str) -> None:
