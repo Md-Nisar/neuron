@@ -1,0 +1,26 @@
+{
+  "run": "2026-11-13",
+  "stack": "docker-compose.reference.yml with the knowledge profile (worker, docling), pgvector/pgvector:pg16 by digest, volumes kept across the switch",
+  "before": {
+    "image": "neuron:1.2.0, built from the v1.2.0 release commit 97072d8, KNOWLEDGE_ENABLED=true",
+    "migrations": 29,
+    "smoke_test_knowledge": "passed",
+    "seeded": "one knowledge base with one Markdown document (ready) and 3 threads for alice"
+  },
+  "after": {
+    "image": "neuron:1.3.0-rc, built from main at ef0b5fc (trafilatura added), KNOWLEDGE_ENABLED=true; API and worker restarted",
+    "setup": "exit 0, applied migrations [30]",
+    "migrations": 30,
+    "seeded_base": "listed with language simple and access owner; its document ready, source_url and fetched_at null",
+    "search": "POST /v1/knowledge/search returns the seeded document's chunk (fake embeddings)",
+    "threads_of_the_seeded_user": 3,
+    "web_page": "POST .../web-pages with https://peps.python.org/pep-0020/: ready, 10656 bytes, fetched_at set; the top 3 search hits for 'explicit is better than implicit' are its chunks, each with source_url and fetched_at",
+    "private_url": "POST .../web-pages with https://10.0.0.5/: 422, nothing stored",
+    "smoke_test_knowledge": "passed (ready, invoke, cleanup, knowledge-base, upload, ingest, cite, knowledge-cleanup)"
+  },
+  "sandbox_notes": [
+    "Images were built with the session proxy's CA trusted in the builder stage only; the runtime image is the repository Dockerfile's.",
+    "This sandbox intercepts outbound TLS. The worker's first fetches failed certificate verification and were retried as fetch_failed, as designed. For the check, the worker ran with the sandbox CA mounted as its system trust store (/etc/ssl/certs/ca-certificates.crt). A deployment with direct internet access needs no such mount.",
+    "The session's disk allowance filled during the first successful fetch (23:05 UTC), so that ingest failed with ingest_failed after the page was stored; the document was deleted and the page added again with space free."
+  ]
+}
