@@ -24,6 +24,7 @@ from tests.unit.test_mcp_client import _config, _discover, _pins, serve
 from neuron_agent.config.settings import Settings
 from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.models import factory
+from neuron_agent.security import egress
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.tools.mcp import client as mcp_client
 from neuron_agent.tools.registry import ToolRegistry, builtin_registry
@@ -296,14 +297,14 @@ async def test_a_response_beyond_the_limit_is_dropped_while_it_is_read(
     """The bound applies as bytes arrive, so a server cannot make the client hold its body."""
     monkeypatch.setattr(mcp_client, "_DISCOVERY_MAX_BYTES", 10_000)
     read: list[int] = []
-    real = mcp_client._CountingStream.__aiter__
+    real = egress._CountingStream.__aiter__
 
     async def counting(self: Any) -> Any:
         async for chunk in real(self):
             read.append(len(chunk))
             yield chunk
 
-    monkeypatch.setattr(mcp_client._CountingStream, "__aiter__", counting)
+    monkeypatch.setattr(egress._CountingStream, "__aiter__", counting)
 
     async def endless(_: Any) -> Response:
         async def body() -> Any:

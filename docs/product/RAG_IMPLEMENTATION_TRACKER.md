@@ -56,15 +56,15 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 8 | 0 | 0 | 0 | — |
-| RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 0 | 0 | 0 | 5 | RAG-10.01 |
+| RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 1 | 0 | 0 | 4 | RAG-10.05 |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **41** | **0** | **0** | **15** | **RAG-10.01** |
+| **Total** | | | | **56** | **42** | **0** | **0** | **14** | **RAG-10.05** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-13, Phase 3):** the owner chose RAG-E10 for v1.3.0 (epic #577): web pages and the self-hosted chat model, in the order ADR 0014 amendment "external sources", RAG-10.01 (#578), RAG-10.05 (#582), RAG-10.02 (#579). RAG-10.03 (#580) and RAG-10.04 (#581) are deferred until a product requirement exists. Next: RAG-10.01.
+**Recommended next action (2026-11-13, Phase 3):** the owner chose RAG-E10 for v1.3.0 (epic #577): web pages and the self-hosted chat model, in the order ADR 0014 amendment "external sources", RAG-10.01 (#578), RAG-10.05 (#582), RAG-10.02 (#579). RAG-10.03 (#580) and RAG-10.04 (#581) are deferred until a product requirement exists. RAG-10.01 is Done. Next: RAG-10.05.
 
 **Earlier (2026-11-13):** v1.2.0 is released: signed off by the owner, released from `97072d8` (branch `release/v1.2.0`); the tag `v1.2.0` and the GitHub Release are made by hand from the `1.2.0` CHANGELOG section. Next: Phase 3, starting with RAG-E10 (external knowledge sources; epic and story issues to create), when the owner chooses. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
 
@@ -382,12 +382,12 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E10 External knowledge sources
 
-- **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
-- **Implemented functionality:** none. `security/egress.py` (#395) resolves, pins and re-checks redirects for MCP only; no ingestion fetcher exists yet.
-- **Outstanding work:** RAG-10.01 to RAG-10.05.
+- **Stories:** 5 total · 1 done · 0 in progress · 0 blocked · 4 pending
+- **Implemented functionality:** RAG-10.01: `fetch_public_https` in `security/egress.py`, the one way ingestion fetches a user's URL. It checks the URL's text, then uses `LimitedTransport` (moved from the MCP client, which now subclasses it): `PublicOnlyBackend` on every connection, https on every hop, no proxy from the environment, a byte cap with compression refused, a redirect cap and a total deadline. Failures have stable codes; a DNS failure is `fetch_failed`, not a refusal. No caller yet: RAG-10.02 adds the worker's.
+- **Outstanding work:** RAG-10.02 to RAG-10.05.
 - **Blockers and decisions:** RAG-10.01 blocks RAG-10.02, RAG-10.03 and RAG-11.02.
   - Decision (2026-11-13, owner): v1.3.0 is web pages (RAG-10.02) and the self-hosted chat model (RAG-10.05), after RAG-10.01; the design is ADR 0014's amendment "external sources". RAG-10.03 waits for a product requirement and a token decision (one service token reaches every repository it can read; same concern as #525 I-02); RAG-10.04 waits for a product requirement and an `AGENTS.md` boundary change (`knowledge/` cannot import `tools/mcp`) plus a migration adding `mcp` to `source_type`.
-- **Next recommended story:** RAG-10.01.
+- **Next recommended story:** RAG-10.05 (owner's order), then RAG-10.02.
 
 ### RAG-E11 Specialised knowledge tools
 
@@ -450,7 +450,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-09.06 | Load test for ingestion and search | 2 | P1 | Done | #550 | #567, this PR | `make load-knowledge` (`loadtest/run_knowledge.sh`) on the reference stack, 180 s per scenario: `docs/releases/v1.2.0-gate/knowledge-load-baseline.json` records search p50/p95 47/110 ms (8 users, filtered hybrid) and ingestion about 2,590 pages a minute, 973 of 973 documents ready (AC1), and chat run p95 7.2 s alone and 7.7 s beside search, +6.9% (AC2), with host details; per-scenario steps and CPU, memory and Postgres connections in `knowledge-load-steps/`. `tests/unit/test_loadtest_knowledge.py`: the fixture is plain text whose pages the worker's parser counts, the ingestion and baseline arithmetic |
 | RAG-09.07 | Link feedback to citations | 2 | P2 | Done | #551 | #569 | `python -m neuron_agent.persistence.cli feedback-report`. `tests/integration/test_postgres_feedback_report.py` (Postgres): a real run stamped with two citations and rated down is listed with its run ID and both chunk IDs, a thumbs-up and an uncited thumbs-down are not (AC1); the command's printed JSON holds no query, citation title, heading or owner (AC2). `tests/unit/test_feedback_report.py`: only the rated run's IDs, invalid citations skipped, Postgres checkpointer required |
 | RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Done | #552 | #570, #571 | AC1 (#570): `POST /v1/knowledge/bases` takes `language`, one of Postgres's 29 built-in text search configurations, stored as `bases.ts_config` and fixed at creation; the Knowledge screen's create form has a selector. `test_postgres_knowledge_ingest.py::test_a_base_language_sets_the_text_search_config_of_its_chunks`, `test_postgres_knowledge_api.py::test_a_base_keeps_the_language_it_was_created_with`. AC2: `tests/integration/test_postgres_knowledge_multilingual.py` on `tests/fixtures/knowledge/multilingual/cases.json` (30 questions, 5 languages): text-channel recall@5 `simple` 0.00 everywhere; own config English 1.00, German 0.33, French 0.67, Spanish 0.83, Hindi 0.83 (`docs/releases/v1.2.0-gate/multilingual-fts.json`). Decision in ADR 0014, amendment "text search language": keep built-in FTS; `pg_textsearch` not adopted (PostgreSQL 17+ only; not measured, no PostgreSQL 17 in the evaluation environment; owner decision) |
-| RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Pending | #578 | — | — |
+| RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Done | #578 | this PR | `tests/security/test_egress.py`: a name resolving to `10.0.0.1` or `169.254.169.254` is refused and nothing is connected, a private literal is refused before any lookup (AC1); a redirect to a private address and a redirect to `http` are refused after only the public address was connected (AC2); a changed second DNS answer is never looked up or connected (AC3); `http` URLs are refused in every environment, loopback included (AC4). Also: proxy settings ignored, body and redirect caps, non-200, DNS failure as `fetch_failed`, final URL without userinfo or fragment. `security-reviewer` run: no critical or high findings; three low ones fixed in the PR |
 | RAG-10.02 | Web page ingestion | 3 | P2 | Pending | #579 | — | — |
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | #580 | — | — |
 | RAG-10.04 | MCP document connectors | 3 | P2 | Pending | #581 | — | — |
@@ -470,6 +470,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-13 | RAG-10.01 Done (#578): `fetch_public_https` and the shared `LimitedTransport` in `security/egress.py`. E10: 1 of 5. Next: RAG-10.05 | Claude session |
 | 2026-11-13 | Phase 3 planned with the owner: RAG-E10 epic #577 and stories #578 to #582; ADR 0014 amendment "external sources"; v1.3.0 scope web pages and the self-hosted chat model, GitHub and MCP deferred. Next: RAG-10.01 | Claude session |
 | 2026-11-13 | v1.2.0 signed off by the owner and released from `97072d8` (#573), branch `release/v1.2.0`; tag and GitHub Release by hand | Claude session |
 | 2026-11-13 | v1.2.0 release prepared: version 1.2.0, CHANGELOG 1.2.0, verification record, upgrade from v1.1.0 on the reference stack (migrations 28 and 29, data kept, smoke test passed), live answer eval 0.969 and 12 of 12. Next: owner sign-off and tag | Claude session |
