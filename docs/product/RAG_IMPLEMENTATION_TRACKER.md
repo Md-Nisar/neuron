@@ -5,7 +5,7 @@ acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT
 research in `docs/research/rag/`.
 
 **Last verified:** 2026-11-12, against `main` at `8c6ea29`: v1.1.0 released (tag `v1.1.0` at `26295d5`); all story and epic issues of RAG-E00 to RAG-E08 closed (#398 to #520); the only open `rag` issue is #480; no open RAG PR. Since the release, `main` has had the 2026-11-11 security audit fixes (#526 to #532) and the concurrency review fixes (#534 to #538); those touching knowledge are in the change log. Earlier verifications are in the change log.
-**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). RAG-E09 (#544) and its eight stories (#545 to #552) created 2026-11-12, open. The Project board has not been created.
+**Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). RAG-E09 (#544) and its eight stories (#545 to #552) created 2026-11-12, all closed 2026-11-13. The Project board has not been created.
 
 ## New session protocol
 
@@ -63,15 +63,15 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 
-**Recommended next action (2026-11-13):** RAG-09.08 Done, so every RAG-E09 story is Done: a base's text search language (#570) and the multilingual evaluation, with the decision in ADR 0014 (keep built-in FTS; `pg_textsearch` needs PostgreSQL 17). Next: check the RAG-E09 exit gate and close #544; RAG-E10 to RAG-E12 are Phase 3 and have no issues yet. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
+**Recommended next action (2026-11-13):** RAG-E09 is complete: all 8 stories Done and its exit gate met (E09 section), epic #544 closed. Phase 2 (v1.2.0, proposed) has no story left. Next: the owner decides between a v1.2.0 release (verification record, as for v1.1.0) and starting Phase 3 (RAG-E10 to RAG-E12, no issues yet). Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
 
 ## GitHub synchronisation
 
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), RAG-E07 (#494), RAG-E08 (#497), all closed; RAG-E09 (#544, open); RAG-E10 to RAG-E12 not created |
-| Story issues (56) | All 33 stories of RAG-E00 to RAG-E08, closed; the 8 stories of RAG-E09 (#545 to #552, open, sub-issues of #544); see the issue map. The 15 stories of RAG-E10 to RAG-E12 not created |
+| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), RAG-E07 (#494), RAG-E08 (#497), RAG-E09 (#544), all closed; RAG-E10 to RAG-E12 not created |
+| Story issues (56) | All 33 stories of RAG-E00 to RAG-E08, closed; the 8 stories of RAG-E09 (#545 to #552, closed, sub-issues of #544); see the issue map. The 15 stories of RAG-E10 to RAG-E12 not created |
 | Related issues | #480 (bug, `rag`): findings from running the full Docker Compose stack; every item fixed or answered, closed by the PR from `ccr-7c4dd17f-k9sle9` (item by item under RAG-E08) |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
@@ -342,7 +342,11 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 - **Stories:** 8 total · 8 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-09.02 (#546): `Principal.roles` keeps the non-empty string values of `APP_AUTH_ROLES_CLAIM` from a verified token (`security/auth.py`), hidden from `repr`; `AuthorizationContext.roles` reads them from the principal, empty without one. Over 100 distinct roles, or one over 256 characters, keeps none and audits `auth_roles_dropped` (reason and count only). Roles grant no permission; the role-to-permission map is unchanged, also for a dropped claim. ADR 0006 amended.
-- **Outstanding work:** none; the epic's exit gate is next.
+- **Outstanding work:** none.
+- **Exit gate (checked 2026-11-13, met; epic #544 closed):**
+  - recall@5 and MRR at or above Phase 1 on the same set: met. The RAG-00.03 eval corpus (64 answerable cases, committed passage vectors) gives v1.1.0's RRF recall@5 0.984, MRR 0.833 (`evals/baselines/knowledge_retrieval.json`) and reranked recall@5 0.984, MRR 0.924, recall@1 0.734 → 0.875 (`docs/releases/v1.2.0-rerank-eval.md`, `evals/baselines/knowledge_retrieval_live.json`). The nightly gate (RAG-09.05) holds both.
+  - A revoked role loses access on the next query: met. `tests/integration/test_postgres_knowledge_sharing.py::test_a_read_grant_shares_search_and_citations_until_it_is_revoked` (the member's next search finds nothing and the citation is `404`) and `::test_an_owner_grant_counts_only_on_the_owners_base_and_a_revoked_writer_cannot_replay`; grants are read in the query's own transaction (RAG-09.03).
+  - p95 search latency recorded: met. Filtered hybrid search with fake embeddings and no reranker 47/110 ms p50/p95 on the reference stack, 8 users (`docs/releases/v1.2.0-gate/knowledge-load-baseline.json`); with NVIDIA's hosted reranker 0.631/0.742 s per search (`docs/releases/v1.2.0-rerank-eval.md`). Both are local figures, not hosted capacity.
 - **Blockers and decisions:** Phase 2 starts after v1.1.0. Release v1.2.0 is a proposal. Epic and story issues created 2026-11-12 at the owner's request (#544 to #552).
   - Decisions (RAG-09.02, proposed by Claude 2026-11-12 and taken as the owner's go-ahead "continue with the next story you want"; the PR merge accepts them with the ADR amendment): at most 100 roles of at most 256 characters, else none kept and the token still accepted (fails closed: a role only adds access to a shared resource); a top-level claim only, no dotted paths such as Keycloak's `realm_access.roles` (the reference realm already maps roles to `roles`); roles are not passed to Agent Server, where the knowledge tools are off (RAG-04.02 AC6).
   - Note (RAG-09.02): with the default `APP_AUTH_TOKEN_MAX_BYTES` (16 KB) a token cannot carry 100 roles of 256 characters; both bounds still apply when an operator raises the token limit (up to 128 KB).
@@ -365,7 +369,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Decision (RAG-09.08, 2026-11-13): a base's language is fixed at creation. Every chunk's `tsv` is generated with its base's configuration and the text channel queries a base with that configuration, so a change would need every chunk rebuilt; a base in another language is a new base. `pg_textsearch` supports PostgreSQL 17 and 18 only and the stack runs `pgvector/pgvector:pg16`, so adopting it means a major Postgres upgrade and a custom image: the owner's decision, whatever part 2 measures.
   - Decision (RAG-09.07, 2026-11-13): the citation set is not a table but the stamp on the run's answer in the checkpoint (RAG-05.02), so the report joins `neuron_feedback` to it in code (`persistence/feedback_report.py`), not in SQL; no new table, write path or erasure duty. It is an operator CLI, not a route, and writes nothing to logs or telemetry. A rated answer whose thread was pruned or deleted counts as `answer_missing`; deleting a thread also deletes its ratings.
   - Finding (RAG-09.06, 2026-11-13): on the reference stack with the plain-text parser and fake embeddings, upload admission set the ingestion rate, not the worker: a third of uploads were refused `429 upload_busy` (`APP_KNOWLEDGE_UPLOAD_CONCURRENCY`, 4 per API process), while documents were ready in 0.19 s p50. No change made; the default is a memory bound. The backlog's AC asks for recorded figures, not a gate: no automated comparison was added (the baseline is bound to its host, as `loadtest.baseline compare` is).
-- **Next recommended story:** the RAG-E09 exit gate, then RAG-E10.
+- **Next recommended story:** none in Phase 2; a v1.2.0 release or RAG-E10 (owner's choice).
 
 ### RAG-E10 External knowledge sources
 
@@ -456,6 +460,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-13 | RAG-E09 exit gate checked and met (recall@5 0.984 and MRR 0.924 against 0.984 and 0.833; revocation on the next query; search p95 recorded); epic #544 closed. Next: v1.2.0 release or Phase 3 (owner) | Claude session |
 | 2026-11-13 | RAG-09.08 Done (#552): per-base text search language (#570), multilingual text search evaluation, ADR 0014 amendment. E09: 8 of 8. Next: the E09 exit gate | Claude session |
 | 2026-11-13 | RAG-09.07 Done (#551): operator `feedback-report` command, citations joined from the stamped answer. E09: 7 of 8. Next: RAG-09.08 | Claude session |
 | 2026-11-13 | RAG-09.06 Done (#550): Locust knowledge scenarios (`knowledge`, `chat_search`), `make load-knowledge`, baseline committed. E09: 6 of 8. Next: RAG-09.07 or RAG-09.08 | Claude session |
