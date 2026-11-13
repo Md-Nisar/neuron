@@ -30,7 +30,7 @@ def test_every_required_runbook_has_a_heading() -> None:
 
 
 def test_the_cli_commands_in_the_docs_exist() -> None:
-    for subcommand in set(re.findall(r"persistence\.cli (\w+)", OPERATIONS)):
+    for subcommand in set(re.findall(r"persistence\.cli ([\w-]+)", OPERATIONS)):
         assert f'"{subcommand}"' in CLI, subcommand
     for flag in set(re.findall(r"cli setup (--[\w-]+)", OPERATIONS)):
         assert f'"{flag}"' in CLI, flag

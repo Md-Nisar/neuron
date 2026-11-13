@@ -1470,8 +1470,8 @@ Exit gate (Claude report §12): recall@5 and MRR at or above Phase 1 on the same
 - Given the report, when it is inspected, then it contains no query or chunk text.
 
 **Technical tasks**
-- [ ] Query and report command.
-- [ ] Tests.
+- [x] Query and report command.
+- [x] Tests.
 
 **Changes.** Database: read join. API: none or an operator command. UI: none.
 
