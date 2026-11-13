@@ -5,6 +5,10 @@
 
     queued -> parsing -> embedding -> ready | failed
 
+A web page (RAG-10.02) is queued with its URL and no file. The worker fetches it once, during
+`parsing`, through the public-only client (`security/egress.py`), stores it as the document's
+blob and records its hash and fetch time; from then on it is ingested like an upload.
+
 The job carries the document id only; the knowledge base, file and settings come from the
 document's row. Each status change is guarded: it never touches a tombstoned document
 (`deleted_at` set or `deleting`), which the purge job owns. The chunk set is written in one
@@ -17,9 +21,10 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
+from email.message import Message
 from typing import Any
 
 import psycopg
@@ -39,13 +44,21 @@ from neuron_agent.knowledge.providers import (
 )
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.persistence.migrations import KnowledgeProfile
+from neuron_agent.security.egress import FetchedResponse, FetchError, fetch_public_https
 
 log = structlog.get_logger(__name__)
 
 Connect = Callable[[], Awaitable[psycopg.AsyncConnection[dict[str, Any]]]]
+# GET a page of at most `max_bytes` (the URL, the cap): `fetch_page`, or a fake in tests.
+Fetch = Callable[[str, int], Awaitable[FetchedResponse]]
+FETCH_TIMEOUT_SECONDS = 30.0
+# What a fetched page may be: stored and parsed as HTML.
+_PAGE_TYPES = frozenset({"text/html", "application/xhtml+xml"})
+# A server that may answer on a later attempt; every other fetch error is final.
+_RETRYABLE_FETCH = frozenset({"fetch_timeout", "fetch_failed"})
 
 _LOAD = (
-    "SELECT d.kb_id, d.mime_type, d.blob_key, d.sha256, b.processing,"
+    "SELECT d.kb_id, d.mime_type, d.blob_key, d.sha256, d.source_ref, b.processing,"
     " b.ts_config::text AS ts_config"
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
     " WHERE d.doc_id = %s AND d.deleted_at IS NULL AND d.status <> 'deleting'"
@@ -66,6 +79,12 @@ _LOCK = (
     " WHERE d.doc_id = %s AND d.deleted_at IS NULL AND d.status <> 'deleting'"
     " AND b.deleted_at IS NULL FOR UPDATE OF d"
 )
+# Set once: a stored page is never replaced; fetching again would be a new document version.
+_FETCHED = (
+    "UPDATE knowledge.documents SET blob_key = %s, sha256 = %s, size_bytes = %s,"
+    " fetched_at = now(), updated_at = now() WHERE doc_id = %s AND blob_key IS NULL"
+)
+_FILE = "SELECT blob_key, sha256 FROM knowledge.documents WHERE doc_id = %s"
 # Embedding is paid per chunk and the set is written in one transaction: a cap, below what the
 # page and character caps alone allow (about 250,000 chunks of 400 tokens).
 MAX_CHUNKS = 20_000
@@ -92,7 +111,11 @@ class _RefusedError(Exception):
         self.code = code
 
 
-_CODED = (ParseError, EmbeddingError, BlobStoreError, _RefusedError)
+_CODED = (ParseError, EmbeddingError, BlobStoreError, FetchError, _RefusedError)
+
+
+async def fetch_page(url: str, max_bytes: int) -> FetchedResponse:
+    return await fetch_public_https(url, max_bytes=max_bytes, timeout=FETCH_TIMEOUT_SECONDS)
 
 
 @dataclass(frozen=True)
@@ -106,6 +129,7 @@ class Ingestor:
     policy: ProcessingPolicy
     # The re-index model (RAG-09.04), used for a base whose profile it embeds into.
     reindex: EmbeddingProvider | None = None
+    fetch: Fetch = fetch_page
 
     async def ingest(self, doc_id: uuid.UUID, *, last_attempt: bool = True) -> str:
         """Run the document's ingestion and return its final status, or `skipped`.
@@ -138,6 +162,9 @@ class Ingestor:
                 # egress), so the setting governs the embedding provider, the only hosted step.
                 with _stage("policy"):
                     models = self._models(row)
+                if row["blob_key"] is None and not await self._download(conn, doc_id, row):
+                    log.info("knowledge.ingest.skipped", doc_id=str(doc_id))
+                    return "skipped"
                 chunks, parsed = await self._parse(row)
                 span.set_attribute(semconv.NEURON_KNOWLEDGE_CHUNKS, len(chunks))
                 await self._set(conn, doc_id, "embedding")
@@ -153,6 +180,10 @@ class Ingestor:
             except BlobStoreError as exc:
                 # An unreachable store may come back; a missing or altered file will not.
                 if exc.code == "blob_backend_error" and not last_attempt:
+                    raise
+                return await self._fail_on(conn, doc_id, exc.code)
+            except FetchError as exc:
+                if exc.code in _RETRYABLE_FETCH and not last_attempt:
                     raise
                 return await self._fail_on(conn, doc_id, exc.code)
             except _RefusedError as exc:
@@ -197,6 +228,39 @@ class Ingestor:
                 await conn.execute(_STATUS, ("parsing", None, doc_id))
                 row["profiles"] = await (await conn.execute(PROFILES)).fetchall()
         return row
+
+    async def _download(
+        self, conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID, row: dict[str, Any]
+    ) -> bool:
+        """Fetch a web page, store it and record its file on the row; False if tombstoned.
+
+        Only a row without a file gets here, and the schema allows that for a web page with a
+        URL only. A page already in the base is refused like a second upload of a file. A
+        file stored for a page that is then refused is left to the hourly blob sweep.
+        """
+        with _stage("download"):
+            data = _page_bytes(await self.fetch(row["source_ref"], self.limits.max_bytes))
+            if len(data) > self.limits.max_bytes:  # re-encoding can grow a page
+                raise _RefusedError("fetch_too_large")
+            blob = await self.blobs.put(_once(data), max_bytes=self.limits.max_bytes)
+            async with conn.transaction():
+                if not await lock_document(conn, doc_id):
+                    return False
+                try:
+                    async with conn.transaction():
+                        cursor = await conn.execute(
+                            _FETCHED, (blob.key, blob.sha256, blob.size, doc_id)
+                        )
+                except psycopg.errors.UniqueViolation:
+                    raise _RefusedError("duplicate_content") from None
+                if cursor.rowcount == 0:  # another run stored the page first: ingest its copy
+                    stored = await (await conn.execute(_FILE, (doc_id,))).fetchone()
+                    assert stored is not None  # nosec B101 - the row is locked
+                    blob_key, sha256 = stored["blob_key"], stored["sha256"]
+                else:
+                    blob_key, sha256 = blob.key, blob.sha256
+        row.update(blob_key=blob_key, sha256=sha256)
+        return True
 
     async def _parse(self, row: dict[str, Any]) -> tuple[list[Chunk], tuple[str, int | None]]:
         with _stage("fetch"):
@@ -323,6 +387,23 @@ async def lock_document(conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: u
         return False
     await conn.execute("SELECT set_config('neuron.kb_ids', %s, true)", (str(row["kb_id"]),))
     return True
+
+
+def _page_bytes(page: FetchedResponse) -> bytes:
+    """An HTML page as UTF-8 (what is stored and hashed), from its response's charset."""
+    header = Message()
+    header["content-type"] = page.content_type
+    if header.get_content_type() not in _PAGE_TYPES:
+        raise _RefusedError("unsupported_type")
+    try:
+        text = page.body.decode(header.get_content_charset() or "utf-8", errors="replace")
+    except LookupError:
+        raise _RefusedError("unsupported_encoding") from None
+    return text.encode("utf-8")
+
+
+async def _once(data: bytes) -> AsyncIterator[bytes]:
+    yield data
 
 
 def _passage(chunk: Chunk) -> str:
