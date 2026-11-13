@@ -35,6 +35,8 @@ All configuration parameters are read from environment variables (or `.env` in d
 | `OPENAI_API_KEY` / `APP_OPENAI_API_KEY` | Secret string | `None` | Required for `openai` | API key for OpenAI model calls. |
 | `NVIDIA_API_KEY` / `APP_NVIDIA_API_KEY` | Secret string | `None` | Required for `nvidia` | API key for NVIDIA API Catalog model calls. |
 | `ANTHROPIC_API_KEY` / `APP_ANTHROPIC_API_KEY` | Secret string | `None` | Required for `anthropic` | API key for Anthropic model calls. |
+| `APP_OPENAI_COMPATIBLE_BASE_URL` | URL | `None` | Required for `openai_compatible` | `/v1` base URL of a self-hosted OpenAI-compatible server (vLLM, SGLang). http(s), no credentials, query or fragment; https in production, and in staging when a key is set. A private address is allowed. |
+| `APP_OPENAI_COMPATIBLE_API_KEY` | Secret string | `None` | Optional | Key for that server. Without one, no key is sent (never `OPENAI_API_KEY`). |
 | `APP_REQUEST_TIMEOUT_SECONDS` | integer (1–300) | `60` | Optional | Timeout per individual HTTP request to model provider. |
 | `APP_PROVIDER_MAX_RETRIES` | integer (0–5) | `2` | Optional | Max retry attempts for transient provider errors (connection, timeout, rate limit). |
 | `APP_MAX_OUTPUT_TOKENS` | integer (1–16384) | `2000` | Optional | Max token completion budget passed to model provider. |

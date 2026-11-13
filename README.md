@@ -58,6 +58,8 @@ For development you can use a model from NVIDIA's API catalog instead (`build.nv
 
 Anthropic is a third provider (`ANTHROPIC_API_KEY` or `APP_ANTHROPIC_API_KEY`, `APP_DEFAULT_MODEL=anthropic:<model-id>`). It is covered by unit tests with fakes only: v0.7.0 has no funded Anthropic key, so it has **not been run against the live API**. Without a key, development and test fall back to the local fake model, like the other providers.
 
+A self-hosted OpenAI-compatible server (vLLM, SGLang) is the fourth: `APP_DEFAULT_MODEL=openai_compatible:<model>` with `APP_OPENAI_COMPATIBLE_BASE_URL` (its `/v1` URL) and an optional `APP_OPENAI_COMPATIBLE_API_KEY`. It never falls back to the fake model, since it may need no key.
+
 To keep answering when the default model is down or unavailable to the account, list fallbacks: `APP_FALLBACK_MODELS='["anthropic:<model-id>"]'`. They are tried in order after the default model's own retries; each switch is logged and counted by model id.
 
 ## Authentication
