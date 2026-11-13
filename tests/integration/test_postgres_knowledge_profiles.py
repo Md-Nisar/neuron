@@ -8,6 +8,7 @@ model for the active profile never compares vectors from two models.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 
 import psycopg
 import pytest
@@ -20,7 +21,8 @@ from test_postgres_knowledge_search import _A, _FAKE, _base, _document, _migrato
 from test_postgres_knowledge_tables import _knowledge_db, _setup, worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, _rows, role_db, roles  # noqa: F401
 
-from neuron_agent.config.settings import Settings
+from neuron_agent.config.settings import ProcessingLocality, Settings
+from neuron_agent.knowledge.chunking import estimate_tokens
 from neuron_agent.knowledge.ingest import Ingestor, _vector
 from neuron_agent.knowledge.providers import EmbeddingProvider, FakeEmbeddings
 from neuron_agent.knowledge.retrieval import Retriever
@@ -43,12 +45,14 @@ class _Other(FakeEmbeddings):
         return [self.embed_query(text) for text in texts]
 
 
-def _provider(embeddings: Embeddings, profile: KnowledgeProfile) -> EmbeddingProvider:
+def _provider(
+    embeddings: Embeddings, profile: KnowledgeProfile, locality: ProcessingLocality = "self_hosted"
+) -> EmbeddingProvider:
     return EmbeddingProvider(
         embeddings,
         embeddings,
         dimensions=profile.dimensions,
-        locality="self_hosted",
+        locality=locality,
         batch_size=8,
         max_retries=0,
         profile=profile,
@@ -143,17 +147,94 @@ async def test_ingestion_embeds_with_the_model_of_the_bases_profile(
 
     both = dataclasses.replace(ingestor, reindex=_NEW_MODEL)
     assert await both.ingest(doc) == "ready"
+    stored = await _stored(db)
+    assert list(stored) == [2]
+    _assert_embedded_by(stored[2], _Other(1024))
+
+
+async def _stored(db: RoleDatabase) -> dict[int, list[tuple[str, str]]]:
+    """Each profile's stored vectors, with the passage each one embeds."""
     rows = await _rows(
         db.migrator_dsn,
-        "SELECT e.profile_id, e.embedding::text, c.text FROM knowledge.embeddings e"
-        " JOIN knowledge.chunks c USING (chunk_id)",
+        "SELECT e.profile_id, e.embedding::text, array_to_string(c.headings || c.text, E'\\n')"
+        " FROM knowledge.embeddings e JOIN knowledge.chunks c USING (chunk_id)"
+        " ORDER BY e.profile_id, c.ordinal",
     )
-    assert [row[0] for row in rows] == [2] * len(rows) and rows
-    for _, stored, text in rows:
-        expected = _Other(1024).embed_query(text)
-        got = [float(value) for value in stored.strip("[]").split(",")]
+    stored: dict[int, list[tuple[str, str]]] = {}
+    for profile_id, vector, passage in rows:
+        stored.setdefault(profile_id, []).append((vector, passage))
+    return stored
+
+
+def _assert_embedded_by(rows: Sequence[tuple[str, str]], embeddings: Embeddings) -> None:
+    assert rows
+    for vector, passage in rows:
+        got = [float(value) for value in vector.strip("[]").split(",")]
         # `halfvec` keeps about three significant digits.
-        assert got == pytest.approx(expected, abs=1e-3)
+        assert got == pytest.approx(embeddings.embed_query(passage), abs=1e-3)
+
+
+async def test_during_a_reindex_an_upload_is_embedded_for_both_profiles(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+) -> None:
+    db, ingestor = setup
+    doc = await _queued(db, ingestor, processing="self_hosted")
+    await _new_profile(db)
+    # A worker not yet given the re-index model retries rather than skip the new profile.
+    with pytest.raises(Exception, match="knowledge_profile_mismatch"):
+        await ingestor.ingest(doc, last_attempt=False)
+
+    assert await dataclasses.replace(ingestor, reindex=_NEW_MODEL).ingest(doc) == "ready"
+    stored = await _stored(db)
+    assert sorted(stored) == [1, 2]
+    _assert_embedded_by(stored[1], _FAKE)
+    _assert_embedded_by(stored[2], _Other(1024))
+    # Both embeddings are charged to the document.
+    once = sum(estimate_tokens(passage) for _, passage in stored[1])
+    assert await _rows(
+        db.migrator_dsn,
+        "SELECT embedding_tokens FROM knowledge.documents WHERE doc_id = %s",
+        (doc,),
+    ) == [(2 * once,)]
+
+
+async def test_a_base_whose_setting_forbids_the_new_model_gets_only_the_active_one(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+) -> None:
+    """Its text never reaches a hosted re-index model; the re-index job refuses the base."""
+    db, ingestor = setup
+    doc = await _queued(db, ingestor, processing="self_hosted")
+    await _new_profile(db)
+    hosted = _provider(_Other(1024), _NEW, locality="hosted")
+    assert await dataclasses.replace(ingestor, reindex=hosted).ingest(doc) == "ready"
+    assert list(await _stored(db)) == [1]
+
+
+async def test_ingestion_retries_if_the_profiles_change_while_it_embeds(
+    setup: tuple[RoleDatabase, Ingestor],  # noqa: F811
+) -> None:
+    """A re-index that starts mid-embedding would leave the document without new vectors."""
+    db, ingestor = setup
+    doc = await _queued(db, ingestor, processing="self_hosted")
+
+    class _Starting(EmbeddingProvider):
+        async def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+            await _new_profile(db)
+            return await super().embed_documents(texts)
+
+    starting = dataclasses.replace(
+        ingestor,
+        embeddings=_Starting(
+            _FAKE, _FAKE, dimensions=1024, locality="self_hosted", batch_size=8, max_retries=0
+        ),
+        reindex=_NEW_MODEL,
+    )
+    with pytest.raises(Exception, match="knowledge_profile_changed"):
+        await starting.ingest(doc, last_attempt=False)
+    assert await _stored(db) == {}
+
+    assert await dataclasses.replace(ingestor, reindex=_NEW_MODEL).ingest(doc) == "ready"
+    assert sorted(await _stored(db)) == [1, 2]
 
 
 async def test_a_new_base_takes_the_active_profile(role_db: RoleDatabase) -> None:  # noqa: F811
