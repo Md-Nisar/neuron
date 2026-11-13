@@ -43,15 +43,16 @@ def test_ingestion_counts_ready_pages_over_the_span_of_the_run() -> None:
         _doc("embedding", "00:50", "00:50", None),
     ]
     report = knowledge.ingestion(docs)
-    assert report["ready"] == 2 and report["failed"] == 1 and report["unsettled"] == 1
-    assert report["pages"] == 16 and report["span_seconds"] == 60.0
-    assert report["pages_per_minute"] == 16.0 and report["documents_per_minute"] == 2.0
+    assert (report["ready"], report["failed"], report["unsettled"]) == (2, 1, 1)
+    assert (report["pages"], report["span_seconds"]) == (16, 60.0)
+    assert (report["pages_per_minute"], report["documents_per_minute"]) == (16.0, 2.0)
     assert report["document_seconds_p50"] == 30.0
 
 
 def test_ingestion_without_a_ready_document_reports_no_rate() -> None:
     report = knowledge.ingestion([_doc("failed", "00:00", "00:01", None)])
-    assert report["pages_per_minute"] == 0.0 and report["document_seconds_p95"] is None
+    assert report["pages_per_minute"] == 0.0
+    assert report["document_seconds_p95"] is None
 
 
 def _entry(requests: int, failures: int, p50: float, p95: float) -> SimpleNamespace:

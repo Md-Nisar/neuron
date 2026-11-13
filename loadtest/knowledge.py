@@ -6,7 +6,7 @@
 The fixture is synthetic plain text with a form feed between pages, so the worker's own text
 parser counts pages without docling (the "fake parser"); the stack's fake embeddings embed it.
 `ingestion` folds the documents of the upload users' bases into pages per minute, from the
-server's timestamps. `python -m loadtest.knowledge baseline --steps DIR --out FILE` writes the
+server's timestamps. `python -m loadtest.knowledge baseline --steps DIR > FILE` prints the
 baseline: search p50/p95 and ingestion from the `knowledge` run, and chat p95 alone (`mix`)
 and beside search load (`chat_search`), with the host.
 """
@@ -134,12 +134,10 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     build = commands.add_parser("baseline")
     build.add_argument("--steps", type=Path, required=True)
-    build.add_argument("--out", type=Path, required=True)
     build.add_argument("--image", required=True)
     build.add_argument("--note", default="")
     args = parser.parse_args(argv)
-    document_ = baseline(args.steps, args.image, args.note)
-    args.out.write_text(json.dumps(document_, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(baseline(args.steps, args.image, args.note), indent=2))
     return 0
 
 
