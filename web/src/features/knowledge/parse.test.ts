@@ -8,6 +8,7 @@ const base = {
   kb_id: KB,
   name: "Policies",
   processing: "hosted",
+  language: "simple",
   created_at: "2026-11-01T10:00:00Z",
   access: "owner",
 };

@@ -236,7 +236,7 @@ With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases an
 | Route | Does |
 | --- | --- |
 | `GET /v1/knowledge/bases` | The caller's knowledge bases, oldest first: `kb_id`, `name`, `processing`, `created_at` |
-| `POST /v1/knowledge/bases` | `{"name": "...", "processing": "hosted"}` (`processing` optional, or `self_hosted`); `201`. At most `APP_KNOWLEDGE_MAX_BASES_PER_USER` (20), then `409 knowledge_base_limit_reached` |
+| `POST /v1/knowledge/bases` | `{"name": "...", "processing": "hosted", "language": "simple"}` (`processing` optional, or `self_hosted`; `language` optional, a built-in Postgres text search configuration such as `english` or `german`, fixed at creation, RAG-09.08); `201`. At most `APP_KNOWLEDGE_MAX_BASES_PER_USER` (20), then `409 knowledge_base_limit_reached` |
 | `PATCH /v1/knowledge/bases/{kb_id}` | `{"name": "..."}`: rename |
 | `DELETE /v1/knowledge/bases/{kb_id}` | `202`: the base and its documents disappear at once, and the worker's purge then deletes their files, rows, chunks and embeddings, then the base |
 | `POST /v1/knowledge/bases/{kb_id}/documents` | Upload: `multipart/form-data` with one `file` part and an optional `title` field (else the file name); optional `Idempotency-Key` header (1–200 printable ASCII characters). `202` with `doc_id`, `kb_id`, `status` (`queued`) and `status_url` |

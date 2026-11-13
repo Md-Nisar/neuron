@@ -11,7 +11,7 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import psycopg
 import pytest
@@ -27,6 +27,7 @@ from neuron_agent.knowledge.blobs import LocalBlobStore
 from neuron_agent.knowledge.providers import EmbeddingProvider, FakeEmbeddings
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
+from neuron_agent.schemas.knowledge import KnowledgeLanguage
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -230,6 +231,33 @@ async def test_the_per_user_limit_counts_live_bases_only(
     _create(client, bob)  # per user
     client.client.delete(f"/v1/knowledge/bases/{first['kb_id']}", headers=bearer(alice))
     _create(client, alice, "after a delete")
+
+
+async def test_a_base_keeps_the_language_it_was_created_with(
+    api: tuple[JwtApi, RoleDatabase], make_token: Callable[..., str]
+) -> None:
+    """RAG-09.08: `language` is set at creation only; `simple` by default."""
+    client, _ = api
+    alice = make_token("alice", scopes=_SCOPES)
+    created = client.client.post(
+        "/v1/knowledge/bases", json={"name": "Hafen", "language": "german"}, headers=bearer(alice)
+    )
+    assert (created.status_code, created.json()["language"]) == (201, "german")
+    assert _create(client, alice)["language"] == "simple"
+    listed = client.client.get("/v1/knowledge/bases", headers=bearer(alice)).json()["bases"]
+    assert [b["language"] for b in listed] == ["german", "simple"]
+    for body in ({"name": "x", "language": "klingon"}, {"name": "x", "language": "English"}):
+        refused = client.client.post("/v1/knowledge/bases", json=body, headers=bearer(alice))
+        assert refused.status_code == 422
+    renamed = client.client.patch(
+        f"/v1/knowledge/bases/{created.json()['kb_id']}",
+        json={"name": "y", "language": "simple"},
+        headers=bearer(alice),
+    )
+    assert renamed.status_code == 422  # a rename cannot change it
+    # Every language the API offers is a configuration this Postgres has, and none is missing.
+    configs = await _rows(api[1].migrator_dsn, "SELECT cfgname::text FROM pg_ts_config")
+    assert {row[0] for row in configs} == set(get_args(KnowledgeLanguage))
 
 
 async def test_allowed_kbs_is_the_owners_live_bases(

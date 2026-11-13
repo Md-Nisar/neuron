@@ -29,7 +29,14 @@ function setup(grants: Grant[], reply?: { status: number; body: unknown }) {
         onSessionEnded: vi.fn(),
         fetch,
       }}
-      base={{ kb_id: KB, name: "Policies", processing: "hosted", created_at: "", access: "owner" }}
+      base={{
+        kb_id: KB,
+        name: "Policies",
+        processing: "hosted",
+        language: "simple",
+        created_at: "",
+        access: "owner",
+      }}
     />,
   );
   const sent = () =>

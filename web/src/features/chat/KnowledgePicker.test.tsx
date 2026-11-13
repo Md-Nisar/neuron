@@ -12,6 +12,7 @@ const kb = (n: number) => ({
   kb_id: `0b6f1c1e-6c8e-4c36-9d2b-${n.toString(16).padStart(12, "0")}`,
   name: `Base ${String(n)}`,
   processing: "hosted",
+  language: "simple",
   created_at: "",
   access: "owner",
 });

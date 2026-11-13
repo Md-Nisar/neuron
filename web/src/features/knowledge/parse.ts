@@ -3,6 +3,39 @@ import { count, list, record, str } from "@/features/data/parse";
 /** Shape checks for the knowledge responses (RAG-03). A wrong shape throws; nothing is half-trusted. */
 
 export type Processing = "hosted" | "self_hosted";
+/** A base's text search language (RAG-09.08): Postgres's built-in configurations, fixed at creation. */
+export const LANGUAGES = [
+  "simple",
+  "arabic",
+  "armenian",
+  "basque",
+  "catalan",
+  "danish",
+  "dutch",
+  "english",
+  "finnish",
+  "french",
+  "german",
+  "greek",
+  "hindi",
+  "hungarian",
+  "indonesian",
+  "irish",
+  "italian",
+  "lithuanian",
+  "nepali",
+  "norwegian",
+  "portuguese",
+  "romanian",
+  "russian",
+  "serbian",
+  "spanish",
+  "swedish",
+  "tamil",
+  "turkish",
+  "yiddish",
+] as const;
+export type Language = (typeof LANGUAGES)[number];
 /** The caller's access to a base (RAG-09.03): the server enforces it; the screen follows it. */
 export type BaseAccess = "owner" | "admin" | "write" | "read";
 export type GrantAccess = Exclude<BaseAccess, "owner">;
@@ -13,6 +46,7 @@ export interface KnowledgeBase {
   /** User text: shown as text, never as HTML. */
   name: string;
   processing: Processing;
+  language: Language;
   created_at: string;
   access: BaseAccess;
 }
@@ -84,6 +118,7 @@ export function parseBase(body: unknown): KnowledgeBase {
     kb_id: id(base, "kb_id"),
     name: str(base, "name"),
     processing: oneOf(base, "processing", PROCESSING),
+    language: oneOf(base, "language", LANGUAGES),
     created_at: str(base, "created_at"),
     access: oneOf(base, "access", ACCESS),
   };

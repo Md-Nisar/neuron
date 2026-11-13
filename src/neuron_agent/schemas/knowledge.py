@@ -12,6 +12,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
+# A base's text search language (RAG-09.08): a built-in Postgres text search configuration,
+# fixed at creation because every chunk's `tsv` is built with it. `simple` (the default) folds
+# case without stemming, so it suits any language; a named one also stems and drops stop words.
+KnowledgeLanguage = Literal[
+    "simple", "arabic", "armenian", "basque", "catalan", "danish", "dutch", "english",
+    "finnish", "french", "german", "greek", "hindi", "hungarian", "indonesian", "irish",
+    "italian", "lithuanian", "nepali", "norwegian", "portuguese", "romanian", "russian",
+    "serbian", "spanish", "swedish", "tamil", "turkish", "yiddish",
+]  # fmt: skip
+
 
 def _plain_title(value: str) -> str:
     # Imported here: `schemas.agent` imports this module for the data-rights responses.
@@ -29,6 +39,7 @@ class KnowledgeBaseCreate(BaseModel):
     # Where the base's text may be embedded (RAG-02.03); the operator's policy can still forbid
     # `hosted`, which then fails ingestion with `processing_locality_forbidden`.
     processing: Literal["hosted", "self_hosted"] = "hosted"
+    language: KnowledgeLanguage = "simple"
 
     @field_validator("name")
     @classmethod
@@ -93,6 +104,7 @@ class KnowledgeBase(BaseModel):
     kb_id: uuid.UUID
     name: str
     processing: Literal["hosted", "self_hosted"]
+    language: KnowledgeLanguage
     created_at: datetime
     # The caller's access (RAG-09.03), so a client offers only what the server would allow:
     # `owner` alone deletes the base; `admin` renames it and manages its grants.

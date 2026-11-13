@@ -14,12 +14,18 @@ import { BaseRow } from "./BaseRow";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { GrantsPanel } from "./GrantsPanel";
 import { knowledgeErrorText, NAME_MAX_CHARS, PROCESSING_TEXT } from "./messages";
-import type { KnowledgeBase, Processing } from "./parse";
+import { LANGUAGES } from "./parse";
+import type { KnowledgeBase, Language, Processing } from "./parse";
 
 const nameProblem = (name: string): string | null =>
   name === "" || characterCount(name) > NAME_MAX_CHARS
     ? `Use 1 to ${String(NAME_MAX_CHARS)} characters.`
     : null;
+
+const languageLabel = (language: Language): string =>
+  language === "simple"
+    ? "Any language (exact words)"
+    : language.charAt(0).toUpperCase() + language.slice(1);
 
 /** Without a Retry-After, a passing refusal of the list is tried again after this, this often. */
 const RETRY_SECONDS = 5;
@@ -32,6 +38,7 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [processing, setProcessing] = useState<Processing>("hosted");
+  const [language, setLanguage] = useState<Language>("simple");
   const [openId, setOpenId] = useState<string | null>(null);
   const [retries, setRetries] = useState(0);
   const busy = useRef(false);
@@ -104,10 +111,11 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
       return;
     }
     void run(async () => {
-      const made = await createBase(deps, wanted, processing);
+      const made = await createBase(deps, wanted, processing, language);
       setBases((current) => [...current, made]);
       setOpenId(made.kb_id);
       setName("");
+      setLanguage("simple");
     });
   }
 
@@ -198,6 +206,30 @@ export function KnowledgeScreen({ deps }: { deps: DataDeps }) {
                 </label>
               ))}
             </fieldset>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium" htmlFor="kb-language">
+                Language of its documents
+              </label>
+              <select
+                id="kb-language"
+                aria-describedby="kb-language-help"
+                className="h-9 rounded-md border bg-background px-2 text-sm"
+                value={language}
+                onChange={(event) => {
+                  setLanguage(event.target.value as Language);
+                }}
+              >
+                {LANGUAGES.map((option) => (
+                  <option key={option} value={option}>
+                    {languageLabel(option)}
+                  </option>
+                ))}
+              </select>
+              <p id="kb-language-help" className="text-xs text-muted-foreground">
+                Word search matches other forms of a word in that language. It can&apos;t be changed
+                later.
+              </p>
+            </div>
             <Button type="submit" size="sm">
               Create
             </Button>
