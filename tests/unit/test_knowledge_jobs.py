@@ -20,6 +20,7 @@ from tests.unit.test_production_feature_guards import jwt_settings
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.knowledge import jobs, worker
 from neuron_agent.knowledge.parsing import PDF, ParseError
+from neuron_agent.knowledge.reindex import ReindexRefusedError
 from neuron_agent.observability import metrics, semconv
 
 pytestmark = pytest.mark.anyio
@@ -33,7 +34,7 @@ async def test_defer_refuses_anything_but_ids(value: Any) -> None:
 
 
 class _Ingestor:
-    connect = blobs = None  # the purger's, unused here
+    connect = blobs = embeddings = reindex = policy = None  # the purger's, unused here
 
     def __init__(self, error: Exception | None = None) -> None:
         self.error, self.calls, self.failed = error, [], []  # type: ignore[var-annotated]
@@ -103,12 +104,13 @@ def test_every_task_is_registered_by_name() -> None:
     assert {task.value for task in jobs.Task} <= set(app.tasks)
     for task in jobs.Task:
         assert app.tasks[task.value].queue == jobs.QUEUE
-        periodic = task in {jobs.Task.RECONCILE, jobs.Task.SWEEP_BLOBS}
+        periodic = task in {jobs.Task.RECONCILE, jobs.Task.SWEEP_BLOBS, jobs.Task.REINDEX_SWAP}
         assert app.tasks[task.value].retry_strategy == (None if periodic else worker.RETRY)
     # The periodic tasks are not retried: the next run replaces a failed one.
     assert {(p.task.name, p.cron) for p in app.periodic_registry.periodic_tasks.values()} == {
         (jobs.Task.RECONCILE.value, worker.RECONCILE_CRON),
         (jobs.Task.SWEEP_BLOBS.value, worker.SWEEP_BLOBS_CRON),
+        (jobs.Task.REINDEX_SWAP.value, worker.REINDEX_SWAP_CRON),
     }
 
 
@@ -388,3 +390,42 @@ def test_the_queue_stops_retrying_at_the_run_the_task_treats_as_its_last(attempt
     last_attempt = attempts + 1 >= worker.MAX_ATTEMPTS
     decision = worker.RETRY.get_retry_decision(exception=RuntimeError(), job=_context(attempts).job)
     assert (decision is None) == last_attempt
+
+
+class _Reindexer:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error, self.failed = error, []  # type: ignore[var-annotated]
+
+    async def reindex_base(self, kb_id: uuid.UUID) -> int:
+        if self.error:
+            raise self.error
+        return 1
+
+    async def fail(self, code: str) -> None:
+        self.failed.append(code)
+
+
+def _reindex_task(reindexer: _Reindexer) -> Any:
+    settings = Settings(env="test", postgres_worker_dsn=SecretStr("postgresql://w@h/d"))
+    app = worker.build_app(settings, _Ingestor(), reindexer)  # type: ignore[arg-type]
+    return app.tasks[jobs.Task.REINDEX_KB.value].func
+
+
+async def test_a_refused_base_fails_the_reindex_without_a_retry() -> None:
+    reindexer = _Reindexer(ReindexRefusedError("processing_locality_forbidden"))
+    await _reindex_task(reindexer)(_context(0), str(uuid.uuid4()))
+    assert reindexer.failed == ["processing_locality_forbidden"]
+
+
+async def test_a_reindex_job_fails_the_reindex_on_its_last_attempt_only() -> None:
+    reindexer = _Reindexer(RuntimeError("secret chunk text"))
+    task = _reindex_task(reindexer)
+    with pytest.raises(worker.ReindexError) as caught:
+        await task(_context(0), str(uuid.uuid4()))
+    assert reindexer.failed == []
+    assert str(caught.value) == "RuntimeError"  # the class only, never the message
+    with pytest.raises(worker.ReindexError):
+        await task(_context(worker.MAX_ATTEMPTS - 1), str(uuid.uuid4()))
+    assert reindexer.failed == ["reindex_failed"]
+    # A malformed argument is dropped, not retried.
+    await task(_context(0), "not-a-uuid")
