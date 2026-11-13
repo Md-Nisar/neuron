@@ -118,6 +118,7 @@ def api(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Api]:
         "APP_IDENTITY_HASH_KEY": "e2e-identity-hash-key-not-a-secret-0001",
         "APP_CHECKPOINTER": "memory",
         "APP_MEMORY_ENABLED": "true",
+        "APP_KNOWLEDGE_ENABLED": "false",
         "APP_OTEL_ENABLED": "false",
         "APP_ENABLE_LANGSMITH": "false",
         "APP_FAKE_MODEL_TTFT_MS": "1",
