@@ -26,6 +26,7 @@
     "vite.config.ts",
     "playwright.config.ts",
     "playwright.knowledge.config.ts",
+    "playwright.live.config.ts",
     "eslint.config.js"
   ]
 }

@@ -168,10 +168,10 @@ function MessageView({
 /** Above the composer while the conversation is empty. */
 function Greeting() {
   return (
-    <div className="flex flex-1 animate-in flex-col items-center justify-end pt-10 pb-8 text-center duration-500 fade-in-0">
-      <Logo className="size-11 rounded-xl" />
-      <p className="mt-5 text-2xl font-semibold tracking-tight">How can I help today?</p>
-      <p className="mt-2 max-w-sm text-sm text-balance text-muted-foreground">
+    <div className="flex flex-1 animate-in flex-col items-center justify-end pt-2 pb-2 text-center duration-500 fade-in-0">
+      <Logo className="size-10 rounded-xl" />
+      <p className="mt-2.5 text-2xl font-semibold tracking-tight">How can I help today?</p>
+      <p className="mt-1 max-w-sm text-sm text-balance text-muted-foreground">
         Ask a question, or start from one of the ideas below.
       </p>
     </div>
@@ -184,7 +184,7 @@ function Greeting() {
  */
 function Suggestions({ onPick }: { onPick: (text: string) => void }) {
   return (
-    <div className="flex-1 animate-in px-4 pt-2 pb-6 duration-500 fade-in-0">
+    <div className="flex-1 min-h-0 animate-in px-4 pt-1 pb-2 duration-500 fade-in-0 [@media(max-height:440px)]:hidden">
       <div className="mx-auto grid w-full max-w-3xl gap-2 sm:grid-cols-2">
         {SUGGESTIONS.map(({ icon: Icon, text }) => (
           <button
@@ -193,7 +193,7 @@ function Suggestions({ onPick }: { onPick: (text: string) => void }) {
             onClick={() => {
               onPick(text);
             }}
-            className="group flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left text-sm shadow-xs transition-all outline-none hover:-translate-y-px hover:border-foreground/15 hover:shadow-sm focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="group flex items-start gap-2.5 rounded-xl border bg-card p-2.5 text-left text-sm shadow-xs transition-all outline-none hover:-translate-y-px hover:border-foreground/15 hover:shadow-sm focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             <Icon
               aria-hidden="true"
@@ -318,13 +318,21 @@ export function ChatView({
       </header>
       <div
         ref={scroller}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable]"
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-y-auto",
+          !empty && "[scrollbar-gutter:stable]",
+        )}
         onScroll={(event) => {
           const node = event.currentTarget;
           following.current = node.scrollHeight - node.scrollTop - node.clientHeight < FOLLOW_SLACK;
         }}
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-6">
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-3xl flex-1 flex-col px-4",
+            empty ? "pb-2" : "pb-6",
+          )}
+        >
           {chat.opening && (
             <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
