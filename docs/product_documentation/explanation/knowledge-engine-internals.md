@@ -10,11 +10,12 @@
 
 ## 1. Architectural Objectives
 
-The Neuron Knowledge Engine (v1.1.0) was engineered to address the critical vulnerabilities and performance bottlenecks common in naive retrieval-augmented generation (RAG) architectures:
+The Neuron Knowledge Engine (v1.2.0) was engineered to address critical security vulnerabilities and retrieval quality limits common in naive retrieval-augmented generation (RAG) architectures:
 1. **Multi-Tenant Security First:** Queries enforce authorization in SQL before vector similarity ranking occurs. Chunks and embeddings are partitioned by PostgreSQL Row-Level Security.
 2. **Deterministic Citations:** Answers cannot hallucinate citations; every citation is verified by server-side cryptographic matching against the run's tool execution artifacts.
-3. **Hybrid Search Fusion:** Full-text lexical search (`tsvector`) and dense vector similarity (`halfvec` cosine) are fused using Reciprocal Rank Fusion (RRF), ensuring optimal recall across exact keyword searches (part numbers, acronyms) and conceptual semantic queries.
-4. **Decoupled Asynchronous Processing:** File parsing, chunking, and vector embedding are offloaded to an asynchronous background worker (`neuron-worker`), ensuring API responsiveness.
+3. **Hybrid Search Fusion with Reranking:** Full-text lexical search (`tsvector` with per-base dictionary stemming) and dense vector similarity (`halfvec` cosine) are fused using Reciprocal Rank Fusion (RRF), followed by optional cross-encoder candidate reranking.
+4. **Zero-Downtime Reindexing:** Embedding models can be upgraded across the cluster without interrupting active queries using a dual-embedding transition pipeline and atomic profile swap.
+5. **Decoupled Asynchronous Processing:** File parsing, chunking, and vector embedding are offloaded to an asynchronous background worker (`neuron-worker`), ensuring API responsiveness.
 
 ---
 
@@ -31,7 +32,7 @@ flowchart TD
         HTTP202 -.-> ClaimJob[6. Worker Claims Job]
         ClaimJob --> Parse[7. Parsing: docling-serve or PlainTextParser]
         Parse --> Chunk[8. Chunking: Hierarchical heading path & token bounds]
-        Chunk --> Embed[9. Embedding: Batch call to NVIDIA / OpenAI]
+        Chunk --> Embed[9. Embedding: Active Model + Building Model if Reindexing]
         Embed --> IndexCommit[10. Atomic DB Commit: Chunks + halfvec Embeddings + ready]
     end
 ```
@@ -61,7 +62,7 @@ Retrieval is executed in `src/neuron_agent/knowledge/retrieval.py`:
 
 ```mermaid
 graph TD
-    Query[User Query String] --> AuthFilter[1. Determine Allowed KBs for Caller]
+    Query[User Query String] --> AuthFilter[1. Determine Allowed KBs for Caller & Roles]
     AuthFilter --> SetRLS["2. SET LOCAL neuron.kb_ids = 'kb1,kb2'"]
     
     subgraph DualRetrieval ["Parallel Candidate Retrieval (Top 80 each)"]
@@ -76,8 +77,13 @@ graph TD
     ExactScan --> RRF
     HNSWScan --> RRF
     
-    RRF --> Mint[4. Mint Opaque cite_ids & Store Artifacts]
-    Mint --> ReturnHits[5. Return Top K Formatted Passages]
+    RRF --> RerankerCheck{4. Cross-Encoder Configured?}
+    RerankerCheck -->|Yes| CrossEncoder[5. NVIDIA Nemotron Cross-Encoder Rerank]
+    RerankerCheck -->|No / Timeout / Error| FallbackRRF[Keep RRF Candidate Order]
+    
+    CrossEncoder --> Mint[6. Mint Opaque cite_ids & Store Artifacts]
+    FallbackRRF --> Mint
+    Mint --> ReturnHits[7. Return Top K Formatted Passages]
 ```
 
 ---
@@ -104,7 +110,20 @@ To merge lexical and semantic results without arbitrary score normalization, Neu
 
 $$\text{RRF\_Score}(d) = \sum_{m \in \{\text{fts}, \text{dense}\}} \frac{1}{60 + \text{rank}_m(d)}$$
 
-Passages that appear in both candidate sets receive significant score boosts, providing state-of-the-art retrieval accuracy across mixed technical queries.
+Passages appearing in both candidate sets receive significant score boosts, providing robust baseline retrieval across mixed technical queries.
+
+---
+
+### 3.3 Cross-Encoder Candidate Reranking (RAG-09.01)
+While bi-encoders generate separate embeddings for queries and passages, cross-encoders perform full cross-attention over query-passage pairs:
+1. **Candidate Pool:** The top 40 fused candidates from RRF are sent to the hosted reranker (`nvidia/llama-nemotron-rerank-vl-1b-v2`).
+2. **Scoring & Verification:** The API scores candidates jointly and returns logit rankings. Neuron verifies that every candidate is scored exactly once with finite values (`_checked`).
+3. **Evaluation Performance:** On the benchmark corpus (`docs/releases/v1.2.0-rerank-eval.md`), cross-encoder reranking:
+   - Raised Mean Reciprocal Rank (MRR) from 0.833 to 0.924.
+   - Raised recall@1 from 0.734 to 0.875.
+   - Maintained recall@5 at 0.984.
+   - Added approximately 0.5–0.7 seconds at p95 latency.
+4. **Fail-Safe Fallback:** If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 3.0s) or encounters provider errors, the retriever transparently falls back to RRF ordering, logging the failure and setting `reranked: false`.
 
 ---
 
@@ -119,3 +138,62 @@ To eliminate AI hallucinations where an LLM cites documents it never consulted, 
    - Any `cite_id` matching an artifact minted during that specific run is preserved.
    - Any hallucinated or invented `cite_id` is stripped, incrementing the `rejected_citations` metric.
    - The verified citations are stamped permanently onto the stored answer.
+
+---
+
+## 5. Multi-Profile Zero-Downtime Reindexing (RAG-09.04)
+
+Upgrading embedding models across production databases cannot incur downtime or compromise search availability. Neuron achieves zero-downtime re-indexing via database index profiles:
+
+```mermaid
+stateDiagram-v2
+    [*] --> building: reindex start (operator CLI)
+    building --> active: reindex_swap (100% chunks covered)
+    building --> retired: reindex cancel / failed job
+    active --> retired: replaced by new active profile
+    retired --> [*]: purge_retired_embeddings (hourly batch deletion)
+```
+
+1. **Index Profile Schema (`knowledge.index_profiles`):**
+   - Each embedding model configuration corresponds to a profile row.
+   - Database unique partial indexes (Migrations 28 & 29) guarantee at most one `active` and at most one `building` profile at any time.
+2. **Dual-Embedding Ingestion:**
+   - While a profile is in the `building` state, every newly uploaded document is embedded twice: once for the `active` profile and once for the `building` profile.
+   - Ingestion write transactions lock profiles (`FOR SHARE`) to prevent race conditions during swaps.
+3. **Background Backfill (`reindex_kb`):**
+   - The worker iterates through existing ready chunks, embedding uncovered passages with the target model, document by document.
+   - Tokens spent are charged to `knowledge.documents.embedding_tokens`.
+4. **Atomic Profile Swap (`reindex_swap`):**
+   - Under a `FOR UPDATE` lock on the building profile and a table-level share lock on `knowledge.bases`, the worker confirms that 100% of live chunks are covered.
+   - If any chunk is missing, the swap aborts and re-queues incomplete bases.
+   - When 100% coverage is verified, the transaction promotes `building` to `active`, retires the previous profile, and updates all bases' `profile_id` simultaneously.
+5. **Garbage Collection:**
+   - Retired profile embeddings are pruned in background batches (5,000 rows hourly via `purge_retired_embeddings`).
+   - The obsolete HNSW index is dropped concurrently during the next `setup` run.
+
+---
+
+## 6. Multilingual Full-Text Search (RAG-09.08)
+
+To support global deployments, knowledge bases can specify a dedicated full-text search dictionary at creation:
+- **Language Configurations:** Maps to PostgreSQL's 29 built-in text search dictionaries (`simple`, `english`, `german`, `french`, `spanish`, `hindi`, etc.).
+- **Stemming Benefits:** The base's language determines how chunks' `tsv` columns are generated and stemmed. For example, selecting `german` stems "Häuser" into "haus", matching user queries for "Haus".
+- **Evaluation Findings:** Evaluation across 30 questions in 5 languages demonstrated that language-specific configurations improved text-channel recall@5 from 0.00 (with naive case-folding `simple`) to 0.33–1.00 (`docs/releases/v1.2.0-gate/multilingual-fts.json`).
+
+---
+
+## 7. Role-Based Access Control in Retrieval (RAG-09.03)
+
+Neuron enforces multi-tenant knowledge sharing through dynamic SQL authorization (`AllowedKbs`):
+
+1. **Single-Transaction Evaluation:**
+   Before any retrieval query executes, the service queries `knowledge.grants` in the active database transaction:
+   ```sql
+   SELECT g.kb_id, g.access, g.subject_type FROM knowledge.grants g
+   JOIN knowledge.bases b USING (kb_id) WHERE b.deleted_at IS NULL AND (
+     (g.subject_type = 'owner' AND g.subject = %(owner)s AND b.owner_key = %(owner)s)
+     OR (g.subject_type = 'role' AND g.subject = ANY(%(roles)s::text[]))
+   )
+   ```
+2. **Immediate Revocation:** Because `AllowedKbs` is evaluated dynamically inside the statement transaction and is never cached, revoking a role grant in `knowledge.grants` takes effect immediately on the very next HTTP request.
+3. **Strict Owner Invariants:** Role grants (`read`, `write`, `admin`) can never authorize deleting the knowledge base, exporting user data, or triggering bulk account erasure. Those operations strictly require `subject_type = 'owner'`.

@@ -4,7 +4,7 @@
 > **Diátaxis Mode:** Explanation (Understanding-Oriented)  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.2 (Conceptual / Observability Information) and Diátaxis (Explanation)  
 > **Audience:** SREs, Security Engineers, Platform Architects  
-> **Code Traceability:** `src/neuron_agent/observability/`, ADR 0007, ADR 0008
+> **Code Traceability:** `src/neuron_agent/observability/`, ADR 0007, ADR 0008, ADR 0014
 
 ---
 
@@ -30,6 +30,7 @@ graph TD
         AgentSpan["Span: invoke_agent neuron (Graph Execution)"]
         ChatSpan["Span: chat {model_id} (Provider Model Calls & Retries)"]
         ToolSpan["Span: execute_tool {tool_name} (Tool Authorization & Run)"]
+        SearchSpan["Span: neuron.knowledge.search (Hybrid Retrieval & Reranking)"]
         StreamSpan["Span: neuron.stream (SSE Token Producer)"]
         ApprovalSpan["Span: neuron.approval (Human Interrupt State)"]
     end
@@ -38,6 +39,7 @@ graph TD
     AgentSpan --> StreamSpan
     AgentSpan --> ChatSpan
     AgentSpan --> ToolSpan
+    ToolSpan --> SearchSpan
     AgentSpan --> ApprovalSpan
 ```
 
@@ -47,6 +49,7 @@ Spans record execution telemetry using strictly bounded attributes defined in `s
 - `gen_ai.request.model`: Configured model identifier.
 - `gen_ai.usage.input_tokens`: Consumed prompt tokens.
 - `gen_ai.usage.output_tokens`: Generated answer tokens.
+- `neuron.knowledge.reranked`: Boolean attribute indicating whether search hits were reordered by cross-encoder reranker.
 - `app.error_code`: Machine-readable error code if a failure occurred.
 
 > [!IMPORTANT]
@@ -72,7 +75,7 @@ Because contextvars propagate across asynchronous coroutines, any log statement 
 {
   "event": "agent_request_completed",
   "service": "neuron-agent",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "environment": "production",
   "request_id": "req-019318b2-5f6e-7b3c-8a12-abcdef123456",
   "thread_id": "019318b2-5f6e-7b3c-8a12-abcdef123456",
@@ -80,7 +83,7 @@ Because contextvars propagate across asynchronous coroutines, any log statement 
   "model": "openai:gpt-5.4-mini",
   "duration_ms": 1420.5,
   "level": "info",
-  "timestamp": "2026-11-12T02:00:00.123456Z"
+  "timestamp": "2026-11-13T10:00:00.123456Z"
 }
 ```
 
@@ -96,34 +99,60 @@ Audit records conform to a rigid, typed JSON schema:
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `audit` | `boolean` | Always `true` (enables easy SIEM ingestion filtering). |
-| `event` | `string` | Event name (`authorization_denied`, `approval_decided`, `output_blocked`, `user_data_exported`, `user_data_erased`). |
-| `outcome` | `string` | Result (`allowed`, `denied`, `approved`, `rejected`, `erased`). |
+| `event` | `string` | Event name (`authorization_denied`, `approval_decided`, `output_blocked`, `user_data_exported`, `user_data_erased`, `knowledge_grant_changed`, `knowledge_reindex_started`, `knowledge_reindex_swapped`, `knowledge_reindex_failed`, `auth_roles_dropped`). |
+| `outcome` | `string` | Result (`allowed`, `denied`, `approved`, `rejected`, `erased`, `error`). |
 | `actor` | `string` | First 12 hexadecimal characters of the caller's HMAC owner key. Raw subject is never logged. |
 | `issuer_id` | `string` | Configured `APP_AUTH_ISSUER_ID` alias (e.g., `production-idp`). Full URL is omitted. |
-| `action` | `string` | Scoped permission attempted (e.g., `threads:read`, `data:erase`). |
-| `resource_type` | `string` | Target resource (`thread`, `memory`, `knowledge_base`, `document`). |
+| `action` | `string` | Scoped permission attempted (e.g., `threads:read`, `data:erase`, `knowledge:admin`, `knowledge:reindex`). |
+| `resource_type` | `string` | Target resource (`thread`, `memory`, `knowledge_base`, `document`, `knowledge_index_profile`). |
 | `resource_id` | `string` \| `null`| Identifier of the affected resource. |
+| `role` | `string` \| `null`| Role name when modifying grants (`knowledge_grant_changed`). |
+| `access` | `string` \| `null`| Access level assigned (`read`, `write`, `admin`, `none`). |
 | `request_id` | `string` | Associated HTTP request ID. |
 | `run_id` | `string` \| `null`| Associated agent run ID. |
-| `reason` | `string` \| `null`| Machine-readable reason code (e.g., `insufficient_scope`, `system_prompt_disclosure`). |
+| `reason` | `string` \| `null`| Machine-readable reason code (e.g., `insufficient_scope`, `cancelled`, `roles_exceeded_limit`). |
+| `count` | `integer` \| `null`| Numeric metric (e.g., count of bases migrated during swap). |
 | `timestamp` | `string` | UTC ISO-8601 timestamp. |
 
-### 4.2 Example Audit Record
+### 4.2 Example Audit Record: Knowledge Base Grant Change
 ```json
 {
   "audit": true,
-  "event": "authorization_denied",
-  "outcome": "denied",
+  "event": "knowledge_grant_changed",
+  "outcome": "allowed",
   "actor": "4a3f8c12b90e",
   "issuer_id": "production-idp",
-  "action": "knowledge:write",
+  "action": "knowledge:admin",
   "resource_type": "knowledge_base",
   "resource_id": "8f3b2e1a-4c5d-6e7f-8a9b-0c1d2e3f4a5b",
+  "role": "engineering",
+  "access": "write",
   "request_id": "req-987",
   "run_id": null,
-  "reason": "insufficient_scope",
+  "reason": null,
   "count": null,
-  "timestamp": "2026-11-12T02:00:00.000000Z"
+  "timestamp": "2026-11-13T10:15:00.000000Z"
+}
+```
+
+### 4.3 Example Audit Record: Profile Re-Index Swap
+```json
+{
+  "audit": true,
+  "event": "knowledge_reindex_swapped",
+  "outcome": "allowed",
+  "actor": "system",
+  "issuer_id": "system",
+  "action": "knowledge:reindex",
+  "resource_type": "knowledge_index_profile",
+  "resource_id": "2",
+  "role": null,
+  "access": null,
+  "request_id": "internal-reindex-swap",
+  "run_id": null,
+  "reason": null,
+  "count": 14,
+  "timestamp": "2026-11-13T11:00:00.000000Z"
 }
 ```
 
