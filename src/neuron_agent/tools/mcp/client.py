@@ -17,9 +17,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
-from typing import Any, cast
+from typing import Any
 
-import httpcore2
 import httpx2
 import structlog
 from jsonschema import Draft202012Validator, validators
@@ -32,7 +31,7 @@ from pydantic import SecretStr
 from referencing import Registry
 
 from neuron_agent.errors.base import ValidationAppError
-from neuron_agent.security.egress import PublicOnlyBackend
+from neuron_agent.security.egress import LimitedTransport
 from neuron_agent.security.input_policy import audit_tool_name, validate_safe_url
 from neuron_agent.tools.mcp.config import McpConfig, McpServerConfig, McpToolConfig
 from neuron_agent.tools.mcp.pins import FetchedTool, check_pins
@@ -61,62 +60,10 @@ class ResponseTooLargeError(McpResultError):
     """A server sent more bytes than the client reads; the connection is dropped."""
 
 
-class _CountingStream(httpx2.AsyncByteStream):
-    def __init__(self, inner: httpx2.AsyncByteStream, limit: int) -> None:
-        self._inner = inner
-        self._limit = limit
+class _LimitedTransport(LimitedTransport):
+    """The shared egress transport (`security/egress.py`), raising MCP's own error."""
 
-    async def __aiter__(self) -> AsyncIterator[bytes]:
-        total = 0
-        async for chunk in self._inner:
-            total += len(chunk)
-            if total > self._limit:
-                raise ResponseTooLargeError
-            yield chunk
-
-    async def aclose(self) -> None:
-        await self._inner.aclose()
-
-
-class _LimitedTransport(httpx2.AsyncHTTPTransport):
-    """Stops reading a response once it passes `limit` bytes, before it is held in memory.
-
-    With `public_only`, every connection, a redirect's included, goes to a resolved and
-    checked public address (`security/egress.py`).
-    """
-
-    def __init__(self, limit: int, *, public_only: bool) -> None:
-        # No proxy from the environment: the bearer token goes to the configured server only.
-        super().__init__(trust_env=False)
-        if public_only:
-            self._pool = httpcore2.AsyncConnectionPool(
-                ssl_context=httpx2.create_ssl_context(trust_env=False),
-                network_backend=PublicOnlyBackend(),
-            )
-        self._public_only = public_only
-        self._limit = limit
-
-    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
-        if self._public_only and request.url.scheme != "https":
-            # A redirect must not downgrade a public connection to plain http (#366).
-            raise httpx2.ConnectError("only https is allowed", request=request)
-        # The count is of the bytes received. A compressed body would expand past it when it is
-        # decoded, so no compression is asked for or accepted.
-        request.headers["Accept-Encoding"] = "identity"
-        response = await super().handle_async_request(request)
-        if response.headers.get("content-encoding", "identity").lower() != "identity":
-            await response.aclose()
-            raise ResponseTooLargeError
-        declared = response.headers.get("content-length", "")
-        if declared.isdigit() and int(declared) > self._limit:
-            await response.aclose()
-            raise ResponseTooLargeError
-        return httpx2.Response(
-            response.status_code,
-            headers=response.headers,
-            stream=_CountingStream(cast("httpx2.AsyncByteStream", response.stream), self._limit),
-            extensions=response.extensions,
-        )
+    too_large_error = ResponseTooLargeError
 
 
 @asynccontextmanager

@@ -80,8 +80,10 @@ async def test_a_name_that_does_not_resolve_is_refused(monkeypatch: pytest.Monke
         raise socket.gaierror("no such name")
 
     monkeypatch.setattr(socket, "getaddrinfo", fail)
-    with pytest.raises(egress.NonPublicAddressError):
+    with pytest.raises(httpcore2.ConnectError) as caught:
         await egress.resolve_public_address("nowhere.example.com", 443)
+    # A lookup failure may be temporary, so it is not the address refusal.
+    assert not isinstance(caught.value, egress.NonPublicAddressError)
 
 
 async def test_the_connection_goes_to_the_checked_address_not_a_new_answer(
@@ -160,3 +162,150 @@ def test_the_loopback_http_exception_is_logged() -> None:
     with structlog.testing.capture_logs() as logs:
         validate_mcp_url("http://127.0.0.1:8001/mcp", env="development")
     assert [entry["event"] for entry in logs] == ["mcp_plain_http_allowed"]
+
+
+# RAG-10.01: `fetch_public_https`, the ingestion fetcher (#578).
+
+_OK = b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 5\r\n\r\nhello"
+
+
+def _redirect(location: str) -> bytes:
+    return (
+        b"HTTP/1.1 302 Found\r\nLocation: " + location.encode() + b"\r\nContent-Length: 0\r\n\r\n"
+    )
+
+
+class _TlsFreeBackend(_RecordingBackend):
+    """The mock stream has no TLS; the request still goes through the https code path."""
+
+    async def connect_tcp(self, host: str, port: int, *args: Any, **kwargs: Any) -> Any:
+        stream = await super().connect_tcp(host, port, *args, **kwargs)
+        stream.start_tls = _no_tls.__get__(stream)
+        return stream
+
+
+async def _no_tls(self: Any, *args: Any, **kwargs: Any) -> Any:
+    return self
+
+
+async def _fetch(url: str, backend: Any, **kwargs: Any) -> egress.FetchedResponse:
+    options: dict[str, Any] = {"max_bytes": 1024, "timeout": 5}
+    return await egress.fetch_public_https(url, network_backend=backend, **options | kwargs)
+
+
+async def test_a_public_page_is_fetched_from_its_checked_address(dns: _FakeDns) -> None:
+    dns.answers["news.example.com"] = [[_PUBLIC]]
+    backend = _TlsFreeBackend([_OK])
+    fetched = await _fetch("https://news.example.com/a", backend)
+    assert (fetched.body, fetched.content_type) == (b"hello", "text/html")
+    assert backend.connected == [_PUBLIC]
+
+
+@pytest.mark.parametrize("private", ["10.0.0.1", "169.254.169.254"])
+async def test_ac1_a_name_resolving_to_a_private_or_metadata_address_is_refused(
+    dns: _FakeDns, private: str
+) -> None:
+    dns.answers["internal.example.com"] = [[private]]
+    backend = _TlsFreeBackend([_OK])
+    with pytest.raises(egress.FetchError) as caught:
+        await _fetch("https://internal.example.com/", backend)
+    assert caught.value.code == "url_not_allowed"
+    assert backend.connected == []
+
+
+@pytest.mark.parametrize("literal", ["https://10.0.0.1/", "https://169.254.169.254/latest/"])
+async def test_ac1_a_private_literal_address_is_refused_before_any_lookup(
+    dns: _FakeDns, literal: str
+) -> None:
+    with pytest.raises(egress.FetchError, match="url_not_allowed"):
+        await _fetch(literal, _TlsFreeBackend([]))
+    assert dns.seen == []
+
+
+async def test_ac2_a_redirect_to_a_private_address_is_refused(dns: _FakeDns) -> None:
+    dns.answers["public.example.com"] = [[_PUBLIC]]
+    dns.answers["internal.example.com"] = [["10.0.0.5"]]
+    backend = _TlsFreeBackend([_redirect("https://internal.example.com/")])
+    with pytest.raises(egress.FetchError) as caught:
+        await _fetch("https://public.example.com/", backend)
+    assert caught.value.code == "url_not_allowed"
+    assert backend.connected == [_PUBLIC]
+
+
+async def test_ac2_a_redirect_to_plain_http_is_refused(dns: _FakeDns) -> None:
+    dns.answers["public.example.com"] = [[_PUBLIC]]
+    backend = _TlsFreeBackend([_redirect("http://public.example.com/")])
+    with pytest.raises(egress.FetchError, match="url_not_allowed"):
+        await _fetch("https://public.example.com/", backend)
+    assert backend.connected == [_PUBLIC]
+
+
+async def test_ac3_a_dns_answer_that_changes_is_never_connected_to(dns: _FakeDns) -> None:
+    dns.answers["rebind.example.com"] = [[_PUBLIC], ["127.0.0.1"]]
+    backend = _TlsFreeBackend([_OK])
+    await _fetch("https://rebind.example.com/", backend)
+    assert backend.connected == [_PUBLIC]
+    assert dns.seen == ["rebind.example.com"]
+
+
+@pytest.mark.parametrize("env", ["development", "staging", "production"])
+async def test_ac4_a_plain_http_url_is_refused_in_every_environment(
+    dns: _FakeDns, monkeypatch: pytest.MonkeyPatch, env: str
+) -> None:
+    """A user's URL gets no development exception, unlike an operator's MCP URL."""
+    monkeypatch.setenv("APP_ENV", env)
+    for url in ("http://example.com/", "http://127.0.0.1:8001/"):
+        with pytest.raises(egress.FetchError, match="url_not_allowed"):
+            await _fetch(url, _TlsFreeBackend([]))
+    assert dns.seen == []
+
+
+async def test_proxy_settings_from_the_environment_are_ignored(
+    dns: _FakeDns, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Through a proxy, the address checked would be the proxy's, not the page's."""
+    monkeypatch.setenv("HTTPS_PROXY", "http://10.0.0.9:3128")
+    monkeypatch.setenv("ALL_PROXY", "http://10.0.0.9:3128")
+    dns.answers["news.example.com"] = [[_PUBLIC]]
+    backend = _TlsFreeBackend([_OK])
+    await _fetch("https://news.example.com/", backend)
+    assert backend.connected == [_PUBLIC]
+
+
+async def test_a_body_beyond_the_cap_is_refused(dns: _FakeDns) -> None:
+    dns.answers["big.example.com"] = [[_PUBLIC]]
+    with pytest.raises(egress.FetchError, match="fetch_too_large"):
+        await _fetch("https://big.example.com/", _TlsFreeBackend([_OK]), max_bytes=4)
+
+
+async def test_redirects_beyond_the_cap_are_refused(dns: _FakeDns) -> None:
+    dns.answers["loop.example.com"] = [[_PUBLIC]] * 3
+    hops = [_redirect("https://loop.example.com/") for _ in range(3)]
+    with pytest.raises(egress.FetchError, match="fetch_too_many_redirects"):
+        await _fetch("https://loop.example.com/", _TlsFreeBackend(hops), max_redirects=2)
+
+
+async def test_a_non_200_answer_is_a_failure(dns: _FakeDns) -> None:
+    dns.answers["gone.example.com"] = [[_PUBLIC]]
+    gone = b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"
+    with pytest.raises(egress.FetchError, match="fetch_http_status"):
+        await _fetch("https://gone.example.com/", _TlsFreeBackend([gone]))
+
+
+async def test_a_name_that_does_not_resolve_is_a_failure_not_a_refusal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise socket.gaierror("temporary failure in name resolution")
+
+    monkeypatch.setattr(socket, "getaddrinfo", fail)
+    with pytest.raises(egress.FetchError, match="fetch_failed"):
+        await _fetch("https://news.example.com/", _TlsFreeBackend([]))
+
+
+async def test_the_final_url_keeps_no_userinfo_or_fragment(dns: _FakeDns) -> None:
+    dns.answers["a.example.com"] = [[_PUBLIC]]
+    dns.answers["b.example.com"] = [[_PUBLIC]]
+    backend = _TlsFreeBackend([_redirect("https://user:secret@b.example.com/page#top"), _OK])
+    fetched = await _fetch("https://a.example.com/", backend)
+    assert fetched.url == "https://b.example.com/page"
