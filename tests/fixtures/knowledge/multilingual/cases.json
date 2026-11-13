@@ -1,0 +1,95 @@
+{
+  "description": "RAG-09.08: a small multilingual set for the text search channel. Synthetic passages, no real data. Each question uses other word forms than its passage (plural, verb tense, derived noun), as a user writing naturally would.",
+  "languages": {
+    "english": {
+      "passages": {
+        "en1": "The keepers inspected the lighthouses along the northern coast every winter.",
+        "en2": "Fishing boats were repaired in the harbour after the storms.",
+        "en3": "The museum displays old maps drawn by early sailors.",
+        "en4": "Volunteers are planting trees on the hillside near the village.",
+        "en5": "Tide tables are printed monthly by the port authority.",
+        "en6": "The bridge was closed while engineers tested its cables."
+      },
+      "cases": [
+        ["lighthouse inspection", "en1"],
+        ["repairing a boat", "en2"],
+        ["map drawn by a sailor", "en3"],
+        ["plant a tree", "en4"],
+        ["printing the tide table", "en5"],
+        ["testing the cable", "en6"]
+      ]
+    },
+    "german": {
+      "passages": {
+        "de1": "Im Winter prüfen die Wärter alle Leuchttürme an der Küste.",
+        "de2": "Die Fischer reparierten ihre Boote im Hafen nach dem Sturm.",
+        "de3": "Das Museum zeigt alte Karten der Seefahrer.",
+        "de4": "Freiwillige pflanzten Bäume am Hang neben dem Dorf.",
+        "de5": "Die Hafenbehörde druckt jeden Monat die Gezeitentabellen.",
+        "de6": "Die Brücke wurde gesperrt, während Ingenieure die Kabel testeten."
+      },
+      "cases": [
+        ["Leuchtturm prüfen", "de1"],
+        ["Boot reparieren", "de2"],
+        ["alte Karte", "de3"],
+        ["Baum pflanzen", "de4"],
+        ["Gezeitentabelle drucken", "de5"],
+        ["Kabel testen", "de6"]
+      ]
+    },
+    "french": {
+      "passages": {
+        "fr1": "En hiver, les gardiens inspectent tous les phares de la côte.",
+        "fr2": "Les pêcheurs ont réparé leurs bateaux au port après la tempête.",
+        "fr3": "Le musée expose des cartes anciennes dessinées par les marins.",
+        "fr4": "Des bénévoles plantent des arbres sur la colline près du village.",
+        "fr5": "L'autorité portuaire imprime chaque mois les tables des marées.",
+        "fr6": "Le pont a été fermé pendant que les ingénieurs testaient les câbles."
+      },
+      "cases": [
+        ["inspecter le phare", "fr1"],
+        ["réparer un bateau", "fr2"],
+        ["carte ancienne d'un marin", "fr3"],
+        ["planter un arbre", "fr4"],
+        ["table de la marée", "fr5"],
+        ["tester un câble", "fr6"]
+      ]
+    },
+    "spanish": {
+      "passages": {
+        "es1": "En invierno, los guardianes inspeccionan todos los faros de la costa.",
+        "es2": "Los pescadores repararon sus barcos en el puerto después de la tormenta.",
+        "es3": "El museo exhibe mapas antiguos dibujados por los marineros.",
+        "es4": "Los voluntarios plantan árboles en la colina cerca del pueblo.",
+        "es5": "La autoridad portuaria imprime cada mes las tablas de mareas.",
+        "es6": "El puente fue cerrado mientras los ingenieros probaban los cables."
+      },
+      "cases": [
+        ["inspeccionar el faro", "es1"],
+        ["reparar un barco", "es2"],
+        ["mapa antiguo de un marinero", "es3"],
+        ["plantar un árbol", "es4"],
+        ["tabla de marea", "es5"],
+        ["probar el cable", "es6"]
+      ]
+    },
+    "hindi": {
+      "passages": {
+        "hi1": "सर्दियों में रखवाले तट के सभी प्रकाशस्तंभों की जाँच करते हैं।",
+        "hi2": "मछुआरों ने तूफ़ान के बाद बंदरगाह में अपनी नावें ठीक कीं।",
+        "hi3": "संग्रहालय में नाविकों के बनाए पुराने नक्शे दिखाए जाते हैं।",
+        "hi4": "स्वयंसेवक गाँव के पास पहाड़ी पर पेड़ लगा रहे हैं।",
+        "hi5": "बंदरगाह प्राधिकरण हर महीने ज्वार की तालिकाएँ छापता है।",
+        "hi6": "इंजीनियरों ने केबलों की जाँच की, तब तक पुल बंद रहा।"
+      },
+      "cases": [
+        ["प्रकाशस्तंभ की जाँच", "hi1"],
+        ["नाव ठीक", "hi2"],
+        ["पुराना नक्शा", "hi3"],
+        ["पेड़ लगाना", "hi4"],
+        ["ज्वार तालिका", "hi5"],
+        ["केबल जाँच", "hi6"]
+      ]
+    }
+  }
+}

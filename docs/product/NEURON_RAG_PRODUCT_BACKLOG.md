@@ -1498,8 +1498,8 @@ Exit gate (Claude report §12): recall@5 and MRR at or above Phase 1 on the same
 
 **Technical tasks**
 - [x] Language setting.
-- [ ] Multilingual eval subset.
-- [ ] Comparison.
+- [x] Multilingual eval subset.
+- [x] Comparison.
 
 **Changes.** API: KB `language` field. Database: `ts_config`. UI: language selector.
 

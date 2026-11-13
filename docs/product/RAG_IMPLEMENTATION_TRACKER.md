@@ -55,15 +55,15 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E06 | Knowledge in the web app | 1 | v1.1.0 | 2 | 2 | 0 | 0 | 0 | — |
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
-| RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 7 | 1 | 0 | 0 | RAG-09.08 |
+| RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 8 | 0 | 0 | 0 | — |
 | RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **40** | **1** | **0** | **15** | **RAG-09.08** |
+| **Total** | | | | **56** | **41** | **0** | **0** | **15** | **RAG-10.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 
-**Recommended next action (2026-11-13):** RAG-09.07 Done: the operator's `feedback-report` command lists the chunk IDs cited by thumbs-down answers. Before it, RAG-09.06 Done (knowledge load baseline). Next: RAG-09.08, the last E09 story. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
+**Recommended next action (2026-11-13):** RAG-09.08 Done, so every RAG-E09 story is Done: a base's text search language (#570) and the multilingual evaluation, with the decision in ADR 0014 (keep built-in FTS; `pg_textsearch` needs PostgreSQL 17). Next: check the RAG-E09 exit gate and close #544; RAG-E10 to RAG-E12 are Phase 3 and have no issues yet. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
 
 ## GitHub synchronisation
 
@@ -340,9 +340,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 ### RAG-E09 Retrieval quality and sharing
 
-- **Stories:** 8 total · 7 done · 1 in progress · 0 blocked · 0 pending
+- **Stories:** 8 total · 8 done · 0 in progress · 0 blocked · 0 pending
 - **Implemented functionality:** RAG-09.02 (#546): `Principal.roles` keeps the non-empty string values of `APP_AUTH_ROLES_CLAIM` from a verified token (`security/auth.py`), hidden from `repr`; `AuthorizationContext.roles` reads them from the principal, empty without one. Over 100 distinct roles, or one over 256 characters, keeps none and audits `auth_roles_dropped` (reason and count only). Roles grant no permission; the role-to-permission map is unchanged, also for a dropped claim. ADR 0006 amended.
-- **Outstanding work:** RAG-09.08.
+- **Outstanding work:** none; the epic's exit gate is next.
 - **Blockers and decisions:** Phase 2 starts after v1.1.0. Release v1.2.0 is a proposal. Epic and story issues created 2026-11-12 at the owner's request (#544 to #552).
   - Decisions (RAG-09.02, proposed by Claude 2026-11-12 and taken as the owner's go-ahead "continue with the next story you want"; the PR merge accepts them with the ADR amendment): at most 100 roles of at most 256 characters, else none kept and the token still accepted (fails closed: a role only adds access to a shared resource); a top-level claim only, no dotted paths such as Keycloak's `realm_access.roles` (the reference realm already maps roles to `roles`); roles are not passed to Agent Server, where the knowledge tools are off (RAG-04.02 AC6).
   - Note (RAG-09.02): with the default `APP_AUTH_TOKEN_MAX_BYTES` (16 KB) a token cannot carry 100 roles of 256 characters; both bounds still apply when an operator raises the token limit (up to 128 KB).
@@ -365,7 +365,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Decision (RAG-09.08, 2026-11-13): a base's language is fixed at creation. Every chunk's `tsv` is generated with its base's configuration and the text channel queries a base with that configuration, so a change would need every chunk rebuilt; a base in another language is a new base. `pg_textsearch` supports PostgreSQL 17 and 18 only and the stack runs `pgvector/pgvector:pg16`, so adopting it means a major Postgres upgrade and a custom image: the owner's decision, whatever part 2 measures.
   - Decision (RAG-09.07, 2026-11-13): the citation set is not a table but the stamp on the run's answer in the checkpoint (RAG-05.02), so the report joins `neuron_feedback` to it in code (`persistence/feedback_report.py`), not in SQL; no new table, write path or erasure duty. It is an operator CLI, not a route, and writes nothing to logs or telemetry. A rated answer whose thread was pruned or deleted counts as `answer_missing`; deleting a thread also deletes its ratings.
   - Finding (RAG-09.06, 2026-11-13): on the reference stack with the plain-text parser and fake embeddings, upload admission set the ingestion rate, not the worker: a third of uploads were refused `429 upload_busy` (`APP_KNOWLEDGE_UPLOAD_CONCURRENCY`, 4 per API process), while documents were ready in 0.19 s p50. No change made; the default is a memory bound. The backlog's AC asks for recorded figures, not a gate: no automated comparison was added (the baseline is bound to its host, as `loadtest.baseline compare` is).
-- **Next recommended story:** RAG-09.08.
+- **Next recommended story:** the RAG-E09 exit gate, then RAG-E10.
 
 ### RAG-E10 External knowledge sources
 
@@ -435,7 +435,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-09.05 | Nightly retrieval regression gate | 2 | P1 | Done | #549 | this PR | `tests/integration/test_live_knowledge_retrieval.py`, the `knowledge-retrieval` job of `nightly-eval.yml`: recall@5 and MRR with the live query embeddings and reranker must stay within 0.02 of `evals/baselines/knowledge_retrieval_live.json` (0.984, 0.924, two local runs). AC1: a drop fails the test and the job, and `below_baseline` names the metric (`tests/unit/test_retrieval_metrics.py`; a local run against a raised baseline failed naming it); a skip fails the job. AC2: the gate uses deterministic metrics only and needs no Ragas. `tests/unit/test_workflows.py`: the two nightly jobs run in sequence inside `ai-review`'s window. First scheduled run on `main` to confirm |
 | RAG-09.06 | Load test for ingestion and search | 2 | P1 | Done | #550 | #567, this PR | `make load-knowledge` (`loadtest/run_knowledge.sh`) on the reference stack, 180 s per scenario: `docs/releases/v1.2.0-gate/knowledge-load-baseline.json` records search p50/p95 47/110 ms (8 users, filtered hybrid) and ingestion about 2,590 pages a minute, 973 of 973 documents ready (AC1), and chat run p95 7.2 s alone and 7.7 s beside search, +6.9% (AC2), with host details; per-scenario steps and CPU, memory and Postgres connections in `knowledge-load-steps/`. `tests/unit/test_loadtest_knowledge.py`: the fixture is plain text whose pages the worker's parser counts, the ingestion and baseline arithmetic |
 | RAG-09.07 | Link feedback to citations | 2 | P2 | Done | #551 | #569 | `python -m neuron_agent.persistence.cli feedback-report`. `tests/integration/test_postgres_feedback_report.py` (Postgres): a real run stamped with two citations and rated down is listed with its run ID and both chunk IDs, a thumbs-up and an uncited thumbs-down are not (AC1); the command's printed JSON holds no query, citation title, heading or owner (AC2). `tests/unit/test_feedback_report.py`: only the rated run's IDs, invalid citations skipped, Postgres checkpointer required |
-| RAG-09.08 | Multilingual text search evaluation | 2 | P2 | In progress | #552 | part 1: #570 | Part 1, language setting (AC1): `POST /v1/knowledge/bases` takes `language`, one of Postgres's 29 built-in text search configurations, stored as `bases.ts_config` and fixed at creation; the Knowledge screen's create form has a selector. `tests/integration/test_postgres_knowledge_ingest.py::test_a_base_language_sets_the_text_search_config_of_its_chunks` (a German base's chunks use `german`, and its text match finds "Häuser" for "Haus"; a `simple` base's do not), `test_postgres_knowledge_api.py::test_a_base_keeps_the_language_it_was_created_with` (default, list, `422` for an unknown value or on rename, the list equals `pg_ts_config`). Part 2 (eval and decision, AC2) to follow |
+| RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Done | #552 | #570, #571 | AC1 (#570): `POST /v1/knowledge/bases` takes `language`, one of Postgres's 29 built-in text search configurations, stored as `bases.ts_config` and fixed at creation; the Knowledge screen's create form has a selector. `test_postgres_knowledge_ingest.py::test_a_base_language_sets_the_text_search_config_of_its_chunks`, `test_postgres_knowledge_api.py::test_a_base_keeps_the_language_it_was_created_with`. AC2: `tests/integration/test_postgres_knowledge_multilingual.py` on `tests/fixtures/knowledge/multilingual/cases.json` (30 questions, 5 languages): text-channel recall@5 `simple` 0.00 everywhere; own config English 1.00, German 0.33, French 0.67, Spanish 0.83, Hindi 0.83 (`docs/releases/v1.2.0-gate/multilingual-fts.json`). Decision in ADR 0014, amendment "text search language": keep built-in FTS; `pg_textsearch` not adopted (PostgreSQL 17+ only; not measured, no PostgreSQL 17 in the evaluation environment; owner decision) |
 | RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Pending | — | — | — |
 | RAG-10.02 | Web page ingestion | 3 | P2 | Pending | — | — | — |
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | — | — | — |
@@ -456,6 +456,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-13 | RAG-09.08 Done (#552): per-base text search language (#570), multilingual text search evaluation, ADR 0014 amendment. E09: 8 of 8. Next: the E09 exit gate | Claude session |
 | 2026-11-13 | RAG-09.07 Done (#551): operator `feedback-report` command, citations joined from the stamped answer. E09: 7 of 8. Next: RAG-09.08 | Claude session |
 | 2026-11-13 | RAG-09.06 Done (#550): Locust knowledge scenarios (`knowledge`, `chat_search`), `make load-knowledge`, baseline committed. E09: 6 of 8. Next: RAG-09.07 or RAG-09.08 | Claude session |
 | 2026-11-12 | #559 merged (RAG-09.03 part 2, grants API, AC3). RAG-09.03 Done on the part 3 merge (#547): the Knowledge screen's sharing editor with Playwright. E09: 4 of 8. Next: RAG-09.04 (ADR amendment first) | Claude session |
