@@ -1,4 +1,4 @@
-.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak up down reference-up reference-down reference-digest reference-token load web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-hosted web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration knowledge-mutations eval security build
+.PHONY: install dev run api db-setup prune-threads dev-auth dev-jwks dev-token dev-keycloak up down reference-up reference-down reference-digest reference-token load load-knowledge web-install web-dev web-format web-lint web-typecheck web-test web-e2e flows web-build web-hosted web-audit web format lint typecheck test test-unit test-graph test-security test-resilience test-e2e test-integration knowledge-mutations eval security build
 
 install:
 	uv sync --no-dev
@@ -42,10 +42,14 @@ reference-token:
 	@sh scripts/reference_token.sh $(USER_NAME)
 
 # Load scenarios against the running reference stack (ADR 0012): LOAD_SCENARIO=mix|new_thread|
-# follow_up|approval, LOAD_STEP_SECONDS, LOAD_STEP_USERS. Steps are written to LOAD_RESULTS_FILE.
+# follow_up|approval|knowledge|chat_search, LOAD_STEP_SECONDS, LOAD_STEP_USERS. Steps are written
+# to LOAD_RESULTS_FILE. `load-knowledge` runs the knowledge scenarios and builds their baseline.
 load:
 	uv run python -m loadtest.provision
 	uv run python -m locust -f loadtest/locustfile.py --headless --only-summary
+
+load-knowledge:
+	loadtest/run_knowledge.sh
 
 # Development only: a local signing key and JWKS instead of an identity provider.
 dev-auth:

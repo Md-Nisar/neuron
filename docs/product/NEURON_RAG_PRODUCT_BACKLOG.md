@@ -1444,8 +1444,8 @@ Exit gate (Claude report §12): recall@5 and MRR at or above Phase 1 on the same
 - Given concurrent chat and search load, when it runs, then chat p95 change is recorded.
 
 **Technical tasks**
-- [ ] Scenarios and fixtures.
-- [ ] Baseline file.
+- [x] Scenarios and fixtures.
+- [x] Baseline file.
 
 **Changes.** Load test code only.
 

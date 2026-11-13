@@ -1,0 +1,60 @@
+[
+ {
+  "users": 20,
+  "samples": 36,
+  "series": {
+   "api1.cpu": {
+    "mean": 7.3,
+    "max": 23.2
+   },
+   "api1.mem_mib": {
+    "mean": 170.4,
+    "max": 172.9
+   },
+   "api2.cpu": {
+    "mean": 10.0,
+    "max": 92.4
+   },
+   "api2.mem_mib": {
+    "mean": 171.3,
+    "max": 200.5
+   },
+   "host_cpu": {
+    "mean": 31.3,
+    "max": 46.6
+   },
+   "keycloak.cpu": {
+    "mean": 0.8,
+    "max": 4.4
+   },
+   "keycloak.mem_mib": {
+    "mean": 807.8,
+    "max": 814.5
+   },
+   "pg_active": {
+    "mean": 1.2,
+    "max": 3.0
+   },
+   "pg_connections": {
+    "mean": 22.4,
+    "max": 25.0
+   },
+   "postgres.cpu": {
+    "mean": 41.6,
+    "max": 68.0
+   },
+   "postgres.mem_mib": {
+    "mean": 200.1,
+    "max": 261.6
+   },
+   "worker.cpu": {
+    "mean": 42.1,
+    "max": 116.5
+   },
+   "worker.mem_mib": {
+    "mean": 128.4,
+    "max": 211.2
+   }
+  }
+ }
+]

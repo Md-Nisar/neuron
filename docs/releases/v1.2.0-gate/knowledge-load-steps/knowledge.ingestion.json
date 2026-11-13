@@ -1,0 +1,12 @@
+{
+  "documents": 973,
+  "ready": 973,
+  "failed": 0,
+  "unsettled": 0,
+  "pages": 7784,
+  "span_seconds": 180.3,
+  "pages_per_minute": 2589.8,
+  "documents_per_minute": 323.7,
+  "document_seconds_p50": 0.187,
+  "document_seconds_p95": 0.369
+}

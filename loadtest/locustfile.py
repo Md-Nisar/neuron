@@ -3,7 +3,9 @@
 
 """Locust scenarios against the reference stack (ADR 0012 decision 5): `make load`.
 
-LOAD_SCENARIO picks `new_thread`, `follow_up`, `approval` or `mix` (60/30/10). Each virtual
+LOAD_SCENARIO picks `new_thread`, `follow_up`, `approval` or `mix` (60/30/10); the knowledge
+scenarios (RAG-09.06) are `knowledge` (uploads and search) and `chat_search` (`mix` beside search):
+see `loadtest/run_knowledge.sh`. Each virtual
 user signs in as its own Keycloak test user and sends one run at a time, at most one every
 LOAD_THINK_SECONDS. Recorded per run: time to first token (`ttft:<scenario>`) and duration
 (`run:<scenario>`), failed by stream `error` code or HTTP status; 4xx rejections are
@@ -13,14 +15,17 @@ LOAD_THINK_SECONDS. Recorded per run: time to first token (`ttft:<scenario>`) an
 from __future__ import annotations
 
 import itertools
+import json
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 import requests
-from locust import User, constant_throughput, task
+from locust import User, constant_throughput, events, task
 
-from loadtest.identity import TokenSource, username
+from loadtest import knowledge
+from loadtest.identity import KNOWLEDGE_FIRST_USER, TokenSource, username
 from loadtest.shape import StepShape  # noqa: F401  (Locust finds the shape by class)
 from loadtest.sse import RunResult, parse_events, summarise
 
@@ -30,6 +35,12 @@ POOL = int(os.environ.get("LOAD_USERS", "50"))
 THINK_SECONDS = float(os.environ.get("LOAD_THINK_SECONDS", "10"))
 _FOLLOW_UPS_PER_THREAD = 5
 _indexes = itertools.count()
+SEARCH_USERS = int(os.environ.get("LOAD_SEARCH_USERS", "5"))
+SEARCH_SECONDS = float(os.environ.get("LOAD_SEARCH_SECONDS", "1.25"))  # under 60 a minute
+UPLOAD_SECONDS = float(os.environ.get("LOAD_UPLOAD_SECONDS", "3"))
+INGESTION_FILE = Path(os.environ.get("LOAD_INGESTION_FILE", "loadtest-ingestion.json"))
+_knowledge_indexes = itertools.count()
+_bases: list[tuple[str, TokenSource, str, bool]] = []  # host, user, kb_id, upload user
 
 
 class _Session(User):
@@ -149,10 +160,136 @@ class Mix(_Session):
         self.approval()
 
 
-_CLASSES = {"new_thread": NewThread, "follow_up": FollowUp, "approval": Approval, "mix": Mix}
+class _Knowledge(User):
+    """A user with its own base; `upload` and `search` are timed, a 4xx is `rejected:<name>`."""
+
+    abstract = True
+    uploads = False
+
+    def on_start(self) -> None:
+        self.index = KNOWLEDGE_FIRST_USER + next(_knowledge_indexes)
+        self.host_url = HOSTS[self.index % len(HOSTS)]
+        self.tokens = TokenSource(username(self.index))
+        self.http = requests.Session()
+        self.http.trust_env = False
+        self.sent = 0
+        response = self._call("base", "POST", "/v1/knowledge/bases", json={"name": "load"})
+        if response is None:
+            raise RuntimeError("could not create a knowledge base")
+        self.kb_id = str(response.json()["kb_id"])
+        _bases.append((self.host_url, self.tokens, self.kb_id, self.uploads))
+
+    def _call(self, name: str, method: str, path: str, **kwargs: Any) -> requests.Response | None:
+        started = time.monotonic()
+        headers = {"Authorization": f"Bearer {self.tokens.get()}"}
+        error: Exception | None = None
+        try:
+            response = self.http.request(
+                method, f"{self.host_url}{path}", headers=headers, timeout=60, **kwargs
+            )
+        except requests.RequestException as exc:
+            response, error = None, exc
+        elapsed = (time.monotonic() - started) * 1000
+        if response is not None and 400 <= response.status_code < 500:
+            name, error = f"rejected:{name}", RuntimeError(f"http_{response.status_code}")
+        elif response is not None and response.status_code >= 500:
+            error = RuntimeError(f"http_{response.status_code}")
+        self.environment.events.request.fire(
+            request_type="HTTP", name=name, response_time=elapsed,
+            response_length=0, exception=error, context={},
+        )  # fmt: skip
+        return response if error is None else None
+
+    def upload(self) -> bool:
+        content = knowledge.document(self.index, self.sent)
+        files = {"file": (f"report-{self.sent}.txt", content, "text/plain")}
+        path = f"/v1/knowledge/bases/{self.kb_id}/documents"
+        if self._call("upload", "POST", path, files=files) is None:
+            return False  # 429 while the base has its maximum in flight
+        self.sent += 1
+        return True
+
+
+class KnowledgeUpload(_Knowledge):
+    uploads = True
+    wait_time = constant_throughput(1 / UPLOAD_SECONDS)
+
+    @task
+    def go(self) -> None:
+        self.upload()
+
+
+class KnowledgeSearch(_Knowledge):
+    """Filtered hybrid search of its own base, which holds one ingested document."""
+
+    fixed_count = SEARCH_USERS
+    wait_time = constant_throughput(1 / SEARCH_SECONDS)
+
+    def on_start(self) -> None:
+        super().on_start()
+        while not self.upload():
+            time.sleep(2)
+        self.queries = itertools.cycle(knowledge.QUERIES)
+
+    @task
+    def go(self) -> None:
+        body = {"query": next(self.queries), "kb_ids": [self.kb_id], "limit": 5}
+        self._call("search", "POST", "/v1/knowledge/search", json=body)
+
+
+_CLASSES: dict[str, tuple[type[User], ...]] = {
+    "new_thread": (NewThread,),
+    "follow_up": (FollowUp,),
+    "approval": (Approval,),
+    "mix": (Mix,),
+    "knowledge": (KnowledgeUpload, KnowledgeSearch),
+    "chat_search": (Mix, KnowledgeSearch),
+}
 if SCENARIO not in _CLASSES:
     raise SystemExit(f"LOAD_SCENARIO must be one of {sorted(_CLASSES)}")
-for _name, _cls in _CLASSES.items():
-    _cls.abstract = _name != SCENARIO
+for _cls in (NewThread, FollowUp, Approval, Mix, KnowledgeUpload, KnowledgeSearch):
+    _cls.abstract = _cls not in _CLASSES[SCENARIO]
 # Locust collects every User subclass in the module namespace, so the loop variable must go.
-del _name, _cls
+del _cls
+
+
+@events.test_stop.add_listener  # type: ignore[untyped-decorator]
+def _report(**_: Any) -> None:
+    """Wait for the upload users' documents to settle, record ingestion, delete every base."""
+    if not _bases:
+        return
+    docs: list[dict[str, Any]] = []
+    deadline = time.monotonic() + 600
+    for host, tokens, kb_id, uploads in _bases:
+        session = requests.Session()
+        session.trust_env = False
+        session.headers["Connection"] = "close"  # polls are seconds apart, past keep-alive
+        url = f"{host}/v1/knowledge/bases/{kb_id}"
+        while uploads:
+            found = _documents(session, url, tokens)
+            settled = all(d["status"] in {"ready", "failed"} for d in found)
+            if settled or time.monotonic() > deadline:
+                docs.extend(found)
+                break
+            time.sleep(5)
+        session.delete(url, headers={"Authorization": f"Bearer {tokens.get()}"}, timeout=60)
+    if docs:
+        INGESTION_FILE.write_text(json.dumps(knowledge.ingestion(docs), indent=2) + "\n")
+
+
+def _documents(session: requests.Session, url: str, tokens: TokenSource) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    while True:
+        response = session.get(
+            f"{url}/documents?limit=100&offset={len(found)}",
+            headers={"Authorization": f"Bearer {tokens.get()}"},
+            timeout=60,
+        )
+        if response.status_code == 429:
+            time.sleep(5)
+            continue
+        response.raise_for_status()
+        page = response.json()["documents"]
+        found.extend(page)
+        if len(page) < 100:
+            return found
