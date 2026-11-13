@@ -9,14 +9,19 @@ from typing import Any
 
 import psycopg
 import pytest
+from test_postgres_knowledge_api import _Connections
 from test_postgres_knowledge_ingest import _OWNER, _embeddings
+from test_postgres_knowledge_search import _base as _owned_base
 from test_postgres_knowledge_tables import _knowledge_db, worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, _rows, role_db, roles  # noqa: F401
 
+from neuron_agent.config.settings import Settings
 from neuron_agent.knowledge.blobs import LocalBlobStore
 from neuron_agent.knowledge.ingest import Ingestor, connector, fetch_page
 from neuron_agent.knowledge.parsing import HTML, HtmlParser, Limits
 from neuron_agent.knowledge.purge import Purger
+from neuron_agent.knowledge.retrieval import Retriever
+from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.security.egress import FetchedResponse, FetchError
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
@@ -241,3 +246,21 @@ async def test_the_schema_requires_a_file_or_a_url_and_keeps_a_file_once_set(
         await conn.execute(
             "UPDATE knowledge.documents SET status = 'failed' WHERE doc_id = %s", (doc,)
         )
+
+
+async def test_search_and_the_document_list_name_the_page_and_its_fetch_time(
+    web: tuple[RoleDatabase, Ingestor, _Fetch],
+) -> None:
+    db, ingestor, _ = web
+    kb = await _owned_base(db, _OWNER)  # with the owner's grant, as the API creates it
+    doc = await _page(db, kb)
+    assert await ingestor.ingest(doc) == "ready"
+    settings = Settings(env="test").model_copy(update={"knowledge_enabled": True})
+    pool = lambda: _Connections(db.app_dsn)  # noqa: E731
+    result = await Retriever(settings, pool, _embeddings()).search(_OWNER, "tomatoes watered", k=5)  # type: ignore[arg-type]
+    assert result.passages
+    assert {(p.source_url, p.fetched_at is not None) for p in result.passages} == {(_URL, True)}
+    (listed,), _ = await KnowledgeBases(settings, pool).documents(  # type: ignore[arg-type]
+        _OWNER, kb, limit=10, offset=0
+    )
+    assert (listed.source_url, listed.fetched_at) == (_URL, result.passages[0].fetched_at)

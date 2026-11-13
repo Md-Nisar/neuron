@@ -175,14 +175,25 @@ def _shown(passage: Any, **extra: Any) -> dict[str, Any]:
     return {**extra, **_where(passage), "text": passage.text}
 
 
-def _ref(doc_id: uuid.UUID, passage: Any, title: str | None) -> dict[str, Any]:
+def _ref(
+    doc_id: uuid.UUID, passage: Any, title: str | None, source: dict[str, Any]
+) -> dict[str, Any]:
     """What a `cite_id` stands for: the passage and where it is, as a citation shows it."""
     return {
         "doc_id": str(doc_id),
         "chunk_id": str(passage.chunk_id),
         "title": title,
         **_where(passage),
+        **source,
     }
+
+
+def _source(passage: Any) -> dict[str, Any]:
+    """A web page's URL and fetch time (RAG-10.02), as JSON; nothing for a file."""
+    if passage.source_url is None:
+        return {}
+    fetched = passage.fetched_at.isoformat() if passage.fetched_at else None
+    return {"source_url": passage.source_url, "fetched_at": fetched}
 
 
 def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
@@ -243,7 +254,10 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         if result.status == "no_relevant_results":
             return frame(_PREAMBLE, "knowledge", _NO_RESULTS), {}
         return _minted(
-            [(_ref(p.doc_id, p, p.title), _shown(p, title=p.title)) for p in result.passages]
+            [
+                (_ref(p.doc_id, p, p.title, _source(p)), _shown(p, title=p.title))
+                for p in result.passages
+            ]
         )
 
     @tool(response_format="content_and_artifact")
@@ -274,11 +288,15 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             raise ToolException(_NO_PASSAGE) from None
         except AppError:
             raise ToolException(_UNAVAILABLE) from None
-        # The cited passage first, so the size cap drops neighbours before it.
+        # The cited passage first, so the size cap drops neighbours before it. An excerpt's
+        # passages are of the cited one's document: they share its title and source.
         passages = [chunk, *chunk.neighbours]
+        source: dict[str, Any] = {k: ref[k] for k in ("source_url", "fetched_at") if k in ref}
         return _minted(
-            # An excerpt's passages are of the cited one's document, so they share its title.
-            [(_ref(doc_id, p, ref["title"]), _shown(p, ordinal=p.ordinal)) for p in passages]
+            [
+                (_ref(doc_id, p, ref["title"], source), _shown(p, ordinal=p.ordinal))
+                for p in passages
+            ]
         )
 
     return [

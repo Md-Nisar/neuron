@@ -115,7 +115,8 @@ _DOCUMENT_FILTER = (
 )
 _DOCUMENT_COLUMNS = (
     "SELECT d.doc_id, d.kb_id, d.title, d.mime_type, d.size_bytes, d.page_count, d.status,"
-    " d.error_code, d.created_at, d.updated_at"
+    " d.error_code, d.created_at, d.updated_at,"
+    " CASE WHEN d.source_type = 'web' THEN d.source_ref END AS source_url, d.fetched_at"
 )
 _DOCUMENT = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " AND d.doc_id = %(doc)s"
 _FILE = (

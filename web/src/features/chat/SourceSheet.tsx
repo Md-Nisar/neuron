@@ -91,6 +91,20 @@ export function SourceSheet({
               {[pages, ...headings.map(displaySafe)].filter((part) => part !== "").join(" · ")}
             </p>
           )}
+          {citation.source_url !== null && (
+            // A web page (RAG-10.02): the parser kept only an `https` URL.
+            <p className="truncate text-xs text-muted-foreground">
+              <a
+                href={citation.source_url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                {displaySafe(new URL(citation.source_url).host)}
+              </a>
+              {citation.fetched_at !== null && ` · fetched ${citation.fetched_at.slice(0, 10)}`}
+            </p>
+          )}
         </div>
         <Button
           type="button"

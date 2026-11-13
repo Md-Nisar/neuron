@@ -22,7 +22,7 @@ const SECOND = {
   page_end: 7,
 };
 const FIELDS = {
-  citations: [...CITED.citations, SECOND],
+  citations: [CITED.citations[0], SECOND],
   citation_schema_version: 1,
   grounded: true,
 };

@@ -1,4 +1,4 @@
-import { FileText, TriangleAlert } from "lucide-react";
+import { FileText, Globe, TriangleAlert } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -106,7 +106,11 @@ function chip(index: number, citation: Citation, pages: string) {
   return (
     <>
       <span className="font-semibold tabular-nums">{index + 1}</span>
-      <FileText aria-hidden="true" />
+      {citation.source_url === null ? (
+        <FileText aria-hidden="true" />
+      ) : (
+        <Globe aria-hidden="true" />
+      )}
       <span className="truncate">{citationTitle(citation)}</span>
       {pages !== "" && <span className="text-muted-foreground">{pages}</span>}
     </>

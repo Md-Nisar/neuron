@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Citation } from "@/lib/stream";
+import { parseGrounding, type Citation } from "@/lib/stream";
 import { accessibilityViolations } from "@/test/axe";
 import { jsonResponse } from "@/test/sse";
 
@@ -15,6 +15,8 @@ const LEAVE: Citation = {
   headings: ["Annual leave"],
   page_start: 3,
   page_end: 4,
+  source_url: null,
+  fetched_at: null,
 };
 const OTHER: Citation = {
   ...LEAVE,
@@ -102,6 +104,48 @@ describe("the source sheet", () => {
       await user.click(chip(1));
       expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the source.");
       view.unmount();
+    }
+  });
+
+  it("links a web page's citation to its https address, with the fetch date", async () => {
+    const page: Citation = {
+      ...LEAVE,
+      source_url: "https://docs.example.com/leave?x=1",
+      fetched_at: "2026-11-13T09:30:00Z",
+    };
+    const user = userEvent.setup();
+    render(
+      <Sources
+        citations={[page]}
+        grounded
+        deps={{
+          apiUrl: "http://127.0.0.1:8000",
+          getAccessToken: () => "t",
+          onSessionEnded: vi.fn(),
+          fetch: vi.fn(() => Promise.resolve(jsonResponse(200, passage("Text.")))),
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Leave policy/ }));
+
+    const link = within(sheet()).getByRole("link", { name: "docs.example.com" });
+    expect(link).toHaveAttribute("href", page.source_url);
+    expect(link).toHaveAttribute("rel", "noopener noreferrer nofollow");
+    expect(within(sheet()).getByText(/fetched 2026-11-13/)).toBeInTheDocument();
+  });
+
+  it("keeps only an https address from the server as a link", () => {
+    const cited = (source_url: unknown) =>
+      parseGrounding({
+        citation_schema_version: 1,
+        grounded: true,
+        citations: [{ ...LEAVE, source_url }],
+      }).citations[0]?.source_url;
+
+    expect(cited("https://docs.example.com/")).toBe("https://docs.example.com/");
+    for (const bad of ["javascript:alert(1)", "http://docs.example.com/", "not a url", 7]) {
+      expect(cited(bad)).toBeNull();
     }
   });
 
