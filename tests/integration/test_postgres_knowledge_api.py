@@ -309,8 +309,9 @@ async def test_the_owner_sees_live_documents_and_their_status(
     assert one.status_code == 200
     assert set(one.json()) == {
         "doc_id", "kb_id", "title", "mime_type", "size_bytes", "page_count", "status",
-        "error_code", "created_at", "updated_at",
+        "error_code", "created_at", "updated_at", "source_url", "fetched_at",
     }  # fmt: skip
+    assert (one.json()["source_url"], one.json()["fetched_at"]) == (None, None)  # an upload
     assert (one.json()["title"], one.json()["status"]) == ("doc 0", "queued")
     gone = client.client.get(f"/v1/knowledge/documents/{docs[2]}", headers=bearer(alice))
     assert (gone.status_code, gone.json()) == (404, {"detail": "knowledge_document_not_found"})
