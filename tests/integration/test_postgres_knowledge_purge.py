@@ -174,6 +174,8 @@ async def test_an_upload_committing_during_the_base_delete_is_tombstoned_with_it
                 "sha": "a" * 64,
                 "blob": "b" * 32,
                 "key": None,
+                "source": "upload",
+                "ref": None,
                 "kb": kb,
                 "kbs": [kb],
             },

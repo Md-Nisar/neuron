@@ -24,7 +24,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager, suppress
 from types import FrameType
 from typing import Annotated, Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import anyio
 import structlog
@@ -96,6 +96,7 @@ from neuron_agent.schemas.agent import (
     UserThreadsResponse,
 )
 from neuron_agent.schemas.knowledge import (
+    TITLE_MAX,
     DocumentAccepted,
     KnowledgeBase,
     KnowledgeBaseCreate,
@@ -109,6 +110,7 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeSearchHit,
     KnowledgeSearchRequest,
     KnowledgeSearchResponse,
+    WebPageAdd,
     document_title,
 )
 from neuron_agent.security.auth import (
@@ -120,6 +122,7 @@ from neuron_agent.security.auth import (
     persistence_unavailable,
     require_permission,
 )
+from neuron_agent.security.input_policy import validate_safe_url
 from neuron_agent.services.agent_service import AgentService, PreparedRun
 
 settings = get_settings()
@@ -1268,6 +1271,39 @@ async def upload_knowledge_document(
             )
     except AppError as exc:
         raise _http_error("knowledge_document_upload_failed", exc) from exc
+
+
+@app.post("/v1/knowledge/bases/{kb_id}/web-pages", response_model=DocumentAccepted, status_code=202)
+async def add_knowledge_web_page(
+    kb_id: uuid.UUID,
+    body: WebPageAdd,
+    principal: Annotated[Principal | None, Depends(require_permission("knowledge:write"))] = None,
+    idempotency_key: str | None = _IdempotencyKey,
+    user_id: str | None = _UserIdHeader,
+) -> DocumentAccepted:
+    """Add a public `https` web page to one of the caller's knowledge bases; `202` (RAG-10.02).
+
+    The URL's text is checked here; the worker fetches the page and checks every address it
+    connects to. The same URL in the base returns its document.
+    """
+    try:
+        try:
+            url = urlsplit(validate_safe_url(body.url))._replace(fragment="").geturl()
+            # Not the query, which may carry a token: readers of the base see the title.
+            default = urlsplit(url)._replace(query="").geturl()[:TITLE_MAX]
+            title = document_title(body.title or default, None)
+        except (AppError, ValueError):
+            raise UploadRefusedError("url_not_allowed", 422) from None
+        return await knowledge.add_web_page(
+            _knowledge_owner(principal, user_id),
+            kb_id,
+            url=url,
+            title=title,
+            idempotency_key=idempotency_key,
+            roles=_roles(principal),
+        )
+    except AppError as exc:
+        raise _http_error("knowledge_web_page_add_failed", exc) from exc
 
 
 @app.get("/v1/knowledge/bases/{kb_id}/documents", response_model=KnowledgeDocumentsResponse)

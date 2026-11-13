@@ -39,6 +39,7 @@ Neuron Agent implements a centralized, typed error taxonomy rooted in `AppError`
 | `knowledge_base_limit_reached` | 409 | No | Yes | No | User has reached `APP_KNOWLEDGE_MAX_BASES_PER_USER` (20). | Delete old knowledge bases before creating new ones. |
 | `idempotency_key_reused` | 409 | No | Yes | No | `Idempotency-Key` was previously used for a different base or file. | Mint a fresh unique UUID for the idempotency key. |
 | `file_too_large` | 413 | No | Yes | No | Uploaded file exceeds `APP_KNOWLEDGE_PARSE_MAX_BYTES` (50 MB). | Compress or split the document. |
+| `url_not_allowed` | 422 | No | Yes | No | A web page URL that is not public `https`, or has credentials. | Use the page's public `https` address. |
 | `payload_too_large` | 413 | No | Yes | No | Request body exceeds `APP_MAX_REQUEST_BODY_BYTES` (64 KB). | Reduce prompt size. |
 | `export_too_large` | 413 | No | Yes | No | Export response page exceeds `APP_USER_DATA_EXPORT_MAX_BYTES` (5 MB). | Paginate export using smaller `limit` / `message_limit`. |
 | `byte_quota_exceeded` | 413 | No | Yes | No | User stored file bytes exceed `APP_KNOWLEDGE_MAX_BYTES_PER_USER` (1 GB). | Delete old documents. |

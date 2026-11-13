@@ -30,6 +30,9 @@ def _plain_title(value: str) -> str:
     return plain_title(value)
 
 
+TITLE_MAX = 300
+
+
 class KnowledgeBaseCreate(BaseModel):
     """`POST /v1/knowledge/bases` body."""
 
@@ -162,6 +165,17 @@ class KnowledgeErasureResponse(BaseModel):
         return not self.purge_pending
 
 
+class WebPageAdd(BaseModel):
+    """`POST /v1/knowledge/bases/{kb_id}/web-pages` body (RAG-10.02): a public `https` page.
+
+    The worker fetches it; only the URL's text is checked here."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(min_length=9, max_length=2048)
+    title: str | None = Field(default=None, max_length=TITLE_MAX)
+
+
 class DocumentAccepted(BaseModel):
     """`202` for an upload: a new document, the first one of a repeated `Idempotency-Key`, or
     the base's existing copy of the same content. Poll `status_url` for its status."""
@@ -170,9 +184,6 @@ class DocumentAccepted(BaseModel):
     kb_id: uuid.UUID
     status: DocumentStatus
     status_url: str
-
-
-TITLE_MAX = 300
 
 
 def document_title(title: str | None, filename: str | None) -> str:

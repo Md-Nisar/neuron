@@ -78,7 +78,7 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `memories:read` | `GET /v1/me/memories` |
 | `memories:write` | `DELETE /v1/me/memories/{id}`, `DELETE /v1/me/memories` |
 | `knowledge:read` | `GET /v1/knowledge/bases`, `GET /v1/knowledge/bases/{kb_id}/documents`, `GET /v1/knowledge/documents/{doc_id}`, `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`, `GET /v1/knowledge/documents/{doc_id}/file`, `POST /v1/knowledge/search` (in development, v1.1.0) |
-| `knowledge:write` | `POST /v1/knowledge/bases`, `PATCH /v1/knowledge/bases/{kb_id}`, `DELETE /v1/knowledge/bases/{kb_id}`, `POST /v1/knowledge/bases/{kb_id}/documents`, `DELETE /v1/knowledge/documents/{doc_id}` (in development, v1.1.0) |
+| `knowledge:write` | `POST /v1/knowledge/bases`, `PATCH /v1/knowledge/bases/{kb_id}`, `DELETE /v1/knowledge/bases/{kb_id}`, `POST /v1/knowledge/bases/{kb_id}/documents`, `POST /v1/knowledge/bases/{kb_id}/web-pages`, `DELETE /v1/knowledge/documents/{doc_id}` (in development, v1.1.0) |
 | `knowledge:admin` | `GET` and `PUT /v1/knowledge/bases/{kb_id}/grants`: share a base with a token role, for its owner or an `admin` role (RAG-09.03) |
 | `tools:calculator` | lets the agent use the `calculator` tool |
 | `tools:list_knowledge_bases`, `tools:search_knowledge`, `tools:get_document_excerpt` | let the agent use those knowledge tools (in development, v1.1.0) |
@@ -242,6 +242,7 @@ With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases an
 | `PATCH /v1/knowledge/bases/{kb_id}` | `{"name": "..."}`: rename |
 | `DELETE /v1/knowledge/bases/{kb_id}` | `202`: the base and its documents disappear at once, and the worker's purge then deletes their files, rows, chunks and embeddings, then the base |
 | `POST /v1/knowledge/bases/{kb_id}/documents` | Upload: `multipart/form-data` with one `file` part and an optional `title` field (else the file name); optional `Idempotency-Key` header (1–200 printable ASCII characters). `202` with `doc_id`, `kb_id`, `status` (`queued`) and `status_url` |
+| `POST /v1/knowledge/bases/{kb_id}/web-pages` | Add a web page (in development, v1.3.0): JSON `url` (public `https`, no credentials; `422 url_not_allowed` otherwise) and optional `title` (else the URL); optional `Idempotency-Key`. `202` as an upload; the worker fetches it, and the same URL in the base returns its document |
 | `GET /v1/knowledge/bases/{kb_id}/documents?limit&offset` | A page of the base's documents, oldest first, with `total`: `doc_id`, `kb_id`, `title`, `mime_type`, `size_bytes`, `page_count`, `status`, `error_code`, `created_at`, `updated_at` |
 | `GET /v1/knowledge/documents/{doc_id}` | One document: the same fields. `status` is the stage, below |
 | `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}` | The passage behind a citation: its extracted text, headings and pages, with `?neighbours=1` to `3` chunks on each side. Only for a `ready` document; a chunk of another document is `404` |
@@ -281,6 +282,8 @@ A document's `status` moves `queued` → `parsing` → `embedding` → `ready`, 
 | --- | --- |
 | `encrypted_pdf`, `archive_refused`, `macro_refused`, `unsupported_media_type`, `media_type_mismatch`, `empty_file` | The file was refused (see above) |
 | `file_too_large`, `too_many_pages`, `page_too_long`, `too_many_blocks`, `decompression_limit` | Over a cap |
+| `url_not_allowed`, `fetch_http_status`, `fetch_too_many_redirects`, `fetch_too_large`, `unsupported_type`, `unsupported_encoding`, `duplicate_content` | A web page was refused: a non-public address, an error status, too many redirects, over the size cap, not HTML, an unknown charset, or a copy of a page already in the base |
+| `fetch_timeout`, `fetch_failed` | The page's server did not answer on any attempt |
 | `no_text` | Parsed, but no text to index (an image-only file OCR could not read, or headings only) |
 | `parser_timeout`, `parser_failed`, `parser_output_invalid`, `parser_output_too_large` | docling-serve could not convert it; the same file would fail again |
 | `parser_unavailable`, `parser_not_configured` | docling-serve was down for every retry, or is not configured |

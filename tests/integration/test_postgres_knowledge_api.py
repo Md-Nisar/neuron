@@ -108,6 +108,7 @@ def _requests(
         ("POST", "/v1/knowledge/bases", {"name": "probe"}),
         ("GET", f"/v1/knowledge/bases/{kb_id}/documents", None),
         ("POST", f"/v1/knowledge/bases/{kb_id}/documents", None),
+        ("POST", f"/v1/knowledge/bases/{kb_id}/web-pages", {"url": "https://example.com/p"}),
         ("POST", "/v1/knowledge/search", {"query": "secret plans", "kb_ids": [kb_id]}),
         ("GET", f"/v1/knowledge/documents/{doc_id}", None),
         ("GET", f"/v1/knowledge/documents/{doc_id}/chunks/{chunk_id}", None),

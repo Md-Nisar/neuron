@@ -332,6 +332,14 @@ A role grant shares a base with every holder of that role in a verified token (`
   ```
 - **Errors:** `413 file_too_large` (>50MB), `415 unsupported_media_type`, `429 upload_busy`.
 
+### 8.5a Add Web Page
+`POST /v1/knowledge/bases/{kb_id}/web-pages`  
+- **Scope Required:** `knowledge:write`  
+- **Headers:** `Idempotency-Key` (optional, 1–200 ASCII chars).  
+- **Body:** `{"url": "https://...", "title": "optional"}`. A public `https` URL without credentials; the fragment is dropped and the title defaults to the URL.  
+- **Response (`202 Accepted`, `DocumentAccepted`):** as for an upload. The worker fetches the page (public addresses only, on every redirect too) and ingests it; the same URL in the base returns its document.  
+- **Errors:** `422 url_not_allowed`, the upload quotas.
+
 ### 8.6 List Base Documents
 `GET /v1/knowledge/bases/{kb_id}/documents`  
 - **Scope Required:** `knowledge:read`  
