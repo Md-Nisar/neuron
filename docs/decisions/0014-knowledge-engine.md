@@ -498,6 +498,43 @@ spaces or stopping search.
   - stopping search during the build;
   - a public API for re-indexing (an operator task, with no user need).
 
+### Amendment: text search language (RAG-09.08, 2026-11-13, owner decision)
+
+- **Decision:**
+  - Each base chooses its text search language at creation (`language`, one of Postgres's
+    built-in text search configurations). The default stays `simple`.
+  - The choice is stored as `bases.ts_config`. Every chunk's `tsv` is built with it, and the
+    text channel queries the base with it, so it cannot change later. A base in another language
+    is a new base.
+  - Built-in full-text search stays: `pg_textsearch` BM25 is not adopted.
+- **Measured.** `tests/integration/test_postgres_knowledge_multilingual.py` runs a synthetic set
+  of 30 questions in 5 languages, each worded with other forms than its passage. The text
+  channel alone, with recall@5 (equal to MRR here), finds:
+
+  | Language | `simple` | Language's own config |
+  | --- | --- | --- |
+  | English | 0.00 | 1.00 |
+  | German | 0.00 | 0.33 |
+  | French | 0.00 | 0.67 |
+  | Spanish | 0.00 | 0.83 |
+  | Hindi | 0.00 | 0.83 |
+
+  The figures are in `docs/releases/v1.2.0-gate/multilingual-fts.json`.
+  - `simple` misses every case: the query requires every word, and none is folded.
+  - The stemmers fold plurals and most noun forms, but not every verb form. In German,
+    "reparierten" stems to `repariert` and "reparieren" to `repari`; French "inspectent" is not
+    stemmed at all.
+  - Dense retrieval and the reranker still find these passages in hybrid search. This table
+    measures only the text channel.
+- **Why not `pg_textsearch`:**
+  - It supports PostgreSQL 17 and 18 only, and the stack runs `pgvector/pgvector:pg16`.
+  - Adopting it means a major Postgres upgrade and a custom image with the extension built in.
+  - It was not measured: no PostgreSQL 17 could be installed in the evaluation environment.
+  - Revisit it with the PostgreSQL 17 upgrade, on this same set.
+- **Rejected:** changing a base's language after creation (every chunk would be rebuilt);
+  detecting the language per document (a mixed base would then need several configurations per
+  query).
+
 ## Consequences
 
 - One more process (`neuron-worker`) and one or two more containers (docling-serve; an embedding
