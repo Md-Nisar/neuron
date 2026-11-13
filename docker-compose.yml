@@ -41,6 +41,7 @@ x-api-env: &api-env
   # libpq reads the password from here (the throwaway one from init-roles.sql).
   PGPASSWORD: app-local-only
   APP_MEMORY_ENABLED: "true"
+  APP_USER_TOKEN_BUDGET: "10000000"
   APP_KNOWLEDGE_ENABLED: "true"
   APP_KNOWLEDGE_BLOB_ROOT: /var/lib/neuron/knowledge-blobs
   APP_KNOWLEDGE_EMBEDDING_PROVIDER: ${APP_KNOWLEDGE_EMBEDDING_PROVIDER:-fake}
