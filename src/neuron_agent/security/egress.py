@@ -8,10 +8,6 @@ backend sits under an HTTP client and checks each connection as it is opened: it
 host once, refuses the connection unless every resolved address is public, and connects to the
 checked address rather than the name. A redirect to another host opens a new connection, so it
 is checked the same way, and a DNS answer that changes after the check is never used.
-
-`LimitedTransport` puts that backend under an httpx2 client with https on every hop, no proxy
-from the environment and a cap on the bytes read. `fetch_public_https` is the one way ingestion
-fetches a URL a user gave (ADR 0014, amendment "external sources").
 """
 
 from __future__ import annotations
