@@ -1,4 +1,4 @@
-import { FileUp, Info, Trash2 } from "lucide-react";
+import { FileUp, Globe, Info, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import type { DataDeps } from "@/features/data/api";
 import { ApiError } from "@/lib/request";
 import { cn } from "@/lib/utils";
 
-import { deleteDocument, listDocuments, uploadDocument } from "./api";
+import { addWebPage, deleteDocument, listDocuments, uploadDocument } from "./api";
 import {
   documentFailureText,
   knowledgeErrorText,
@@ -123,6 +123,22 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
     }
   }
 
+  async function addPage(url: string): Promise<boolean> {
+    setError(null);
+    setUploading((n) => n + 1);
+    try {
+      await addWebPage(deps, base.kb_id, url, crypto.randomUUID());
+      polls.current = 0;
+      setTick((n) => n + 1);
+      return true;
+    } catch (failure) {
+      setError(`${displaySafe(url)}: ${uploadErrorText(failure)}`);
+      return false;
+    } finally {
+      setUploading((n) => n - 1);
+    }
+  }
+
   async function remove(docId: string): Promise<void> {
     if (deleting.current) return;
     deleting.current = true;
@@ -207,8 +223,39 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
           />
         </label>
       )}
+      {canWrite && (
+        <form
+          aria-label="Add a web page"
+          className="flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const url = new FormData(form).get("url");
+            if (typeof url === "string" && url !== "")
+              void addPage(url).then((added) => {
+                if (added) form.reset();
+              });
+          }}
+        >
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border px-3 text-sm focus-within:ring-[3px] focus-within:ring-ring/50">
+            <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            <span className="sr-only">Web page address</span>
+            <input
+              name="url"
+              type="url"
+              required
+              maxLength={2048}
+              placeholder="https://"
+              className="min-w-0 flex-1 bg-transparent py-1.5 outline-none"
+            />
+          </label>
+          <Button type="submit" size="sm" variant="outline">
+            Add page
+          </Button>
+        </form>
+      )}
       <p role="status" className="text-sm text-muted-foreground empty:hidden">
-        {uploading > 0 ? "Uploading…" : ""}
+        {uploading > 0 ? "Adding…" : ""}
       </p>
       {error !== null && (
         <p role="alert" className="text-sm whitespace-pre-line text-destructive">
@@ -222,7 +269,10 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
             <li key={doc.doc_id} className="px-4 py-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <p className="min-w-0 flex-1 truncate text-sm">{title}</p>
-                <span className="text-xs text-muted-foreground">{size(doc.size_bytes)}</span>
+                {/* A web page has no size until it is fetched. */}
+                {doc.size_bytes > 0 && (
+                  <span className="text-xs text-muted-foreground">{size(doc.size_bytes)}</span>
+                )}
                 <Badge variant={doc.status === "failed" ? "destructive" : "secondary"}>
                   {STATUS[doc.status]}
                 </Badge>

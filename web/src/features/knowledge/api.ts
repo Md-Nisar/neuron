@@ -80,6 +80,25 @@ export function uploadDocument(
   });
 }
 
+/**
+ * Add a public `https` web page (RAG-10.02); the server's worker fetches it. The same URL in
+ * the base, or a retry with the same `idempotencyKey`, returns the first document.
+ */
+export function addWebPage(
+  deps: DataDeps,
+  kbId: string,
+  url: string,
+  idempotencyKey: string,
+): Promise<DocumentAccepted> {
+  return call(deps, {
+    path: `${base(kbId)}/web-pages`,
+    method: "POST",
+    body: { url },
+    idempotencyKey,
+    parse: parseAccepted,
+  });
+}
+
 /** Tombstone a document; its file, chunks and index entries are purged soon after. */
 export function deleteDocument(deps: DataDeps, docId: string): Promise<undefined> {
   return call(deps, {

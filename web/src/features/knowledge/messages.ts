@@ -72,6 +72,16 @@ const FAILURES: Record<string, string> = {
   parser_output_too_large: UNREADABLE,
   parser_unavailable: "Document processing was unavailable. Upload the file again later.",
   parser_not_configured: "Document processing is not set up on this service.",
+  // A web page (RAG-10.02).
+  url_not_allowed: "Only public https web pages can be added.",
+  fetch_http_status: "The web page could not be loaded: its site answered with an error.",
+  fetch_too_many_redirects: "The web page redirected too many times.",
+  fetch_too_large: TOO_LARGE,
+  fetch_timeout: "The web page's site did not answer. Add it again later.",
+  fetch_failed: "The web page's site could not be reached. Add it again later.",
+  unsupported_type: "This address is not a web page. Upload the file instead.",
+  unsupported_encoding: "The web page's text encoding is not supported.",
+  duplicate_content: "This page is already in the knowledge base.",
   processing_locality_forbidden:
     "This knowledge base is self-hosted only, and this service has no self-hosted embedding model.",
 };

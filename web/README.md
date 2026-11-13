@@ -165,6 +165,8 @@ after the server's `Retry-After` (5 seconds without one), at most three times.
 Opening a base shows its documents and, above the upload area, where their text is processed.
 Files are uploaded by drop or picker, one request each with its own `Idempotency-Key`, and the list
 is fetched again every 2 seconds while any document is still queued or being processed.
+A web page is added by its `https` address (`POST .../web-pages`, with its own `Idempotency-Key`);
+the server's worker fetches it, and it shows no size until then. A refused address stays in the field.
 A failed document's `error_code` and an upload refusal's code (quotas included) map to fixed
 wording in `messages.ts`; an unknown code gets a general message.
 

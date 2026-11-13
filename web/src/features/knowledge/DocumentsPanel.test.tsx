@@ -90,6 +90,41 @@ describe("documents", () => {
     expect(screen.getByText(/indexed only by models this service runs itself/)).toBeInTheDocument();
   });
 
+  it("adds a web page by its address, listed as queued with no size until it is fetched", async () => {
+    const page = { ...doc("queued"), title: "https://docs.example.com/leave", size_bytes: 0 };
+    const { fetch, user } = setup([[], [page]]);
+
+    await user.type(screen.getByLabelText("Web page address"), "https://docs.example.com/leave");
+    await user.click(screen.getByRole("button", { name: "Add page" }));
+
+    expect(await screen.findByText("Queued")).toBeInTheDocument();
+    const [url, init] = fetch.mock.calls.find(([, i]) => i?.method === "POST") ?? [];
+    expect((url as URL).pathname).toBe(`/v1/knowledge/bases/${KB}/web-pages`);
+    expect(JSON.parse(init?.body as string)).toEqual({ url: "https://docs.example.com/leave" });
+    expect(new Headers(init?.headers).get("Idempotency-Key")).toMatch(/^[0-9a-f-]{36}$/);
+    expect(screen.getByLabelText("Web page address")).toHaveValue("");
+    expect(screen.queryByText("0 B")).toBeNull();
+  });
+
+  it("keeps a refused address in the field and says why", async () => {
+    const { user } = setup([[]], {
+      uploads: [jsonResponse(422, { detail: "url_not_allowed" })],
+    });
+
+    await user.type(screen.getByLabelText("Web page address"), "https://127.0.0.1/");
+    await user.click(screen.getByRole("button", { name: "Add page" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "https://127.0.0.1/: Only public https web pages can be added.",
+    );
+    expect(screen.getByLabelText("Web page address")).toHaveValue("https://127.0.0.1/");
+  });
+
+  it("explains a page that failed to load", () => {
+    expect(documentFailureText("fetch_timeout")).toMatch(/did not answer/);
+    expect(documentFailureText("duplicate_content")).toMatch(/already in the knowledge base/);
+  });
+
   it("shows an uploaded PDF as queued, then as ready, without a reload", async () => {
     // Real time still passes (for the queries' own waits); the polls are driven by hand.
     vi.useFakeTimers({ shouldAdvanceTime: true });
