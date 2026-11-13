@@ -36,7 +36,8 @@ Facts checked against the repository on 2026-11-03 (`main` at `89a3020`, after v
 | --- | --- | --- | --- |
 | **v1.1.0** "Personal Knowledge" | 0 and 1 | RAG-E00 to RAG-E08 | Private knowledge bases: upload, durable ingestion, hybrid retrieval, validated citations, delete, erase and export, Knowledge screen |
 | v1.2.0 (proposed) | 2 | RAG-E09 | Rerank, re-index, role-shared knowledge bases, nightly retrieval gate, load test |
-| Later, evidence-gated | 3, 4, 5 | RAG-E10 to RAG-E12 | External sources, specialised tools, platform features. Each needs measured evidence before it starts |
+| v1.3.0 (proposed, owner 2026-11-13) | 3 | RAG-E10: RAG-10.01, RAG-10.05, RAG-10.02 | Safe outbound fetching, web page ingestion, self-hosted chat model; RAG-10.03 and RAG-10.04 deferred |
+| Later, evidence-gated | 3, 4, 5 | RAG-10.03, RAG-10.04, RAG-E11, RAG-E12 | GitHub and MCP sources, specialised tools, platform features. Each needs measured evidence before it starts |
 
 The research puts Phases 0–2 at 13–18 engineer-weeks (estimated, not measured), and Phase 1 alone at 7–10.
 
