@@ -1,0 +1,20 @@
+{
+  "model": "nvidia:nvidia/nemotron-3-ultra-550b-a55b",
+  "retrieval": {
+    "dataset_version": "1.2.0",
+    "answerable_cases": 64,
+    "unanswerable_cases": 12,
+    "recall_at_5": 0.984,
+    "mrr": 0.833,
+    "citation_precision": 0.728,
+    "cited_correctly": 0.969,
+    "abstention_accuracy": 1.0
+  },
+  "not_cited_correctly": [
+    "answerable-044",
+    "answerable-045"
+  ],
+  "not_abstained": [],
+  "step_limit": [],
+  "infrastructure_errors": []
+}
