@@ -12,7 +12,7 @@
 
 Neuron Agent organizes its relational tables into two distinct PostgreSQL schemas:
 1. **`public` schema:** Contains LangGraph conversation checkpoints, thread metadata, feedback ratings, user memory notes, and multi-instance concurrency guards.
-2. **`knowledge` schema:** Contains isolated tables for knowledge bases, documents, parsed chunks, vector embeddings, and the Procrastinate task queue.
+2. **`knowledge` schema:** Contains isolated tables for knowledge bases, role grants, documents, parsed chunks, vector embeddings, and the Procrastinate task queue.
 
 ```mermaid
 erDiagram
@@ -36,7 +36,7 @@ Maintains the forward-only migration log applied by `persistence.cli setup`.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `version` | `integer` | PRIMARY KEY | Sequential migration number (1–27). |
+| `version` | `integer` | PRIMARY KEY | Sequential migration number (1–29). |
 | `name` | `text` | NOT NULL | Human-readable migration identifier. |
 | `applied_at` | `timestamptz` | NOT NULL DEFAULT `now()` | Timestamp when migration was executed. |
 
@@ -130,10 +130,10 @@ Managed by LangGraph's `AsyncPostgresSaver.setup()`:
 
 ## 3. Knowledge Schema Tables (`knowledge.*`)
 
-Created by migrations 17–27 when `APP_KNOWLEDGE_ENABLED=true`.
+Created by migrations 17–29 when `APP_KNOWLEDGE_ENABLED=true`.
 
 ### 3.1 `knowledge.index_profiles`
-Active embedding model configuration profiles.
+Active, building, and retired embedding model configuration profiles (RAG-09.04).
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
@@ -144,32 +144,52 @@ Active embedding model configuration profiles.
 | `chunker` | `text` | NOT NULL | Chunking strategy identifier. |
 | `status` | `text` | NOT NULL | Status (`building`, `active`, `retired`). |
 
+- **Unique Partial Indexes (Migrations 28 & 29):**
+  - `index_profiles_one_active` UNIQUE ON `knowledge.index_profiles ((true)) WHERE status = 'active'`
+  - `index_profiles_one_building` UNIQUE ON `knowledge.index_profiles ((true)) WHERE status = 'building'`
+
 ---
 
 ### 3.2 `knowledge.bases`
-User-owned knowledge base containers.
+Knowledge base containers owned by a creator or shared with verified roles.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `kb_id` | `uuid` | PRIMARY KEY DEFAULT `gen_random_uuid()` | Unique knowledge base UUID. |
-| `owner_key` | `text` | NOT NULL | 64-hex HMAC owner key of creator. |
-| `name` | `text` | NOT NULL | User-provided name (1–80 characters). |
+| `owner_key` | `text` | NOT NULL CHECK (`owner_key ~ '^[0-9a-f]{64}$'`) | 64-hex HMAC owner key of creator. |
+| `name` | `text` | NOT NULL CHECK (`char_length(name) BETWEEN 1 AND 80`) | User-provided name (1–80 characters). |
 | `processing` | `text` | NOT NULL DEFAULT `'hosted'` | Locality rule (`hosted` or `self_hosted`). |
-| `ts_config` | `regconfig` | NOT NULL DEFAULT `'simple'::regconfig` | PostgreSQL full-text search dictionary configuration. |
-| `profile_id` | `integer` | REFERENCES `knowledge.index_profiles` | Active embedding profile. |
+| `ts_config` | `regconfig` | NOT NULL DEFAULT `'simple'::regconfig` | PostgreSQL full-text search dictionary configuration (RAG-09.08). |
+| `profile_id` | `smallint` | REFERENCES `knowledge.index_profiles` | Active embedding profile ID. |
 | `created_at` | `timestamptz` | NOT NULL DEFAULT `now()` | Creation timestamp. |
 | `deleted_at` | `timestamptz` | NULL | Tombstone timestamp when deleted. |
 
 ---
 
-### 3.3 `knowledge.documents`
+### 3.3 `knowledge.grants`
+Access control entries granting permissions to the creator or verified token roles (RAG-09.03).
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `kb_id` | `uuid` | REFERENCES `knowledge.bases` ON DELETE CASCADE | Parent knowledge base UUID. |
+| `subject_type` | `text` | NOT NULL CHECK (`subject_type IN ('owner', 'role')`) | Subject type: creator (`owner`) or token role (`role`). |
+| `subject` | `text` | NOT NULL CHECK (`char_length(subject) BETWEEN 1 AND 200 AND (subject_type <> 'owner' OR subject ~ '^[0-9a-f]{64}$')`) | Role identifier or 64-hex HMAC owner key. |
+| `access` | `text` | NOT NULL CHECK (`access IN ('read', 'write', 'admin')`) | Granted access level. |
+| `granted_by` | `text` | NOT NULL CHECK (`granted_by ~ '^[0-9a-f]{64}$'`) | HMAC owner key of the grantor. |
+| `created_at` | `timestamptz` | NOT NULL DEFAULT `now()` | Grant timestamp. |
+
+- **Primary Key:** `(kb_id, subject_type, subject)`
+
+---
+
+### 3.4 `knowledge.documents`
 Metadata and status of uploaded files.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `doc_id` | `uuid` | PRIMARY KEY DEFAULT `gen_random_uuid()` | Document UUID. |
 | `kb_id` | `uuid` | REFERENCES `knowledge.bases` ON DELETE CASCADE | Parent knowledge base. |
-| `uploaded_by` | `text` | NOT NULL | HMAC owner key of uploader. |
+| `uploaded_by` | `text` | NOT NULL CHECK (`uploaded_by ~ '^[0-9a-f]{64}$'`) | HMAC owner key of uploader. |
 | `title` | `text` | NOT NULL | User title or sanitized file name. |
 | `mime_type` | `text` | NOT NULL | Validated MIME type (PDF, docx, etc.). |
 | `size_bytes` | `bigint` | NOT NULL | Raw file byte size. |
@@ -191,7 +211,7 @@ Metadata and status of uploaded files.
 
 ---
 
-### 3.4 `knowledge.chunks`
+### 3.5 `knowledge.chunks`
 Extracted text passages generated by the chunker.
 
 | Column | Type | Constraints | Description |
@@ -215,7 +235,7 @@ Extracted text passages generated by the chunker.
 
 ---
 
-### 3.5 `knowledge.embeddings`
+### 3.6 `knowledge.embeddings`
 Vector representations of chunk texts.
 
 | Column | Type | Constraints | Description |
@@ -229,7 +249,7 @@ Vector representations of chunk texts.
 - **Foreign Key:** `(chunk_id, kb_id) REFERENCES knowledge.chunks (chunk_id, kb_id) ON DELETE CASCADE`
 - **Indexes:**
   - `embeddings_profile_kb_idx` ON `knowledge.embeddings (profile_id, kb_id)`
-  - Partial HNSW Index: `embeddings_p1_hnsw` ON `knowledge.embeddings USING hnsw ((embedding::halfvec(1024)) halfvec_cosine_ops) WHERE profile_id = 1`
+  - Partial HNSW Indexes: `embeddings_p{profile_id}_hnsw` ON `knowledge.embeddings USING hnsw ((embedding::halfvec(dimensions)) halfvec_cosine_ops) WHERE profile_id = {profile_id}`. Created concurrently for active and building profiles; dropped when retired.
 
 ---
 
@@ -251,8 +271,24 @@ CREATE POLICY kb_scope ON knowledge.embeddings
 ```
 
 ### Transaction Execution Contract
-Before querying or modifying `chunks` or `embeddings`, the application executes:
+Before querying or modifying `chunks` or `embeddings`, the application evaluates `AllowedKbs` (owner grant and verified token roles) and sets:
 ```sql
 SELECT set_config('neuron.kb_ids', 'uuid1,uuid2', true);
 ```
 If `neuron.kb_ids` is not explicitly set in the active transaction, the RLS policy evaluates to an empty array, returning zero rows.
+
+---
+
+## 5. Worker Column Privilege Matrix
+
+In accordance with least-privilege security design (ADR 0008 & ADR 0014), the `neuron_worker` database role is strictly partitioned from migration and application roles:
+
+| Table | DML Privileges Granted to `neuron_worker` | Restricted Columns Granted for `UPDATE` |
+| :--- | :--- | :--- |
+| `knowledge.index_profiles` | `SELECT` | `status` (for re-index swap and locking) |
+| `knowledge.bases` | `SELECT`, `DELETE` | `profile_id` (for re-index swap) |
+| `knowledge.grants` | None | None |
+| `knowledge.documents` | `SELECT`, `DELETE` | `status`, `error_code`, `parser_version`, `page_count`, `embedding_tokens`, `updated_at` |
+| `knowledge.chunks` | `SELECT`, `INSERT`, `DELETE` | None (immutable once inserted) |
+| `knowledge.embeddings` | `SELECT`, `INSERT`, `DELETE` | None (immutable once inserted; delete used for purge) |
+| `knowledge.procrastinate_jobs` | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Full job queue management |

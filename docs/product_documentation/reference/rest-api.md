@@ -4,7 +4,7 @@
 > **Diátaxis Mode:** Reference (Information-Oriented)  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.3 (Reference Information) and Diátaxis (Reference)  
 > **API Version:** v1 (`/v1/*`)  
-> **Endpoint Count:** 29 distinct operations  
+> **Endpoint Count:** 31 distinct operations  
 > **Base URL:** `http://127.0.0.1:8000` (Local) / `https://<domain>` (Production)  
 > **Content-Type:** `application/json` (unless multipart specified)  
 > **Code Traceability:** `src/neuron_agent/api/main.py`, `src/neuron_agent/schemas/`
@@ -46,6 +46,13 @@ Responses returning `429 Too Many Requests` or temporary capacity `503 Service U
 - **Knowledge Ingestion Concurrency (`429 ingestion_concurrency_exceeded`):** Fixed `Retry-After: 30`.
 - **Server Shutdown in Progress (`503 shutting_down`):** Fixed `Retry-After: 1`.
 - **Token Bucket Rate Limiter (`429 rate_limited`):** Dynamic integer specifying wait duration until the bucket allows next request.
+
+### 1.5 CORS Policy & Methods
+When cross-origin resource sharing is configured via `APP_CORS_ALLOWED_ORIGINS`:
+- **Allowed HTTP Methods:** `GET, POST, PATCH, PUT, DELETE` (includes `PUT` for role grants replacement).
+- **Allowed Headers:** `Authorization, Content-Type, Idempotency-Key, X-Correlation-ID`.
+- **Exposed Headers:** `Retry-After, X-Correlation-ID`.
+- **Max Age:** 600 seconds.
 
 ---
 
@@ -282,42 +289,106 @@ Responses returning `429 Too Many Requests` or temporary capacity `503 Service U
 ### 8.1 List Knowledge Bases
 `GET /v1/knowledge/bases`  
 - **Scope Required:** `knowledge:read`  
-- **Response (`200 OK`, `KnowledgeBasesResponse`):** Array of the live knowledge bases the caller owns or that are shared with their roles. Each `KnowledgeBase` has `kb_id`, `name`, `processing`, `created_at` and `access`, the caller's access: `owner`, `admin`, `write` or `read` (RAG-09.03). Clients use it to offer only the actions the server allows; the server checks again on every request.
+- **Response (`200 OK`, `KnowledgeBasesResponse`):** Array of the live knowledge bases the caller owns or that are shared with their verified token roles.
+  ```json
+  {
+    "bases": [
+      {
+        "kb_id": "8f3b2e1a-4c5d-6e7f-8a9b-0c1d2e3f4a5b",
+        "name": "Engineering Docs",
+        "processing": "hosted",
+        "language": "english",
+        "created_at": "2026-11-13T10:00:00Z",
+        "access": "owner"
+      }
+    ]
+  }
+  ```
+  - `access`: Indicates the caller's access level (`owner`, `admin`, `write`, `read`). Clients offer actions matching this level; the server enforces the same check on every request.
 
 ### 8.2 Create Knowledge Base
 `POST /v1/knowledge/bases`  
 - **Scope Required:** `knowledge:write`  
 - **Request Body (`KnowledgeBaseCreate`):**
   ```json
-  {"name": "Engineering Docs", "processing": "hosted"}
+  {
+    "name": "Engineering Docs",
+    "processing": "hosted",
+    "language": "english"
+  }
   ```
-- **Response (`201 Created`, `KnowledgeBase`):** Returns created knowledge base object.  
+  - `name` (string, required): 1 to 80 characters.
+  - `processing` (choice, default `"hosted"`): `"hosted"` or `"self_hosted"`.
+  - `language` (choice, default `"simple"`): One of 29 PostgreSQL full-text search configurations (`simple`, `english`, `german`, `french`, `spanish`, `hindi`, etc.). Fixed at creation; cannot be changed on rename.
+- **Response (`201 Created`, `KnowledgeBase`):** Returns created knowledge base object with `access="owner"`.  
 - **Error:** `409 knowledge_base_limit_reached` (max 20 bases per user).
 
 ### 8.3 Rename Knowledge Base
 `PATCH /v1/knowledge/bases/{kb_id}`  
 - **Scope Required:** `knowledge:write`  
+- **Access Required:** Caller must be the `owner` or have `admin` role grant on the base.  
 - **Request Body (`KnowledgeBaseUpdate`):** `{"name": "New Name"}`  
-- **Response (`200 OK`):** Updated `KnowledgeBase`.
+- **Response (`200 OK`):** Updated `KnowledgeBase`.  
+- **Error:** `403 knowledge_access_denied` for members without `admin` access; `404 knowledge_base_not_found` for bases not visible to caller.
 
 ### 8.4 Delete Knowledge Base
 `DELETE /v1/knowledge/bases/{kb_id}`  
 - **Scope Required:** `knowledge:write`  
+- **Access Required:** Caller must be the `owner` (`admin` or `write` roles cannot delete bases).  
 - **Description:** Tombstones the knowledge base and queues background purge.  
-- **Response:** `202 Accepted`
+- **Response:** `202 Accepted`  
+- **Error:** `403 knowledge_access_denied` if caller has `admin`/`write`/`read` grant but is not the creator; `404 knowledge_base_not_found` if not visible.
 
-### 8.4a Share a Knowledge Base by Role
-`GET /v1/knowledge/bases/{kb_id}/grants` and `PUT /v1/knowledge/bases/{kb_id}/grants`  
-- **Scope Required:** `knowledge:admin`, and the base's owner or a role with `admin` access to it (RAG-09.03).  
-- **Request Body (`KnowledgeGrants`, `PUT`):** `{"grants": [{"role": "finance", "access": "read"}]}`. Replaces every role grant of the base: a role left out loses its access from the next request. At most 50, each role once, 1 to 200 characters without control characters or outer spaces; `access` is `read` (list, search, cite, download), `write` (also upload and delete documents) or `admin` (also rename and manage grants).  
-- **Response (`200 OK`, `KnowledgeGrants`):** The base's role grants, sorted by role. The owner's own access is not listed.  
-- **Errors:** `403 knowledge_access_denied` for a member without `admin` access; `404 knowledge_base_not_found` for a base the caller cannot see. Each change is audited as `knowledge_grant_changed` with the role and access level (`none` for a revoke).
+### 8.5 Get Knowledge Grants
+`GET /v1/knowledge/bases/{kb_id}/grants`  
+- **Scope Required:** `knowledge:admin`  
+- **Access Required:** Base creator (`owner`) or a role with `admin` access to the base (RAG-09.03).  
+- **Response (`200 OK`, `KnowledgeGrants`):**
+  ```json
+  {
+    "grants": [
+      {
+        "role": "engineering",
+        "access": "write"
+      },
+      {
+        "role": "support",
+        "access": "read"
+      }
+    ]
+  }
+  ```
+  Grants are sorted alphabetically by role. The base owner's own implicit access is not listed.
 
-A role grant shares a base with every holder of that role in a verified token (`APP_AUTH_ROLES_CLAIM`). Members see it in `GET /v1/knowledge/bases` and in search; an action their access does not allow is `403 knowledge_access_denied`. Only the owner deletes a base.
+### 8.6 Replace Knowledge Grants
+`PUT /v1/knowledge/bases/{kb_id}/grants`  
+- **Scope Required:** `knowledge:admin`  
+- **Access Required:** Base creator (`owner`) or a role with `admin` access to the base (RAG-09.03).  
+- **Request Body (`KnowledgeGrants`):**
+  ```json
+  {
+    "grants": [
+      {
+        "role": "engineering",
+        "access": "write"
+      },
+      {
+        "role": "analysts",
+        "access": "read"
+      }
+    ]
+  }
+  ```
+  - Replaces all role grants on the base atomically. Any role omitted loses access immediately on the next request.
+  - Maximum 50 grants. Each role name must appear once, 1–200 characters without control characters or outer whitespace.
+  - `access`: `"read"`, `"write"`, or `"admin"`.
+- **Response (`200 OK`, `KnowledgeGrants`):** Updated grants list.  
+- **Errors:** `403 knowledge_access_denied` for non-admin members; `404 knowledge_base_not_found` for non-visible bases. Emits `knowledge_grant_changed` audit event.
 
-### 8.5 Upload Document
+### 8.7 Upload Document
 `POST /v1/knowledge/bases/{kb_id}/documents`  
 - **Scope Required:** `knowledge:write`  
+- **Access Required:** Caller must have `owner`, `admin`, or `write` access.  
 - **Content-Type:** `multipart/form-data`  
 - **Headers:** `Idempotency-Key` (optional, 1–200 ASCII chars).  
 - **Form Fields:** `file` (binary, required), `title` (string, optional).  
@@ -330,31 +401,29 @@ A role grant shares a base with every holder of that role in a verified token (`
     "status_url": "/v1/knowledge/documents/a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
   }
   ```
-- **Errors:** `413 file_too_large` (>50MB), `415 unsupported_media_type`, `429 upload_busy`.
+- **Errors:** `403 knowledge_access_denied`, `413 file_too_large` (>50MB), `415 unsupported_media_type`, `429 upload_busy`.
 
-### 8.6 List Base Documents
+### 8.8 List Base Documents
 `GET /v1/knowledge/bases/{kb_id}/documents`  
 - **Scope Required:** `knowledge:read`  
+- **Access Required:** Caller must have `owner`, `admin`, `write`, or `read` access.  
 - **Query Parameters:** `limit` (default 50), `offset` (default 0).  
 - **Response (`200 OK`, `KnowledgeDocumentsResponse`):** Paginated documents list.
 
-### 8.7 Get Document Details
+### 8.9 Get Document Details
 `GET /v1/knowledge/documents/{doc_id}`  
 - **Scope Required:** `knowledge:read`  
+- **Access Required:** Caller must have access to parent base.  
 - **Response (`200 OK`, `KnowledgeDocument`):** Status, error codes, page count, sizes.
 
-### 8.8 Get Document Chunk
+### 8.10 Get Document Chunk
 `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}`  
 - **Scope Required:** `knowledge:read`  
+- **Access Required:** Caller must have access to parent base.  
 - **Query Parameters:** `neighbours` (integer, 0 to 3, default 0).  
 - **Response (`200 OK`, `KnowledgeChunk`):** Extracted text, headings, pages, and surrounding neighbor chunks.
 
-### 8.9 Download Original File
-`GET /v1/knowledge/documents/{doc_id}/file`  
-- **Scope Required:** `knowledge:read`  
-- **Response (`200 OK`):** Raw file stream with `Content-Disposition: attachment`.
-
-### 8.10 Search Knowledge Bases
+### 8.11 Search Knowledge Bases
 `POST /v1/knowledge/search`  
 - **Scope Required:** `knowledge:read`  
 - **Request Body (`KnowledgeSearchRequest`):**
@@ -369,29 +438,47 @@ A role grant shares a base with every holder of that role in a verified token (`
   ```json
   {
     "status": "ok",
+    "reranked": true,
     "results": [
       {
-        "chunk_id": "...",
-        "doc_id": "...",
-        "kb_id": "...",
+        "chunk_id": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
+        "doc_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+        "kb_id": "8f3b2e1a-4c5d-6e7f-8a9b-0c1d2e3f4a5b",
         "title": "Architecture Spec",
         "ordinal": 4,
-        "text": "...",
-        "headings": ["Security"],
+        "text": "The token budget uses a sliding minute window...",
+        "headings": ["Security", "Token Budget"],
         "page_start": 10,
         "page_end": 10,
-        "score": 0.032
+        "score": 0.942
       }
     ]
   }
   ```
+  - `reranked`: `true` when a cross-encoder reranker successfully scored and reordered results; `false` when reranker is disabled or when search fell back to RRF ordering.
 
-### 8.11 Delete Document
+### 8.12 Download Original File
+`GET /v1/knowledge/documents/{doc_id}/file`  
+- **Scope Required:** `knowledge:read`  
+- **Access Required:** Caller must have access to parent base.  
+- **Response (`200 OK`):** Raw file stream with `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`.
+
+### 8.13 Delete Document
 `DELETE /v1/knowledge/documents/{doc_id}`  
 - **Scope Required:** `knowledge:write`  
+- **Access Required:** Caller must have `owner`, `admin`, or `write` access.  
 - **Response:** `202 Accepted`
 
-### 8.12 Erase All Knowledge
+### 8.14 Erase All Knowledge
 `DELETE /v1/me/knowledge`  
 - **Scope Required:** `data:erase`  
-- **Response (`200 OK`, `KnowledgeErasureResponse`):** Erased base count, document count, and purge pending status.
+- **Description:** Tombstones all of the caller's knowledge bases and documents (including their uploads to bases shared with them) and queues their asynchronous purge.  
+- **Response (`200 OK`, `KnowledgeErasureResponse`):**
+  ```json
+  {
+    "erased_base_count": 2,
+    "erased_document_count": 8,
+    "purge_pending": false,
+    "complete": true
+  }
+  ```

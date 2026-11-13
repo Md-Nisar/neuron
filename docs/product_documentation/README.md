@@ -1,16 +1,16 @@
 # Neuron Agent — Official Product Documentation Suite
 
 > **Standard Alignment:** Structured in accordance with ISO/IEC/IEEE 26514:2022 (*Software User Documentation*) principles and Diátaxis documentation modes  
-> **Product Version:** 1.1.0  
+> **Product Version:** 1.2.0  
 > **Status:** Production-Ready & Code-Verified  
-> **Repository Baseline:** Commit `c726975` (Release v1.1.0)  
+> **Repository Baseline:** Release v1.2.0 (Commit `7e28daa`)  
 > **Documentation Custodian:** Md Nisar Ahmed (`nisar.a@entomo.co`)
 
 ---
 
 ## 1. Documentation Purpose and Scope
 
-This document suite serves as the definitive, production-grade technical and operational manual for **Neuron Agent** (version 1.1.0). Every procedure, architecture diagram, configuration parameter, API contract, database schema, and operational runbook in this suite is directly traced to, and validated against, the underlying Python service codebase (`src/neuron_agent/`), the frontend single-page application (`web/`), the automated test suite (`tests/`), and formal architectural decision records (`docs/decisions/` ADR 0001 through ADR 0014).
+This document suite serves as the definitive, production-grade technical and operational manual for **Neuron Agent** (version 1.2.0). Every procedure, architecture diagram, configuration parameter, API contract, database schema, and operational runbook in this suite is directly traced to, and validated against, the underlying Python service codebase (`src/neuron_agent/`), the frontend single-page application (`web/`), the automated test suite (`tests/`), and formal architectural decision records (`docs/decisions/` ADR 0001 through ADR 0014).
 
 ### Objectives
 1. **Adherence to International Information Design Standards:** Conforms to ISO/IEC/IEEE 26514:2022 recommendations for accuracy, completeness, clarity, conciseness, maintainability, and task-orientation.
@@ -63,22 +63,22 @@ docs/product_documentation/
 ├── how-to/
 │   ├── authentication-and-authorization.md          # OIDC/JWT, JWKS caching, scopes, role mapping, dev tokens
 │   ├── persistence-and-storage.md                   # PostgreSQL checkpointer, pool tuning, migrations, roles
-│   ├── knowledge-engine-rag.md                      # Knowledge bases, document upload, docling-serve, hybrid search
+│   ├── knowledge-engine-rag.md                      # Knowledge bases, sharing, reranking, reindexing, hybrid search
 │   ├── mcp-integration-and-approvals.md             # Streamable HTTP MCP, tool pinning, human approval gates
 │   ├── memory-and-privacy.md                        # User note engine, remember/recall/forget, GDPR erase/export
 │   ├── web-application.md                           # React/Vite web UI deployment, PKCE authentication, CSP
 │   └── production-operations.md                     # Deployment, health probes, Prometheus/OTel, runbooks, backup
 ├── reference/
-│   ├── rest-api.md                                  # Complete REST API reference (26 endpoints with schemas)
+│   ├── rest-api.md                                  # Complete REST API reference (31 endpoints with schemas)
 │   ├── sse-protocol.md                              # Server-Sent Events (SSE) Protocol v1 specification
 │   ├── configuration.md                             # Complete APP_* settings dictionary & validation rules
-│   ├── database-schema.md                           # PostgreSQL tables, indexes, RLS policies, 27 migrations
+│   ├── database-schema.md                           # PostgreSQL tables, indexes, RLS policies, 29 migrations
 │   ├── error-catalogue.md                           # Error taxonomy, HTTP status codes, retryability, client visibility
 │   └── cli-and-commands.md                          # neuron-api, neuron-worker, neuron-mcp-pin, CLI tools, Makefile
 ├── explanation/
 │   ├── architecture-and-state-machine.md            # LangGraph state graph, run leases, turn atomicity, history bounds
 │   ├── security-and-threat-model.md                 # Defense-in-depth, HMAC isolation, taint tracking, egress policy
-│   ├── knowledge-engine-internals.md                # RAG pipeline, Docling unroutable parser, Procrastinate queue, RRF
+│   ├── knowledge-engine-internals.md                # RAG pipeline, Docling unroutable parser, RRF, reranking, reindexing
 │   └── observability-and-governance.md              # OpenTelemetry traces & metrics, SemConv, LangSmith governance, audit
 └── specifications/
     ├── functional-specifications.md                 # Business rules, system limits, concurrency, rate limits
@@ -105,16 +105,16 @@ Every documented topic maps directly to code implementations, architectural deci
 
 | Document | Primary Implementation Module | ADR Baseline | Key Automated Tests |
 | :--- | :--- | :--- | :--- |
-| **REST API Reference** | `src/neuron_agent/api/main.py` | ADR 0001, 0005, 0006, 0014 | `tests/unit/test_api.py`, `tests/security/test_authorization.py` |
+| **REST API Reference** | `src/neuron_agent/api/main.py` | ADR 0001, 0005, 0006, 0014 | `tests/unit/test_api.py`, `tests/security/test_authorization.py`, `tests/integration/test_postgres_knowledge_api.py` |
 | **SSE Protocol** | `src/neuron_agent/services/streaming.py` | ADR 0005 | `tests/unit/test_streaming.py`, `tests/unit/test_web_stream_contract.py` |
-| **Auth & Scopes** | `src/neuron_agent/security/auth.py` | ADR 0006 | `tests/unit/test_auth.py`, `tests/security/test_multi_user_isolation.py` |
-| **Checkpointer & Migrations** | `src/neuron_agent/persistence/` | ADR 0002, 0008, 0011 | `tests/unit/test_migrations_policy.py`, `tests/integration/test_postgres_retention.py` |
-| **Knowledge Engine (RAG)** | `src/neuron_agent/knowledge/` | ADR 0014 | `tests/unit/test_knowledge_storage.py`, `tests/security/test_knowledge_api.py` |
+| **Auth & Scopes** | `src/neuron_agent/security/auth.py` | ADR 0006 | `tests/unit/test_auth.py`, `tests/security/test_principal_roles.py` |
+| **Checkpointer & Migrations** | `src/neuron_agent/persistence/` | ADR 0002, 0008, 0011, 0014 | `tests/unit/test_migrations_policy.py`, `tests/integration/test_postgres_retention.py` |
+| **Knowledge Engine (RAG)** | `src/neuron_agent/knowledge/` | ADR 0014 | `tests/unit/test_knowledge_storage.py`, `tests/security/test_knowledge_api.py`, `tests/integration/test_postgres_knowledge_reindex.py` |
 | **Memory Notes** | `src/neuron_agent/memory/` | ADR 0009 | `tests/security/test_memory_api.py`, `tests/unit/test_memory_store.py` |
 | **MCP Integration** | `src/neuron_agent/tools/mcp/` | ADR 0009 | `tests/unit/test_mcp_client.py`, `tests/unit/test_mcp_wiring.py` |
 | **Approvals Workflow** | `src/neuron_agent/services/agent_service.py` | ADR 0009 | `tests/security/test_approval_api.py`, `tests/graph/test_approval_gate.py` |
 | **Telemetry & SemConv** | `src/neuron_agent/observability/` | ADR 0007, 0008 | `tests/unit/test_metrics.py`, `tests/unit/test_validate_observability.py` |
-| **Web UI** | `web/src/` | ADR 0010 | `web/src/App.test.tsx`, `web/src/a11y/a11y.test.tsx`, `web/e2e/` |
+| **Web UI** | `web/src/` | ADR 0010 | `web/src/App.test.tsx`, `web/src/features/knowledge/GrantsPanel.test.tsx`, `web/e2e/knowledge.spec.ts` |
 
 ---
 

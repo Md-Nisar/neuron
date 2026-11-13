@@ -55,7 +55,8 @@ All configuration parameters are read from environment variables (or `.env` in d
 | `APP_AUTH_JWKS_URL` | string (HTTPS URL) | `None` | Required in JWT mode | Public JWKS endpoint URL for fetching signing keys. |
 | `APP_AUTH_ALGORITHMS` | JSON list of strings | `["RS256", "ES256"]` | Optional | Allowed JWT signature verification algorithms. |
 | `APP_IDENTITY_HASH_KEY` | Secret string ($\ge 32$ chars) | `None` | **Required in Prod** | Secret key for computing HMAC-SHA256 owner pseudonym identifiers. |
-| `APP_AUTH_REQUIRE_TYP` | boolean | `false` | **Required `true` in Prod** | When `true`, requires explicit `typ: JWT` header in token. Enforced in production. |
+| `APP_AUTH_REQUIRE_TYP` | boolean | `false` | **Required `true` in Prod** | When `true`, requires explicit `typ: at+jwt` RFC 9068 header in token. Enforced in production. |
+| `APP_AUTH_ROLES_CLAIM` | string \| `None` | `roles` | Optional | Token claim name containing verified user roles (RAG-09.02). Used for role-based knowledge sharing. |
 | `APP_AUTH_ROLE_PERMISSIONS` | JSON map of string to list | `{}` | Optional | Maps IdP realm/client roles to Neuron's internal scopes. |
 | `APP_AUTH_AUDIT_SUCCESS_ENABLED` | boolean | `false` | Optional | When `true`, emits audit log events for successful authentications. |
 
@@ -108,12 +109,22 @@ All configuration parameters are read from environment variables (or `.env` in d
 | `APP_KNOWLEDGE_EMBEDDING_PROVIDER` | `nvidia` \| `openai_compatible` \| `fake` | `nvidia` | Embedding model provider. |
 | `APP_KNOWLEDGE_EMBEDDING_MODEL` | string | `nvidia/nemotron-3.5-embed-1b` | Model identifier for generating embeddings. |
 | `APP_KNOWLEDGE_EMBEDDING_DIMENSIONS` | integer (1–4000) | `1024` | Vector dimension size indexed in pgvector `halfvec`. |
-| `APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER` | `nvidia` \| `openai_compatible` \| `fake` | `None` | The model a re-index builds a new index profile with (RAG-09.04). Set on the API and the worker for the whole re-index, then moved into the `APP_KNOWLEDGE_EMBEDDING_*` settings. Needs `_MODEL` and `_DIMENSIONS`. |
-| `APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL` | string | `None` | The re-index model's identifier. |
-| `APP_KNOWLEDGE_REINDEX_EMBEDDING_DIMENSIONS` | integer (1–4000) | `None` | The re-index model's vector dimensions. |
-| `APP_KNOWLEDGE_REINDEX_EMBEDDING_BASE_URL`, `_API_KEY`, `_LOCALITY` | as the `APP_KNOWLEDGE_EMBEDDING_*` ones | `None`, `None`, `hosted` | The re-index model's server, key and locality, checked as for the active model. |
+| `APP_KNOWLEDGE_EMBEDDING_BATCH_SIZE` | integer (1–256) \| `None` | `None` | Texts per embedding request. Unset defaults to `1` for `nvidia` (due to NVIDIA catalog 500 error on batches >1) and `32` otherwise. |
+| `APP_KNOWLEDGE_EMBEDDING_TIMEOUT_SECONDS` | integer (1–300) | `30` | Per-request timeout for embedding generation. |
+| `APP_KNOWLEDGE_EMBEDDING_MAX_RETRIES` | integer (0–8) | `3` | Max retries for transient embedding API failures. |
 | `APP_KNOWLEDGE_SEARCH_MODE` | `hybrid` \| `dense` \| `fts` | `hybrid` | Search candidate retrieval mode. |
-| `APP_KNOWLEDGE_PARSER_URL` | string (URL) | `None` | Endpoint of `docling-serve` container on internal network. |
+| `APP_KNOWLEDGE_SEARCH_MIN_SIMILARITY`| float (-1.0–1.0) | `0.0` | Minimum vector similarity threshold for returned passages. |
+| `APP_KNOWLEDGE_RERANKER` | `none` \| `nvidia` \| `None` | `None` | Cross-encoder reranker. Unset defaults to `nvidia` when embedding provider is `nvidia` and `NVIDIA_API_KEY` is set; otherwise `none`. |
+| `APP_KNOWLEDGE_RERANKER_MODEL` | string | `nvidia/llama-nemotron-rerank-vl-1b-v2` | Reranker model identifier in `provider/model` format. |
+| `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` | float (0.5–30.0) | `3.0` | Timeout per rerank request before falling back to RRF candidate order. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER` | `nvidia` \| `openai_compatible` \| `fake` \| `None` | `None` | Target provider when migrating index profiles (RAG-09.04). Requires `_MODEL` and `_DIMENSIONS`. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL` | string \| `None` | `None` | Target embedding model identifier for re-indexing. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_DIMENSIONS` | integer (1–4000) \| `None` | `None` | Target vector dimensions for re-indexing. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_BASE_URL` | string (URL) \| `None` | `None` | Target embedding provider base URL. Must be `https` in production. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_API_KEY` | Secret string \| `None` | `None` | Target embedding provider API key. |
+| `APP_KNOWLEDGE_REINDEX_EMBEDDING_LOCALITY` | `hosted` \| `self_hosted` | `hosted` | Locality of target model. Refused if any live base is `self_hosted` only. |
+| `APP_KNOWLEDGE_PROCESSING_POLICY` | `allow_hosted` \| `self_hosted_only` | `allow_hosted` | Global egress policy. `self_hosted_only` forbids hosted embedding or reranking in staging/production. |
+| `APP_KNOWLEDGE_PARSER_URL` | string (URL) | `None` | Endpoint of `docling-serve` container on internal network. Must be `https` in production. |
 | `APP_KNOWLEDGE_PARSER_TIMEOUT_SECONDS` | integer (10–7200) | `900` | Total parsing deadline per file sent to `docling-serve`. |
 | `APP_KNOWLEDGE_PARSE_MAX_BYTES` | integer | `50000000` | Maximum uploaded document file size (50 MB). |
 | `APP_KNOWLEDGE_PARSE_MAX_PAGES` | integer | `2000` | Maximum page count parsed from a single document. |

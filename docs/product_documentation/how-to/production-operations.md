@@ -4,7 +4,7 @@
 > **Diátaxis Mode:** How-To Guide (Task-Oriented)  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.4 (Procedural Task Information) and Diátaxis (How-To Guide)  
 > **Audience:** SREs, DevOps Engineers, Platform Administrators  
-> **Code Traceability:** `src/neuron_agent/observability/`, `src/neuron_agent/knowledge/worker.py`, `OPERATIONS.md`, ADR 0008
+> **Code Traceability:** `src/neuron_agent/observability/`, `src/neuron_agent/knowledge/worker.py`, `OPERATIONS.md`, ADR 0008, ADR 0014
 
 ---
 
@@ -49,7 +49,7 @@ graph TD
 
 ### Component Roles
 - **`neuron-api` (API Service):** Horizontally scalable stateless FastAPI process. Handles HTTP/SSE client connections, JWT validation, rate limiting, and graph invocation. Does not run heavy ingestion tasks.
-- **`neuron-worker` (Background Worker):** Distributed task processor running Procrastinate jobs (`ingest_document`, `purge_document`, `purge_knowledge_base`, `reconcile_knowledge`, `sweep_knowledge_blobs`). Connects as `neuron_worker` role.
+- **`neuron-worker` (Background Worker):** Distributed task processor running Procrastinate jobs (`ingest_document`, `purge_document`, `purge_knowledge_base`, `reconcile_knowledge`, `sweep_knowledge_blobs`, `reindex_kb`, `reindex_swap`, `purge_retired_embeddings`). Connects as `neuron_worker` role.
 - **`docling-serve` (Parser Container):** Runs on an internal unroutable Docker network (`parser`) without internet access. Converts complex PDF and Office files to structured text.
 
 ---
@@ -113,7 +113,8 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0
 | `neuron.agent.ttft` | Histogram | Time To First Token for SSE streams in milliseconds. Target: p95 < 1500ms. |
 | `neuron.errors` | Counter | System failures partitioned by stable `error_code`. Alert on `persistence_error` or `provider_error`. |
 | `neuron.postgres.pool.utilization` | Gauge | Active connections / pool max size. Alert when > 0.85. |
-| `neuron.knowledge.queue.age` | Gauge | Age of oldest queued ingestion job in seconds. Alert when > 300s. |
+| `neuron.knowledge.queue.oldest_age`| Gauge | Age of oldest queued ingestion or purge job in seconds. Alert when > 1800s. |
+| `neuron.knowledge.search.duration` | Histogram | Latency of hybrid retrieval and reranking by mode and outcome. |
 
 ---
 
@@ -137,7 +138,7 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0
 ---
 
 ### Runbook 2: Ingestion Queue Stalled / Worker Down
-**Symptom:** Documents remain in `queued` status indefinitely; `neuron.knowledge.queue.age` > 600s.  
+**Symptom:** Documents remain in `queued` status indefinitely; `neuron.knowledge.queue.oldest_age` > 1800s.  
 **Remediation:**
 1. Check `neuron-worker` container logs:
    ```bash
@@ -152,7 +153,7 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0
    ```sql
    SELECT status, count(*) FROM knowledge.procrastinate_jobs GROUP BY status;
    ```
-4. If jobs are stuck in `doing` from an unclean container restart, the worker's automated periodic periodic task (`reconcile_knowledge`) releases them automatically after `APP_WORKER_STALLED_SECONDS` (default 30s) during normal worker operation (`uv run neuron-worker run`).
+4. The worker's periodic `reconcile_knowledge` task (runs every 10 minutes) automatically re-queues stalled documents after `APP_WORKER_RECONCILE_AFTER_SECONDS` (default 3600s).
 
 ---
 
@@ -173,7 +174,7 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0
 **Symptom:** Disaster recovery drill or database corruption restore.  
 **Validation Procedure:**
 1. Restore PostgreSQL database from backup snapshot.
-2. Run database migration verification using the setup command (idempotent, checks and applies any missing migrations):
+2. Run database migration verification using the setup command:
    ```bash
    uv run python -m neuron_agent.persistence.cli setup
    ```
@@ -181,7 +182,76 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0
    ```bash
    uv run neuron-worker check-blobs
    ```
-   This outputs a JSON report identifying:
-   - Live documents whose blob files are missing from storage.
-   - Orphaned blob files that have no matching document row.
+   This outputs a JSON report identifying missing or orphaned files.
 4. If orphan files exist, the worker's hourly sweep (`sweep_knowledge_blobs`) will safely clean them up.
+
+---
+
+### Runbook 5: Zero-Downtime Knowledge Base Re-Indexing (RAG-09.04)
+**Symptom:** Upgrading to a new embedding model, provider, or vector dimension without interrupting active user searches.  
+**Procedure:**
+1. **Configure Target Settings:** Set `APP_KNOWLEDGE_REINDEX_EMBEDDING_*` on all API replicas, worker pods, and operator shell. Restart API and worker services:
+   ```bash
+   APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER=nvidia
+   APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL="nvidia/llama-3.2-nv-embedqa-1b-v2"
+   APP_KNOWLEDGE_REINDEX_EMBEDDING_DIMENSIONS=2048
+   ```
+2. **Initiate Re-index:** Run the start command as the migration role (`APP_POSTGRES_MIGRATION_DSN`):
+   ```bash
+   uv run python -m neuron_agent.persistence.cli reindex start
+   ```
+   This builds the new profile's partial HNSW index concurrently and queues `reindex_kb` jobs.
+3. **Monitor Progress:** Check progress periodically:
+   ```bash
+   uv run python -m neuron_agent.persistence.cli reindex status
+   ```
+4. **Automated Atomic Swap:** The worker's periodic `reindex_swap` task checks every 10 minutes whether all ready chunks are covered. When 100% covered, it swaps the active profile in a single database transaction.
+5. **Post-Swap Cutover:** Move the re-index values into `APP_KNOWLEDGE_EMBEDDING_*`, remove the `APP_KNOWLEDGE_REINDEX_EMBEDDING_*` variables, and restart. The worker automatically cleans up retired profile embeddings hourly in 5,000-row batches.
+6. **Abort Procedure:** If re-indexing must be halted, run:
+   ```bash
+   uv run python -m neuron_agent.persistence.cli reindex cancel
+   ```
+
+---
+
+### Runbook 6: Auditing Negative Answer Ratings and Low-Relevance Chunks (RAG-09.07)
+**Symptom:** Investigating user dissatisfaction or diagnosing poor retrieval quality.  
+**Procedure:**
+1. Execute the feedback report command against the production or staging database:
+   ```bash
+   uv run python -m neuron_agent.persistence.cli feedback-report > negative_feedback_citations.json
+   ```
+2. Inspect the generated report:
+   ```json
+   [
+     {
+       "thread_id": "019318b2-5f6e-7b3c-8a12-abcdef123456",
+       "run_id": "run-456",
+       "rating": "negative",
+       "created_at": "2026-11-13T12:00:00Z",
+       "citations": [
+         {
+           "doc_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+           "chunk_id": "e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b"
+         }
+       ]
+     }
+   ]
+   ```
+3. Use the reported `doc_id` and `chunk_id` to inspect chunk text via `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}` and review chunk boundaries or parser output.
+
+---
+
+### Runbook 7: Knowledge Performance Baseline & Nightly Retrieval Gate (RAG-09.05 / RAG-09.06)
+**Symptom:** Evaluating retrieval latency under load or auditing retrieval regression.  
+**Procedure:**
+1. **Run Knowledge Load Suite:**
+   ```bash
+   make load-knowledge
+   ```
+   Runs concurrent uploads with filtered hybrid search (`knowledge`), chat alone (`mix`), and chat beside search (`chat_search`), outputting latency metrics (p50/p95) and ingestion pages per minute.
+2. **Review Nightly Retrieval Gate:**
+   The GitHub Actions workflow `.github/workflows/nightly-eval.yml` runs the `knowledge-retrieval` job daily. It searches the evaluation corpus with live embeddings and reranking over committed vectors, gating on:
+   - `recall@5`: Must remain within 0.02 of baseline (0.984).
+   - `MRR`: Must remain within 0.02 of baseline (0.924).
+   Failing either gate halts the nightly regression suite.
