@@ -36,6 +36,7 @@ class Task(StrEnum):
     # The re-index (RAG-09.04): one job per base, and the periodic swap check.
     REINDEX_KB = "reindex_kb"
     REINDEX_SWAP = "reindex_swap"
+    PURGE_RETIRED = "purge_retired_embeddings"
 
 
 # Procrastinate's `procrastinate_job_to_defer_v1`: queue, task, priority, lock, queueing lock,

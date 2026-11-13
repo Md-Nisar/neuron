@@ -104,13 +104,19 @@ def test_every_task_is_registered_by_name() -> None:
     assert {task.value for task in jobs.Task} <= set(app.tasks)
     for task in jobs.Task:
         assert app.tasks[task.value].queue == jobs.QUEUE
-        periodic = task in {jobs.Task.RECONCILE, jobs.Task.SWEEP_BLOBS, jobs.Task.REINDEX_SWAP}
+        periodic = task in {
+            jobs.Task.RECONCILE,
+            jobs.Task.SWEEP_BLOBS,
+            jobs.Task.REINDEX_SWAP,
+            jobs.Task.PURGE_RETIRED,
+        }
         assert app.tasks[task.value].retry_strategy == (None if periodic else worker.RETRY)
     # The periodic tasks are not retried: the next run replaces a failed one.
     assert {(p.task.name, p.cron) for p in app.periodic_registry.periodic_tasks.values()} == {
         (jobs.Task.RECONCILE.value, worker.RECONCILE_CRON),
         (jobs.Task.SWEEP_BLOBS.value, worker.SWEEP_BLOBS_CRON),
         (jobs.Task.REINDEX_SWAP.value, worker.REINDEX_SWAP_CRON),
+        (jobs.Task.PURGE_RETIRED.value, worker.PURGE_RETIRED_CRON),
     }
 
 
