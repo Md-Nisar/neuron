@@ -1,0 +1,20 @@
+{
+  "run": "2026-11-13",
+  "stack": "docker-compose.reference.yml with the knowledge profile (worker, docling), pgvector/pgvector:pg16 by digest, volumes kept across the switch",
+  "before": {
+    "image": "neuron:1.1.0 (tag v1.1.0), KNOWLEDGE_ENABLED=true",
+    "migrations": 27,
+    "smoke_test_knowledge": "passed",
+    "seeded": "one knowledge base with one Markdown document (ready) and 3 threads for alice"
+  },
+  "after": {
+    "image": "main at f77194e (the v1.1.0 image with this commit's src/neuron_agent; no dependency changed since v1.1.0), KNOWLEDGE_ENABLED=true, worker restarted",
+    "setup": "exit 0, applied migrations [28, 29]",
+    "migrations": 29,
+    "index_profiles": "profile 1 active",
+    "seeded_base": "listed with language simple and access owner; its document ready",
+    "search": "POST /v1/knowledge/search returns the seeded document's chunk (reranked false, fake embeddings)",
+    "threads_of_the_seeded_user": 3,
+    "smoke_test_knowledge": "passed (ready, invoke, cleanup, knowledge-base, upload, ingest, cite, knowledge-cleanup)"
+  }
+}

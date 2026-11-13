@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 1.2.0
+
+"Retrieval quality and sharing" (RAG-E09). Hybrid search can rerank its top results with NVIDIA's hosted reranker (MRR 0.833 to 0.924 on the eval corpus, recall@5 kept at 0.984); a knowledge base can be shared with a token role at `read`, `write` or `admin` access; an operator can re-index every base to a new embedding model while search keeps working; a nightly gate holds retrieval quality; knowledge load scenarios record a baseline; an operator report links thumbs-down answers to the chunks they cited; and a base can be given its documents' language for the word search. Knowledge stays off by default. The `/v1` API and stream protocol version 1 stay compatible: the grants routes and the `access`, `language` and `reranked` fields are additions. Like 1.0.0 and 1.1.0, this release was verified locally, without a production environment. Verification: `docs/releases/v1.2.0-release-verification.md`.
+
+Upgrade note: migrations 28 and 29 (at most one `active` and one `building` index profile) run in `setup` when knowledge is on. An upgrade from 1.1.0 with knowledge on was run on the reference stack: `docs/releases/v1.2.0-gate/upgrade-from-v1.1.0.json`. With `APP_KNOWLEDGE_EMBEDDING_PROVIDER=nvidia` and `NVIDIA_API_KEY` set, the reranker is on by default; set `APP_KNOWLEDGE_RERANKER=none` to keep the 1.1.0 order.
+
+Known issues:
+- **No production environment exists**, as for 1.0.0 and 1.1.0: no hosted deployment, staging run or production-model run. The GitHub Release is published by hand from this section.
+- The live answer and citation eval runs one trial per case, so a re-run can land near the 0.9 gate.
+- Load figures are for one local host with fake embeddings and the plain-text parser (`docs/releases/v1.2.0-gate/knowledge-load-baseline.json`); the reranker's latency (about 0.7 s at p95 per search) was measured separately.
+- German word search finds only a third of the evaluation's answers with the `german` configuration (`docs/releases/v1.2.0-gate/multilingual-fts.json`); `pg_textsearch` BM25 was not measured, since it needs PostgreSQL 17 or later.
+- No story yet for a worker settings profile or for checking the worker role's column grants in production.
+- The erase-flow browser test (`web/e2e/knowledge.spec.ts`) has a race on its second sign-in that has failed CI runs.
+
+Changes:
 
 - Knowledge: multilingual text search evaluation (RAG-09.08 part 2, which completes the story). `tests/integration/test_postgres_knowledge_multilingual.py` compares `simple` with each language's own configuration on 30 questions in English, German, French, Spanish and Hindi. Text-channel recall@5 is 0.00 with `simple` and 0.33 (German) to 1.00 (English) with the language's configuration (`docs/releases/v1.2.0-gate/multilingual-fts.json`). ADR 0014 records the decision: keep Postgres's built-in full-text search with a per-base language; `pg_textsearch` BM25 is not adopted, since it needs PostgreSQL 17 or later.
 - Knowledge: a base's language (RAG-09.08, part 1). `POST /v1/knowledge/bases` takes an optional `language`, one of Postgres's 29 built-in text search configurations (`simple`, the default, or a language such as `english`, `german` or `hindi`), and every base in the API's responses says its `language`. Its chunks' full-text index uses that configuration, so the word search matches other forms of a word ("Häuser" for "Haus" in German). It is fixed at creation: a rename cannot change it. The Knowledge screen's create form has a language selector. Existing bases keep `simple`.
