@@ -93,7 +93,7 @@ async def test_office_files_without_a_parser_url_fail_with_a_clear_code(tmp_path
         knowledge_blob_root=str(tmp_path),
     )
     ingestor = worker.build_ingestor(settings)
-    office = ingestor.parsers[1]
+    office = next(p for p in ingestor.parsers if PDF in p.media_types)
     with pytest.raises(ParseError, match="parser_not_configured"):
         await office.parse(b"%PDF", PDF, ingestor.limits)
 

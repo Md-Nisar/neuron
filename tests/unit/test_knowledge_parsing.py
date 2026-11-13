@@ -352,3 +352,73 @@ def test_an_upload_of_another_type_is_refused(data: bytes, claimed: str, code: s
     with pytest.raises(ParseError) as caught:
         accepted_type(data, claimed, _LIMITS)
     assert caught.value.code == code
+
+
+# RAG-10.02: a fetched web page (`text/html`), parsed in the worker.
+
+_PAGE = b"""<!doctype html><html><head><title>Pump guide</title>
+<script>var secret = "never in a chunk";</script></head><body>
+<nav><a href="/">Home</a> | <a href="/about">About</a></nav>
+<article><h1>Pump maintenance</h1>
+<p>The pump must be inspected every six months by a qualified technician, who records
+the pressure readings in the maintenance log before the unit is restarted.</p>
+<h2>Seals</h2>
+<p>Replace the shaft seals when the leak rate exceeds two drops a minute, and always use
+the seal kit the manufacturer lists for the model on the rating plate.</p>
+<table><tr><th>Part</th><th>Interval</th></tr><tr><td>Seal</td><td>12 months</td></tr></table>
+</article><footer>Copyright footer text</footer></body></html>"""
+
+
+async def test_a_web_page_keeps_its_main_text_headings_and_tables() -> None:
+    document = await parsing.HtmlParser().parse(_PAGE, parsing.HTML, _LIMITS)
+    text = "\n".join(block.text for block in document.blocks)
+    headings = [(b.text, b.level) for b in document.blocks if b.kind == "heading"]
+    assert headings == [("Pump maintenance", 1), ("Seals", 2)]
+    assert "inspected every six months" in text
+    assert "12 months" in text
+    assert document.parser_version.startswith("trafilatura/")
+    assert all(block.page is None for block in document.blocks)
+
+
+async def test_a_web_page_drops_scripts_navigation_and_footers() -> None:
+    document = await parsing.HtmlParser().parse(_PAGE, parsing.HTML, _LIMITS)
+    text = "\n".join(block.text for block in document.blocks)
+    for boilerplate in ("never in a chunk", "About", "Copyright footer"):
+        assert boilerplate not in text
+
+
+async def test_a_page_without_main_text_is_no_text() -> None:
+    with pytest.raises(ParseError, match="no_text"):
+        await parsing.HtmlParser().parse(
+            b"<html><body><script>render()</script></body></html>", parsing.HTML, _LIMITS
+        )
+
+
+async def test_a_page_with_too_many_blocks_is_refused() -> None:
+    paragraphs = b"".join(
+        b"<p>Paragraph %d has enough words in it to be kept as article text by the extractor.</p>"
+        % n
+        for n in range(300)
+    )
+    page = b"<html><body><article>" + paragraphs + b"</article></body></html>"
+    small = Limits(max_bytes=1_000_000, max_pages=1, max_page_chars=100_000)
+    with pytest.raises(ParseError, match="too_many_blocks|page_too_long"):
+        await parsing.HtmlParser().parse(page, parsing.HTML, small)
+
+
+async def test_html_goes_to_the_html_parser_through_parse_document() -> None:
+    parsers = (parsing.PlainTextParser(), parsing.HtmlParser())
+    document = await parsing.parse_document(_PAGE, parsing.HTML, _LIMITS, parsers)
+    assert document.parser_version.startswith("trafilatura/")
+
+
+def test_an_upload_is_never_stored_as_html() -> None:
+    """HTML is a type for fetched pages only: an upload claiming it is refused or plain text."""
+    with pytest.raises(ParseError, match="unsupported_media_type"):
+        parsing.accepted_type(_PAGE, parsing.HTML, _LIMITS)
+    assert parsing.accepted_type(b"just words", parsing.HTML, _LIMITS) == parsing.TEXT
+
+
+def test_a_page_that_is_not_utf8_is_refused_before_parsing() -> None:
+    with pytest.raises(ParseError, match="media_type_mismatch"):
+        parsing.check_input("<p>café</p>".encode("latin-1"), parsing.HTML, _LIMITS)
