@@ -648,6 +648,7 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         # Plus UPDATE on the progress columns only: never `kb_id`, `blob_key` or the owner.
         "documents": frozenset({"SELECT", "DELETE"}),
         "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
+        # DELETE also for the purge of retired profiles' vectors (RAG-09.04).
         "embeddings": frozenset({"SELECT", "INSERT", "DELETE"}),
         # Procrastinate's worker fetches, finishes, retries and sweeps jobs and registers itself.
         "procrastinate_jobs": _DML,
@@ -1297,8 +1298,8 @@ async def _seed_profile(
     timeout_ms: int,
     concurrent_ms: int,
 ) -> None:
-    """Record index profile 1 once, refuse settings with no model for the active profile, and
-    build the HNSW index of every profile in use.
+    """Record index profile 1 once, refuse settings with no model for the active profile,
+    build the HNSW index of every profile in use and drop those of retired profiles.
 
     After a re-index (RAG-09.04) the active profile may be the one the re-index settings name,
     until the operator moves them into the main ones. Each index casts to its profile's
@@ -1322,7 +1323,7 @@ async def _seed_profile(
         logger.info("knowledge_profile_seeded", profile_id=KNOWLEDGE_PROFILE_ID)
     cursor = await conn.execute(
         "SELECT profile_id, provider, model, dimensions, status FROM knowledge.index_profiles"
-        " WHERE status <> 'retired' ORDER BY profile_id"
+        " ORDER BY profile_id"
     )
     rows = await cursor.fetchall()
     active = [_profile(row) for row in rows if row["status"] == "active"]
@@ -1335,7 +1336,15 @@ async def _seed_profile(
     await _set_lock_timeout(conn, concurrent_ms)
     try:
         for row in rows:
-            await _build_hnsw(conn, int(str(row["profile_id"])), int(str(row["dimensions"])))
+            profile_id = int(str(row["profile_id"]))
+            if row["status"] == "retired":  # never searched again (RAG-09.04)
+                await conn.execute(
+                    sql.SQL("DROP INDEX CONCURRENTLY IF EXISTS {}").format(
+                        sql.Identifier(KNOWLEDGE_SCHEMA, f"embeddings_p{profile_id}_hnsw")
+                    )
+                )
+            else:
+                await _build_hnsw(conn, profile_id, int(str(row["dimensions"])))
     finally:
         await _set_lock_timeout(conn, timeout_ms)
 

@@ -267,11 +267,8 @@ async def test_setup_needs_a_model_for_the_active_profile_and_indexes_it(
         "SELECT indexname FROM pg_indexes WHERE schemaname = 'knowledge'"
         " AND indexname LIKE 'embeddings_p%%_hnsw'",
     )
-    # The retired profile's index stays until a re-index cleans it up.
-    assert sorted(row[0] for row in indexes) == [
-        "embeddings_p1_hnsw",
-        "embeddings_p2_hnsw",
-    ]
+    # A retired profile is never searched again: setup drops its index.
+    assert sorted(row[0] for row in indexes) == ["embeddings_p2_hnsw"]
 
 
 @pytest.mark.parametrize("status", ["active", "building"])

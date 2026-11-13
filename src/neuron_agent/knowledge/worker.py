@@ -77,6 +77,8 @@ RECONCILE_CRON = "*/10 * * * *"
 SWEEP_BLOBS_CRON = "23 * * * *"
 # The re-index swap check (RAG-09.04), between the reconcile runs.
 REINDEX_SWAP_CRON = "5-59/10 * * * *"
+# Retired profiles' vectors, deleted in batches (RAG-09.04): hourly is soon enough.
+PURGE_RETIRED_CRON = "41 * * * *"
 # The advisory lock key that serialises the stalled-job sweep across workers.
 _SWEEP = 0x4E52_5357
 # How long the oldest runnable job has waited: since its defer or retry, or since the time it was
@@ -225,6 +227,15 @@ def build_app(
             log.warning("knowledge.reindex.swap_failed", error=type(exc).__name__)
             raise ReconcileError(type(exc).__name__) from None
 
+    async def purge_retired_embeddings(timestamp: int) -> None:
+        try:
+            deleted = await reindexer.purge_retired()
+        except Exception as exc:
+            log.warning("knowledge.reindex.purge_failed", error=type(exc).__name__)
+            raise ReconcileError(type(exc).__name__) from None
+        if deleted:
+            log.info("knowledge.reindex.purged", embeddings=deleted)
+
     async def reconcile_knowledge(timestamp: int) -> None:
         # Not retried: the next run, ten minutes later, starts over.
         try:
@@ -252,6 +263,7 @@ def build_app(
         (Task.RECONCILE, RECONCILE_CRON, reconcile_knowledge),
         (Task.SWEEP_BLOBS, SWEEP_BLOBS_CRON, sweep_knowledge_blobs),
         (Task.REINDEX_SWAP, REINDEX_SWAP_CRON, reindex_swap),
+        (Task.PURGE_RETIRED, PURGE_RETIRED_CRON, purge_retired_embeddings),
     ):
         app.periodic(cron=cron)(app.task(name=name.value, queue=QUEUE)(periodic))
     return app
