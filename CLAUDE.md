@@ -76,11 +76,11 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-The latest release is v1.1.0, "Knowledge Engine" (2026-11-10, `docs/releases/v1.1.0-release-verification.md`), after v1.0.0 (2026-11-02). Both shipped without a production environment: no hosted deployment has ever run, and the evidence is local (a Docker Compose reference stack, a fake model for load, the NVIDIA free tier for small real-model checks). Release history, ADR mapping and deferred work are in `docs/ROADMAP.md`, `CHANGELOG.md` and `docs/releases/`.
+The latest release is v1.2.0, "Retrieval quality and sharing" (2026-11-13, `docs/releases/v1.2.0-release-verification.md`), after v1.1.0, "Knowledge Engine" (2026-11-10), and v1.0.0 (2026-11-02). All shipped without a production environment: no hosted deployment has ever run, and the evidence is local (a Docker Compose reference stack, a fake model for load, the NVIDIA free tier for small real-model checks). Release history, ADR mapping and deferred work are in `docs/ROADMAP.md`, `CHANGELOG.md` and `docs/releases/`.
 
 Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.md`. Check `docs/ROADMAP.md` and open issues before assuming a not-yet-released feature already exists.
 
-## RAG / Knowledge Engine work (released in v1.1.0; RAG-E09 onwards is later)
+## RAG / Knowledge Engine work (released in v1.1.0 and v1.2.0; RAG-E10 onwards is later)
 
 Research is in `docs/research/rag/`; the backlog is `docs/product/NEURON_RAG_PRODUCT_BACKLOG.md` (IDs `RAG-Enn` for epics, `RAG-nn.mm` for stories); progress is in `docs/product/RAG_IMPLEMENTATION_TRACKER.md`. Before working on any `RAG-` story, follow the tracker's "New session protocol": read both files, check the `rag` issues, linked PRs, recent commits and the code, verify acceptance criteria against tests, and summarise status and the next unblocked story before coding. A story is Done only when every acceptance criterion has a passing test or recorded evidence. Afterwards, update the issue checklist, the Project status and the tracker together.
 
