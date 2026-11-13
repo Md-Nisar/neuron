@@ -64,7 +64,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-13, Phase 3):** the owner chose RAG-E10 for v1.3.0 (epic #577): web pages and the self-hosted chat model, in the order ADR 0014 amendment "external sources", RAG-10.01 (#578), RAG-10.05 (#582), RAG-10.02 (#579). RAG-10.03 (#580) and RAG-10.04 (#581) are deferred until a product requirement exists. RAG-10.01 (#584), RAG-10.05 and RAG-10.02 (#586 to #590) are Done. Next: the v1.3.0 release (upgrade from v1.2.0 on the reference stack, live answer eval, version bump, CHANGELOG, verification record, owner sign-off); the owner creates the `v1.3.0` label.
+**Recommended next action (2026-11-13, Phase 3):** the owner chose RAG-E10 for v1.3.0 (epic #577): web pages and the self-hosted chat model, in the order ADR 0014 amendment "external sources", RAG-10.01 (#578), RAG-10.05 (#582), RAG-10.02 (#579). RAG-10.03 (#580) and RAG-10.04 (#581) are deferred until a product requirement exists. RAG-10.01 (#584), RAG-10.05 and RAG-10.02 (#586 to #590) are Done. RAG-10.03 (#580) and RAG-10.04 (#581) are closed as not planned with the `deferred` label (owner, 2026-11-13). v1.3.0 is signed off by the owner; its record is `docs/releases/v1.3.0-release-verification.md`. Next: the owner tags `v1.3.0` and publishes the GitHub Release from the `1.3.0` CHANGELOG section; then Phase 3 continues only when the owner picks a story with a product requirement.
 
 **Earlier (2026-11-13):** v1.2.0 is released: signed off by the owner, released from `97072d8` (branch `release/v1.2.0`); the tag `v1.2.0` and the GitHub Release are made by hand from the `1.2.0` CHANGELOG section. Next: Phase 3, starting with RAG-E10 (external knowledge sources; epic and story issues to create), when the owner chooses. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
 
@@ -471,6 +471,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-13 | v1.3.0 release record, version 1.3.0 and CHANGELOG; upgrade from v1.2.0 run on the reference stack. RAG-10.03 and RAG-10.04 closed as deferred | Claude session |
 | 2026-11-13 | RAG-10.02 Done (#579): web pages added by URL, fetched by the worker, cited with URL and fetch time, "Add a web page" in the UI. E10: 3 of 5 (the other two deferred). Next: v1.3.0 release | Claude session |
 | 2026-11-13 | RAG-10.02 started (#579), part 1: HTML parser with Trafilatura. Plan: part 2 worker fetch and migration, part 3 add-by-URL route, part 4 web citations and UI | Claude session |
 | 2026-11-13 | RAG-10.05 Done (#582): `openai_compatible` chat model provider. E10: 2 of 5. Next: RAG-10.02 | Claude session |
