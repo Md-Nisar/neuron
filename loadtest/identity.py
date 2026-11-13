@@ -19,6 +19,8 @@ ADMIN_PASSWORD = "admin-local-only"  # noqa: S105  # nosec B105
 ROLE = "neuron-user"
 CLIENT_ID = "neuron-dev-test"
 _RENEW_BEFORE_SECONDS = 30.0
+# Knowledge load users sign in as `load-0900` onwards, clear of the chat pool (RAG-09.06).
+KNOWLEDGE_FIRST_USER = 900
 
 
 def username(index: int) -> str:
@@ -29,8 +31,8 @@ def password(name: str) -> str:
     return f"dev-only-{name}"
 
 
-def provision_users(count: int, base_url: str = KEYCLOAK) -> None:
-    """Create `load-0000` onwards with the `neuron-user` role; existing users are kept."""
+def provision_users(count: int, base_url: str = KEYCLOAK, first: int = 0) -> None:
+    """Create `count` users from `load-<first>`, role `neuron-user`; existing ones are kept."""
     session = requests.Session()
     session.trust_env = False
     token = session.post(
@@ -46,7 +48,7 @@ def provision_users(count: int, base_url: str = KEYCLOAK) -> None:
     session.headers["Authorization"] = f"Bearer {token}"
     admin = f"{base_url}/admin/realms/{REALM}"
     role = session.get(f"{admin}/roles/{ROLE}", timeout=30).json()
-    for index in range(count):
+    for index in range(first, first + count):
         name = username(index)
         created = session.post(
             f"{admin}/users",
