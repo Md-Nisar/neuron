@@ -132,6 +132,9 @@ class KnowledgeDocument(BaseModel):
     error_code: str | None
     created_at: datetime
     updated_at: datetime
+    # A web page's URL and, once fetched, when (RAG-10.02); None for an upload.
+    source_url: str | None = None
+    fetched_at: datetime | None = None
 
 
 class KnowledgeDocumentsResponse(BaseModel):
@@ -252,6 +255,9 @@ class KnowledgeSearchHit(ChunkPassage):
     kb_id: uuid.UUID
     title: str
     score: float
+    # A web page's URL and fetch time (RAG-10.02); None for a file.
+    source_url: str | None = None
+    fetched_at: datetime | None = None
 
 
 class KnowledgeSearchResponse(BaseModel):

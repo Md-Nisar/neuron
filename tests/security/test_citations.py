@@ -15,6 +15,8 @@ from tests.security.test_knowledge_tools import (
     _DOC,
     _OWNER,
     _SCOPES,
+    WEB_FETCHED,
+    WEB_URL,
     _fakes,
     _results,
     _run,
@@ -61,6 +63,21 @@ async def test_two_valid_citations_are_kept_and_resolve_with_title_and_pages(
     assert {(c.title, c.page_start, c.page_end, tuple(c.headings)) for c in cited} == {
         ("Title", 1, 2, ("H",))
     }
+
+
+async def test_a_web_pages_citations_name_its_url_and_fetch_time_also_from_an_excerpt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="web"),
+        _call("get_document_excerpt", cite_id="cite-1", window=0),
+        _answer("cite-1", "cite-3"),
+    )
+
+    cited, _ = citations.validate((await _run(model))["answer"].citations, _results(model))
+
+    assert [(c.source_url, c.fetched_at) for c in cited] == [(WEB_URL, WEB_FETCHED)] * 2
 
 
 async def test_a_cite_id_no_tool_returned_is_dropped_and_counted(

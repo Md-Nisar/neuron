@@ -86,6 +86,10 @@ class Citation(BaseModel):
     headings: list[str]
     page_start: int | None
     page_end: int | None
+    # A web page's (RAG-10.02): the URL it was fetched from, and when; None for a file. The URL
+    # is user text: show it as text or a plain link, never as markup.
+    source_url: str | None = None
+    fetched_at: datetime | None = None
 
 
 class CitationFields(BaseModel):

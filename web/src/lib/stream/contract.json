@@ -25,7 +25,20 @@
           "title": "Leave policy",
           "headings": ["Annual leave"],
           "page_start": 3,
-          "page_end": 4
+          "page_end": 4,
+          "source_url": null,
+          "fetched_at": null
+        },
+        {
+          "cite_id": "4b7e2d9a1c3f",
+          "doc_id": "7d2a9c41-5e6f-4a1b-8c2d-3e4f5a6b7c8d",
+          "chunk_id": "8e3b0d52-6f70-4b2c-9d3e-4f5a6b7c8d9e",
+          "title": "https://docs.example.com/leave",
+          "headings": [],
+          "page_start": null,
+          "page_end": null,
+          "source_url": "https://docs.example.com/leave",
+          "fetched_at": "2026-11-13T09:30:00Z"
         }
       ],
       "citation_schema_version": 1,

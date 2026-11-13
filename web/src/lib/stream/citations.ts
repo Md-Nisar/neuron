@@ -13,6 +13,10 @@ export interface Citation {
   headings: string[];
   page_start: number | null;
   page_end: number | null;
+  /** A web page's address (RAG-10.02): only an `https` URL is kept, so it is safe as a link. */
+  source_url: string | null;
+  /** When the page was fetched, as the server's ISO 8601 text. */
+  fetched_at: string | null;
 }
 
 export interface Grounding {
@@ -30,6 +34,16 @@ function shape(): never {
 function page(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : shape();
+}
+
+/** An `https` URL, else null: anything else is never used as a link. */
+export function httpsUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    return new URL(value).protocol === "https:" ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseCitation(value: unknown): Citation {
@@ -54,6 +68,8 @@ function parseCitation(value: unknown): Citation {
     headings,
     page_start: page(item["page_start"]),
     page_end: page(item["page_end"]),
+    source_url: httpsUrl(item["source_url"]),
+    fetched_at: typeof item["fetched_at"] === "string" ? item["fetched_at"] : null,
   };
 }
 

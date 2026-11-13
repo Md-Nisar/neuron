@@ -26,6 +26,7 @@ import uuid
 from collections.abc import AsyncIterator, Callable, Collection, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal, get_args
 
 import psycopg
@@ -117,9 +118,12 @@ _ANN_SETTINGS = (
     " set_config('hnsw.ef_search', '100', true),"
     " set_config('enable_bitmapscan', 'off', true), set_config('enable_sort', 'off', true)"
 )
+# A web page's URL and fetch time, for its citations (RAG-10.02); NULL for a file.
+WEB_SOURCE = "CASE WHEN d.source_type = 'web' THEN d.source_ref END AS source_url, d.fetched_at"
 _PASSAGES = (
     "SELECT c.chunk_id, c.doc_id, c.kb_id, d.title, c.ordinal, c.text, c.headings,"
-    " c.page_start, c.page_end"
+    " c.page_start, c.page_end, "
+    + WEB_SOURCE
     + _CHUNKS
     + _LIVE
     + " AND c.kb_id = ANY(%(kbs)s) AND c.chunk_id = ANY(%(ids)s)"
@@ -138,6 +142,9 @@ class Passage:
     page_start: int | None
     page_end: int | None
     score: float
+    # A web page's (RAG-10.02): where it was fetched from, and when. None for a file.
+    source_url: str | None = None
+    fetched_at: datetime | None = None
 
 
 @dataclass(frozen=True)

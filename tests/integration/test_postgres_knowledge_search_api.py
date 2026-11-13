@@ -102,6 +102,8 @@ async def test_kb_ids_narrows_the_search_and_limit_caps_it(
         "page_start",
         "page_end",
         "score",
+        "source_url",
+        "fetched_at",
     }
 
 
