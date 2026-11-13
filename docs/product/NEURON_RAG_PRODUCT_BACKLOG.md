@@ -1497,7 +1497,7 @@ Exit gate (Claude report §12): recall@5 and MRR at or above Phase 1 on the same
 - Given the evaluation, when it finishes, then the numbers and the decision are recorded in ADR 0014 or a new ADR.
 
 **Technical tasks**
-- [ ] Language setting.
+- [x] Language setting.
 - [ ] Multilingual eval subset.
 - [ ] Comparison.
 

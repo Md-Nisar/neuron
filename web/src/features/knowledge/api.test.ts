@@ -18,6 +18,7 @@ const base = {
   kb_id: KB,
   name: "Policies",
   processing: "hosted",
+  language: "simple",
   created_at: "2026-11-01",
   access: "owner",
 };
@@ -65,6 +66,7 @@ describe("knowledge API", () => {
     expect(JSON.parse(fetch.mock.calls[1]?.[1]?.body as string)).toEqual({
       name: "Policies",
       processing: "self_hosted",
+      language: "simple",
     });
     expect(sentCalls).toEqual([
       "GET /v1/knowledge/bases",

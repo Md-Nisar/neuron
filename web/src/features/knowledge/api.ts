@@ -11,6 +11,7 @@ import {
   type Grant,
   type DocumentsPage,
   type KnowledgeBase,
+  type Language,
   type Passage,
   type Processing,
 } from "./parse";
@@ -27,11 +28,12 @@ export function createBase(
   deps: DataDeps,
   name: string,
   processing: Processing,
+  language: Language = "simple",
 ): Promise<KnowledgeBase> {
   return call(deps, {
     path: "/v1/knowledge/bases",
     method: "POST",
-    body: { name, processing },
+    body: { name, processing, language },
     parse: parseBase,
   });
 }

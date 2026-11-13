@@ -57,6 +57,7 @@ function setup(
     kb_id: KB,
     name: "Policies",
     processing: options.processing ?? "hosted",
+    language: "simple" as const,
     created_at: "",
     access: options.access ?? "owner",
   };

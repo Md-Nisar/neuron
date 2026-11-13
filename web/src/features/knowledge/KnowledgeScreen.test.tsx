@@ -11,6 +11,7 @@ const kb = (n: number, name: string, processing = "hosted", access = "owner") =>
   kb_id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
   name,
   processing,
+  language: "simple",
   created_at: "2026-11-01T10:00:00Z",
   access,
 });
@@ -64,6 +65,10 @@ describe("knowledge bases", () => {
 
     await user.type(screen.getByLabelText("New knowledge base"), "  Contracts ");
     await user.click(screen.getByRole("radio", { name: /^Self-hosted only\./ }));
+    // The language of its documents (RAG-09.08): exact words unless the user picks one.
+    const language = screen.getByLabelText("Language of its documents");
+    expect(language).toHaveValue("simple");
+    await user.selectOptions(language, "German");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(await screen.findByText("Contracts")).toBeInTheDocument();
@@ -71,6 +76,7 @@ describe("knowledge bases", () => {
     expect(JSON.parse(init?.body as string)).toEqual({
       name: "Contracts",
       processing: "self_hosted",
+      language: "german",
     });
     expect(screen.getByLabelText("New knowledge base")).toHaveValue("");
     // The new base opens, ready for its first upload.

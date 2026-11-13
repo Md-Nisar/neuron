@@ -1127,7 +1127,7 @@ async def create_knowledge_base(
     """Create a knowledge base owned by the caller, up to the per-user limit."""
     try:
         owner_key = _knowledge_owner(principal, user_id)
-        return await knowledge.create(owner_key, body.name, body.processing)
+        return await knowledge.create(owner_key, body.name, body.processing, body.language)
     except AppError as exc:
         raise _http_error("knowledge_base_create_failed", exc) from exc
 

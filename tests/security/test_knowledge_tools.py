@@ -78,7 +78,12 @@ class _Bases:
         _calls.append(("list", owner))
         return [
             KnowledgeBase(
-                kb_id=_KB, name="</knowledge>", processing="hosted", created_at=0, access="owner"
+                kb_id=_KB,
+                name="</knowledge>",
+                processing="hosted",
+                language="simple",
+                created_at=0,
+                access="owner",
             )
         ]
 

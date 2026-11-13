@@ -54,6 +54,7 @@ from neuron_agent.schemas.knowledge import (
     KnowledgeDocument,
     KnowledgeErasureResponse,
     KnowledgeGrant,
+    KnowledgeLanguage,
 )
 
 log = structlog.get_logger(__name__)
@@ -61,15 +62,16 @@ log = structlog.get_logger(__name__)
 _READ, _WRITE, _ADMIN = "knowledge:read", "knowledge:write", "knowledge:admin"
 
 _LIST = (
-    "SELECT kb_id, name, processing, created_at FROM knowledge.bases"
+    "SELECT kb_id, name, processing, ts_config::text AS language, created_at FROM knowledge.bases"
     " WHERE kb_id = ANY(%s) AND deleted_at IS NULL ORDER BY created_at, kb_id"
 )
 _COUNT = "SELECT count(*) AS n FROM knowledge.bases WHERE owner_key = %s AND deleted_at IS NULL"
 # A new base takes the active index profile (RAG-09.04): setup seeds one, so there is a row.
 _CREATE = (
-    "INSERT INTO knowledge.bases (kb_id, owner_key, name, processing, profile_id)"
-    " SELECT %s, %s, %s, %s, profile_id FROM knowledge.index_profiles WHERE status = 'active'"
-    " RETURNING kb_id, name, processing, created_at"
+    "INSERT INTO knowledge.bases (kb_id, owner_key, name, processing, ts_config, profile_id)"
+    " SELECT %s, %s, %s, %s, %s::regconfig, profile_id FROM knowledge.index_profiles"
+    " WHERE status = 'active' RETURNING kb_id, name, processing, ts_config::text AS language,"
+    " created_at"
 )
 _OWNER_GRANT = (
     "INSERT INTO knowledge.grants (kb_id, subject_type, subject, access, granted_by)"
@@ -77,7 +79,7 @@ _OWNER_GRANT = (
 )
 _RENAME = (
     "UPDATE knowledge.bases SET name = %s WHERE kb_id = %s AND deleted_at IS NULL"
-    " RETURNING kb_id, name, processing, created_at"
+    " RETURNING kb_id, name, processing, ts_config::text AS language, created_at"
 )
 _TOMBSTONE = (
     "UPDATE knowledge.bases SET deleted_at = now()"
@@ -298,7 +300,9 @@ class KnowledgeBases:
         self._audit("knowledge_bases_read", owner_key, _READ, count=len(bases))
         return bases
 
-    async def create(self, owner_key: str, name: str, processing: str) -> KnowledgeBase:
+    async def create(
+        self, owner_key: str, name: str, processing: str, language: KnowledgeLanguage = "simple"
+    ) -> KnowledgeBase:
         async with self._transaction() as conn:
             # Serialises one owner's creates, so concurrent requests cannot pass the limit.
             await conn.execute(
@@ -309,7 +313,9 @@ class KnowledgeBases:
             row = await cursor.fetchone()
             if row is not None and row["n"] >= self._settings.knowledge_max_bases_per_user:
                 raise KnowledgeBaseLimitError("knowledge base limit reached")
-            cursor = await conn.execute(_CREATE, (uuid.uuid4(), owner_key, name, processing))
+            cursor = await conn.execute(
+                _CREATE, (uuid.uuid4(), owner_key, name, processing, language)
+            )
             created = await cursor.fetchone()
             assert created is not None  # nosec B101
             await conn.execute(_OWNER_GRANT, (created["kb_id"], owner_key, owner_key))

@@ -13,9 +13,12 @@ from typing import Any
 
 import psycopg
 import pytest
+from pydantic import SecretStr
+from test_postgres_knowledge_api import _Connections
 from test_postgres_knowledge_tables import _knowledge_db, worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, _rows, role_db, roles  # noqa: F401
 
+from neuron_agent.config.settings import Settings
 from neuron_agent.knowledge import ingest
 from neuron_agent.knowledge.blobs import LocalBlobStore
 from neuron_agent.knowledge.chunking import estimate_tokens
@@ -29,6 +32,7 @@ from neuron_agent.knowledge.parsing import (
     PlainTextParser,
 )
 from neuron_agent.knowledge.providers import EmbeddingProvider, FakeEmbeddings
+from neuron_agent.knowledge.service import KnowledgeBases
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -295,3 +299,43 @@ async def test_a_base_deleted_during_ingestion_gets_no_chunks(
     assert await racing.ingest(doc) == "skipped"
     state = await _state(db, doc)
     assert (state["document"][0], state["chunks"], state["embedded"]) == ("embedding", [], 0)
+
+
+async def test_a_base_language_sets_the_text_search_config_of_its_chunks(
+    setup: tuple[RoleDatabase, Ingestor],
+) -> None:
+    """RAG-09.08 AC1: the base's language, chosen at creation, is its chunks' FTS config."""
+    db, ingestor = setup
+    service = KnowledgeBases(
+        Settings(
+            env="test",
+            knowledge_enabled=True,
+            checkpointer="postgres",
+            postgres_dsn=SecretStr(db.app_dsn),
+        ),
+        lambda: _Connections(db.app_dsn),  # type: ignore[arg-type,return-value]
+        lambda: ingestor.blobs,
+    )
+    docs = {}
+    for language in ("german", "simple"):
+        base = await service.create(_OWNER, language, "hosted", language)
+        assert base.language == language
+        doc = await _document(db, ingestor, "Die Häuser am Hafen wurden gestrichen.")
+        async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as c:
+            await c.execute(
+                "UPDATE knowledge.documents SET kb_id = %s WHERE doc_id = %s", (base.kb_id, doc)
+            )
+        assert await ingestor.ingest(doc) == "ready"
+        docs[language] = doc
+
+    # Retrieval's text channel matches `tsv` with the base's config: only German stems
+    # "Häuser" to the "Haus" of the query.
+    rows = await _rows(
+        db.migrator_dsn,
+        "SELECT d.doc_id, c.ts_config::text,"
+        " c.tsv @@ websearch_to_tsquery(b.ts_config, 'Haus') FROM knowledge.chunks c"
+        " JOIN knowledge.documents d USING (doc_id) JOIN knowledge.bases b ON b.kb_id = c.kb_id",
+    )
+    found = {row[0]: row[1:] for row in rows}
+    assert found[docs["german"]] == ("german", True)
+    assert found[docs["simple"]] == ("simple", False)
