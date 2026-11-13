@@ -1,26 +1,24 @@
-# How-To: Configure Authentication and Authorization
+# How-To: Configure Authentication and Role-Based Authorization
 
 > **Document ID:** DOC-HOW-001  
 > **Diátaxis Mode:** How-To Guide (Task-Oriented)  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.4 (Procedural Task Information) and Diátaxis (How-To Guide)  
-> **Audience:** System Administrators, Security Engineers, Backend Integrators  
+> **Audience:** Developers, DevOps, SREs, Security Administrators  
 > **Code Traceability:** `src/neuron_agent/security/auth.py`, `src/neuron_agent/security/authorization.py`, ADR 0006
 
 ---
 
 ## 1. Overview and Security Principles
 
-In staging and production environments (`APP_ENV=staging` or `APP_ENV=production`), Neuron strictly enforces bearer token authentication (`APP_AUTH_MODE=jwt`). Every incoming request to `/v1/*` must present an RFC 7519 JSON Web Token (JWT) in the `Authorization: Bearer <token>` header.
-
-### Key Security Invariants
-1. **Zero Raw Identity Storage:** Neuron converts the verified `(issuer, subject)` pair into an opaque HMAC-SHA256 owner key using `APP_IDENTITY_HASH_KEY`. The raw user subject, email, or username is never stored in checkpoint state, database rows, or log messages.
-2. **Explicit Scope Authorization:** Access is governed by standard OAuth 2.0 scopes or role-mapped permissions. Missing scopes result in `403 authorization_error`.
-3. **Defense-in-Depth JWKS Caching:** Cryptographic public keys are fetched from `APP_AUTH_JWKS_URL` and cached in memory. Network partitions or IdP timeouts trigger a fail-closed `503 authentication_unavailable`.
-4. **Rate Limiting by Principal:** Once authenticated, rate limits are applied per HMAC owner key rather than by client IP.
+Neuron Agent uses JSON Web Tokens (JWT) for authentication in staging and production environments (`APP_AUTH_MODE=jwt`). The system enforces:
+1. **Cryptographic Verification:** Every incoming token is verified against public JSON Web Key Sets (JWKS) published by the OIDC Identity Provider (e.g., Keycloak, Auth0, Okta).
+2. **Pseudonymous Identity Isolation:** User identities are hashed into 64-character hexadecimal HMAC keys using `APP_IDENTITY_HASH_KEY`. Raw user IDs, emails, and names are never stored in database foreign keys or logs.
+3. **Fine-Grained Scopes:** Capabilities are gated by explicit permissions declared in the JWT `scope` claim or mapped from token roles via `APP_AUTH_ROLE_PERMISSIONS`.
+4. **Verified Token Roles:** Roles extracted from `APP_AUTH_ROLES_CLAIM` are kept in the verified `Principal` object, enabling multi-tenant resource sharing (such as knowledge bases) across authorized role groups.
 
 ---
 
-## 2. Complete Scope Matrix
+## 2. Permission Scope Catalogue
 
 The following permissions can be granted directly via the token's `scope` claim (space-delimited string) or mapped from roles:
 
@@ -74,7 +72,7 @@ APP_AUTH_ALGORITHMS='["RS256", "ES256"]'
 
 # Secret HMAC key for deriving owner identifiers (at least 32 random bytes)
 # Generate with: openssl rand -hex 32
-APP_IDENTITY_HASH_KEY=<output of: openssl rand -hex 32>
+APP_IDENTITY_HASH_KEY=<your-secret-32-byte-hex-key>
 
 # Mandatory in production (APP_ENV=production enforces APP_AUTH_REQUIRE_TYP=true)
 APP_AUTH_REQUIRE_TYP=true
@@ -94,7 +92,7 @@ APP_AUTH_ROLE_PERMISSIONS='{
   "user": [
     "agent:invoke", "agent:approve", "threads:read", "threads:write",
     "feedback:write", "threads:delete", "memories:read", "memories:write",
-    "tools:calculator", "knowledge:read", "knowledge:write",
+    "tools:calculator", "knowledge:read", "knowledge:write", "knowledge:admin",
     "tools:list_knowledge_bases", "tools:search_knowledge", "tools:get_document_excerpt"
   ],
   "viewer": [
@@ -105,7 +103,21 @@ APP_AUTH_ROLE_PERMISSIONS='{
 
 ---
 
-## 4. Local Development Token Workflow
+## 4. Verified Token Roles and Resource Sharing (RAG-09.02)
+
+Neuron allows users to share resources (such as Knowledge Bases) with colleagues belonging to specific organizational roles:
+
+1. **Role Extraction:** When `APP_AUTH_ROLES_CLAIM` is set (default `"roles"`), the token verifier extracts the role list from the verified JWT.
+2. **Safety Bounding:**
+   - Maximum 100 roles per token.
+   - Maximum 256 characters per role string.
+   - If a token exceeds either bound, all roles are dropped for safety and an `auth_roles_dropped` audit event is emitted.
+3. **No Ambient Privileges:** Roles by themselves grant **zero** API privileges. All API endpoints require verified OAuth `scopes`. Token roles are used exclusively for evaluating resource-level access grants (e.g. `knowledge.grants`).
+4. **Zero-Leak Logging:** Verified roles are held in memory on the `Principal` object during request execution and are never recorded in application logs.
+
+---
+
+## 5. Local Development Token Workflow
 
 When developing locally with `APP_ENV=development`, you can simulate full JWT authentication without provisioning Keycloak:
 
@@ -134,9 +146,9 @@ TOKEN=$(make -s dev-token)
 echo "Minted token: $TOKEN"
 ```
 
-To mint a token for a custom user with specific scopes:
+To mint a token for a custom user with specific scopes and roles:
 ```bash
-TOKEN=$(uv run python scripts/dev_token.py --sub alice --scope "agent:invoke threads:read")
+TOKEN=$(uv run python scripts/dev_token.py --sub alice --scope "agent:invoke threads:read knowledge:read knowledge:admin" --role engineering)
 ```
 
 ### Step 5: Test Authenticated Call
@@ -149,7 +161,7 @@ curl -X POST http://127.0.0.1:8000/v1/agent/invoke \
 
 ---
 
-## 5. Connecting Keycloak
+## 6. Connecting Keycloak
 
 When deploying with Docker Compose or standalone Keycloak:
 
@@ -163,7 +175,7 @@ When deploying with Docker Compose or standalone Keycloak:
 
 ---
 
-## 6. How Identity Isolation Works
+## 7. How Identity Isolation Works
 
 The following flowchart illustrates the cryptographic transformation from JWT token to database isolation:
 
@@ -179,22 +191,22 @@ sequenceDiagram
     Client->>TokenVerifier: Request + Authorization: Bearer <JWT>
     TokenVerifier->>JWKS: Get signing key for kid
     TokenVerifier->>TokenVerifier: Validate signature, iss, aud, exp, nbf
-    TokenVerifier->>TokenVerifier: Extract (iss, sub) -> Principal
+    TokenVerifier->>TokenVerifier: Extract (iss, sub) -> Principal (with verified roles)
     TokenVerifier->>Service: Pass Principal to service layer
     Service->>Service: Compute HMAC-SHA256(APP_IDENTITY_HASH_KEY, iss || 0x1f || sub)
     Note over Service: Result is 64-character hex Owner Key
     Service->>DB: Query checkpoints / knowledge WHERE owner_key = $1
-    DB-->>Client: Filtered results for this owner only
+    DB-->>Client: Filtered results for this owner and their role grants
 ```
 
 ---
 
-## 7. Rotating `APP_IDENTITY_HASH_KEY`
+## 8. Rotating `APP_IDENTITY_HASH_KEY`
 
 > [!WARNING]
 > Because thread ownership and knowledge permissions in PostgreSQL are keyed directly by the HMAC-SHA256 owner key, changing `APP_IDENTITY_HASH_KEY` immediately orphans existing threads, memories, and knowledge bases for all users.
 
-To perform a zero-downtime key rotation:
+To perform a key rotation:
 1. Plan a migration window. Rotating the identity key replaces the stored check value in PostgreSQL (`neuron_identity_hash_check`).
 2. Run database setup with the rotation flag using the migration DSN:
    ```bash

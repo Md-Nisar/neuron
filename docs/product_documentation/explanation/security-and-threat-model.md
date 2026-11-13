@@ -4,7 +4,7 @@
 > **Diátaxis Mode:** Explanation (Understanding-Oriented)  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.2 (Conceptual / Security Information) and Diátaxis (Explanation)  
 > **Audience:** Security Engineers, Compliance Officers, Lead Architects  
-> **Code Traceability:** `src/neuron_agent/security/`, `docs/security/threat-model.md`, `SECURITY.md`, ADR 0003, ADR 0006
+> **Code Traceability:** `src/neuron_agent/security/`, `docs/security/threat-model.md`, `SECURITY.md`, ADR 0003, ADR 0006, ADR 0014
 
 ---
 
@@ -52,7 +52,7 @@ graph TD
 | :--- | :--- | :--- |
 | **Spoofing** | Caller presents a forged identity or user ID in request body/headers (`X-User-Id`). | In `APP_AUTH_MODE=jwt`, request-supplied user IDs are completely ignored. Identity is derived strictly from cryptographic verification of the JWT `(iss, sub)` pair via JWKS. |
 | **Tampering** | Remote MCP server modifies tool schemas to inject malicious arguments. | Cryptographic SHA-256 tool pinning via `neuron-mcp-pin`. Any change to tool names, descriptions, or parameters prevents startup. |
-| **Repudiation** | Mutating tool calls or data erasure performed without an audit trail. | Every authorization denial, human approval decision, and data erasure emits an immutable JSON audit event through `neuron_agent.audit`. |
+| **Repudiation** | Mutating tool calls or data erasure performed without an audit trail. | Every authorization denial, human approval decision, grant modification, and data erasure emits an immutable JSON audit event through `neuron_agent.audit`. |
 | **Information Disclosure** | Indirect prompt injection triggers system prompt leak or cross-tenant data access. | 1. Output Policy detects system prompt disclosure and substitutes `SYSTEM_PROMPT_REFUSAL`.<br>2. PostgreSQL Row-Level Security isolates knowledge chunks.<br>3. Logs strictly redact prompts, completions, and tool arguments. |
 | **Denial of Service** | Malicious tenant floods requests or uploads a 10 GB zip bomb. | 1. Bounded body size (64 KB) and parsing caps (50 MB).<br>2. Rate limiters and sliding token budgets.<br>3. Procrastinate worker retries capped at 5 attempts before quarantine. |
 | **Elevation of Privilege** | Model hallucinates an administrative or mutating tool call. | Mutating tools are paused at the checkpoint. The run terminates until an authorized human presents `agent:approve` permission. |
@@ -112,3 +112,24 @@ Complex file formats (PDF, DOCX, XLSX, PPTX) have notoriously vast attack surfac
 - In Neuron's reference architecture, `docling-serve` runs in an isolated Docker container with `read_only: true` and `cap_drop: ALL`.
 - It connects **exclusively to an internal Docker network** (`parser`) shared only with `neuron-worker`.
 - The parser container has no default gateway and no outbound internet route, ensuring that malicious documents cannot trigger server-side request forgery (SSRF).
+
+---
+
+### 3.5 Role-Based Knowledge Authorization & Invariant Defenses (RAG-09.03)
+
+Sharing knowledge bases introduces potential privilege escalation and access-control confusion vectors. Neuron applies strict architectural controls:
+
+1. **Anti-Spoofing of Token Roles:**
+   - User roles originate exclusively from cryptographically verified JWT claims (`APP_AUTH_ROLES_CLAIM`).
+   - Request bodies, headers, and query parameters cannot append or modify caller roles.
+2. **String Sanitization:**
+   - Role names in grants (`knowledge.grants`) are validated against regex `_ROLE_PATTERN` (1–200 characters, no control characters, no outer whitespace).
+   - In addition, Unicode category validation checks for and rejects invisible characters, zero-width spaces, and bidi override control sequences.
+   - Grants per base are capped at 50 (`MAX_ROLE_GRANTS`).
+3. **Owner Exclusivity Invariant:**
+   - Role grants (`read`, `write`, `admin`) can never authorize deleting the knowledge base (`DELETE /v1/knowledge/bases/{id}`), generating a user data export, or executing bulk account erasure.
+   - Those actions strictly require `subject_type = 'owner'`, preventing malicious collaborators from deleting shared corporate repositories.
+4. **Immediate Revocation Without Caching:**
+   - SQL queries evaluate `AllowedKbs` inside the statement transaction directly against `knowledge.grants`. Revoking a role grant takes effect instantly on the next incoming request without caching lag.
+5. **Re-Indexing Processing Locality Guard:**
+   - When migrating embedding models via `reindex start`, the system inspects all live knowledge bases. If any base requires `processing = 'self_hosted'` or if the deployment policy is `self_hosted_only`, initiating a re-index with a hosted model is strictly refused.

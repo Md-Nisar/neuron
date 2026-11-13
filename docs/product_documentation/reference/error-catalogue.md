@@ -4,7 +4,7 @@
 > **Diátaxis Mode:** Reference (Information-Oriented)  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.3 (Reference Information) and Diátaxis (Reference)  
 > **Scope:** Machine-readable error codes and centralized HTTP mapping  
-> **Code Traceability:** `src/neuron_agent/errors/base.py`, `src/neuron_agent/api/main.py`
+> **Code Traceability:** `src/neuron_agent/errors/base.py`, `src/neuron_agent/api/main.py`, `src/neuron_agent/knowledge/reranking.py`
 
 ---
 
@@ -26,6 +26,7 @@ Neuron Agent implements a centralized, typed error taxonomy rooted in `AppError`
 | `validation_error` | 400 / 422 | No | Yes | No | Input failed schema validation: HTTP 422 for FastAPI request body validation; HTTP 400 for domain-level business validation. | Check request JSON body and field constraints. |
 | `authentication_error` | 401 | No | Yes | No | Missing, expired, malformed, or untrusted Bearer JWT token. | Refresh token via OIDC Identity Provider. |
 | `authorization_error` | 403 | No | Yes | No | Caller token lacks the required scope for this endpoint. | Grant missing scope to user in Identity Provider. |
+| `knowledge_access_denied` | 403 | No | Yes | No | Caller may see this knowledge base but is not permitted to modify it this way (lacks required role grant). | Verify assigned role grants via `GET /v1/knowledge/bases/{kb_id}/grants` or contact base owner. |
 | `thread_not_found` | 404 | No | Yes | No | Thread ID does not exist or belongs to another user. | Verify thread ID; omit to start a new thread. |
 | `approval_not_found` | 404 | No | Yes | No | No pending approval exists for this ID on this thread. | Thread was already decided or never paused. |
 | `memory_disabled` | 404 | No | Yes | No | Memory subsystem is not enabled on this deployment. | Enable `APP_MEMORY_ENABLED=true` in settings. |
@@ -60,6 +61,7 @@ Neuron Agent implements a centralized, typed error taxonomy rooted in `AppError`
 | `provider_error` | 502 | Yes | **No** | **Yes** | LLM provider returned an unexpected 5xx or bad response. | Verify provider status page (OpenAI / NVIDIA). |
 | `tool_execution_error` | 502 | Yes | **No** | **Yes** | Local tool or remote MCP tool threw an unexpected error. | Inspect tool invocation logs. |
 | `structured_output_error` | 502 | Yes | **No** | **Yes** | LLM failed to produce valid structured JSON matching schema. | Retried automatically; check model temperature/prompt. |
+| `rerank_error` | 502 | Yes | **No** | **Yes** | Cross-encoder reranker failed, timed out, or produced invalid output. | Internal server error sanitized; search falls back to RRF candidate order with `reranked: false`. |
 | `persistence_error` | 503 | Yes | **No** | **Yes** | PostgreSQL connection pool timeout or database connectivity loss. | Check PostgreSQL cluster health and connection counts. |
 | `authentication_unavailable` | 503 | Yes | **No** | **Yes** | Identity Provider JWKS endpoint unreachable. | Check IdP connectivity and network firewall routes. |
 | `too_many_streams` | 503 | Yes | Yes | No | Process reached `APP_MAX_CONCURRENT_STREAMS` (100). | Scale out API replicas. |
@@ -69,7 +71,18 @@ Neuron Agent implements a centralized, typed error taxonomy rooted in `AppError`
 
 ---
 
-## 3. Retry-After Header Behaviour
+## 3. Operational & Startup Diagnostics
+
+| Diagnostic Code | Context | Description & Cause | Remediation Action |
+| :--- | :--- | :--- | :--- |
+| `knowledge_profile_mismatch` | Startup / Search | Configured embedding settings differ from the database's active index profile. | Set `APP_KNOWLEDGE_REINDEX_EMBEDDING_*` and run `reindex start` to migrate profiles. |
+| `processing_locality_forbidden` | Ingestion / Re-index | Ingestion or re-index attempted hosted processing while policy or base requires `self_hosted`. | Verify `APP_KNOWLEDGE_PROCESSING_POLICY` or configure a self-hosted provider. |
+| `reindex_failed` | Background Task | Background re-indexing worker task failed and exhausted retry budget. | Check worker logs; execute `reindex status` or `reindex cancel`. |
+| `auth_roles_dropped` | Audit Event | Caller token carried $>100$ roles or a role name $>256$ characters. | Configure Identity Provider token role mapper to trim excess claims. |
+
+---
+
+## 4. Retry-After Header Behaviour
 
 For retryable errors (HTTP 429 and temporary HTTP 503), Neuron supplies an RFC 9110 compliant `Retry-After: <seconds>` HTTP header:
 
