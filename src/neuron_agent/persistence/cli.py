@@ -6,17 +6,20 @@
 python -m neuron_agent.persistence.cli setup [--rotate-identity-key]
 python -m neuron_agent.persistence.cli prune [--older-than-days N]
 python -m neuron_agent.persistence.cli reindex start|status|cancel
+python -m neuron_agent.persistence.cli feedback-report
 
 All are operator-only: there is no HTTP route for any (SECURITY.md). `setup` and `reindex`
 connect as the migrator role (`APP_POSTGRES_MIGRATION_DSN`) and `prune` as the app role
 (`APP_POSTGRES_DSN`), ADR 0008 decision 15. `reindex` moves the knowledge index to the
-`APP_KNOWLEDGE_REINDEX_EMBEDDING_*` model (RAG-09.04, ADR 0014).
+`APP_KNOWLEDGE_REINDEX_EMBEDDING_*` model (RAG-09.04, ADR 0014). `feedback-report` connects as
+the app role and prints, as JSON, the chunk IDs cited by thumbs-down answers (RAG-09.07).
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 from datetime import timedelta
 
@@ -30,6 +33,7 @@ from neuron_agent.persistence.checkpointer import (
     knowledge_profile,
     knowledge_reindex_profile,
 )
+from neuron_agent.persistence.feedback_report import negative_feedback_report
 from neuron_agent.persistence.retention import prune_threads
 from neuron_agent.persistence.startup_checks import StartupCheckError
 
@@ -179,14 +183,24 @@ async def _prune(older_than_days: int) -> None:
         await persistence.close()
 
 
+async def _feedback_report(settings: Settings) -> dict[str, object]:
+    persistence = build_persistence(settings)
+    await persistence.open()
+    try:
+        return await negative_feedback_report(persistence)
+    finally:
+        await persistence.close()
+
+
 def main(argv: list[str] | None = None) -> None:
     """Run a persistence maintenance command."""
     parser = argparse.ArgumentParser(prog="neuron-persistence")
     parser.add_argument(
         "command",
-        choices=["setup", "prune", "reindex"],
+        choices=["setup", "prune", "reindex", "feedback-report"],
         help="setup: create/migrate the schema; prune: delete threads past retention;"
-        " reindex: move the knowledge index to a new embedding model",
+        " reindex: move the knowledge index to a new embedding model;"
+        " feedback-report: chunk IDs cited by thumbs-down answers",
     )
     parser.add_argument(
         "action",
@@ -233,6 +247,15 @@ def main(argv: list[str] | None = None) -> None:
             # Same rule as setup: no traceback and no exception text, which can carry the DSN.
             print(f"prune failed: {_describe(exc)}", file=sys.stderr)
             raise SystemExit(1) from None
+    elif args.command == "feedback-report":
+        try:
+            if settings.checkpointer != "postgres":
+                raise SetupError("feedback-report needs APP_CHECKPOINTER=postgres")
+            report = asyncio.run(_feedback_report(settings))
+        except Exception as exc:
+            print(f"feedback-report failed: {_describe(exc)}", file=sys.stderr)
+            raise SystemExit(1) from None
+        print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
