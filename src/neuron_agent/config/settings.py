@@ -32,13 +32,40 @@ ProcessingPolicy = Literal["allow_hosted", "self_hosted_only"]
 # Browsers send origins as lowercase `scheme://host[:port]`; CORS matching is exact.
 # Starlette compares hostnames without the port, so entries can't carry ports or schemes.
 # Model identifier prefixes `create_chat_model` can build.
-SUPPORTED_PROVIDERS = frozenset({"openai", "nvidia", "anthropic"})
+# `openai_compatible` is a self-hosted server (vLLM, SGLang) at APP_OPENAI_COMPATIBLE_BASE_URL.
+SUPPORTED_PROVIDERS = frozenset({"openai", "nvidia", "anthropic", "openai_compatible"})
 # Instance-metadata names; link-local addresses are refused by address.
 _METADATA_HOSTS = frozenset({"metadata.google.internal", "metadata.azure.internal"})
 # A host whose last label is numeric is an IPv4 address to URL parsers (WHATWG), in any form.
 _NUMERIC_LABEL = re.compile(r"(0x[0-9a-f]*|[0-9]+)")
 _HOST_PATTERN = re.compile(r"^(\*|(\*\.)?[a-z0-9.-]+)$")
 _ORIGIN_PATTERN = re.compile(r"^https?://([a-z0-9.-]+|\[[0-9a-f:]+\])(:[0-9]{1,5})?$")
+
+
+def _check_operator_base_url(prefix: str, url: str, *, env: str, has_key: bool) -> None:
+    """Check an operator's `<prefix>_BASE_URL`: http(s) with a host and nothing else; https in
+    production, and in staging when `<prefix>_API_KEY` is set. A private address is allowed:
+    the operator, not a user, chooses it (ADR 0014, amendment "external sources")."""
+    parts = urlsplit(url)
+    if (
+        parts.scheme not in {"http", "https"}
+        or not parts.hostname
+        or parts.username is not None
+        or parts.password is not None
+        or parts.query
+        or parts.fragment
+    ):
+        raise ValueError(
+            f"{prefix}_BASE_URL must be an http(s) URL with a host and "
+            "no credentials, query or fragment"
+        )
+    if env == "production" and parts.scheme != "https":
+        # Text goes to this server; never in clear text in production (L-10).
+        raise ValueError(f"{prefix}_BASE_URL must use https in production")
+    if env in {"staging", "production"} and parts.scheme != "https" and has_key:
+        raise ValueError(
+            f"{prefix}_BASE_URL must use https when {prefix}_API_KEY is set in staging/production"
+        )
 
 
 _SSLMODE_RANK = {
@@ -382,6 +409,11 @@ class Settings(BaseSettings):
         ),
     )
 
+    # `openai_compatible` chat models (RAG-10.05): the server's `/v1` base URL, set by the
+    # operator like the embedding base URL. The key is optional (a keyless private server).
+    openai_compatible_base_url: str | None = None
+    openai_compatible_api_key: SecretStr | None = None
+
     # Only the name LangSmith itself reads: an `APP_`-prefixed copy would pass validation
     # here and still leave the client without a key.
     langsmith_api_key: SecretStr | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
@@ -404,6 +436,8 @@ class Settings(BaseSettings):
         "knowledge_reindex_embedding_api_key",
         "knowledge_reindex_embedding_base_url",
         "knowledge_parser_url",
+        "openai_compatible_base_url",
+        "openai_compatible_api_key",
         mode="before",
     )
     @classmethod
@@ -433,6 +467,7 @@ class Settings(BaseSettings):
             "openai": self.openai_api_key,
             "nvidia": self.nvidia_api_key,
             "anthropic": self.anthropic_api_key,
+            "openai_compatible": self.openai_compatible_api_key,
         }.get(provider)
         return key if key is not None and key.get_secret_value() else None
 
@@ -459,6 +494,8 @@ class Settings(BaseSettings):
             return self
         for identifier in (self.default_model, *self.fallback_models):
             provider = identifier.partition(":")[0]
+            if provider == "openai_compatible":
+                continue  # A self-hosted server may need no key; its base URL is checked below.
             if provider in SUPPORTED_PROVIDERS and self.provider_api_key(provider) is None:
                 raise ValueError(
                     f"{provider.upper()}_API_KEY is required for {provider} models "
@@ -561,31 +598,12 @@ class Settings(BaseSettings):
                     "APP_KNOWLEDGE_EMBEDDING_BASE_URL is required for the openai_compatible "
                     "embedding provider"
                 )
-            parts = urlsplit(url)
-            if (
-                parts.scheme not in {"http", "https"}
-                or not parts.hostname
-                or parts.username is not None
-                or parts.password is not None
-                or parts.query
-                or parts.fragment
-            ):
-                raise ValueError(
-                    "APP_KNOWLEDGE_EMBEDDING_BASE_URL must be an http(s) URL with a host and "
-                    "no credentials, query or fragment"
-                )
-            if self.env == "production" and parts.scheme != "https":
-                # Document text goes to this server; never in clear text in production (L-10).
-                raise ValueError("APP_KNOWLEDGE_EMBEDDING_BASE_URL must use https in production")
-            if (
-                self.env in {"staging", "production"}
-                and parts.scheme != "https"
-                and self.knowledge_embedding_api_key is not None
-            ):
-                raise ValueError(
-                    "APP_KNOWLEDGE_EMBEDDING_BASE_URL must use https when "
-                    "APP_KNOWLEDGE_EMBEDDING_API_KEY is set in staging/production"
-                )
+            _check_operator_base_url(
+                "APP_KNOWLEDGE_EMBEDDING",
+                url,
+                env=self.env,
+                has_key=self.knowledge_embedding_api_key is not None,
+            )
         if self.env not in {"staging", "production"}:
             return
         if provider == "fake":
@@ -607,6 +625,26 @@ class Settings(BaseSettings):
                 "self-hosted openai_compatible provider (APP_KNOWLEDGE_EMBEDDING_LOCALITY="
                 "self_hosted)"
             )
+
+    @model_validator(mode="after")
+    def validate_openai_compatible_chat(self) -> Settings:
+        """A self-hosted chat model needs its base URL, checked like the embedding one."""
+        if not any(
+            identifier.partition(":")[0] == "openai_compatible"
+            for identifier in (self.default_model, *self.fallback_models)
+        ):
+            return self
+        if self.openai_compatible_base_url is None:
+            raise ValueError(
+                "APP_OPENAI_COMPATIBLE_BASE_URL is required for openai_compatible models"
+            )
+        _check_operator_base_url(
+            "APP_OPENAI_COMPATIBLE",
+            self.openai_compatible_base_url,
+            env=self.env,
+            has_key=self.provider_api_key("openai_compatible") is not None,
+        )
+        return self
 
     def knowledge_reindex_settings(self) -> Settings | None:
         """These settings with the re-index model in place of the active one, or None."""

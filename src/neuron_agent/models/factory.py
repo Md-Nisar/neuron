@@ -909,6 +909,19 @@ def create_chat_model(
         raise ConfigurationError(f"unsupported model provider: {provider}")
 
     api_key = settings.provider_api_key(provider)
+    if provider == "openai_compatible":
+        # A self-hosted server (RAG-10.05): never the fake model, since it needs no key. The
+        # key is always passed, so `ChatOpenAI` never sends OPENAI_API_KEY from the environment
+        # to this server.
+        return ChatOpenAI(
+            model=model_name,
+            api_key=api_key.get_secret_value() if api_key else "unused",
+            base_url=settings.openai_compatible_base_url,
+            stream_usage=True,
+            timeout=settings.request_timeout_seconds,
+            max_tokens=settings.max_output_tokens,
+            max_retries=0,
+        )
     if settings.env in {"development", "test"} and api_key is None:
         return _FakeChatModel(
             responses=["Local test response."],

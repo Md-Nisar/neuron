@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import http.server
+import json
+import threading
+from typing import ClassVar
+
 import httpx
 import openai
 import pytest
@@ -20,8 +25,8 @@ from langchain_core.exceptions import (
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
-from pydantic import SecretStr
-from tests.conftest import PRODUCTION_PROFILE
+from pydantic import SecretStr, ValidationError
+from tests.conftest import PRODUCTION_PROFILE, jwt_settings
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import (
@@ -358,3 +363,116 @@ def test_a_neutral_error_that_is_also_an_openai_quota_error_is_still_quota() -> 
     error = _Quota("no credit", response=response, body={"code": "insufficient_quota"})
     assert isinstance(classify_agent_error(error), ProviderQuotaError)
     assert _is_retryable_provider_error(error) is False
+
+
+# RAG-10.05: a self-hosted OpenAI-compatible chat model (#582).
+
+
+class _ChatServer(http.server.BaseHTTPRequestHandler):
+    paths: ClassVar[list[str]] = []
+    keys: ClassVar[list[str]] = []
+
+    def do_POST(self) -> None:
+        self.paths.append(self.path)
+        self.keys.append(self.headers.get("Authorization", ""))
+        self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        body = json.dumps(
+            {
+                "id": "c1",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "local-model",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "from the local server"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 4, "total_tokens": 5},
+            }
+        ).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args: object) -> None:
+        pass
+
+
+def test_ac1_an_openai_compatible_model_sends_requests_to_its_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-real-openai-key")
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _ChatServer)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        base_url = f"http://127.0.0.1:{server.server_port}/v1"
+        settings = Settings(
+            env="development",
+            default_model="openai_compatible:local-model",
+            openai_compatible_base_url=base_url,
+        )
+        model = create_chat_model(settings)
+        assert isinstance(model, ChatOpenAI)
+        assert model.openai_api_base == base_url
+        assert model.stream_usage is True
+        assert model.invoke("hello").content == "from the local server"
+    finally:
+        server.shutdown()
+    assert _ChatServer.paths == ["/v1/chat/completions"]
+    # The OpenAI key from the environment never reaches the self-hosted server.
+    assert "sk-real-openai-key" not in _ChatServer.keys[0]
+
+
+def test_an_openai_compatible_model_uses_its_own_key() -> None:
+    settings = _production_settings(
+        default_model="openai_compatible:local-model",
+        openai_compatible_base_url="https://vllm.internal.example/v1",
+        openai_compatible_api_key=SecretStr("vllm-key"),
+    )
+    model = create_chat_model(settings)
+    assert isinstance(model, ChatOpenAI)
+    assert model.openai_api_key is not None
+    assert model.openai_api_key.get_secret_value() == "vllm-key"
+    assert model.max_retries == 0
+
+
+def test_an_openai_compatible_model_needs_a_base_url() -> None:
+    with pytest.raises(ValidationError, match="APP_OPENAI_COMPATIBLE_BASE_URL is required"):
+        Settings(env="development", default_model="openai_compatible:local-model")
+
+
+def test_ac2_an_http_non_loopback_base_url_is_refused_in_production() -> None:
+    with pytest.raises(ValidationError, match="must use https in production"):
+        _production_settings(
+            default_model="openai_compatible:local-model",
+            openai_compatible_base_url="http://vllm.internal.example:8000/v1",
+        )
+
+
+def test_a_keyless_private_server_may_use_http_in_staging() -> None:
+    """The operator chooses the address, so a private one is allowed; no key, no secret sent."""
+    settings = jwt_settings(
+        env="staging",
+        default_model="openai_compatible:local-model",
+        openai_compatible_base_url="http://10.0.0.7:8000/v1",
+    )
+    assert settings.provider_api_key("openai_compatible") is None
+
+
+def test_a_keyed_server_must_use_https_in_staging() -> None:
+    with pytest.raises(ValidationError, match="must use https when"):
+        jwt_settings(
+            env="staging",
+            default_model="openai_compatible:local-model",
+            openai_compatible_base_url="http://10.0.0.7:8000/v1",
+            openai_compatible_api_key=SecretStr("vllm-key"),
+        )
+
+
+def test_an_openai_compatible_fallback_needs_the_base_url_too() -> None:
+    with pytest.raises(ValidationError, match="APP_OPENAI_COMPATIBLE_BASE_URL is required"):
+        _production_settings(fallback_models=["openai_compatible:local-model"])
