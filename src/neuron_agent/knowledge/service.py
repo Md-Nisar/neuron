@@ -42,7 +42,7 @@ from neuron_agent.errors.base import (
 from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge.authorization import AllowedKbs, KnowledgeAuthorization
 from neuron_agent.knowledge.blobs import BlobStore
-from neuron_agent.knowledge.parsing import Limits, ParseError, accepted_type
+from neuron_agent.knowledge.parsing import HTML, Limits, ParseError, accepted_type
 from neuron_agent.observability import semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.schemas.knowledge import (
@@ -121,7 +121,14 @@ _DOCUMENT = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " AND d.doc_id = %(doc)s"
 _FILE = (
     "SELECT d.title, d.mime_type, d.blob_key, d.sha256"
     + _DOCUMENT_FILTER
-    + " AND d.doc_id = %(doc)s"
+    + " AND d.doc_id = %(doc)s AND d.blob_key IS NOT NULL"  # a web page not fetched yet: 404
+)
+# The base's live document for a URL (RAG-10.02): adding the same page again returns it.
+_BY_URL = (
+    "SELECT d.doc_id, d.kb_id, d.status"
+    " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
+    " WHERE d.kb_id = %(kb)s AND d.kb_id = ANY(%(kbs)s) AND d.source_type = 'web'"
+    " AND d.source_ref = %(ref)s AND d.deleted_at IS NULL AND b.deleted_at IS NULL"
 )
 # Chunks are read under RLS (`neuron.kb_ids`, set to the readable bases) and only through a live,
 # ready document of a readable base; a chunk id from another document is not found (RAG-03.04).
@@ -173,9 +180,9 @@ _BY_SHA = (
 # delete until this commits, so the delete tombstones this document too, and its purge finds it.
 _INSERT_DOCUMENT = (
     "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type, size_bytes,"
-    " sha256, blob_key, idempotency_key, status)"
+    " sha256, blob_key, idempotency_key, source_type, source_ref, status)"
     " SELECT %(doc)s, kb_id, %(owner)s, %(title)s, %(mime)s, %(size)s, %(sha)s, %(blob)s,"
-    " %(key)s, 'queued' FROM knowledge.bases"
+    " %(key)s, %(source)s, %(ref)s, 'queued' FROM knowledge.bases"
     " WHERE kb_id = %(kb)s AND kb_id = ANY(%(kbs)s) AND deleted_at IS NULL FOR SHARE"
     " ON CONFLICT DO NOTHING RETURNING doc_id"
 )
@@ -496,6 +503,8 @@ class KnowledgeBases:
                         "sha": blob.sha256,
                         "blob": blob.key,
                         "key": idempotency_key,
+                        "source": "upload",
+                        "ref": None,
                         "kb": kb_id,
                         "kbs": [*allowed.write],
                     },
@@ -517,6 +526,66 @@ class KnowledgeBases:
             return existing
         self._audit(
             "knowledge_document_uploaded", owner_key, _WRITE, doc_id, resource="knowledge_document"
+        )
+        return _accepted({"doc_id": doc_id, "kb_id": kb_id, "status": "queued"})
+
+    async def add_web_page(
+        self,
+        owner_key: str,
+        kb_id: uuid.UUID,
+        *,
+        url: str,
+        title: str,
+        idempotency_key: str | None,
+        roles: frozenset[str] = frozenset(),
+    ) -> DocumentAccepted:
+        """Queue a public web page for the worker to fetch and ingest (RAG-10.02); `202`.
+
+        `url` has passed `validate_safe_url`. A repeated `Idempotency-Key` returns the first
+        document, and a URL already in the base returns that document. Nothing is fetched here:
+        the page counts against the document quotas now and its bytes once it is stored.
+        """
+        if (
+            replay := await self.check_upload(owner_key, kb_id, idempotency_key, roles)
+        ) is not None:
+            return replay
+        doc_id = uuid.uuid4()
+        async with self._transaction() as conn:
+            await conn.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"knowledge.documents:{owner_key}",),
+            )
+            allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+            params = {"kb": kb_id, "kbs": [*allowed.write], "ref": url}
+            if (row := await (await conn.execute(_BY_URL, params)).fetchone()) is not None:
+                return _accepted(row)
+            await self._check_quota(conn, owner_key, 0)
+            cursor = await conn.execute(
+                _INSERT_DOCUMENT,
+                {
+                    **params,
+                    "doc": doc_id,
+                    "owner": owner_key,
+                    "title": title,
+                    "mime": HTML,
+                    "size": 0,
+                    "sha": None,
+                    "blob": None,
+                    "key": idempotency_key,
+                    "source": "web",
+                },
+            )
+            inserted = await cursor.fetchone() is not None
+            if inserted:
+                await jobs.defer(conn, jobs.Task.INGEST_DOCUMENT, doc_id=doc_id)
+        if not inserted:  # lost a race on the same key, or the base was deleted meanwhile
+            if (
+                replay := await self.check_upload(owner_key, kb_id, idempotency_key, roles)
+            ) is None:
+                raise KnowledgeBaseNotFoundError("knowledge base not found")
+            return replay
+        self._audit(
+            "knowledge_web_page_added", owner_key, _WRITE, doc_id, resource="knowledge_document"
         )
         return _accepted({"doc_id": doc_id, "kb_id": kb_id, "status": "queued"})
 
