@@ -262,3 +262,25 @@ Deleting a document or base is asynchronous:
 1. `DELETE /v1/knowledge/documents/{doc_id}`: Sets `deleted_at` (tombstone) and immediately returns `202 Accepted`.
 2. Document disappears immediately from all queries and searches.
 3. The worker's `purge_document` background task permanently deletes the blob file, chunk rows, and embeddings from PostgreSQL.
+
+---
+
+## 6. Re-indexing to a New Embedding Model
+
+A different embedding provider, model or dimension needs a re-index into a new index profile (ADR 0014, amendment "re-index to a new profile"). Search keeps working on the old profile until the new one covers every ready chunk, then every knowledge base switches at once.
+
+1. Set `APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER`, `_MODEL`, `_DIMENSIONS`, `_BASE_URL`, `_API_KEY` and `_LOCALITY` to the target model on the API, the worker and the operator shell. Keep the `APP_KNOWLEDGE_EMBEDDING_*` settings on the current model. Restart the API and the worker.
+2. Start the re-index as the migration role:
+   ```bash
+   python -m neuron_agent.persistence.cli reindex start
+   ```
+   It refuses a hosted target model while any live base is self-hosted only, or while the processing policy forbids hosted processing. It builds the new profile's HNSW index, then queues one `reindex_kb` job per live base. If it stops part way (an index build that times out, say), run it again with the same settings: it resumes, and queues jobs only for bases that have none.
+3. Follow progress:
+   ```bash
+   python -m neuron_agent.persistence.cli reindex status
+   ```
+   While it runs, every upload is embedded with both models, and the re-index embeds every existing chunk once more. Both are charged to each document's `embedding_tokens`.
+4. The worker swaps when every ready chunk is covered: the new profile becomes active and the old one is retired (audit `knowledge_reindex_swapped`). A periodic check retries the swap every ten minutes.
+5. After the swap, move the target values into `APP_KNOWLEDGE_EMBEDDING_*`, remove the `APP_KNOWLEDGE_REINDEX_EMBEDDING_*` settings and restart. Until then the processes keep working with the re-index settings.
+
+To stop a re-index, run `reindex cancel`: the new profile is retired and the active one never changes. A base whose setting forbids the target model, or a job that exhausts its retries, fails the re-index the same way (audit `knowledge_reindex_failed`). A retired profile's embeddings and index stay in the database for now.

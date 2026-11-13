@@ -5,10 +5,12 @@
 
 python -m neuron_agent.persistence.cli setup [--rotate-identity-key]
 python -m neuron_agent.persistence.cli prune [--older-than-days N]
+python -m neuron_agent.persistence.cli reindex start|status|cancel
 
-Both are operator-only: there is no HTTP route for either (SECURITY.md). `setup` connects as
-the migrator role (`APP_POSTGRES_MIGRATION_DSN`) and `prune` as the app role
-(`APP_POSTGRES_DSN`), ADR 0008 decision 15.
+All are operator-only: there is no HTTP route for any (SECURITY.md). `setup` and `reindex`
+connect as the migrator role (`APP_POSTGRES_MIGRATION_DSN`) and `prune` as the app role
+(`APP_POSTGRES_DSN`), ADR 0008 decision 15. `reindex` moves the knowledge index to the
+`APP_KNOWLEDGE_REINDEX_EMBEDDING_*` model (RAG-09.04, ADR 0014).
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ import psycopg
 
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.observability.logging import configure_logging
-from neuron_agent.persistence import migrations
+from neuron_agent.persistence import migrations, reindex
 from neuron_agent.persistence.checkpointer import (
     build_persistence,
     knowledge_profile,
@@ -55,7 +57,10 @@ def _describe(exc: Exception) -> str:
     """Name a failure without its text: driver messages can echo hosts and credentials."""
     if isinstance(
         exc,
-        SetupError | migrations.LockWaitTimeout | migrations.IdentityKeyMismatch,
+        SetupError
+        | migrations.LockWaitTimeout
+        | migrations.IdentityKeyMismatch
+        | reindex.ReindexError,
     ):
         return str(exc)
     if isinstance(exc, StartupCheckError):
@@ -89,6 +94,42 @@ def _setup(settings: Settings, *, rotate_identity_key: bool) -> None:
         print(f"setup failed: {_describe(exc)}", file=sys.stderr)
         raise SystemExit(1) from None
     print(f"setup complete: applied migrations {applied or 'none'}")
+
+
+def _reindex(settings: Settings, action: str) -> None:
+    try:
+        if not settings.knowledge_enabled:
+            raise SetupError("the knowledge engine is off: set APP_KNOWLEDGE_ENABLED")
+        dsn = _migration_dsn(settings)
+        if action == "start":
+            target = knowledge_reindex_profile(settings)
+            if target is None:
+                raise SetupError("set APP_KNOWLEDGE_REINDEX_EMBEDDING_* to the target model")
+            new = asyncio.run(
+                reindex.start(
+                    dsn,
+                    target,
+                    settings.knowledge_reindex_embedding_locality,
+                    settings.knowledge_processing_policy,
+                )
+            )
+            print(f"re-index started: profile {new} is building")
+        elif action == "status":
+            progress = asyncio.run(reindex.status(dsn))
+            if progress.profile_id is None:
+                print(f"no re-index running; active profile {progress.active}")
+            else:
+                print(
+                    f"profile {progress.profile_id} building (active {progress.active}):"
+                    f" {progress.covered}/{progress.chunks} chunks embedded,"
+                    f" {progress.bases} bases, {progress.jobs} jobs queued or running"
+                )
+        else:
+            cancelled = asyncio.run(reindex.cancel(dsn))
+            print("no re-index running" if cancelled is None else f"profile {cancelled} retired")
+    except Exception as exc:
+        print(f"reindex {action} failed: {_describe(exc)}", file=sys.stderr)
+        raise SystemExit(1) from None
 
 
 async def _prune(older_than_days: int) -> None:
@@ -143,8 +184,15 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="neuron-persistence")
     parser.add_argument(
         "command",
-        choices=["setup", "prune"],
-        help="setup: create/migrate the schema; prune: delete threads past retention",
+        choices=["setup", "prune", "reindex"],
+        help="setup: create/migrate the schema; prune: delete threads past retention;"
+        " reindex: move the knowledge index to a new embedding model",
+    )
+    parser.add_argument(
+        "action",
+        nargs="?",
+        choices=["start", "status", "cancel"],
+        help="reindex: start, report on or cancel a re-index",
     )
     parser.add_argument(
         "--older-than-days",
@@ -165,6 +213,8 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("--rotate-identity-key applies to setup only")
     if args.older_than_days is not None and args.command != "prune":
         parser.error("--older-than-days applies to prune only")
+    if (args.action is None) == (args.command == "reindex"):
+        parser.error("reindex needs start, status or cancel; the other commands take none")
     settings = get_settings()
     configure_logging(
         level=settings.log_level,
@@ -174,6 +224,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     if args.command == "setup":
         _setup(settings, rotate_identity_key=args.rotate_identity_key)
+    elif args.command == "reindex":
+        _reindex(settings, args.action)
     elif args.command == "prune":
         try:
             asyncio.run(_prune(args.older_than_days or settings.thread_retention_days))
