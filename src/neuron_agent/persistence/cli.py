@@ -183,6 +183,17 @@ async def _prune(older_than_days: int) -> None:
         await persistence.close()
 
 
+def _print_feedback_report(settings: Settings) -> None:
+    try:
+        if settings.checkpointer != "postgres":
+            raise SetupError("feedback-report needs APP_CHECKPOINTER=postgres")
+        report = asyncio.run(_feedback_report(settings))
+    except Exception as exc:
+        print(f"feedback-report failed: {_describe(exc)}", file=sys.stderr)
+        raise SystemExit(1) from None
+    print(json.dumps(report, indent=2))
+
+
 async def _feedback_report(settings: Settings) -> dict[str, object]:
     persistence = build_persistence(settings)
     await persistence.open()
@@ -248,14 +259,7 @@ def main(argv: list[str] | None = None) -> None:
             print(f"prune failed: {_describe(exc)}", file=sys.stderr)
             raise SystemExit(1) from None
     elif args.command == "feedback-report":
-        try:
-            if settings.checkpointer != "postgres":
-                raise SetupError("feedback-report needs APP_CHECKPOINTER=postgres")
-            report = asyncio.run(_feedback_report(settings))
-        except Exception as exc:
-            print(f"feedback-report failed: {_describe(exc)}", file=sys.stderr)
-            raise SystemExit(1) from None
-        print(json.dumps(report, indent=2))
+        _print_feedback_report(settings)
 
 
 if __name__ == "__main__":
