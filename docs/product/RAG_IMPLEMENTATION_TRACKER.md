@@ -56,7 +56,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E07 | Data rights and lifecycle | 1 | v1.1.0 | 3 | 3 | 0 | 0 | 0 | — |
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 8 | 0 | 0 | 0 | — |
-| RAG-E10 | External knowledge sources | 3 | later | 5 | 0 | 0 | 0 | 5 | RAG-10.01 (Phase 3) |
+| RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 0 | 0 | 0 | 5 | RAG-10.01 |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
 | **Total** | | | | **56** | **41** | **0** | **0** | **15** | **RAG-10.01** |
@@ -64,15 +64,17 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-13):** v1.2.0 is released: signed off by the owner, released from `97072d8` (branch `release/v1.2.0`); the tag `v1.2.0` and the GitHub Release are made by hand from the `1.2.0` CHANGELOG section. Next: Phase 3, starting with RAG-E10 (external knowledge sources; epic and story issues to create), when the owner chooses. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
+**Recommended next action (2026-11-13, Phase 3):** the owner chose RAG-E10 for v1.3.0 (epic #577): web pages and the self-hosted chat model, in the order ADR 0014 amendment "external sources", RAG-10.01 (#578), RAG-10.05 (#582), RAG-10.02 (#579). RAG-10.03 (#580) and RAG-10.04 (#581) are deferred until a product requirement exists. Next: RAG-10.01.
+
+**Earlier (2026-11-13):** v1.2.0 is released: signed off by the owner, released from `97072d8` (branch `release/v1.2.0`); the tag `v1.2.0` and the GitHub Release are made by hand from the `1.2.0` CHANGELOG section. Next: Phase 3, starting with RAG-E10 (external knowledge sources; epic and story issues to create), when the owner chooses. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
 
 ## GitHub synchronisation
 
 | Item | State |
 | --- | --- |
 | Labels `epic`, `story`, `rag`, `phase:0`–`phase:5`, `v1.1.0`, `v1.2.0` | Created 2026-11-03 |
-| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), RAG-E07 (#494), RAG-E08 (#497), RAG-E09 (#544), all closed; RAG-E10 to RAG-E12 not created |
-| Story issues (56) | All 33 stories of RAG-E00 to RAG-E08, closed; the 8 stories of RAG-E09 (#545 to #552, closed, sub-issues of #544); see the issue map. The 15 stories of RAG-E10 to RAG-E12 not created |
+| Epic issues (13) | RAG-E00 (#398), RAG-E01 (#415), RAG-E02 (#408), RAG-E03 (#431), RAG-E04 (#445), RAG-E05 (#456), RAG-E06 (#466), RAG-E07 (#494), RAG-E08 (#497), RAG-E09 (#544), all closed; RAG-E10 (#577) open; RAG-E11 and RAG-E12 not created |
+| Story issues (56) | All 33 stories of RAG-E00 to RAG-E08, closed; the 8 stories of RAG-E09 (#545 to #552, closed, sub-issues of #544); see the issue map. The 5 stories of RAG-E10 (#578 to #582, sub-issues of #577); the 10 stories of RAG-E11 and RAG-E12 not created. Label `v1.3.0` not created (the session cannot create labels) |
 | Related issues | #480 (bug, `rag`): findings from running the full Docker Compose stack; every item fixed or answered, closed by the PR from `ccr-7c4dd17f-k9sle9` (item by item under RAG-E08) |
 | GitHub Project board (fields: Status, Priority, Epic, Phase, Release) | Not created. Projects use the GraphQL API, which the Claude cloud session could not reach on 2026-11-02 (HTTP 403); the owner may need to create it or allow access |
 
@@ -124,7 +126,13 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-09.06 | #550 | Not on a board |
 | RAG-09.07 | #551 | Not on a board |
 | RAG-09.08 | #552 | Not on a board |
-| RAG-E10 … RAG-E12 and their stories | — | — |
+| RAG-E10 | #577 | Not on a board |
+| RAG-10.01 | #578 | Not on a board |
+| RAG-10.02 | #579 | Not on a board |
+| RAG-10.03 | #580 | Not on a board |
+| RAG-10.04 | #581 | Not on a board |
+| RAG-10.05 | #582 | Not on a board |
+| RAG-E11, RAG-E12 and their stories | — | — |
 
 ## Epic detail
 
@@ -370,14 +378,15 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
   - Decision (RAG-09.08, 2026-11-13): a base's language is fixed at creation. Every chunk's `tsv` is generated with its base's configuration and the text channel queries a base with that configuration, so a change would need every chunk rebuilt; a base in another language is a new base. `pg_textsearch` supports PostgreSQL 17 and 18 only and the stack runs `pgvector/pgvector:pg16`, so adopting it means a major Postgres upgrade and a custom image: the owner's decision, whatever part 2 measures.
   - Decision (RAG-09.07, 2026-11-13): the citation set is not a table but the stamp on the run's answer in the checkpoint (RAG-05.02), so the report joins `neuron_feedback` to it in code (`persistence/feedback_report.py`), not in SQL; no new table, write path or erasure duty. It is an operator CLI, not a route, and writes nothing to logs or telemetry. A rated answer whose thread was pruned or deleted counts as `answer_missing`; deleting a thread also deletes its ratings.
   - Finding (RAG-09.06, 2026-11-13): on the reference stack with the plain-text parser and fake embeddings, upload admission set the ingestion rate, not the worker: a third of uploads were refused `429 upload_busy` (`APP_KNOWLEDGE_UPLOAD_CONCURRENCY`, 4 per API process), while documents were ready in 0.19 s p50. No change made; the default is a memory bound. The backlog's AC asks for recorded figures, not a gate: no automated comparison was added (the baseline is bound to its host, as `loadtest.baseline compare` is).
-- **Next recommended story:** none in Phase 2; a v1.2.0 release or RAG-E10 (owner's choice).
+- **Next recommended story:** none; Phase 2 is released in v1.2.0.
 
 ### RAG-E10 External knowledge sources
 
 - **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
 - **Implemented functionality:** none. `security/egress.py` (#395) resolves, pins and re-checks redirects for MCP only; no ingestion fetcher exists yet.
 - **Outstanding work:** RAG-10.01 to RAG-10.05.
-- **Blockers and decisions:** evidence-gated; needs a product requirement per source. RAG-10.01 blocks RAG-10.02, RAG-10.03 and RAG-11.02.
+- **Blockers and decisions:** RAG-10.01 blocks RAG-10.02, RAG-10.03 and RAG-11.02.
+  - Decision (2026-11-13, owner): v1.3.0 is web pages (RAG-10.02) and the self-hosted chat model (RAG-10.05), after RAG-10.01; the design is ADR 0014's amendment "external sources". RAG-10.03 waits for a product requirement and a token decision (one service token reaches every repository it can read; same concern as #525 I-02); RAG-10.04 waits for a product requirement and an `AGENTS.md` boundary change (`knowledge/` cannot import `tools/mcp`) plus a migration adding `mcp` to `source_type`.
 - **Next recommended story:** RAG-10.01.
 
 ### RAG-E11 Specialised knowledge tools
@@ -441,11 +450,11 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-09.06 | Load test for ingestion and search | 2 | P1 | Done | #550 | #567, this PR | `make load-knowledge` (`loadtest/run_knowledge.sh`) on the reference stack, 180 s per scenario: `docs/releases/v1.2.0-gate/knowledge-load-baseline.json` records search p50/p95 47/110 ms (8 users, filtered hybrid) and ingestion about 2,590 pages a minute, 973 of 973 documents ready (AC1), and chat run p95 7.2 s alone and 7.7 s beside search, +6.9% (AC2), with host details; per-scenario steps and CPU, memory and Postgres connections in `knowledge-load-steps/`. `tests/unit/test_loadtest_knowledge.py`: the fixture is plain text whose pages the worker's parser counts, the ingestion and baseline arithmetic |
 | RAG-09.07 | Link feedback to citations | 2 | P2 | Done | #551 | #569 | `python -m neuron_agent.persistence.cli feedback-report`. `tests/integration/test_postgres_feedback_report.py` (Postgres): a real run stamped with two citations and rated down is listed with its run ID and both chunk IDs, a thumbs-up and an uncited thumbs-down are not (AC1); the command's printed JSON holds no query, citation title, heading or owner (AC2). `tests/unit/test_feedback_report.py`: only the rated run's IDs, invalid citations skipped, Postgres checkpointer required |
 | RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Done | #552 | #570, #571 | AC1 (#570): `POST /v1/knowledge/bases` takes `language`, one of Postgres's 29 built-in text search configurations, stored as `bases.ts_config` and fixed at creation; the Knowledge screen's create form has a selector. `test_postgres_knowledge_ingest.py::test_a_base_language_sets_the_text_search_config_of_its_chunks`, `test_postgres_knowledge_api.py::test_a_base_keeps_the_language_it_was_created_with`. AC2: `tests/integration/test_postgres_knowledge_multilingual.py` on `tests/fixtures/knowledge/multilingual/cases.json` (30 questions, 5 languages): text-channel recall@5 `simple` 0.00 everywhere; own config English 1.00, German 0.33, French 0.67, Spanish 0.83, Hindi 0.83 (`docs/releases/v1.2.0-gate/multilingual-fts.json`). Decision in ADR 0014, amendment "text search language": keep built-in FTS; `pg_textsearch` not adopted (PostgreSQL 17+ only; not measured, no PostgreSQL 17 in the evaluation environment; owner decision) |
-| RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Pending | — | — | — |
-| RAG-10.02 | Web page ingestion | 3 | P2 | Pending | — | — | — |
-| RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | — | — | — |
-| RAG-10.04 | MCP document connectors | 3 | P2 | Pending | — | — | — |
-| RAG-10.05 | OpenAI-compatible chat model provider | 3 | P2 | Pending | — | — | — |
+| RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Pending | #578 | — | — |
+| RAG-10.02 | Web page ingestion | 3 | P2 | Pending | #579 | — | — |
+| RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | #580 | — | — |
+| RAG-10.04 | MCP document connectors | 3 | P2 | Pending | #581 | — | — |
+| RAG-10.05 | OpenAI-compatible chat model provider | 3 | P2 | Pending | #582 | — | — |
 | RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | Pending | — | — | — |
 | RAG-11.02 | `research_web` tool | 4 | P2 | Pending | — | — | — |
 | RAG-11.03 | Mutating knowledge tools with approval | 4 | P2 | Pending | — | — | — |
@@ -461,6 +470,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-13 | Phase 3 planned with the owner: RAG-E10 epic #577 and stories #578 to #582; ADR 0014 amendment "external sources"; v1.3.0 scope web pages and the self-hosted chat model, GitHub and MCP deferred. Next: RAG-10.01 | Claude session |
 | 2026-11-13 | v1.2.0 signed off by the owner and released from `97072d8` (#573), branch `release/v1.2.0`; tag and GitHub Release by hand | Claude session |
 | 2026-11-13 | v1.2.0 release prepared: version 1.2.0, CHANGELOG 1.2.0, verification record, upgrade from v1.1.0 on the reference stack (migrations 28 and 29, data kept, smoke test passed), live answer eval 0.969 and 12 of 12. Next: owner sign-off and tag | Claude session |
 | 2026-11-13 | RAG-E09 exit gate checked and met (recall@5 0.984 and MRR 0.924 against 0.984 and 0.833; revocation on the next query; search p95 recorded); epic #544 closed. Next: v1.2.0 release or Phase 3 (owner) | Claude session |

@@ -535,6 +535,39 @@ spaces or stopping search.
   detecting the language per document (a mixed base would then need several configurations per
   query).
 
+### Amendment: external sources (RAG-E10, 2026-11-13, owner decision)
+
+- **Scope (v1.3.0).** Web pages (RAG-10.02) and a self-hosted OpenAI-compatible chat model
+  (RAG-10.05), after the fetch control (RAG-10.01). GitHub sync (RAG-10.03) and MCP connectors
+  (RAG-10.04) stay out until a product requirement exists. They also need two decisions first:
+  how the GitHub token is scoped (one service token reaches every repository it can read, so an
+  operator allowlist of repositories or per-user OAuth behind a token-vault ADR), and an
+  `AGENTS.md` boundary change letting `knowledge/` use `tools/mcp`.
+- **Who fetches.** Only the worker fetches, never the API. The API validates the URL's text
+  (`https`, no credentials, `validate_safe_url`), records the document and queues the job.
+  Fetched content is untrusted like uploaded files: it is parsed, chunked, framed and taints the
+  run.
+- **How it fetches.** Through one client built on `security/egress.py` (`PublicOnlyBackend`,
+  #395). It resolves the host once, refuses any non-public address and connects to the address
+  it checked, for every redirect hop too. In addition it:
+  - accepts `https` only, on the first URL and every redirect;
+  - ignores proxy settings from the environment, which would otherwise make the address check
+    a check of the proxy;
+  - caps redirects, body size and total time.
+  A URL from a user gets no loopback exception in development, unlike an operator-configured
+  MCP URL (`tools/mcp/urls.py`). Tests replace the resolver instead.
+- **Provenance.** A web document keeps `source_type = 'web'` and its URL in `source_ref`, with
+  the fetch time and the content hash (`sha256`) of the fetched bytes, which are stored as its
+  blob like an upload. A web citation names the URL and fetch time instead of a page. Every chunk
+  maps to one fetched version; fetching again makes a new version.
+- **Self-hosted chat model.** Its base URL follows the rule for
+  `APP_KNOWLEDGE_EMBEDDING_BASE_URL` (`https` in production, set by the operator), not the
+  public-only rule: such servers sit on private networks, and the operator, not a user, chooses
+  the address.
+- **Rejected:** fetching in the API process (the API would hold a route out and block on remote
+  servers); a second, URL-text-only SSRF check (it cannot see DNS rebinding); a loopback
+  exception for user URLs.
+
 ## Consequences
 
 - One more process (`neuron-worker`) and one or two more containers (docling-serve; an embedding

@@ -25,7 +25,7 @@ v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (resear
 
 v1.0.0 is the v0.9.0 candidate plus fixes, tests and the login theme, with no contract change. The owner released it directly, without the `v1.0.0-rc.N` candidates of ADR 0012 decision 12, because no production environment exists; the load re-run against the v0.9.0 baseline is still to be done ([record](releases/v1.0.0-release-verification.md)).
 
-v1.1.0 ("Personal Knowledge") is designed in [ADR 0014](decisions/0014-knowledge-engine.md), Accepted 2026-11-02. Released 2026-11-10 (tag `v1.1.0`). Scope: RAG-E00 to RAG-E08 in the [RAG backlog](product/NEURON_RAG_PRODUCT_BACKLOG.md); status in the [tracker](product/RAG_IMPLEMENTATION_TRACKER.md). v1.2.0 (RAG-E09, retrieval quality and sharing) was released 2026-11-13 from `97072d8`. Phase 3 (RAG-E10 to RAG-E12) has no issues yet.
+v1.1.0 ("Personal Knowledge") is designed in [ADR 0014](decisions/0014-knowledge-engine.md), Accepted 2026-11-02. Released 2026-11-10 (tag `v1.1.0`). Scope: RAG-E00 to RAG-E08 in the [RAG backlog](product/NEURON_RAG_PRODUCT_BACKLOG.md); status in the [tracker](product/RAG_IMPLEMENTATION_TRACKER.md). v1.2.0 (RAG-E09, retrieval quality and sharing) was released 2026-11-13 from `97072d8`. v1.3.0 (proposed) is RAG-E10's web pages and self-hosted chat model (epic #577; ADR 0014 amendment "external sources"); GitHub and MCP sources, RAG-E11 and RAG-E12 have no release yet.
 
 ## Deferred until after v1.0.0
 
