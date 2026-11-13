@@ -637,12 +637,15 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         "procrastinate_periodic_defers": frozenset(),
     },
     "worker": {
+        # Plus UPDATE on `status` for the re-index swap (RAG-09.04), which also lets ingestion
+        # lock the profile rows it writes for (`FOR SHARE`).
         "index_profiles": _READ,
         # DELETE for the purge (RAG-03.03), which removes tombstoned rows only; grants, chunks
-        # and embeddings go with them (ON DELETE CASCADE).
+        # and embeddings go with them (ON DELETE CASCADE). Plus UPDATE on `profile_id`, for the
+        # swap.
         "bases": frozenset({"SELECT", "DELETE"}),
         "grants": frozenset(),
-        # Plus UPDATE on `_WORKER_DOCUMENT_COLUMNS` only: never `kb_id`, `blob_key` or the owner.
+        # Plus UPDATE on the progress columns only: never `kb_id`, `blob_key` or the owner.
         "documents": frozenset({"SELECT", "DELETE"}),
         "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
         "embeddings": frozenset({"SELECT", "INSERT", "DELETE"}),
@@ -663,14 +666,19 @@ _SERIAL_TABLES = frozenset(
         "procrastinate_periodic_defers",
     }
 )
-_WORKER_DOCUMENT_COLUMNS = (
-    "status",
-    "error_code",
-    "parser_version",
-    "page_count",
-    "embedding_tokens",
-    "updated_at",
-)
+# The worker's column grants, beside `_KNOWLEDGE_PRIVILEGES`.
+_WORKER_COLUMNS = {
+    "documents": (
+        "status",
+        "error_code",
+        "parser_version",
+        "page_count",
+        "embedding_tokens",
+        "updated_at",
+    ),
+    "index_profiles": ("status",),
+    "bases": ("profile_id",),
+}
 # Recorded in `index_profiles.chunker`: `knowledge/chunking.py`, which follows the parsed
 # document's headings with its own token split (the E02 decision on #408, ADR 0014 amended by
 # RAG-02.04). A different chunker means a new profile and a re-index.
@@ -915,11 +923,11 @@ def _table_grants(
         statements.append(sql.SQL("REVOKE ALL ON SEQUENCE {} FROM {}").format(sequence, role))
         if "INSERT" in privileges:
             statements.append(sql.SQL("GRANT USAGE ON SEQUENCE {} TO {}").format(sequence, role))
-    if kind == "worker" and table == "documents":
+    if kind == "worker" and table in _WORKER_COLUMNS:
         columns = [
             column
-            for column in _WORKER_DOCUMENT_COLUMNS
-            if document_columns is None or column in document_columns
+            for column in _WORKER_COLUMNS[table]
+            if table != "documents" or document_columns is None or column in document_columns
         ]
         if columns:
             statements.append(

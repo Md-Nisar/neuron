@@ -238,6 +238,15 @@ async def test_grants_are_exactly_what_each_role_needs(
         ("status",),
         ("updated_at",),
     ]
+    # The re-index swap (RAG-09.04) moves bases and profiles, and only their profile columns.
+    assert await _rows(
+        role_db.migrator_dsn,
+        "SELECT t || '.' || c FROM (VALUES ('knowledge.index_profiles', 'status'),"
+        " ('knowledge.index_profiles', 'model'), ('knowledge.bases', 'profile_id'),"
+        " ('knowledge.bases', 'owner_key'), ('knowledge.bases', 'processing')) v(t, c)"
+        " WHERE has_column_privilege(%s, t, c, 'UPDATE') ORDER BY 1",
+        (worker[0],),
+    ) == [("knowledge.bases.profile_id",), ("knowledge.index_profiles.status",)]
     # A right granted by hand is taken back by the next setup; production then verifies.
     await _superuser(role_db, f'GRANT INSERT ON knowledge.chunks TO "{role_db.roles.app}"')
     await _setup(role_db, knowledge=True, worker_role=worker[0], require_app_role=True)

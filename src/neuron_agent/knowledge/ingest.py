@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -46,11 +46,16 @@ Connect = Callable[[], Awaitable[psycopg.AsyncConnection[dict[str, Any]]]]
 
 _LOAD = (
     "SELECT d.kb_id, d.mime_type, d.blob_key, d.sha256, b.processing,"
-    " b.ts_config::text AS ts_config, b.profile_id, p.provider, p.model, p.dimensions"
+    " b.ts_config::text AS ts_config"
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
-    " JOIN knowledge.index_profiles p ON p.profile_id = b.profile_id"
     " WHERE d.doc_id = %s AND d.deleted_at IS NULL AND d.status <> 'deleting'"
     " AND b.deleted_at IS NULL"
+)
+# The active profile, and during a re-index the building one: a document is embedded for both
+# (RAG-09.04). The write locks them (`FOR SHARE`), so a swap cannot commit in between.
+PROFILES = (
+    "SELECT profile_id, status, provider, model, dimensions FROM knowledge.index_profiles"
+    " WHERE status <> 'retired' ORDER BY profile_id"
 )
 _STATUS = (
     "UPDATE knowledge.documents SET status = %s, error_code = %s, updated_at = now()"
@@ -132,13 +137,15 @@ class Ingestor:
                 # Before anything is read: docling-serve is part of the deployment (internal, no
                 # egress), so the setting governs the embedding provider, the only hosted step.
                 with _stage("policy"):
-                    model = self._model(row)
-                    ensure_processing_allowed(row["processing"], model.locality, self.policy)
+                    models = self._models(row)
                 chunks, parsed = await self._parse(row)
                 span.set_attribute(semconv.NEURON_KNOWLEDGE_CHUNKS, len(chunks))
                 await self._set(conn, doc_id, "embedding")
                 with _stage("embed"):
-                    vectors = await model.embed_documents([_passage(c) for c in chunks])
+                    passages = [_passage(c) for c in chunks]
+                    vectors = {pid: await m.embed_documents(passages) for pid, m in models.items()}
+                with _stage("write"):
+                    written = await self._write(conn, doc_id, row, chunks, vectors, parsed)
             except (ParseError, EmbeddingError) as exc:
                 if exc.retryable and not last_attempt:
                     raise
@@ -150,22 +157,35 @@ class Ingestor:
                 return await self._fail_on(conn, doc_id, exc.code)
             except _RefusedError as exc:
                 return await self._fail_on(conn, doc_id, exc.code)
-            with _stage("write"):
-                written = await self._write(conn, doc_id, row, chunks, vectors, parsed)
         if not written:
             log.info("knowledge.ingest.skipped", doc_id=str(doc_id))  # tombstoned meanwhile
             return "skipped"
         log.info("knowledge.ingest.ready", doc_id=str(doc_id), chunks=len(chunks))
         return "ready"
 
-    def _model(self, row: dict[str, Any]) -> EmbeddingProvider:
-        """The configured model for the base's index profile. None configured is retried: the
-        operator may be moving settings after a re-index (RAG-09.04)."""
-        profile = KnowledgeProfile(row["provider"], row["model"], row["dimensions"])
-        model = provider_for(profile, self.embeddings, self.reindex)
-        if model is None:
-            raise EmbeddingError("knowledge_profile_mismatch", retryable=True)
-        return model
+    def _models(self, row: dict[str, Any]) -> dict[int, EmbeddingProvider]:
+        """The configured model for each profile the document is embedded for (RAG-09.04).
+
+        None configured is retried: the operator may be moving settings. A building profile
+        whose model the base's setting forbids is skipped; the re-index job then refuses that
+        base, and the re-index fails rather than send its text where it may not go.
+        """
+        models: dict[int, EmbeddingProvider] = {}
+        for profile in row["profiles"]:
+            identity = KnowledgeProfile(
+                profile["provider"], profile["model"], profile["dimensions"]
+            )
+            model = provider_for(identity, self.embeddings, self.reindex)
+            if model is None:
+                raise EmbeddingError("knowledge_profile_mismatch", retryable=True)
+            try:
+                ensure_processing_allowed(row["processing"], model.locality, self.policy)
+            except EmbeddingError:
+                if profile["status"] == "active":
+                    raise
+                continue
+            models[profile["profile_id"]] = model
+        return models
 
     async def _start(
         self, conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID
@@ -175,6 +195,7 @@ class Ingestor:
             row = await cursor.fetchone()
             if row is not None:
                 await conn.execute(_STATUS, ("parsing", None, doc_id))
+                row["profiles"] = await (await conn.execute(PROFILES)).fetchall()
         return row
 
     async def _parse(self, row: dict[str, Any]) -> tuple[list[Chunk], tuple[str, int | None]]:
@@ -218,14 +239,21 @@ class Ingestor:
         doc_id: uuid.UUID,
         row: dict[str, Any],
         chunks: Sequence[Chunk],
-        vectors: Sequence[Sequence[float]],
+        vectors: Mapping[int, Sequence[Sequence[float]]],
         parsed: tuple[str, int | None],
     ) -> bool:
-        """Replace the document's chunk set and mark it ready, all or nothing."""
+        """Replace the document's chunk set and mark it ready, all or nothing.
+
+        Retried if the profiles changed while it embedded (a re-index started, swapped or
+        ended), so a document never keeps one profile's vectors only.
+        """
         kb_id = row["kb_id"]
         async with conn.transaction():
             if not await _lock(conn, doc_id):
                 return False
+            current = await (await conn.execute(PROFILES + " FOR SHARE")).fetchall()
+            if current != row["profiles"]:
+                raise EmbeddingError("knowledge_profile_changed", retryable=True)
             # Embeddings go with their chunks (ON DELETE CASCADE).
             await conn.execute("DELETE FROM knowledge.chunks WHERE doc_id = %s", (doc_id,))
             ids = [uuid.uuid4() for _ in chunks]
@@ -251,11 +279,12 @@ class Ingestor:
                 await cursor.executemany(
                     _INSERT_EMBEDDING,
                     [
-                        (chunk_id, row["profile_id"], kb_id, _vector(vector))
-                        for chunk_id, vector in zip(ids, vectors, strict=True)
+                        (chunk_id, profile_id, kb_id, _vector(vector))
+                        for profile_id, profile_vectors in vectors.items()
+                        for chunk_id, vector in zip(ids, profile_vectors, strict=True)
                     ],
                 )
-            tokens = sum(estimate_tokens(_passage(chunk)) for chunk in chunks)
+            tokens = len(vectors) * sum(estimate_tokens(_passage(chunk)) for chunk in chunks)
             await conn.execute(_READY, (*parsed, tokens, doc_id))
         return True
 
