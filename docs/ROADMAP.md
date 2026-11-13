@@ -11,6 +11,7 @@
 | **v0.9.0** | Production Candidate       | ✅ Released (local reference stack only) |
 | **v1.0.0** | Production AI Application  | ✅ Released 2026-11-02 without a production environment ([record](releases/v1.0.0-release-verification.md)) |
 | **v1.1.0** | Personal Knowledge         | ✅ Released 2026-11-10 as "Knowledge Engine" without a production environment: private knowledge bases, document upload, cited answers ([record](releases/v1.1.0-release-verification.md), [ADR 0014](decisions/0014-knowledge-engine.md)) |
+| **v1.2.0** | Retrieval quality and sharing | ✅ Released 2026-11-13 without a production environment: reranking, role-shared knowledge bases, re-index to a new model, nightly retrieval gate, knowledge load baseline ([record](releases/v1.2.0-release-verification.md)) |
 
 v0.5.0 is designed in [ADR 0007](decisions/0007-evaluation-and-observability.md) and tracked by the issues labelled `v0.5.0`.
 
@@ -24,7 +25,7 @@ v0.9.0 is designed in [ADR 0012](decisions/0012-production-candidate.md) (resear
 
 v1.0.0 is the v0.9.0 candidate plus fixes, tests and the login theme, with no contract change. The owner released it directly, without the `v1.0.0-rc.N` candidates of ADR 0012 decision 12, because no production environment exists; the load re-run against the v0.9.0 baseline is still to be done ([record](releases/v1.0.0-release-verification.md)).
 
-v1.1.0 ("Personal Knowledge") is designed in [ADR 0014](decisions/0014-knowledge-engine.md), Accepted 2026-11-02. Released 2026-11-10 (tag `v1.1.0`). Scope: RAG-E00 to RAG-E08 in the [RAG backlog](product/NEURON_RAG_PRODUCT_BACKLOG.md); status in the [tracker](product/RAG_IMPLEMENTATION_TRACKER.md). v1.2.0 (RAG-E09, sharing and retrieval quality) is a proposal.
+v1.1.0 ("Personal Knowledge") is designed in [ADR 0014](decisions/0014-knowledge-engine.md), Accepted 2026-11-02. Released 2026-11-10 (tag `v1.1.0`). Scope: RAG-E00 to RAG-E08 in the [RAG backlog](product/NEURON_RAG_PRODUCT_BACKLOG.md); status in the [tracker](product/RAG_IMPLEMENTATION_TRACKER.md). v1.2.0 (RAG-E09, retrieval quality and sharing) was released 2026-11-13 from `97072d8`. Phase 3 (RAG-E10 to RAG-E12) has no issues yet.
 
 ## Deferred until after v1.0.0
 

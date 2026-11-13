@@ -62,8 +62,9 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | **Total** | | | | **56** | **41** | **0** | **0** | **15** | **RAG-10.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
+v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-13):** v1.2.0 release prepared at the owner's request (2026-11-13): version 1.2.0, the CHANGELOG section and `docs/releases/v1.2.0-release-verification.md` (upgrade from v1.1.0 run on the reference stack, `v1.2.0-gate/upgrade-from-v1.1.0.json`; live answer eval on the release code 0.969 cited correctly, 12 of 12 abstained). Next: the owner signs off, then tag `v1.2.0` and the GitHub Release by hand; after that, Phase 3 (RAG-E10 to RAG-E12, no issues yet) when the owner chooses. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
+**Recommended next action (2026-11-13):** v1.2.0 is released: signed off by the owner, released from `97072d8` (branch `release/v1.2.0`); the tag `v1.2.0` and the GitHub Release are made by hand from the `1.2.0` CHANGELOG section. Next: Phase 3, starting with RAG-E10 (external knowledge sources; epic and story issues to create), when the owner chooses. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
 
 ## GitHub synchronisation
 
@@ -460,6 +461,7 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-13 | v1.2.0 signed off by the owner and released from `97072d8` (#573), branch `release/v1.2.0`; tag and GitHub Release by hand | Claude session |
 | 2026-11-13 | v1.2.0 release prepared: version 1.2.0, CHANGELOG 1.2.0, verification record, upgrade from v1.1.0 on the reference stack (migrations 28 and 29, data kept, smoke test passed), live answer eval 0.969 and 12 of 12. Next: owner sign-off and tag | Claude session |
 | 2026-11-13 | RAG-E09 exit gate checked and met (recall@5 0.984 and MRR 0.924 against 0.984 and 0.833; revocation on the next query; search p95 recorded); epic #544 closed. Next: v1.2.0 release or Phase 3 (owner) | Claude session |
 | 2026-11-13 | RAG-09.08 Done (#552): per-base text search language (#570), multilingual text search evaluation, ADR 0014 amendment. E09: 8 of 8. Next: the E09 exit gate | Claude session |
