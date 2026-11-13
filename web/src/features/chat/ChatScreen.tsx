@@ -120,8 +120,11 @@ function MessageView({
         {(message.toolCalls.length > 0 || message.skipped.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
             {message.toolCalls.length > 0 && (
-              <Badge variant="outline" className="font-normal text-muted-foreground">
-                <Wrench aria-hidden="true" />
+              <Badge
+                variant="outline"
+                className="h-auto max-w-full items-start gap-1.5 py-1 text-left font-normal text-muted-foreground whitespace-normal break-words"
+              >
+                <Wrench aria-hidden="true" className="mt-0.5 shrink-0" />
                 <span>Used: {message.toolCalls.join(", ")}</span>
               </Badge>
             )}
@@ -129,9 +132,9 @@ function MessageView({
               <Badge
                 key={index}
                 variant="outline"
-                className="font-normal text-muted-foreground whitespace-normal"
+                className="h-auto max-w-full items-start gap-1.5 py-1 text-left font-normal text-muted-foreground whitespace-normal break-words"
               >
-                <ShieldAlert aria-hidden="true" />
+                <ShieldAlert aria-hidden="true" className="mt-0.5 shrink-0" />
                 <span>
                   {SKIPPED_TEXT[tool.why]}: {displaySafe(tool.name)}
                 </span>
@@ -319,7 +322,7 @@ export function ChatView({
       <div
         ref={scroller}
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-y-auto",
+          "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden",
           !empty && "[scrollbar-gutter:stable]",
         )}
         onScroll={(event) => {

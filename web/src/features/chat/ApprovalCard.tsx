@@ -79,7 +79,7 @@ export function ApprovalCard({
       <ul className="space-y-3 px-4">
         {actions.map((action, index) => (
           <li key={index} className="overflow-hidden rounded-lg border bg-card">
-            <p className="border-b bg-muted/50 px-3 py-1.5 font-mono text-xs font-semibold">
+            <p className="border-b bg-muted/50 px-3 py-1.5 font-mono text-xs font-semibold break-all">
               {action.name}
             </p>
             <pre className="max-h-64 overflow-auto p-3 font-mono text-xs leading-5">
