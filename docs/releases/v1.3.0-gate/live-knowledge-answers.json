@@ -1,0 +1,70 @@
+{
+  "code": "main at ef0b5fc (no source change in the release branch)",
+  "date": "2026-11-14",
+  "model": "nvidia:nvidia/nemotron-3-ultra-550b-a55b",
+  "runs": [
+    {
+      "run": 1,
+      "outcome": "failed: 9 infrastructure errors (RunTimeoutError, over APP_RUN_TIMEOUT_SECONDS=120) and 1 unanswerable case cited",
+      "retrieval": {
+        "dataset_version": "1.2.0",
+        "answerable_cases": 64,
+        "unanswerable_cases": 12,
+        "recall_at_5": 0.984,
+        "mrr": 0.833,
+        "citation_precision": 0.728,
+        "cited_correctly": 0.964,
+        "abstention_accuracy": 0.917
+      },
+      "not_cited_correctly": [
+        "answerable-044",
+        "answerable-048"
+      ],
+      "not_abstained": [
+        "unanswerable-002"
+      ],
+      "step_limit": [],
+      "infrastructure_errors": [
+        "answerable-004: RunTimeoutError",
+        "answerable-012: RunTimeoutError",
+        "answerable-014: RunTimeoutError",
+        "answerable-018: RunTimeoutError",
+        "answerable-020: RunTimeoutError",
+        "answerable-026: RunTimeoutError",
+        "answerable-027: RunTimeoutError",
+        "answerable-028: RunTimeoutError",
+        "answerable-045: RunTimeoutError"
+      ]
+    },
+    {
+      "run": 2,
+      "outcome": "failed: 3 infrastructure errors (RateLimitError) and 1 unanswerable case cited",
+      "retrieval": {
+        "dataset_version": "1.2.0",
+        "answerable_cases": 64,
+        "unanswerable_cases": 10,
+        "recall_at_5": 0.984,
+        "mrr": 0.833,
+        "citation_precision": 0.736,
+        "cited_correctly": 0.937,
+        "abstention_accuracy": 0.9
+      },
+      "not_cited_correctly": [
+        "answerable-013",
+        "answerable-016",
+        "answerable-044",
+        "answerable-045"
+      ],
+      "not_abstained": [
+        "unanswerable-003"
+      ],
+      "step_limit": [],
+      "infrastructure_errors": [
+        "answerable-030: RateLimitError",
+        "unanswerable-002: RateLimitError",
+        "unanswerable-004: RateLimitError"
+      ]
+    }
+  ],
+  "note": "cited_correctly is above the 0.9 gate in both runs; the missed abstention is a different near-miss case each time (P-3 when the log has P-1 and P-2; phase 3 of a two-phase plan). The model's answer schema and the tool output for uploaded files are unchanged since v1.2.0."
+}
