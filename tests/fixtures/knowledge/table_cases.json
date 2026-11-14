@@ -1,0 +1,74 @@
+{
+  "version": "table-eval-1",
+  "table": "orders.csv",
+  "title": "Orders, January to June 2026",
+  "rows": 1500,
+  "cases": [
+    {
+      "id": "table-001",
+      "kind": "aggregate",
+      "question": "In my orders spreadsheet, how many units were sold in the North region in total?",
+      "answers": [
+        "5107",
+        "5,107"
+      ]
+    },
+    {
+      "id": "table-002",
+      "kind": "aggregate",
+      "question": "In my orders spreadsheet, how many orders were placed in March 2026?",
+      "answers": [
+        "261"
+      ]
+    },
+    {
+      "id": "table-003",
+      "kind": "aggregate",
+      "question": "In my orders spreadsheet, which product sold the most units in total?",
+      "answers": [
+        "Desk lamp"
+      ]
+    },
+    {
+      "id": "table-004",
+      "kind": "aggregate",
+      "question": "In my orders spreadsheet, what is the average number of units per order for the Desk lamp, to one decimal place?",
+      "answers": [
+        "11.0"
+      ]
+    },
+    {
+      "id": "table-005",
+      "kind": "aggregate",
+      "question": "In my orders spreadsheet, what was the total revenue (units times unit price) in the West region from April to June 2026, to the cent?",
+      "answers": [
+        "84277.46",
+        "84,277.46"
+      ]
+    },
+    {
+      "id": "table-006",
+      "kind": "aggregate",
+      "question": "In my orders spreadsheet, which region had the fewest orders?",
+      "answers": [
+        "West"
+      ]
+    },
+    {
+      "id": "table-007",
+      "kind": "lookup",
+      "question": "In my orders spreadsheet, how many units did order O-00042 have?",
+      "answers": [
+        "12"
+      ]
+    },
+    {
+      "id": "table-008",
+      "kind": "lookup",
+      "question": "In my orders spreadsheet, on what date was order O-01337 placed?",
+      "answers": [
+        "2026-06-13"
+      ]
+    }
+  ]
+}
