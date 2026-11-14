@@ -575,6 +575,67 @@ spaces or stopping search.
   servers); a second, URL-text-only SSRF check (it cannot see DNS rebinding); a loopback
   exception for user URLs.
 
+### Amendment: tables (RAG-11.01, 2026-11-14; the engine and CSV are owner decisions)
+
+- **Why.** XLSX is an accepted upload type, but a sheet is searched only as text chunks. Search
+  returns up to 10 of them, so a total, count or average over more rows than that cannot be
+  answered, and `calculator` cannot read rows. The table eval cases
+  (`tests/fixtures/knowledge/table_cases.json`) record that failure.
+- **Scope.** Tables of XLSX uploads, and of CSV, which becomes an accepted upload type
+  (`text/csv`). Tables inside PDF, DOCX or PPTX stay text only: their extracted cells are less
+  reliable, and no case needs them.
+- **Extraction.** A `table` block may carry its cell grid (`rows`) besides its text.
+  docling-serve already returns the grid for XLSX, one table for each block of cells on a sheet.
+  A CSV is parsed in process with the standard `csv` module: UTF-8 only (a BOM is allowed), the
+  delimiter is one of `,` `;` tab or `|`, and the file becomes a single table. Its text chunks are
+  built the same way as for any other table.
+- **Storage.** The worker stores each table once, in `knowledge.document_tables`:
+  - columns: document, base, position, name (sheet or title), columns with their types, rows as
+    JSON, and the row count;
+  - the first row is the header, and an empty or repeated name becomes `column_<n>`;
+  - each column is typed `integer`, `real` or `text` from its values, and dates stay as text;
+  - caps: at most 20 tables and `APP_KNOWLEDGE_TABLE_MAX_CELLS` cells (default 200,000) per
+    document, and at most 100 columns per table;
+  - a table over a cap stays searchable as text but cannot be queried; the document still
+    becomes `ready`, and the skipped count is logged;
+  - rows follow the document through deletion, purge and erasure (`ON DELETE CASCADE`), and a
+    re-index does not touch them;
+  - the worker role inserts the rows and the app role reads them.
+- **Tools.** Both tools have the read tier and `taints_run=True`, and are filtered on the bases
+  the caller may use (narrowed by `knowledge_base_ids`), like search.
+  - `find_tables(query)`, scope `tools:find_tables`, returns up to 10 tables whose title, sheet
+    or column names match the query. Each has a per-run handle (`t1`, `t2`, ...), its columns
+    and types, its row count and 3 sample rows. No document id reaches the model, as for
+    `cite_id`s.
+  - `query_table(table, sql)`, scope `tools:query_table`, runs one query against the table, which
+    the SQL calls `data`. It returns at most 200 rows, each value at most 1,000 characters,
+    framed as data with `<` escaped. It also returns a `cite_id` for the table's document, which
+    the citation check accepts like one from search. The citation names the document and sheet,
+    with no page.
+  - Fixed errors: `table_not_found`, `query_refused`, `query_timeout`, `query_too_large` and
+    `query_failed`.
+- **Engine: SQLite from the standard library (owner decision).** Each call gets a new in-memory
+  database holding one table, `data`, loaded from the stored rows. SQLite itself enforces the
+  rules, so there is no second SQL parser whose reading could differ from the engine's:
+  - an authorizer allows only `SELECT`, reads of `data`, and the functions on an allowlist
+    (aggregates, arithmetic, string and date functions). It refuses everything else, including
+    `PRAGMA`, `ATTACH`, recursive CTEs, the schema tables and writes;
+  - extensions are never enabled, and `sqlite3` runs one statement per call;
+  - a progress handler stops a query after 5 seconds;
+  - SQLite's heap is capped at 256 MB (`hard_heap_limit`). The limit covers the whole process,
+    which is acceptable because nothing else in Neuron uses SQLite;
+  - `setlimit` caps the SQL text at 10,000 characters;
+  - queries run in a thread (`asyncio.to_thread`), at most
+    `APP_KNOWLEDGE_TABLE_QUERY_CONCURRENCY` (default 2) at a time in each process, so the event
+    loop never waits on one.
+- **Rejected:**
+  - DuckDB with sqlglot (the backlog's first plan): two new dependencies, and a checker that
+    parses SQL differently from the engine it guards. DuckDB's XLSX reader is an extension
+    downloaded at runtime, which "external access off" forbids.
+  - Running Python or pandas: that is code execution, which ADR 0003 forbids.
+  - Running the model's SQL on Postgres: it would reach the database under a real role.
+  - Answering from chunks only: the failure this amendment fixes.
+
 ## Consequences
 
 - One more process (`neuron-worker`) and one or two more containers (docling-serve; an embedding

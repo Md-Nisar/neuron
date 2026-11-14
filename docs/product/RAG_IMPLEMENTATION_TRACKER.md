@@ -57,9 +57,9 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 8 | 0 | 0 | 0 | — |
 | RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 3 | 0 | 0 | 2 | — (v1.3.0 release) |
-| RAG-E11 | Specialised knowledge tools | 4 | v1.4.0 (proposed) | 5 | 0 | 0 | 0 | 5 | RAG-11.01 |
+| RAG-E11 | Specialised knowledge tools | 4 | v1.4.0 (proposed) | 5 | 0 | 1 | 0 | 4 | RAG-11.01 |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **44** | **0** | **0** | **12** | **RAG-11.01** |
+| **Total** | | | | **56** | **44** | **1** | **0** | **11** | **RAG-11.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
@@ -398,7 +398,17 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 - **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
 - **Implemented functionality:** none.
-- **Outstanding work:** RAG-11.01 (#594); the rest are deferred.
+- **Outstanding work:** RAG-11.01 (#594), in progress; the rest are deferred.
+  - Plan (RAG-11.01): four parts, each under 400 lines.
+    - Part 1a: ADR 0014 amendment "tables". Part 1b: the table eval fixture (`scripts/build_table_eval.py`) and live test (`tests/integration/test_live_table_answers.py`). The baseline below was run with part 1b's code before it merged.
+    - Part 2: CSV uploads, table cells on `table` blocks, the `document_tables` migration, and storage by the worker.
+    - Part 3: the SQLite query engine with its authorizer and limits, and its security suite.
+    - Part 4: the `find_tables` and `query_table` tools with their scopes, citations and docs, then the live eval run.
+  - Decisions (owner, 2026-11-14): SQLite from the standard library instead of DuckDB with sqlglot, and CSV becomes an upload type.
+  - Baseline (RAG-11.01 part 1, 2026-11-14, `nvidia:nvidia/nemotron-3-ultra-550b-a55b`, current tools): `tests/integration/test_live_table_answers.py`, with the 1,500-row table stored as a spreadsheet is today (69 chunks).
+    - Lookups: 2 of 2 correct.
+    - Aggregates: 1 of 5 correct, and case `table-005` hit a structured-output error. The wrong answers were confident: 341 units for 5,107, 27 orders for 261, 12.0 for 11.0. The one right answer (the region with the fewest orders) came with a wrong count of 12.
+    - The model answers from the few rows that search returns, instead of declining, so the gap gives wrong numbers as well as missing ones.
 - **Blockers and decisions:** evidence-gated; mutating tools need an ADR 0003 amendment; a subgraph needs a new ADR.
   - Need check (2026-11-14, epic #593), what is picked now:
     - RAG-11.01 is picked. XLSX is an accepted upload type, but a spreadsheet is searched as text chunks. A total or count over more rows than search returns can't be answered, and `calculator` can't read rows. That is a gap in a shipped feature. The eval set has no table cases, so the story adds them first and records the failure.
@@ -474,7 +484,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | #580 | — | Deferred by the owner (2026-11-13); issue closed as not planned |
 | RAG-10.04 | MCP document connectors | 3 | P2 | Pending | #581 | — | Deferred by the owner (2026-11-13); issue closed as not planned |
 | RAG-10.05 | OpenAI-compatible chat model provider | 3 | P2 | Done | #582 | #585 | `tests/unit/test_model_factory.py`: with `APP_DEFAULT_MODEL=openai_compatible:local-model` and a base URL, a call reaches a local OpenAI-compatible server at `/v1/chat/completions` and returns its answer, and `OPENAI_API_KEY` from the environment is not sent (AC1); an `http` non-loopback base URL fails settings validation in production (AC2). Also: base URL required (default and fallback models), own key used, keyless `http` private server allowed in staging, keyed one refused |
-| RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | Pending | #594 | — | — |
+| RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | In progress | #594 | part 1a | Part 1a: ADR 0014 amendment "tables", table eval fixture and live test; baseline: aggregates 1 of 5 correct (1 error), lookups 2 of 2 |
 | RAG-11.02 | `research_web` tool | 4 | P2 | Pending | — | — | — |
 | RAG-11.03 | Mutating knowledge tools with approval | 4 | P2 | Pending | — | — | — |
 | RAG-11.04 | `search_repository` tool | 4 | P2 | Pending | — | — | — |
@@ -489,6 +499,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-14 | RAG-11.01 started (#594), part 1a: ADR 0014 amendment "tables" (SQLite and CSV, owner decisions); baseline of the table eval run (fixture and test in part 1b) | Claude session |
 | 2026-11-14 | E11 and E12 checked against product need: RAG-11.01 picked for v1.4.0 (epic #593, story #594); the other nine deferred, with reasons recorded. Next: RAG-11.01 | Claude session |
 | 2026-11-13 | v1.3.0 release record, version 1.3.0 and CHANGELOG; upgrade from v1.2.0 run on the reference stack. RAG-10.03 and RAG-10.04 closed as deferred | Claude session |
 | 2026-11-13 | RAG-10.02 Done (#579): web pages added by URL, fetched by the worker, cited with URL and fetch time, "Add a web page" in the UI. E10: 3 of 5 (the other two deferred). Next: v1.3.0 release | Claude session |
