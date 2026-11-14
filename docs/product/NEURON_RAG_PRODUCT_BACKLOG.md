@@ -1676,7 +1676,7 @@ Start condition: a product requirement per tool; for mutating or outbound tools,
 **Story.** As a user, I want to ask questions about my CSV or spreadsheet that need calculation.
 
 **Requirements**
-- DuckDB with external access off; one `SELECT` checked by sqlglot; 5 s and 256 MB limits; ≤200 rows; `taints_run=True`; scope `tools:query_table`.
+- ~~DuckDB with external access off; one `SELECT` checked by sqlglot~~ **Amended (2026-11-14, owner decision; ADR 0014 amendment "tables"):** SQLite from the standard library, with an authorizer allowlist that refuses anything but reading the table when the query is prepared. 5 s and 256 MB limits; ≤200 rows; `taints_run=True`; scope `tools:query_table`. CSV becomes an accepted upload type.
 
 **Acceptance criteria**
 - Given a non-`SELECT` statement or a file function, when it is submitted, then it is refused before execution.
