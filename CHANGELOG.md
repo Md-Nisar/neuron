@@ -13,6 +13,7 @@ Known issues:
 - Pages are fetched as plain HTML: a page that builds its text with JavaScript yields `no_text` (a separate isolated worker for those is later work). A page is fetched once; there is no re-fetch, and each URL variant (query string, trailing slash) is its own page.
 - There is no per-host rate limit on fetches; a user's quota and the base's document limit bound them.
 - GitHub repository sync (RAG-10.03, #580) and MCP document connectors (RAG-10.04, #581) are deferred until a product requirement exists.
+- The live answer and citation eval did not pass on the release code (two runs, 2026-11-14): a correct page was cited for 0.964 and 0.937 of answerable questions (gate 0.9), but each run answered one unanswerable question about something close to, but not in, the documents (a pump or project phase that is not there) instead of declining, and some cases hit the free tier's timeouts or rate limits (`docs/releases/v1.3.0-gate/live-knowledge-answers.json`). Retrieval and the model's inputs for uploaded files are unchanged since 1.2.0. Released with this as a known issue by the owner's decision.
 - Known issues of 1.2.0 that are unchanged: the one-trial live answer eval, local-only load figures, the hosted-only reranker, German word search, no worker settings profile, and the erase-flow browser test's race.
 
 Changes:
