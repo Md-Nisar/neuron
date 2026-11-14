@@ -57,14 +57,16 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E08 | Quality, security and release | 1 | v1.1.0 | 5 | 5 | 0 | 0 | 0 | — |
 | RAG-E09 | Retrieval quality and sharing | 2 | v1.2.0 | 8 | 8 | 0 | 0 | 0 | — |
 | RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 3 | 0 | 0 | 2 | — (v1.3.0 release) |
-| RAG-E11 | Specialised knowledge tools | 4 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
+| RAG-E11 | Specialised knowledge tools | 4 | v1.4.0 (proposed) | 5 | 0 | 0 | 0 | 5 | RAG-11.01 |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **44** | **0** | **0** | **12** | **v1.3.0 release** |
+| **Total** | | | | **56** | **44** | **0** | **0** | **12** | **RAG-11.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-13, Phase 3):** the owner chose RAG-E10 for v1.3.0 (epic #577): web pages and the self-hosted chat model, in the order ADR 0014 amendment "external sources", RAG-10.01 (#578), RAG-10.05 (#582), RAG-10.02 (#579). RAG-10.03 (#580) and RAG-10.04 (#581) are deferred until a product requirement exists. RAG-10.01 (#584), RAG-10.05 and RAG-10.02 (#586 to #590) are Done. RAG-10.03 (#580) and RAG-10.04 (#581) are closed as not planned with the `deferred` label (owner, 2026-11-13). v1.3.0 is signed off by the owner; its record is `docs/releases/v1.3.0-release-verification.md`. Next: the owner tags `v1.3.0` and publishes the GitHub Release from the `1.3.0` CHANGELOG section; then Phase 3 continues only when the owner picks a story with a product requirement.
+**Recommended next action (2026-11-14, Phase 4):** E11 and E12 were checked against product need, and only RAG-11.01 `query_table` has one. XLSX uploads are already accepted, but no current tool can calculate over more rows than search returns. It is planned for v1.4.0 (epic #593, story #594). It starts with table eval cases that show the failure, then an ADR 0014 amendment. The other nine stories are deferred, with reasons under "Epic detail". In parallel, the owner tags `v1.3.0`.
+
+**Earlier (2026-11-13, Phase 3):** the owner chose RAG-E10 for v1.3.0 (epic #577): web pages and the self-hosted chat model, in the order ADR 0014 amendment "external sources", RAG-10.01 (#578), RAG-10.05 (#582), RAG-10.02 (#579). RAG-10.03 (#580) and RAG-10.04 (#581) are deferred until a product requirement exists. RAG-10.01 (#584), RAG-10.05 and RAG-10.02 (#586 to #590) are Done. RAG-10.03 (#580) and RAG-10.04 (#581) are closed as not planned with the `deferred` label (owner, 2026-11-13). v1.3.0 is signed off by the owner; its record is `docs/releases/v1.3.0-release-verification.md`. Next: the owner tags `v1.3.0` and publishes the GitHub Release from the `1.3.0` CHANGELOG section; then Phase 3 continues only when the owner picks a story with a product requirement.
 
 **Earlier (2026-11-13):** v1.2.0 is released: signed off by the owner, released from `97072d8` (branch `release/v1.2.0`); the tag `v1.2.0` and the GitHub Release are made by hand from the `1.2.0` CHANGELOG section. Next: Phase 3, starting with RAG-E10 (external knowledge sources; epic and story issues to create), when the owner chooses. Open follow-ups with no story: the worker settings profile, production verification of the worker's column grants, and the race in the erase-flow e2e test (`web/e2e/knowledge.spec.ts`, second sign-in's `page.goto` interrupted by a navigation to `/`), seen on #554, #555 and #560: sign-out shows the signed-out page before its logout round trip; #560's wait still passed early (the signed-out page is already at `/`); since #561 the test waits for the main-frame navigation back from logout.
 
@@ -132,7 +134,9 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-10.03 | #580 | Not on a board |
 | RAG-10.04 | #581 | Not on a board |
 | RAG-10.05 | #582 | Not on a board |
-| RAG-E11, RAG-E12 and their stories | — | — |
+| RAG-E11 | #593 | Not on a board |
+| RAG-11.01 | #594 | Not on a board |
+| RAG-11.02 to RAG-11.05, RAG-E12 and its stories | — (deferred, no issue) | — |
 
 ## Epic detail
 
@@ -394,17 +398,31 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 - **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
 - **Implemented functionality:** none.
-- **Outstanding work:** RAG-11.01 to RAG-11.05.
+- **Outstanding work:** RAG-11.01 (#594); the rest are deferred.
 - **Blockers and decisions:** evidence-gated; mutating tools need an ADR 0003 amendment; a subgraph needs a new ADR.
-- **Next recommended story:** none until a requirement exists.
+  - Need check (2026-11-14, epic #593), what is picked now:
+    - RAG-11.01 is picked. XLSX is an accepted upload type, but a spreadsheet is searched as text chunks. A total or count over more rows than search returns can't be answered, and `calculator` can't read rows. That is a gap in a shipped feature. The eval set has no table cases, so the story adds them first and records the failure.
+    - Open point for the ADR amendment: DuckDB's `excel` extension downloads at runtime, which conflicts with "external access off". So the table data probably comes from the parsed cells the worker stores at ingest.
+  - Need check (2026-11-14), what is deferred:
+    - RAG-11.02 `research_web`: a page can already be added by URL (RAG-10.02). Search needs a provider, a key and a cost decision, and no user has asked for it.
+    - RAG-11.03: the web app already saves and deletes documents. Approval on every call adds friction, and nobody has asked for it.
+    - RAG-11.04: it depends on RAG-10.03, which is deferred.
+    - RAG-11.05: there is no multi-hop eval subset or measured multi-hop failure (recall@5 0.984). The live eval's misses are abstentions, which a subgraph would not address.
+- **Next recommended story:** RAG-11.01 (#594).
 
 ### RAG-E12 Platform and scale
 
 - **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
 - **Implemented functionality:** none.
-- **Outstanding work:** RAG-12.01 to RAG-12.05.
+- **Outstanding work:** RAG-12.01 to RAG-12.05, all deferred.
 - **Blockers and decisions:** evidence-gated; each needs a measured gain and usually an ADR.
-- **Next recommended story:** none until a requirement exists.
+  - Need check (2026-11-14), all deferred:
+    - RAG-12.01 semantic recall: ADR 0009 caps memories at 50 notes of 500 characters, and `recall` returns them all, so there is nothing to rank.
+    - RAG-12.02 sandboxed code: this is the highest-risk item, it comes after RAG-11.01, and it is kept only if read-only SQL proves insufficient.
+    - RAG-12.03 GraphRAG: there is no multi-hop failure to fix (recall@5 0.984).
+    - RAG-12.04 external vector store: Postgres search runs at 47/110 ms p50/p95 on the reference stack (RAG-09.06), with no production chunk count to test against.
+    - RAG-12.05 organisation spaces: the IdP supplies no organisation claim, and role grants (RAG-09.03) already cover sharing.
+- **Next recommended story:** none until a measured need exists.
 
 ## Story status
 
@@ -453,10 +471,10 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 | RAG-09.08 | Multilingual text search evaluation | 2 | P2 | Done | #552 | #570, #571 | AC1 (#570): `POST /v1/knowledge/bases` takes `language`, one of Postgres's 29 built-in text search configurations, stored as `bases.ts_config` and fixed at creation; the Knowledge screen's create form has a selector. `test_postgres_knowledge_ingest.py::test_a_base_language_sets_the_text_search_config_of_its_chunks`, `test_postgres_knowledge_api.py::test_a_base_keeps_the_language_it_was_created_with`. AC2: `tests/integration/test_postgres_knowledge_multilingual.py` on `tests/fixtures/knowledge/multilingual/cases.json` (30 questions, 5 languages): text-channel recall@5 `simple` 0.00 everywhere; own config English 1.00, German 0.33, French 0.67, Spanish 0.83, Hindi 0.83 (`docs/releases/v1.2.0-gate/multilingual-fts.json`). Decision in ADR 0014, amendment "text search language": keep built-in FTS; `pg_textsearch` not adopted (PostgreSQL 17+ only; not measured, no PostgreSQL 17 in the evaluation environment; owner decision) |
 | RAG-10.01 | Outbound URL safety for ingestion fetchers (extends #364 and #366) | 3 | P0 | Done | #578 | #584 | `tests/security/test_egress.py`: a name resolving to `10.0.0.1` or `169.254.169.254` is refused and nothing is connected, a private literal is refused before any lookup (AC1); a redirect to a private address and a redirect to `http` are refused after only the public address was connected (AC2); a changed second DNS answer is never looked up or connected (AC3); `http` URLs are refused in every environment, loopback included (AC4). Also: proxy settings ignored, body and redirect caps, non-200, DNS failure as `fetch_failed`, final URL without userinfo or fragment. `security-reviewer` run: no critical or high findings; three low ones fixed in the PR |
 | RAG-10.02 | Web page ingestion | 3 | P2 | Done | #579 | #586 (part 1), #587 (part 2), #588 (part 3), #589 (part 4a), #590 (part 4b) | Exit gate (2026-11-13, on `ef0b5fc`): a real public page (`https://peps.python.org/pep-0020/`) added as a queued web document was fetched by the real `fetch_page`, ingested into 14 chunks, and every search hit carried its URL and fetch time; `https://10.0.0.5/` failed with `url_not_allowed`. AC1: `test_a_page_is_fetched_once_stored_and_ingested`, `test_search_and_the_document_list_name_the_page_and_its_fetch_time`, `tests/security/test_citations.py`. AC2: `test_a_url_that_is_not_public_https_is_refused_and_stores_nothing` (API, `422 url_not_allowed`) and `test_a_private_url_fails_at_once_and_a_timeout_is_retried` (worker). Part 4b: the Knowledge page adds a web page by its address, keeps a refused address in the field with fixed wording, explains each fetch failure code and shows no size before the fetch (`DocumentsPanel.test.tsx`). Part 4a: a web page's search hits, document listing and citations carry `source_url` and `fetched_at`, through search and excerpts, in the stream and history; the chat source opens the page's `https` link with its fetch date (`test_postgres_knowledge_web.py`, `tests/security/test_citations.py`, `SourceSheet.test.tsx`). Part 3: `POST /v1/knowledge/bases/{kb_id}/web-pages` checks the URL's text and queues the page (`tests/integration/test_postgres_knowledge_web_api.py`: private, `http` and credentialed URLs refused with nothing stored, same URL or key returns the document, readers refused; the BOLA matrix covers the route). Part 2: the worker fetches a queued page once, stores it as UTF-8 and records its file and fetch time (`tests/integration/test_postgres_knowledge_web.py`: private URL refused, timeout retried, duplicate, size, set-once file). Part 1: `HtmlParser` (Trafilatura) in `tests/unit/test_knowledge_parsing.py`: main text, headings and tables kept, scripts, navigation and footers dropped, `no_text`, block cap, never an upload type. Parts 2 to 4 (worker fetch, add-by-URL route, web citations and UI) carry the acceptance criteria |
-| RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | #580 | — | — |
-| RAG-10.04 | MCP document connectors | 3 | P2 | Pending | #581 | — | — |
+| RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | #580 | — | Deferred by the owner (2026-11-13); issue closed as not planned |
+| RAG-10.04 | MCP document connectors | 3 | P2 | Pending | #581 | — | Deferred by the owner (2026-11-13); issue closed as not planned |
 | RAG-10.05 | OpenAI-compatible chat model provider | 3 | P2 | Done | #582 | #585 | `tests/unit/test_model_factory.py`: with `APP_DEFAULT_MODEL=openai_compatible:local-model` and a base URL, a call reaches a local OpenAI-compatible server at `/v1/chat/completions` and returns its answer, and `OPENAI_API_KEY` from the environment is not sent (AC1); an `http` non-loopback base URL fails settings validation in production (AC2). Also: base URL required (default and fallback models), own key used, keyless `http` private server allowed in staging, keyed one refused |
-| RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | Pending | — | — | — |
+| RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | Pending | #594 | — | — |
 | RAG-11.02 | `research_web` tool | 4 | P2 | Pending | — | — | — |
 | RAG-11.03 | Mutating knowledge tools with approval | 4 | P2 | Pending | — | — | — |
 | RAG-11.04 | `search_repository` tool | 4 | P2 | Pending | — | — | — |
@@ -471,6 +489,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-14 | E11 and E12 checked against product need: RAG-11.01 picked for v1.4.0 (epic #593, story #594); the other nine deferred, with reasons recorded. Next: RAG-11.01 | Claude session |
 | 2026-11-13 | v1.3.0 release record, version 1.3.0 and CHANGELOG; upgrade from v1.2.0 run on the reference stack. RAG-10.03 and RAG-10.04 closed as deferred | Claude session |
 | 2026-11-13 | RAG-10.02 Done (#579): web pages added by URL, fetched by the worker, cited with URL and fetch time, "Add a web page" in the UI. E10: 3 of 5 (the other two deferred). Next: v1.3.0 release | Claude session |
 | 2026-11-13 | RAG-10.02 started (#579), part 1: HTML parser with Trafilatura. Plan: part 2 worker fetch and migration, part 3 add-by-URL route, part 4 web citations and UI | Claude session |
