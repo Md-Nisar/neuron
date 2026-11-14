@@ -114,6 +114,7 @@ mypy_path = "src"
 explicit_package_bases = true
 
 [tool.pytest.ini_options]
+pythonpath = ["src", "."]
 # Live suites (`integration`) run only when selected explicitly (`make test-integration`,
 # `make eval`); the deterministic `eval` harness tests run by default.
 addopts = "-q --strict-markers --strict-config -m 'not integration'"

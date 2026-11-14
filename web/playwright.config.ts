@@ -41,6 +41,7 @@ export default defineConfig({
         APP_IDENTITY_HASH_KEY: "browser-e2e-identity-hash-key-not-a-secret",
         APP_CHECKPOINTER: "memory",
         APP_MEMORY_ENABLED: "true",
+        APP_KNOWLEDGE_ENABLED: "false",
         APP_OTEL_ENABLED: "false",
         APP_ENABLE_LANGSMITH: "false",
         APP_FAKE_MODEL_TTFT_MS: "1",

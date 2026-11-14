@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess  # nosec B404
 from html.parser import HTMLParser
 from pathlib import Path
@@ -231,7 +232,13 @@ def test_no_hand_written_headers_file_ships_with_every_build() -> None:
 
 def _hosted_build(tmp_path: Path, api: str, issuer: str) -> subprocess.CompletedProcess[str]:
     """Run the real `make web-hosted` recipe with a stand-in `npm` that only creates `dist/`."""
-    (tmp_path / "scripts").symlink_to(ROOT / "scripts")
+    if shutil.which("make") is None:
+        pytest.skip("make is not available on this platform")
+    scripts_dest = tmp_path / "scripts"
+    try:
+        scripts_dest.symlink_to(ROOT / "scripts")
+    except OSError:
+        shutil.copytree(ROOT / "scripts", scripts_dest)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     npm = bin_dir / "npm"

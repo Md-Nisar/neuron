@@ -123,10 +123,15 @@ def baseline(steps: Path, image: str, note: str, host: str | None = None) -> dic
 
 
 def _memory_gb() -> int | None:
-    try:
-        return round(os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 2**30)
-    except (ValueError, OSError, AttributeError):
-        return None
+    sysconf = getattr(os, "sysconf", None)
+    if callable(sysconf):
+        try:
+            page_size = int(sysconf("SC_PAGE_SIZE"))
+            phys_pages = int(sysconf("SC_PHYS_PAGES"))
+            return int(round(page_size * phys_pages / 2**30))
+        except (ValueError, OSError, AttributeError):
+            return None
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
