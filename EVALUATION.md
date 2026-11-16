@@ -181,6 +181,23 @@ The committed baseline for a model lives at `evals/baselines/<name>.json`, where
 
 **Refreshing a baseline** follows the same steps, after a model, prompt, tool or dataset change that is meant to move results. A maintainer other than the author approves the PR after reviewing the report: no infrastructure errors, no security failure, and every case that regressed explained. Never refresh a baseline to make a failing nightly pass without that review.
 
+## Development models (NVIDIA free tier)
+
+Models checked on the free tier for chat (`APP_DEFAULT_MODEL=nvidia:<id>`), reasoning (`ai-review`, `scripts/ai_review.py`) and evaluation (`neuron-eval`, the live knowledge and table tests). On 2026-11-16 each candidate got a smoke test (one plain reply and one tool call), and those that answered in time ran the live table test (`tests/integration/test_live_table_answers.py`, tools on, 8 questions) against pgvector:
+
+| Model | Use for | Table test, 2026-11-16 |
+|---|---|---|
+| `nvidia/nemotron-3-ultra-550b-a55b` | Reference model for chat, evaluation (nightly, baselines) and the first `ai-review` model | 8 of 8, about 3.5 minutes |
+| `nvidia/nemotron-3.5-super-vl-120b-a12b` | Faster alternative for chat and evaluation; second `ai-review` model | 8 of 8, about 1.5 minutes |
+| `nvidia/nemotron-3.5-lightning-30b-a3b` | Quick local checks only | 7 of 8 in two runs (one structured-output error, then one miss on `table-002`) |
+| `minimaxai/minimax-m3.1-flash` | Not yet: no wrong answers, but most questions hit the free tier's rate limit | Inconclusive (`RateLimitError`) |
+| `mistralai/mistral-large-4-1t-a52b` | Not yet: no wrong answers, but most questions hit the agent's run timeout | Inconclusive (`RunTimeoutError`) |
+| `google/gemma-4-31b-it` | No: about 50 seconds a call | Every question timed out |
+| `openai/gpt-oss-20b` | No: about 140 seconds a call | Not run |
+| `deepseek-ai/deepseek-v4.1-flash` | No: listed in the catalog, but no reply within 300 seconds | Not run |
+
+Inconclusive means the provider's limits stopped the run, not that the model answered wrongly. Free-tier availability and speed change often, so smoke-test a model before a long run.
+
 ## Automated runs and NVIDIA's terms
 
 The nightly workflow (`.github/workflows/nightly-eval.yml`) calls NVIDIA's hosted API with a free-tier key. NVIDIA's [API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf) and the terms shown at [build.nvidia.com](https://build.nvidia.com) apply. **Automated runs must comply with NVIDIA's terms, rate limits and usage restrictions.**

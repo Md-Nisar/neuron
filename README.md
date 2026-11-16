@@ -54,7 +54,7 @@ Copy-Item .env.example .env
 
 Set `OPENAI_API_KEY` in `.env` before live model execution. Without a key, development and test environments use a fake local chat model so health checks and deterministic tests still run.
 
-For development you can use a model from NVIDIA's API catalog instead (`build.nvidia.com`, which offers OpenAI-compatible models on a free tier): set `NVIDIA_API_KEY` and `APP_DEFAULT_MODEL=nvidia:<model-id>`, such as a model ID from the catalog's model list. The app calls NVIDIA's OpenAI-compatible endpoint (`https://integrate.api.nvidia.com/v1`) through the same client, retries and error handling. The model must support tool calling. The free tier is for development and evaluation; keep real user data off it.
+For development you can use a model from NVIDIA's API catalog instead (`build.nvidia.com`, which offers OpenAI-compatible models on a free tier): set `NVIDIA_API_KEY` and `APP_DEFAULT_MODEL=nvidia:<model-id>`, such as one of the checked models in `EVALUATION.md` ("Development models"). The app calls NVIDIA's OpenAI-compatible endpoint (`https://integrate.api.nvidia.com/v1`) through the same client, retries and error handling. The model must support tool calling. The free tier is for development and evaluation; keep real user data off it.
 
 Anthropic is a third provider (`ANTHROPIC_API_KEY` or `APP_ANTHROPIC_API_KEY`, `APP_DEFAULT_MODEL=anthropic:<model-id>`). It is covered by unit tests with fakes only: v0.7.0 has no funded Anthropic key, so it has **not been run against the live API**. Without a key, development and test fall back to the local fake model, like the other providers.
 
