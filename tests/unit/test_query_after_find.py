@@ -27,6 +27,8 @@ class _Request:
     messages: list[Any]
     tools: list[Any] = field(default_factory=lambda: list(_TOOLS))
     runtime: Any = field(default_factory=lambda: SimpleNamespace(context=None))
+    tool_choice: Any = None
+    response_format: Any = "AgentAnswer"
 
     def override(self, **changes: Any) -> _Request:
         return replace(self, **changes)
@@ -37,8 +39,8 @@ def _found(artifact: dict[str, Any] | None = None) -> ToolMessage:
     return ToolMessage("tables", tool_call_id="f", name="find_tables", artifact=artifact)
 
 
-def _queried() -> ToolMessage:
-    return ToolMessage("rows", tool_call_id="q", name="query_table", artifact={})
+def _queried(status: str = "success") -> ToolMessage:
+    return ToolMessage("rows", tool_call_id="q", name="query_table", artifact={}, status=status)
 
 
 def _answer(text: str) -> ModelResponse:
@@ -57,16 +59,27 @@ async def _run(request: _Request, *replies: ModelResponse) -> tuple[Any, list[_R
     return await query_after_find_middleware().awrap_model_call(request, handler), seen
 
 
-async def test_an_answer_without_a_query_is_asked_for_again_and_charged() -> None:
+@pytest.mark.parametrize(
+    "earlier",
+    [[], [_queried("error")]],  # never queried; a guessed handle queried beside find_tables
+)
+async def test_an_answer_without_a_query_is_set_aside_charged_and_a_query_required(
+    earlier: list[Any],
+) -> None:
     usage = TokenUsageAccumulator()
     context = AuthorizationContext(frozenset(), usage=usage)
-    request = _Request([HumanMessage("total?"), _found()], runtime=SimpleNamespace(context=context))
+    request = _Request(
+        [HumanMessage("total?"), *earlier, _found()], runtime=SimpleNamespace(context=context)
+    )
+    query = AIMessage("", tool_calls=[{"name": "query_table", "args": {}, "id": "q"}])
 
     with structlog.testing.capture_logs() as logs:
-        response, seen = await _run(request, _answer("About 300."), _answer("2,907."))
+        response, seen = await _run(request, _answer("About 300."), ModelResponse(result=[query]))
 
-    assert response.structured_response == {"answer": "2,907."}
+    assert response.result == [query]
     assert len(seen) == 2
+    assert seen[1].tools == [{"name": "query_table"}]
+    assert (seen[1].tool_choice, seen[1].response_format) == ("any", None)
     assert "query_table" in seen[1].messages[-1].content
     assert request.messages == seen[0].messages  # the note is not kept in the thread
     assert usage.total_tokens == _USAGE["total_tokens"]
@@ -90,7 +103,7 @@ async def test_the_answer_stands_otherwise(request_: _Request) -> None:
     assert len(seen) == 1
 
 
-async def test_the_second_answer_stands_even_without_a_query() -> None:
+async def test_a_provider_that_ignores_the_required_call_keeps_its_second_answer() -> None:
     request = _Request([HumanMessage("total?"), _found()])
 
     response, seen = await _run(request, _answer("About 300."), _answer("About 310."))

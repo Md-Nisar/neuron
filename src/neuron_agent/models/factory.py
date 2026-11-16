@@ -629,14 +629,17 @@ _KNOWLEDGE_SEARCH = "search_knowledge"
 
 
 def query_after_find_middleware() -> AgentMiddleware:
-    """Ask once more when the model answers after `find_tables` found tables it never queried.
+    """Make the model query a table it found before it answers from it.
 
     In RAG-11.01's live eval a model found the table and then answered a total from its sample
-    rows, or made one up, without calling `query_table`. That answer is set aside (its tokens
-    are still charged) and the same call is made again with a note to query the table; the
-    second reply stands, whatever it is. The note is not kept in the thread. It sits inside the
-    tool authorization middleware, so it acts only when the caller may use `query_table`, and
-    the final-answer step offers no tools, so the run's last call is never asked again.
+    rows, made one up, or said it would query and stopped; some guessed a handle and called
+    `query_table` beside `find_tables`, which failed. When the model answers after `find_tables`
+    found tables with no `query_table` call after them, that answer is set aside (its tokens
+    are still charged) and the call is made again offering `query_table` alone, which the model
+    must call, with a note saying why; the note is not kept in the thread. The tool's result
+    reaches the model, which answers on its next call. Once per `find_tables` result, whose
+    calls are capped; inside tool authorization, so only for callers who may use
+    `query_table`; and the final-answer step offers no tools, so the run's last call answers.
     """
     return _QueryAfterFindMiddleware()
 
@@ -644,9 +647,10 @@ def query_after_find_middleware() -> AgentMiddleware:
 class _QueryAfterFindMiddleware(AgentMiddleware[Any, Any]):
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
         response = await handler(request)
+        query = [tool for tool in request.tools if _tool_name(tool) == _QUERY_TABLE]
         if (
             getattr(response, "structured_response", None) is None
-            or not any(_tool_name(tool) == _QUERY_TABLE for tool in request.tools)
+            or not query
             or not _tables_found_not_queried(request.messages)
         ):
             return response
@@ -654,33 +658,36 @@ class _QueryAfterFindMiddleware(AgentMiddleware[Any, Any]):
         for message in response.result:
             if isinstance(message, AIMessage):
                 _charge_discarded_attempt(request, message)
-        note = HumanMessage(_QUERY_FIRST)
-        return await handler(request.override(messages=[*request.messages, note]))
+        return await handler(
+            request.override(
+                messages=[*request.messages, HumanMessage(_QUERY_FIRST)],
+                tools=query,
+                tool_choice="any",
+                response_format=None,
+            )
+        )
 
 
 _FIND_TABLES = "find_tables"
 _QUERY_TABLE = "query_table"
 _QUERY_FIRST = (
-    "You found tables but did not query them. Answer from a query_table result: call "
-    "query_table on the table handle now. Sample rows hold only a few of its rows."
+    "You found tables but did not query them after finding them. Call query_table on a table "
+    "handle from find_tables now: sample rows hold only a few of a table's rows."
 )
 
 
 def _tables_found_not_queried(messages: Sequence[Any]) -> bool:
-    """Whether `find_tables` returned a table this run and `query_table` was never called."""
-    found = False
+    """Whether `find_tables` returned a table this run with no `query_table` call after it."""
     for message in reversed(messages):
         if isinstance(message, HumanMessage):
-            break
-        if isinstance(message, ToolMessage) and message.name == _QUERY_TABLE:
             return False
-        found = found or (
-            isinstance(message, ToolMessage)
-            and message.name == _FIND_TABLES
-            and message.status != "error"
-            and bool(message.artifact)
-        )
-    return found
+        if not isinstance(message, ToolMessage):
+            continue
+        if message.name == _QUERY_TABLE:
+            return False
+        if message.name == _FIND_TABLES and message.status != "error" and message.artifact:
+            return True
+    return False
 
 
 def _model_calls_this_run(messages: Sequence[Any]) -> int:
