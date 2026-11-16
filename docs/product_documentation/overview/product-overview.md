@@ -2,7 +2,7 @@
 
 > **Document ID:** DOC-OVR-001  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.2 (Product Description & Overview) and Diátaxis (Explanation / Overview)  
-> **Product Version:** 1.1.0  
+> **Product Version:** 1.2.0  
 > **Status:** Production-Ready  
 > **Code Traceability:** `src/neuron_agent/`, `docs/decisions/`
 
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-**Neuron Agent** is a production-hardened, enterprise-grade AI agent orchestration service built on Python 3.13+, FastAPI, LangChain, and LangGraph. Designed from inception with a "defense-in-depth" security philosophy, Neuron provides a robust, observable, and multi-tenant foundation for executing LLM workflows with bounded read-only tools, stateful conversation persistence, human-in-the-loop approvals for mutating actions, Model Context Protocol (MCP) tool integration, user-controlled memory notes, and an isolated Knowledge Engine (RAG) supporting hybrid vector/full-text search over private documents.
+**Neuron Agent** is a production-hardened, enterprise-grade AI agent orchestration service built on Python 3.13+, FastAPI, LangChain, and LangGraph. Designed from inception with a "defense-in-depth" security philosophy, Neuron provides a robust, observable, and multi-tenant foundation for executing LLM workflows with bounded read-only tools, stateful conversation persistence, human-in-the-loop approvals for mutating actions, Model Context Protocol (MCP) tool integration, user-controlled memory notes, and an isolated Knowledge Engine (RAG) supporting hybrid vector/full-text search, cross-encoder candidate reranking, role-based sharing, and zero-downtime embedding reindexing.
 
 Unlike experimental agent frameworks that permit unbounded shell execution, arbitrary prompt injections, and ambient identity impersonation, Neuron enforces strict architectural boundaries:
 - **Zero Raw Identity Storage:** Authenticated token subjects are hashed using HMAC-SHA256 with an operator-controlled secret key (`APP_IDENTITY_HASH_KEY`).
@@ -43,7 +43,7 @@ flowchart TD
         PGPool["psycopg AsyncConnectionPool"]
         Checkpointer["PostgreSQL Checkpointer (checkpoints)"]
         Store["LangGraph Memory Store (store)"]
-        KnowledgeDB["Knowledge Engine Schema (bases, chunks, embeddings)"]
+        KnowledgeDB["Knowledge Engine Schema (bases, chunks, embeddings, profiles, grants)"]
         Queue["Procrastinate Job Queue (procrastinate_jobs)"]
     end
 
@@ -90,8 +90,9 @@ flowchart TD
 
 ### 2.3 Authentication & Authorization
 - **OAuth 2.0 / OIDC JWT Verification:** In `APP_AUTH_MODE=jwt`, every request requires an RFC 7519 JWT bearer access token issued by a trusted identity provider (e.g., Keycloak, Auth0, Okta).
-- **Fine-Grained Scopes:** 15 distinct scopes govern execution permissions (e.g., `agent:invoke`, `agent:approve`, `threads:read`, `threads:write`, `data:erase`, `tools:calculator`, `knowledge:read`, `knowledge:write`).
+- **Fine-Grained Scopes:** 16 distinct scopes govern execution permissions (e.g., `agent:invoke`, `agent:approve`, `threads:read`, `threads:write`, `data:erase`, `tools:calculator`, `knowledge:read`, `knowledge:write`, `knowledge:admin`).
 - **HMAC Owner Key Pseudonymity:** Tenant isolation is enforced via an HMAC-SHA256 hash of the token's `(issuer, subject)` pair using `APP_IDENTITY_HASH_KEY`. Raw user IDs and emails never reach database foreign keys.
+- **Verified Token Roles:** Roles extracted from `APP_AUTH_ROLES_CLAIM` enable multi-tenant resource sharing (such as knowledge base role grants) without ambient role elevation.
 
 ### 2.4 Tool Execution & Safety Architecture
 - **Immutable Tool Registry:** Every tool is bound to a `ToolSpec` declaring its name, required permission scope, risk class (`read` vs `mutating`), source (`builtin` vs `mcp`), and data taint characteristics.
@@ -111,10 +112,14 @@ flowchart TD
 - **Independent User Management:** Users can inspect (`GET /v1/me/memories`) and delete (`DELETE /v1/me/memories/{id}`) their notes directly via REST API without invoking the LLM.
 
 ### 2.7 Knowledge Engine (RAG)
-- **Multi-Tenant Knowledge Bases:** Users can create isolated knowledge bases (`POST /v1/knowledge/bases`) with configurable processing locality (`hosted` vs `self_hosted`).
+- **Multi-Tenant Knowledge Bases:** Users can create isolated knowledge bases (`POST /v1/knowledge/bases`) with configurable processing locality (`hosted` vs `self_hosted`) and language dictionary configuration (`language`).
+- **Role-Based Sharing:** Bases can be shared with verified token roles (`GET`/`PUT /v1/knowledge/bases/{kb_id}/grants`) with granular `read`, `write`, or `admin` access levels. Only the creator retains `owner` status.
 - **Multi-Format Document Ingestion:** Supports PDF (with OCR), DOCX, XLSX, PPTX, TXT, and Markdown files up to 50 MB.
 - **Sandboxed Parsing:** Complex document types are parsed by `docling-serve` running in a container on an isolated internal network without internet egress.
-- **Hybrid Search Engine:** Combines full-text search (`tsvector` with `websearch_to_tsquery`) and dense vector search (`pgvector` halfvec with HNSW indexing or exact scan) fused via Reciprocal Rank Fusion (RRF, $k=60$).
+- **Hybrid Search Engine:** Combines full-text search (`tsvector` with language-specific stemming) and dense vector search (`pgvector` halfvec with HNSW indexing or exact scan) fused via Reciprocal Rank Fusion (RRF, $k=60$).
+- **Cross-Encoder Reranking:** Top fused candidates can be reranked via hosted cross-encoder (`APP_KNOWLEDGE_RERANKER=nvidia`, model `llama-nemotron-rerank-vl-1b-v2`), improving MRR to 0.924 with automatic fail-safe fallback to RRF ordering.
+- **Zero-Downtime Reindexing:** Operators can migrate to new embedding models (`neuron-reindex start|status|cancel`) while active search continues unaffected, followed by an atomic profile swap.
+- **Negative Feedback Auditing:** Operators can inspect chunk IDs cited by thumbs-down answers (`python -m neuron_agent.persistence.cli feedback-report`) to diagnose retrieval relevance defects.
 - **Cryptographic Citations:** Every search hit mints an opaque, single-run `cite_id`. The server validates that citations in the final answer correspond to actual chunks retrieved during that specific run.
 
 ### 2.8 Privacy & Data Subject Rights (GDPR / CCPA)
@@ -146,6 +151,7 @@ graph TB
         DoclingClient[Docling Client]
         Chunker[Document Chunker]
         Embedder[Embedding Client: NVIDIA / OpenAI]
+        Reindexer[Knowledge Reindexer]
     end
 
     subgraph DataHost ["Persistence Tier"]
@@ -168,6 +174,7 @@ graph TB
     WorkerProcess --> DoclingClient
     DoclingClient -->|Internal Network Only| DoclingServe
     WorkerProcess --> Embedder
+    WorkerProcess --> Reindexer
 ```
 
 ---
@@ -176,15 +183,16 @@ graph TB
 
 | Release | Focus Area | Key Additions |
 | :--- | :--- | :--- |
-| **v0.1.0 – v0.2.0** | Core Baseline | FastAPI baseline, single-node LangGraph agent, `calculator` and `utc_now` tools, fake chat model for deterministic CI. |
-| **v0.3.0** | Stateful Agents | PostgreSQL thread checkpointer, session resumption, SSE streaming (`/v1/agent/stream`), run timeout budgets. |
-| **v0.4.0** | Enterprise Auth | JWT bearer token verification, JWKS caching, 15 authorization scopes, HMAC-SHA256 caller pseudonymity, GDPR export/erase. |
-| **v0.5.0** | Observability | OpenTelemetry traces and metrics, SemConv v1.26.0, LangSmith governance with zero-prompt-leakage rules, structured structlog. |
-| **v0.6.0** | Multi-Instance | PostgreSQL-backed distributed run leases (`neuron_run_leases`), shared token budget (`neuron_token_ledger`), shared rate buckets. |
-| **v0.7.0** | Extensibility | Extensible tool registry, Model Context Protocol (MCP) streamable HTTP integration, tool pinning, human-in-the-loop approvals, memory notes. |
-| **v0.8.0** | Web Application | React 19 single-page application (`web/`), Tailwind CSS, shadcn-ui, PKCE OIDC authentication, streaming client, approval dialogs. |
+| **v1.2.0** *(Current)* | Retrieval Quality & Sharing | Cross-encoder candidate reranking (NVIDIA Nemotron), role-based knowledge sharing, zero-downtime index reindexing, multilingual FTS (29 languages), low-rated citation reporting, nightly retrieval eval gate. |
+| **v1.1.0** | Knowledge Engine | Full RAG subsystem (`knowledge/`), multi-format ingestion, docling-serve container isolation, pgvector hybrid search, Procrastinate worker queue. |
 | **v0.9.0 – v1.0.0** | Production Candidate | Production candidate gates, automated failover drills, load-testing harness (Locust), database migration test policies. |
-| **v1.1.0** *(Current)* | Knowledge Engine | Full RAG subsystem (`knowledge/`), multi-format ingestion, docling-serve container isolation, pgvector hybrid search, Procrastinate worker queue. |
+| **v0.8.0** | Web Application | React 19 single-page application (`web/`), Tailwind CSS, shadcn-ui, PKCE OIDC authentication, streaming client, approval dialogs. |
+| **v0.7.0** | Extensibility | Extensible tool registry, Model Context Protocol (MCP) streamable HTTP integration, tool pinning, human-in-the-loop approvals, memory notes. |
+| **v0.6.0** | Multi-Instance | PostgreSQL-backed distributed run leases (`neuron_run_leases`), shared token budget (`neuron_token_ledger`), shared rate buckets. |
+| **v0.5.0** | Observability | OpenTelemetry traces and metrics, SemConv v1.26.0, LangSmith governance with zero-prompt-leakage rules, structured structlog. |
+| **v0.4.0** | Enterprise Auth | JWT bearer token verification, JWKS caching, 15 authorization scopes, HMAC-SHA256 caller pseudonymity, GDPR export/erase. |
+| **v0.3.0** | Stateful Agents | PostgreSQL thread checkpointer, session resumption, SSE streaming (`/v1/agent/stream`), run timeout budgets. |
+| **v0.1.0 – v0.2.0** | Core Baseline | FastAPI baseline, single-node LangGraph agent, `calculator` and `utc_now` tools, fake chat model for deterministic CI. |
 
 ---
 

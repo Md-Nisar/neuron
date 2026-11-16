@@ -1,4 +1,4 @@
-# How-To: Ingest Documents and Query Knowledge Bases (RAG)
+# How-To: Ingest Documents, Share, and Query Knowledge Bases (RAG)
 
 > **Document ID:** DOC-HOW-003  
 > **Diátaxis Mode:** How-To Guide (Task-Oriented)  
@@ -10,7 +10,7 @@
 
 ## 1. Overview and RAG Architecture
 
-The Neuron Knowledge Engine (v1.1.0) provides an enterprise retrieval-augmented generation (RAG) subsystem. Users can upload private documents (PDF, DOCX, XLSX, PPTX, Markdown, Text) into isolated knowledge bases. Background workers parse, chunk, embed, and index documents into PostgreSQL using hybrid vector/full-text search. The agent accesses retrieved passages through bounded tools with cryptographic citation verification.
+The Neuron Knowledge Engine (v1.2.0) provides an enterprise retrieval-augmented generation (RAG) subsystem. Users can upload private documents (PDF, DOCX, XLSX, PPTX, Markdown, Text) into isolated knowledge bases. Background workers parse, chunk, embed, and index documents into PostgreSQL using hybrid vector/full-text search with optional cross-encoder candidate reranking. Bases can be shared with verified token roles (`read`, `write`, `admin`), and operators can re-index embeddings to new models without downtime.
 
 ```mermaid
 sequenceDiagram
@@ -48,36 +48,37 @@ sequenceDiagram
 
 ---
 
-## 2. Prerequisites and Environment Setup
+## 2. Prerequisites & Environment Setup
 
-Enable the Knowledge Engine in `.env`:
+Ensure the following settings are configured in `.env`:
 
 ```bash
-# Mandatory prerequisite: Postgres checkpointer is strictly required
-APP_CHECKPOINTER=postgres
-
-# Enable the Knowledge Engine
+# Enable Knowledge Engine
 APP_KNOWLEDGE_ENABLED=true
+APP_CHECKPOINTER=postgres
+APP_POSTGRES_DSN="postgresql://neuron_app:app-secret@localhost:5432/neuron_dev"
+APP_POSTGRES_WORKER_DSN="postgresql://neuron_worker:worker-secret@localhost:5432/neuron_dev"
 
-# Embedding Provider Configuration (NVIDIA or openai_compatible)
+# Embedding Model Configuration
 APP_KNOWLEDGE_EMBEDDING_PROVIDER=nvidia
-APP_KNOWLEDGE_EMBEDDING_MODEL=nvidia/nemotron-3.5-embed-1b
+APP_KNOWLEDGE_EMBEDDING_MODEL="nvidia/nemotron-3.5-embed-1b"
 APP_KNOWLEDGE_EMBEDDING_DIMENSIONS=1024
-APP_KNOWLEDGE_SEARCH_MODE=hybrid
+APP_KNOWLEDGE_EMBEDDING_BATCH_SIZE=1
 
-# docling-serve endpoint (for PDF and Office documents)
-APP_KNOWLEDGE_PARSER_URL=http://docling:5001
-APP_KNOWLEDGE_PARSER_TIMEOUT_SECONDS=900
+# Optional Cross-Encoder Reranker
+APP_KNOWLEDGE_RERANKER=nvidia
+APP_KNOWLEDGE_RERANKER_MODEL="nvidia/llama-nemotron-rerank-vl-1b-v2"
+APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS=3.0
 
-# Blob Store Configuration (local directory or S3)
+# Document Storage & Parser URL
 APP_KNOWLEDGE_BLOB_BACKEND=local
-APP_KNOWLEDGE_BLOB_ROOT=var/knowledge-blobs
-APP_KNOWLEDGE_BLOB_LOCAL_ALLOWED=true
-
-# Worker Configuration
-APP_POSTGRES_WORKER_DSN=postgresql://neuron_worker:worker-pass@localhost:5432/neuron_dev
-APP_WORKER_CONCURRENCY=2
+APP_KNOWLEDGE_BLOB_ROOT="var/knowledge-blobs"
+APP_KNOWLEDGE_PARSER_URL="http://localhost:5001"
 ```
+
+> [!TIP]
+> **NVIDIA Embeddings Batch Size:**  
+> When using NVIDIA's API catalog, leave `APP_KNOWLEDGE_EMBEDDING_BATCH_SIZE` unset or set to `1`. Larger batch sizes on real-world document chunks may trigger HTTP 500 responses from upstream catalog endpoints (#480).
 
 ### Running docling-serve
 For parsing PDF, Word, Excel, or PowerPoint documents, run the `docling-serve` container:
@@ -103,7 +104,7 @@ uv run neuron-worker run
 ## 3. Step-by-Step RAG Workflow
 
 ### Step 1: Create a Knowledge Base
-Create a knowledge base for project documentation. Specify processing locality (`hosted` or `self_hosted`):
+Create a knowledge base with a designated processing locality (`hosted` or `self_hosted`) and language configuration:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/knowledge/bases \
@@ -111,9 +112,13 @@ curl -X POST http://127.0.0.1:8000/v1/knowledge/bases \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Engineering Architecture Guides",
-    "processing": "hosted"
+    "processing": "hosted",
+    "language": "english"
   }'
 ```
+
+#### Multilingual Full-Text Search Configuration
+The `language` parameter selects one of PostgreSQL's 29 built-in full-text search dictionaries (`simple`, `english`, `german`, `french`, `spanish`, `hindi`, etc.). Chunks extracted into this base will be stemmed using the selected dictionary, enabling accurate inflectional matching (e.g., "Häuser" matches "Haus" in German). `language` is fixed at creation.
 
 #### Response (`201 Created`)
 ```json
@@ -121,21 +126,47 @@ curl -X POST http://127.0.0.1:8000/v1/knowledge/bases \
   "kb_id": "8f3b2e1a-4c5d-6e7f-8a9b-0c1d2e3f4a5b",
   "name": "Engineering Architecture Guides",
   "processing": "hosted",
-  "created_at": "2026-11-12T02:00:00Z"
+  "language": "english",
+  "created_at": "2026-11-13T10:00:00Z",
+  "access": "owner"
 }
 ```
 
 ---
 
-### Step 2: Upload a Document
-Upload a document using `multipart/form-data`. Optionally provide an `Idempotency-Key` header to safely retry uploads without duplicate processing:
+### Step 2: Share a Knowledge Base with Token Roles (RAG-09.03)
+The creator (`owner`) or an assigned `admin` can share the knowledge base with specific token roles:
 
 ```bash
 KB_ID="8f3b2e1a-4c5d-6e7f-8a9b-0c1d2e3f4a5b"
 
+curl -X PUT "http://127.0.0.1:8000/v1/knowledge/bases/$KB_ID/grants" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grants": [
+      {"role": "engineering", "access": "write"},
+      {"role": "product-ops", "access": "read"}
+    ]
+  }'
+```
+
+- **Scope Required:** `knowledge:admin`.
+- **Access Levels:**
+  - `read`: List base, search passages, receive citations, download files.
+  - `write`: All `read` capabilities + upload documents and delete individual documents.
+  - `admin`: All `write` capabilities + rename knowledge base and manage role grants.
+- **Ownership Invariant:** Only the original creator retains `owner` status; role grants cannot delete the base, export its data, or execute account erasure.
+
+---
+
+### Step 3: Upload a Document
+Upload a document using `multipart/form-data`. Optionally provide an `Idempotency-Key` header to safely retry uploads without duplicate processing:
+
+```bash
 curl -X POST "http://127.0.0.1:8000/v1/knowledge/bases/$KB_ID/documents" \
   -H "Authorization: Bearer $TOKEN" \
-  -H "Idempotency-Key: upload-runbook-20261112" \
+  -H "Idempotency-Key: upload-runbook-20261113" \
   -F "file=@spec.pdf;type=application/pdf" \
   -F "title=System Architecture Specification"
 ```
@@ -152,7 +183,7 @@ curl -X POST "http://127.0.0.1:8000/v1/knowledge/bases/$KB_ID/documents" \
 
 ---
 
-### Step 3: Monitor Ingestion Status
+### Step 4: Monitor Ingestion Status
 Poll the `status_url` until the document reaches `ready`:
 
 ```bash
@@ -171,7 +202,7 @@ curl -s "http://127.0.0.1:8000/v1/knowledge/documents/$DOC_ID" \
 
 ---
 
-### Step 4: Perform Direct Hybrid Search
+### Step 5: Perform Direct Hybrid Search & Candidate Reranking
 Query the knowledge base directly via REST API:
 
 ```bash
@@ -189,6 +220,7 @@ curl -X POST http://127.0.0.1:8000/v1/knowledge/search \
 ```json
 {
   "status": "ok",
+  "reranked": true,
   "results": [
     {
       "chunk_id": "e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b",
@@ -200,11 +232,12 @@ curl -X POST http://127.0.0.1:8000/v1/knowledge/search \
       "headings": ["Security", "Resource Management", "Token Budgets"],
       "page_start": 12,
       "page_end": 12,
-      "score": 0.0328
+      "score": 0.942
     }
   ]
 }
 ```
+Notice `"reranked": true`: The top 40 candidates from dense vector and full-text search were scored by the cross-encoder reranker. If the reranker times out or fails, search transparently falls back to RRF order and sets `"reranked": false`.
 
 ---
 
@@ -227,11 +260,12 @@ curl -X POST http://127.0.0.1:8000/v1/agent/invoke \
 ```
 
 ### Verified Citation Grounding
-When the agent uses retrieved passages, it outputs citations:
+When the agent uses retrieved passages, it outputs verified citations:
+
 ```json
 {
   "status": "completed",
-  "answer": "According to the architecture spec, token budgets are tracked over a 1-hour rolling window [cite:c1a2b3].",
+  "answer": "The token budget operates on a rolling 1-hour window...",
   "used_tools": ["search_knowledge"],
   "citations": [
     {
@@ -249,38 +283,76 @@ When the agent uses retrieved passages, it outputs citations:
 }
 ```
 
-Clients can inspect the exact passage cited by calling:
-```bash
-GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}?neighbours=1
-```
-
 ---
 
-## 5. Deleting Documents and Purging Blobs
+## 5. Deleting Documents and Bases
 
 Deleting a document or base is asynchronous:
 1. `DELETE /v1/knowledge/documents/{doc_id}`: Sets `deleted_at` (tombstone) and immediately returns `202 Accepted`.
 2. Document disappears immediately from all queries and searches.
 3. The worker's `purge_document` background task permanently deletes the blob file, chunk rows, and embeddings from PostgreSQL.
+4. `DELETE /v1/knowledge/bases/{kb_id}`: May only be executed by the base creator (`owner`). Tombstones the base and purges all documents.
 
 ---
 
-## 6. Re-indexing to a New Embedding Model
+## 6. Re-indexing to a New Embedding Model (Zero Downtime)
 
-A different embedding provider, model or dimension needs a re-index into a new index profile (ADR 0014, amendment "re-index to a new profile"). Search keeps working on the old profile until the new one covers every ready chunk, then every knowledge base switches at once.
+When migrating to a different embedding provider, model, or dimension, Neuron supports zero-downtime re-indexing into a new database index profile (ADR 0014, amendment "re-index to a new profile"). Active search continues uninterrupted using the current model until the new profile is 100% complete:
 
-1. Set `APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER`, `_MODEL`, `_DIMENSIONS`, `_BASE_URL`, `_API_KEY` and `_LOCALITY` to the target model on the API, the worker and the operator shell. Keep the `APP_KNOWLEDGE_EMBEDDING_*` settings on the current model. Restart the API and the worker.
-2. Start the re-index as the migration role:
+1. **Configure Target Settings:**
+   Set the re-index model settings on the API, worker, and operator shells:
    ```bash
-   python -m neuron_agent.persistence.cli reindex start
+   APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER=nvidia
+   APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL="nvidia/llama-3.2-nv-embedqa-1b-v2"
+   APP_KNOWLEDGE_REINDEX_EMBEDDING_DIMENSIONS=2048
+   APP_KNOWLEDGE_REINDEX_EMBEDDING_LOCALITY=hosted
    ```
-   It refuses a hosted target model while any live base is self-hosted only, or while the processing policy forbids hosted processing. It builds the new profile's HNSW index, then queues one `reindex_kb` job per live base. If it stops part way (an index build that times out, say), run it again with the same settings: it resumes, and queues jobs only for bases that have none.
-3. Follow progress:
-   ```bash
-   python -m neuron_agent.persistence.cli reindex status
-   ```
-   While it runs, every upload is embedded with both models, and the re-index embeds every existing chunk once more. Both are charged to each document's `embedding_tokens`.
-4. The worker swaps when every ready chunk is covered: the new profile becomes active and the old one is retired (audit `knowledge_reindex_swapped`). A periodic check retries the swap every ten minutes.
-5. After the swap, move the target values into `APP_KNOWLEDGE_EMBEDDING_*`, remove the `APP_KNOWLEDGE_REINDEX_EMBEDDING_*` settings and restart. Until then the processes keep working with the re-index settings.
+   Keep the active `APP_KNOWLEDGE_EMBEDDING_*` settings on the current model. Restart the API and worker.
 
-To stop a re-index, run `reindex cancel`: the new profile is retired and the active one never changes. A base whose setting forbids the target model, or a job that exhausts its retries, fails the re-index the same way (audit `knowledge_reindex_failed`). After a swap or a failure, the worker deletes the retired profile's embeddings in batches (hourly), and the next `setup` drops its HNSW index.
+2. **Start Re-indexing:**
+   As the migration role:
+   ```bash
+   uv run python -m neuron_agent.persistence.cli reindex start
+   ```
+   This verifies processing locality across all bases, concurrently builds the target HNSW index, marks the profile as `building`, and queues `reindex_kb` worker jobs for every live base.
+
+3. **Monitor Re-indexing Progress:**
+   ```bash
+   uv run python -m neuron_agent.persistence.cli reindex status
+   ```
+   While `building`, all new uploads are automatically embedded with both active and re-index models.
+
+4. **Automatic Profile Swap:**
+   The worker's periodic `reindex_swap` task automatically checks whether every ready chunk has a vector under the building profile. When 100% covered, it promotes the building profile to `active` and retires the old profile within an atomic transaction.
+
+5. **Post-Swap Cleanup:**
+   After the swap, move the re-index settings into `APP_KNOWLEDGE_EMBEDDING_*`, remove the `_REINDEX_` settings, and restart. The worker automatically cleans up retired profile embeddings hourly in 5,000-row batches, and the next `setup` drops the retired HNSW index.
+
+---
+
+## 7. Auditing Low-Rated Answers and Cited Chunks (RAG-09.07)
+
+Operators can inspect which chunks and documents are cited by answers that users rated negatively (thumbs-down):
+
+```bash
+uv run python -m neuron_agent.persistence.cli feedback-report
+```
+
+#### Sample JSON Output
+```json
+[
+  {
+    "thread_id": "019318b2-5f6e-7b3c-8a12-abcdef123456",
+    "run_id": "run-456",
+    "rating": "negative",
+    "created_at": "2026-11-13T14:22:10Z",
+    "citations": [
+      {
+        "doc_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+        "chunk_id": "e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b"
+      }
+    ]
+  }
+]
+```
+This report operates directly on database IDs without logging or extracting chunk text or user prompts, preserving complete data confidentiality while enabling precise retrieval error analysis.

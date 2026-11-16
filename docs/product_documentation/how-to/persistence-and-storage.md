@@ -4,7 +4,7 @@
 > **Diátaxis Mode:** How-To Guide (Task-Oriented)  
 > **Standard Alignment:** Structured in alignment with ISO/IEC/IEEE 26514:2022 §7.4 (Procedural Task Information) and Diátaxis (How-To Guide)  
 > **Audience:** Database Administrators, SREs, Backend Developers  
-> **Code Traceability:** `src/neuron_agent/persistence/`, `docs/decisions/0002-persistence-and-memory.md`, `docs/decisions/0008-production-deployment.md`
+> **Code Traceability:** `src/neuron_agent/persistence/`, `docs/decisions/0002-persistence-and-memory.md`, `docs/decisions/0008-production-deployment.md`, ADR 0014
 
 ---
 
@@ -16,7 +16,7 @@ PostgreSQL stores:
 1. **LangGraph Checkpoints:** Multi-turn conversation message history and interrupt states (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes`).
 2. **Conversation Metadata:** User-facing thread titles (`neuron_thread_meta`) and run feedback ratings (`neuron_feedback`).
 3. **Multi-Instance Guards:** Distributed run leases (`neuron_run_leases`), shared token budget ledger (`neuron_token_ledger`, `neuron_token_settlements`), and unlogged rate buckets (`neuron_rate_buckets`).
-4. **Knowledge Engine (RAG):** Isolated `knowledge` schema containing knowledge bases, documents, parsed chunks, embeddings, and the Procrastinate background job queue.
+4. **Knowledge Engine (RAG):** Isolated `knowledge` schema containing knowledge bases, role grants, documents, parsed chunks, embeddings, index profiles, and the Procrastinate background job queue.
 
 ---
 
@@ -114,7 +114,7 @@ APP_POSTGRES_POOL_TIMEOUT_SECONDS=10
 
 ## 4. Running Database Migrations
 
-Neuron manages database schema evolution through an ordered sequence of 27 forward-only migrations recorded in `neuron_migrations`.
+Neuron manages database schema evolution through an ordered sequence of 29 forward-only migrations recorded in `neuron_migrations`.
 
 ### Execute Migrations via Makefile
 ```bash
@@ -129,9 +129,12 @@ uv run python -m neuron_agent.persistence.cli setup
 ### Migration Execution Behavior
 1. Acquires a session-level advisory lock (`0x6E6575726F6E`) on the non-pooled migration connection to prevent race conditions during multi-instance rolling deploys.
 2. Initializes LangGraph checkpoint tables via `AsyncPostgresSaver.setup()`.
-3. Sequentially applies unapplied migrations (from version 1 to 27) inside explicit transactions.
-4. Creates indexes concurrently using `CONCURRENT_LOCK_TIMEOUT_MS` (10 minutes) to avoid locking production traffic.
-5. Issues explicit `GRANT` statements configuring least-privilege DML rights for `neuron_app` and `neuron_worker`.
+3. Sequentially applies unapplied migrations (from version 1 to 29) inside explicit transactions.
+   - Migrations 28 & 29 ensure at most one `active` and at most one `building` index profile via unique partial indexes.
+4. Manages index profiles in `knowledge.index_profiles`:
+   - Builds partial HNSW indexes concurrently (`embeddings_p{profile_id}_hnsw`) for active and building profiles.
+   - Drops obsolete HNSW indexes for retired profiles.
+5. Issues explicit `GRANT` statements configuring least-privilege DML and column-level rights for `neuron_app` and `neuron_worker`.
 6. Releases advisory lock.
 
 ---
