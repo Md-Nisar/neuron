@@ -27,7 +27,8 @@
           "page_start": 3,
           "page_end": 4,
           "source_url": null,
-          "fetched_at": null
+          "fetched_at": null,
+          "table": null
         },
         {
           "cite_id": "4b7e2d9a1c3f",
@@ -38,7 +39,20 @@
           "page_start": null,
           "page_end": null,
           "source_url": "https://docs.example.com/leave",
-          "fetched_at": "2026-11-13T09:30:00Z"
+          "fetched_at": "2026-11-13T09:30:00Z",
+          "table": null
+        },
+        {
+          "cite_id": "6c1d8e3f2a5b",
+          "doc_id": "3f6b1e9a-2c4d-4e8f-a1b2-c3d4e5f6a7b8",
+          "chunk_id": null,
+          "title": "Orders 2026",
+          "headings": [],
+          "page_start": null,
+          "page_end": null,
+          "source_url": null,
+          "fetched_at": null,
+          "table": "Q1"
         }
       ],
       "citation_schema_version": 1,

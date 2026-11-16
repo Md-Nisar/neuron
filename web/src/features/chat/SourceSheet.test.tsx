@@ -17,6 +17,7 @@ const LEAVE: Citation = {
   page_end: 4,
   source_url: null,
   fetched_at: null,
+  table: null,
 };
 const OTHER: Citation = {
   ...LEAVE,
@@ -78,7 +79,7 @@ describe("the source sheet", () => {
     expect(within(sheet()).getByText("pp. 3–4 · Annual leave")).toBeInTheDocument();
     const [url, init] = fetch.mock.calls[0] ?? [];
     expect((url as URL).href).toBe(
-      `http://127.0.0.1:8000/v1/knowledge/documents/${LEAVE.doc_id}/chunks/${LEAVE.chunk_id}`,
+      `http://127.0.0.1:8000/v1/knowledge/documents/${LEAVE.doc_id}/chunks/${String(LEAVE.chunk_id)}`,
     );
     expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer t");
     expect(screen.getByRole("button", { expanded: true })).toHaveAttribute(
@@ -147,6 +148,46 @@ describe("the source sheet", () => {
     for (const bad of ["javascript:alert(1)", "http://docs.example.com/", "not a url", 7]) {
       expect(cited(bad)).toBeNull();
     }
+  });
+
+  it("opens a table's citation without fetching a passage (RAG-11.01)", async () => {
+    const table: Citation = { ...LEAVE, chunk_id: null, table: "<b>Q1</b>", page_start: null };
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const user = userEvent.setup();
+    render(
+      <Sources
+        citations={[table]}
+        grounded
+        deps={{
+          apiUrl: "http://127.0.0.1:8000",
+          getAccessToken: () => "t",
+          onSessionEnded: vi.fn(),
+          fetch,
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Leave policy/ }));
+
+    expect(within(sheet()).getByText(/Calculated from the table <b>Q1<\/b>/)).toBeInTheDocument();
+    expect(sheet().querySelector("b")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("accepts a citation without a passage only when it names a table", () => {
+    const parse = (extra: Record<string, unknown>) =>
+      parseGrounding({
+        citation_schema_version: 1,
+        grounded: true,
+        citations: [{ ...LEAVE, ...extra }],
+      });
+
+    expect(parse({ chunk_id: null, table: "Q1" }).citations[0]).toMatchObject({
+      chunk_id: null,
+      table: "Q1",
+    });
+    expect(parse({ table: "Q1" }).citations[0]?.table).toBeNull();
+    expect(() => parse({ chunk_id: null })).toThrow(TypeError);
   });
 
   it("shows markup in a passage as text", async () => {

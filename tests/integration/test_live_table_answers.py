@@ -7,14 +7,17 @@ row. The table is stored as ingestion stores a spreadsheet today: one `table` bl
 question is then asked through `AgentService` with the tools the run has.
 
 An answer is correct when its text contains one of the case's answers; the gate is every case.
-Search returns at most 10 of the table's 69 chunks, so the aggregate cases fail until
-`query_table` exists (baseline in the tracker). Live and billed: run it like
-`test_live_knowledge_answers.py`; `APP_KNOWLEDGE_EVAL_REPORT` names a file for the report.
+Search returns at most 10 of the table's 69 chunks, so the aggregate cases fail without
+`query_table` (baseline in the tracker). With `tools="on"` the table is also stored typed, as the
+worker stores a spreadsheet's tables, and the run has `find_tables` and `query_table`. Live and
+billed: run it like `test_live_knowledge_answers.py`; `APP_KNOWLEDGE_EVAL_REPORT` names a file
+for the report.
 """
 
 from __future__ import annotations
 
 import csv
+import dataclasses
 import io
 import json
 import os
@@ -23,8 +26,9 @@ from pathlib import Path
 
 import psycopg
 import pytest
+from psycopg.types.json import Jsonb
 from scripts.build_table_eval import build
-from test_live_knowledge_answers import _principal, _settings
+from test_live_knowledge_answers import PERMISSIONS, _principal, _settings
 from test_postgres_knowledge_tables import _knowledge_db
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 
@@ -36,9 +40,16 @@ from neuron_agent.evaluation import (
     throttled_model_calls,
 )
 from neuron_agent.knowledge.chunking import chunk_document
-from neuron_agent.knowledge.ingest import _INSERT_CHUNK, _INSERT_EMBEDDING, _passage, _vector
+from neuron_agent.knowledge.ingest import (
+    _INSERT_CHUNK,
+    _INSERT_EMBEDDING,
+    _INSERT_TABLE,
+    _passage,
+    _vector,
+)
 from neuron_agent.knowledge.parsing import XLSX, Block, ParsedDocument
 from neuron_agent.knowledge.providers import create_embedding_provider
+from neuron_agent.knowledge.tables import extract_tables
 from neuron_agent.persistence.migrations import KNOWLEDGE_PROFILE_ID
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse
 from neuron_agent.security.auth import principal_owner_key
@@ -54,20 +65,22 @@ def _as_today(fixture: dict[str, object]) -> ParsedDocument:
     """The table as docling-serve's table block renders it: one row a line, cells joined by
     ` | ` (`docling_serve._table_block`)."""
     text, _ = build()
-    lines = [" | ".join(row) for row in csv.reader(io.StringIO(text))]
+    grid = tuple(tuple(row) for row in csv.reader(io.StringIO(text)))
+    lines = [" | ".join(row) for row in grid]
     return ParsedDocument(
         parser_version="table-eval",
         blocks=(
             Block(kind="heading", text=str(fixture["title"]), level=1),
-            Block(kind="table", text="\n".join(lines)),
+            Block(kind="table", text="\n".join(lines), rows=grid),
         ),
     )
 
 
 async def _store(
-    db: RoleDatabase, owner: str, fixture: dict[str, object], settings: Settings
+    db: RoleDatabase, owner: str, fixture: dict[str, object], settings: Settings, typed: bool
 ) -> int:
-    chunks = chunk_document(_as_today(fixture), settings.knowledge_chunk_max_tokens)
+    parsed = _as_today(fixture)
+    chunks = chunk_document(parsed, settings.knowledge_chunk_max_tokens)
     provider = create_embedding_provider(settings)
     vectors = await provider.embed_documents([_passage(c) for c in chunks])
     await _knowledge_db(db)
@@ -101,6 +114,12 @@ async def _store(
                 [(i, KNOWLEDGE_PROFILE_ID, kb, _vector(v)) for i, v in zip(ids, vectors,
                  strict=True)],
             )  # fmt: skip
+            tables, _ = extract_tables(parsed, XLSX, settings.knowledge_table_max_cells)
+            await cursor.executemany(
+                _INSERT_TABLE,
+                [(doc, kb, n, t.name, Jsonb([{"name": c, "type": k} for c, k in t.columns]),
+                  Jsonb(t.rows), len(t.rows)) for n, t in enumerate(tables if typed else [])],
+            )  # fmt: skip
         await conn.execute("ANALYZE")
     return len(chunks)
 
@@ -109,16 +128,21 @@ def _correct(answer: str, expected: list[str]) -> bool:
     return any(value.lower() in answer.lower() for value in expected)
 
 
+@pytest.mark.parametrize("tools", ["off", "on"])
 async def test_questions_that_need_every_row_are_answered(
     live_provider: str,
     role_db: RoleDatabase,  # noqa: F811
+    tools: str,
 ) -> None:
     fixture = json.loads((FIXTURES / "table_cases.json").read_text(encoding="utf-8"))
     settings = _settings(role_db)
     assert settings.identity_hash_key is not None
     principal = _principal(USER)
+    if tools == "on":
+        scopes = PERMISSIONS | {"tools:find_tables", "tools:query_table"}
+        principal = dataclasses.replace(principal, scopes=scopes)
     owner = principal_owner_key(principal, settings.identity_hash_key.get_secret_value())
-    chunk_count = await _store(role_db, owner, fixture, settings)
+    chunk_count = await _store(role_db, owner, fixture, settings, typed=tools == "on")
 
     outcomes: list[dict[str, object]] = []
     errors: list[str] = []
@@ -148,6 +172,7 @@ async def test_questions_that_need_every_row_are_answered(
 
     report = {
         "model": settings.default_model,
+        "tools": tools,
         "dataset": fixture["version"],
         "chunks": chunk_count,
         "correct": {kind: f"{sum(o['correct'] for o in outcomes if o['kind'] == kind)} of"

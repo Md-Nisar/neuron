@@ -21,6 +21,7 @@ from tests.security.test_knowledge_tools import (
 from tests.security.test_mcp_abuse import _call, _model
 
 from neuron_agent.errors.base import KnowledgeDocumentNotFoundError
+from neuron_agent.knowledge import citations
 from neuron_agent.knowledge import tools as knowledge_tools
 from neuron_agent.knowledge.tables import FoundTable, StoredTable
 
@@ -60,7 +61,7 @@ async def test_a_found_table_is_queried_as_the_caller(monkeypatch: pytest.Monkey
         monkeypatch,
         _call("find_tables", query="Orders spreadsheet, by region!"),
         _call("query_table", table="t1", sql=sql),
-        AIMessage(content="done"),
+        _call("AgentAnswer", answer="North: 7.", confidence=0.9, citations=["3", "t1"]),
     )
 
     result = await _run(model, knowledge_base_ids=frozenset({_KB}))
@@ -73,8 +74,14 @@ async def test_a_found_table_is_queried_as_the_caller(monkeypatch: pytest.Monkey
     assert found.artifact == {"t1": {"doc_id": str(_DOC), "position": 0},
                               "t2": {"doc_id": str(_DOC), "position": 1}}  # fmt: skip
     assert _block(queried) == {  # type: ignore[comparison-overlap]
-        "columns": ["region", "n"], "rows": [["North", 7], ["West", 5]], "truncated": False
+        "cite_id": "3", "columns": ["region", "n"], "rows": [["North", 7], ["West", 5]],
+        "truncated": False,
     }  # fmt: skip
+    # The result cites the table's document and sheet; a table handle is not a citation.
+    assert result["answer"].citations == ["3"]
+    [cited], _ = citations.validate(result["answer"].citations, _results(model))
+    assert (cited.cite_id, cited.doc_id, cited.chunk_id, cited.table) == ("3", _DOC, None, "Sheet")
+    assert (cited.title, cited.page_start) == ("Orders", None)
     # The owner and the request's bases come from the trusted context, never the model.
     assert _calls == [
         ("find_tables", _OWNER, ("orders", "spreadsheet", "by", "region"), frozenset({_KB})),

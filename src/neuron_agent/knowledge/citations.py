@@ -19,7 +19,7 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from neuron_agent.schemas.agent import Citation, CitationFields
 
 # Tool messages whose artifacts hold this run's `cite_id`s.
-MINTING_TOOLS = ("search_knowledge", "get_document_excerpt")
+MINTING_TOOLS = ("search_knowledge", "get_document_excerpt", "query_table")
 
 
 def minted(messages: Sequence[Any]) -> dict[str, dict[str, Any]]:
