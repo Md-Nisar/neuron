@@ -45,7 +45,7 @@ Neuron is a secure single-agent chat service with private RAG, not yet an agent 
 
 - **Any structured or generative UI.** The only non-text UI the server drives is the approval card and the citation list.
 - **Production deployment.** Every release through v1.1.0 was verified on a local Docker Compose stack only ([`docs/ROADMAP.md`](https://github.com/Md-Nisar/neuron/blob/main/docs/ROADMAP.md)).
-- **Durable or background runs, per-request model choice, dynamic tools, planning.** Named as gaps in Neuron's own [current architecture assessment](https://github.com/Md-Nisar/neuron/blob/main/research/enterprise-strategy/architecture/NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md).
+- **Durable or background runs, per-request model choice, dynamic tools, planning.** Named as gaps in Neuron's own [current architecture assessment](https://github.com/Md-Nisar/neuron/blob/main/docs/research/enterprise-strategy/architecture/NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md).
 - **Knowledge sharing (v1.2.0, RAG-E09).** A proposal only.
 
 ### Five facts that constrain an A2UI integration
@@ -589,7 +589,7 @@ Both repositories were cloned and read at source on 2026-11-12. Package versions
 **Neuron** ([Md-Nisar/neuron](https://github.com/Md-Nisar/neuron), commit `0f78ef9`)
 
 - [`ARCHITECTURE.md`](https://github.com/Md-Nisar/neuron/blob/main/ARCHITECTURE.md), [`SECURITY.md`](https://github.com/Md-Nisar/neuron/blob/main/SECURITY.md), [`docs/ROADMAP.md`](https://github.com/Md-Nisar/neuron/blob/main/docs/ROADMAP.md)
-- [`NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md`](https://github.com/Md-Nisar/neuron/blob/main/research/enterprise-strategy/architecture/NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md)
+- [`NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md`](https://github.com/Md-Nisar/neuron/blob/main/docs/research/enterprise-strategy/architecture/NEURON_CURRENT_ARCHITECTURE_ASSESSMENT.md)
 - [ADR 0010, User Application](https://github.com/Md-Nisar/neuron/blob/main/docs/decisions/0010-user-application.md)
 - Source: [`schemas/agent.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/schemas/agent.py), [`services/streaming.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/services/streaming.py), [`services/agent_service.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/services/agent_service.py), [`graphs/main_graph.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/graphs/main_graph.py), [`models/factory.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/models/factory.py), [`tools/registry.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/tools/registry.py), [`tools/mcp/client.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/tools/mcp/client.py), [`tools/framing.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/tools/framing.py), [`api/main.py`](https://github.com/Md-Nisar/neuron/blob/main/src/neuron_agent/api/main.py)
 - Web: [`lib/stream/events.ts`](https://github.com/Md-Nisar/neuron/blob/main/web/src/lib/stream/events.ts), [`features/chat/Markdown.tsx`](https://github.com/Md-Nisar/neuron/blob/main/web/src/features/chat/Markdown.tsx), [`features/chat/chatState.ts`](https://github.com/Md-Nisar/neuron/blob/main/web/src/features/chat/chatState.ts), [`web/package.json`](https://github.com/Md-Nisar/neuron/blob/main/web/package.json)
