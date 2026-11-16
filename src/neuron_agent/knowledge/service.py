@@ -158,10 +158,10 @@ _TABLE_FILTER = (
 )
 # Up to 10 tables, the most query words in their title, name or columns first, then the newest.
 _FIND_TABLES = (
-    "SELECT t.doc_id, t.position, d.title, t.name, t.columns, t.row_count,"  # noqa: S608 - constants only
+    "SELECT t.doc_id, t.position, d.title, t.name, t.columns, t.row_count,"  # noqa: S608  # nosec B608 - constants only
     " jsonb_path_query_array(t.rows, '$[0 to 2]') AS sample"
     + _TABLE_FILTER
-    + " ORDER BY (SELECT count(*) FROM unnest(%(words)s::text[]) w"
+    + " ORDER BY (SELECT count(*) FROM unnest(%(words)s::text[]) w"  # nosec B608 - a bound parameter
     " WHERE strpos(lower(d.title || ' ' || t.name || ' ' || t.columns::text), w) > 0) DESC,"
     " d.updated_at DESC, t.doc_id, t.position LIMIT 10"
 )
