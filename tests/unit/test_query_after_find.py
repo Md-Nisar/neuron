@@ -113,13 +113,21 @@ async def test_the_answer_stands_otherwise(request_: _Request) -> None:
     assert len(seen) == 1
 
 
-async def test_a_provider_that_ignores_the_required_call_keeps_its_second_answer() -> None:
-    request = _Request([HumanMessage("total?"), _found()])
+async def test_a_provider_that_ignores_the_required_call_keeps_the_first_answer() -> None:
+    usage = TokenUsageAccumulator()
+    context = AuthorizationContext(frozenset(), usage=usage)
+    request = _Request(
+        [HumanMessage("total?"), _CALLS, _found()], runtime=SimpleNamespace(context=context)
+    )
+    text = AIMessage("I will query it.", usage_metadata=_USAGE)  # type: ignore[arg-type]
 
-    response, seen = await _run(request, _answer("About 300."), _answer("About 310."))
+    with structlog.testing.capture_logs() as logs:
+        response, seen = await _run(request, _answer("About 300."), ModelResponse(result=[text]))
 
-    assert response.structured_response == {"answer": "About 310."}
+    assert response.structured_response == {"answer": "About 300."}
     assert len(seen) == 2
+    assert usage.total_tokens == _USAGE["total_tokens"]  # the ignored call is charged
+    assert any(log["event"] == "table_query_skipped" for log in logs)
 
 
 def test_it_sits_inside_tool_authorization() -> None:

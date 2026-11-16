@@ -655,10 +655,7 @@ class _QueryAfterFindMiddleware(AgentMiddleware[Any, Any]):
         ):
             return response
         logger.warning("table_query_requested")
-        for message in response.result:
-            if isinstance(message, AIMessage):
-                _charge_discarded_attempt(request, message)
-        return await handler(
+        forced = await handler(
             request.override(
                 messages=[*request.messages, HumanMessage(_QUERY_FIRST)],
                 tools=query,
@@ -666,6 +663,18 @@ class _QueryAfterFindMiddleware(AgentMiddleware[Any, Any]):
                 response_format=None,
             )
         )
+        # A provider that ignores `tool_choice`: its reply has no answer, so the first one stands.
+        queried = any(
+            isinstance(m, AIMessage) and any(c["name"] == _QUERY_TABLE for c in m.tool_calls)
+            for m in getattr(forced, "result", [])
+        )
+        if not queried:
+            logger.warning("table_query_skipped")
+        kept, discarded = (forced, response) if queried else (response, forced)
+        for message in getattr(discarded, "result", []):
+            if isinstance(message, AIMessage):
+                _charge_discarded_attempt(request, message)
+        return kept
 
 
 _FIND_TABLES = "find_tables"
