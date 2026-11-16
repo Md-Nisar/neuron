@@ -13,7 +13,8 @@ SQLite itself enforces the rules, so no second parser can read the SQL different
   one statement per call;
 - a progress handler stops a query after `TIMEOUT_SECONDS`; SQLite's heap is capped at
   `HEAP_LIMIT_BYTES` for the whole process (nothing else in Neuron uses SQLite), temporary
-  storage included; `setlimit` caps the SQL text, strings, columns and attached databases;
+  storage included; `setlimit` caps the SQL text, strings, columns, LIKE and GLOB patterns
+  and attached databases;
 - results are converted a row at a time and cut at `MAX_ROWS` rows and `MAX_RESULT_CHARS`.
 
 Blocking: callers run it in a thread. Errors carry a fixed code; only `query_failed` has a
@@ -38,6 +39,7 @@ MAX_ROWS = 200
 MAX_VALUE_CHARS = 1_000
 MAX_RESULT_CHARS = 100_000
 _MAX_STRING_BYTES = 200_000  # above a CSV field's 128 KiB
+_MAX_PATTERN_CHARS = 100
 _PROGRESS_STEPS = 10_000  # virtual machine steps between deadline checks
 _TYPES = {"integer": "INTEGER", "real": "REAL", "text": "TEXT"}
 # Aggregates, window functions, arithmetic, strings and dates. Not `printf`/`format`,
@@ -122,6 +124,8 @@ def _load(
     conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, _MAX_STRING_BYTES)
     conn.setlimit(sqlite3.SQLITE_LIMIT_ATTACHED, 0)
     conn.setlimit(sqlite3.SQLITE_LIMIT_COLUMN, MAX_TABLE_COLUMNS)
+    # One LIKE or GLOB call is one step: the progress handler cannot stop it partway.
+    conn.setlimit(sqlite3.SQLITE_LIMIT_LIKE_PATTERN_LENGTH, _MAX_PATTERN_CHARS)
     # Names come from the file: quoted as identifiers, never interpolated bare.
     definition = ", ".join(f"{_quote(name)} {_TYPES[kind]}" for name, kind in columns)
     conn.execute(f"CREATE TABLE data ({definition})")  # nosec B608 - quoted identifiers
@@ -151,7 +155,8 @@ def _error(exc: sqlite3.DatabaseError, deadline: float) -> TableQueryError:
         return TableQueryError("query_refused")
     if message == "interrupted" and time.monotonic() > deadline:
         return TableQueryError("query_timeout")
-    if any(s in message for s in ("too big", "too long", "too many columns", "out of memory")):
+    too_large = ("too big", "too long", "too many columns", "too complex", "out of memory")
+    if any(s in message for s in too_large):
         return TableQueryError("query_too_large")
     return TableQueryError("query_failed", message[:200])
 

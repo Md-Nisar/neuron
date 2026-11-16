@@ -102,6 +102,14 @@ def test_sql_and_strings_past_the_caps_are_too_large() -> None:
     assert _code(f"SELECT length({grow})") == "query_too_large"
 
 
+def test_a_long_like_or_glob_pattern_is_too_large() -> None:
+    # One LIKE or GLOB call is a single step the deadline cannot interrupt.
+    pattern = "%a" * 60 + "%b"
+    assert run_query(COLUMNS, ROWS, "SELECT region LIKE '%th' FROM data").rows[0] == (1,)
+    assert _code(f"SELECT region LIKE '{pattern}' FROM data") == "query_too_large"  # noqa: S608
+    assert _code(f"SELECT region GLOB '{pattern.replace('%', '*')}' FROM data") == "query_too_large"  # noqa: S608, E501
+
+
 def test_the_heap_is_capped_for_the_process() -> None:
     run_query(COLUMNS, ROWS, "SELECT 1")
     conn = sqlite3.connect(":memory:")
