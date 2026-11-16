@@ -628,6 +628,90 @@ class _KnowledgeFirstMiddleware(AgentMiddleware[Any, Any]):
 _KNOWLEDGE_SEARCH = "search_knowledge"
 
 
+def query_after_find_middleware() -> AgentMiddleware:
+    """Make the model query a table it found before it answers from it.
+
+    In RAG-11.01's live eval a model found the table and then answered a total from its sample
+    rows, made one up, or said it would query and stopped; some guessed a handle and called
+    `query_table` beside `find_tables`, which failed. When the model answers after `find_tables`
+    found tables with no `query_table` call after them, that answer is set aside (its tokens
+    are still charged) and the call is made again offering `query_table` alone, which the model
+    must call, with a note saying why; the note is not kept in the thread. The tool's result
+    reaches the model, which answers on its next call. Once per `find_tables` result, whose
+    calls are capped; inside tool authorization, so only for callers who may use
+    `query_table`; and the final-answer step offers no tools, so the run's last call answers.
+    """
+    return _QueryAfterFindMiddleware()
+
+
+class _QueryAfterFindMiddleware(AgentMiddleware[Any, Any]):
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        response = await handler(request)
+        query = [tool for tool in request.tools if _tool_name(tool) == _QUERY_TABLE]
+        if (
+            getattr(response, "structured_response", None) is None
+            or not query
+            or not _tables_found_not_queried(request.messages)
+        ):
+            return response
+        logger.warning("table_query_requested")
+        forced = await handler(
+            request.override(
+                messages=[*request.messages, HumanMessage(_QUERY_FIRST)],
+                tools=query,
+                tool_choice="any",
+                response_format=None,
+            )
+        )
+        # A provider that ignores `tool_choice`: its reply has no answer, so the first one stands.
+        queried = any(
+            isinstance(m, AIMessage) and any(c["name"] == _QUERY_TABLE for c in m.tool_calls)
+            for m in getattr(forced, "result", [])
+        )
+        if not queried:
+            logger.warning("table_query_skipped")
+        kept, discarded = (forced, response) if queried else (response, forced)
+        for message in getattr(discarded, "result", []):
+            if isinstance(message, AIMessage):
+                _charge_discarded_attempt(request, message)
+        return kept
+
+
+_FIND_TABLES = "find_tables"
+_QUERY_TABLE = "query_table"
+_QUERY_FIRST = (
+    "You found tables but did not query them after finding them. Call query_table on a table "
+    "handle from find_tables now: sample rows hold only a few of a table's rows."
+)
+
+
+def _tables_found_not_queried(messages: Sequence[Any]) -> bool:
+    """Whether `find_tables` returned a table this run that no later model reply queried.
+
+    A `query_table` call sent with `find_tables`, in the same reply, does not count: the model
+    had not seen the tables, so its handle was a guess.
+    """
+    found = queried = -1
+    replies = 0
+    for message in messages[_run_start(messages) :]:
+        replies += isinstance(message, AIMessage)
+        if not isinstance(message, ToolMessage):
+            continue
+        if message.name == _QUERY_TABLE:
+            queried = replies
+        elif message.name == _FIND_TABLES and message.status != "error" and message.artifact:
+            found = replies
+    return found >= 0 and queried <= found
+
+
+def _run_start(messages: Sequence[Any]) -> int:
+    """The index just after the user's last message: earlier ones are the thread's history."""
+    for index in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[index], HumanMessage):
+            return index + 1
+    return 0
+
+
 def _model_calls_this_run(messages: Sequence[Any]) -> int:
     """Model replies since the user's message: earlier turns are the thread's history."""
     calls = 0
@@ -738,6 +822,7 @@ def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMi
         tracing_middleware(settings),
         tool_authorization_middleware(registry),
         knowledge_first_middleware(),
+        query_after_find_middleware(),
         *([approval] if approval else []),
         tool_failure_isolation_middleware(),
         tool_timeout_middleware(settings.tool_timeout_seconds),
