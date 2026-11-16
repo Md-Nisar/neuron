@@ -82,7 +82,7 @@ Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.m
 
 ## RAG / Knowledge Engine work (released in v1.1.0 and v1.2.0; RAG-E10 onwards is later)
 
-Research is in `docs/research/rag/`; the backlog is `docs/product/NEURON_RAG_PRODUCT_BACKLOG.md` (IDs `RAG-Enn` for epics, `RAG-nn.mm` for stories); progress is in `docs/product/RAG_IMPLEMENTATION_TRACKER.md`. Before working on any `RAG-` story, follow the tracker's "New session protocol": read both files, check the `rag` issues, linked PRs, recent commits and the code, verify acceptance criteria against tests, and summarise status and the next unblocked story before coding. A story is Done only when every acceptance criterion has a passing test or recorded evidence. Afterwards, update the issue checklist, the Project status and the tracker together.
+Research is in `research/rag/`; the backlog is `docs/product/NEURON_RAG_PRODUCT_BACKLOG.md` (IDs `RAG-Enn` for epics, `RAG-nn.mm` for stories); progress is in `docs/product/RAG_IMPLEMENTATION_TRACKER.md`. Before working on any `RAG-` story, follow the tracker's "New session protocol": read both files, check the `rag` issues, linked PRs, recent commits and the code, verify acceptance criteria against tests, and summarise status and the next unblocked story before coding. A story is Done only when every acceptance criterion has a passing test or recorded evidence. Afterwards, update the issue checklist, the Project status and the tracker together.
 
 ## AI code verification
 

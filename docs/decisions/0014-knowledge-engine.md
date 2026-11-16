@@ -8,7 +8,7 @@ ADR 0001, 0002 and 0005 (see Amendments), so Phase 1 stories
 queue and the `knowledge` schema as defined here. The open questions below stay open until the
 spike (RAG-00.02) records its numbers.
 
-Inputs: the three research reports in `docs/research/rag/`. Where they disagree, this ADR follows
+Inputs: the three research reports in `research/rag/`. Where they disagree, this ADR follows
 the resolutions in §4 of `claude_neuron_consolidated_rag_research.md` ("the research" below).
 Backlog story: RAG-00.01 (#399).
 

@@ -5,7 +5,7 @@ Progress is tracked in [`RAG_IMPLEMENTATION_TRACKER.md`](RAG_IMPLEMENTATION_TRAC
 
 ## Sources and how this backlog was derived
 
-The backlog consolidates the three research reports in `docs/research/rag/`:
+The backlog consolidates the three research reports in `research/rag/`:
 
 | Report | Used for |
 | --- | --- |

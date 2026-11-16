@@ -2,7 +2,7 @@
 
 The single place that says what is really done in the Knowledge Engine work. Stories and their
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
-research in `docs/research/rag/`.
+research in `research/rag/`.
 
 **Last verified:** 2026-11-12, against `main` at `8c6ea29`: v1.1.0 released (tag `v1.1.0` at `26295d5`); all story and epic issues of RAG-E00 to RAG-E08 closed (#398 to #520); the only open `rag` issue is #480; no open RAG PR. Since the release, `main` has had the 2026-11-11 security audit fixes (#526 to #532) and the concurrency review fixes (#534 to #538); those touching knowledge are in the change log. Earlier verifications are in the change log.
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). RAG-E09 (#544) and its eight stories (#545 to #552) created 2026-11-12, all closed 2026-11-13. The Project board has not been created.
