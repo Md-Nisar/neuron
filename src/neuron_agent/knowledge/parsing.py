@@ -11,11 +11,13 @@ a hostile file cannot hand the pipeline more than it allows. Errors carry a stab
 document's `error_code`) and never file content or a file name.
 
 `PlainTextParser` handles `.txt` and `.md` in the worker. Plain text has no page provenance, so
-form feeds (RFC-style page breaks) split pages; without one, blocks have no page.
+form feeds (RFC-style page breaks) split pages; without one, blocks have no page. `CsvParser`
+reads a CSV as one table (RAG-11.01).
 """
 
 from __future__ import annotations
 
+import csv
 import io
 import re
 import struct
@@ -27,7 +29,7 @@ from urllib.parse import unquote
 
 import anyio
 import trafilatura
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors.base import AppError, ErrorContext
@@ -40,8 +42,16 @@ TEXT = "text/plain"
 MARKDOWN = "text/markdown"
 # A fetched web page (RAG-10.02), never an upload: `accepted_type` never picks it.
 HTML = "text/html"
+CSV = "text/csv"
+# What browsers send for a `.csv`: Windows names it after Excel when Excel is installed. The
+# content must still be text.
+_CSV_CLAIMS = frozenset({CSV, "application/csv", "application/vnd.ms-excel"})
 _ZIP = "application/zip"
-SUPPORTED = frozenset({PDF, DOCX, XLSX, PPTX, TEXT, MARKDOWN, HTML})
+SUPPORTED = frozenset({PDF, DOCX, XLSX, PPTX, TEXT, MARKDOWN, HTML, CSV})
+# A table's cell grid is kept only within these (ADR 0014, amendment "tables"); a larger table
+# stays searchable as text.
+MAX_TABLE_COLUMNS = 100
+MAX_TABLE_CELLS = 200_000
 # The main part's content type: exactly the non-macro, non-template document for each format.
 _OOXML_MAIN = {kind: f'ContentType="{kind}.main+xml"'.encode() for kind in (DOCX, XLSX, PPTX)}
 # Active content, by content type or part name (lowercased, percent-decoded).
@@ -93,6 +103,22 @@ class Block(BaseModel):
     page: int | None = Field(default=None, ge=1)
     level: int | None = Field(default=None, ge=1, le=6)  # headings only
     bbox: tuple[_Coordinate, _Coordinate, _Coordinate, _Coordinate] | None = None
+    # Tables only (RAG-11.01): the cell grid, first row the header, every row as wide.
+    rows: tuple[tuple[Annotated[str, Field(pattern=r"^[^\x00]*$")], ...], ...] | None = None
+
+    @model_validator(mode="after")
+    def _grid(self) -> Block:
+        if self.rows is None:
+            return self
+        width = len(self.rows[0]) if self.rows else 0
+        if (
+            self.kind != "table"
+            or not 0 < width <= MAX_TABLE_COLUMNS
+            or len(self.rows) * width > MAX_TABLE_CELLS
+            or any(len(row) != width for row in self.rows)
+        ):
+            raise ValueError("a cell grid belongs to a table, within the caps, every row as wide")
+        return self
 
 
 class ParsedDocument(BaseModel):
@@ -197,7 +223,7 @@ def _candidates(data: bytes, claimed: str) -> tuple[str, ...]:
     if sniffed == TEXT and claimed == MARKDOWN:
         return (MARKDOWN,)  # Markdown may hold HTML
     if sniffed == TEXT and not _MARKUP.match(data.removeprefix(b"\xef\xbb\xbf").lstrip()[:1024]):
-        return (TEXT,)
+        return (CSV,) if claimed in _CSV_CLAIMS else (TEXT,)
     raise ParseError("empty_file" if not data else "unsupported_media_type")
 
 
@@ -222,7 +248,7 @@ def check_input(data: bytes, declared: str, limits: Limits) -> str:
     if sniffed == _ZIP:
         _check_office_zip(data, declared, limits)
         return declared
-    if sniffed == TEXT and declared in {TEXT, MARKDOWN, HTML}:
+    if sniffed == TEXT and declared in {TEXT, MARKDOWN, HTML, CSV}:
         return declared
     raise ParseError("media_type_mismatch")
 
@@ -392,6 +418,45 @@ class HtmlParser:
                 raise ParseError("too_many_blocks")
             blocks.append(block)
         return validate_output({"parser_version": self.version, "blocks": blocks}, limits)
+
+
+class CsvParser:
+    """A `.csv` in the worker (RAG-11.01): one table, its header the first row. UTF-8 only (a BOM
+    is allowed); the delimiter is whichever of `,` `;` tab `|` the header line holds most of."""
+
+    media_types = frozenset({CSV})
+    version = "csv/1"
+
+    async def parse(self, data: bytes, media_type: str, limits: Limits) -> ParsedDocument:
+        return await anyio.to_thread.run_sync(self._parse, data, limits)
+
+    def _parse(self, data: bytes, limits: Limits) -> ParsedDocument:
+        try:
+            text = data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise ParseError("media_type_mismatch") from None
+        header = text.split("\n", 1)[0]
+        delimiter = max(",;\t|", key=header.count)
+        try:
+            rows = [
+                [cell.strip() for cell in row]
+                for row in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter)
+                if any(cell.strip() for cell in row)
+            ]
+        except csv.Error:
+            raise ParseError("parser_failed") from None
+        if not rows:
+            raise ParseError("no_text")
+        width = max(len(row) for row in rows)
+        grid = tuple(tuple(row + [""] * (width - len(row))) for row in rows)
+        kept = width <= MAX_TABLE_COLUMNS and len(grid) * width <= MAX_TABLE_CELLS
+        block = {"kind": "table", "text": table_text(grid), "rows": grid if kept else None}
+        return validate_output({"parser_version": self.version, "blocks": [block]}, limits)
+
+
+def table_text(rows: Iterable[Iterable[str]]) -> str:
+    """A table as search reads it: one row a line, cells joined by ` | `."""
+    return "\n".join(" | ".join(row) for row in rows).strip()
 
 
 def _flush(paragraph: list[str], kind: str = "text") -> Iterator[dict[str, object]]:

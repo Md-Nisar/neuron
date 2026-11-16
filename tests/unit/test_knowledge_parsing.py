@@ -13,11 +13,14 @@ import pytest
 
 from neuron_agent.knowledge import parsing
 from neuron_agent.knowledge.parsing import (
+    CSV,
     DOCX,
     MARKDOWN,
     PDF,
     TEXT,
     XLSX,
+    Block,
+    CsvParser,
     Limits,
     ParseError,
     PlainTextParser,
@@ -325,6 +328,10 @@ def test_limits_come_from_settings() -> None:
         (b"<div align=center>logo</div>\n# Title\n", MARKDOWN, MARKDOWN),  # Markdown holds HTML
         (b"plain notes", "", TEXT),
         (b"a < b <p", TEXT, TEXT),
+        (b"region,units\nNorth,3\n", CSV, CSV),  # RAG-11.01
+        (b"region,units\nNorth,3\n", "application/vnd.ms-excel", CSV),  # Windows with Excel
+        (b"region,units\nNorth,3\n", TEXT, TEXT),
+        (b"%PDF-1.7\n%%EOF", CSV, PDF),
     ],
 )
 def test_an_uploads_type_comes_from_its_content(data: bytes, claimed: str, expected: str) -> None:
@@ -346,6 +353,8 @@ def test_an_uploads_type_comes_from_its_content(data: bytes, claimed: str, expec
         (b"\x89PNG\r\n\x1a\n", "image/png", "unsupported_media_type"),
         (_zip({"a.txt": b"x"}), DOCX, "archive_refused"),
         (b"", TEXT, "empty_file"),
+        (b"<html><table><tr><td>1</td></tr></table>", CSV, "unsupported_media_type"),
+        (b"\x89PNG\r\n\x1a\n", "application/vnd.ms-excel", "unsupported_media_type"),
     ],
 )
 def test_an_upload_of_another_type_is_refused(data: bytes, claimed: str, code: str) -> None:
@@ -422,3 +431,70 @@ def test_an_upload_is_never_stored_as_html() -> None:
 def test_a_page_that_is_not_utf8_is_refused_before_parsing() -> None:
     with pytest.raises(ParseError, match="media_type_mismatch"):
         parsing.check_input("<p>café</p>".encode("latin-1"), parsing.HTML, _LIMITS)
+
+
+# RAG-11.01: a CSV is one table, and a table block may carry its cell grid.
+
+
+async def _csv(data: bytes) -> Block:
+    (block,) = (await CsvParser().parse(data, CSV, _LIMITS)).blocks
+    assert block.kind == "table"
+    return block
+
+
+async def test_a_csv_is_one_table_with_its_grid_and_its_text_for_search() -> None:
+    block = await _csv(
+        b'\xef\xbb\xbfregion,product,units\r\nNorth,"Lamp, desk",3\r\n\r\nWest,Chair,12\r\n'
+    )
+    assert block.rows == (
+        ("region", "product", "units"),
+        ("North", "Lamp, desk", "3"),
+        ("West", "Chair", "12"),
+    )
+    assert block.text == "region | product | units\nNorth | Lamp, desk | 3\nWest | Chair | 12"
+
+
+@pytest.mark.parametrize("delimiter", [";", "\t", "|"])
+async def test_the_delimiter_is_the_one_the_header_holds_most_of(delimiter: str) -> None:
+    data = delimiter.join(["region", "units"]) + "\nNorth" + delimiter + "3, more or less\n"
+    block = await _csv(data.encode())
+    assert block.rows == (("region", "units"), ("North", "3, more or less"))
+
+
+async def test_short_rows_are_padded_to_the_widest() -> None:
+    block = await _csv(b"a,b,c\n1\n2,3,4,5\n")
+    assert block.rows == (("a", "b", "c", ""), ("1", "", "", ""), ("2", "3", "4", "5"))
+
+
+async def test_a_table_past_the_caps_stays_text_only() -> None:
+    wide = ",".join(f"c{i}" for i in range(parsing.MAX_TABLE_COLUMNS + 1)).encode()
+    block = await _csv(wide + b"\n" + b"1," * parsing.MAX_TABLE_COLUMNS + b"1\n")
+    assert block.rows is None
+    assert block.text.startswith("c0 | c1")
+
+
+@pytest.mark.parametrize(
+    ("data", "code"),
+    [(b" , ,\n\n", "no_text"), (b"a,b\n\xff\xfe,1\n", "media_type_mismatch")],
+)
+async def test_an_empty_or_undecodable_csv_has_a_stable_code(data: bytes, code: str) -> None:
+    with pytest.raises(ParseError) as caught:
+        await CsvParser().parse(data, CSV, _LIMITS)
+    assert caught.value.code == code
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"kind": "text", "text": "x", "rows": [["a"]]},  # a grid belongs to a table
+        {"kind": "table", "text": "x", "rows": [["a", "b"], ["c"]]},  # every row as wide
+        {"kind": "table", "text": "x", "rows": [[]]},
+        {"kind": "table", "text": "x", "rows": [["a\x00"]]},
+        {"kind": "table", "text": "x", "rows": [["a"] * (parsing.MAX_TABLE_COLUMNS + 1)]},
+        {"kind": "table", "text": "x", "rows": [["a"]] * (parsing.MAX_TABLE_CELLS + 1)},
+    ],
+)
+def test_a_grid_outside_the_rules_is_invalid_parser_output(fields: dict[str, Any]) -> None:
+    with pytest.raises(ParseError) as caught:
+        validate_output({"parser_version": "x", "blocks": [fields]}, _LIMITS)
+    assert caught.value.code == "parser_output_invalid"

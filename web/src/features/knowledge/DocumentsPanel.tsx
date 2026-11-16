@@ -214,7 +214,7 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
             type="file"
             multiple
             className="sr-only"
-            accept=".pdf,.docx,.xlsx,.pptx,.txt,.md"
+            accept=".pdf,.docx,.xlsx,.csv,.pptx,.txt,.md"
             onChange={(event) => {
               const files = [...(event.target.files ?? [])];
               event.target.value = "";
