@@ -33,7 +33,8 @@ PERMISSIONS = (
     "agent:approve agent:invoke data:erase feedback:write knowledge:admin knowledge:read "
     "knowledge:write "
     "memories:read memories:write threads:delete threads:read threads:write tools:calculator "
-    "tools:forget tools:get_document_excerpt tools:list_knowledge_bases tools:recall "
+    "tools:find_tables tools:forget tools:get_document_excerpt tools:list_knowledge_bases "
+    "tools:query_table tools:recall "
     "tools:remember tools:search_knowledge"
 )
 

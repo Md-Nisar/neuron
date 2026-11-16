@@ -45,6 +45,8 @@ The following permissions can be granted directly via the token's `scope` claim 
 | `tools:list_knowledge_bases` | Permits agent execution of the `list_knowledge_bases` tool |
 | `tools:search_knowledge` | Permits agent execution of the `search_knowledge` tool |
 | `tools:get_document_excerpt` | Permits agent execution of the `get_document_excerpt` tool |
+| `tools:find_tables` | Permits agent execution of the `find_tables` tool |
+| `tools:query_table` | Permits agent execution of the `query_table` tool (read-only SQL on one stored table) |
 | `tools:mcp.<server>.<tool>` | Permits agent execution of a specific pinned MCP tool |
 
 ---

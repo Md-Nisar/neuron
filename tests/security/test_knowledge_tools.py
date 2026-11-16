@@ -221,6 +221,8 @@ async def test_a_token_without_the_tool_scope_is_refused(
         "list_knowledge_bases": {},
         "search_knowledge": {"query": "q"},
         "get_document_excerpt": {"cite_id": "x"},
+        "find_tables": {"query": "orders"},
+        "query_table": {"table": "t1", "sql": "SELECT 1"},
     }
     model = _model(monkeypatch, _call(name, **args[name]), AIMessage(content="done"))
 

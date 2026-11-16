@@ -43,7 +43,7 @@ VITE_AUTH_ISSUER=http://localhost:8180/realms/neuron
 VITE_AUTH_CLIENT_ID=neuron-web
 
 # Requested OAuth Scopes
-VITE_AUTH_SCOPES=openid profile email agent:invoke agent:approve threads:read threads:write feedback:write threads:delete data:erase memories:read memories:write knowledge:read knowledge:write tools:calculator tools:list_knowledge_bases tools:search_knowledge tools:get_document_excerpt
+VITE_AUTH_SCOPES=openid profile email agent:invoke agent:approve threads:read threads:write feedback:write threads:delete data:erase memories:read memories:write knowledge:read knowledge:write tools:calculator tools:list_knowledge_bases tools:search_knowledge tools:get_document_excerpt tools:find_tables tools:query_table
 ```
 
 ### Step 3: Ensure Backend CORS Allows the Frontend Origin
