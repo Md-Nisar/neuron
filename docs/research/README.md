@@ -9,7 +9,7 @@ Background studies and decision proposals. Nothing here is built or decided unti
 | `agent-ui/` | A2UI assessment and handoff. |
 | `enterprise-strategy/vision-and-roadmap/` | Vision, 18-month and must-have roadmaps, success metrics, Opus handoff. |
 | `enterprise-strategy/use-cases/` | Problem analysis, first three use cases, first use case and build-vs-buy, evidence-backed use cases. |
-| `enterprise-strategy/architecture/` | Current architecture assessment, global agent architecture, domain-agnostic integration, security, scalability, build vs integrate. |
+| `enterprise-strategy/architecture/` | Current architecture assessment, global agent architecture, domain-agnostic integration, security, scalability, build vs integrate, the 2026-11 enterprise agent audit (scorecard and roadmap). |
 | `enterprise-strategy/market/` | Market research, competitive positioning, feature catalog, domain adaptation. |
 
 Notes:
