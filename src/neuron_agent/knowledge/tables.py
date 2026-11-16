@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections import Counter
 from dataclasses import dataclass
 
 from neuron_agent.knowledge.parsing import CSV, XLSX, ParsedDocument
@@ -46,6 +47,7 @@ def extract_tables(
     tables: list[Table] = []
     skipped = cells = 0
     heading: str | None = None
+    named: Counter[str] = Counter()
     for block in parsed.blocks:
         if block.kind == "heading":
             heading = block.text
@@ -61,7 +63,10 @@ def extract_tables(
             skipped += 1
             continue
         cells += size
-        name = (heading or f"Table {len(tables) + 1}")[:_TITLE_CHARS]
+        name = (heading or f"Table {len(tables) + 1}")[: _TITLE_CHARS - 5]
+        named[name] += 1
+        if named[name] > 1:  # two tables under one heading
+            name = f"{name} ({named[name]})"
         tables.append(_typed(name, block.rows))
     return tables, skipped
 

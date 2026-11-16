@@ -65,9 +65,12 @@ def test_a_table_is_named_by_its_heading_or_its_place() -> None:
         Block(kind="heading", text="Orders", level=1),
         Block(kind="text", text="intro"),
         _table(("b",), ("2",)),
+        _table(("c",), ("3",)),
+        Block(kind="heading", text="Orders summary", level=1),
+        _table(("d",), ("4",)),
     )
     tables, _ = extract_tables(_doc(*blocks), XLSX, 1_000)
-    assert [t.name for t in tables] == ["Table 1", "Orders"]
+    assert [t.name for t in tables] == ["Table 1", "Orders", "Orders (2)", "Orders summary"]
 
 
 def test_only_spreadsheets_with_grids_and_rows_are_stored() -> None:
