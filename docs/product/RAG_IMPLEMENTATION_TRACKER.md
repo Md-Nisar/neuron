@@ -484,7 +484,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 | RAG-10.03 | GitHub repository sync | 3 | P2 | Pending | #580 | — | Deferred by the owner (2026-11-13); issue closed as not planned |
 | RAG-10.04 | MCP document connectors | 3 | P2 | Pending | #581 | — | Deferred by the owner (2026-11-13); issue closed as not planned |
 | RAG-10.05 | OpenAI-compatible chat model provider | 3 | P2 | Done | #582 | #585 | `tests/unit/test_model_factory.py`: with `APP_DEFAULT_MODEL=openai_compatible:local-model` and a base URL, a call reaches a local OpenAI-compatible server at `/v1/chat/completions` and returns its answer, and `OPENAI_API_KEY` from the environment is not sent (AC1); an `http` non-loopback base URL fails settings validation in production (AC2). Also: base URL required (default and fallback models), own key used, keyless `http` private server allowed in staging, keyed one refused |
-| RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | In progress | #594 | part 1a, 1b, 2a | Parts 1a/1b: ADR 0014 amendment "tables", table eval fixture and live test; part 2a: CSV uploads and cell grids on table blocks; baseline: aggregates 1 of 5 correct (1 error), lookups 2 of 2 |
+| RAG-11.01 | `query_table` over uploaded tables | 4 | P2 | In progress | #594 | part 1a, 1b, 2a, 2b | Parts 1a/1b: ADR 0014 amendment "tables", table eval fixture and live test; part 2a: CSV uploads and cell grids on table blocks (#602); part 2b: `document_tables` (migration 31, `kb_scope` RLS), the worker stores typed tables; baseline: aggregates 1 of 5 correct (1 error), lookups 2 of 2 |
 | RAG-11.02 | `research_web` tool | 4 | P2 | Pending | — | — | — |
 | RAG-11.03 | Mutating knowledge tools with approval | 4 | P2 | Pending | — | — | — |
 | RAG-11.04 | `search_repository` tool | 4 | P2 | Pending | — | — | — |
@@ -499,6 +499,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-16 | RAG-11.01 part 2b: migration 31 `knowledge.document_tables` under `kb_scope`; the worker stores typed XLSX and CSV tables (`knowledge/tables.py`, `APP_KNOWLEDGE_TABLE_MAX_CELLS`) | Claude session |
 | 2026-11-16 | RAG-11.01 part 2a: CSV uploads (`CsvParser`) and cell grids on `table` blocks from CSV and docling-serve | Claude session |
 | 2026-11-14 | RAG-11.01 started (#594), part 1a: ADR 0014 amendment "tables" (SQLite and CSV, owner decisions); baseline of the table eval run (fixture and test in part 1b) | Claude session |
 | 2026-11-14 | E11 and E12 checked against product need: RAG-11.01 picked for v1.4.0 (epic #593, story #594); the other nine deferred, with reasons recorded. Next: RAG-11.01 | Claude session |

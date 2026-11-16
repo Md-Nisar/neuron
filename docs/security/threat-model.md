@@ -33,7 +33,7 @@ new design. *Open*: no control or test; filed as an issue.
 | Identity hash key, DSNs, provider keys | Environment of the deployment | The operator |
 | Tool set | Registry in code, MCP pins | The operator; the model only requests calls |
 | Knowledge bases, documents, original files (v1.1.0) | Postgres `knowledge` schema (owner key, row-level security on chunks and embeddings); blob store under random keys | The owner only (404 for others); the worker for ingestion and purge |
-| Chunks and embeddings (v1.1.0) | `knowledge.chunks`, `knowledge.embeddings` | Read under RLS scoped to the caller's allowed bases; sent to the embedding provider only as the base's processing locality allows |
+| Chunks and embeddings (v1.1.0); stored tables (RAG-11.01) | `knowledge.chunks`, `knowledge.embeddings`, `knowledge.document_tables` | Read under RLS scoped to the caller's allowed bases; sent to the embedding provider only as the base's processing locality allows |
 
 Boundaries: browser to API (untrusted client), API to model provider (untrusted output), agent to
 tools (the model is not a security boundary), tools to MCP servers (pinned definitions, untrusted

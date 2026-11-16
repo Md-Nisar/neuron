@@ -137,6 +137,7 @@ def build_ingestor(settings: Settings) -> Ingestor:
         embeddings=create_embedding_provider(settings),
         limits=Limits.from_settings(settings),
         chunk_max_tokens=settings.knowledge_chunk_max_tokens,
+        table_max_cells=settings.knowledge_table_max_cells,
         policy=settings.knowledge_processing_policy,
         reindex=create_reindex_embedding_provider(settings),
     )

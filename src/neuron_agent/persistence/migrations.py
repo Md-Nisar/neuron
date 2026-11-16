@@ -636,14 +636,42 @@ CREATE POLICY kb_scope ON knowledge.embeddings
         " EXECUTE FUNCTION knowledge.documents_file_set_once()",
         feature="knowledge",
     ),
+    # Tables of XLSX and CSV uploads for `query_table` (RAG-11.01, ADR 0014 amendment
+    # "tables"): stored once per document by the worker, bound by `kb_scope` like chunks, and
+    # removed with the document.
+    Migration(
+        version=31,
+        name="document_tables",
+        sql="""
+CREATE TABLE IF NOT EXISTS knowledge.document_tables (
+    doc_id uuid NOT NULL,
+    kb_id uuid NOT NULL,
+    position smallint NOT NULL CHECK (position BETWEEN 0 AND 19),
+    name text NOT NULL CHECK (char_length(name) BETWEEN 1 AND 300),
+    columns jsonb NOT NULL CHECK (jsonb_typeof(columns) = 'array'),
+    rows jsonb NOT NULL CHECK (jsonb_typeof(rows) = 'array'),
+    row_count integer NOT NULL CHECK (row_count >= 0),
+    PRIMARY KEY (doc_id, position),
+    FOREIGN KEY (doc_id, kb_id) REFERENCES knowledge.documents (doc_id, kb_id)
+        ON DELETE CASCADE
+);
+ALTER TABLE knowledge.document_tables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY kb_scope ON knowledge.document_tables
+    USING (kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[]))
+    WITH CHECK (
+        kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[])
+    )
+""",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"
 VECTOR_EXTENSION = "vector"
 # What each runtime role may do on the knowledge tables (RAG-01.02). The API manages bases,
 # grants and documents and only reads chunks and embeddings; the worker (RAG-02.01) reads a
-# document's metadata, records its progress and writes its chunks and embeddings. Both are also
-# bound by the `kb_scope` policy on chunks and embeddings.
+# document's metadata, records its progress and writes its chunks, embeddings and tables. Both
+# are also bound by the `kb_scope` policy on chunks, embeddings and tables.
 _READ = frozenset({"SELECT"})
 _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
     "app": {
@@ -653,6 +681,7 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         "documents": _DML,
         "chunks": _READ,
         "embeddings": _READ,
+        "document_tables": _READ,
         # Queues jobs only: the defer function inserts a job (RETURNING its id) and its trigger
         # an event.
         "procrastinate_jobs": frozenset({"SELECT", "INSERT"}),
@@ -675,6 +704,7 @@ _KNOWLEDGE_PRIVILEGES: dict[str, dict[str, frozenset[str]]] = {
         "chunks": frozenset({"SELECT", "INSERT", "DELETE"}),
         # DELETE also for the purge of retired profiles' vectors (RAG-09.04).
         "embeddings": frozenset({"SELECT", "INSERT", "DELETE"}),
+        "document_tables": frozenset({"SELECT", "INSERT", "DELETE"}),
         # Procrastinate's worker fetches, finishes, retries and sweeps jobs and registers itself.
         "procrastinate_jobs": _DML,
         "procrastinate_events": _DML,
@@ -1283,7 +1313,7 @@ async def _verify_knowledge_schema(
         )
 
 
-_RLS_TABLES = ("chunks", "embeddings")
+_RLS_TABLES = ("chunks", "embeddings", "document_tables")
 # Migration 18's `kb_scope` expression as PostgreSQL 16 deparses it (`pg_get_expr`); a Postgres
 # major upgrade that deparses it differently fails the integration tests, not silently here.
 _KB_SCOPE_EXPR = (
@@ -1315,7 +1345,7 @@ async def _verify_row_security(conn: psycopg.AsyncConnection[dict[str, object]])
     row = await cursor.fetchone()
     if row is None or row["ok"] != len(_RLS_TABLES):
         raise StartupCheckError(
-            "row-level security on knowledge.chunks and knowledge.embeddings is not as setup "
+            "row-level security on knowledge.chunks, embeddings or document_tables is not as setup "
             "made it (enabled, owned by the migration role, kb_scope its only permissive policy)",
             KNOWLEDGE_SCHEMA_UNTRUSTED,
         )
