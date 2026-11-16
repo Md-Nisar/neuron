@@ -64,7 +64,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-16, v1.4.0):** `v1.3.0` is tagged (owner, 2026-11-16). v1.4.0 "Questions about tables" (RAG-11.01) is prepared: version 1.4.0, the CHANGELOG section and `docs/releases/v1.4.0-release-verification.md`. The live answer eval on the release code missed one abstention (`unanswerable-003`; `cited_correctly` 0.953), as in v1.3.0, so it awaits the owner's acceptance. Next: the owner signs off and merges the release pull request, then tags `v1.4.0` and publishes the GitHub Release from the `1.4.0` CHANGELOG section. No further story is picked.
+**Recommended next action (2026-11-16, v1.4.0):** `v1.3.0` is tagged (owner, 2026-11-16). v1.4.0 "Questions about tables" (RAG-11.01) is prepared: version 1.4.0, the CHANGELOG section and `docs/releases/v1.4.0-release-verification.md`. The live answer eval on the release code missed one abstention (`unanswerable-003`; `cited_correctly` 0.953), as in v1.3.0; the owner accepted it (2026-11-16). Next: the release pull request merges, then the owner tags `v1.4.0` and publishes the GitHub Release from the `1.4.0` CHANGELOG section. Follow-up: the retired default reranker (#620).
 
 **Earlier (2026-11-16, Phase 4):** RAG-11.01 `query_table` is Done (#594), one known issue recorded: a model that answers from search without calling `find_tables`. The other nine E11 and E12 stories stay deferred for want of a product need, so no story is picked; the owner chooses the next one (or the v1.4.0 release of RAG-11.01), and tags `v1.3.0`.
 
