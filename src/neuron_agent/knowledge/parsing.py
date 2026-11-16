@@ -448,9 +448,11 @@ class CsvParser:
         if not rows:
             raise ParseError("no_text")
         width = max(len(row) for row in rows)
-        grid = tuple(tuple(row + [""] * (width - len(row))) for row in rows)
-        kept = width <= MAX_TABLE_COLUMNS and len(grid) * width <= MAX_TABLE_CELLS
-        block = {"kind": "table", "text": table_text(grid), "rows": grid if kept else None}
+        # Checked before padding: a wide header over many short rows would pad to rows x width.
+        grid = None
+        if width <= MAX_TABLE_COLUMNS and len(rows) * width <= MAX_TABLE_CELLS:
+            grid = tuple(tuple(row + [""] * (width - len(row))) for row in rows)
+        block = {"kind": "table", "text": table_text(grid or rows), "rows": grid}
         return validate_output({"parser_version": self.version, "blocks": [block]}, limits)
 
 

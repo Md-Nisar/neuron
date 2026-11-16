@@ -473,6 +473,13 @@ async def test_a_table_past_the_caps_stays_text_only() -> None:
     assert block.text.startswith("c0 | c1")
 
 
+async def test_short_rows_past_the_caps_are_not_padded() -> None:
+    wide = ",".join(["c"] * 1000).encode()  # padding 1,000 rows to it would be a million cells
+    block = await _csv(wide + b"\n" + b"1\n" * 1000)
+    assert block.rows is None
+    assert block.text == " | ".join(["c"] * 1000) + "\n1" * 1000
+
+
 @pytest.mark.parametrize(
     ("data", "code"),
     [(b" , ,\n\n", "no_text"), (b"a,b\n\xff\xfe,1\n", "media_type_mismatch")],

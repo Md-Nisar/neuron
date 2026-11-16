@@ -288,12 +288,12 @@ def _text_block(document: _Document, item: _Text) -> dict[str, object] | None:
 
 
 def _table_block(document: _Document, item: _Table) -> dict[str, object] | None:
+    if not any(cell.text.strip() for cell in item.data.table_cells):
+        return None  # a table detected with no text in it
     rows: dict[int, dict[int, str]] = {}
     for cell in item.data.table_cells:
         rows.setdefault(cell.start_row_offset_idx, {})[cell.start_col_offset_idx] = cell.text
     text = table_text((row[col].strip() for col in sorted(row)) for _, row in sorted(rows.items()))
-    if not text:
-        return None
     return {"kind": "table", "text": text, "rows": _grid(rows)} | _where(document, item.prov)
 
 

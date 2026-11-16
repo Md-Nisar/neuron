@@ -314,3 +314,22 @@ async def test_a_grid_past_the_caps_is_not_built() -> None:
     assert block.rows is None
     tall = await _table_block([(0, 0, "a"), (0, 99, "b"), (far, 0, "c")])
     assert tall.rows == (("a", *[""] * 98, "b"), ("c", *[""] * 99))
+
+
+async def test_a_table_with_no_text_is_dropped_not_invalid_output() -> None:
+    blank = {
+        "data": {
+            "table_cells": [
+                {"text": t, "start_row_offset_idx": r, "start_col_offset_idx": c}
+                for r, c, t in [(0, 0, " "), (0, 1, ""), (1, 0, "")]
+            ]
+        }
+    }
+    body = {"children": [{"$ref": "#/texts/0"}, {"$ref": "#/tables/0"}]}
+    reply = _reply([{"label": "text", "text": "Notes"}], body=body, tables=[blank])
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=reply)
+
+    (block,) = (await _parser(handler).parse(b"PK", XLSX, _LIMITS)).blocks
+    assert block.text == "Notes"
