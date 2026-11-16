@@ -17,7 +17,7 @@ import builtins
 import contextlib
 import hashlib
 import uuid
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Collection, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, Literal
 
@@ -43,6 +43,7 @@ from neuron_agent.knowledge import jobs
 from neuron_agent.knowledge.authorization import AllowedKbs, KnowledgeAuthorization
 from neuron_agent.knowledge.blobs import BlobStore
 from neuron_agent.knowledge.parsing import HTML, Limits, ParseError, accepted_type
+from neuron_agent.knowledge.tables import FoundTable, StoredTable
 from neuron_agent.observability import semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.schemas.knowledge import (
@@ -147,6 +148,28 @@ _NEIGHBOURS = _PASSAGE + (
     " AND c.chunk_id <> %(chunk)s ORDER BY c.ordinal"
 )
 _SCOPE = "SELECT set_config('neuron.kb_ids', %s, true)"
+# Stored tables (RAG-11.01) are read under RLS too, and only of a live, ready document of a
+# readable base: a tombstoned document's rows stay until the purge but are never shown.
+_TABLE_FILTER = (
+    " FROM knowledge.document_tables t JOIN knowledge.documents d ON d.doc_id = t.doc_id"
+    " AND d.kb_id = t.kb_id JOIN knowledge.bases b ON b.kb_id = d.kb_id"
+    " WHERE d.kb_id = ANY(%(kbs)s) AND b.deleted_at IS NULL"
+    " AND d.deleted_at IS NULL AND d.status = 'ready'"
+)
+# Up to 10 tables, the most query words in their title, name or columns first, then the newest.
+_FIND_TABLES = (
+    "SELECT t.doc_id, t.position, d.title, t.name, t.columns, t.row_count,"  # noqa: S608 - constants only
+    " jsonb_path_query_array(t.rows, '$[0 to 2]') AS sample"
+    + _TABLE_FILTER
+    + " ORDER BY (SELECT count(*) FROM unnest(%(words)s::text[]) w"
+    " WHERE strpos(lower(d.title || ' ' || t.name || ' ' || t.columns::text), w) > 0) DESC,"
+    " d.updated_at DESC, t.doc_id, t.position LIMIT 10"
+)
+_TABLE = (
+    "SELECT d.title, t.name, t.columns, t.rows"
+    + _TABLE_FILTER
+    + " AND t.doc_id = %(doc)s AND t.position = %(position)s"
+)
 # Hidden from every read path at once; the purge job, queued in the same transaction, removes it.
 _TOMBSTONE_DOCUMENT = (
     "UPDATE knowledge.documents d SET deleted_at = now(), status = 'deleting', updated_at = now()"
@@ -783,12 +806,53 @@ class KnowledgeBases:
             purge_pending=stored is not None and bool(stored["stored"]),
         )
 
+    async def find_tables(
+        self,
+        owner_key: str,
+        words: Sequence[str],
+        *,
+        kb_ids: Collection[uuid.UUID] | None = None,
+        roles: frozenset[str] = frozenset(),
+    ) -> builtins.list[FoundTable]:
+        """Up to 10 tables of the readable bases (narrowed to `kb_ids`), best match first."""
+        async with self._transaction() as conn:
+            kbs = await self._readable(conn, owner_key, roles, kb_ids)
+            await conn.execute(_SCOPE, (",".join(map(str, kbs)),))
+            rows = await (
+                await conn.execute(_FIND_TABLES, {"kbs": kbs, "words": [*words]})
+            ).fetchall()
+        return [FoundTable(**row) for row in rows]
+
+    async def table(
+        self,
+        owner_key: str,
+        doc_id: uuid.UUID,
+        position: int,
+        *,
+        kb_ids: Collection[uuid.UUID] | None = None,
+        roles: frozenset[str] = frozenset(),
+    ) -> StoredTable:
+        """One table of a readable base; access is checked on every call, and else `404`."""
+        async with self._transaction() as conn:
+            kbs = await self._readable(conn, owner_key, roles, kb_ids)
+            await conn.execute(_SCOPE, (",".join(map(str, kbs)),))
+            params = {"kbs": kbs, "doc": doc_id, "position": position}
+            row = await (await conn.execute(_TABLE, params)).fetchone()
+        if row is None:
+            raise KnowledgeDocumentNotFoundError("knowledge table not found")
+        self._audit("knowledge_table_read", owner_key, _READ, doc_id, resource="knowledge_document")
+        return StoredTable(**row)
+
     @staticmethod
     async def _readable(
-        conn: psycopg.AsyncConnection[Any], owner_key: str, roles: frozenset[str]
+        conn: psycopg.AsyncConnection[Any],
+        owner_key: str,
+        roles: frozenset[str],
+        kb_ids: Collection[uuid.UUID] | None = None,
     ) -> Sequence[uuid.UUID]:
+        """The bases the caller may read, narrowed to `kb_ids` (never widened)."""
         allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
-        return [*allowed.read]
+        return [kb for kb in allowed.read if kb_ids is None or kb in kb_ids]
 
     def _audit(
         self,

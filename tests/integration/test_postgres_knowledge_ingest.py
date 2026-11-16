@@ -19,6 +19,7 @@ from test_postgres_knowledge_tables import _knowledge_db, worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, _rows, role_db, roles  # noqa: F401
 
 from neuron_agent.config.settings import Settings
+from neuron_agent.errors.base import KnowledgeDocumentNotFoundError
 from neuron_agent.knowledge import ingest
 from neuron_agent.knowledge.blobs import LocalBlobStore
 from neuron_agent.knowledge.chunking import estimate_tokens
@@ -240,6 +241,46 @@ async def test_a_csv_keeps_one_typed_table_until_it_fails(
     assert await _rows(db.migrator_dsn, query, (doc,)) == [(0, "Table 1", columns, rows, 2)]
     assert await with_csv.fail(doc, "ingest_failed") == "failed"
     assert await _rows(db.migrator_dsn, query, (doc,)) == []
+
+
+async def test_only_readers_of_its_base_find_or_load_a_stored_table(
+    setup: tuple[RoleDatabase, Ingestor],
+) -> None:
+    """RAG-11.01: the same `allowed_kbs` rule as search, read under `kb_scope`, and nothing of
+    a tombstoned document."""
+    db, ingestor = setup
+    service = KnowledgeBases(
+        Settings(
+            env="test",
+            knowledge_enabled=True,
+            checkpointer="postgres",
+            postgres_dsn=SecretStr(db.app_dsn),
+        ),
+        lambda: _Connections(db.app_dsn),  # type: ignore[arg-type,return-value]
+    )
+    base = await service.create(_OWNER, "Sales", "hosted")
+    with_csv = Ingestor(**{**ingestor.__dict__, "parsers": (CsvParser(),)})
+    doc = await _document(db, with_csv, "region,units\nNorth,3\nWest,5\n", mime_type=CSV)
+    move = "UPDATE knowledge.documents SET kb_id = %s WHERE doc_id = %s"
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(move, (base.kb_id, doc))
+    assert await with_csv.ingest(doc) == "ready"
+
+    [found] = await service.find_tables(_OWNER, ["units"])
+    assert (found.doc_id, found.position, found.name, found.row_count) == (doc, 0, "Table 1", 2)
+    assert found.sample == [["North", 3], ["West", 5]]
+    assert (await service.table(_OWNER, doc, 0)).rows == [["North", 3], ["West", 5]]
+    # Another user, or a request narrowed to other bases, finds and loads nothing.
+    for owner, kb_ids in (("d" * 64, None), (_OWNER, {uuid.uuid4()})):
+        assert await service.find_tables(owner, [], kb_ids=kb_ids) == []
+        with pytest.raises(KnowledgeDocumentNotFoundError):
+            await service.table(owner, doc, 0, kb_ids=kb_ids)
+    tombstone = "UPDATE knowledge.documents SET deleted_at = now(), status = 'deleting'"
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(tombstone + " WHERE doc_id = %s", (doc,))
+    assert await service.find_tables(_OWNER, []) == []
+    with pytest.raises(KnowledgeDocumentNotFoundError):
+        await service.table(_OWNER, doc, 0)
 
 
 async def test_a_tombstoned_document_is_left_to_the_purge_job(

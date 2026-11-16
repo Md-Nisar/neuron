@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import re
+import uuid
 from collections import Counter
 from dataclasses import dataclass
 
@@ -36,6 +37,29 @@ class Table:
     name: str
     columns: tuple[tuple[str, str], ...]  # (name, type)
     rows: tuple[tuple[Value, ...], ...]
+
+
+@dataclass(frozen=True)
+class FoundTable:
+    """A stored table as `find_tables` lists it (RAG-11.01)."""
+
+    doc_id: uuid.UUID
+    position: int
+    title: str
+    name: str
+    columns: list[dict[str, str]]
+    row_count: int
+    sample: list[list[Value]]
+
+
+@dataclass(frozen=True)
+class StoredTable:
+    """A stored table as `query_table` loads it."""
+
+    title: str
+    name: str
+    columns: list[dict[str, str]]
+    rows: list[list[Value]]
 
 
 def extract_tables(
