@@ -6,7 +6,7 @@ Oct 28, 2026 · @Md Nisar Ahmed
 
 **This is Neuron's reference on open-source data-analytics agents: what each one is, how it is licensed, what its vendor keeps behind a paid tier, and what Neuron's Data Agent should learn from it.** It covers nao, Wren AI, Cube, Vanna, DB-GPT, PandasAI, Lightdash, Metabase, Chat2DB, Dataherald and MindsDB, plus three closed-source products studied as design references: Omni (section 5), Snowflake Cortex (section 6) and Databricks Genie (section 7). nao, which started this review, keeps its detailed write-up in Appendix A.
 
-**Decision it supports (28 Oct 2026): Neuron builds its own Data Agent, including row-level security, column masking and the other enterprise data controls, and adopts none of these products as a backend.** They are reference designs and benchmarks. Open (Apache, MIT, BSD) parts may be studied and adapted under the clean-room rules; commercially licensed parts are off-limits. The build plan and the clean-room rules are in the [Neuron Data Agent assessment](https://claude.ai/artifact/MbRqto79HsfUZTxcrVtXG9), sections 5 and 6.
+**Decision it supports (28 Oct 2026): Neuron builds its own Data Agent, including row-level security, column masking and the other enterprise data controls, and adopts none of these products as a backend.** They are reference designs and benchmarks. Open (Apache, MIT, BSD) parts may be studied and adapted under the clean-room rules; commercially licensed parts are off-limits. The build plan and the clean-room rules are in the [Neuron Data Agent assessment](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md), sections 5 and 6.
 
 **The pattern across the market:** almost every product here is open core. The agent and the connectors are open; per-user data security, SSO and often the AI agent itself are paid. Two projects worth singling out: Vanna (MIT) offers per-user query rewriting as an open hook, and Cube Core (Apache 2.0) has open row-level access policies.
 
@@ -98,7 +98,7 @@ Oct 28, 2026 · @Md Nisar Ahmed
 
 ## 4. Patterns to adopt, by Data Agent component
 
-**\[R\] Each Data Agent component has at least one open reference; none needs a commercially licensed source.** Section numbers refer to the [Data Agent assessment](https://claude.ai/artifact/MbRqto79HsfUZTxcrVtXG9).
+**\[R\] Each Data Agent component has at least one open reference; none needs a commercially licensed source.** Section numbers refer to the [Data Agent assessment](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md).
 
 | Data Agent component | Pattern to adopt | Open reference | How to use it |
 | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ The agent sees metadata, not data, while it builds a query. Results reach a mode
 
 ### 5.5 What this means for Neuron
 
-Omni confirms three Data Agent choices: an abstract query instead of SQL, permissions applied in the semantic layer rather than in prompts, and rows kept out of the main model's context. It also adds practices the Data Agent should adopt: value grounding, a bounded multi-step analysis loop, explicit context budgets, layered context, and trajectory-level judged evals. The changes are listed in the [Data Agent assessment](https://claude.ai/artifact/MbRqto79HsfUZTxcrVtXG9), section 4.7. Licensing: Omni's product is proprietary, so take concepts only. The Apache 2.0 skills repository may be quoted or adapted with notice.
+Omni confirms three Data Agent choices: an abstract query instead of SQL, permissions applied in the semantic layer rather than in prompts, and rows kept out of the main model's context. It also adds practices the Data Agent should adopt: value grounding, a bounded multi-step analysis loop, explicit context budgets, layered context, and trajectory-level judged evals. The changes are listed in the [Data Agent assessment](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md), section 4.7. Licensing: Omni's product is proprietary, so take concepts only. The Apache 2.0 skills repository may be quoted or adapted with notice.
 
 ## 6. Snowflake Cortex (commercial reference)
 
@@ -376,7 +376,7 @@ The original review of nao (commit `c72f46e`), kept for reference. Its build-or-
 
 **They overlap on the core job: answering business questions with SQL over the same data. So a second "Analytics Agent" would duplicate the Data Agent rather than add a capability.** nao is broader and ready today. The Data Agent design is narrower, but it is safer by construction and native to Neuron.
 
-| Dimension | nao | Planned Data Agent ([assessment](https://claude.ai/artifact/MbRqto79HsfUZTxcrVtXG9)) | Better |
+| Dimension | nao | Planned Data Agent ([assessment](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md)) | Better |
 | --- | --- | --- | --- |
 | Time to first answer | Days (Docker + `nao sync`) | \~8–10 weeks after Neuron v1.0 | nao |
 | How SQL is produced | The model writes SQL; the app checks it is read-only | The model writes a typed analysis spec; code compiles SQL from a governed catalog | Data Agent (safer, more consistent) |
@@ -475,4 +475,4 @@ The tool contract is the same for both backends, so the pilot can swap nao for t
 
 **Not reviewed:** nao's terms and conditions page (not reachable from this environment).
 
-**Related:** [Neuron Data Agent — Architecture Assessment](https://claude.ai/artifact/MbRqto79HsfUZTxcrVtXG9).
+**Related:** [Neuron Data Agent — Architecture Assessment](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md).
