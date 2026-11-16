@@ -677,17 +677,30 @@ _QUERY_FIRST = (
 
 
 def _tables_found_not_queried(messages: Sequence[Any]) -> bool:
-    """Whether `find_tables` returned a table this run with no `query_table` call after it."""
-    for message in reversed(messages):
-        if isinstance(message, HumanMessage):
-            return False
+    """Whether `find_tables` returned a table this run that no later model reply queried.
+
+    A `query_table` call sent with `find_tables`, in the same reply, does not count: the model
+    had not seen the tables, so its handle was a guess.
+    """
+    found = queried = -1
+    replies = 0
+    for message in messages[_run_start(messages) :]:
+        replies += isinstance(message, AIMessage)
         if not isinstance(message, ToolMessage):
             continue
         if message.name == _QUERY_TABLE:
-            return False
-        if message.name == _FIND_TABLES and message.status != "error" and message.artifact:
-            return True
-    return False
+            queried = replies
+        elif message.name == _FIND_TABLES and message.status != "error" and message.artifact:
+            found = replies
+    return found >= 0 and queried <= found
+
+
+def _run_start(messages: Sequence[Any]) -> int:
+    """The index just after the user's last message: earlier ones are the thread's history."""
+    for index in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[index], HumanMessage):
+            return index + 1
+    return 0
 
 
 def _model_calls_this_run(messages: Sequence[Any]) -> int:

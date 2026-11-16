@@ -59,9 +59,17 @@ async def _run(request: _Request, *replies: ModelResponse) -> tuple[Any, list[_R
     return await query_after_find_middleware().awrap_model_call(request, handler), seen
 
 
+_CALLS = AIMessage("", tool_calls=[{"name": "find_tables", "args": {}, "id": "f"}])
+_LATER = AIMessage("", tool_calls=[{"name": "query_table", "args": {}, "id": "q"}])
+
+
 @pytest.mark.parametrize(
     "earlier",
-    [[], [_queried("error")]],  # never queried; a guessed handle queried beside find_tables
+    [
+        [],  # never queried
+        [_queried("error")],  # a guessed handle, queried in the same reply as find_tables
+        [_queried("success")],  # its result arrived after the tables, still the same reply
+    ],
 )
 async def test_an_answer_without_a_query_is_set_aside_charged_and_a_query_required(
     earlier: list[Any],
@@ -69,7 +77,8 @@ async def test_an_answer_without_a_query_is_set_aside_charged_and_a_query_requir
     usage = TokenUsageAccumulator()
     context = AuthorizationContext(frozenset(), usage=usage)
     request = _Request(
-        [HumanMessage("total?"), *earlier, _found()], runtime=SimpleNamespace(context=context)
+        [HumanMessage("total?"), _CALLS, _found(), *earlier],
+        runtime=SimpleNamespace(context=context),
     )
     query = AIMessage("", tool_calls=[{"name": "query_table", "args": {}, "id": "q"}])
 
@@ -89,8 +98,9 @@ async def test_an_answer_without_a_query_is_set_aside_charged_and_a_query_requir
 @pytest.mark.parametrize(
     "request_",
     [
-        _Request([HumanMessage("total?"), _found(), _queried()]),  # queried
-        _Request([HumanMessage("total?"), _found({})]),  # no table found
+        _Request([HumanMessage("total?"), _CALLS, _found(), _LATER, _queried()]),  # queried
+        _Request([HumanMessage("total?"), _CALLS, _LATER, _queried("error")]),  # nothing found
+        _Request([HumanMessage("total?"), _CALLS, _found({})]),  # no table found
         _Request([_found(), HumanMessage("total?")]),  # found in an earlier turn
         _Request([HumanMessage("total?"), _found()], tools=[]),  # the run's last call
         _Request([HumanMessage("total?"), _found()], tools=[{"name": "find_tables"}]),
