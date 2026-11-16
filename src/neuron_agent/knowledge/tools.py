@@ -380,8 +380,9 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
     ) -> tuple[str, dict[str, dict[str, Any]]]:
         """Find tables in the user's spreadsheets and CSV files (title, sheet or column names
         matching `query`) to calculate over with query_table. Use it for totals, counts,
-        averages, or the largest or smallest values. Each table has a `table` handle, its
-        columns and types, its row count and sample rows."""
+        averages, or the largest or smallest values, then query the table: sample rows and
+        search passages hold only a few rows. Each table has a `table` handle, its columns and
+        types, its row count and sample rows."""
         owner = _owner(runtime)
         messages = _messages(runtime)
         if _calls(messages, "find_tables") > MAX_TABLE_FINDS:
