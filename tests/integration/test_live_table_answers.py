@@ -21,13 +21,14 @@ import dataclasses
 import io
 import json
 import os
+import re
 import uuid
 from pathlib import Path
 
 import psycopg
 import pytest
 from psycopg.types.json import Jsonb
-from scripts.build_table_eval import build
+from scripts.build_table_eval import PRODUCTS, REGIONS, build
 from test_live_knowledge_answers import PERMISSIONS, _principal, _settings
 from test_postgres_knowledge_tables import _knowledge_db
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
@@ -58,6 +59,7 @@ from neuron_agent.services.agent_service import AgentService
 pytestmark = [pytest.mark.integration, pytest.mark.anyio]
 
 FIXTURES = Path("tests/fixtures/knowledge")
+NAMES = (*REGIONS, *PRODUCTS)
 USER = "table-user"
 
 
@@ -124,8 +126,23 @@ async def _store(
     return len(chunks)
 
 
+def _at(answer: str, value: str) -> int | None:
+    """Where `value` is named as a whole word or number (not `west` in `fewest`, not `261` in
+    `2610` or `5.261`)."""
+    found = re.search(rf"(?<![\w.,]){re.escape(value)}(?!\w|[.,]\d)", answer, re.IGNORECASE)
+    return None if found is None else found.start()
+
+
 def _correct(answer: str, expected: list[str]) -> bool:
-    return any(value.lower() in answer.lower() for value in expected)
+    """One of `expected` is named; a region or product must also be the first one named, so a
+    ranked list that leads with a wrong name is wrong."""
+    found = [at for value in expected if (at := _at(answer, value)) is not None]
+    if not found or expected[0] not in NAMES:
+        return bool(found)
+    others = [
+        at for name in NAMES if name not in expected and (at := _at(answer, name)) is not None
+    ]
+    return min(found) < min(others, default=len(answer))
 
 
 @pytest.mark.parametrize("tools", ["off", "on"])

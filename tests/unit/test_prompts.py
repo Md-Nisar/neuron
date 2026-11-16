@@ -7,7 +7,7 @@ import hashlib
 from neuron_agent.prompts.loader import SYSTEM_PROMPT_VERSION, load_prompt
 
 # Update both together, and record the new version in CHANGELOG.md.
-_PINNED = (4, "65637383f7bcb2736d4229a394953fd9a3fe714373c3280727586bbd2bdebfcf")
+_PINNED = (5, "d0b392e11d986e401f441902056da9785dcf6b8334c6d2910e1efc3eda9290f4")
 
 
 def test_the_system_prompt_version_matches_its_content() -> None:

@@ -23,6 +23,7 @@ from langchain.agents.middleware import (
     HumanInTheLoopMiddleware,
     InterruptOnConfig,
     ModelFallbackMiddleware,
+    ModelResponse,
     ModelRetryMiddleware,
     ToolCallRequest,
     wrap_tool_call,
@@ -544,6 +545,33 @@ class _StructuredOutputRetryMiddleware(AgentMiddleware[Any, Any]):
         raise AssertionError("unreachable")  # pragma: no cover
 
 
+def answer_after_tools_middleware() -> AgentMiddleware:
+    """Drop an `AgentAnswer` given alongside other tool calls, so the model answers next time.
+
+    `create_agent` runs the other calls and then ends the run with that answer, which was
+    written before their results existed. In RAG-11.01's live eval a model called
+    `find_tables` and answered at once ("I need to query the table directly"), so it never
+    ran `query_table`. Without the answer, the tools run and the model is called again; the
+    iteration limit and `final_answer_middleware` still bound the run.
+    """
+    return _AnswerAfterToolsMiddleware()
+
+
+class _AnswerAfterToolsMiddleware(AgentMiddleware[Any, Any]):
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        response = await handler(request)
+        # On the last call no tools are offered: a stray call there must not cost the answer.
+        if getattr(response, "structured_response", None) is None or not request.tools:
+            return response
+        message = response.result[0]
+        calls = [c for c in message.tool_calls if c["name"] != _STRUCTURED_OUTPUT_TOOL]
+        if not calls:
+            return response
+        logger.warning("early_answer_dropped", tools=len(calls))
+        # Only the message: the answer's "Returning structured response" reply goes with it.
+        return ModelResponse(result=[message.model_copy(update={"tool_calls": calls})])
+
+
 def final_answer_middleware(max_model_calls: int) -> AgentMiddleware:
     """Offer the model no tools on the run's last allowed model call, so that call answers.
 
@@ -706,6 +734,7 @@ def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMi
         empty_reply_retry_middleware(),
         structured_output_retry_middleware(),
         final_answer_middleware(settings.max_agent_iterations),
+        answer_after_tools_middleware(),
         tracing_middleware(settings),
         tool_authorization_middleware(registry),
         knowledge_first_middleware(),
