@@ -22,7 +22,7 @@ from tests.unit.test_production_feature_guards import jwt_settings
 
 from neuron_agent.config.settings import Settings
 from neuron_agent.knowledge.docling_serve import DoclingServeParser
-from neuron_agent.knowledge.parsing import PDF, Limits, ParseError
+from neuron_agent.knowledge.parsing import PDF, XLSX, Limits, ParseError
 
 pytestmark = pytest.mark.anyio
 
@@ -275,3 +275,61 @@ def test_the_parser_needs_its_url() -> None:
         Settings(env="test", knowledge_parser_url="http://docling:5001")
     )
     assert PDF in parser.media_types
+
+
+# RAG-11.01: a table keeps its cell grid, within the caps.
+
+
+def _table(cells: list[tuple[int, int, str]]) -> bytes:
+    table = {
+        "data": {
+            "table_cells": [
+                {"text": text, "start_row_offset_idx": row, "start_col_offset_idx": col}
+                for row, col, text in cells
+            ]
+        }
+    }
+    return _reply([], body={"children": [{"$ref": "#/tables/0"}]}, tables=[table])
+
+
+async def _table_block(cells: list[tuple[int, int, str]]) -> Any:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=_table(cells))
+
+    (block,) = (await _parser(handler).parse(b"PK", XLSX, _LIMITS)).blocks
+    assert block.kind == "table"
+    return block
+
+
+async def test_a_sheet_keeps_its_cell_grid_with_gaps_filled() -> None:
+    block = await _table_block([(0, 0, "region"), (0, 1, " units "), (1, 0, "North"),
+                                (2, 1, "7"), (2, 0, "West")])  # fmt: skip
+    assert block.rows == (("region", "units"), ("North", ""), ("West", "7"))
+    assert block.text == "region | units\nNorth\nWest | 7"
+
+
+async def test_a_grid_past_the_caps_is_not_built() -> None:
+    far = 10**9  # an offset from the reply: nothing that size may be allocated
+    block = await _table_block([(0, 0, "a"), (0, far, "b"), (1, 0, "c")])
+    assert block.rows is None
+    tall = await _table_block([(0, 0, "a"), (0, 99, "b"), (far, 0, "c")])
+    assert tall.rows == (("a", *[""] * 98, "b"), ("c", *[""] * 99))
+
+
+async def test_a_table_with_no_text_is_dropped_not_invalid_output() -> None:
+    blank = {
+        "data": {
+            "table_cells": [
+                {"text": t, "start_row_offset_idx": r, "start_col_offset_idx": c}
+                for r, c, t in [(0, 0, " "), (0, 1, ""), (1, 0, "")]
+            ]
+        }
+    }
+    body = {"children": [{"$ref": "#/texts/0"}, {"$ref": "#/tables/0"}]}
+    reply = _reply([{"label": "text", "text": "Notes"}], body=body, tables=[blank])
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=reply)
+
+    (block,) = (await _parser(handler).parse(b"PK", XLSX, _LIMITS)).blocks
+    assert block.text == "Notes"

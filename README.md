@@ -273,6 +273,7 @@ These are the file types the parser accepts:
 | PowerPoint (`.pptx`) | `application/vnd.openxmlformats-officedocument.presentationml.presentation` | docling-serve |
 | Plain text (`.txt`; a form feed starts a new page) | `text/plain` | Neuron |
 | Markdown (`.md`) | `text/markdown` | Neuron |
+| CSV (`.csv`; UTF-8, one table, its first row the header) | `text/csv` | Neuron |
 
 The type is read from the file's content, not its name. Refused, each with a stable error code: encrypted PDFs (`encrypted_pdf`), archives (`archive_refused`), macro-enabled Office files such as `.docm` (`macro_refused`), legacy `.doc`/`.xls`/`.ppt` and anything else (`unsupported_media_type`), and files over the caps `APP_KNOWLEDGE_PARSE_MAX_BYTES` (50 MB), `APP_KNOWLEDGE_PARSE_MAX_PAGES` (2,000) and `APP_KNOWLEDGE_PARSE_MAX_PAGE_CHARS` (50,000). docling-serve runs in its own container with no network access (`--profile knowledge` in the reference stack); the worker sends it the file's bytes, never a URL.
 
@@ -285,7 +286,7 @@ A document's `status` moves `queued` → `parsing` → `embedding` → `ready`, 
 | `url_not_allowed`, `fetch_http_status`, `fetch_too_many_redirects`, `fetch_too_large`, `unsupported_type`, `unsupported_encoding`, `duplicate_content` | A web page was refused: a non-public address, an error status, too many redirects, over the size cap, not HTML, an unknown charset, or a copy of a page already in the base |
 | `fetch_timeout`, `fetch_failed` | The page's server did not answer on any attempt |
 | `no_text` | Parsed, but no text to index (an image-only file OCR could not read, or headings only) |
-| `parser_timeout`, `parser_failed`, `parser_output_invalid`, `parser_output_too_large` | docling-serve could not convert it; the same file would fail again |
+| `parser_timeout`, `parser_failed`, `parser_output_invalid`, `parser_output_too_large` | docling-serve, or Neuron's CSV reader for a `.csv`, could not convert it; the same file would fail again |
 | `parser_unavailable`, `parser_not_configured` | docling-serve was down for every retry, or is not configured |
 | `processing_locality_forbidden` | The knowledge base is self-hosted only and the embedding provider is hosted |
 | `embedding_*` | The embedding provider refused or failed for every retry |

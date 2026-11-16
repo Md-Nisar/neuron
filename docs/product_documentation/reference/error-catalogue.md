@@ -45,7 +45,7 @@ Neuron Agent implements a centralized, typed error taxonomy rooted in `AppError`
 | `byte_quota_exceeded` | 413 | No | Yes | No | User stored file bytes exceed `APP_KNOWLEDGE_MAX_BYTES_PER_USER` (1 GB). | Delete old documents. |
 | `document_quota_exceeded` | 413 | No | Yes | No | User stored documents exceed quota (1,000). | Delete old documents. |
 | `page_quota_exceeded` | 413 | No | Yes | No | User parsed pages exceed quota (20,000). | Delete old documents. |
-| `unsupported_media_type` | 415 | No | Yes | No | Uploaded file format is not PDF, DOCX, XLSX, PPTX, TXT, or MD. | Convert file to supported document format. |
+| `unsupported_media_type` | 415 | No | Yes | No | Uploaded file format is not PDF, DOCX, XLSX, PPTX, TXT, MD, or CSV. | Convert file to supported document format. |
 | `encrypted_pdf` | 415 | No | Yes | No | Uploaded PDF has password protection or DRM encryption. | Decrypt file before uploading. |
 | `macro_refused` | 415 | No | Yes | No | Macro-enabled Office file (`.docm`, `.xlsm`) was refused. | Remove macros and save as standard `.docx`/`.xlsx`. |
 | `archive_refused` | 415 | No | Yes | No | Non-Office ZIP archive file was uploaded. | Upload raw supported document files only. |

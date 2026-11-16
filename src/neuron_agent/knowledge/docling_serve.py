@@ -23,12 +23,15 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from neuron_agent.config.settings import Settings
 from neuron_agent.knowledge.parsing import (
     DOCX,
+    MAX_TABLE_CELLS,
+    MAX_TABLE_COLUMNS,
     PDF,
     PPTX,
     XLSX,
     Limits,
     ParsedDocument,
     ParseError,
+    table_text,
     validate_output,
 )
 
@@ -285,13 +288,27 @@ def _text_block(document: _Document, item: _Text) -> dict[str, object] | None:
 
 
 def _table_block(document: _Document, item: _Table) -> dict[str, object] | None:
+    if not any(cell.text.strip() for cell in item.data.table_cells):
+        return None  # a table detected with no text in it
     rows: dict[int, dict[int, str]] = {}
     for cell in item.data.table_cells:
         rows.setdefault(cell.start_row_offset_idx, {})[cell.start_col_offset_idx] = cell.text
-    text = "\n".join(
-        " | ".join(row[col].strip() for col in sorted(row)) for _, row in sorted(rows.items())
-    ).strip()
-    return {"kind": "table", "text": text} | _where(document, item.prov) if text else None
+    text = table_text((row[col].strip() for col in sorted(row)) for _, row in sorted(rows.items()))
+    return {"kind": "table", "text": text, "rows": _grid(rows)} | _where(document, item.prov)
+
+
+def _grid(rows: dict[int, dict[int, str]]) -> tuple[tuple[str, ...], ...] | None:
+    """The cells as a dense grid (RAG-11.01), or None when it would pass the caps. A merged cell
+    sits at its first row and column. Offsets come from the reply, so the size is checked before
+    anything is allocated."""
+    width = 1 + max(col for row in rows.values() for col in row)
+    if width > MAX_TABLE_COLUMNS or len(rows) * width > MAX_TABLE_CELLS:
+        return None
+    return tuple(
+        tuple(row.get(col, "").strip() for col in range(width))
+        for _, row in sorted(rows.items())
+        if any(value.strip() for value in row.values())
+    )
 
 
 def _where(document: _Document, prov: list[_Prov]) -> dict[str, object]:

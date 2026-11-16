@@ -41,6 +41,7 @@ from neuron_agent.knowledge.docling_serve import DoclingServeParser
 from neuron_agent.knowledge.ingest import Ingestor, connector
 from neuron_agent.knowledge.jobs import QUEUE, Task
 from neuron_agent.knowledge.parsing import (
+    CsvParser,
     DocumentParser,
     HtmlParser,
     Limits,
@@ -132,7 +133,7 @@ def build_ingestor(settings: Settings) -> Ingestor:
     return Ingestor(
         connect=connector(settings.postgres_worker_dsn.get_secret_value(), _OPTIONS),
         blobs=build_blob_store(settings),
-        parsers=(PlainTextParser(), HtmlParser(), office),
+        parsers=(PlainTextParser(), CsvParser(), HtmlParser(), office),
         embeddings=create_embedding_provider(settings),
         limits=Limits.from_settings(settings),
         chunk_max_tokens=settings.knowledge_chunk_max_tokens,
