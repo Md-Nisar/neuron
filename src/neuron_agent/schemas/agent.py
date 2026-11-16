@@ -77,11 +77,12 @@ class AgentAnswer(BaseModel):
 class Citation(BaseModel):
     """A passage an answer cites, validated by the server (RAG-05.01). `cite_id` is opaque and
     valid only in its run; `title` and `headings` are user text. No passage text: clients
-    fetch it from the chunk route, which checks access each time."""
+    fetch it from the chunk route, which checks access each time. A table `query_table` read
+    (RAG-11.01) has no chunk: `chunk_id` is None and `table` names the sheet or table."""
 
     cite_id: str
     doc_id: uuid.UUID
-    chunk_id: uuid.UUID
+    chunk_id: uuid.UUID | None
     title: str | None
     headings: list[str]
     page_start: int | None
@@ -90,6 +91,7 @@ class Citation(BaseModel):
     # is user text: show it as text or a plain link, never as markup.
     source_url: str | None = None
     fetched_at: datetime | None = None
+    table: str | None = None  # user text, as `title`
 
 
 class CitationFields(BaseModel):

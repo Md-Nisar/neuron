@@ -249,12 +249,11 @@ def _tables_text(items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]
     return text, items
 
 
-def _rows_text(columns: list[str], rows: list[list[Any]], truncated: bool) -> str:
+def _rows_text(cite_id: str, columns: list[str], rows: list[list[Any]], truncated: bool) -> str:
     """The framed result within `MAX_TABLE_CHARS`, dropping rows from the end."""
     while True:
-        text = frame(
-            _PREAMBLE, "knowledge", {"columns": columns, "rows": rows, "truncated": truncated}
-        )
+        result = {"cite_id": cite_id, "columns": columns, "rows": rows, "truncated": truncated}
+        text = frame(_PREAMBLE, "knowledge", result)
         if len(text) <= MAX_TABLE_CHARS or not rows:
             return text
         rows, truncated = rows[:-1], True
@@ -348,7 +347,7 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         if _calls(messages, "get_document_excerpt") > MAX_EXCERPTS:
             raise ToolException(_TOO_MANY)
         ref = minted(messages).get(cite_id)
-        if ref is None:
+        if ref is None or ref["chunk_id"] is None:  # a table's has no passage to read
             raise ToolException(_NO_PASSAGE)
         doc_id = uuid.UUID(ref["doc_id"])
         try:
@@ -417,16 +416,16 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         text, shown = _tables_text(items)
         return text, {item["table"]: refs[item["table"]] for item in shown}
 
-    @tool
+    @tool(response_format="content_and_artifact")
     async def query_table(
         table: Annotated[str, Field(min_length=1, max_length=16)],
         sql: Annotated[str, Field(min_length=1, max_length=MAX_SQL_CHARS)],
         runtime: ToolRuntime[Any, Any],
-    ) -> str:
+    ) -> tuple[str, dict[str, dict[str, Any]]]:
         """Run one read-only SQLite SELECT on a `table` handle from find_tables in this
         answer. The SQL names the table `data`; put column names in double quotes. Use it to
         total, count, average, rank or look up rows rather than adding up search passages.
-        At most 200 rows come back."""
+        At most 200 rows come back, with a cite_id for the table."""
         owner = _owner(runtime)
         messages = _messages(runtime)
         if _calls(messages, "query_table") > MAX_TABLE_QUERIES:
@@ -453,7 +452,12 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             )
         except TableQueryError as exc:
             raise ToolException(_query_error(exc)) from None
-        return _rows_text(list(result.columns), [list(r) for r in result.rows], result.truncated)
+        # The result cites the table's document and sheet, with no passage or page (ADR 0014).
+        cite_id = secrets.token_hex(6)
+        cited = {"doc_id": ref["doc_id"], "chunk_id": None, "title": stored.title, "headings": []}
+        cited |= {"page_start": None, "page_end": None, "table": stored.name}
+        rows = [list(r) for r in result.rows]
+        return _rows_text(cite_id, list(result.columns), rows, result.truncated), {cite_id: cited}
 
     return [
         ToolSpec(_fixed_errors(t), KNOWLEDGE_TOOL_SCOPES[t.name], "read", taints_run=True)

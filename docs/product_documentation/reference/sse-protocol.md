@@ -133,6 +133,7 @@ Each SSE block consists of an `event:` line, a `data:` line with a JSON payload,
     "grounded": true
   }
   ```
+- **Table citations (RAG-11.01):** an answer calculated with `query_table` cites the table's document with `"chunk_id": null` and `"table"` set to its sheet or table name, with no pages. There is no passage to fetch; show the document title and table name as text. Other citations carry `"table": null`.
 
 ---
 

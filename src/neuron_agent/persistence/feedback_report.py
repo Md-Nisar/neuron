@@ -28,7 +28,7 @@ _NEGATIVE = (
 )
 
 
-def cited_chunks(messages: Any, run_id: str) -> list[dict[str, str]] | None:
+def cited_chunks(messages: Any, run_id: str) -> list[dict[str, str | None]] | None:
     """The chunk and document IDs the run's answer cited; None if no answer carries the run.
 
     A citation that does not validate is skipped, as thread history drops it.
@@ -43,7 +43,8 @@ def cited_chunks(messages: Any, run_id: str) -> list[dict[str, str]] | None:
                     citation = Citation.model_validate(raw)
                 except ValidationError:
                     continue
-                chunks.append({"chunk_id": str(citation.chunk_id), "doc_id": str(citation.doc_id)})
+                chunk = None if citation.chunk_id is None else str(citation.chunk_id)  # a table
+                chunks.append({"chunk_id": chunk, "doc_id": str(citation.doc_id)})
             return chunks
     return None
 

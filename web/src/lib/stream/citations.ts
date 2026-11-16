@@ -7,7 +7,8 @@
 
 export interface Citation {
   doc_id: string;
-  chunk_id: string;
+  /** Null for a table `query_table` read (RAG-11.01): there is no passage to fetch. */
+  chunk_id: string | null;
   /** User text: shown through `displaySafe`. */
   title: string | null;
   headings: string[];
@@ -17,6 +18,8 @@ export interface Citation {
   source_url: string | null;
   /** When the page was fetched, as the server's ISO 8601 text. */
   fetched_at: string | null;
+  /** A table's sheet or name, when `chunk_id` is null. User text: shown through `displaySafe`. */
+  table: string | null;
 }
 
 export interface Grounding {
@@ -49,12 +52,12 @@ export function httpsUrl(value: unknown): string | null {
 function parseCitation(value: unknown): Citation {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return shape();
   const item = value as Record<string, unknown>;
-  const { doc_id, chunk_id, title, headings } = item;
+  const { doc_id, chunk_id, title, headings, table } = item;
+  const tableCited = chunk_id === null && typeof table === "string";
   if (
     typeof doc_id !== "string" ||
     !UUID.test(doc_id) ||
-    typeof chunk_id !== "string" ||
-    !UUID.test(chunk_id) ||
+    (!tableCited && (typeof chunk_id !== "string" || !UUID.test(chunk_id))) ||
     (title !== null && title !== undefined && typeof title !== "string") ||
     !Array.isArray(headings) ||
     !headings.every((heading) => typeof heading === "string")
@@ -63,13 +66,14 @@ function parseCitation(value: unknown): Citation {
   }
   return {
     doc_id,
-    chunk_id,
+    chunk_id: tableCited ? null : chunk_id,
     title: title ?? null,
     headings,
     page_start: page(item["page_start"]),
     page_end: page(item["page_end"]),
     source_url: httpsUrl(item["source_url"]),
     fetched_at: typeof item["fetched_at"] === "string" ? item["fetched_at"] : null,
+    table: tableCited ? table : null,
   };
 }
 

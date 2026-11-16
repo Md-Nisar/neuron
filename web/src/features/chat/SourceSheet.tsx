@@ -15,7 +15,8 @@ type Load =
   | { state: "loading" }
   | { state: "ready"; passage: Passage }
   | { state: "unavailable" }
-  | { state: "failed" };
+  | { state: "failed" }
+  | { state: "table" };
 
 /** Gone, never readable, or no longer readable: the same answer, so nothing is confirmed. */
 function unavailable(error: unknown): boolean {
@@ -45,14 +46,17 @@ export function SourceSheet({
   deps: DataDeps;
   onClose: () => void;
 }) {
-  const [load, setLoad] = useState<Load>({ state: "loading" });
+  const { chunk_id: chunkId } = citation;
+  const [load, setLoad] = useState<Load>({ state: chunkId === null ? "table" : "loading" });
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     heading.current?.focus();
+    // A table citation has no passage: the answer was calculated from the table (RAG-11.01).
+    if (chunkId === null) return;
     // One sheet per citation (the list keys it), so this runs once for each.
     let live = true;
-    getPassage(deps, citation.doc_id, citation.chunk_id).then(
+    getPassage(deps, citation.doc_id, chunkId).then(
       (passage) => {
         if (live) setLoad({ state: "ready", passage });
       },
@@ -65,7 +69,7 @@ export function SourceSheet({
     };
     // `deps` is stable for the life of the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [citation.doc_id, citation.chunk_id]);
+  }, [citation.doc_id, chunkId]);
 
   const passage = load.state === "ready" ? load.passage : null;
   const pages = pagesText(passage ?? citation);
@@ -126,6 +130,11 @@ export function SourceSheet({
         <blockquote className="max-h-72 overflow-y-auto border-l-2 pl-3 text-sm leading-6 break-words whitespace-pre-wrap">
           {displaySafe(passage.text)}
         </blockquote>
+      )}
+      {load.state === "table" && (
+        <p className="text-sm text-muted-foreground">
+          Calculated from the table {displaySafe(citation.table ?? "")} in this document.
+        </p>
       )}
       {load.state === "unavailable" && (
         <p role="status" className="text-sm text-muted-foreground">
