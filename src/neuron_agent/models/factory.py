@@ -628,6 +628,61 @@ class _KnowledgeFirstMiddleware(AgentMiddleware[Any, Any]):
 _KNOWLEDGE_SEARCH = "search_knowledge"
 
 
+def query_after_find_middleware() -> AgentMiddleware:
+    """Ask once more when the model answers after `find_tables` found tables it never queried.
+
+    In RAG-11.01's live eval a model found the table and then answered a total from its sample
+    rows, or made one up, without calling `query_table`. That answer is set aside (its tokens
+    are still charged) and the same call is made again with a note to query the table; the
+    second reply stands, whatever it is. The note is not kept in the thread. It sits inside the
+    tool authorization middleware, so it acts only when the caller may use `query_table`, and
+    the final-answer step offers no tools, so the run's last call is never asked again.
+    """
+    return _QueryAfterFindMiddleware()
+
+
+class _QueryAfterFindMiddleware(AgentMiddleware[Any, Any]):
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        response = await handler(request)
+        if (
+            getattr(response, "structured_response", None) is None
+            or not any(_tool_name(tool) == _QUERY_TABLE for tool in request.tools)
+            or not _tables_found_not_queried(request.messages)
+        ):
+            return response
+        logger.warning("table_query_requested")
+        for message in response.result:
+            if isinstance(message, AIMessage):
+                _charge_discarded_attempt(request, message)
+        note = HumanMessage(_QUERY_FIRST)
+        return await handler(request.override(messages=[*request.messages, note]))
+
+
+_FIND_TABLES = "find_tables"
+_QUERY_TABLE = "query_table"
+_QUERY_FIRST = (
+    "You found tables but did not query them. Answer from a query_table result: call "
+    "query_table on the table handle now. Sample rows hold only a few of its rows."
+)
+
+
+def _tables_found_not_queried(messages: Sequence[Any]) -> bool:
+    """Whether `find_tables` returned a table this run and `query_table` was never called."""
+    found = False
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage):
+            break
+        if isinstance(message, ToolMessage) and message.name == _QUERY_TABLE:
+            return False
+        found = found or (
+            isinstance(message, ToolMessage)
+            and message.name == _FIND_TABLES
+            and message.status != "error"
+            and bool(message.artifact)
+        )
+    return found
+
+
 def _model_calls_this_run(messages: Sequence[Any]) -> int:
     """Model replies since the user's message: earlier turns are the thread's history."""
     calls = 0
@@ -738,6 +793,7 @@ def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMi
         tracing_middleware(settings),
         tool_authorization_middleware(registry),
         knowledge_first_middleware(),
+        query_after_find_middleware(),
         *([approval] if approval else []),
         tool_failure_isolation_middleware(),
         tool_timeout_middleware(settings.tool_timeout_seconds),
