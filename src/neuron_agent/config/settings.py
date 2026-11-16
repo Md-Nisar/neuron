@@ -252,6 +252,8 @@ class Settings(BaseSettings):
     knowledge_parse_max_page_chars: int = Field(default=50_000, ge=1_000, le=200_000)
     # Chunk size in estimated tokens (RAG-02.04): 400 is about the spike's 1,200 characters.
     knowledge_chunk_max_tokens: int = Field(default=400, ge=50, le=8_000)
+    # Cells stored for `query_table` per document (RAG-11.01); tables past it stay text only.
+    knowledge_table_max_cells: int = Field(default=200_000, ge=0, le=1_000_000)
     # Search (RAG-04.01). Dense candidates come from an exact scan while the readable bases hold
     # at most this many embeddings, else from HNSW; the spike's measured default (RAG-00.02).
     knowledge_exact_scan_max_chunks: int = Field(default=10_000, ge=0, le=10_000_000)

@@ -32,7 +32,17 @@ from neuron_agent.persistence.startup_checks import KNOWLEDGE_PROFILE_MISMATCH, 
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
-_TABLES = ("index_profiles", "bases", "grants", "documents", "chunks", "embeddings")
+_TABLES = (
+    "index_profiles",
+    "bases",
+    "grants",
+    "documents",
+    "chunks",
+    "embeddings",
+    "document_tables",
+)
+# The tables `kb_scope` binds (RAG-01.02; document_tables RAG-11.01).
+_RLS = ("chunks", "embeddings", "document_tables")
 _OWNER = "a" * 64
 _INSERT_EMBEDDING = (
     "INSERT INTO knowledge.embeddings (chunk_id, profile_id, kb_id, embedding)"
@@ -78,7 +88,7 @@ async def _knowledge_db(db: RoleDatabase, worker: tuple[str, str] | None = None)
 
 
 async def _seed(db: RoleDatabase) -> tuple[str, str]:
-    """Two knowledge bases, A and B, each with one document, chunk and embedding."""
+    """Two knowledge bases, A and B, each with one document, chunk, embedding and table."""
     kbs = (str(uuid.uuid4()), str(uuid.uuid4()))
     async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
         for kb in kbs:
@@ -104,16 +114,21 @@ async def _seed(db: RoleDatabase) -> tuple[str, str]:
                 _INSERT_EMBEDDING,
                 (chunk, kb),
             )
+            await conn.execute(
+                "INSERT INTO knowledge.document_tables (doc_id, kb_id, position, name, columns,"
+                " rows, row_count) VALUES (%s, %s, 0, 'Orders', '[]', '[]', 0)",
+                (doc, kb),
+            )
     return kbs
 
 
 async def _visible(conn: psycopg.AsyncConnection[Any], kb_ids: str | None) -> dict[str, set[str]]:
-    """The KB ids of the chunks and embeddings one transaction sees."""
+    """The KB ids of the rows of each `kb_scope` table one transaction sees."""
     seen: dict[str, set[str]] = {}
     async with conn.transaction():
         if kb_ids is not None:
             await conn.execute("SELECT set_config('neuron.kb_ids', %s, true)", (kb_ids,))
-        for table in ("chunks", "embeddings"):
+        for table in _RLS:
             query = sql.SQL("SELECT kb_id::text FROM {}").format(sql.Identifier("knowledge", table))
             cursor = await conn.execute(query)
             seen[table] = {row[0] for row in await cursor.fetchall()}
@@ -124,16 +139,16 @@ async def test_the_app_role_sees_only_the_knowledge_bases_it_sets(role_db: RoleD
     await _knowledge_db(role_db)
     a, b = await _seed(role_db)
     async with await psycopg.AsyncConnection.connect(role_db.app_dsn) as conn:
-        assert await _visible(conn, a) == {"chunks": {a}, "embeddings": {a}}
-        assert await _visible(conn, f"{a},{b}") == {"chunks": {a, b}, "embeddings": {a, b}}
+        assert await _visible(conn, a) == dict.fromkeys(_RLS, {a})
+        assert await _visible(conn, f"{a},{b}") == dict.fromkeys(_RLS, {a, b})
 
 
 async def test_unset_kb_ids_return_no_rows(role_db: RoleDatabase) -> None:  # noqa: F811
     await _knowledge_db(role_db)
     await _seed(role_db)
     async with await psycopg.AsyncConnection.connect(role_db.app_dsn) as conn:
-        assert await _visible(conn, None) == {"chunks": set(), "embeddings": set()}
-        assert await _visible(conn, "") == {"chunks": set(), "embeddings": set()}
+        assert await _visible(conn, None) == dict.fromkeys(_RLS, set())
+        assert await _visible(conn, "") == dict.fromkeys(_RLS, set())
 
 
 async def test_the_setting_does_not_outlive_its_transaction(role_db: RoleDatabase) -> None:  # noqa: F811
@@ -141,8 +156,8 @@ async def test_the_setting_does_not_outlive_its_transaction(role_db: RoleDatabas
     a, _ = await _seed(role_db)
     # One connection, as a pool hands it out to request after request.
     async with await psycopg.AsyncConnection.connect(role_db.app_dsn) as conn:
-        assert await _visible(conn, a) == {"chunks": {a}, "embeddings": {a}}
-        assert await _visible(conn, None) == {"chunks": set(), "embeddings": set()}
+        assert await _visible(conn, a) == dict.fromkeys(_RLS, {a})
+        assert await _visible(conn, None) == dict.fromkeys(_RLS, set())
 
 
 async def test_runtime_roles_cannot_alter_drop_or_disable_rls(
@@ -169,7 +184,7 @@ async def test_runtime_roles_cannot_alter_drop_or_disable_rls(
         "SELECT relname::text, relrowsecurity, pg_get_userbyid(relowner)::text FROM pg_class"
         " WHERE relnamespace = 'knowledge'::regnamespace AND relkind = 'r' ORDER BY 1",
     ) == [
-        (t, t in {"chunks", "embeddings"}, role_db.roles.migrator)
+        (t, t in _RLS, role_db.roles.migrator)
         for t in sorted((*_TABLES, *queue, "procrastinate_workers"))
     ]
 
@@ -201,6 +216,7 @@ async def test_grants_are_exactly_what_each_role_needs(
         "documents": dml,
         "chunks": {"SELECT"},
         "embeddings": {"SELECT"},
+        "document_tables": {"SELECT"},
     }
     assert await granted(worker[0]) == {
         "index_profiles": {"SELECT"},
@@ -209,6 +225,7 @@ async def test_grants_are_exactly_what_each_role_needs(
         "documents": {"SELECT", "DELETE"},
         "chunks": {"SELECT", "INSERT", "DELETE"},
         "embeddings": {"SELECT", "INSERT", "DELETE"},
+        "document_tables": {"SELECT", "INSERT", "DELETE"},
     }
     # Progress, and a fetched page's file (RAG-10.02, set once): never the base or the owner.
     assert await _rows(
@@ -321,9 +338,9 @@ async def test_the_copied_kb_id_must_match_the_parent(role_db: RoleDatabase) -> 
                 "INSERT INTO knowledge.bases (kb_id, owner_key, name, profile_id)"
                 " VALUES (gen_random_uuid(), 'alice@example.test', 'kb', 1)"
             )
-        # Deleting a document removes its chunks and embeddings.
+        # Deleting a document removes its chunks, embeddings and tables.
         await conn.execute("DELETE FROM knowledge.documents WHERE doc_id = %s", (doc,))
-        for table in ("chunks", "embeddings"):
+        for table in _RLS:
             query = sql.SQL("SELECT count(*) FROM {} WHERE kb_id = %s").format(
                 sql.Identifier("knowledge", table)
             )
@@ -393,6 +410,7 @@ async def test_upgrading_a_v1_0_0_database_leaves_its_tables_unchanged(
         # A second permissive policy is ORed with kb_scope.
         "CREATE POLICY open ON knowledge.chunks USING (true)",
         "ALTER POLICY kb_scope ON knowledge.embeddings USING (true) WITH CHECK (true)",
+        "ALTER TABLE knowledge.document_tables DISABLE ROW LEVEL SECURITY",
         "GRANT CREATE ON SCHEMA knowledge TO {worker}",
     ],
 )

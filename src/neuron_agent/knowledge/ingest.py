@@ -31,6 +31,7 @@ import psycopg
 import structlog
 from opentelemetry.trace import Span
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from neuron_agent.config.settings import ProcessingPolicy
 from neuron_agent.knowledge.blobs import BlobStore, BlobStoreError
@@ -42,6 +43,7 @@ from neuron_agent.knowledge.providers import (
     ensure_processing_allowed,
     provider_for,
 )
+from neuron_agent.knowledge.tables import Table, extract_tables
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.persistence.migrations import KnowledgeProfile
 from neuron_agent.security.egress import FetchedResponse, FetchError, fetch_public_https
@@ -92,10 +94,15 @@ _INSERT_CHUNK = (
     "INSERT INTO knowledge.chunks (chunk_id, doc_id, kb_id, ordinal, text, headings, page_start,"
     " page_end, token_count, ts_config) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::regconfig)"
 )
+_INSERT_TABLE = (
+    "INSERT INTO knowledge.document_tables (doc_id, kb_id, position, name, columns, rows,"
+    " row_count) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+)
 _INSERT_EMBEDDING = (
     "INSERT INTO knowledge.embeddings (chunk_id, profile_id, kb_id, embedding)"
     " VALUES (%s, %s, %s, %s)"
 )
+_DELETE_TABLES = "DELETE FROM knowledge.document_tables WHERE doc_id = %s"
 # Each ingestion adds what it sent to the embedding provider, so a re-run is charged again.
 _READY = (
     "UPDATE knowledge.documents SET status = 'ready', error_code = NULL, parser_version = %s,"
@@ -130,6 +137,7 @@ class Ingestor:
     # The re-index model (RAG-09.04), used for a base whose profile it embeds into.
     reindex: EmbeddingProvider | None = None
     fetch: Fetch = fetch_page
+    table_max_cells: int = 200_000
 
     async def ingest(self, doc_id: uuid.UUID, *, last_attempt: bool = True) -> str:
         """Run the document's ingestion and return its final status, or `skipped`.
@@ -165,14 +173,14 @@ class Ingestor:
                 if row["blob_key"] is None and not await self._download(conn, doc_id, row):
                     log.info("knowledge.ingest.skipped", doc_id=str(doc_id))
                     return "skipped"
-                chunks, parsed = await self._parse(row)
+                chunks, parsed, tables = await self._parse(row, doc_id)
                 span.set_attribute(semconv.NEURON_KNOWLEDGE_CHUNKS, len(chunks))
                 await self._set(conn, doc_id, "embedding")
                 with _stage("embed"):
                     passages = [_passage(c) for c in chunks]
                     vectors = {pid: await m.embed_documents(passages) for pid, m in models.items()}
                 with _stage("write"):
-                    written = await self._write(conn, doc_id, row, chunks, vectors, parsed)
+                    written = await self._write(conn, doc_id, row, chunks, vectors, parsed, tables)
             except (ParseError, EmbeddingError) as exc:
                 if exc.retryable and not last_attempt:
                     raise
@@ -262,7 +270,9 @@ class Ingestor:
         row.update(blob_key=blob_key, sha256=sha256)
         return True
 
-    async def _parse(self, row: dict[str, Any]) -> tuple[list[Chunk], tuple[str, int | None]]:
+    async def _parse(
+        self, row: dict[str, Any], doc_id: uuid.UUID
+    ) -> tuple[list[Chunk], tuple[str, int | None], list[Table]]:
         with _stage("fetch"):
             data = await self.blobs.get(row["blob_key"], row["sha256"])
         with _stage("parse"):
@@ -272,7 +282,10 @@ class Ingestor:
                 raise _RefusedError("no_text")
             if len(chunks) > MAX_CHUNKS:
                 raise _RefusedError("too_many_chunks")
-        return chunks, (parsed.parser_version, parsed.page_count)
+            tables, skipped = extract_tables(parsed, row["mime_type"], self.table_max_cells)
+        if skipped:
+            log.info("knowledge.ingest.tables_skipped", doc_id=str(doc_id), skipped=skipped)
+        return chunks, (parsed.parser_version, parsed.page_count), tables
 
     async def _set(
         self, conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID, status: str
@@ -288,11 +301,12 @@ class Ingestor:
     async def _fail_on(
         self, conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID, code: str
     ) -> str:
-        """`failed` with `code`, and no chunks: a failed re-run leaves no stale set behind."""
+        """`failed` with `code`, and no chunks or tables: a failed re-run leaves nothing stale."""
         async with conn.transaction():
             if not await lock_document(conn, doc_id):
                 return "skipped"
             await conn.execute("DELETE FROM knowledge.chunks WHERE doc_id = %s", (doc_id,))
+            await conn.execute(_DELETE_TABLES, (doc_id,))
             await conn.execute(_STATUS, ("failed", code, doc_id))
         log.warning("knowledge.ingest.failed", doc_id=str(doc_id), error_code=code)
         return "failed"
@@ -305,8 +319,9 @@ class Ingestor:
         chunks: Sequence[Chunk],
         vectors: Mapping[int, Sequence[Sequence[float]]],
         parsed: tuple[str, int | None],
+        tables: Sequence[Table],
     ) -> bool:
-        """Replace the document's chunk set and mark it ready, all or nothing.
+        """Replace the document's chunk set and tables and mark it ready, all or nothing.
 
         Retried if the profiles changed while it embedded (a re-index started, swapped or
         ended), so a document never keeps one profile's vectors only.
@@ -348,6 +363,18 @@ class Ingestor:
                         for chunk_id, vector in zip(ids, profile_vectors, strict=True)
                     ],
                 )
+            await conn.execute(_DELETE_TABLES, (doc_id,))
+            if tables:
+                async with conn.cursor() as cursor:
+                    await cursor.executemany(
+                        _INSERT_TABLE,
+                        [
+                            (doc_id, kb_id, position, t.name,
+                             Jsonb([{"name": n, "type": k} for n, k in t.columns]),
+                             Jsonb(t.rows), len(t.rows))
+                            for position, t in enumerate(tables)
+                        ],
+                    )  # fmt: skip
             tokens = len(vectors) * sum(estimate_tokens(_passage(chunk)) for chunk in chunks)
             await conn.execute(_READY, (*parsed, tokens, doc_id))
         return True

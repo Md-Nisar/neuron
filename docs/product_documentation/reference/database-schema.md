@@ -233,9 +233,27 @@ Vector representations of chunk texts.
 
 ---
 
+### 3.6 `knowledge.document_tables`
+Typed tables of XLSX and CSV uploads, for `query_table` (migration 31, RAG-11.01). The worker stores at most 20 per document and `APP_KNOWLEDGE_TABLE_MAX_CELLS` cells in all; a table past a cap stays searchable as text only. A re-index does not touch them.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `doc_id` | `uuid` | NOT NULL | Parent document UUID. |
+| `kb_id` | `uuid` | NOT NULL | Parent knowledge base UUID. |
+| `position` | `smallint` | NOT NULL, 0–19 | Order of the table in the document. |
+| `name` | `text` | NOT NULL, 1–300 chars | The heading above the table, else `Table <n>`. |
+| `columns` | `jsonb` | NOT NULL, array | `[{"name", "type"}]`; type `integer`, `real` or `text` (dates stay text); an empty or repeated name becomes `column_<n>`. |
+| `rows` | `jsonb` | NOT NULL, array | The rows after the header, as arrays of typed values (`null` for an empty cell). |
+| `row_count` | `integer` | NOT NULL, >= 0 | Number of rows. |
+
+- **Primary Key:** `(doc_id, position)`
+- **Foreign Key:** `(doc_id, kb_id) REFERENCES knowledge.documents (doc_id, kb_id) ON DELETE CASCADE`
+
+---
+
 ## 4. Row-Level Security (RLS) Architecture
 
-To guarantee that no tenant can read chunks or vector embeddings belonging to another organization, Neuron enables PostgreSQL Row-Level Security on `knowledge.chunks` and `knowledge.embeddings`:
+To guarantee that no tenant can read chunks or vector embeddings belonging to another organization, Neuron enables PostgreSQL Row-Level Security on `knowledge.chunks`, `knowledge.embeddings` and `knowledge.document_tables` (the same `kb_scope` policy; the third shown below the first two):
 
 ```sql
 ALTER TABLE knowledge.chunks ENABLE ROW LEVEL SECURITY;
@@ -251,7 +269,7 @@ CREATE POLICY kb_scope ON knowledge.embeddings
 ```
 
 ### Transaction Execution Contract
-Before querying or modifying `chunks` or `embeddings`, the application executes:
+Before querying or modifying `chunks`, `embeddings` or `document_tables`, the application executes:
 ```sql
 SELECT set_config('neuron.kb_ids', 'uuid1,uuid2', true);
 ```

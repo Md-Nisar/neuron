@@ -24,8 +24,10 @@ from neuron_agent.knowledge.blobs import LocalBlobStore
 from neuron_agent.knowledge.chunking import estimate_tokens
 from neuron_agent.knowledge.ingest import Ingestor, connector
 from neuron_agent.knowledge.parsing import (
+    CSV,
     MARKDOWN,
     TEXT,
+    CsvParser,
     Limits,
     ParsedDocument,
     ParseError,
@@ -218,6 +220,26 @@ async def test_a_parser_error_fails_the_document_and_leaves_no_chunks(
     state = await _state(db, doc)
     assert state["document"][:2] == ("failed", "media_type_mismatch")
     assert (state["chunks"], state["embedded"]) == ([], 0)
+
+
+async def test_a_csv_keeps_one_typed_table_until_it_fails(
+    setup: tuple[RoleDatabase, Ingestor],
+) -> None:
+    """RAG-11.01: written as the worker, under `kb_scope`, beside the chunks."""
+    db, ingestor = setup
+    with_csv = Ingestor(**{**ingestor.__dict__, "parsers": (CsvParser(),)})
+    doc = await _document(db, with_csv, "region,units\nNorth,3\nWest,\n", mime_type=CSV)
+    assert await with_csv.ingest(doc) == "ready"
+    assert await with_csv.ingest(doc) == "ready"  # replaced, not added
+    query = (
+        "SELECT position, name, columns, rows, row_count FROM knowledge.document_tables"
+        " WHERE doc_id = %s"
+    )
+    columns = [{"name": "region", "type": "text"}, {"name": "units", "type": "integer"}]
+    rows = [["North", 3], ["West", None]]
+    assert await _rows(db.migrator_dsn, query, (doc,)) == [(0, "Table 1", columns, rows, 2)]
+    assert await with_csv.fail(doc, "ingest_failed") == "failed"
+    assert await _rows(db.migrator_dsn, query, (doc,)) == []
 
 
 async def test_a_tombstoned_document_is_left_to_the_purge_job(
