@@ -65,6 +65,7 @@ GITHUB_API = "https://api.github.com"
 # Default configured models in priority fallback order
 DEFAULT_MODELS = (
     "nvidia/nemotron-3-ultra-550b-a55b",
+    "nvidia/nemotron-3.5-super-vl-120b-a12b",
     "deepseek-ai/deepseek-v4.1-flash",
     "z-ai/glm-5.3",
 )

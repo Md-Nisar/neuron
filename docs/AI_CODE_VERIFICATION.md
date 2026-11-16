@@ -110,7 +110,8 @@ Approving means you would have been comfortable writing this code yourself.
    `nightly-eval` (audit L-08). `ai-review` never checks out or runs the PR: it reads the
    PR's commits only through `git diff`, and reviews against the base branch's checklists. Optionally set the repository
    variable `AI_REVIEW_MODELS` to a comma-separated list of model ids to try in order;
-   the default is `z-ai/glm-5.3,moonshotai/kimi-k3,deepseek-ai/deepseek-v4.1-flash`.
+   the default is `nvidia/nemotron-3-ultra-550b-a55b,nvidia/nemotron-3.5-super-vl-120b-a12b,deepseek-ai/deepseek-v4.1-flash,z-ai/glm-5.3`
+   (`DEFAULT_MODELS` in `scripts/ai_review.py`; checked models are listed in `EVALUATION.md`).
    Free-tier models change often, so confirm the ids with
    `curl -s -H "Authorization: Bearer $NVIDIA_API_KEY" https://integrate.api.nvidia.com/v1/models`.
    The free tier is rate limited (about 40 requests a minute) and is not meant for
