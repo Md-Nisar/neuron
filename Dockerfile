@@ -1,7 +1,7 @@
 # Both bases are pinned by digest (the multi-arch index digest); the tag stays in the FROM line
 # and in the comment so Dependabot can bump tag and digest together.
 # ghcr.io/astral-sh/uv:0.13.7-python3.13-trixie-slim
-FROM ghcr.io/astral-sh/uv:0.13.7-python3.13-trixie-slim@sha256:6ff812e34a0e14b4b8bc9ddf25e77b3e16bac6e0c4d9b67641f40366fa382d4c AS builder
+FROM ghcr.io/astral-sh/uv:0.13.8-python3.13-trixie-slim@sha256:9a9f205ad2f9aaf63597afef4042c455392f9253937028264b98226e91c09518 AS builder
 ENV UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy \
     UV_HTTP_TIMEOUT=120
@@ -15,7 +15,7 @@ COPY src ./src
 RUN uv sync --locked --no-dev --no-editable
 
 # python:3.13-slim-trixie
-FROM python:3.13-slim-trixie@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
+FROM python:3.15-slim-trixie@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 # Build arguments are recorded by provenance: labels only, never a secret.
 ARG GIT_SHA=unknown
 ARG VERSION=1.3.0
