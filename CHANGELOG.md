@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.4.0
+
+"Questions about tables" (RAG-E11, first part). The assistant can now answer a question that needs every row of an uploaded spreadsheet or CSV file, such as a total, a count, an average or the largest group. The worker stores each table of an XLSX or CSV upload with typed columns. The agent finds tables with `find_tables` and runs one read-only SQL query on one with `query_table`, and the answer cites the table's document and sheet. On the table eval (1,500 rows, 6 questions that need every row and 2 that need one), the reference model went from 1 of 6 aggregate questions right with search alone to 6 of 6. Knowledge stays off by default. The `/v1` API and stream protocol version 1 stay compatible: CSV uploads, the two tool scopes and the citation's `table` field are additions, and `citation_schema_version` stays 1. Like 1.0.0 to 1.3.0, this release was verified locally, without a production environment. Verification: `docs/releases/v1.4.0-release-verification.md`.
+
+Upgrade note: migration 31 (`document_tables`) runs in `setup` when knowledge is on. It adds `knowledge.document_tables` under the `kb_scope` row-level security policy; the worker role inserts its rows and the app role reads them. Documents ingested before 1.4.0 have no stored tables, and a re-index to a new embedding model does not add them. To make an older spreadsheet queryable, delete it and upload it again: uploading the same file into the same base returns the existing document. The upgrade from 1.3.0's schema was run locally: `docs/releases/v1.4.0-gate/upgrade-from-v1.3.0.json`.
+
+Upgrade note: the tools need the scopes `tools:find_tables` and `tools:query_table`. A deployment that maps roles to permissions (`APP_AUTH_ROLE_PERMISSIONS`) or lists scopes for the web app (`VITE_AUTH_SCOPES`) adds them, as `docker-compose.yml` does; without them the agent searches tables as text, as in 1.3.0.
+
+Upgrade note: a citation from `query_table` has `chunk_id` `null` and `table` set to the sheet or table name. A client that opens every citation's passage through the chunk route must check for `null` first; the web app shows the table's name instead.
+
+Known issues:
+- **No production environment exists**, as for 1.0.0 to 1.3.0: no hosted deployment, staging run or production-model run. The GitHub Release is published by hand from this section.
+- A model can answer a table question from search without calling `find_tables`. Once it has called `find_tables`, it is made to query before answering. In the close-out runs this happened once in 12 aggregate questions (`table-002`).
+- Only tables of XLSX and CSV uploads are stored; tables inside PDF, DOCX or PPTX stay text only. A table over the caps (20 tables and `APP_KNOWLEDGE_TABLE_MAX_CELLS` cells per document) stays searchable as text but cannot be queried. Dates are stored as text.
+- SQLite's 256 MB heap limit covers the whole process, so concurrent queries share it (`APP_KNOWLEDGE_TABLE_QUERY_CONCURRENCY`, default 2).
+- The free tier's limits stopped the table eval for several candidate models; the models checked are listed in `EVALUATION.md`, "Development models".
+- Known issues of 1.3.0 that are unchanged: JavaScript-built pages, one fetch per page, no per-host fetch limit, the one-trial live answer eval, local-only load figures, the hosted-only reranker, German word search, no worker settings profile, and the erase-flow browser test's race.
+
+Changes:
+
+- Knowledge: CSV uploads (`text/csv`, RAG-11.01). A CSV must be UTF-8 (a BOM is allowed) with `,`, `;`, tab or `|` between cells; it becomes one table, searchable as text like any other.
+- Knowledge: the worker stores the tables of XLSX and CSV uploads in `knowledge.document_tables`: the first row is the header, each column typed `integer`, `real` or `text`, at most 20 tables and `APP_KNOWLEDGE_TABLE_MAX_CELLS` cells (default 200,000) per document. Rows go with the document on deletion, purge and erasure.
+- Tools: `find_tables(query)` (scope `tools:find_tables`) returns up to 10 tables from the bases the caller may use, each with a per-run handle, its columns, row count and 3 sample rows. `query_table(table, sql)` (scope `tools:query_table`) runs one query on the table, called `data`, and returns at most 200 rows and a `cite_id`. Both are read-only and taint the run. Fixed errors: `table_not_found`, `query_refused`, `query_timeout`, `query_too_large`, `query_failed`.
+- Security: queries run on a new in-memory SQLite database per call, loaded with one table. An authorizer allows only `SELECT`, reads of `data` and an allowlist of functions; extensions are never enabled; a query stops after 5 seconds, the SQL text is capped at 10,000 characters and the heap at 256 MB (`tests/security/test_table_query_engine.py`).
+- Citations: `Citation.table` names the sheet or table of a `query_table` citation, whose `chunk_id` is `null`. The web app's source sheet shows the table instead of fetching a passage.
+- Agent: system prompt version 5 (a calculation over a spreadsheet comes from `query_table`). A final answer given with other tool calls is dropped and the model asked again once they ran, and an answer given after `find_tables` found tables that no later call queried is set aside (its tokens charged) and the model required to call `query_table`.
+- Docs: ADR 0014 amendment "tables"; the table eval (`tests/integration/test_live_table_answers.py`, `scripts/build_table_eval.py`); the list of checked free-tier models in `EVALUATION.md`.
+
 ## 1.3.0
 
 "Web pages" (RAG-E10, first part). A user can add a public `https` web page to a knowledge base by its address; the worker fetches it once through a public-only client, stores that version with its hash and fetch time, extracts its main text with Trafilatura, and every citation of it carries the page's URL and when it was fetched. A deployment can also run its chat model on a self-hosted OpenAI-compatible server (vLLM, SGLang). Knowledge stays off by default. The `/v1` API and stream protocol version 1 stay compatible: the web-pages route and the `source_url` and `fetched_at` fields are additions, and `citation_schema_version` stays 1. Like 1.0.0 to 1.2.0, this release was verified locally, without a production environment. Verification: `docs/releases/v1.3.0-release-verification.md`.
