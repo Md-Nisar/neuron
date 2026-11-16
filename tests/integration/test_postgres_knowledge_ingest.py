@@ -270,17 +270,29 @@ async def test_only_readers_of_its_base_find_or_load_a_stored_table(
     assert (found.doc_id, found.position, found.name, found.row_count) == (doc, 0, "Table 1", 2)
     assert found.sample == [["North", 3], ["West", 5]]
     assert (await service.table(_OWNER, doc, 0)).rows == [["North", 3], ["West", 5]]
-    # Another user, or a request narrowed to other bases, finds and loads nothing.
-    for owner, kb_ids in (("d" * 64, None), (_OWNER, {uuid.uuid4()})):
+    assert await service.find_tables(_OWNER, ["UNITS", "", "\x00"], kb_ids={base.kb_id})
+    # Another user, or a request narrowed to the owner's other base, finds and loads nothing.
+    other = await service.create(_OWNER, "Empty", "hosted")
+    for owner, kb_ids in (("d" * 64, None), (_OWNER, {other.kb_id})):
         assert await service.find_tables(owner, [], kb_ids=kb_ids) == []
         with pytest.raises(KnowledgeDocumentNotFoundError):
             await service.table(owner, doc, 0, kb_ids=kb_ids)
-    tombstone = "UPDATE knowledge.documents SET deleted_at = now(), status = 'deleting'"
-    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
-        await conn.execute(tombstone + " WHERE doc_id = %s", (doc,))
-    assert await service.find_tables(_OWNER, []) == []
-    with pytest.raises(KnowledgeDocumentNotFoundError):
-        await service.table(_OWNER, doc, 0)
+    # Each of these hides the table on its own: a document not ready, a tombstoned document,
+    # a deleted base.
+    documents = "UPDATE knowledge.documents SET {} WHERE doc_id = %s"
+    bases = "UPDATE knowledge.bases SET deleted_at = {} WHERE kb_id = %s"
+    for change, undo, key in (
+        (documents.format("status = 'embedding'"), documents.format("status = 'ready'"), doc),
+        (documents.format("deleted_at = now()"), documents.format("deleted_at = NULL"), doc),
+        (bases.format("now()"), bases.format("NULL"), base.kb_id),
+    ):
+        async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as c:
+            await c.execute(change, (key,))
+            assert await service.find_tables(_OWNER, []) == []
+            with pytest.raises(KnowledgeDocumentNotFoundError):
+                await service.table(_OWNER, doc, 0)
+            await c.execute(undo, (key,))
+    assert await service.find_tables(_OWNER, [])  # each change was undone
 
 
 async def test_a_tombstoned_document_is_left_to_the_purge_job(

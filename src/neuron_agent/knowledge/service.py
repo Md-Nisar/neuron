@@ -815,6 +815,7 @@ class KnowledgeBases:
         roles: frozenset[str] = frozenset(),
     ) -> builtins.list[FoundTable]:
         """Up to 10 tables of the readable bases (narrowed to `kb_ids`), best match first."""
+        words = [w.lower()[:50] for w in words if w.strip() and "\x00" not in w][:10]
         async with self._transaction() as conn:
             kbs = await self._readable(conn, owner_key, roles, kb_ids)
             await conn.execute(_SCOPE, (",".join(map(str, kbs)),))
