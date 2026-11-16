@@ -8,7 +8,7 @@ const api = "http://127.0.0.1:8000";
 export default defineConfig({
   testDir: "./e2e",
   // Needs Postgres and the ingestion worker: `playwright.knowledge.config.ts`.
-  testIgnore: /knowledge\.spec\.ts/,
+  testIgnore: /(knowledge|live_stack)\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,
@@ -41,7 +41,6 @@ export default defineConfig({
         APP_IDENTITY_HASH_KEY: "browser-e2e-identity-hash-key-not-a-secret",
         APP_CHECKPOINTER: "memory",
         APP_MEMORY_ENABLED: "true",
-        APP_KNOWLEDGE_ENABLED: "false",
         APP_OTEL_ENABLED: "false",
         APP_ENABLE_LANGSMITH: "false",
         APP_FAKE_MODEL_TTFT_MS: "1",
