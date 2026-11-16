@@ -3,22 +3,28 @@
 
 """The agent's knowledge tools (ADR 0014 K5 to K7; RAG-04.02).
 
-`list_knowledge_bases`, `search_knowledge` and `get_document_excerpt` read the caller's bases
+`list_knowledge_bases`, `search_knowledge`, `get_document_excerpt`, `find_tables` and
+`query_table` (RAG-11.01) read the caller's bases
 through the same authorisation as the API: the owner comes only from the run's trusted context,
 never from a tool argument. Every passage gets a fresh, opaque `cite_id`; the chunk it stands
 for is kept in the tool message's artifact, which the model never sees, so an excerpt can be
 asked for only by an id a knowledge tool returned in this run (a run's tool messages are not
 stored in the thread). Results are framed as data, capped in size, and taint the run.
+
+A table found by `find_tables` gets an opaque per-run handle the same way; `query_table` runs
+one read-only SQLite query on it (`table_engine`), in a thread, a few at a time per process.
 """
 
 from __future__ import annotations
 
 import functools
+import re
 import secrets
 import uuid
 from collections.abc import Callable, Sequence
 from typing import Annotated, Any
 
+import anyio
 from langchain.tools import ToolRuntime, tool
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool, ToolException
@@ -35,6 +41,7 @@ from neuron_agent.knowledge.providers import (
 from neuron_agent.knowledge.reranking import create_reranker
 from neuron_agent.knowledge.retrieval import Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
+from neuron_agent.knowledge.table_engine import MAX_SQL_CHARS, TableQueryError, run_query
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.tools.framing import frame
 from neuron_agent.tools.registry import ToolSpec
@@ -43,6 +50,8 @@ KNOWLEDGE_TOOL_SCOPES = {
     "list_knowledge_bases": "tools:list_knowledge_bases",
     "search_knowledge": "tools:search_knowledge",
     "get_document_excerpt": "tools:get_document_excerpt",
+    "find_tables": "tools:find_tables",
+    "query_table": "tools:query_table",
 }
 MAX_CHARS = 6_000
 MAX_SEARCHES = 5
@@ -62,6 +71,19 @@ _REPEATED = (
     "documents do not have it."
 )
 _INVALID = "Error: the request is invalid. Check the arguments and their limits."
+MAX_TABLE_FINDS = 5
+MAX_TABLE_QUERIES = 10
+MAX_TABLE_CHARS = 12_000
+_SAMPLE_CHARS = 60
+_WORDS = re.compile(r"[^\W_]{2,}")
+_NO_TABLE = "Error: there is no such table. Use a table handle from find_tables in this answer."
+_QUERY_ERRORS = {
+    "query_refused": "Error: the query was refused. Write one SELECT that reads the table `data`"
+    " and uses only aggregate, arithmetic, string and date functions.",
+    "query_timeout": "Error: the query took too long. Make it simpler.",
+    "query_too_large": "Error: the query or its result is too large. Aggregate, select fewer"
+    " columns or add a LIMIT.",
+}
 # RAG-04.03: a search with nothing above the score floor says so, rather than return an empty
 # list the model might read as a failed call; with no passage there is nothing to cite.
 _NO_RESULTS = {"status": "no_relevant_results", "passages": []}
@@ -196,9 +218,62 @@ def _source(passage: Any) -> dict[str, Any]:
     return {"source_url": passage.source_url, "fetched_at": fetched}
 
 
+def _handles(messages: Sequence[Any]) -> dict[str, dict[str, Any]]:
+    """The table handles `find_tables` returned in `messages`, each with the table it names."""
+    found: dict[str, dict[str, Any]] = {}
+    for message in messages:
+        if (
+            isinstance(message, ToolMessage)
+            and message.name == "find_tables"
+            and message.status != "error"
+            and isinstance(message.artifact, dict)
+        ):
+            found.update(message.artifact)
+    return found
+
+
+def _tables_text(items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
+    """The framed tables within `MAX_TABLE_CHARS`: later tables go first, then the last one's
+    sample rows, then its last columns, counted in `more_columns`."""
+    items = [dict(item) for item in items]
+    while (text := frame(_PREAMBLE, "knowledge", items)) and len(text) > MAX_TABLE_CHARS:
+        if len(items) > 1:
+            items.pop()
+        elif items[0].get("sample"):
+            items[0]["sample"] = []
+        elif len(items[0]["columns"]) > 1:  # 100 names of 100 characters can pass the cap
+            items[0]["columns"] = items[0]["columns"][:-1]
+            items[0]["more_columns"] = items[0].get("more_columns", 0) + 1
+        else:
+            break
+    return text, items
+
+
+def _rows_text(columns: list[str], rows: list[list[Any]], truncated: bool) -> str:
+    """The framed result within `MAX_TABLE_CHARS`, dropping rows from the end."""
+    while True:
+        text = frame(
+            _PREAMBLE, "knowledge", {"columns": columns, "rows": rows, "truncated": truncated}
+        )
+        if len(text) <= MAX_TABLE_CHARS or not rows:
+            return text
+        rows, truncated = rows[:-1], True
+
+
+def _query_error(exc: TableQueryError) -> str:
+    if exc.code in _QUERY_ERRORS:
+        return _QUERY_ERRORS[exc.code]
+    # SQLite's message about the model's own SQL, so it can correct it; `<` escaped as in frame.
+    detail = "".join(c if c.isprintable() else " " for c in exc.detail or "")
+    detail = detail.replace("<", chr(92) + "u003c")
+    return f"Error: the query failed: {detail}"
+
+
 def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
-    """The three knowledge tools on `pool`, with their scopes; all read-only, all tainting."""
+    """The knowledge tools on `pool`, with their scopes; all read-only, all tainting."""
     bases = KnowledgeBases(settings, pool)
+    # SQLite's heap cap is shared by the process, so queries run a few at a time (RAG-11.01).
+    queries = anyio.CapacityLimiter(settings.knowledge_table_query_concurrency)
     # Built on first search, as for the API route: a provider that cannot be built is retried.
     retriever = functools.cache(
         lambda: Retriever(
@@ -299,9 +374,96 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             ]
         )
 
+    @tool(response_format="content_and_artifact")
+    async def find_tables(
+        query: Annotated[str, Field(min_length=1, max_length=200)],
+        runtime: ToolRuntime[Any, Any],
+    ) -> tuple[str, dict[str, dict[str, Any]]]:
+        """Find tables in the user's spreadsheets and CSV files (title, sheet or column names
+        matching `query`) to calculate over with query_table. Use it for totals, counts,
+        averages, or the largest or smallest values. Each table has a `table` handle, its
+        columns and types, its row count and sample rows."""
+        owner = _owner(runtime)
+        messages = _messages(runtime)
+        if _calls(messages, "find_tables") > MAX_TABLE_FINDS:
+            raise ToolException(_TOO_MANY)
+        words = list(dict.fromkeys(w.lower() for w in _WORDS.findall(query)))[:10]
+        try:
+            found = await bases.find_tables(
+                owner, words, kb_ids=_scope(runtime), roles=_roles(runtime)
+            )
+        except AppError:
+            raise ToolException(_UNAVAILABLE) from None
+        refs: dict[str, dict[str, Any]] = {}
+        taken = set(_handles(messages))
+        items = []
+        for t in found:
+            while (handle := "t" + secrets.token_hex(4)) in taken or handle in refs:
+                pass  # a handle repeated in this run would point at another table
+            refs[handle] = {"doc_id": str(t.doc_id), "position": t.position}
+            items.append(
+                {
+                    "table": handle,
+                    "title": t.title,
+                    "name": t.name,
+                    "columns": t.columns,
+                    "row_count": t.row_count,
+                    "sample": [
+                        [v[:_SAMPLE_CHARS] if isinstance(v, str) else v for v in row]
+                        for row in t.sample
+                    ],
+                }
+            )
+        text, shown = _tables_text(items)
+        return text, {item["table"]: refs[item["table"]] for item in shown}
+
+    @tool
+    async def query_table(
+        table: Annotated[str, Field(min_length=1, max_length=16)],
+        sql: Annotated[str, Field(min_length=1, max_length=MAX_SQL_CHARS)],
+        runtime: ToolRuntime[Any, Any],
+    ) -> str:
+        """Run one read-only SQLite SELECT on a `table` handle from find_tables in this
+        answer. The SQL names the table `data`; put column names in double quotes. Use it to
+        total, count, average, rank or look up rows rather than adding up search passages.
+        At most 200 rows come back."""
+        owner = _owner(runtime)
+        messages = _messages(runtime)
+        if _calls(messages, "query_table") > MAX_TABLE_QUERIES:
+            raise ToolException(_TOO_MANY)
+        ref = _handles(messages).get(table)
+        if ref is None:
+            raise ToolException(_NO_TABLE)
+        try:
+            stored = await bases.table(
+                owner,
+                uuid.UUID(ref["doc_id"]),
+                ref["position"],
+                kb_ids=_scope(runtime),
+                roles=_roles(runtime),
+            )
+        except KnowledgeDocumentNotFoundError:
+            raise ToolException(_NO_TABLE) from None
+        except AppError:
+            raise ToolException(_UNAVAILABLE) from None
+        columns = [(c["name"], c["type"]) for c in stored.columns]
+        try:
+            result = await anyio.to_thread.run_sync(
+                run_query, columns, stored.rows, sql, limiter=queries
+            )
+        except TableQueryError as exc:
+            raise ToolException(_query_error(exc)) from None
+        return _rows_text(list(result.columns), [list(r) for r in result.rows], result.truncated)
+
     return [
         ToolSpec(_fixed_errors(t), KNOWLEDGE_TOOL_SCOPES[t.name], "read", taints_run=True)
-        for t in (list_knowledge_bases, search_knowledge, get_document_excerpt)
+        for t in (
+            list_knowledge_bases,
+            search_knowledge,
+            get_document_excerpt,
+            find_tables,
+            query_table,
+        )
     ]
 
 

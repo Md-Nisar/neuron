@@ -82,6 +82,7 @@ Every `/v1/*` route requires an OAuth 2.0 / OIDC bearer access token (a signed J
 | `knowledge:admin` | `GET` and `PUT /v1/knowledge/bases/{kb_id}/grants`: share a base with a token role, for its owner or an `admin` role (RAG-09.03) |
 | `tools:calculator` | lets the agent use the `calculator` tool |
 | `tools:list_knowledge_bases`, `tools:search_knowledge`, `tools:get_document_excerpt` | let the agent use those knowledge tools (in development, v1.1.0) |
+| `tools:find_tables`, `tools:query_table` | let the agent find tables in XLSX and CSV uploads and run read-only SQL on one (RAG-11.01, in development) |
 | `tools:mcp.<server>.<tool>` | lets the agent use that MCP tool |
 
 ### Approving a tool call

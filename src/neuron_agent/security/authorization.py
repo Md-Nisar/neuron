@@ -32,6 +32,8 @@ DEV_PERMISSIONS = frozenset(
         "tools:list_knowledge_bases",
         "tools:search_knowledge",
         "tools:get_document_excerpt",
+        "tools:find_tables",
+        "tools:query_table",
     }
 )
 
