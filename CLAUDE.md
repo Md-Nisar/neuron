@@ -76,7 +76,7 @@ Framework upgrades (LangChain/LangGraph major/minor bumps): re-check upstream do
 
 ## Project stage
 
-The latest release is v1.2.0, "Retrieval quality and sharing" (2026-11-13, `docs/releases/v1.2.0-release-verification.md`), after v1.1.0, "Knowledge Engine" (2026-11-10), and v1.0.0 (2026-11-02). All shipped without a production environment: no hosted deployment has ever run, and the evidence is local (a Docker Compose reference stack, a fake model for load, the NVIDIA free tier for small real-model checks). Release history, ADR mapping and deferred work are in `docs/ROADMAP.md`, `CHANGELOG.md` and `docs/releases/`.
+The latest release is v1.3.0, "Web pages" (tagged 2026-11-16, `docs/releases/v1.3.0-release-verification.md`), after v1.2.0, "Retrieval quality and sharing" (2026-11-13), v1.1.0, "Knowledge Engine" (2026-11-10), and v1.0.0 (2026-11-02). v1.4.0, "Questions about tables" (RAG-11.01), is prepared in `docs/releases/v1.4.0-release-verification.md`. All shipped without a production environment: no hosted deployment has ever run, and the evidence is local (a Docker Compose reference stack, a fake model for load, the NVIDIA free tier for small real-model checks). Release history, ADR mapping and deferred work are in `docs/ROADMAP.md`, `CHANGELOG.md` and `docs/releases/`.
 
 Release verification is recorded in `docs/releases/vX.Y.Z-release-verification.md`. Check `docs/ROADMAP.md` and open issues before assuming a not-yet-released feature already exists.
 

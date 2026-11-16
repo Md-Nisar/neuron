@@ -1,0 +1,178 @@
+{
+  "test": "tests/integration/test_live_table_answers.py, tools on (find_tables and query_table), 8 questions over a 1,500-row orders table",
+  "date": "2026-11-16",
+  "code": "main at 5e3aa26 (RAG-11.01 close-out, #613); later commits to the release change only dependencies and docs",
+  "database": "pgvector/pgvector:pg16 in Docker, local",
+  "gate": "every case correct",
+  "close_out_runs": {
+    "model": "nvidia:nvidia/nemotron-3-ultra-550b-a55b",
+    "runs": [
+      {
+        "aggregate": "6 of 6",
+        "lookup": "2 of 2"
+      },
+      {
+        "aggregate": "5 of 6",
+        "lookup": "2 of 2",
+        "miss": "table-002: 21 orders for 261; the model answered from search and never called find_tables (known issue)"
+      }
+    ]
+  },
+  "release_runs": [
+    {
+      "model": "nvidia:nvidia/nemotron-3-ultra-550b-a55b",
+      "correct": {
+        "aggregate": "6 of 6",
+        "lookup": "2 of 2"
+      },
+      "chunks": 69,
+      "infrastructure_errors": [],
+      "cases": [
+        {
+          "id": "table-001",
+          "kind": "aggregate",
+          "expected": [
+            "5107",
+            "5,107"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-002",
+          "kind": "aggregate",
+          "expected": [
+            "261"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-003",
+          "kind": "aggregate",
+          "expected": [
+            "Desk lamp"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-004",
+          "kind": "aggregate",
+          "expected": [
+            "11.0"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-005",
+          "kind": "aggregate",
+          "expected": [
+            "84277.46",
+            "84,277.46"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-006",
+          "kind": "aggregate",
+          "expected": [
+            "West"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-007",
+          "kind": "lookup",
+          "expected": [
+            "12"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-008",
+          "kind": "lookup",
+          "expected": [
+            "2026-06-13"
+          ],
+          "correct": true
+        }
+      ]
+    },
+    {
+      "model": "nvidia:nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "correct": {
+        "aggregate": "6 of 6",
+        "lookup": "2 of 2"
+      },
+      "chunks": 69,
+      "infrastructure_errors": [],
+      "cases": [
+        {
+          "id": "table-001",
+          "kind": "aggregate",
+          "expected": [
+            "5107",
+            "5,107"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-002",
+          "kind": "aggregate",
+          "expected": [
+            "261"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-003",
+          "kind": "aggregate",
+          "expected": [
+            "Desk lamp"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-004",
+          "kind": "aggregate",
+          "expected": [
+            "11.0"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-005",
+          "kind": "aggregate",
+          "expected": [
+            "84277.46",
+            "84,277.46"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-006",
+          "kind": "aggregate",
+          "expected": [
+            "West"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-007",
+          "kind": "lookup",
+          "expected": [
+            "12"
+          ],
+          "correct": true
+        },
+        {
+          "id": "table-008",
+          "kind": "lookup",
+          "expected": [
+            "2026-06-13"
+          ],
+          "correct": true
+        }
+      ]
+    }
+  ],
+  "baseline_without_the_tools": "aggregates 1 of 6, lookups 2 of 2 (part 4b-2, tracker)"
+}

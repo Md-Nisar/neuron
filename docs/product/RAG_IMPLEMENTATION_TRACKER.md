@@ -64,7 +64,9 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-16, Phase 4):** RAG-11.01 `query_table` is Done (#594), one known issue recorded: a model that answers from search without calling `find_tables`. The other nine E11 and E12 stories stay deferred for want of a product need, so no story is picked; the owner chooses the next one (or the v1.4.0 release of RAG-11.01), and tags `v1.3.0`.
+**Recommended next action (2026-11-16, v1.4.0):** `v1.3.0` is tagged (owner, 2026-11-16). v1.4.0 "Questions about tables" (RAG-11.01) is prepared: version 1.4.0, the CHANGELOG section and `docs/releases/v1.4.0-release-verification.md`. The live answer eval on the release code missed one abstention (`unanswerable-003`; `cited_correctly` 0.953), as in v1.3.0; the owner accepted it (2026-11-16). Next: the release pull request merges, then the owner tags `v1.4.0` and publishes the GitHub Release from the `1.4.0` CHANGELOG section. Follow-up: the retired default reranker (#620).
+
+**Earlier (2026-11-16, Phase 4):** RAG-11.01 `query_table` is Done (#594), one known issue recorded: a model that answers from search without calling `find_tables`. The other nine E11 and E12 stories stay deferred for want of a product need, so no story is picked; the owner chooses the next one (or the v1.4.0 release of RAG-11.01), and tags `v1.3.0`.
 
 **Earlier (2026-11-14, Phase 4):** E11 and E12 were checked against product need, and only RAG-11.01 `query_table` has one. XLSX uploads are already accepted, but no current tool can calculate over more rows than search returns. It is planned for v1.4.0 (epic #593, story #594). It starts with table eval cases that show the failure, then an ADR 0014 amendment. The other nine stories are deferred, with reasons under "Epic detail". In parallel, the owner tags `v1.3.0`.
 
@@ -508,6 +510,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-16 | v1.4.0 prepared: version 1.4.0, CHANGELOG, release record and gate evidence (upgrade from v1.3.0, table eval, live answer eval: `cited_correctly` 0.953, one abstention missed); `v1.3.0` tagged by the owner | Claude session |
 | 2026-11-16 | RAG-11.01 close-out: `query_after_find_middleware` requires a `query_table` call when the model answers after `find_tables` found tables it never queried; live eval aggregates 6 of 6 and 5 of 6 (the miss never called `find_tables`, a known issue); story Done | Claude session |
 | 2026-11-16 | RAG-11.01 part 4a-1: `KnowledgeBases.find_tables` and `.table` read stored tables of the readable bases only (`allowed_kbs`, request narrowing, `kb_scope` RLS, live ready documents) (#605); the tools follow in 4a-2 | Claude session |
 | 2026-11-16 | RAG-11.01 part 4a-2: `find_tables` and `query_table` tools (read, tainting, scopes `tools:find_tables` and `tools:query_table`), opaque per-run table handles, queries in a thread under `APP_KNOWLEDGE_TABLE_QUERY_CONCURRENCY`; citations and the live eval follow in 4b (#606) | Claude session |

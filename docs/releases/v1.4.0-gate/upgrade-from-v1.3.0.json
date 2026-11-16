@@ -1,0 +1,18 @@
+{
+  "run": "2026-11-16",
+  "database": "pgvector/pgvector:pg16 in Docker, one database, kept across the switch; setup run with APP_KNOWLEDGE_ENABLED=true",
+  "before": {
+    "code": "v1.3.0 release commit 2b373d3, uv run python -m neuron_agent.persistence.cli setup",
+    "migrations": 30,
+    "seeded": "one knowledge base and one ready Markdown document (rows written with SQL)"
+  },
+  "after": {
+    "code": "main at d46388a (the release code before the version change)",
+    "setup": "exit 0, applied migrations [31]",
+    "migrations": 31,
+    "seeded_rows": "the base and its ready document kept",
+    "document_tables": "row level security on, policy kb_scope",
+    "second_setup": "applied migrations none"
+  },
+  "not_run": "the reference stack (docker-compose.reference.yml) with images built from both versions, the API smoke test and threads, as for v1.3.0; see the verification record"
+}
