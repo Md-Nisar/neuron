@@ -28,6 +28,16 @@ const POLL_MAX_MS = 15_000;
 export function pollDelay(n: number): number {
   return Math.min(POLL_MS * 1.5 ** n, POLL_MAX_MS);
 }
+/** A file refused as busy (the user's ingestion cap, or this process's upload cap) is sent again
+ * after the server's Retry-After (or this long, in seconds), at most this many times. */
+const BUSY_DEFAULT_SECONDS = 5;
+const BUSY_MAX_SECONDS = 30;
+const BUSY_ATTEMPTS = 10;
+const isBusy = (failure: unknown): failure is ApiError =>
+  failure instanceof ApiError &&
+  failure.kind === "rate_limited" &&
+  (failure.code === "ingestion_concurrency_exceeded" || failure.code === "upload_busy");
+
 const PAGE = 100;
 const STATUS: Record<DocumentStatus, string> = {
   queued: "Queued",
@@ -104,14 +114,27 @@ export function DocumentsPanel({ deps, base }: { deps: DataDeps; base: Knowledge
   }, [confirming]);
 
   /** Each file in turn; every refusal in the batch stays shown, and each upload is listed as
-   * soon as it is accepted. */
+   * soon as it is accepted. A file refused only because too many documents are still being
+   * processed waits and is sent again (same key), so a batch past that cap is not lost. */
   async function upload(files: File[]): Promise<void> {
     const refused: string[] = [];
     setError(null);
     for (const file of files) {
       setUploading((n) => n + 1);
+      const key = crypto.randomUUID();
       try {
-        await uploadDocument(deps, base.kb_id, file, crypto.randomUUID());
+        for (let attempt = 1; ; attempt++) {
+          try {
+            await uploadDocument(deps, base.kb_id, file, key);
+            break;
+          } catch (failure) {
+            if (!(isBusy(failure) && attempt < BUSY_ATTEMPTS)) throw failure;
+            const wait = failure.retryAfterSeconds ?? BUSY_DEFAULT_SECONDS;
+            await new Promise((resolve) =>
+              setTimeout(resolve, Math.min(wait, BUSY_MAX_SECONDS) * 1000),
+            );
+          }
+        }
         polls.current = 0;
         setTick((n) => n + 1);
       } catch (failure) {

@@ -309,7 +309,7 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         list_knowledge_bases) limits the search to those bases; `limit` is 1 to 10. A
         `no_relevant_results` status means no passage scored high enough for `query`."""
         owner = _owner(runtime)
-        if not query.strip():
+        if not query.strip() or "\x00" in query:
             raise ToolException(_INVALID)
         messages = _messages(runtime)
         if _calls(messages, "search_knowledge") > MAX_SEARCHES:

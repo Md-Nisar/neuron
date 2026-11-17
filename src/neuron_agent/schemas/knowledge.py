@@ -31,6 +31,8 @@ def _plain_title(value: str) -> str:
 
 
 TITLE_MAX = 300
+# A base's name is a `plain_title` (1 to 80): the schema must advertise the limit enforced.
+NAME_MAX_CHARS = 80
 
 
 class KnowledgeBaseCreate(BaseModel):
@@ -38,7 +40,7 @@ class KnowledgeBaseCreate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(max_length=200)
+    name: str = Field(max_length=NAME_MAX_CHARS)
     # Where the base's text may be embedded (RAG-02.03); the operator's policy can still forbid
     # `hosted`, which then fails ingestion with `processing_locality_forbidden`.
     processing: Literal["hosted", "self_hosted"] = "hosted"
@@ -55,7 +57,7 @@ class KnowledgeBaseUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(max_length=200)
+    name: str = Field(max_length=NAME_MAX_CHARS)
 
     @field_validator("name")
     @classmethod
@@ -245,6 +247,9 @@ class KnowledgeSearchRequest(BaseModel):
     def _not_blank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("query must not be blank")
+        # A NUL byte cannot be stored or compared by Postgres: it would fail as a database error.
+        if any(unicodedata.category(c) == "Cc" and c not in "\t\n\r" for c in value):
+            raise ValueError("query contains control characters")
         return value
 
 

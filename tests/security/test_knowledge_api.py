@@ -88,6 +88,8 @@ def test_a_token_without_the_routes_permission_is_refused(
         ("POST", "/v1/knowledge/search", {"query": "q" * 501}),
         ("POST", "/v1/knowledge/search", {"query": " \n "}),
         ("POST", "/v1/knowledge/search", {"query": ""}),
+        ("POST", "/v1/knowledge/search", {"query": "a\x00b"}),
+        ("POST", "/v1/knowledge/search", {"query": "a\x07b"}),
         ("POST", "/v1/knowledge/search", {"query": "q", "owner_key": "a" * 64}),
         ("POST", "/v1/knowledge/search", {"query": "q", "kb_ids": []}),
         ("POST", "/v1/knowledge/search", {"query": "q", "kb_ids": [str(uuid.uuid4())] * 11}),
@@ -121,6 +123,8 @@ def test_a_token_without_the_routes_permission_is_refused(
         "search-query-over-500",
         "search-blank-query",
         "search-empty-query",
+        "search-nul-character",
+        "search-control-character",
         "search-owner-field",
         "search-no-kb-ids",
         "search-over-10-kb-ids",
@@ -299,3 +303,12 @@ def test_transfer_slots_are_freed_when_the_body_fails() -> None:
     with slots.take("bob"):
         assert slots.in_flight == 1
     assert slots.in_flight == 0
+
+
+def test_the_advertised_name_limit_is_the_enforced_one() -> None:
+    """The OpenAPI schema said 200 while `plain_title` accepted 80 (QA cycle 1)."""
+    from neuron_agent.schemas.agent import TITLE_MAX_CHARS
+    from neuron_agent.schemas.knowledge import KnowledgeBaseCreate, KnowledgeBaseUpdate
+
+    for model in (KnowledgeBaseCreate, KnowledgeBaseUpdate):
+        assert model.model_json_schema()["properties"]["name"]["maxLength"] == TITLE_MAX_CHARS

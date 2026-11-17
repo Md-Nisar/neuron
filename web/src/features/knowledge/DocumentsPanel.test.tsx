@@ -210,6 +210,46 @@ describe("documents", () => {
     expect(gets(fetch)).toBeGreaterThanOrEqual(2);
   });
 
+  it("waits out a 'too many in processing' refusal and retries the file with the same key", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fetch, user } = setup([[], [doc("ready")]], {
+      uploads: [
+        jsonResponse(429, { detail: "ingestion_concurrency_exceeded" }, { "Retry-After": "2" }),
+        jsonResponse(202, { doc_id: doc("queued").doc_id, kb_id: KB, status: "queued" }),
+      ],
+    });
+
+    await user.upload(screen.getByLabelText(/Drop files here/), [new File(["x"], "a.md")]);
+    // A busy server is not a failure the user must act on: no alert while it waits.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await act(() => vi.advanceTimersByTimeAsync(2_000));
+
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const keys = fetch.mock.calls
+      .filter(([, init]) => init?.method === "POST")
+      .map(([, init]) => new Headers(init?.headers).get("Idempotency-Key"));
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBe(keys[1]);
+  });
+
+  it("gives up on a file that stays busy and says so", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setup([[]], {
+      uploads: [
+        jsonResponse(429, { detail: "ingestion_concurrency_exceeded" }, { "Retry-After": "1" }),
+      ],
+    });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    await user.upload(screen.getByLabelText(/Drop files here/), [new File(["x"], "a.md")]);
+    for (let second = 0; second < 40; second++) await act(() => vi.advanceTimersByTimeAsync(1000));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /a\.md: Too many of your documents are still being processed/,
+    );
+  });
+
   it("waits longer between polls while a document is still processing", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { fetch } = setup([[doc("embedding")]]);
