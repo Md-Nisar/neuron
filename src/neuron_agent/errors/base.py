@@ -112,6 +112,13 @@ class KnowledgeAccessDeniedError(AppError):
     context = ErrorContext(code="knowledge_access_denied", http_status=403)
 
 
+class KnowledgeRoleNotShareableError(AppError):
+    """A grant names a role outside `APP_KNOWLEDGE_SHARING_ROLES`: bases are shared only with
+    roles the operator listed."""
+
+    context = ErrorContext(code="knowledge_role_not_shareable", http_status=422)
+
+
 class KnowledgeDocumentNotFoundError(AppError):
     """The caller has no live document with this ID (missing, deleted or someone else's)."""
 

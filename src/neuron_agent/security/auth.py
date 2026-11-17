@@ -365,7 +365,10 @@ class TokenVerifier:
             scopes=scopes,
             token_id=token_id,
             expires_at=datetime.fromtimestamp(expires_at, tz=UTC),
-            roles=self._kept_roles(frozenset(roles)),
+            # Only roles bases may be shared with count, so a grant on any other role (one
+            # written before the role left the list) gives nobody access.
+            roles=self._kept_roles(frozenset(roles))
+            & frozenset(self._settings.knowledge_sharing_roles),
         )
 
     def _kept_roles(self, roles: frozenset[str]) -> frozenset[str]:

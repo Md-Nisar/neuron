@@ -13,6 +13,7 @@ import pytest
 import structlog
 from test_postgres_knowledge_api import _create, api  # noqa: F401
 from test_postgres_knowledge_search_api import _ids, _search, _seed
+from test_postgres_knowledge_sharing import _grant
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 from tests.conftest import JwtApi, bearer
 
@@ -166,3 +167,24 @@ async def test_each_base_says_the_callers_access(
     )
     assert renamed.json()["access"] == "admin"
     assert access(alice) == ["owner"]
+
+
+async def test_a_role_outside_the_sharing_list_shares_nothing(
+    api: tuple[JwtApi, RoleDatabase],  # noqa: F811
+    make_token: Callable[..., str],
+) -> None:
+    """Security round 1, AUTHZ-07: a user granted the role every user holds, so their base
+    entered everyone's searches and answers. A role outside APP_KNOWLEDGE_SHARING_ROLES is
+    refused, and a grant on one stored earlier (the list changed) gives nobody access."""
+    client, db = api
+    mallory = make_token("mallory", scopes=_SCOPES)
+    base = _create(client, mallory, "Company HR policy")
+    refused = _put(client, mallory, base["kb_id"], [{"role": "neuron-user", "access": "read"}])
+    assert refused.status_code == 422
+    assert refused.json() == {"detail": "knowledge_role_not_shareable"}
+    assert _get(client, mallory, base["kb_id"]).json() == {"grants": []}
+
+    await _grant(db, base["kb_id"], "neuron-user", "read")
+    alice = make_token("alice", scopes=_SCOPES, roles=["neuron-user"])
+    listed = client.client.get("/v1/knowledge/bases", headers=bearer(alice)).json()
+    assert listed == {"bases": []}

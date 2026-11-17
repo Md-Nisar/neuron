@@ -102,10 +102,18 @@ async def test_verify_maps_configured_scope_claim_and_roles_to_permissions() -> 
     assert principal.scopes == {"agent:invoke", "threads:delete"}
 
 
-def _role_verifier(public: Any, roles_claim: str | None = "groups") -> TokenVerifier:
+def _role_verifier(
+    public: Any, roles_claim: str | None = "groups", sharing: list[str] | None = None
+) -> TokenVerifier:
     settings = _settings()
     settings.auth_roles_claim = roles_claim
     settings.auth_role_permissions = {"operators": ["threads:delete"]}
+    # Every role these tests put in a token may be shared with, unless a test narrows it.
+    settings.knowledge_sharing_roles = (
+        ["operators", "finance", "r" * 256, *(f"role-{n}" for n in range(101))]
+        if sharing is None
+        else sharing
+    )
     verifier = TokenVerifier(settings)
     verifier._client = FakeJWKClient(public)  # type: ignore[assignment]
     return verifier
@@ -130,6 +138,23 @@ async def test_verify_keeps_the_configured_claims_roles(claim: object, roles: se
     assert principal.roles == roles
     # Roles still grant only what the role map says, as before.
     assert ("threads:delete" in principal.scopes) == ("operators" in roles)
+
+
+@pytest.mark.anyio
+async def test_only_roles_bases_may_be_shared_with_are_kept() -> None:
+    """A role outside APP_KNOWLEDGE_SHARING_ROLES (none by default) reaches no grant, so a grant
+    on the role every user holds shares nothing; the role map still gives its permissions."""
+    private, public = _key_pair()
+    token = f"Bearer {_token(private, groups=['operators', 'finance'])}"
+
+    listed = await _role_verifier(public, sharing=["finance"]).verify(token)
+    assert listed.roles == {"finance"}
+    assert "threads:delete" in listed.scopes
+
+    default = TokenVerifier(_settings())
+    default._settings.auth_roles_claim = "groups"
+    default._client = FakeJWKClient(public)  # type: ignore[assignment]
+    assert (await default.verify(token)).roles == frozenset()
 
 
 @pytest.mark.anyio

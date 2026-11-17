@@ -782,7 +782,8 @@ With the Node version in `web/.nvmrc`: `make web-install` (installs from the loc
 - A **public** client with the **authorization code** flow and **PKCE `S256`**; no implicit, password or service-account grants for the browser client.
 - **Exact** redirect and post-logout redirect URIs (the UI's origin root, for example `https://app.example.com/`), no wildcard.
 - Access tokens with `aud` containing `APP_AUTH_AUDIENCE`, and the user's roles in a top-level `roles` claim (or scopes in `scope`), mapped to permissions with `APP_AUTH_ROLE_PERMISSIONS`. In Keycloak, a client with *Full scope allowed* **off** and no scope mappings drops realm roles from the token, so `roles` arrives empty; either leave it on or map the roles.
-- Short access-token lifetimes. The UI keeps the token in memory only and does not use the refresh token.
+- Short access-token lifetimes. The UI keeps the token in memory only and does not use the refresh token. The API checks tokens itself and does not ask the provider, so a token stays valid until it expires even after sign-out.
+- Brute-force protection and a password policy (or a federated provider that has them). The development realm locks an account for a growing time after 10 failed sign-ins and requires 12 characters; its `neuron-dev-test` client allows password grants for scripts and must not exist in production.
 - The API requires `nbf` in access tokens. If your provider omits it, sign-in succeeds but every API call is a `401`; check this first.
 
 ### Headers to serve

@@ -59,7 +59,8 @@ async def api(
     tmp_path: Path,
 ) -> tuple[JwtApi, RoleDatabase]:
     await _knowledge_db(role_db)
-    built = jwt_api_factory()
+    # The roles the sharing tests grant; any other role is refused and reaches no grant.
+    built = jwt_api_factory(knowledge_sharing_roles=["finance", "legal", "ops", "r", "x"])
     settings = built.settings.model_copy(
         update={
             "knowledge_enabled": True,

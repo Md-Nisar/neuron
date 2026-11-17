@@ -216,6 +216,10 @@ class Settings(BaseSettings):
     # Knowledge Engine (ADR 0014; RAG-01.01). Off until v1.1.0 is released; on, it needs the
     # Postgres checkpointer and a database with the pgvector extension.
     knowledge_enabled: bool = False
+    # Token roles a base may be shared with (RAG-09.03). Empty, the default: no sharing by role.
+    # List group roles only, never one every user holds: any base admin may grant a listed role,
+    # and a base shared with it is searched for all of its holders.
+    knowledge_sharing_roles: list[str] = Field(default_factory=list)
     # Knowledge Engine embeddings (ADR 0014 K3, K8; RAG-02.03). The default profile is the spike's
     # (RAG-00.02): NVIDIA's API catalog, for development only, at 1,024 dimensions.
     knowledge_embedding_provider: EmbeddingProviderName = "nvidia"
