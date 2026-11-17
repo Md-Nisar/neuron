@@ -270,10 +270,10 @@ class Settings(BaseSettings):
     # embeddings. A timeout or error keeps the RRF order.
     knowledge_reranker: Literal["none", "nvidia"] | None = None
     knowledge_reranker_model: str = Field(
-        default="nvidia/llama-nemotron-rerank-vl-1b-v2",
+        default="nvidia/nemotron-3.5-rerank-8b",
         min_length=1,
         max_length=200,
-        pattern=r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$",
     )
     knowledge_reranker_timeout_seconds: float = Field(default=3.0, ge=0.5, le=30.0)
     # Knowledge bases one user may have (RAG-03.01; ADR 0014 requirement 7). Tombstoned ones

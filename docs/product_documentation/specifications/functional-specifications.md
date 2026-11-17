@@ -83,7 +83,7 @@ The following table summarizes all enforced functional boundaries, operational q
 - Immediate Revocation: Authorization is evaluated dynamically via SQL in the same transaction as the operation; revoking a role takes effect instantaneously on the next request.
 
 ### 2.6 Hybrid Candidate Reranking and Fail-Safe Fallback (RAG-09.01)
-- When `APP_KNOWLEDGE_RERANKER=nvidia` and `NVIDIA_API_KEY` is present, the top 40 fused candidates retrieved from dense vector and full-text search are reranked using a hosted cross-encoder model (`nvidia/llama-nemotron-rerank-vl-1b-v2`).
+- When `APP_KNOWLEDGE_RERANKER=nvidia` and `NVIDIA_API_KEY` is present, the top 40 fused candidates retrieved from dense vector and full-text search are reranked using a hosted cross-encoder model (`nvidia/nemotron-3.5-rerank-8b`).
 - Rerank results strictly enforce 1-to-1 matching: every candidate must be scored exactly once with finite values, or the output is treated as invalid.
 - Fail-Safe Fallback: If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 3s), returns an HTTP error, or outputs malformed rankings, the system transparently preserves the original Reciprocal Rank Fusion (RRF) candidate order and returns `reranked: false`.
 

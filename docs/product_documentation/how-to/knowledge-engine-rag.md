@@ -67,7 +67,7 @@ APP_KNOWLEDGE_EMBEDDING_BATCH_SIZE=1
 
 # Optional Cross-Encoder Reranker
 APP_KNOWLEDGE_RERANKER=nvidia
-APP_KNOWLEDGE_RERANKER_MODEL="nvidia/llama-nemotron-rerank-vl-1b-v2"
+APP_KNOWLEDGE_RERANKER_MODEL="nvidia/nemotron-3.5-rerank-8b"
 APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS=3.0
 
 # Document Storage & Parser URL
