@@ -1,7 +1,7 @@
-# Test summary: Knowledge (RAG) functional testing, round 1
+# Functional test report: Knowledge (RAG), round 1
 
 Date: 2026-11-17. Target: neuron v1.4.0, branch `ccr-7c4dd17f-k9sle9`. Tester: Claude (QA automation / architecture / full-stack roles as requested).
-Companion files in this folder: `manual_test_scenarios.csv|json`, `test_coverage_report.md`, `bugs_and_fixes.md`, `regression_report.md`, `harness/` (everything needed to re-run), `raw_results/` (per-run JSON and gate logs), `evidence/` (screenshots).
+Test cases and their status: `manual_test_scenarios.csv` / `.json` (same data, 218 scenarios).
 
 ## 1. Verdict
 
@@ -59,10 +59,31 @@ Product code changed: 38 lines in 3 files, plus tests and docs (`bugs_and_fixes.
 
 ## 5. Open items for the owner
 
-- **GAP-01**: no "download original file" in the web UI (API route exists; functional spec mentions it).
-- **OBS-07** (most worth a decision): knowledge/data endpoints have no statement/request deadline; with Postgres stalled, a request waits for the database (42 s observed) instead of failing fast. Other DB paths already set `statement_timeout`.
-- **OBS-03/04**: the reranker's 6 s default timeout is frequently exceeded from this network (graceful RRF fallback), and no relevance floor exists when the reranker is on (unrelated queries still return passages with negative scores; the agent handled this correctly).
-- **OBS-01, 02, 05, 06, 08, 09**: UX and tuning notes in `bugs_and_fixes.md`.
+**Feature gap**
+
+# Open: feature gap
+
+| ID | Description | Recommendation |
+|----|-------------|----------------|
+| GAP-01 (UI-34) | The web UI has no way to download an original file; `GET /v1/knowledge/documents/{id}/file` exists and the functional spec lists "download original files" for `read`. Backlog RAG-03.04 scopes the UI to chunk inspection only, so this is an enhancement, not a regression. | Add a download action to the document row and the source sheet if the spec's wording is meant to cover the web app. |
+
+
+**Observations (not fixed; judgement calls)**
+
+# Open: observations (not fixed; each is a judgement call for the maintainers)
+
+| ID | Obs. | Evidence | Recommendation |
+|----|------|----------|----------------|
+| OBS-01 | A text file that is not UTF-8 (for example cp1252 "Café") is refused as `unsupported_media_type`, with no hint that the problem is the encoding. | DOC-30 | Return a specific code/message ("save as UTF-8"), or decode with a fallback. |
+| OBS-02 | The web app shows "Not grounded: no passage in your documents supports this answer" under answers that never needed documents (for example "What is 18% of 2450?"). | UI-24 | Show the banner only when the user selected bases or the answer claimed document support. |
+| OBS-03 | The reranker's default 6 s timeout (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`) is often exceeded from this sandbox: 11 `knowledge_rerank_skipped rerank_timeout` events in Cycle 1; the live rerank gate was "inconclusive" (fell back to RRF) at the default and **passed** at 20 s. Search degrades correctly to RRF with `reranked:false`. A comment in `test_live_knowledge_retrieval.py` still says the production timeout is 3 s. | SRCH-20, live gate | Consider a higher default or an adaptive timeout for hosted rerankers; surface `reranked` in operations dashboards; fix the stale comment. |
+| OBS-04 | There is no relevance floor with the reranker on: an unrelated query returns 4 passages with negative scores (about -4) and `status: ok`. The agent still answered correctly ("not in your documents", AGENT-03 / UI-21), so there is no user-visible defect, but `no_relevant_results` cannot fire. | SRCH-04 | Apply a minimum rerank score, tuned on the eval set. |
+| OBS-05 | The agent searched knowledge for an arithmetic question (no bases at all) and sometimes repeats a search 2-3 times in one turn. | UI-22, UI-24 | Prompt/tool tuning only; cost and latency, not correctness. |
+| OBS-06 | "Erase all my data" with documents present needs a second confirmation ("Your knowledge files are still being deleted. Try again in a moment") and the phrase must be retyped. Designed (asynchronous purge, matches the repo's own E2E), but easy to miss. | UI-25 | Keep the phrase filled and auto-retry. |
+| OBS-07 | The knowledge/data endpoints have no statement or request deadline. With Postgres stalled (not down), readiness correctly turns 503 after 12 s and liveness stays 200, but an in-flight list request waits until the database returns (42 s here) and then succeeds. The run guard, token ledger and rate limiter all set `statement_timeout`. | RES-02 + manual stall test | Set a bounded `statement_timeout` for API-role knowledge transactions (needs an operational decision and a setting). |
+| OBS-08 | Unknown or deleted ids in `knowledge_base_ids` are ignored silently (by design, to avoid revealing existence); the caller gets an ungrounded answer rather than an error. | AGENT-13 | Fine for security; consider a `scope_ignored` hint in the response. |
+| OBS-09 | A Wikipedia page was refused by the fetcher with `fetch_http_status` (the site answers non-200 to this client); example.com and docs.python.org ingest and cite correctly with `source_url`. | WEB-11, WEB-13 | External; document that some sites block bots. |
+
 
 ## 6. Limitations (read before relying on this)
 
@@ -73,14 +94,22 @@ Product code changed: 38 lines in 3 files, plus tests and docs (`bugs_and_fixes.
 - 13 of my 20 Cycle 1 first-contact failures were my own test mistakes; they are listed and were corrected openly, never by weakening a product assertion without saying so.
 - Live-model scenarios depend on a free-tier provider and can fail on throttling (`rate_limit_error`); such cases were re-run in isolation and noted.
 
-## 7. Re-running
+## 7. Coverage
 
-```
-# stack: Postgres (pgvector image) + roles/schema SQL from deploy/reference, then
-uv run python -m neuron_agent.persistence.cli setup          # as migrator, APP_MEMORY_ENABLED=true
-uv run neuron-worker ; uv run uvicorn neuron_agent.api.main:app --port 8000
-# scenarios (tokens from the QA IdP in harness/qa_idp.py, or adapt tokens for Keycloak)
-python qa/harness/run_api.py c4 ; node qa/harness/run_ui.js c4 ; node qa/harness/run_kc.js
-python qa/harness/build_reports.py        # merges raw_results/ into manual_test_scenarios.*
-```
-`harness/` paths point at `/tmp/claude-0/qa` (scratch locations used in this session); adjust before reuse.
+Backend 97.1 % statements (knowledge package 96.4 %, security 96.4 %, persistence 96.0 %, api 95.6 %, worker 87.8 %; branch coverage not enabled in the repo config).
+Frontend 95.2 % statements, 90.0 % branches, 96.8 % lines. Every feature layer (auth, bases, documents, search, sharing, agent, tables, web pages, data rights, UI) is covered by at least one scenario; gaps are listed in section 6.
+
+## 8. Results per cycle
+
+| | Cycle 1: audit | Cycle 2: fix + regression | Cycle 3: final verification |
+|---|---|---|---|
+| Code under test | unmodified v1.4.0 | after BUG-01/02/03/04/05 | after TI-01 as well (final) |
+| Scenarios existing | 174 (218 at the end; 44 were written later) | 211 | 218 |
+| First attempt: PASS / FAIL | 154 / 20 | 201 / 10 (7 not yet written: real-Keycloak set) | 216 / 2 |
+| Last result: PASS / FAIL | 160 / 14 | 209 / 2 | **217 / 1** |
+| Product defects found | 5 (BUG-01..05; BUG-05 surfaced in Cycle 2) | 0 new after fixes (OBS and GAP only) | 0 |
+| `make format lint typecheck test security` | pass; 2770 passed, 2 skipped | pass; 2774 passed, 2 skipped | pass; **2775 passed**, 2 skipped |
+| Frontend lint / typecheck / format / build / audit | pass / pass / pass / pass / 0 vulns | pass (623 tests) | pass; **625 tests** (41 files) |
+| Postgres integration (non-live) | all pass except 3 role tests (environment: no `postgres` superuser; 32/32 after creating one) | 315 passed, 14 skipped | **316 passed**, 13 skipped |
+
+A scenario that failed first for a test-side reason and passed after the test was corrected counts as a first-attempt FAIL, which is why first-attempt FAIL counts exceed defect counts. Of Cycle 1's 20 first-contact failures: 4 product defects, 13 test mistakes of mine, 1 environment, 1 observation, 1 feature gap.
