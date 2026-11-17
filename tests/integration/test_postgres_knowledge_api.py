@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, get_args
 
+import anyio
 import psycopg
 import pytest
 from fastapi.routing import APIRoute
@@ -443,7 +444,12 @@ async def test_a_body_that_does_not_arrive_in_time_frees_its_slot(
     client, _ = api
     alice = make_token("alice", scopes=_SCOPES)
     base = _create(client, alice)
-    monkeypatch.setattr(api_main, "_UPLOAD_READ_SECONDS", 0)
+
+    async def _never_arrives(*_args: Any, **_kwargs: Any) -> None:
+        await anyio.sleep(60)
+
+    monkeypatch.setattr(api_main, "_UPLOAD_READ_SECONDS", 0.05)
+    monkeypatch.setattr(api_main, "read_upload", _never_arrives)
     response = _upload(client, alice, base["kb_id"])
     assert (response.status_code, response.json()) == (408, {"detail": "upload_timeout"})
     assert api_main._upload_slots.in_flight == 0
