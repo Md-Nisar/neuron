@@ -522,3 +522,11 @@ async def test_the_query_cache_holds_hashes_not_text() -> None:
     provider, _, _ = _provider([_vectors(1)])
     await provider.embed_query("a confidential question")
     assert all(isinstance(key, bytes) and len(key) == 32 for key in provider._query_cache)
+
+
+async def test_one_owners_query_is_never_a_cache_hit_for_another() -> None:
+    provider, scripted, _ = _provider([_vectors(1)] * 3)
+    await provider.embed_query("layoffs", owner="alice")
+    await provider.embed_query("layoffs", owner="alice")
+    await provider.embed_query("layoffs", owner="bob")
+    assert len(scripted.calls) == 2

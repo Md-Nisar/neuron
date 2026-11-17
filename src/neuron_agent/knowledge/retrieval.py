@@ -287,7 +287,7 @@ class Retriever:
             profile_id, model = self._model(bases)
             if model is not None and self._dense_bases(bases, profile_id, model):
                 try:
-                    values = await model.embed_query(query)
+                    values = await model.embed_query(query, owner=owner_key)
                 except EmbeddingError as exc:
                     if mode == "dense":
                         raise

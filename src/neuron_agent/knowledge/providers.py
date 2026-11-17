@@ -70,9 +70,10 @@ def ensure_processing_allowed(
 
 
 # Query vectors kept per provider (one index profile and model), least recently used out. The
-# key is a hash of the text, so the cache holds no query text, only vectors that cannot be read
-# back through the API. A repeated query (an agent searching twice, a popular question) then
-# costs no provider call, which matters under the provider's request-rate limit.
+# key is a hash of the owner and the text, so the cache holds no query text and one owner's
+# query is never a hit (a timing signal) for another. A repeated query (an agent searching
+# twice, the same question again) then costs no provider call, which matters under the
+# provider's request-rate limit.
 _QUERY_CACHE_SIZE = 256
 
 
@@ -113,9 +114,12 @@ class EmbeddingProvider:
             vectors.extend(self._checked(result, expected=len(batch)))
         return vectors
 
-    async def embed_query(self, text: str) -> list[float]:
-        """Embed a search query (NVIDIA models embed queries and passages differently)."""
-        key = hashlib.sha256(text.encode()).digest()
+    async def embed_query(self, text: str, *, owner: str = "") -> list[float]:
+        """Embed a search query (NVIDIA models embed queries and passages differently).
+
+        `owner` scopes the query cache: only the same owner's earlier query can be a hit.
+        """
+        key = hashlib.sha256(f"{owner}\0{text}".encode()).digest()
         cached = self._query_cache.get(key)
         if cached is not None:
             self._query_cache.move_to_end(key)
