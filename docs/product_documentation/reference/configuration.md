@@ -118,7 +118,7 @@ All configuration parameters are read from environment variables (or `.env` in d
 | `APP_KNOWLEDGE_SEARCH_MIN_SIMILARITY`| float (-1.0–1.0) | `0.0` | Minimum vector similarity threshold for returned passages. |
 | `APP_KNOWLEDGE_RERANKER` | `none` \| `nvidia` \| `None` | `None` | Cross-encoder reranker. Unset defaults to `nvidia` when embedding provider is `nvidia` and `NVIDIA_API_KEY` is set; otherwise `none`. |
 | `APP_KNOWLEDGE_RERANKER_MODEL` | string | `nvidia/nemotron-3.5-rerank-8b` | Reranker model identifier in `provider/model` format. |
-| `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` | float (0.5–30.0) | `3.0` | Timeout per rerank request before falling back to RRF candidate order. |
+| `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` | float (0.5–30.0) | `6.0` | Timeout per rerank request before falling back to RRF candidate order. |
 | `APP_KNOWLEDGE_REINDEX_EMBEDDING_PROVIDER` | `nvidia` \| `openai_compatible` \| `fake` \| `None` | `None` | Target provider when migrating index profiles (RAG-09.04). Requires `_MODEL` and `_DIMENSIONS`. |
 | `APP_KNOWLEDGE_REINDEX_EMBEDDING_MODEL` | string \| `None` | `None` | Target embedding model identifier for re-indexing. |
 | `APP_KNOWLEDGE_REINDEX_EMBEDDING_DIMENSIONS` | integer (1–4000) \| `None` | `None` | Target vector dimensions for re-indexing. |

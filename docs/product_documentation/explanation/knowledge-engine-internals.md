@@ -123,7 +123,7 @@ While bi-encoders generate separate embeddings for queries and passages, cross-e
    - Raised recall@1 from 0.734 to 0.875.
    - Maintained recall@5 at 0.984.
    - Added approximately 0.5–0.7 seconds at p95 latency.
-4. **Fail-Safe Fallback:** If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 3.0s) or encounters provider errors, the retriever transparently falls back to RRF ordering, logging the failure and setting `reranked: false`.
+4. **Fail-Safe Fallback:** If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 6.0s) or encounters provider errors, the retriever transparently falls back to RRF ordering, logging the failure and setting `reranked: false`.
 
 ---
 

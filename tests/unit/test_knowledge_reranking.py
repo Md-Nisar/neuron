@@ -190,6 +190,14 @@ def test_the_default_reranker(overrides: dict[str, Any], expected: str) -> None:
     assert Settings(env="test", **overrides).knowledge_reranker_effective == expected
 
 
+def test_the_default_model_and_timeout_fit_the_8b_reranker() -> None:
+    # It took 3.8 s at p95 over 40 candidates (#620): a 3 s deadline would drop it often.
+    settings = Settings(env="test")
+
+    assert settings.knowledge_reranker_model == "nvidia/nemotron-3.5-rerank-8b"
+    assert settings.knowledge_reranker_timeout_seconds == 6.0
+
+
 def test_create_reranker_builds_the_configured_one() -> None:
     assert create_reranker(Settings(env="test")) is None
     reranker = create_reranker(Settings(env="test", nvidia_api_key="nvapi-test"))

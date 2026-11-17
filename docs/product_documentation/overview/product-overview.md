@@ -117,7 +117,7 @@ flowchart TD
 - **Multi-Format Document Ingestion:** Supports PDF (with OCR), DOCX, XLSX, PPTX, TXT, and Markdown files up to 50 MB.
 - **Sandboxed Parsing:** Complex document types are parsed by `docling-serve` running in a container on an isolated internal network without internet egress.
 - **Hybrid Search Engine:** Combines full-text search (`tsvector` with language-specific stemming) and dense vector search (`pgvector` halfvec with HNSW indexing or exact scan) fused via Reciprocal Rank Fusion (RRF, $k=60$).
-- **Cross-Encoder Reranking:** Top fused candidates can be reranked via hosted cross-encoder (`APP_KNOWLEDGE_RERANKER=nvidia`, model `nemotron-3.5-rerank-8b`), improving MRR to 0.924 with automatic fail-safe fallback to RRF ordering.
+- **Cross-Encoder Reranking:** Top fused candidates can be reranked via hosted cross-encoder (`APP_KNOWLEDGE_RERANKER=nvidia`, model `nemotron-3.5-rerank-8b`), improving MRR from 0.833 to 0.977 on the eval corpus, with automatic fail-safe fallback to RRF ordering.
 - **Zero-Downtime Reindexing:** Operators can migrate to new embedding models (`neuron-reindex start|status|cancel`) while active search continues unaffected, followed by an atomic profile swap.
 - **Negative Feedback Auditing:** Operators can inspect chunk IDs cited by thumbs-down answers (`python -m neuron_agent.persistence.cli feedback-report`) to diagnose retrieval relevance defects.
 - **Cryptographic Citations:** Every search hit mints an opaque, single-run `cite_id`. The server validates that citations in the final answer correspond to actual chunks retrieved during that specific run.

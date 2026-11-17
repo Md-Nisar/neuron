@@ -275,7 +275,9 @@ class Settings(BaseSettings):
         max_length=200,
         pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$",
     )
-    knowledge_reranker_timeout_seconds: float = Field(default=3.0, ge=0.5, le=30.0)
+    # The 8B reranker took 3.8 s at p95 over 40 candidates (#620): 3 s would cut off more
+    # than one search in 20.
+    knowledge_reranker_timeout_seconds: float = Field(default=6.0, ge=0.5, le=30.0)
     # Knowledge bases one user may have (RAG-03.01; ADR 0014 requirement 7). Tombstoned ones
     # do not count.
     knowledge_max_bases_per_user: int = Field(default=20, ge=1, le=1_000)

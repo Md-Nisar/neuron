@@ -43,7 +43,7 @@ The following table summarizes all enforced functional boundaries, operational q
 | **User Page Cap** | Max parsed pages per user | `APP_KNOWLEDGE_MAX_PAGES_PER_USER` | 20,000 pages | Upload rejected with HTTP `413 page_quota_exceeded`. |
 | **Active Ingestion**| Max in-flight ingesting documents | `APP_KNOWLEDGE_MAX_INGESTING_PER_USER`| 5 documents | Upload rejected with HTTP `429 ingestion_concurrency_exceeded`. |
 | **Rerank Candidates**| Candidate pool sent to reranker | `src/neuron_agent/knowledge/retrieval.py` | 40 candidates | Fused top 40 candidates evaluated by cross-encoder. |
-| **Rerank Timeout** | Per-request reranker deadline | `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` | 3.0 seconds (0.5–30.0s) | On timeout, falls back to RRF order; `reranked: false`. |
+| **Rerank Timeout** | Per-request reranker deadline | `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` | 6.0 seconds (0.5–30.0s) | On timeout, falls back to RRF order; `reranked: false`. |
 | **Reindex Batch** | Retired embeddings purge batch size | `_RETIRED_BATCH` | 5,000 embeddings | Batched deletion per transaction to avoid lock contention. |
 
 ---
@@ -85,7 +85,7 @@ The following table summarizes all enforced functional boundaries, operational q
 ### 2.6 Hybrid Candidate Reranking and Fail-Safe Fallback (RAG-09.01)
 - When `APP_KNOWLEDGE_RERANKER=nvidia` and `NVIDIA_API_KEY` is present, the top 40 fused candidates retrieved from dense vector and full-text search are reranked using a hosted cross-encoder model (`nvidia/nemotron-3.5-rerank-8b`).
 - Rerank results strictly enforce 1-to-1 matching: every candidate must be scored exactly once with finite values, or the output is treated as invalid.
-- Fail-Safe Fallback: If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 3s), returns an HTTP error, or outputs malformed rankings, the system transparently preserves the original Reciprocal Rank Fusion (RRF) candidate order and returns `reranked: false`.
+- Fail-Safe Fallback: If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 6s), returns an HTTP error, or outputs malformed rankings, the system transparently preserves the original Reciprocal Rank Fusion (RRF) candidate order and returns `reranked: false`.
 
 ### 2.7 Multi-Profile Zero-Downtime Reindexing (RAG-09.04)
 - Embedding model migrations are executed without service interruption using database-backed index profiles (`active`, `building`, `retired`).

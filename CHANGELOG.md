@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Changes:
+
+- Knowledge: the default reranker is `nvidia/nemotron-3.5-rerank-8b` (#620), replacing `nvidia/llama-nemotron-rerank-vl-1b-v2`, which NVIDIA retired on 2026-11-16. On the eval corpus (64 answerable cases, fused top 40) it raised recall@5 from 0.984 to 1.0, MRR from 0.833 to 0.977 and recall@1 from 0.734 to 0.953 over the hybrid (RRF) order, against 0.924 MRR for the retired model. A search took 1.3 s at p50 and 3.8 s at p95, so `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` now defaults to 6 (was 3).
+- Knowledge: the reranker URL keeps the model name's dots, as NVIDIA's current paths need, and a model name with a path segment of dots alone is refused.
+- Knowledge: the text sent to the reranker for scoring drops HTML tags and keeps an image's `alt` text, because NVIDIA refuses a whole request whose passages hold an `<img>` tag (`422`). The passages a search returns are unchanged.
+
 ## 1.4.0
 
 "Questions about tables" (RAG-E11, first part). The assistant can now answer a question that needs every row of an uploaded spreadsheet or CSV file, such as a total, a count, an average or the largest group. The worker stores each table of an XLSX or CSV upload with typed columns. The agent finds tables with `find_tables` and runs one read-only SQL query on one with `query_table`, and the answer cites the table's document and sheet. On the table eval (1,500 rows, 6 questions that need every row and 2 that need one), the reference model went from 1 of 6 aggregate questions right with search alone to 6 of 6. Knowledge stays off by default. The `/v1` API and stream protocol version 1 stay compatible: CSV uploads, the two tool scopes and the citation's `table` field are additions, and `citation_schema_version` stays 1. Like 1.0.0 to 1.3.0, this release was verified locally, without a production environment. Verification: `docs/releases/v1.4.0-release-verification.md`.
