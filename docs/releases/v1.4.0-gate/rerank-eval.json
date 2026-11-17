@@ -1,0 +1,15 @@
+{
+  "rrf": {
+    "recall_at_5": 0.984,
+    "mrr": 0.833,
+    "recall_at_1": 0.734
+  },
+  "reranked": {
+    "recall_at_5": 1.0,
+    "mrr": 0.977,
+    "recall_at_1": 0.953
+  },
+  "model": "nvidia/nemotron-3.5-rerank-8b",
+  "search_seconds_p50": 1.318,
+  "search_seconds_p95": 3.785
+}

@@ -64,7 +64,7 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-17):** #620 moves the reranker default to `nvidia/nemotron-3.5-rerank-8b` (MRR 0.977 against 0.833 for RRF; evidence under RAG-09.01) for the release after v1.4.0. The live answer eval with it on met both gates (`cited_correctly` 1.0, 12 of 12 abstentions). Next: the owner's choice of story.
+**Recommended next action (2026-11-17, v1.4.0):** #620 moved the reranker default to `nvidia/nemotron-3.5-rerank-8b` (MRR 0.977 against 0.833 for RRF; evidence under RAG-09.01), and the owner folded it into v1.4.0 (2026-11-17). With it, the live answer eval met both gates (`cited_correctly` 1.0, 12 of 12 abstentions), so criterion 9 of `docs/releases/v1.4.0-release-verification.md` is met. Next: the owner tags `v1.4.0` at the merge of the record's update and publishes the GitHub Release; then the owner's choice of story.
 
 **Earlier (2026-11-16, v1.4.0):** `v1.3.0` is tagged (owner, 2026-11-16). v1.4.0 "Questions about tables" (RAG-11.01) is prepared: version 1.4.0, the CHANGELOG section and `docs/releases/v1.4.0-release-verification.md`. The live answer eval on the release code missed one abstention (`unanswerable-003`; `cited_correctly` 0.953), as in v1.3.0; the owner accepted it (2026-11-16). Next: the release pull request merges, then the owner tags `v1.4.0` and publishes the GitHub Release from the `1.4.0` CHANGELOG section. Follow-up: the retired default reranker (#620).
 
