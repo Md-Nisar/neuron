@@ -155,6 +155,9 @@ class Settings(BaseSettings):
     tool_timeout_seconds: int = Field(default=20, ge=1, le=60)
     max_agent_iterations: int = Field(default=8, ge=1, le=25)
     provider_max_retries: int = Field(default=2, ge=0, le=5)
+    # Model calls per minute this process may make, retries included; calls wait for a slot.
+    # Unset means no limit. Set it a little under the provider's own rate limit.
+    provider_max_requests_per_minute: int | None = Field(default=None, ge=1, le=100_000)
     max_output_tokens: int = Field(default=2000, ge=1, le=16_384)
     max_prompt_chars: int = Field(default=12_000, ge=100, le=200_000)
     max_request_body_bytes: int = Field(default=65_536, ge=1024, le=1_048_576)

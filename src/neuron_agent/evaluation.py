@@ -22,15 +22,15 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import structlog
-from langchain.agents.middleware import AgentMiddleware
 
 from neuron_agent.config.settings import Settings, get_settings
 from neuron_agent.errors.base import AppError, ThreadNotFoundError
 from neuron_agent.memory.tools import MEMORY_TOOL_SCOPES
 from neuron_agent.models import factory
+from neuron_agent.models.throttle import RequestThrottle, ThrottledModelCalls
 from neuron_agent.prompts.loader import SYSTEM_PROMPT_VERSION
 from neuron_agent.schemas.agent import AgentRequest, AgentResponse, ApprovalRequiredResponse
 from neuron_agent.security.auth import Principal
@@ -163,56 +163,6 @@ _NUMBER = re.compile(r"-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
 DEFAULT_MAX_REQUESTS_PER_MINUTE = 30
 
 
-class RequestThrottle:
-    """Sliding-window limiter: at most `limit` acquisitions in any `window` seconds.
-
-    It is process-wide state for one eval run, shared by every suite. The check and the
-    reservation happen without an `await` in between, so concurrent tasks cannot overbook it.
-    `clock` and `sleep` are injectable for tests.
-    """
-
-    def __init__(
-        self,
-        limit: int,
-        window: float = 60.0,
-        *,
-        clock: Callable[[], float] = time.monotonic,
-        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-    ) -> None:
-        self._limit = limit
-        self._window = window
-        self._clock = clock
-        self._sleep = sleep
-        self._starts: list[float] = []
-        self.acquired = 0
-
-    async def acquire(self) -> None:
-        while True:
-            now = self._clock()
-            self._starts = [t for t in self._starts if now - t < self._window]
-            if len(self._starts) < self._limit:
-                self._starts.append(now)
-                self.acquired += 1
-                return
-            await self._sleep(self._window - (now - self._starts[0]))
-
-
-class _ThrottledModelCalls(AgentMiddleware[Any, Any]):
-    """Waits for the throttle before each model call, including each provider retry."""
-
-    def __init__(self, inner: AgentMiddleware, throttle: RequestThrottle) -> None:
-        super().__init__()
-        self._inner = inner
-        self._throttle = throttle
-
-    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
-        async def throttled(inner_request: Any) -> Any:
-            await self._throttle.acquire()
-            return await handler(inner_request)
-
-        return await self._inner.awrap_model_call(request, throttled)
-
-
 @contextmanager
 def throttled_model_calls(throttle: RequestThrottle) -> Iterator[None]:
     """Throttle every model call of agents built inside this block (eval runs only).
@@ -222,7 +172,7 @@ def throttled_model_calls(throttle: RequestThrottle) -> Iterator[None]:
     code paths are unchanged; nothing else sets this.
     """
     original = factory.provider_retry_middleware
-    factory.provider_retry_middleware = lambda settings: _ThrottledModelCalls(
+    factory.provider_retry_middleware = lambda settings: ThrottledModelCalls(
         original(settings), throttle
     )
     try:

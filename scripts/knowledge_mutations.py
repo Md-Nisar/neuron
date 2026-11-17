@@ -176,7 +176,7 @@ MUTANTS = [
         "no nosniff",
         (
             Edit(_MAIN, ', "X-Content-Type-Options": "nosniff"}', "}"),
-            Edit(_MAIN, 'response.headers["X-Content-Type-Options"] = "nosniff"', "pass"),
+            Edit(_MAIN, 'headers["X-Content-Type-Options"] = "nosniff"', "pass"),
         ),
     ),
     Mutant(
