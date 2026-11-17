@@ -1,0 +1,30 @@
+[
+ {
+  "id": "UI-35",
+  "area": "Security",
+  "kind": "UI",
+  "description": "Answer renderer: remote image, javascript: link and raw HTML in a model answer are inert",
+  "preconditions": "Signed in; model asked to echo hostile markdown",
+  "steps": "Ask the model to reply with an external image, a javascript: link and an <img onerror>",
+  "expected": "No request to evil.example; no dialog; window.__xss undefined; no javascript: href",
+  "actual": "{\"requests\":[],\"hrefs\":[],\"imgs\":[],\"answer\":\"alicious content including XSS payloads and suspicious URLs that pose security risks.\\n\\nNot grounded: no passage in your documents supports this answer.\\n\\nUsed: search_knowledge\\nWas this answer helpful?\"}",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 15.5,
+  "cycle": "c2d"
+ },
+ {
+  "id": "UI-36",
+  "area": "Security",
+  "kind": "UI",
+  "description": "Hostile document title / base name stays inert in the picker, sources and sheet",
+  "preconditions": "Base named with HTML and a doc with HTML in its name",
+  "steps": "Seed hostile names; open Chat picker and Knowledge list",
+  "expected": "Rendered as text; no script execution",
+  "actual": "{\"imgs\":0}",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 10.8,
+  "cycle": "c2d"
+ }
+]

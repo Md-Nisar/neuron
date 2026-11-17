@@ -1,0 +1,72 @@
+[
+ {
+  "id": "TAB-01",
+  "area": "Tables",
+  "kind": "API",
+  "description": "Semicolon-delimited CSV (European export) is parsed into columns",
+  "preconditions": "Base",
+  "steps": "Upload ';' CSV; ask for the city with the highest revenue",
+  "expected": "Correct city; table recognised (citation.table present or answer correct)",
+  "actual": "('ready', 'München has the highest umsatz at 2400.')",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 14.6,
+  "cycle": "c2f"
+ },
+ {
+  "id": "TAB-02",
+  "area": "Tables",
+  "kind": "API",
+  "description": "Quoted commas and thousands separators survive parsing",
+  "preconditions": "Base",
+  "steps": "CSV with \"Berlin, DE\" and \"1,250\"; ask the value for Berlin, DE",
+  "expected": "1250 (not misaligned)",
+  "actual": "('ready', 'The Berlin, DE office has a headcount of 1,250.')",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 11.5,
+  "cycle": "c2f"
+ },
+ {
+  "id": "TAB-03",
+  "area": "Tables",
+  "kind": "API",
+  "description": "Aggregation over a 1,500-row table is computed, not guessed",
+  "preconditions": "Base",
+  "steps": "Upload 1500-row CSV; ask sum of amount for region EAST",
+  "expected": "Exact sum (computed via query_table)",
+  "actual": "('ready', 233932, 'The total amount for region EAST in the orders table is 233,932.', ['search_knowledge', 'find_tables', 'query_table'])",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 25.8,
+  "cycle": "c2f"
+ },
+ {
+  "id": "TAB-04",
+  "area": "Tables",
+  "kind": "API",
+  "description": "Empty cells and duplicate headers do not break ingestion",
+  "preconditions": "Base",
+  "steps": "CSV with blank cells and two columns named 'score'",
+  "expected": "ready or clean failure; never stuck",
+  "actual": "('ready', None)",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 1.1,
+  "cycle": "c2f"
+ },
+ {
+  "id": "TAB-05",
+  "area": "Tables",
+  "kind": "API",
+  "description": "Cross-tenant: another user's table cannot be queried through the agent",
+  "preconditions": "Alice numbers KB",
+  "steps": "Bob asks about 'Engineering employees' with Alice's numbers kb id",
+  "expected": "No Alice data",
+  "actual": "{\"citations\":[],\"citation_schema_version\":1,\"grounded\":false,\"status\":\"completed\",\"request_id\":\"4f22a74d-1a4e-4b16-b17f-3cf4e661bacc\",\"thread_id\":\"348b0e8a-3e65-463c-b1a4-1d37c779cf03\",\"run_id\":\"0e0d9",
+  "status": "FAIL",
+  "observations": "",
+  "seconds": 10.1,
+  "cycle": "c2f"
+ }
+]

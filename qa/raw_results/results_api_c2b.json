@@ -1,0 +1,44 @@
+[
+ {
+  "id": "AGENT-17",
+  "area": "Agent answers",
+  "kind": "API",
+  "description": "Answer in a language other than the document's (Spanish question, English doc)",
+  "preconditions": "Handbook KB",
+  "steps": "Ask in Spanish about carry over",
+  "expected": "Spanish answer with 10 days",
+  "actual": "Según la política de vacaciones, se pueden transferir hasta un máximo de **10 días** de vacaciones no utilizados al año calendario siguiente.",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 9.5,
+  "cycle": "c2b"
+ },
+ {
+  "id": "DOC-31",
+  "area": "Documents",
+  "kind": "API",
+  "description": "XLSX workbook is ingested natively (no external parser) and table is queryable",
+  "preconditions": "Base; no docling",
+  "steps": "Upload .xlsx; ask agent for total q2 revenue",
+  "expected": "ready; agent answers 3250 (1500+1100+650)",
+  "actual": "The total q2_revenue across all regions in the Sales sheet is 3,250.",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 20.8,
+  "cycle": "c2b"
+ },
+ {
+  "id": "RES-01",
+  "area": "Resilience",
+  "kind": "API",
+  "description": "Worker killed mid-ingestion: document is recovered and reaches ready after the worker restarts",
+  "preconditions": "Worker running as a local process",
+  "steps": "Upload 6 large docs; SIGKILL worker; restart worker; poll",
+  "expected": "All documents end ready (stalled job reclaimed); none stuck",
+  "actual": "{'after_kill': ['ready', 'embedding', 'embedding', 'queued'], 'final': ['ready', 'ready', 'ready', 'ready'], 'recovery_s': 39}",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 44.5,
+  "cycle": "c2b"
+ }
+]

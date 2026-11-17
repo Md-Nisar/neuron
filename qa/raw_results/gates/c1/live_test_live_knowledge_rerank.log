@@ -1,0 +1,51 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________ test_reranking_beats_rrf_on_the_corpus[asyncio] ________________
+
+role_db = RoleDatabase(name='neuron_roles_fc656829a34b', roles=Roles(migrator='neuron_tc64cb552b8_migrator', app='neuron_tc64cb552b8_app', migrator_password='8942d7e2b2eeba905925bd13292b4193', app_password='f0300bb3c4b79e898dad8ae60ef95bc4'))
+live_nvidia_key = '<REDACTED>'
+
+    async def test_reranking_beats_rrf_on_the_corpus(
+        role_db: RoleDatabase,  # noqa: F811
+        live_nvidia_key: str,
+    ) -> None:
+        dataset = json.loads(DATASET.read_text(encoding="utf-8"))
+        index, vectors = load_vectors()
+        settings = Settings(
+            env="development", knowledge_reranker="nvidia", nvidia_api_key=live_nvidia_key
+        ).model_copy(update={"knowledge_enabled": True})
+        owners = {user: hashlib.sha256(user.encode()).hexdigest() for user in dataset["users"]}
+        names = await _store(role_db, dataset, vectors, settings.knowledge_chunk_max_tokens, owners)
+        cached = _Cached(vectors)
+        embeddings = EmbeddingProvider(
+            cached,
+            cached,
+            dimensions=index["dimensions"],
+            locality="hosted",
+            batch_size=8,
+            max_retries=0,
+        )
+        pool = lambda: _Connections(role_db.app_dsn)  # noqa: E731
+        plain = Retriever(settings, pool, embeddings)  # type: ignore[arg-type]
+        reranking = Retriever(settings, pool, embeddings, create_reranker(settings))  # type: ignore[arg-type]
+    
+        ranks: dict[str, list[int | None]] = {"rrf": [], "reranked": []}
+        seconds: list[float] = []
+        for case in dataset["cases"]:
+            if case["category"] != "answerable":
+                continue
+            for name, retriever in (("rrf", plain), ("reranked", reranking)):
+                started = time.perf_counter()
+                result = await retriever.search(owners[case["as_user"]], case["question"], k=10)
+                if name == "reranked":
+                    seconds.append(time.perf_counter() - started)
+>                   assert result.reranked, "the reranker fell back: the run is inconclusive"
+E                   AssertionError: the reranker fell back: the run is inconclusive
+E                   assert False
+E                    +  where False = SearchResult(passages=[Passage(chunk_id=UUID('4b11a7cf-5bf8-4faf-bb49-46677b727f3c'), doc_id=UUID('c7aef9d0-c7e7-4305-...ge_start=26, page_end=26, score=0.014285714285714285, source_url=None, fetched_at=None)], path='exact', reranked=False).reranked
+
+tests/integration/test_live_knowledge_rerank.py:72: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_live_knowledge_rerank.py::test_reranking_beats_rrf_on_the_corpus[asyncio]
+exit 1

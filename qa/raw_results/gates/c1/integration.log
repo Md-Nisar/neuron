@@ -1,0 +1,14 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/user/neuron
+configfile: pyproject.toml
+plugins: locust-2.47.0, langsmith-0.14.13, anyio-4.14.2, platformdirs-4.13.0, cov-7.1.0
+collected 338 items / 2 deselected / 336 selected
+
+tests/integration/test_docling_serve.py ss                               [  0%]
+tests/integration/test_image_layout.py sssssssss                         [  3%]
+tests/integration/test_keycloak.py sss                                   [  4%]
+tests/integration/test_live_knowledge_answers.py s                       [  4%]
+tests/integration/test_live_knowledge_rerank.py F                        [  4%]
+tests/integration/test_live_knowledge_retrieval.py exit 143

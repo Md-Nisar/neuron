@@ -1,0 +1,16 @@
+[
+ {
+  "id": "TAB-05",
+  "area": "Tables",
+  "kind": "API",
+  "description": "Cross-tenant: another user's table cannot be queried through the agent",
+  "preconditions": "Alice numbers KB",
+  "steps": "Bob asks about 'Engineering employees' with Alice's numbers kb id",
+  "expected": "No Alice data",
+  "actual": "Your knowledge bases and spreadsheets don't contain a headcount table with Engineering department data.",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 15.8,
+  "cycle": "c2f2"
+ }
+]

@@ -1,0 +1,70 @@
+uv run python -m bandit -q -r src loadtest scripts/dev_token.py scripts/smoke_test.py scripts/deploy_tools.py scripts/token_report.py scripts/validate_observability.py
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+[manager]	WARNING	Test in comment: https is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: checked is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: above is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: fixed is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: docker is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: CLI is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: call is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: set is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: before is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: the is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: first is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: tick is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: the is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: row is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: is is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: locked is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: constants is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: only is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: constants is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: only is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: constants is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: only is not a test name or id, ignoring
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/reconcile.py:66
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/reconcile.py:71
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/reconcile.py:72
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/reconcile.py:88
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/reconcile.py:89
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/reconcile.py:96
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/reconcile.py:97
+[manager]	WARNING	Test in comment: constants is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: only is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: a is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: bound is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: parameter is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: wired is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: with is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: knowledge is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: on is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: an is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: aggregate is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: always is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: returns is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: a is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: row is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: wired is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: with is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: knowledge is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: on is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: quoted is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: identifiers is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: placeholders is not a test name or id, ignoring
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/table_engine.py:131
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/table_engine.py:131
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/neuron_agent/knowledge/table_engine.py:133
+[manager]	WARNING	Test in comment: main is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: checks is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: it is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: main is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: checks is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: it is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: main is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: checks is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: it is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: one is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: row is not a test name or id, ignoring
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+No known vulnerabilities found
+exit 0

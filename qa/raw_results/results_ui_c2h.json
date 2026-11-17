@@ -1,0 +1,16 @@
+[
+ {
+  "id": "UI-38",
+  "area": "Sharing UI",
+  "kind": "UI",
+  "description": "Write role gets upload/delete but not rename; Manage role gets rename and sharing",
+  "preconditions": "Base shared with roles w-RUN (write) and a-RUN (admin)",
+  "steps": "Sign in as each role holder; inspect controls",
+  "expected": "write: dropzone + delete-doc, no rename/delete-base; admin: rename + sharing panel, no delete-base",
+  "actual": "{\"write\":{\"drop\":1,\"delDoc\":1,\"rename\":0,\"delBase\":0,\"sharing\":0},\"admin\":{\"drop\":1,\"delDoc\":1,\"rename\":1,\"delBase\":0,\"sharing\":1}}",
+  "status": "PASS",
+  "observations": "",
+  "seconds": 6.4,
+  "cycle": "c2h"
+ }
+]

@@ -1,0 +1,5 @@
+
+> neuron-web@0.0.0 lint
+> eslint .
+
+lint exit 0

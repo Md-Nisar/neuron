@@ -1,0 +1,24 @@
+[WebServer] warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+[WebServer] fake_idp: http://localhost:8180/realms/neuron
+[WebServer] warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+[WebServer] INFO:     Started server process [9085]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+
+Running 12 tests using 1 worker
+
+  ✓   1 e2e/download.spec.ts:47:3 › a downloaded SVG file is saved, never run @knowledge (1.8s)
+  ✓   2 e2e/download.spec.ts:64:3 › the check sees a SVG file's script run when served as a page (1.3s)
+  ✓   3 e2e/download.spec.ts:47:3 › a downloaded HTML file is saved, never run @knowledge (1.3s)
+  ✓   4 e2e/download.spec.ts:64:3 › the check sees a HTML file's script run when served as a page (1.3s)
+  ✓   5 e2e/flows.spec.ts:26:1 › a user signs in, chats, rates the answer and signs out @auth @chat @feedback (1.8s)
+  ✓   6 e2e/flows.spec.ts:40:1 › a remembered note waits for approval, is stored once approved, and can be removed @approval @memories (1.9s)
+  ✓   7 e2e/flows.spec.ts:58:1 › a rejected note is not stored @approval (1.7s)
+  ✓   8 e2e/flows.spec.ts:68:1 › a conversation survives a reload, can be renamed, and deleted @resume @threads (3.2s)
+  ✓   9 e2e/flows.spec.ts:92:1 › a user only sees their own conversations @isolation (3.0s)
+  ✓  10 e2e/flows.spec.ts:101:1 › a user can download their data and then erase it @data-rights (1.9s)
+  ✓  11 e2e/flows.spec.ts:127:1 › hostile text is shown as text and nothing leaves the three local origins @security (1.5s)
+  ✓  12 e2e/flows.spec.ts:162:1 › the theme choice is kept across a reload @theme (2.7s)
+
+  12 passed (31.1s)
