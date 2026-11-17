@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
+import anyio
 import pytest
 
 from neuron_agent.config.settings import ProcessingLocality, Settings
@@ -98,3 +99,39 @@ async def test_a_success_in_between_keeps_the_circuit_closed() -> None:
     for _ in range(9):
         await _search(retriever, kb)
     assert reranker.calls == 9
+
+
+async def test_only_one_search_probes_a_half_open_circuit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = [1000.0]
+    monkeypatch.setattr(retrieval.time, "monotonic", lambda: now[0])
+    kb = uuid.uuid4()
+    reranker = _Reranker([RerankError("rerank_timeout")] * 3)
+    retriever = _retriever(reranker)
+    for _ in range(3):
+        await _search(retriever, kb)
+    now[0] += retrieval._RERANK_BREAKER_COOLDOWN_SECONDS + 1
+
+    release = anyio.Event()
+    inner = reranker.rerank
+
+    async def slow(query: str, texts: Sequence[str]) -> list[tuple[int, float]]:
+        await release.wait()
+        return await inner(query, texts)
+
+    reranker.rerank = slow  # type: ignore[method-assign]
+    results: list[bool] = []
+
+    async def search() -> None:
+        results.append((await _search(retriever, kb))[1])
+
+    async with anyio.create_task_group() as group:
+        group.start_soon(search)
+        await anyio.sleep(0)
+        group.start_soon(search)  # arrives while the probe is in flight: skips the reranker
+        group.start_soon(search)
+        await anyio.sleep(0)
+        release.set()
+    assert sorted(results) == [False, False, True]
+    assert reranker.calls == 4

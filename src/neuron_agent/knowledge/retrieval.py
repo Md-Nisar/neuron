@@ -196,6 +196,7 @@ class Retriever:
         self._reindex = reindex
         self._rerank_failures = 0
         self._rerank_open_until = 0.0
+        self._rerank_probing = False
 
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
@@ -336,12 +337,14 @@ class Retriever:
         """
         if self._reranker is None or not passages:
             return passages[:k], False
+        probing = False
         if self._rerank_failures >= _RERANK_BREAKER_FAILURES:
-            if time.monotonic() < self._rerank_open_until:
+            if time.monotonic() < self._rerank_open_until or self._rerank_probing:
                 log.warning("knowledge_rerank_skipped", error_code="rerank_circuit_open")
                 return passages[:k], False
-            # Half-open: this search tries the reranker; one more failure reopens the circuit.
-            self._rerank_failures = _RERANK_BREAKER_FAILURES - 1
+            # Half-open: this one search tries the reranker, the others keep the RRF order; a
+            # failure reopens the circuit for another cooldown.
+            self._rerank_probing = probing = True
         processing = {row["kb_id"]: row["processing"] for row in bases}
         try:
             for kb_id in {passage.kb_id for passage in passages}:
@@ -363,6 +366,9 @@ class Retriever:
             log.warning("knowledge_rerank_skipped", error_code="rerank_timeout")
             self._rerank_failed(None)
             return passages[:k], False
+        finally:
+            if probing:
+                self._rerank_probing = False
         self._rerank_failures = 0
         return [dataclasses.replace(passages[i], score=score) for i, score in order[:k]], True
 

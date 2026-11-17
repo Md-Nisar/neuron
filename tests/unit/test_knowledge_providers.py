@@ -495,3 +495,30 @@ def test_an_unset_reindex_locality_is_not_taken_as_set() -> None:
     assert reindex is not None
     assert "knowledge_embedding_locality" not in reindex.model_fields_set
     assert reindex.knowledge_embedding_locality_effective == "hosted"
+
+
+async def test_a_repeated_query_costs_no_provider_call() -> None:
+    provider, scripted, _ = _provider([_vectors(1)])
+    first = await provider.embed_query("vacation days")
+    first[0] = 99.0  # a caller changing its copy cannot change what the cache returns
+    assert await provider.embed_query("vacation days") == _vectors(1)[0]
+    assert len(scripted.calls) == 1
+
+
+async def test_the_query_cache_forgets_the_least_recently_used_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("neuron_agent.knowledge.providers._QUERY_CACHE_SIZE", 2)
+    provider, scripted, _ = _provider([_vectors(1)] * 4)
+    for query in ("a", "b", "a", "c"):  # "b" is the least recently used when "c" arrives
+        await provider.embed_query(query)
+    assert [call[0] for call in scripted.calls] == ["a", "b", "c"]
+    await provider.embed_query("a")
+    await provider.embed_query("b")
+    assert [call[0] for call in scripted.calls] == ["a", "b", "c", "b"]
+
+
+async def test_the_query_cache_holds_hashes_not_text() -> None:
+    provider, _, _ = _provider([_vectors(1)])
+    await provider.embed_query("a confidential question")
+    assert all(isinstance(key, bytes) and len(key) == 32 for key in provider._query_cache)
