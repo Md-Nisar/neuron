@@ -116,14 +116,14 @@ Passages appearing in both candidate sets receive significant score boosts, prov
 
 ### 3.3 Cross-Encoder Candidate Reranking (RAG-09.01)
 While bi-encoders generate separate embeddings for queries and passages, cross-encoders perform full cross-attention over query-passage pairs:
-1. **Candidate Pool:** The top 40 fused candidates from RRF are sent to the hosted reranker (`nvidia/llama-nemotron-rerank-vl-1b-v2`).
+1. **Candidate Pool:** The top 40 fused candidates from RRF are sent to the hosted reranker (`nvidia/nemotron-3.5-rerank-8b`).
 2. **Scoring & Verification:** The API scores candidates jointly and returns logit rankings. Neuron verifies that every candidate is scored exactly once with finite values (`_checked`).
 3. **Evaluation Performance:** On the benchmark corpus (`docs/releases/v1.2.0-rerank-eval.md`), cross-encoder reranking:
    - Raised Mean Reciprocal Rank (MRR) from 0.833 to 0.924.
    - Raised recall@1 from 0.734 to 0.875.
    - Maintained recall@5 at 0.984.
    - Added approximately 0.5–0.7 seconds at p95 latency.
-4. **Fail-Safe Fallback:** If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 3.0s) or encounters provider errors, the retriever transparently falls back to RRF ordering, logging the failure and setting `reranked: false`.
+4. **Fail-Safe Fallback:** If the reranker times out (`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, default 6.0s) or encounters provider errors, the retriever transparently falls back to RRF ordering, logging the failure and setting `reranked: false`.
 
 ---
 

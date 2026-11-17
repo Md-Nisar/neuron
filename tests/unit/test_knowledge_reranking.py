@@ -27,7 +27,7 @@ def _no_provider_keys(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _reranker(handler: Any) -> NvidiaReranker:
     return NvidiaReranker(
-        "nvidia/llama-nemotron-rerank-vl-1b-v2",
+        "nvidia/nemotron-3.5-rerank-8b",
         "nvapi-test",
         timeout_seconds=2.0,
         transport=httpx2.MockTransport(handler),
@@ -51,24 +51,37 @@ async def test_it_sends_the_query_and_passages_and_returns_the_best_first() -> N
     assert order == [(1, 2.5), (2, 0.0), (0, -1.0)]
     [request] = seen
     assert str(request.url) == (
-        "https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-vl-1b-v2/reranking"
+        "https://ai.api.nvidia.com/v1/retrieval/nvidia/nemotron-3.5-rerank-8b/reranking"
     )
     assert request.headers["authorization"] == "Bearer nvapi-test"
     assert json.loads(request.content) == {
-        "model": "nvidia/llama-nemotron-rerank-vl-1b-v2",
+        "model": "nvidia/nemotron-3.5-rerank-8b",
         "query": {"text": "what is zero trust"},
         "passages": [{"text": "a"}, {"text": "b"}, {"text": "c"}],
         "truncate": "END",
     }
 
 
+async def test_it_scores_the_passages_without_markup_keeping_image_descriptions() -> None:
+    # NVIDIA answers `422` to a whole request when one passage holds an `<img>` tag.
+    sent: list[Any] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.extend(json.loads(request.content)["passages"])
+        return httpx2.Response(200, json={"rankings": [{"index": 0, "logit": 1}]})
+
+    passage = 'See <IMG src="q3.png" alt="Q3 revenue chart"> and <a href="/x">the notes</a>, a < b'
+    await _reranker(handler).rerank("revenue", [passage])
+
+    assert sent == [{"text": "See  Q3 revenue chart  and  the notes , a < b"}]
+
+
 @pytest.mark.parametrize(
     ("model", "path"),
     [
-        ("nvidia/llama-3.2-nv-rerankqa-1b-v2", "nvidia/llama-3_2-nv-rerankqa-1b-v2"),
-        # Dots become underscores, so no `.` or `..` segment reaches the path.
-        ("a/..", "a/__"),
-        ("../..", "__/__"),
+        # NVIDIA's path keeps the dots: `nemotron-3_5-rerank-8b` is `404`.
+        ("nvidia/nemotron-3.5-rerank-8b", "nvidia/nemotron-3.5-rerank-8b"),
+        ("nvidia/llama-nemotron-rerank-vl-1b-v2", "nvidia/llama-nemotron-rerank-vl-1b-v2"),
     ],
 )
 async def test_the_model_names_one_path_under_nvidias_host(model: str, path: str) -> None:
@@ -83,6 +96,12 @@ async def test_the_model_names_one_path_under_nvidias_host(model: str, path: str
     )
     await reranker.rerank("q", ["one"])
     assert urls == [f"https://ai.api.nvidia.com/v1/retrieval/{path}/reranking"]
+
+
+@pytest.mark.parametrize("model", ["a/..", "../..", "./b", "nvidia/..."])
+def test_a_segment_of_dots_alone_never_reaches_the_url(model: str) -> None:
+    with pytest.raises(ConfigurationError):
+        NvidiaReranker(model, "k", timeout_seconds=2.0)
 
 
 async def test_a_reply_over_the_cap_is_refused() -> None:
@@ -171,6 +190,14 @@ def test_the_default_reranker(overrides: dict[str, Any], expected: str) -> None:
     assert Settings(env="test", **overrides).knowledge_reranker_effective == expected
 
 
+def test_the_default_model_and_timeout_fit_the_8b_reranker() -> None:
+    # It took 3.8 s at p95 over 40 candidates (#620): a 3 s deadline would drop it often.
+    settings = Settings(env="test")
+
+    assert settings.knowledge_reranker_model == "nvidia/nemotron-3.5-rerank-8b"
+    assert settings.knowledge_reranker_timeout_seconds == 6.0
+
+
 def test_create_reranker_builds_the_configured_one() -> None:
     assert create_reranker(Settings(env="test")) is None
     reranker = create_reranker(Settings(env="test", nvidia_api_key="nvapi-test"))
@@ -219,7 +246,9 @@ def test_development_may_try_the_hosted_reranker_under_any_policy() -> None:
     assert settings.knowledge_reranker_effective == "nvidia"
 
 
-@pytest.mark.parametrize("model", ["llama", "nvidia/x?y=1", "../etc/passwd", "nvidia/a/b"])
+@pytest.mark.parametrize(
+    "model", ["llama", "nvidia/x?y=1", "../etc/passwd", "nvidia/a/b", "nvidia/..", "./x"]
+)
 def test_the_model_name_cannot_change_the_url_path(model: str) -> None:
     with pytest.raises(ValidationError):
         Settings(env="test", knowledge_reranker_model=model)

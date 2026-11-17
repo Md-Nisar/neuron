@@ -12,6 +12,7 @@ order on any error or timeout and says so with `reranked: false`.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Sequence
 from typing import Protocol
 
@@ -24,6 +25,11 @@ from neuron_agent.errors.base import AppError, ConfigurationError, ErrorContext
 # NVIDIA's retrieval API (not the OpenAI-compatible `integrate` host), one path per model.
 _NVIDIA_RERANK_URL = "https://ai.api.nvidia.com/v1/retrieval/{model}/reranking"
 _MAX_RESPONSE_BYTES = 1_000_000
+# NVIDIA's reranker refuses the whole request (`422`, content safety) when any passage holds an
+# `<img>` tag, and markup says nothing about relevance, so it scores a copy without tags. An
+# image keeps its `alt` text, which describes it. The passages the search returns are unchanged.
+_TAG = re.compile(r"</?[A-Za-z][^>]*>")
+_ALT = re.compile(r"""\balt\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
 
 
 class RerankError(AppError):
@@ -56,7 +62,7 @@ class _Reply(BaseModel):
 
 
 class NvidiaReranker:
-    """NVIDIA's hosted reranking API (`nvidia/llama-nemotron-rerank-vl-1b-v2` by default)."""
+    """NVIDIA's hosted reranking API (`nvidia/nemotron-3.5-rerank-8b` by default)."""
 
     locality: ProcessingLocality = "hosted"
 
@@ -68,11 +74,13 @@ class NvidiaReranker:
         timeout_seconds: float,
         transport: httpx2.AsyncBaseTransport | None = None,
     ) -> None:
+        # With the settings pattern (no `/` beyond one, no `?`, `#` or `%`), refusing a segment
+        # of dots alone is what keeps `.` and `..` out of the URL, so the model name can only
+        # ever name a path under the host. NVIDIA's current paths keep the model's dots.
+        if any(not segment.strip(".") for segment in model.split("/")):
+            raise ConfigurationError("the reranker model name is not a model path")
         self._model = model
-        # NVIDIA spells dots as underscores in the path. Keep the replace: with the settings
-        # pattern (no `/` beyond one, no `?`, `#` or `%`), it is what keeps `.` and `..`
-        # segments out of the URL, so the model name can only ever name a path under the host.
-        self._url = _NVIDIA_RERANK_URL.format(model=model.replace(".", "_"))
+        self._url = _NVIDIA_RERANK_URL.format(model=model)
         self._api_key = api_key
         self._timeout = timeout_seconds
         self._transport = transport
@@ -81,7 +89,7 @@ class NvidiaReranker:
         body = {
             "model": self._model,
             "query": {"text": query},
-            "passages": [{"text": text} for text in texts],
+            "passages": [{"text": _without_tags(text)} for text in texts],
             "truncate": "END",
         }
         async with httpx2.AsyncClient(
@@ -113,6 +121,14 @@ class NvidiaReranker:
         except ValidationError:
             raise RerankError("rerank_output_invalid") from None
         return _checked([(r.index, r.logit) for r in rankings], len(texts))
+
+
+def _without_tags(text: str) -> str:
+    def replace(tag: re.Match[str]) -> str:
+        alt = _ALT.search(tag[0]) if tag[0][:4].lower() == "<img" else None
+        return f" {alt[1] or alt[2] or ''} " if alt else " "
+
+    return _TAG.sub(replace, text)
 
 
 def _checked(order: list[tuple[int, float]], count: int) -> list[tuple[int, float]]:

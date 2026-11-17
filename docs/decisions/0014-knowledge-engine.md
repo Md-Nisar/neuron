@@ -384,9 +384,9 @@ returned, so it adds no access path. It is a new hosted destination for the quer
 (NVIDIA's retrieval API, the same provider as the default embeddings): the processing policy and
 each base's `processing` setting apply to it as to embeddings, and a search over any base that
 forbids hosted processing is not reranked. Any error or timeout
-(`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, 3 s) keeps the RRF order and reports
+(`APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS`, 6 s) keeps the RRF order and reports
 `reranked: false`. On by default with NVIDIA embeddings and a key, from the measured gain
-(`docs/releases/v1.2.0-rerank-eval.md`).
+(`docs/releases/v1.2.0-rerank-eval.md`; re-measured for `nemotron-3.5-rerank-8b` in #620).
 
 ### Amendment: sharing by role (RAG-09.03, 2026-11-12)
 
