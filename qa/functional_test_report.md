@@ -7,7 +7,7 @@ Test cases and their status: `manual_test_scenarios.csv` / `.json` (same data, 2
 
 **The Knowledge feature set is in good shape.** Across 218 documented scenarios on the running stack, the final cycle passes 217 and fails 1, and that one is a documented feature gap, not a regression.
 Tenant isolation, role-based sharing, row-level security, least-privilege roles, prompt-injection resistance, citation integrity, crash recovery and database-outage recovery all held in every scenario.
-Testing found **5 product defects** (2 medium, 3 low), all fixed and re-verified, plus 1 test-infrastructure leak of the API key into failure logs (fixed). It also left **1 feature gap and 9 observations** open for decision (`bugs_and_fixes.md`).
+Testing found **5 product defects** (2 medium, 3 low), all fixed and re-verified, plus 1 test-infrastructure leak of the API key into failure logs (fixed). It also left **1 feature gap and 9 observations** open for decision ().
 
 | Layer | Final result |
 |-------|--------------|
@@ -33,7 +33,7 @@ Testing found **5 product defects** (2 medium, 3 low), all fixed and re-verified
 | Models | live NVIDIA catalog using the `LLM_*` key: chat `nemotron-3-ultra-550b-a55b`, embeddings `nemotron-3.5-embed-1b` (1024-d), reranker `nemotron-3.5-rerank-8b` | key was never written to the repo; one pytest traceback printed it into a saved log, which I redacted (TI-01 prevents recurrence) |
 
 Deviations from "spin up everything": `docker compose` itself was not used because `docker build` of the app image fails behind this sandbox's TLS-intercepting proxy
-(I did not disable verification); the same components ran as native processes or from the repo's pinned images. Details and impact: `regression_report.md`, "Not run / blocked".
+(I did not disable verification); the same components ran as native processes or from the repo's pinned images.
 
 ## 3. What was tested
 
@@ -55,13 +55,12 @@ Deviations from "spin up everything": `docker compose` itself was not used becau
 | BUG-04 | Low | Docs said knowledge tools need `knowledge_base_ids`; they do not (docs corrected) |
 | TI-01 | Low | Failing live tests printed the real API key (fixture now masked) |
 
-Product code changed: 38 lines in 3 files, plus tests and docs (`bugs_and_fixes.md`, section 5).
+Product code changed: 38 lines in 3 files, plus tests and docs.
 
 ## 5. Open items for the owner
 
 **Feature gap**
 
-# Open: feature gap
 
 | ID | Description | Recommendation |
 |----|-------------|----------------|
