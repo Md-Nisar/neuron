@@ -403,6 +403,11 @@ alone never grant access: the caller still needs an owner key, and the route its
   stays with its owner, as do export and erase of the base.
 - **Errors.** A base the caller cannot see is `404`, as before. One they can see but not change
   that way is `403` (`knowledge_access_denied`): its existence is no secret from them.
+- **Shareable roles** (security round 1, 2026-11-17): a grant may name only a role listed in
+  `APP_KNOWLEDGE_SHARING_ROLES` (default none; `422 knowledge_role_not_shareable` otherwise),
+  and only listed roles count in `allowed_kbs`, so a stored grant on an unlisted role gives no
+  access. Without the list, any base admin could grant the role every user holds and put their
+  text into every user's search and answers. The operator lists group roles only.
 - **Role names** are the token's values as they are, with no issuer prefix: one issuer is
   accepted (ADR 0006). A second issuer would need prefixed grant subjects first.
 - **Grants API** (`GET`/`PUT /v1/knowledge/bases/{kb_id}/grants`, `knowledge:admin`): the owner

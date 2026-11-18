@@ -125,6 +125,8 @@ services:
       - knowledge-blobs:/var/lib/neuron/knowledge-blobs
     ports:
       - "127.0.0.1:8000:8000"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
 
   # Parses and embeds uploaded documents (RAG-02.01). It handles untrusted files, so it holds
   # only its own DSN, never the app or migration DSN, the identity key or the auth settings.
@@ -132,6 +134,8 @@ services:
     <<: *neuron-image
     command: ["neuron-worker"]
     restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     # SIGTERM drains for APP_WORKER_DRAIN_SECONDS (30 s); Docker must wait longer than that.
     stop_grace_period: 40s
     depends_on:

@@ -36,6 +36,7 @@ from neuron_agent.errors.base import (
     KnowledgeBaseNotFoundError,
     KnowledgeDisabledError,
     KnowledgeDocumentNotFoundError,
+    KnowledgeRoleNotShareableError,
     PersistenceError,
     UploadRefusedError,
 )
@@ -393,6 +394,8 @@ class KnowledgeBases:
             await conn.execute(_LOCK_BASE, (kb_id,))
             allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
             _require(allowed, kb_id, allowed.admin)
+            if any(g.role not in self._settings.knowledge_sharing_roles for g in grants):
+                raise KnowledgeRoleNotShareableError("the role is not in the sharing list")
             cursor = await conn.execute(_ROLE_GRANTS, (kb_id,))
             before = {row["role"]: row["access"] for row in await cursor.fetchall()}
             after = {grant.role: grant.access for grant in grants}

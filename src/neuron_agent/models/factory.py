@@ -73,6 +73,7 @@ from neuron_agent.errors.base import (
 )
 from neuron_agent.errors.base import RateLimitError as AppRateLimitError
 from neuron_agent.errors.base import StructuredOutputError as AppStructuredOutputError
+from neuron_agent.models.throttle import ThrottledModelCalls, shared_throttle
 from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.observability.audit import audit
 from neuron_agent.prompts.loader import load_prompt
@@ -809,6 +810,12 @@ def approval_middleware(registry: ToolRegistry) -> AgentMiddleware | None:
     return HumanInTheLoopMiddleware(interrupt_on=dict(gated), interrupt_mode="batched")
 
 
+def _throttled(inner: AgentMiddleware, settings: Settings) -> AgentMiddleware:
+    """Each provider call, retries included, waits for a free slot under the configured rate."""
+    limit = settings.provider_max_requests_per_minute
+    return inner if limit is None else ThrottledModelCalls(inner, shared_throttle(limit))
+
+
 def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMiddleware]:
     """The agent's middleware, outermost first."""
     fallback = model_fallback_middleware(settings)
@@ -828,7 +835,7 @@ def agent_middleware(settings: Settings, registry: ToolRegistry) -> list[AgentMi
         tool_timeout_middleware(settings.tool_timeout_seconds),
         # Directly outside the provider retries: a model is retried, then the next is tried.
         *([fallback] if fallback else []),
-        provider_retry_middleware(settings),
+        _throttled(provider_retry_middleware(settings), settings),
     ]
 
 

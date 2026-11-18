@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Security: sharing a knowledge base by role is limited to roles the operator lists in `APP_KNOWLEDGE_SHARING_ROLES` (default: none). Before, any user with `knowledge:admin` could grant a role every user holds, such as the reference realm's `neuron-user`. Their base then entered every user's default search, and its text reached other users' answers. The security round (`qa/security_report.md`) showed an attacker's passage ranked first in another user's search and quoted in that user's answer. A grant on an unlisted role is refused (`422 knowledge_role_not_shareable`), and a grant stored earlier on a role no longer listed gives nobody access.
+
+Upgrade note: a deployment that shares bases by role lists those roles in `APP_KNOWLEDGE_SHARING_ROLES` (JSON list). Until then, its existing role grants give no access.
+
+Security: the reference Keycloak realm (`deploy/keycloak/neuron-realm.json`) locks an account for a growing time after 10 failed sign-ins, and requires passwords of at least 12 characters that differ from the username, email and the last 3 passwords.
+
 ## 1.4.0
 
 "Questions about tables" (RAG-E11, first part). The assistant can now answer a question that needs every row of an uploaded spreadsheet or CSV file, such as a total, a count, an average or the largest group. The worker stores each table of an XLSX or CSV upload with typed columns. The agent finds tables with `find_tables` and runs one read-only SQL query on one with `query_table`, and the answer cites the table's document and sheet. On the table eval (1,500 rows, 6 questions that need every row and 2 that need one), the reference model went from 1 of 6 aggregate questions right with search alone to 6 of 6. Search reranks again: NVIDIA retired the default reranker on 2026-11-16, and 1.4.0 moves to its successor, `nvidia/nemotron-3.5-rerank-8b`. Knowledge stays off by default. The `/v1` API and stream protocol version 1 stay compatible: CSV uploads, the two tool scopes and the citation's `table` field are additions, and `citation_schema_version` stays 1. Like 1.0.0 to 1.3.0, this release was verified locally, without a production environment. Verification: `docs/releases/v1.4.0-release-verification.md`.

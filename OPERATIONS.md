@@ -782,7 +782,8 @@ With the Node version in `web/.nvmrc`: `make web-install` (installs from the loc
 - A **public** client with the **authorization code** flow and **PKCE `S256`**; no implicit, password or service-account grants for the browser client.
 - **Exact** redirect and post-logout redirect URIs (the UI's origin root, for example `https://app.example.com/`), no wildcard.
 - Access tokens with `aud` containing `APP_AUTH_AUDIENCE`, and the user's roles in a top-level `roles` claim (or scopes in `scope`), mapped to permissions with `APP_AUTH_ROLE_PERMISSIONS`. In Keycloak, a client with *Full scope allowed* **off** and no scope mappings drops realm roles from the token, so `roles` arrives empty; either leave it on or map the roles.
-- Short access-token lifetimes. The UI keeps the token in memory only and does not use the refresh token.
+- Short access-token lifetimes. The UI keeps the token in memory only and does not use the refresh token. The API checks tokens itself and does not ask the provider, so a token stays valid until it expires even after sign-out.
+- Brute-force protection and a password policy (or a federated provider that has them). The development realm locks an account for a growing time after 10 failed sign-ins and requires 12 characters; its `neuron-dev-test` client allows password grants for scripts and must not exist in production.
 - The API requires `nbf` in access tokens. If your provider omits it, sign-in succeeds but every API call is a `401`; check this first.
 
 ### Headers to serve
@@ -891,6 +892,7 @@ Provider token usage from model `usage_metadata` is charged to a rolling per-pri
 - `APP_REQUEST_TIMEOUT_SECONDS` (default 60s): per-attempt timeout on the model provider call (`ChatOpenAI(timeout=...)`).
 - `APP_TOOL_TIMEOUT_SECONDS` (default 20s): per-call timeout on tool execution; exceeding it raises `ToolExecutionError` without leaking tool internals to the caller.
 - `APP_PROVIDER_MAX_RETRIES` (default 2, i.e. 3 attempts total): retries for transient provider failures only (connection errors, provider timeouts, provider rate limits, 5xx), with exponential backoff and jitter. Non-transient failures (auth errors, malformed requests) are never retried.
+- `APP_PROVIDER_MAX_REQUESTS_PER_MINUTE` (unset by default): a per-process sliding-window limit on model calls, retries included. Above it, calls wait for a slot rather than reaching the provider and failing with `429` (which carries no `Retry-After` on NVIDIA's free tier, so retries only add load). Set it a little under the provider's rate limit and divide it among replicas.
 - `APP_MAX_AGENT_ITERATIONS` (default 8, max 25): the most model calls one run may make, so at most 7 tool rounds plus the final answer. Each model call and each tool call is one LangGraph step, so the app passes `recursion_limit = 2 * APP_MAX_AGENT_ITERATIONS`. Exceeding it returns `422 agent_step_limit_exceeded` (a stream `error` event with the same code); it is logged as `agent_execution_failed` with `error_type=GraphRecursionError`, and the run and model spans carry it as `error.type`. Parallel tool calls in one model reply count once. The bound on a looping model is this count times `APP_REQUEST_TIMEOUT_SECONDS`, within `APP_RUN_TIMEOUT_SECONDS` and the per-user token budget.
 
 Raise provider timeouts/retries cautiously in production — higher values increase worst-case request latency and hold HTTP connections open longer under provider degradation.

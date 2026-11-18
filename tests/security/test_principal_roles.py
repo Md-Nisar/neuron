@@ -14,6 +14,12 @@ from tests.conftest import JwtApi, bearer
 from neuron_agent.security.authorization import AuthorizationContext
 
 
+@pytest.fixture
+def jwt_api(jwt_api_factory: Callable[..., JwtApi], echo_agent: object) -> JwtApi:
+    """The API in JWT mode, with the tokens' roles listed as roles bases may be shared with."""
+    return jwt_api_factory(knowledge_sharing_roles=["finance", "legal"])
+
+
 def _record_contexts(api: JwtApi, monkeypatch: pytest.MonkeyPatch) -> list[AuthorizationContext]:
     contexts: list[AuthorizationContext] = []
     build = api.service._authorization

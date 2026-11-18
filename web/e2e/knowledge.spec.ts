@@ -306,7 +306,8 @@ test(
   { tag: ["@knowledge"] },
   async ({ page, browser }) => {
     const user = `ks${Date.now().toString(36)}`;
-    const role = `team-${user}`;
+    // A role the API lists in APP_KNOWLEDGE_SHARING_ROLES (playwright.knowledge.config.ts).
+    const role = "e2e-team";
     await signIn(page, user);
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
     await page.getByLabel("New knowledge base").fill("Team handbook");

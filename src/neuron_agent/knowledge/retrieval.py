@@ -57,6 +57,11 @@ MAX_QUERY_CHARS = 2_000
 RRF_K = 60
 # A reranker reorders this many fused candidates, then the best `k` are kept (RAG-09.01).
 RERANK_CANDIDATES = 40
+# A reranker that keeps failing or timing out costs every search its full timeout for nothing.
+# After this many failures in a row the retriever keeps the RRF order for the cooldown, then lets
+# one search try again (half-open); a success closes the circuit.
+_RERANK_BREAKER_FAILURES = 3
+_RERANK_BREAKER_COOLDOWN_SECONDS = 30.0
 
 # The readable bases with their index profile. A base is searched by meaning only on the active
 # profile, with the configured model that embeds into it (RAG-09.04).
@@ -189,6 +194,9 @@ class Retriever:
         self._reranker = reranker
         # The re-index model (RAG-09.04): it embeds queries once its profile is the active one.
         self._reindex = reindex
+        self._rerank_failures = 0
+        self._rerank_open_until = 0.0
+        self._rerank_probing = False
 
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
@@ -279,7 +287,7 @@ class Retriever:
             profile_id, model = self._model(bases)
             if model is not None and self._dense_bases(bases, profile_id, model):
                 try:
-                    values = await model.embed_query(query)
+                    values = await model.embed_query(query, owner=owner_key)
                 except EmbeddingError as exc:
                     if mode == "dense":
                         raise
@@ -329,6 +337,14 @@ class Retriever:
         """
         if self._reranker is None or not passages:
             return passages[:k], False
+        probing = False
+        if self._rerank_failures >= _RERANK_BREAKER_FAILURES:
+            if time.monotonic() < self._rerank_open_until or self._rerank_probing:
+                log.warning("knowledge_rerank_skipped", error_code="rerank_circuit_open")
+                return passages[:k], False
+            # Half-open: this one search tries the reranker, the others keep the RRF order; a
+            # failure reopens the circuit for another cooldown.
+            self._rerank_probing = probing = True
         processing = {row["kb_id"]: row["processing"] for row in bases}
         try:
             for kb_id in {passage.kb_id for passage in passages}:
@@ -344,11 +360,25 @@ class Retriever:
                 order = await self._reranker.rerank(query, texts)
         except (EmbeddingError, RerankError) as exc:
             log.warning("knowledge_rerank_skipped", error_code=exc.code)
+            self._rerank_failed(exc)
             return passages[:k], False
         except TimeoutError:
             log.warning("knowledge_rerank_skipped", error_code="rerank_timeout")
+            self._rerank_failed(None)
             return passages[:k], False
+        finally:
+            if probing:
+                self._rerank_probing = False
+        self._rerank_failures = 0
         return [dataclasses.replace(passages[i], score=score) for i, score in order[:k]], True
+
+    def _rerank_failed(self, exc: EmbeddingError | RerankError | None) -> None:
+        """Count a provider failure toward opening the circuit (a policy refusal is not one)."""
+        if isinstance(exc, EmbeddingError):
+            return
+        self._rerank_failures += 1
+        if self._rerank_failures >= _RERANK_BREAKER_FAILURES:
+            self._rerank_open_until = time.monotonic() + _RERANK_BREAKER_COOLDOWN_SECONDS
 
     @staticmethod
     async def _bases(

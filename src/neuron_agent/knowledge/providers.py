@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import math
+from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Sequence
 from functools import partial
 
@@ -68,6 +69,14 @@ def ensure_processing_allowed(
     raise EmbeddingError("processing_locality_forbidden")
 
 
+# Query vectors kept per provider (one index profile and model), least recently used out. The
+# key is a hash of the owner and the text, so the cache holds no query text and one owner's
+# query is never a hit (a timing signal) for another. A repeated query (an agent searching
+# twice, the same question again) then costs no provider call, which matters under the
+# provider's request-rate limit.
+_QUERY_CACHE_SIZE = 256
+
+
 class EmbeddingProvider:
     """Validated, batched and retried embeddings for one index profile's dimensions."""
 
@@ -94,6 +103,7 @@ class EmbeddingProvider:
         self._batch_size = batch_size
         self._max_retries = max_retries
         self._sleep = sleep
+        self._query_cache: OrderedDict[bytes, tuple[float, ...]] = OrderedDict()
 
     async def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         """Embed passages. All batches are checked before any vector is returned."""
@@ -104,10 +114,22 @@ class EmbeddingProvider:
             vectors.extend(self._checked(result, expected=len(batch)))
         return vectors
 
-    async def embed_query(self, text: str) -> list[float]:
-        """Embed a search query (NVIDIA models embed queries and passages differently)."""
+    async def embed_query(self, text: str, *, owner: str = "") -> list[float]:
+        """Embed a search query (NVIDIA models embed queries and passages differently).
+
+        `owner` scopes the query cache: only the same owner's earlier query can be a hit.
+        """
+        key = hashlib.sha256(f"{owner}\0{text}".encode()).digest()
+        cached = self._query_cache.get(key)
+        if cached is not None:
+            self._query_cache.move_to_end(key)
+            return list(cached)
         result = await self._call(lambda: self._queries.aembed_query(text))
-        return self._checked([result], expected=1)[0]
+        vector = self._checked([result], expected=1)[0]
+        self._query_cache[key] = tuple(vector)
+        if len(self._query_cache) > _QUERY_CACHE_SIZE:
+            self._query_cache.popitem(last=False)
+        return vector
 
     async def _call[T](self, request: Callable[[], Awaitable[T]]) -> T:
         for attempt in range(self._max_retries + 1):

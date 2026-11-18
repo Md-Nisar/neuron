@@ -463,6 +463,7 @@ async def test_list_knowledge_bases_frames_user_named_bases(
     [
         ("search_knowledge", {"query": ""}),
         ("search_knowledge", {"query": "   "}),
+        ("search_knowledge", {"query": "a\x00b"}),
         ("search_knowledge", {"query": "q" * 501}),
         ("search_knowledge", {"query": "q", "limit": 11}),
         ("search_knowledge", {"query": "q", "kb_ids": ["not-a-uuid"]}),

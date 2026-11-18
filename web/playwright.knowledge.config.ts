@@ -11,6 +11,8 @@ export const KNOWLEDGE_ENV = {
   APP_CHECKPOINTER: "postgres",
   APP_KNOWLEDGE_ENABLED: "true",
   APP_KNOWLEDGE_EMBEDDING_PROVIDER: "fake",
+  // The one role the sharing test grants; any other role is refused.
+  APP_KNOWLEDGE_SHARING_ROLES: '["e2e-team"]',
 };
 
 const servers = Array.isArray(base.webServer) ? base.webServer : [];

@@ -34,6 +34,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -391,55 +392,90 @@ class _RequestBodyLimitMiddleware:
 app.add_middleware(_RequestBodyLimitMiddleware)
 
 
-@app.middleware("http")
-async def enforce_rate_limit(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    if settings.rate_limit_enabled and _route_path(request.scope).startswith(
-        _RATE_LIMITED_PREFIXES
-    ):
-        if settings.auth_mode == "none":
+class _RateLimitMiddleware:
+    """Per-IP request limits for unauthenticated mode; with JWT auth the limits are per user."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if (
+            scope["type"] == "http"
+            and settings.rate_limit_enabled
+            and settings.auth_mode == "none"
+            and _route_path(scope).startswith(_RATE_LIMITED_PREFIXES)
+        ):
+            request = Request(scope)
             key = settings.identity_hash_key
             ip_key = ip_rate_key(_client_ip(request), key.get_secret_value() if key else None)
+            response: Response | None = None
             try:
                 decision = await check_ip_limits(_request_security(), ip_key)
             except PersistenceError as exc:
                 failure = persistence_unavailable(exc)
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=failure.status_code, content={"detail": failure.detail}
                 )
-            if not decision.allowed:
-                return _rate_limited_response(decision.retry_after_seconds, ip_key)
-    return await call_next(request)
+            else:
+                if not decision.allowed:
+                    response = _rate_limited_response(decision.retry_after_seconds, ip_key)
+            if response is not None:
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
 
 
-@app.middleware("http")
-async def bind_request_correlation(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    correlation_id = request.headers.get("X-Correlation-ID")
-    if (
-        not correlation_id
-        or len(correlation_id) > 128
-        or any(
-            char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
-            for char in correlation_id
-        )
-    ):
-        correlation_id = str(uuid.uuid4())
-    request.state.correlation_id = correlation_id
-    record_correlation_id(correlation_id)
-    structlog.contextvars.clear_contextvars()
-    bind_correlation_context(request_id=correlation_id, thread_id=None)
-    try:
-        response = await call_next(request)
-    except Exception as exc:  # noqa: BLE001
-        # Answer here rather than in Starlette's outermost error handler, so the 500 still
-        # passes through the CORS and security-header middleware.
-        logger.exception("request_unhandled_error", error_type=type(exc).__name__)
-        response = JSONResponse(status_code=500, content={"detail": "internal_server_error"})
-    response.headers["X-Correlation-ID"] = correlation_id
-    return response
+app.add_middleware(_RateLimitMiddleware)
+
+
+class _CorrelationMiddleware:
+    """Bind the request's correlation id (a valid `X-Correlation-ID` or a new one) to the logs,
+    echo it on the response, and answer an unhandled error with a plain 500."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        correlation_id = Headers(scope=scope).get("X-Correlation-ID")
+        if (
+            not correlation_id
+            or len(correlation_id) > 128
+            or any(
+                char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+                for char in correlation_id
+            )
+        ):
+            correlation_id = str(uuid.uuid4())
+        scope.setdefault("state", {})["correlation_id"] = correlation_id
+        record_correlation_id(correlation_id)
+        structlog.contextvars.clear_contextvars()
+        bind_correlation_context(request_id=correlation_id, thread_id=None)
+        started = False
+
+        async def send_with_id(message: Message) -> None:
+            nonlocal started
+            if not started:  # the first message of a response carries the status and headers
+                started = True
+                MutableHeaders(scope=message)["X-Correlation-ID"] = correlation_id
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_with_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("request_unhandled_error", error_type=type(exc).__name__)
+            if started:
+                raise
+            # Answer here rather than in Starlette's outermost error handler, so the 500 still
+            # passes through the CORS and security-header middleware.
+            await JSONResponse(status_code=500, content={"detail": "internal_server_error"})(
+                scope, receive, send_with_id
+            )
+
+
+app.add_middleware(_CorrelationMiddleware)
 
 
 class _HostAndCorsMiddleware:
@@ -498,26 +534,49 @@ def _route_path(scope: Scope) -> str:
 app.add_middleware(_HostAndCorsMiddleware)
 
 
-@app.middleware("http")
-async def harden_http_responses(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    path = _route_path(request.scope)
-    serving_docs = path in _DOCS_PATHS and bool(settings.expose_api_docs)
-    if path in _DOCS_PATHS and not serving_docs:
-        response: Response = JSONResponse(status_code=404, content={"detail": "Not Found"})
-    else:
-        response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    if not serving_docs:
-        # The docs pages load Swagger UI and ReDoc assets, so they keep the browser default.
-        response.headers["Content-Security-Policy"] = _CONTENT_SECURITY_POLICY
-    if path.startswith("/v1/"):
-        response.headers["Cache-Control"] = "no-store"
-    if settings.hsts_max_age_seconds:
-        response.headers["Strict-Transport-Security"] = f"max-age={settings.hsts_max_age_seconds}"
-    return response
+class _SecurityHeadersMiddleware:
+    """Add the security headers to every response and hide the docs pages unless exposed."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        path = _route_path(scope)
+        serving_docs = path in _DOCS_PATHS and bool(settings.expose_api_docs)
+
+        started = False
+
+        async def send_hardened(message: Message) -> None:
+            nonlocal started
+            if not started:  # the first message of a response carries the status and headers
+                started = True
+                headers = MutableHeaders(scope=message)
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["Referrer-Policy"] = "no-referrer"
+                if not serving_docs:
+                    # The docs pages load Swagger UI and ReDoc assets, so they keep the browser
+                    # default.
+                    headers["Content-Security-Policy"] = _CONTENT_SECURITY_POLICY
+                if path.startswith("/v1/"):
+                    headers["Cache-Control"] = "no-store"
+                if settings.hsts_max_age_seconds:
+                    headers["Strict-Transport-Security"] = (
+                        f"max-age={settings.hsts_max_age_seconds}"
+                    )
+            await send(message)
+
+        if path in _DOCS_PATHS and not serving_docs:
+            await JSONResponse(status_code=404, content={"detail": "Not Found"})(
+                scope, receive, send_hardened
+            )
+        else:
+            await self.app(scope, receive, send_hardened)
+
+
+app.add_middleware(_SecurityHeadersMiddleware)
 
 
 def _openapi() -> dict[str, Any]:

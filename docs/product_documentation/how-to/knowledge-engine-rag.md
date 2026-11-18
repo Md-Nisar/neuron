@@ -161,7 +161,7 @@ curl -X PUT "http://127.0.0.1:8000/v1/knowledge/bases/$KB_ID/grants" \
 ---
 
 ### Step 3: Upload a Document
-Upload a document using `multipart/form-data`. Optionally provide an `Idempotency-Key` header to safely retry uploads without duplicate processing:
+Upload a document using `multipart/form-data`. Optionally provide an `Idempotency-Key` header to safely retry uploads without duplicate processing. A repeated key in the same base returns the first document and ignores the new body (use a fresh key for a different file; the same key in another base is `409 idempotency_key_reused`):
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/v1/knowledge/bases/$KB_ID/documents" \
@@ -243,7 +243,7 @@ Notice `"reranked": true`: The top 40 candidates from dense vector and full-text
 
 ## 4. Querying Knowledge Bases Through the Agent
 
-When `knowledge_base_ids` is provided in `/v1/agent/invoke` or `/v1/agent/stream`, the agent is equipped with three scoped knowledge tools:
+When the Knowledge Engine is on and the caller holds the tool permissions, the agent has three knowledge tools on `/v1/agent/invoke` and `/v1/agent/stream`. They search every base the caller can read; `knowledge_base_ids` narrows them to the listed bases (an id the caller cannot read or that was deleted is ignored, not an error):
 1. `list_knowledge_bases`: Lists available bases matching caller permissions.
 2. `search_knowledge`: Executes hybrid search (max 5 searches per turn).
 3. `get_document_excerpt`: Fetches surrounding chunks using a `cite_id` returned during search.

@@ -155,6 +155,9 @@ class Settings(BaseSettings):
     tool_timeout_seconds: int = Field(default=20, ge=1, le=60)
     max_agent_iterations: int = Field(default=8, ge=1, le=25)
     provider_max_retries: int = Field(default=2, ge=0, le=5)
+    # Model calls per minute this process may make, retries included; calls wait for a slot.
+    # Unset means no limit. Set it a little under the provider's own rate limit.
+    provider_max_requests_per_minute: int | None = Field(default=None, ge=1, le=100_000)
     max_output_tokens: int = Field(default=2000, ge=1, le=16_384)
     max_prompt_chars: int = Field(default=12_000, ge=100, le=200_000)
     max_request_body_bytes: int = Field(default=65_536, ge=1024, le=1_048_576)
@@ -213,6 +216,10 @@ class Settings(BaseSettings):
     # Knowledge Engine (ADR 0014; RAG-01.01). Off until v1.1.0 is released; on, it needs the
     # Postgres checkpointer and a database with the pgvector extension.
     knowledge_enabled: bool = False
+    # Token roles a base may be shared with (RAG-09.03). Empty, the default: no sharing by role.
+    # List group roles only, never one every user holds: any base admin may grant a listed role,
+    # and a base shared with it is searched for all of its holders.
+    knowledge_sharing_roles: list[str] = Field(default_factory=list)
     # Knowledge Engine embeddings (ADR 0014 K3, K8; RAG-02.03). The default profile is the spike's
     # (RAG-00.02): NVIDIA's API catalog, for development only, at 1,024 dimensions.
     knowledge_embedding_provider: EmbeddingProviderName = "nvidia"

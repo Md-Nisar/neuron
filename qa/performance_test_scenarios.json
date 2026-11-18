@@ -1,0 +1,3199 @@
+{
+ "environment": "4 vCPU / 16 GB sandbox, one API process, Postgres 16 + pgvector 0.8, ingestion worker, docling; real NVIDIA free-tier chat, embedding and rerank APIs (no mocks); load generator Locust on the same machine. Thresholds for PERF-B..SK were fixed before measuring; for the other rows after the first probe.",
+ "cycle_key": {
+  "c1": "Cycle 1 baseline (original code)",
+  "c1b": "Cycle 1 baseline for scenarios added later (original code)",
+  "c2": "Cycle 2 round A (rerank breaker, call limit, ASGI middleware)",
+  "c2b": "Cycle 2 round B (+ one probe, owner-scoped query cache)",
+  "c3": "Cycle 3 final"
+ },
+ "api_cost_usd_billed": 0.0,
+ "scenarios": [
+  {
+   "scenario_id": "PERF-B01",
+   "component": "API read endpoints",
+   "test_type": "baseline",
+   "concurrent_users": 1,
+   "duration_s": 45,
+   "workload": "light",
+   "threshold_p95_ms": {
+    "light": 300
+   },
+   "threshold_min_success": 0.995,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 8,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.18,
+       "p50_ms": 5.0,
+       "p95_ms": 6.0,
+       "p99_ms": 6.0,
+       "avg_ms": 5
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 17,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.38,
+       "p50_ms": 7.0,
+       "p95_ms": 9.0,
+       "p99_ms": 9.0,
+       "avg_ms": 7
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 12,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.27,
+       "p50_ms": 9.0,
+       "p95_ms": 10.0,
+       "p99_ms": 10.0,
+       "avg_ms": 9
+      },
+      "light /v1/me/threads": {
+       "requests": 8,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.18,
+       "p50_ms": 7.0,
+       "p95_ms": 8.0,
+       "p99_ms": 8.0,
+       "avg_ms": 7
+      }
+     },
+     "api_cpu_max_pct": 1.0,
+     "api_rss_max_mb": 244.4,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 11,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.25,
+       "p50_ms": 4.0,
+       "p95_ms": 5.0,
+       "p99_ms": 5.0,
+       "avg_ms": 3
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 10,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.23,
+       "p50_ms": 7.0,
+       "p95_ms": 11.0,
+       "p99_ms": 11.0,
+       "avg_ms": 7
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 13,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.29,
+       "p50_ms": 8.0,
+       "p95_ms": 27.0,
+       "p99_ms": 27.0,
+       "avg_ms": 10
+      },
+      "light /v1/me/threads": {
+       "requests": 11,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.25,
+       "p50_ms": 7.0,
+       "p95_ms": 9.0,
+       "p99_ms": 9.0,
+       "avg_ms": 7
+      }
+     },
+     "api_cpu_max_pct": 0.9,
+     "api_rss_max_mb": 221.1,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 13,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.29,
+       "p50_ms": 4.0,
+       "p95_ms": 4.0,
+       "p99_ms": 4.0,
+       "avg_ms": 4
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 11,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.25,
+       "p50_ms": 7.0,
+       "p95_ms": 8.0,
+       "p99_ms": 8.0,
+       "avg_ms": 7
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 10,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.23,
+       "p50_ms": 10.0,
+       "p95_ms": 21.0,
+       "p99_ms": 21.0,
+       "avg_ms": 11
+      },
+      "light /v1/me/threads": {
+       "requests": 11,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.25,
+       "p50_ms": 7.0,
+       "p95_ms": 9.0,
+       "p99_ms": 9.0,
+       "avg_ms": 7
+      }
+     },
+     "api_cpu_max_pct": 0.9,
+     "api_rss_max_mb": 433.3,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Idle single user: 10 to 27 ms; unchanged by the optimisations."
+  },
+  {
+   "scenario_id": "PERF-B02",
+   "component": "Knowledge search (embed+hybrid+rerank)",
+   "test_type": "baseline",
+   "concurrent_users": 1,
+   "duration_s": 45,
+   "workload": "search",
+   "threshold_p95_ms": {
+    "search": 2500
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 6,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.14,
+       "p50_ms": 6400.0,
+       "p95_ms": 6500.0,
+       "p99_ms": 6500.0,
+       "avg_ms": 6429
+      }
+     },
+     "api_cpu_max_pct": 1.9,
+     "api_rss_max_mb": 244.4,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 9,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.22,
+       "p50_ms": 4100.0,
+       "p95_ms": 6400.0,
+       "p99_ms": 6400.0,
+       "avg_ms": 3609
+      }
+     },
+     "api_cpu_max_pct": 3.3,
+     "api_rss_max_mb": 228.0,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 19,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.44,
+       "p50_ms": 74.0,
+       "p95_ms": 6000.0,
+       "p99_ms": 6000.0,
+       "avg_ms": 1319
+      }
+     },
+     "api_cpu_max_pct": 1.9,
+     "api_rss_max_mb": 338.1,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 9,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.22,
+       "p50_ms": 3600.0,
+       "p95_ms": 5300.0,
+       "p99_ms": 5300.0,
+       "avg_ms": 3706
+      }
+     },
+     "api_cpu_max_pct": 1.9,
+     "api_rss_max_mb": 433.3,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Search at 1 user. Cycle 1: every search waited the 6 s rerank timeout (provider answers in 5-13 s). Now ~75 ms typical; p95 still shows the circuit breaker's cost (the first 3 searches and one 6 s probe every 30 s) on a sample of only 7-18 requests."
+  },
+  {
+   "scenario_id": "PERF-B03",
+   "component": "Agent RAG chat (SSE, LLM)",
+   "test_type": "baseline",
+   "concurrent_users": 1,
+   "duration_s": 75,
+   "workload": "chat",
+   "threshold_p95_ms": {
+    "chat": 30000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "chat": {
+       "requests": 3,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.08,
+       "p50_ms": 12000.0,
+       "p95_ms": 13000.0,
+       "p99_ms": 13000.0,
+       "avg_ms": 12316,
+       "ttft_p50_ms": 12000.0,
+       "ttft_p95_ms": 13000.0
+      }
+     },
+     "api_cpu_max_pct": 2.8,
+     "api_rss_max_mb": 244.7,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 4,
+      "input": 14769,
+      "output": 698,
+      "reasoning": 314,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 3,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.05,
+       "p50_ms": 11000.0,
+       "p95_ms": 35000.0,
+       "p99_ms": 35000.0,
+       "avg_ms": 18919,
+       "ttft_p50_ms": 11000.0,
+       "ttft_p95_ms": 35000.0
+      }
+     },
+     "api_cpu_max_pct": 4.2,
+     "api_rss_max_mb": 235.0,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 4,
+      "input": 15843,
+      "output": 680,
+      "reasoning": 306,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "chat": {
+       "requests": 6,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.09,
+       "p50_ms": 11000.0,
+       "p95_ms": 13000.0,
+       "p99_ms": 13000.0,
+       "avg_ms": 10631,
+       "ttft_p50_ms": 11000.0,
+       "ttft_p95_ms": 12000.0
+      }
+     },
+     "api_cpu_max_pct": 4.7,
+     "api_rss_max_mb": 425.6,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 7,
+      "input": 27912,
+      "output": 1349,
+      "reasoning": 657,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Chat at 1 user, 13 s typical (two model calls, about 3.2k input and 160 output tokens). Cycle 2's 35 s p95 was one slow provider call out of 3 samples and did not recur in Cycle 3. Token events arrive only after the model finishes, so time-to-first-token equals total time."
+  },
+  {
+   "scenario_id": "PERF-B04",
+   "component": "Mixed journey",
+   "test_type": "baseline",
+   "concurrent_users": 5,
+   "duration_s": 90,
+   "workload": "light,light,light,light,light,light,light,search,search,chat",
+   "threshold_p95_ms": {
+    "light": 500,
+    "search": 3000,
+    "chat": 35000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 6,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.06,
+       "p50_ms": 12000.0,
+       "p95_ms": 16000.0,
+       "p99_ms": 16000.0,
+       "avg_ms": 12642,
+       "ttft_p50_ms": 12000.0,
+       "ttft_p95_ms": 16000.0
+      },
+      "light /health/ready": {
+       "requests": 23,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.24,
+       "p50_ms": 5.0,
+       "p95_ms": 13.0,
+       "p99_ms": 13.0,
+       "avg_ms": 5
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 27,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.28,
+       "p50_ms": 7.0,
+       "p95_ms": 12.0,
+       "p99_ms": 12.0,
+       "avg_ms": 8
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 33,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.35,
+       "p50_ms": 9.0,
+       "p95_ms": 18.0,
+       "p99_ms": 18.0,
+       "avg_ms": 10
+      },
+      "light /v1/me/threads": {
+       "requests": 28,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.29,
+       "p50_ms": 7.0,
+       "p95_ms": 16.0,
+       "p99_ms": 20.0,
+       "avg_ms": 8
+      },
+      "search": {
+       "requests": 37,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.39,
+       "p50_ms": 6100.0,
+       "p95_ms": 6400.0,
+       "p99_ms": 6400.0,
+       "avg_ms": 5920
+      }
+     },
+     "api_cpu_max_pct": 11.8,
+     "api_rss_max_mb": 245.5,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 7,
+      "input": 28458,
+      "output": 1403,
+      "reasoning": 697,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 15,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.17,
+       "p50_ms": 12000.0,
+       "p95_ms": 23000.0,
+       "p99_ms": 23000.0,
+       "avg_ms": 13361,
+       "ttft_p50_ms": 12000.0,
+       "ttft_p95_ms": 23000.0
+      },
+      "light /health/ready": {
+       "requests": 28,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.31,
+       "p50_ms": 3.0,
+       "p95_ms": 9.0,
+       "p99_ms": 10.0,
+       "avg_ms": 4
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 24,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.26,
+       "p50_ms": 6.0,
+       "p95_ms": 12.0,
+       "p99_ms": 16.0,
+       "avg_ms": 7
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 22,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.24,
+       "p50_ms": 8.0,
+       "p95_ms": 9.0,
+       "p99_ms": 11.0,
+       "avg_ms": 8
+      },
+      "light /v1/me/threads": {
+       "requests": 21,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.23,
+       "p50_ms": 10.0,
+       "p95_ms": 14.0,
+       "p99_ms": 15.0,
+       "avg_ms": 10
+      },
+      "search": {
+       "requests": 23,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.25,
+       "p50_ms": 5300.0,
+       "p95_ms": 6400.0,
+       "p99_ms": 6400.0,
+       "avg_ms": 5213
+      }
+     },
+     "api_cpu_max_pct": 6.1,
+     "api_rss_max_mb": 240.5,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 16,
+      "input": 62759,
+      "output": 3195,
+      "reasoning": 1676,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 18,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.19,
+       "p50_ms": 7700.0,
+       "p95_ms": 15000.0,
+       "p99_ms": 15000.0,
+       "avg_ms": 8549,
+       "ttft_p50_ms": 7700.0,
+       "ttft_p95_ms": 14000.0
+      },
+      "light /health/ready": {
+       "requests": 46,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.49,
+       "p50_ms": 4.0,
+       "p95_ms": 6.0,
+       "p99_ms": 6.0,
+       "avg_ms": 3
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 45,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.48,
+       "p50_ms": 7.0,
+       "p95_ms": 9.0,
+       "p99_ms": 23.0,
+       "avg_ms": 7
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 38,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.4,
+       "p50_ms": 9.0,
+       "p95_ms": 11.0,
+       "p99_ms": 22.0,
+       "avg_ms": 9
+      },
+      "light /v1/me/threads": {
+       "requests": 36,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.38,
+       "p50_ms": 9.0,
+       "p95_ms": 16.0,
+       "p99_ms": 18.0,
+       "avg_ms": 9
+      },
+      "search": {
+       "requests": 41,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.44,
+       "p50_ms": 77.0,
+       "p95_ms": 6100.0,
+       "p99_ms": 6400.0,
+       "avg_ms": 1924
+      }
+     },
+     "api_cpu_max_pct": 24.5,
+     "api_rss_max_mb": 408.4,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 19,
+      "input": 74399,
+      "output": 3695,
+      "reasoning": 1844,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Mixed journey, 5 users: reads and search fine; chat p95 15 s and 100 % success. Fails the preset p95 only because of the search sample (rerank probe)."
+  },
+  {
+   "scenario_id": "PERF-H01",
+   "component": "API read endpoints",
+   "test_type": "heavy",
+   "concurrent_users": 100,
+   "duration_s": 60,
+   "workload": "light",
+   "threshold_p95_ms": {
+    "light": 1500
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 1490,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 24.86,
+       "p50_ms": 5.0,
+       "p95_ms": 35.0,
+       "p99_ms": 190.0,
+       "avg_ms": 13
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 1502,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 25.06,
+       "p50_ms": 12.0,
+       "p95_ms": 97.0,
+       "p99_ms": 240.0,
+       "avg_ms": 25
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 1472,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 24.55,
+       "p50_ms": 14.0,
+       "p95_ms": 100.0,
+       "p99_ms": 260.0,
+       "avg_ms": 28
+      },
+      "light /v1/me/threads": {
+       "requests": 1428,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 23.82,
+       "p50_ms": 9.0,
+       "p95_ms": 89.0,
+       "p99_ms": 190.0,
+       "avg_ms": 21
+      }
+     },
+     "api_cpu_max_pct": 37.2,
+     "api_rss_max_mb": 297.3,
+     "pg_conns_max": 10.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 1519,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 25.32,
+       "p50_ms": 2.0,
+       "p95_ms": 7.0,
+       "p99_ms": 120.0,
+       "avg_ms": 5
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 1495,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 24.92,
+       "p50_ms": 8.0,
+       "p95_ms": 33.0,
+       "p99_ms": 160.0,
+       "avg_ms": 14
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 1489,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 24.82,
+       "p50_ms": 10.0,
+       "p95_ms": 38.0,
+       "p99_ms": 170.0,
+       "avg_ms": 16
+      },
+      "light /v1/me/threads": {
+       "requests": 1480,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 24.67,
+       "p50_ms": 6.0,
+       "p95_ms": 32.0,
+       "p99_ms": 100.0,
+       "avg_ms": 11
+      }
+     },
+     "api_cpu_max_pct": 25.9,
+     "api_rss_max_mb": 267.9,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 1521,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 25.48,
+       "p50_ms": 2.0,
+       "p95_ms": 7.0,
+       "p99_ms": 330.0,
+       "avg_ms": 8
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 1432,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 23.99,
+       "p50_ms": 9.0,
+       "p95_ms": 56.0,
+       "p99_ms": 450.0,
+       "avg_ms": 21
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 1449,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 24.27,
+       "p50_ms": 10.0,
+       "p95_ms": 58.0,
+       "p99_ms": 100.0,
+       "avg_ms": 19
+      },
+      "light /v1/me/threads": {
+       "requests": 1497,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 25.08,
+       "p50_ms": 7.0,
+       "p95_ms": 60.0,
+       "p99_ms": 480.0,
+       "avg_ms": 20
+      }
+     },
+     "api_cpu_max_pct": 39.8,
+     "api_rss_max_mb": 402.6,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "100 users, p95 100 ms to 60 ms."
+  },
+  {
+   "scenario_id": "PERF-H02",
+   "component": "API read endpoints",
+   "test_type": "heavy",
+   "concurrent_users": 250,
+   "duration_s": 60,
+   "workload": "light",
+   "threshold_p95_ms": {
+    "light": 3000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 3560,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 59.25,
+       "p50_ms": 14.0,
+       "p95_ms": 120.0,
+       "p99_ms": 320.0,
+       "avg_ms": 27
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 3477,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 57.87,
+       "p50_ms": 38.0,
+       "p95_ms": 320.0,
+       "p99_ms": 440.0,
+       "avg_ms": 80
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 3460,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 57.59,
+       "p50_ms": 40.0,
+       "p95_ms": 300.0,
+       "p99_ms": 430.0,
+       "avg_ms": 78
+      },
+      "light /v1/me/threads": {
+       "requests": 3514,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 58.48,
+       "p50_ms": 34.0,
+       "p95_ms": 310.0,
+       "p99_ms": 430.0,
+       "avg_ms": 77
+      }
+     },
+     "api_cpu_max_pct": 82.2,
+     "api_rss_max_mb": 288.0,
+     "pg_conns_max": 10.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 3652,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 60.81,
+       "p50_ms": 2.0,
+       "p95_ms": 6.0,
+       "p99_ms": 80.0,
+       "avg_ms": 5
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 3691,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 61.46,
+       "p50_ms": 9.0,
+       "p95_ms": 44.0,
+       "p99_ms": 110.0,
+       "avg_ms": 15
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 3713,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 61.82,
+       "p50_ms": 11.0,
+       "p95_ms": 45.0,
+       "p99_ms": 120.0,
+       "avg_ms": 17
+      },
+      "light /v1/me/threads": {
+       "requests": 3671,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 61.12,
+       "p50_ms": 7.0,
+       "p95_ms": 40.0,
+       "p99_ms": 170.0,
+       "avg_ms": 13
+      }
+     },
+     "api_cpu_max_pct": 55.4,
+     "api_rss_max_mb": 268.8,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 3703,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 61.65,
+       "p50_ms": 2.0,
+       "p95_ms": 5.0,
+       "p99_ms": 48.0,
+       "avg_ms": 4
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 3628,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 60.4,
+       "p50_ms": 8.0,
+       "p95_ms": 27.0,
+       "p99_ms": 56.0,
+       "avg_ms": 11
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 3676,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 61.2,
+       "p50_ms": 10.0,
+       "p95_ms": 31.0,
+       "p99_ms": 68.0,
+       "avg_ms": 13
+      },
+      "light /v1/me/threads": {
+       "requests": 3755,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 62.52,
+       "p50_ms": 7.0,
+       "p95_ms": 24.0,
+       "p99_ms": 55.0,
+       "avg_ms": 9
+      }
+     },
+     "api_cpu_max_pct": 59.6,
+     "api_rss_max_mb": 402.7,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "250 users, p95 320 ms to 31 ms (plain-ASGI middleware)."
+  },
+  {
+   "scenario_id": "PERF-H03",
+   "component": "Knowledge search",
+   "test_type": "heavy",
+   "concurrent_users": 100,
+   "duration_s": 60,
+   "workload": "search",
+   "threshold_p95_ms": {
+    "search": 6000
+   },
+   "threshold_min_success": 0.98,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 885,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 13.6,
+       "p50_ms": 6100.0,
+       "p95_ms": 6900.0,
+       "p99_ms": 8200.0,
+       "avg_ms": 6101
+      }
+     },
+     "api_cpu_max_pct": 80.1,
+     "api_rss_max_mb": 450.1,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 2759,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 43.97,
+       "p50_ms": 680.0,
+       "p95_ms": 4000.0,
+       "p99_ms": 6900.0,
+       "avg_ms": 1199,
+       "quality_misses": 146,
+       "quality_miss_pct": 5.3
+      }
+     },
+     "api_cpu_max_pct": 64.0,
+     "api_rss_max_mb": 337.6,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 3196,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 51.78,
+       "p50_ms": 680.0,
+       "p95_ms": 3700.0,
+       "p99_ms": 6700.0,
+       "avg_ms": 883,
+       "quality_misses": 108,
+       "quality_miss_pct": 3.4
+      }
+     },
+     "api_cpu_max_pct": 75.5,
+     "api_rss_max_mb": 357.8,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 2863,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 46.43,
+       "p50_ms": 740.0,
+       "p95_ms": 4100.0,
+       "p99_ms": 7000.0,
+       "avg_ms": 1116,
+       "quality_misses": 128,
+       "quality_miss_pct": 4.5
+      }
+     },
+     "api_cpu_max_pct": 81.7,
+     "api_rss_max_mb": 461.0,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Search, 100 users: throughput 13.6 to 46 req/s, p95 6.9 s to 4.1 s. 4.5 % of searches fell back to keyword-only ranking and missed the expected passage in the top 3: the embedding provider rate-limits above about 20 requests/s. Not seen in Cycle 1 only because the rerank wait capped throughput at 14 req/s."
+  },
+  {
+   "scenario_id": "PERF-H04",
+   "component": "Agent RAG chat",
+   "test_type": "heavy",
+   "concurrent_users": 25,
+   "duration_s": 90,
+   "workload": "chat",
+   "threshold_p95_ms": {
+    "chat": 60000
+   },
+   "threshold_min_success": 0.95,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 491,
+       "failures": 491,
+       "success_pct": 0.0,
+       "rps": 5.28,
+       "p50_ms": 3300.0,
+       "p95_ms": 4400.0,
+       "p99_ms": 14000.0,
+       "avg_ms": 3676
+      }
+     },
+     "api_cpu_max_pct": 39.6,
+     "api_rss_max_mb": 438.8,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 492,
+      "input": 22045,
+      "output": 1773,
+      "reasoning": 1018,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 28,
+       "failures": 17,
+       "success_pct": 39.3,
+       "rps": 0.22,
+       "p50_ms": 120000.0,
+       "p95_ms": 120000.0,
+       "p99_ms": 120000.0,
+       "avg_ms": 88347,
+       "ttft_p50_ms": 66000.0,
+       "ttft_p95_ms": 69000.0
+      }
+     },
+     "api_cpu_max_pct": 26.5,
+     "api_rss_max_mb": 333.6,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 38,
+      "input": 64346,
+      "output": 3753,
+      "reasoning": 1950,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 27,
+       "failures": 13,
+       "success_pct": 51.9,
+       "rps": 0.21,
+       "p50_ms": 65000.0,
+       "p95_ms": 120000.0,
+       "p99_ms": 120000.0,
+       "avg_ms": 84804,
+       "ttft_p50_ms": 64000.0,
+       "ttft_p95_ms": 65000.0
+      }
+     },
+     "api_cpu_max_pct": 46.1,
+     "api_rss_max_mb": 436.7,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 40,
+      "input": 82084,
+      "output": 4612,
+      "reasoning": 2331,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Chat, 25 users: far above the provider's 40 calls/min. Cycle 1: 0 % success. Cycle 3: 52 % success, the rest waited out the 120 s run timeout in the queue."
+  },
+  {
+   "scenario_id": "PERF-H05",
+   "component": "Knowledge search, unique queries (cache-cold)",
+   "test_type": "heavy",
+   "concurrent_users": 100,
+   "duration_s": 60,
+   "workload": "searchu",
+   "threshold_p95_ms": {
+    "searchu": 6000
+   },
+   "threshold_min_success": 0.98,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1b": {
+     "status": "FAIL",
+     "endpoints": {
+      "searchu": {
+       "requests": 920,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 13.93,
+       "p50_ms": 6100.0,
+       "p95_ms": 6900.0,
+       "p99_ms": 7400.0,
+       "avg_ms": 5973
+      }
+     },
+     "api_cpu_max_pct": 77.8,
+     "api_rss_max_mb": 474.5,
+     "pg_conns_max": 14.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "FAIL",
+     "endpoints": {
+      "searchu": {
+       "requests": 2966,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 48.67,
+       "p50_ms": 680.0,
+       "p95_ms": 3800.0,
+       "p99_ms": 7100.0,
+       "avg_ms": 1038,
+       "quality_misses": 158,
+       "quality_miss_pct": 5.3
+      }
+     },
+     "api_cpu_max_pct": 75.5,
+     "api_rss_max_mb": 386.0,
+     "pg_conns_max": 14.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "searchu": {
+       "requests": 3116,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 51.36,
+       "p50_ms": 690.0,
+       "p95_ms": 3700.0,
+       "p99_ms": 6900.0,
+       "avg_ms": 940,
+       "quality_misses": 112,
+       "quality_miss_pct": 3.6
+      }
+     },
+     "api_cpu_max_pct": 76.8,
+     "api_rss_max_mb": 455.9,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Unique-query search, 100 users. Original code: 13.9 req/s, p95 6.9 s. Final: 51 req/s, p95 3.7 s, 3.6 % keyword-only fallbacks (embedding provider limit)."
+  },
+  {
+   "scenario_id": "PERF-N01",
+   "component": "API read endpoints",
+   "test_type": "normal",
+   "concurrent_users": 10,
+   "duration_s": 60,
+   "workload": "light",
+   "threshold_p95_ms": {
+    "light": 400
+   },
+   "threshold_min_success": 0.995,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 160,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.68,
+       "p50_ms": 4.0,
+       "p95_ms": 12.0,
+       "p99_ms": 20.0,
+       "avg_ms": 5
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 144,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.41,
+       "p50_ms": 9.0,
+       "p95_ms": 27.0,
+       "p99_ms": 34.0,
+       "avg_ms": 11
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 159,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.67,
+       "p50_ms": 10.0,
+       "p95_ms": 20.0,
+       "p99_ms": 38.0,
+       "avg_ms": 12
+      },
+      "light /v1/me/threads": {
+       "requests": 137,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.3,
+       "p50_ms": 7.0,
+       "p95_ms": 16.0,
+       "p99_ms": 36.0,
+       "avg_ms": 9
+      }
+     },
+     "api_cpu_max_pct": 5.6,
+     "api_rss_max_mb": 245.6,
+     "pg_conns_max": 7.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 148,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.49,
+       "p50_ms": 2.0,
+       "p95_ms": 6.0,
+       "p99_ms": 12.0,
+       "avg_ms": 3
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 151,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.54,
+       "p50_ms": 7.0,
+       "p95_ms": 17.0,
+       "p99_ms": 34.0,
+       "avg_ms": 8
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 144,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.42,
+       "p50_ms": 8.0,
+       "p95_ms": 15.0,
+       "p99_ms": 25.0,
+       "avg_ms": 9
+      },
+      "light /v1/me/threads": {
+       "requests": 156,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.62,
+       "p50_ms": 5.0,
+       "p95_ms": 12.0,
+       "p99_ms": 16.0,
+       "avg_ms": 6
+      }
+     },
+     "api_cpu_max_pct": 3.8,
+     "api_rss_max_mb": 240.5,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 176,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.96,
+       "p50_ms": 3.0,
+       "p95_ms": 7.0,
+       "p99_ms": 11.0,
+       "avg_ms": 3
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 144,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.42,
+       "p50_ms": 8.0,
+       "p95_ms": 18.0,
+       "p99_ms": 23.0,
+       "avg_ms": 9
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 140,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.35,
+       "p50_ms": 9.0,
+       "p95_ms": 20.0,
+       "p99_ms": 24.0,
+       "avg_ms": 11
+      },
+      "light /v1/me/threads": {
+       "requests": 140,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.35,
+       "p50_ms": 6.0,
+       "p95_ms": 16.0,
+       "p99_ms": 27.0,
+       "avg_ms": 8
+      }
+     },
+     "api_cpu_max_pct": 3.3,
+     "api_rss_max_mb": 393.1,
+     "pg_conns_max": 11.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "10 users, p95 17-27 ms."
+  },
+  {
+   "scenario_id": "PERF-N02",
+   "component": "API read endpoints",
+   "test_type": "normal",
+   "concurrent_users": 50,
+   "duration_s": 60,
+   "workload": "light",
+   "threshold_p95_ms": {
+    "light": 800
+   },
+   "threshold_min_success": 0.995,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 735,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.25,
+       "p50_ms": 5.0,
+       "p95_ms": 16.0,
+       "p99_ms": 33.0,
+       "avg_ms": 6
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 765,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.75,
+       "p50_ms": 10.0,
+       "p95_ms": 38.0,
+       "p99_ms": 95.0,
+       "avg_ms": 14
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 755,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.58,
+       "p50_ms": 11.0,
+       "p95_ms": 38.0,
+       "p99_ms": 93.0,
+       "avg_ms": 15
+      },
+      "light /v1/me/threads": {
+       "requests": 737,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.28,
+       "p50_ms": 8.0,
+       "p95_ms": 32.0,
+       "p99_ms": 96.0,
+       "avg_ms": 12
+      }
+     },
+     "api_cpu_max_pct": 18.4,
+     "api_rss_max_mb": 247.1,
+     "pg_conns_max": 7.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 748,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.48,
+       "p50_ms": 2.0,
+       "p95_ms": 6.0,
+       "p99_ms": 200.0,
+       "avg_ms": 5
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 711,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 11.86,
+       "p50_ms": 7.0,
+       "p95_ms": 31.0,
+       "p99_ms": 48.0,
+       "avg_ms": 12
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 739,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.33,
+       "p50_ms": 9.0,
+       "p95_ms": 35.0,
+       "p99_ms": 230.0,
+       "avg_ms": 15
+      },
+      "light /v1/me/threads": {
+       "requests": 785,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 13.1,
+       "p50_ms": 6.0,
+       "p95_ms": 26.0,
+       "p99_ms": 45.0,
+       "avg_ms": 9
+      }
+     },
+     "api_cpu_max_pct": 19.3,
+     "api_rss_max_mb": 240.7,
+     "pg_conns_max": 8.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 730,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.23,
+       "p50_ms": 2.0,
+       "p95_ms": 5.0,
+       "p99_ms": 14.0,
+       "avg_ms": 3
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 775,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.99,
+       "p50_ms": 8.0,
+       "p95_ms": 23.0,
+       "p99_ms": 58.0,
+       "avg_ms": 10
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 748,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.53,
+       "p50_ms": 9.0,
+       "p95_ms": 22.0,
+       "p99_ms": 41.0,
+       "avg_ms": 11
+      },
+      "light /v1/me/threads": {
+       "requests": 740,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.4,
+       "p50_ms": 6.0,
+       "p95_ms": 18.0,
+       "p99_ms": 39.0,
+       "avg_ms": 8
+      }
+     },
+     "api_cpu_max_pct": 15.8,
+     "api_rss_max_mb": 393.1,
+     "pg_conns_max": 11.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "50 users, p95 23-38 ms, about 50 req/s."
+  },
+  {
+   "scenario_id": "PERF-N03",
+   "component": "Knowledge search",
+   "test_type": "normal",
+   "concurrent_users": 10,
+   "duration_s": 60,
+   "workload": "search",
+   "threshold_p95_ms": {
+    "search": 3000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 80,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 1.36,
+       "p50_ms": 6400.0,
+       "p95_ms": 6600.0,
+       "p99_ms": 8400.0,
+       "avg_ms": 6394
+      }
+     },
+     "api_cpu_max_pct": 17.4,
+     "api_rss_max_mb": 268.1,
+     "pg_conns_max": 7.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 350,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 5.83,
+       "p50_ms": 76.0,
+       "p95_ms": 6100.0,
+       "p99_ms": 6100.0,
+       "avg_ms": 713
+      }
+     },
+     "api_cpu_max_pct": 12.9,
+     "api_rss_max_mb": 256.4,
+     "pg_conns_max": 9.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 396,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 6.6,
+       "p50_ms": 66.0,
+       "p95_ms": 6100.0,
+       "p99_ms": 6300.0,
+       "avg_ms": 525
+      }
+     },
+     "api_cpu_max_pct": 21.6,
+     "api_rss_max_mb": 338.1,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "search": {
+       "requests": 563,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 9.39,
+       "p50_ms": 22.0,
+       "p95_ms": 94.0,
+       "p99_ms": 440.0,
+       "avg_ms": 71
+      }
+     },
+     "api_cpu_max_pct": 11.8,
+     "api_rss_max_mb": 394.3,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Search, 10 users: 1.4 req/s and 6.6 s p95 in Cycle 1; 9.4 req/s and 94 ms p95 in Cycle 3. Cycle 2 still failed this (6.1 s p95) because every concurrent request probed the reranker at once; Cycle 2b let a single search probe."
+  },
+  {
+   "scenario_id": "PERF-N04",
+   "component": "Knowledge search",
+   "test_type": "normal",
+   "concurrent_users": 25,
+   "duration_s": 60,
+   "workload": "search",
+   "threshold_p95_ms": {
+    "search": 4000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 225,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 3.46,
+       "p50_ms": 6100.0,
+       "p95_ms": 6500.0,
+       "p99_ms": 6700.0,
+       "avg_ms": 6172
+      }
+     },
+     "api_cpu_max_pct": 26.9,
+     "api_rss_max_mb": 300.3,
+     "pg_conns_max": 10.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "search": {
+       "requests": 1330,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 22.15,
+       "p50_ms": 76.0,
+       "p95_ms": 110.0,
+       "p99_ms": 500.0,
+       "avg_ms": 135
+      }
+     },
+     "api_cpu_max_pct": 30.9,
+     "api_rss_max_mb": 260.7,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "PASS",
+     "endpoints": {
+      "search": {
+       "requests": 1409,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 23.48,
+       "p50_ms": 69.0,
+       "p95_ms": 97.0,
+       "p99_ms": 370.0,
+       "avg_ms": 65
+      }
+     },
+     "api_cpu_max_pct": 25.0,
+     "api_rss_max_mb": 340.1,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "search": {
+       "requests": 1401,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 23.38,
+       "p50_ms": 70.0,
+       "p95_ms": 100.0,
+       "p99_ms": 420.0,
+       "avg_ms": 73
+      }
+     },
+     "api_cpu_max_pct": 23.8,
+     "api_rss_max_mb": 397.9,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Search, 25 users: 3.5 to 23 req/s, p95 6.5 s to 100 ms."
+  },
+  {
+   "scenario_id": "PERF-N05",
+   "component": "Agent RAG chat",
+   "test_type": "normal",
+   "concurrent_users": 10,
+   "duration_s": 90,
+   "workload": "chat",
+   "threshold_p95_ms": {
+    "chat": 40000
+   },
+   "threshold_min_success": 0.98,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 115,
+       "failures": 91,
+       "success_pct": 20.9,
+       "rps": 1.26,
+       "p50_ms": 3500.0,
+       "p95_ms": 17000.0,
+       "p99_ms": 22000.0,
+       "avg_ms": 6884,
+       "ttft_p50_ms": 14000.0,
+       "ttft_p95_ms": 18000.0
+      }
+     },
+     "api_cpu_max_pct": 22.4,
+     "api_rss_max_mb": 309.1,
+     "pg_conns_max": 10.0,
+     "tokens": {
+      "runs": 119,
+      "input": 108352,
+      "output": 5604,
+      "reasoning": 2797,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 31,
+       "failures": 1,
+       "success_pct": 96.8,
+       "rps": 0.24,
+       "p50_ms": 18000.0,
+       "p95_ms": 61000.0,
+       "p99_ms": 62000.0,
+       "avg_ms": 29695,
+       "ttft_p50_ms": 16000.0,
+       "ttft_p95_ms": 58000.0
+      }
+     },
+     "api_cpu_max_pct": 11.3,
+     "api_rss_max_mb": 267.7,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 38,
+      "input": 124297,
+      "output": 6237,
+      "reasoning": 3067,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 36,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.29,
+       "p50_ms": 15000.0,
+       "p95_ms": 60000.0,
+       "p99_ms": 61000.0,
+       "avg_ms": 29911,
+       "ttft_p50_ms": 15000.0,
+       "ttft_p95_ms": 58000.0
+      }
+     },
+     "api_cpu_max_pct": 16.1,
+     "api_rss_max_mb": 402.6,
+     "pg_conns_max": 12.0,
+     "tokens": {
+      "runs": 39,
+      "input": 140889,
+      "output": 6985,
+      "reasoning": 3412,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Chat, 10 users. Cycle 1: 21 % success (provider 429s, amplified by retries). Now 100 % success; p95 60 s because calls queue behind the 36 calls/min limit (the provider allows 40). Capacity is about 18 chats/min."
+  },
+  {
+   "scenario_id": "PERF-N06",
+   "component": "Knowledge search, unique queries (cache-cold)",
+   "test_type": "normal",
+   "concurrent_users": 10,
+   "duration_s": 60,
+   "workload": "searchu",
+   "threshold_p95_ms": {
+    "searchu": 3000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1b": {
+     "status": "FAIL",
+     "endpoints": {
+      "searchu": {
+       "requests": 90,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 1.41,
+       "p50_ms": 6100.0,
+       "p95_ms": 6500.0,
+       "p99_ms": 6700.0,
+       "avg_ms": 6078
+      }
+     },
+     "api_cpu_max_pct": 10.9,
+     "api_rss_max_mb": 254.8,
+     "pg_conns_max": 9.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "PASS",
+     "endpoints": {
+      "searchu": {
+       "requests": 490,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 8.18,
+       "p50_ms": 74.0,
+       "p95_ms": 330.0,
+       "p99_ms": 6100.0,
+       "avg_ms": 234
+      }
+     },
+     "api_cpu_max_pct": 12.0,
+     "api_rss_max_mb": 341.3,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "searchu": {
+       "requests": 396,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 6.42,
+       "p50_ms": 77.0,
+       "p95_ms": 5300.0,
+       "p99_ms": 6100.0,
+       "avg_ms": 529
+      }
+     },
+     "api_cpu_max_pct": 11.3,
+     "api_rss_max_mb": 436.7,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Search with unique queries (cache cold), 10 users. Cycle 1b (original code): 6.5 s p95. Cycle 2b: 330 ms. Cycle 3: 5.3 s p95 because the reranker's latency sat just under its 6 s timeout, so the circuit kept closing and 10 concurrent searches waited on it; p50 stayed 77 ms."
+  },
+  {
+   "scenario_id": "PERF-SK01",
+   "component": "Whole stack mixed",
+   "test_type": "soak",
+   "concurrent_users": 20,
+   "duration_s": 600,
+   "workload": "light,light,light,light,light,light,light,search,search,chat",
+   "threshold_p95_ms": {
+    "light": 800,
+    "search": 4000,
+    "chat": 40000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 291,
+       "failures": 291,
+       "success_pct": 0.0,
+       "rps": 0.46,
+       "p50_ms": 3500.0,
+       "p95_ms": 108000.0,
+       "p99_ms": 120000.0,
+       "avg_ms": 19660
+      },
+      "light /health/ready": {
+       "requests": 542,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.85,
+       "p50_ms": 4.0,
+       "p95_ms": 10.0,
+       "p99_ms": 16.0,
+       "avg_ms": 5
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 554,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.87,
+       "p50_ms": 8.0,
+       "p95_ms": 17.0,
+       "p99_ms": 27.0,
+       "avg_ms": 9
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 541,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.85,
+       "p50_ms": 10.0,
+       "p95_ms": 21.0,
+       "p99_ms": 51.0,
+       "avg_ms": 14
+      },
+      "light /v1/me/threads": {
+       "requests": 561,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.88,
+       "p50_ms": 19.0,
+       "p95_ms": 38.0,
+       "p99_ms": 54.0,
+       "avg_ms": 22
+      },
+      "search": {
+       "requests": 586,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.92,
+       "p50_ms": 6100.0,
+       "p95_ms": 6100.0,
+       "p99_ms": 6500.0,
+       "avg_ms": 5446
+      }
+     },
+     "api_cpu_max_pct": 54.3,
+     "api_rss_max_mb": 518.9,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 296,
+      "input": 44087,
+      "output": 3537,
+      "reasoning": 2037,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 268,
+       "failures": 6,
+       "success_pct": 97.8,
+       "rps": 0.29,
+       "p50_ms": 54000.0,
+       "p95_ms": 108000.0,
+       "p99_ms": 120000.0,
+       "avg_ms": 55771,
+       "ttft_p50_ms": 52000.0,
+       "ttft_p95_ms": 105000.0
+      },
+      "light /health/ready": {
+       "requests": 503,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.54,
+       "p50_ms": 3.0,
+       "p95_ms": 5.0,
+       "p99_ms": 11.0,
+       "avg_ms": 4
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 512,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.55,
+       "p50_ms": 7.0,
+       "p95_ms": 10.0,
+       "p99_ms": 16.0,
+       "avg_ms": 8
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 465,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.5,
+       "p50_ms": 8.0,
+       "p95_ms": 13.0,
+       "p99_ms": 21.0,
+       "avg_ms": 9
+      },
+      "light /v1/me/threads": {
+       "requests": 487,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.53,
+       "p50_ms": 16.0,
+       "p95_ms": 34.0,
+       "p99_ms": 74.0,
+       "avg_ms": 19
+      },
+      "search": {
+       "requests": 530,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.57,
+       "p50_ms": 71.0,
+       "p95_ms": 6100.0,
+       "p99_ms": 6300.0,
+       "avg_ms": 824
+      }
+     },
+     "api_cpu_max_pct": 30.8,
+     "api_rss_max_mb": 515.1,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 269,
+      "input": 1031907,
+      "output": 50639,
+      "reasoning": 24297,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Soak, 20 users mixed, 15 min in Cycle 3 (10 min in Cycle 1). Chat success 0 % (Cycle 1, provider window kept full by failing retries) to 97.8 %. API memory 484 to 515 MB over 15 min (about 2 MB/min, no plateau seen), file descriptors, threads and DB connections flat. 1.03 M input and 50.6 k output tokens consumed."
+  },
+  {
+   "scenario_id": "PERF-SP01",
+   "component": "API read endpoints",
+   "test_type": "spike",
+   "concurrent_users": 250,
+   "duration_s": 60,
+   "workload": "light",
+   "threshold_p95_ms": {
+    "light": 3000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 724,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.09,
+       "p50_ms": 16.0,
+       "p95_ms": 510.0,
+       "p99_ms": 840.0,
+       "avg_ms": 63
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 660,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 11.02,
+       "p50_ms": 44.0,
+       "p95_ms": 740.0,
+       "p99_ms": 940.0,
+       "avg_ms": 122
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 655,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 10.94,
+       "p50_ms": 46.0,
+       "p95_ms": 770.0,
+       "p99_ms": 950.0,
+       "avg_ms": 140
+      },
+      "light /v1/me/threads": {
+       "requests": 678,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 11.32,
+       "p50_ms": 41.0,
+       "p95_ms": 770.0,
+       "p99_ms": 950.0,
+       "avg_ms": 131
+      }
+     },
+     "api_cpu_max_pct": 74.3,
+     "api_rss_max_mb": 586.2,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 745,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.54,
+       "p50_ms": 2.0,
+       "p95_ms": 31.0,
+       "p99_ms": 71.0,
+       "avg_ms": 6
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 733,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.34,
+       "p50_ms": 9.0,
+       "p95_ms": 62.0,
+       "p99_ms": 90.0,
+       "avg_ms": 16
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 735,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.38,
+       "p50_ms": 11.0,
+       "p95_ms": 52.0,
+       "p99_ms": 78.0,
+       "avg_ms": 16
+      },
+      "light /v1/me/threads": {
+       "requests": 796,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 13.4,
+       "p50_ms": 6.0,
+       "p95_ms": 50.0,
+       "p99_ms": 140.0,
+       "avg_ms": 13
+      }
+     },
+     "api_cpu_max_pct": 49.4,
+     "api_rss_max_mb": 369.9,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 741,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.48,
+       "p50_ms": 2.0,
+       "p95_ms": 34.0,
+       "p99_ms": 75.0,
+       "avg_ms": 6
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 767,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.92,
+       "p50_ms": 12.0,
+       "p95_ms": 54.0,
+       "p99_ms": 78.0,
+       "avg_ms": 18
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 726,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.23,
+       "p50_ms": 15.0,
+       "p95_ms": 60.0,
+       "p99_ms": 81.0,
+       "avg_ms": 20
+      },
+      "light /v1/me/threads": {
+       "requests": 768,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 12.93,
+       "p50_ms": 9.0,
+       "p95_ms": 55.0,
+       "p99_ms": 78.0,
+       "avg_ms": 16
+      }
+     },
+     "api_cpu_max_pct": 49.4,
+     "api_rss_max_mb": 480.5,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Spike 2 to 250 to 2 users: no errors, p95 770 ms to 60 ms."
+  },
+  {
+   "scenario_id": "PERF-SP02",
+   "component": "Knowledge search",
+   "test_type": "spike",
+   "concurrent_users": 60,
+   "duration_s": 90,
+   "workload": "search",
+   "threshold_p95_ms": {
+    "search": 8000
+   },
+   "threshold_min_success": 0.98,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "search": {
+       "requests": 202,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.13,
+       "p50_ms": 6100.0,
+       "p95_ms": 7100.0,
+       "p99_ms": 7200.0,
+       "avg_ms": 6140
+      }
+     },
+     "api_cpu_max_pct": 68.3,
+     "api_rss_max_mb": 580.0,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 239,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 2.55,
+       "p50_ms": 6100.0,
+       "p95_ms": 13000.0,
+       "p99_ms": 19000.0,
+       "avg_ms": 4888
+      }
+     },
+     "api_cpu_max_pct": 33.0,
+     "api_rss_max_mb": 377.3,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "PASS",
+     "endpoints": {
+      "search": {
+       "requests": 820,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 9.15,
+       "p50_ms": 120.0,
+       "p95_ms": 6200.0,
+       "p99_ms": 6800.0,
+       "avg_ms": 738
+      }
+     },
+     "api_cpu_max_pct": 48.7,
+     "api_rss_max_mb": 458.3,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "search": {
+       "requests": 991,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 11.01,
+       "p50_ms": 99.0,
+       "p95_ms": 670.0,
+       "p99_ms": 1700.0,
+       "avg_ms": 245
+      }
+     },
+     "api_cpu_max_pct": 48.6,
+     "api_rss_max_mb": 480.9,
+     "pg_conns_max": 14.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Search spike 2 to 60 to 2: 100 % success; p95 7.1 s to 0.67 s."
+  },
+  {
+   "scenario_id": "PERF-SP03",
+   "component": "Agent RAG chat",
+   "test_type": "spike",
+   "concurrent_users": 30,
+   "duration_s": 90,
+   "workload": "chat",
+   "threshold_p95_ms": {
+    "chat": 60000
+   },
+   "threshold_min_success": 0.95,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 81,
+       "failures": 77,
+       "success_pct": 4.9,
+       "rps": 0.88,
+       "p50_ms": 3700.0,
+       "p95_ms": 16000.0,
+       "p99_ms": 71000.0,
+       "avg_ms": 7346,
+       "ttft_p50_ms": 24000.0,
+       "ttft_p95_ms": 70000.0
+      }
+     },
+     "api_cpu_max_pct": 49.3,
+     "api_rss_max_mb": 534.4,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 84,
+      "input": 40502,
+      "output": 2575,
+      "reasoning": 1381,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 9,
+       "failures": 4,
+       "success_pct": 55.6,
+       "rps": 0.1,
+       "p50_ms": 23000.0,
+       "p95_ms": 64000.0,
+       "p99_ms": 64000.0,
+       "avg_ms": 32255,
+       "ttft_p50_ms": 36000.0,
+       "ttft_p95_ms": 64000.0
+      }
+     },
+     "api_cpu_max_pct": 27.4,
+     "api_rss_max_mb": 358.3,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 33,
+      "input": 41508,
+      "output": 2723,
+      "reasoning": 1494,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 12,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 0.13,
+       "p50_ms": 11000.0,
+       "p95_ms": 66000.0,
+       "p99_ms": 66000.0,
+       "avg_ms": 27792,
+       "ttft_p50_ms": 11000.0,
+       "ttft_p95_ms": 66000.0
+      }
+     },
+     "api_cpu_max_pct": 28.2,
+     "api_rss_max_mb": 483.9,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 37,
+      "input": 65096,
+      "output": 3555,
+      "reasoning": 1801,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Chat spike 2 to 30 to 2: success 5 % to 100 %; p95 66 s (queue)."
+  },
+  {
+   "scenario_id": "PERF-ST01",
+   "component": "API read endpoints",
+   "test_type": "stress",
+   "concurrent_users": 500,
+   "duration_s": 200,
+   "workload": "light",
+   "threshold_p95_ms": {
+    "light": 3000
+   },
+   "threshold_min_success": 0.99,
+   "final_status": "PASS",
+   "cycles": {
+    "c1": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 13339,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 55.27,
+       "p50_ms": 23.0,
+       "p95_ms": 470.0,
+       "p99_ms": 670.0,
+       "avg_ms": 80
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 13548,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 56.13,
+       "p50_ms": 690.0,
+       "p95_ms": 2200.0,
+       "p99_ms": 2400.0,
+       "avg_ms": 841
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 13555,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 56.16,
+       "p50_ms": 690.0,
+       "p95_ms": 2200.0,
+       "p99_ms": 2400.0,
+       "avg_ms": 842
+      },
+      "light /v1/me/threads": {
+       "requests": 13384,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 55.46,
+       "p50_ms": 690.0,
+       "p95_ms": 2200.0,
+       "p99_ms": 2400.0,
+       "avg_ms": 843
+      }
+     },
+     "api_cpu_max_pct": 100.4,
+     "api_rss_max_mb": 436.3,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 22186,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 92.31,
+       "p50_ms": 3.0,
+       "p95_ms": 19.0,
+       "p99_ms": 230.0,
+       "avg_ms": 9
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 22297,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 92.77,
+       "p50_ms": 150.0,
+       "p95_ms": 710.0,
+       "p99_ms": 930.0,
+       "avg_ms": 259
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 22264,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 92.63,
+       "p50_ms": 150.0,
+       "p95_ms": 710.0,
+       "p99_ms": 920.0,
+       "avg_ms": 261
+      },
+      "light /v1/me/threads": {
+       "requests": 21929,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 91.24,
+       "p50_ms": 130.0,
+       "p95_ms": 710.0,
+       "p99_ms": 940.0,
+       "avg_ms": 255
+      }
+     },
+     "api_cpu_max_pct": 99.9,
+     "api_rss_max_mb": 339.1,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "PASS",
+     "endpoints": {
+      "light /health/ready": {
+       "requests": 21148,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 88.0,
+       "p50_ms": 3.0,
+       "p95_ms": 30.0,
+       "p99_ms": 520.0,
+       "avg_ms": 19
+      },
+      "light /v1/knowledge/bases": {
+       "requests": 21154,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 88.02,
+       "p50_ms": 160.0,
+       "p95_ms": 840.0,
+       "p99_ms": 1200.0,
+       "avg_ms": 299
+      },
+      "light /v1/knowledge/bases/{kb}/documents": {
+       "requests": 21263,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 88.48,
+       "p50_ms": 170.0,
+       "p95_ms": 840.0,
+       "p99_ms": 1200.0,
+       "avg_ms": 304
+      },
+      "light /v1/me/threads": {
+       "requests": 20935,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 87.11,
+       "p50_ms": 170.0,
+       "p95_ms": 830.0,
+       "p99_ms": 1200.0,
+       "avg_ms": 297
+      }
+     },
+     "api_cpu_max_pct": 99.9,
+     "api_rss_max_mb": 450.7,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Stress, 50 to 500 users. Cycle 1 knee at about 200 users (274 req/s, p95 560 ms, API CPU 100 %). Cycle 3 knee at about 300 users (494 req/s, p95 190 ms); at 500 users p95 790 ms with no errors."
+  },
+  {
+   "scenario_id": "PERF-ST02",
+   "component": "Knowledge search",
+   "test_type": "stress",
+   "concurrent_users": 150,
+   "duration_s": 200,
+   "workload": "search",
+   "threshold_p95_ms": {
+    "search": 6000
+   },
+   "threshold_min_success": 0.98,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 1954,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 9.47,
+       "p50_ms": 6100.0,
+       "p95_ms": 6600.0,
+       "p99_ms": 6900.0,
+       "avg_ms": 6146
+      }
+     },
+     "api_cpu_max_pct": 80.4,
+     "api_rss_max_mb": 586.8,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 6614,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 32.92,
+       "p50_ms": 500.0,
+       "p95_ms": 4100.0,
+       "p99_ms": 6800.0,
+       "avg_ms": 1037,
+       "quality_misses": 587,
+       "quality_miss_pct": 8.9
+      }
+     },
+     "api_cpu_max_pct": 85.7,
+     "api_rss_max_mb": 381.4,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c2b": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 7508,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 36.95,
+       "p50_ms": 150.0,
+       "p95_ms": 3800.0,
+       "p99_ms": 7500.0,
+       "avg_ms": 810,
+       "quality_misses": 405,
+       "quality_miss_pct": 5.4
+      }
+     },
+     "api_cpu_max_pct": 92.0,
+     "api_rss_max_mb": 462.7,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "search": {
+       "requests": 8008,
+       "failures": 0,
+       "success_pct": 100.0,
+       "rps": 39.67,
+       "p50_ms": 180.0,
+       "p95_ms": 3700.0,
+       "p99_ms": 4200.0,
+       "avg_ms": 683,
+       "quality_misses": 301,
+       "quality_miss_pct": 3.8
+      }
+     },
+     "api_cpu_max_pct": 89.3,
+     "api_rss_max_mb": 468.5,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 0,
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Search stress: clean to 50 users (p95 100 ms); degrades at 100 (p95 1.8 s, 1.8 failures/s) and 150 users (p95 3.7 s); failures are keyword-only fallbacks from the embedding provider limit."
+  },
+  {
+   "scenario_id": "PERF-ST03",
+   "component": "Agent RAG chat",
+   "test_type": "stress",
+   "concurrent_users": 60,
+   "duration_s": 200,
+   "workload": "chat",
+   "threshold_p95_ms": {
+    "chat": 60000
+   },
+   "threshold_min_success": 0.95,
+   "final_status": "FAIL",
+   "cycles": {
+    "c1": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 1148,
+       "failures": 1120,
+       "success_pct": 2.4,
+       "rps": 5.65,
+       "p50_ms": 3400.0,
+       "p95_ms": 4600.0,
+       "p99_ms": 14000.0,
+       "avg_ms": 3789,
+       "ttft_p50_ms": 13000.0,
+       "ttft_p95_ms": 18000.0
+      }
+     },
+     "api_cpu_max_pct": 80.7,
+     "api_rss_max_mb": 586.0,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 1152,
+      "input": 120818,
+      "output": 6066,
+      "reasoning": 2968,
+      "cache_read": 0
+     }
+    },
+    "c2": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 61,
+       "failures": 9,
+       "success_pct": 85.2,
+       "rps": 0.28,
+       "p50_ms": 44000.0,
+       "p95_ms": 120000.0,
+       "p99_ms": 120000.0,
+       "avg_ms": 53254,
+       "ttft_p50_ms": 42000.0,
+       "ttft_p95_ms": 93000.0
+      }
+     },
+     "api_cpu_max_pct": 31.6,
+     "api_rss_max_mb": 369.7,
+     "pg_conns_max": 13.0,
+     "tokens": {
+      "runs": 109,
+      "input": 227322,
+      "output": 11731,
+      "reasoning": 5731,
+      "cache_read": 0
+     }
+    },
+    "c3": {
+     "status": "FAIL",
+     "endpoints": {
+      "chat": {
+       "requests": 61,
+       "failures": 5,
+       "success_pct": 91.8,
+       "rps": 0.28,
+       "p50_ms": 44000.0,
+       "p95_ms": 120000.0,
+       "p99_ms": 120000.0,
+       "avg_ms": 47858,
+       "ttft_p50_ms": 43000.0,
+       "ttft_p95_ms": 102000.0
+      }
+     },
+     "api_cpu_max_pct": 39.9,
+     "api_rss_max_mb": 480.5,
+     "pg_conns_max": 14.0,
+     "tokens": {
+      "runs": 108,
+      "input": 238270,
+      "output": 12526,
+      "reasoning": 6223,
+      "cache_read": 0
+     }
+    }
+   },
+   "observations": "Chat stress: 5 users p95 15 s, 10 users 41 s, 60 users 68 s, success 92 %. Throughput is flat at the provider-bound 18 chats/min whatever the user count."
+  }
+ ],
+ "other_measurements": [
+  {
+   "scenario_id": "PERF-D01",
+   "component": "NVIDIA embeddings (direct)",
+   "test_type": "provider baseline",
+   "concurrent_users": 1,
+   "duration_s": 5,
+   "threshold": "p95 < 1 s",
+   "actual": "60-440 ms per request; 10 parallel 0.5 s; 429s start at 60 parallel; sustained 10 req/s clean, 30 req/s about 25 % rejected (about 20 req/s ceiling)",
+   "status": "PASS",
+   "observations": "This ceiling caps search throughput for new (uncached) queries."
+  },
+  {
+   "scenario_id": "PERF-D02",
+   "component": "NVIDIA reranker (direct)",
+   "test_type": "provider baseline",
+   "concurrent_users": 1,
+   "duration_s": 60,
+   "threshold": "p95 < 6 s (the app's timeout)",
+   "actual": "3 to 13 s whatever the passage count (1 to 20), median about 10 s",
+   "status": "FAIL",
+   "observations": "Slower than the default 6 s timeout most of the time, so the reranker rarely contributes. Drove the circuit breaker."
+  },
+  {
+   "scenario_id": "PERF-D03",
+   "component": "NVIDIA chat (direct)",
+   "test_type": "provider baseline",
+   "concurrent_users": 10,
+   "duration_s": 15,
+   "threshold": "p95 < 15 s for 200 tokens",
+   "actual": "TTFT 0.4-1.0 s; 200 tokens in 4.2-13 s (about 15-45 tokens/s); 10 parallel p95 12.6 s",
+   "status": "PASS",
+   "observations": "Reasoning model: reasoning tokens are included in output counts."
+  },
+  {
+   "scenario_id": "PERF-D04",
+   "component": "NVIDIA chat rate limit (direct)",
+   "test_type": "rate limit",
+   "concurrent_users": 3,
+   "duration_s": 75,
+   "threshold": "documented limit respected",
+   "actual": "about 40 requests in the first 15 s, then 429 for about 45 s, then recovery; no Retry-After header",
+   "status": "PASS",
+   "observations": "Matches the repository's documented 40 requests/min. 429s with 8 parallel callers never recovered while the callers kept retrying."
+  },
+  {
+   "scenario_id": "PERF-I01",
+   "component": "Ingestion (worker, embeddings)",
+   "test_type": "baseline",
+   "concurrent_users": 1,
+   "duration_s": 6,
+   "threshold": "3 docs of 80 chunks ready < 60 s",
+   "actual": "Cycle 1: 2.1 s per doc, 29 docs/min; Cycle 3: 2.0 s per doc, 29 docs/min",
+   "status": "PASS",
+   "observations": "80 chunks embedded one request per chunk (batching is off for NVIDIA); no bottleneck found at this size, so unchanged."
+  },
+  {
+   "scenario_id": "PERF-I02",
+   "component": "Ingestion (worker, embeddings)",
+   "test_type": "normal",
+   "concurrent_users": 3,
+   "duration_s": 10,
+   "threshold": "12 docs ready < 120 s",
+   "actual": "Cycle 1: 78 docs/min, p95 3.1 s; Cycle 3: 78 docs/min, p95 2.0 s",
+   "status": "PASS",
+   "observations": "Limited by the 5-in-flight cap per user, not by CPU."
+  },
+  {
+   "scenario_id": "PERF-SC01",
+   "component": "API scale-out (light reads)",
+   "test_type": "scalability",
+   "concurrent_users": 400,
+   "duration_s": 40,
+   "threshold": "n/a (measurement)",
+   "actual": "1 process: 469 req/s, p95 600 ms; 2 processes: 716 req/s, p95 100 ms; 3 processes: 727 req/s, p95 66 ms",
+   "status": "PASS",
+   "observations": "+53 % with a second process; the third adds nothing because the 4-vCPU machine also runs the load generator, Postgres and the worker."
+  },
+  {
+   "scenario_id": "PERF-FE01",
+   "component": "Web app (production build)",
+   "test_type": "frontend",
+   "concurrent_users": 1,
+   "duration_s": 5,
+   "threshold": "load < 1 s, < 300 KB gzip",
+   "actual": "177 KB gzip in total (largest chunk 104 KB); load event 55-74 ms on localhost; 7 requests; 2 API calls after sign-in",
+   "status": "PASS",
+   "observations": "No change needed. Localhost numbers exclude real network latency."
+  },
+  {
+   "scenario_id": "PERF-REG01",
+   "component": "Regression: quality gates",
+   "test_type": "regression",
+   "concurrent_users": 0,
+   "duration_s": 124,
+   "threshold": "all pass",
+   "actual": "make format lint typecheck test security: 2788 passed, 2 skipped (2775 before; 13 new tests)",
+   "status": "PASS",
+   "observations": ""
+  },
+  {
+   "scenario_id": "PERF-REG02",
+   "component": "Regression: functional API scenarios",
+   "test_type": "regression",
+   "concurrent_users": 4,
+   "duration_s": 346,
+   "threshold": "171 of 171",
+   "actual": "162 passed on the first run; 9 failed from environment (the ingestion worker died when the sandbox froze, and the chat provider rate-limited); all 9 passed on re-run, 171 of 171",
+   "status": "PASS",
+   "observations": "No functional regression from the middleware, retrieval or throttle changes."
+  },
+  {
+   "scenario_id": "PERF-REG03",
+   "component": "Regression: browser scenarios (Chromium)",
+   "test_type": "regression",
+   "concurrent_users": 1,
+   "duration_s": 250,
+   "threshold": "no failures",
+   "actual": "29 of 29 passed (sign-in, knowledge screen, uploads, chat with citations, sharing, source sheet)",
+   "status": "PASS",
+   "observations": "Only UI-01 to UI-29 were re-run; the Keycloak and mobile ones were not."
+  }
+ ]
+}

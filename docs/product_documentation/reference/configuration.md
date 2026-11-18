@@ -39,6 +39,7 @@ All configuration parameters are read from environment variables (or `.env` in d
 | `APP_OPENAI_COMPATIBLE_API_KEY` | Secret string | `None` | Optional | Key for that server. Without one, no key is sent (never `OPENAI_API_KEY`). |
 | `APP_REQUEST_TIMEOUT_SECONDS` | integer (1–300) | `60` | Optional | Timeout per individual HTTP request to model provider. |
 | `APP_PROVIDER_MAX_RETRIES` | integer (0–5) | `2` | Optional | Max retry attempts for transient provider errors (connection, timeout, rate limit). |
+| `APP_PROVIDER_MAX_REQUESTS_PER_MINUTE` | integer (1–100000) | unset | Optional | Model calls per minute this process may make, retries included. Calls above the rate wait for a slot instead of failing with the provider's `429`. Set it a little under the provider's limit; each replica counts its own calls. |
 | `APP_MAX_OUTPUT_TOKENS` | integer (1–16384) | `2000` | Optional | Max token completion budget passed to model provider. |
 | `APP_MAX_PROMPT_CHARS` | integer (100–200000) | `12000` | Optional | Maximum allowed character length for incoming user prompt. |
 | `APP_MAX_AGENT_ITERATIONS` | integer (1–25) | `8` | Optional | Maximum model invocation steps allowed in a single turn before step-limit error. |
