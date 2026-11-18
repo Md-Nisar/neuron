@@ -80,13 +80,11 @@ _LIVE = (
     " AND d.deleted_at IS NULL AND d.status = 'ready'"
 )
 _CHUNKS = " FROM knowledge.chunks c"
+# Through a function that applies the `kb_scope` filter itself, so `chunks_tsv_idx` serves the
+# match: under RLS it cannot (migration 33). Ids only, best first; passages are read under RLS.
 _FTS = (
-    "SELECT c.chunk_id"
-    + _CHUNKS
-    + _LIVE
-    + " AND c.kb_id = ANY(%(kbs)s) AND c.tsv @@ websearch_to_tsquery(%(cfg)s::regconfig, %(q)s)"
-    " ORDER BY ts_rank_cd(c.tsv, websearch_to_tsquery(%(cfg)s::regconfig, %(q)s)) DESC,"
-    " c.chunk_id LIMIT %(n)s"
+    "SELECT chunk_id FROM knowledge.search_text(%(kbs)s, %(cfg)s::regconfig, %(q)s, %(n)s)"
+    " WITH ORDINALITY ORDER BY ordinality"
 )
 # Counted only up to the threshold: the answer is "at most" or "more".
 _ALLOWED_VECTORS = (
@@ -302,7 +300,7 @@ class Retriever:
             path: Literal["exact", "hnsw", "none"] = "none"
             # Full text first: the HNSW path's planner settings would price out its GIN scan.
             if mode != "dense":
-                rankings.extend(await self._fts(conn, owner_key, bases, query))
+                rankings.extend(await self._fts(conn, bases, query))
             if (
                 vector is not None
                 and model is not None
@@ -460,7 +458,6 @@ class Retriever:
     @staticmethod
     async def _fts(
         conn: psycopg.AsyncConnection[Any],
-        owner_key: str,
         bases: Sequence[dict[str, Any]],
         query: str,
     ) -> list[list[uuid.UUID]]:
@@ -472,7 +469,7 @@ class Retriever:
         rankings: list[list[uuid.UUID]] = []
         for config, kbs in sorted(by_config.items()):
             cursor = await conn.execute(
-                _FTS, {"owner": owner_key, "kbs": kbs, "cfg": config, "q": query, "n": CANDIDATES}
+                _FTS, {"kbs": kbs, "cfg": config, "q": query, "n": CANDIDATES}
             )
             rankings.append([row["chunk_id"] for row in await cursor.fetchall()])
         return rankings

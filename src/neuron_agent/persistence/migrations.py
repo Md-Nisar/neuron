@@ -103,6 +103,23 @@ STORE_TABLE = "store"
 # The one function the app role may run: it answers whether a candidate check value matches the
 # one in `neuron_meta` without letting the role read that table (migration 12).
 _IDENTITY_FUNCTION = "neuron_identity_status"
+# The full-text candidate search the app role runs instead of querying chunks (migration 33).
+# The `kb_scope` filter is the policy's own expression; `$1`..`$4` are its arguments.
+SEARCH_TEXT_SIGNATURE = "knowledge.search_text(uuid[], regconfig, text, integer)"
+SEARCH_TEXT_FUNCTION = "knowledge.search_text(kbs uuid[], cfg regconfig, q text, n integer)"
+# A query of common words alone matches nearly every chunk, and ranking them all took seconds;
+# at most 10,000 matches are ranked, so such a query's text ranking draws on a subset (dense
+# search still covers the whole base in hybrid mode).
+SEARCH_TEXT_QUERY = (
+    "SELECT m.chunk_id FROM (SELECT c.chunk_id, c.tsv FROM knowledge.chunks c"
+    " JOIN knowledge.documents d ON d.doc_id = c.doc_id AND d.kb_id = c.kb_id"
+    " JOIN knowledge.bases b ON b.kb_id = d.kb_id"
+    " WHERE c.kb_id = ANY ($1)"
+    " AND c.kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[])"
+    " AND b.deleted_at IS NULL AND d.deleted_at IS NULL AND d.status = 'ready'"
+    " AND c.tsv @@ websearch_to_tsquery($2, $3) LIMIT 10000) m"
+    " ORDER BY ts_rank_cd(m.tsv, websearch_to_tsquery($2, $3)) DESC, m.chunk_id LIMIT $4"
+)
 # The tables the guards (run leases, token budget, rate limiter) read and write, derived from the
 # grants above so a new guard table is picked up by readiness without another list.
 THREAD_META_TABLE = "neuron_thread_meta"
@@ -676,6 +693,27 @@ CREATE POLICY kb_scope ON knowledge.document_tables
         index="knowledge.documents_live_url_idx",
         feature="knowledge",
     ),
+    # Full-text candidates for search (RAG-04.01). Under row-level security Postgres cannot use
+    # `chunks_tsv_idx` for `@@`, which is not leakproof, so every search read every chunk of its
+    # bases (`qa/retrieval_scale_benchmark.md`). This SECURITY DEFINER function, owned by the
+    # migrator (which `kb_scope` does not bind), applies that policy's own filter as a plain
+    # condition, so the index can serve the match. It returns ids only: the passages are still
+    # read under RLS. EXECUTE plans each call for its query. Only the app role may run it.
+    Migration(
+        version=33,
+        name="chunks_search_text_function",
+        sql=f"""
+CREATE OR REPLACE FUNCTION {SEARCH_TEXT_FUNCTION}
+RETURNS TABLE (chunk_id uuid)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $f$
+BEGIN
+    RETURN QUERY EXECUTE $q${SEARCH_TEXT_QUERY}$q$ USING kbs, cfg, q, n;
+END
+$f$;
+REVOKE ALL ON FUNCTION {SEARCH_TEXT_SIGNATURE} FROM PUBLIC
+""",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"
@@ -972,6 +1010,13 @@ def knowledge_grant_statements(
         for table, privileges in _KNOWLEDGE_PRIVILEGES[kind].items():
             if present is None or table in present:
                 statements.extend(_table_grants(kind, table, privileges, role, document_columns))
+        if present is None or SEARCH_TEXT_SIGNATURE in present:
+            function = sql.SQL(SEARCH_TEXT_SIGNATURE)
+            statements.append(sql.SQL("REVOKE ALL ON FUNCTION {} FROM {}").format(function, role))
+            if kind == "app":
+                statements.append(
+                    sql.SQL("GRANT EXECUTE ON FUNCTION {} TO {}").format(function, role)
+                )
     return statements
 
 
@@ -1095,6 +1140,8 @@ async def _grant(conn: psycopg.AsyncConnection[dict[str, object]], role: _AppRol
             (KNOWLEDGE_SCHEMA,),
         )
         knowledge = {str(row["name"]) for row in await cursor.fetchall()}
+        if await _function(conn, SEARCH_TEXT_SIGNATURE):
+            knowledge.add(SEARCH_TEXT_SIGNATURE)
         cursor = await conn.execute(
             "SELECT attname::text AS name FROM pg_attribute"
             " WHERE attrelid = to_regclass('knowledge.documents') AND attnum > 0"
@@ -1139,35 +1186,50 @@ async def _verify_grants(
             granted = await _table_privileges(conn, grantee, schema, table)
             if granted is not None and granted != expected:
                 wrong.append(table if schema == role.schema else f"{schema}.{table}")
-    if await _identity_function_exists(conn, role.schema):
-        cursor = await conn.execute(
-            "SELECT has_function_privilege(%s, to_regprocedure(format('%%I.%%I(text)',"
-            " %s::text, %s::text)), 'EXECUTE') AS ok",
-            (role.name, role.schema, _IDENTITY_FUNCTION),
-        )
-        executable = await cursor.fetchone()
-        if not (executable and executable["ok"]):
-            wrong.append(_IDENTITY_FUNCTION)
-        # Hardened as migration 12 made it: SECURITY DEFINER, pinned search_path, no PUBLIC.
-        hardened = await conn.execute(
-            "SELECT p.prosecdef"
-            " AND coalesce(p.proconfig, '{}') @> ARRAY['search_path=pg_catalog, pg_temp']"
-            " AND NOT EXISTS (SELECT 1"
-            " FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a"
-            " WHERE a.grantee = 0) AS ok"
-            " FROM pg_proc p"
-            " WHERE p.oid = to_regprocedure(format('%%I.%%I(text)', %s::text, %s::text))",
-            (role.schema, _IDENTITY_FUNCTION),
-        )
-        row = await hardened.fetchone()
-        if not (row and row["ok"]) and _IDENTITY_FUNCTION not in wrong:
-            wrong.append(_IDENTITY_FUNCTION)
+    identity = sql.Identifier(role.schema, _IDENTITY_FUNCTION).as_string(conn) + "(text)"
+    if await _function(conn, identity) and not await _function_ok(conn, identity, role.name):
+        wrong.append(_IDENTITY_FUNCTION)
+    if await _function(conn, SEARCH_TEXT_SIGNATURE) and not await _function_ok(
+        conn, SEARCH_TEXT_SIGNATURE, role.name, denied=role.worker
+    ):
+        wrong.append(SEARCH_TEXT_SIGNATURE)
     if wrong:
         logger.warning("app_role_grants_mismatch", tables=wrong)
         if required:
             raise AppRoleError("the app role's table privileges are not what setup grants")
         return False
     return True
+
+
+async def _function(conn: psycopg.AsyncConnection[dict[str, object]], signature: str) -> bool:
+    cursor = await conn.execute("SELECT to_regprocedure(%s) IS NOT NULL AS found", (signature,))
+    row = await cursor.fetchone()
+    return bool(row and row["found"])
+
+
+async def _function_ok(
+    conn: psycopg.AsyncConnection[dict[str, object]],
+    signature: str,
+    role: str,
+    *,
+    denied: str | None = None,
+) -> bool:
+    """`role` may run the function and `denied` may not, and it is hardened as its migration
+    made it: SECURITY DEFINER, pinned search_path, no EXECUTE for PUBLIC."""
+    cursor = await conn.execute(
+        "SELECT has_function_privilege(%(role)s, p.oid, 'EXECUTE')"
+        " AND NOT (%(denied)s::text IS NOT NULL"
+        " AND has_function_privilege(%(denied)s::text, p.oid, 'EXECUTE'))"
+        " AND p.prosecdef"
+        " AND coalesce(p.proconfig, '{}') @> ARRAY['search_path=pg_catalog, pg_temp']"
+        " AND NOT EXISTS (SELECT 1"
+        " FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a"
+        " WHERE a.grantee = 0) AS ok"
+        " FROM pg_proc p WHERE p.oid = to_regprocedure(%(signature)s)",
+        {"role": role, "denied": denied, "signature": signature},
+    )
+    row = await cursor.fetchone()
+    return bool(row and row["ok"])
 
 
 async def _table_privileges(

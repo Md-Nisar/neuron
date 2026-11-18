@@ -18,7 +18,7 @@ import pytest
 from psycopg import sql
 from psycopg.rows import dict_row
 from test_postgres_knowledge_api import _Connections
-from test_postgres_knowledge_tables import _knowledge_db
+from test_postgres_knowledge_tables import _knowledge_db, worker  # noqa: F401
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 
 from neuron_agent.config.settings import Settings
@@ -26,6 +26,7 @@ from neuron_agent.knowledge import retrieval
 from neuron_agent.knowledge.ingest import _vector
 from neuron_agent.knowledge.providers import EmbeddingError, EmbeddingProvider, FakeEmbeddings
 from neuron_agent.knowledge.retrieval import Retriever, fuse
+from neuron_agent.persistence.migrations import SEARCH_TEXT_QUERY, SEARCH_TEXT_SIGNATURE
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -286,3 +287,76 @@ async def test_the_code_forces_the_dense_path_it_chose(role_db: RoleDatabase) ->
     assert "embeddings_p1_hnsw" in hnsw
     # Even with every other path priced out, the exact query cannot use the HNSW index.
     assert "hnsw" not in exact
+
+
+async def test_the_text_search_uses_its_index_which_rls_would_forbid(
+    role_db: RoleDatabase,  # noqa: F811
+) -> None:
+    await _knowledge_db(role_db)
+    kb = await _base(role_db, _A)
+    await _document(role_db, kb, _A, [f"pump {n} fault" for n in range(200)])
+    await _migrator(role_db, "ANALYZE knowledge.chunks")
+    query = SEARCH_TEXT_QUERY
+    for n, name in enumerate(("kbs", "cfg", "q", "n"), start=1):
+        query = query.replace(f"${n}", f"%({name})s")
+    params = {"kbs": [kb], "cfg": "simple", "q": "pump 7", "n": retrieval.CANDIDATES}
+    setup = (
+        f"SELECT set_config('neuron.kb_ids', '{kb}', true)",
+        "SET LOCAL enable_seqscan = off",
+        "SET LOCAL enable_indexscan = off",
+    )
+
+    async def plan(dsn: str) -> str:
+        async with await psycopg.AsyncConnection.connect(dsn) as conn, conn.transaction():
+            for step in setup:
+                await conn.execute(step)  # type: ignore[arg-type]
+            rows = await (await conn.execute(f"EXPLAIN {query}", params)).fetchall()  # type: ignore[arg-type]
+        return "\n".join(row[0] for row in rows)
+
+    # As the function runs it (its owner, whom `kb_scope` does not bind): the GIN index.
+    assert "chunks_tsv_idx" in await plan(role_db.migrator_dsn)
+    # The same query as the app role, under RLS: `@@` is not leakproof, so never the index.
+    assert "chunks_tsv_idx" not in await plan(role_db.app_dsn)
+
+
+async def test_the_text_search_keeps_to_the_scope_the_transaction_set(
+    role_db: RoleDatabase,  # noqa: F811
+) -> None:
+    await _knowledge_db(role_db)
+    a, b = await _base(role_db, _A), await _base(role_db, _B)
+    [own] = await _document(role_db, a, _A, ["falcon plan"])
+    await _document(role_db, b, _B, ["falcon plan"])
+    search = "SELECT chunk_id FROM knowledge.search_text(%s, 'simple', 'falcon', 10)"
+    async with await psycopg.AsyncConnection.connect(role_db.app_dsn) as conn:
+        async with conn.transaction():
+            await conn.execute("SELECT set_config('neuron.kb_ids', %s, true)", (str(a),))
+            # Asking for B as well: the function applies the policy's filter, as RLS would.
+            rows = await (await conn.execute(search, ([a, b],))).fetchall()
+            assert rows == [(own,)]
+        async with conn.transaction():  # no scope set: nothing
+            assert await (await conn.execute(search, ([a, b],))).fetchall() == []
+
+
+async def test_only_the_app_role_may_run_the_text_search(
+    role_db: RoleDatabase,  # noqa: F811
+    worker: tuple[str, str],  # noqa: F811
+) -> None:
+    await _knowledge_db(role_db, worker)
+    async with await psycopg.AsyncConnection.connect(role_db.migrator_dsn) as conn:
+        rows = await (
+            await conn.execute(
+                "SELECT has_function_privilege(%s, %s, 'EXECUTE'),"
+                " has_function_privilege(%s, %s, 'EXECUTE'), p.prosecdef, p.proconfig,"
+                " EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl,"
+                " acldefault('f', p.proowner))) a WHERE a.grantee = 0)"
+                " FROM pg_proc p WHERE p.oid = to_regprocedure(%s)",
+                (
+                    role_db.roles.app,
+                    SEARCH_TEXT_SIGNATURE,
+                    worker[0],
+                    SEARCH_TEXT_SIGNATURE,
+                    SEARCH_TEXT_SIGNATURE,
+                ),
+            )
+        ).fetchall()
+    assert rows == [(True, False, True, ["search_path=pg_catalog, pg_temp"], False)]

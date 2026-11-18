@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Performance: knowledge full-text search uses its GIN index. Under row-level security Postgres could not use `chunks_tsv_idx` for `@@`, which is not leakproof, so every full-text and hybrid search read every chunk of the bases it searched. Migration 33 adds `knowledge.search_text`, a `SECURITY DEFINER` function that applies the `kb_scope` policy's own `neuron.kb_ids` filter as a plain condition and returns chunk ids only; passages are still read under RLS. Only the app role may run it, and setup verifies that. At most 10,000 matches of a query are ranked, so a query of common words alone ranks a subset. On a 278,000-chunk base (`qa/retrieval_scale_benchmark.md`), hybrid search p95 fell from 3.9 s to 0.25 s, and 8 concurrent searches from a p95 of 4.6 s to 0.94 s.
+
 Fix: the ingestion worker embeds a document 256 passages at a time and keeps its vectors as float32 arrays, so a document at the 20,000-chunk cap holds about 80 MB per 1,024-dimension index profile instead of about 650 MB. The re-index does the same.
 
 Fix: two writers of a shared knowledge base adding the same web page at the same moment get one document, not two. Migration 32 (`documents_live_url_idx`) adds a unique index on a base's live web pages; the request that loses the race returns the existing document. Upgrade note: the index build fails if a base already holds two live documents for the same URL; delete one of them and run `setup` again.
