@@ -37,6 +37,7 @@ from typing import Any
 
 import numpy as np
 import psycopg
+import structlog
 from langchain_core.embeddings import Embeddings
 from psycopg_pool import AsyncConnectionPool
 from pydantic import SecretStr
@@ -320,6 +321,8 @@ async def bench() -> None:
 
 
 def main() -> None:
+    # The app's log and audit lines go to stderr, so `bench > figures.json` is valid JSON.
+    structlog.configure(logger_factory=structlog.PrintLoggerFactory(sys.stderr))
     command = sys.argv[1]
     if command == "setup":
         asyncio.run(setup())
