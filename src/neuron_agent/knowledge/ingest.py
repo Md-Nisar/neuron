@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from array import array
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -90,6 +91,10 @@ _FILE = "SELECT blob_key, sha256 FROM knowledge.documents WHERE doc_id = %s"
 # Embedding is paid per chunk and the set is written in one transaction: a cap, below what the
 # page and character caps alone allow (about 250,000 chunks of 400 tokens).
 MAX_CHUNKS = 20_000
+# Passages sent per `embed_documents` call. Each slice's vectors are kept as float32 arrays (the
+# column is `halfvec`), so a document at `MAX_CHUNKS` holds about 80 MB per 1,024-dimension
+# profile instead of the 650 MB a list of Python floats takes.
+EMBED_SLICE = 256
 _INSERT_CHUNK = (
     "INSERT INTO knowledge.chunks (chunk_id, doc_id, kb_id, ordinal, text, headings, page_start,"
     " page_end, token_count, ts_config) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::regconfig)"
@@ -178,7 +183,7 @@ class Ingestor:
                 await self._set(conn, doc_id, "embedding")
                 with _stage("embed"):
                     passages = [_passage(c) for c in chunks]
-                    vectors = {pid: await m.embed_documents(passages) for pid, m in models.items()}
+                    vectors = {pid: await embed_passages(m, passages) for pid, m in models.items()}
                 with _stage("write"):
                     written = await self._write(conn, doc_id, row, chunks, vectors, parsed, tables)
             except (ParseError, EmbeddingError) as exc:
@@ -355,13 +360,14 @@ class Ingestor:
                         for chunk_id, chunk in zip(ids, chunks, strict=True)
                     ],
                 )
+                # A generator: each vector's text is built as its row is sent, not all at once.
                 await cursor.executemany(
                     _INSERT_EMBEDDING,
-                    [
+                    (
                         (chunk_id, profile_id, kb_id, _vector(vector))
                         for profile_id, profile_vectors in vectors.items()
                         for chunk_id, vector in zip(ids, profile_vectors, strict=True)
-                    ],
+                    ),
                 )
             await conn.execute(_DELETE_TABLES, (doc_id,))
             if tables:
@@ -436,6 +442,15 @@ async def _once(data: bytes) -> AsyncIterator[bytes]:
 def _passage(chunk: Chunk) -> str:
     """What is embedded: the heading path, then the text, so a chunk keeps its context."""
     return "\n".join([*chunk.headings, chunk.text])
+
+
+async def embed_passages(model: EmbeddingProvider, passages: Sequence[str]) -> list[array[float]]:
+    """Embed `passages` `EMBED_SLICE` at a time, each vector kept as a float32 array."""
+    vectors: list[array[float]] = []
+    for start in range(0, len(passages), EMBED_SLICE):
+        batch = await model.embed_documents(passages[start : start + EMBED_SLICE])
+        vectors.extend(array("f", vector) for vector in batch)
+    return vectors
 
 
 def _vector(values: Sequence[float]) -> str:

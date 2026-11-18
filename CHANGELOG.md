@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fix: the ingestion worker embeds a document 256 passages at a time and keeps its vectors as float32 arrays, so a document at the 20,000-chunk cap holds about 80 MB per 1,024-dimension index profile instead of about 650 MB. The re-index does the same.
+
+Fix: two writers of a shared knowledge base adding the same web page at the same moment get one document, not two. Migration 32 (`documents_live_url_idx`) adds a unique index on a base's live web pages; the request that loses the race returns the existing document. Upgrade note: the index build fails if a base already holds two live documents for the same URL; delete one of them and run `setup` again.
+
 Security: sharing a knowledge base by role is limited to roles the operator lists in `APP_KNOWLEDGE_SHARING_ROLES` (default: none). Before, any user with `knowledge:admin` could grant a role every user holds, such as the reference realm's `neuron-user`. Their base then entered every user's default search, and its text reached other users' answers. The security round (`qa/security_report.md`) showed an attacker's passage ranked first in another user's search and quoted in that user's answer. A grant on an unlisted role is refused (`422 knowledge_role_not_shareable`), and a grant stored earlier on a role no longer listed gives nobody access.
 
 Upgrade note: a deployment that shares bases by role lists those roles in `APP_KNOWLEDGE_SHARING_ROLES` (JSON list). Until then, its existing role grants give no access.

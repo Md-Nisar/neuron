@@ -208,6 +208,7 @@ Metadata and status of uploaded files.
   - `documents_live_sha_idx` UNIQUE ON `knowledge.documents (kb_id, sha256) WHERE deleted_at IS NULL`
   - `documents_idempotency_idx` UNIQUE ON `knowledge.documents (uploaded_by, idempotency_key) WHERE idempotency_key IS NOT NULL`
   - `documents_uploader_idx` ON `knowledge.documents (uploaded_by)`
+  - `documents_live_url_idx` UNIQUE ON `knowledge.documents (kb_id, source_ref) WHERE source_type = 'web' AND deleted_at IS NULL` (migration 32: one live document per web page in a base)
 
 ---
 

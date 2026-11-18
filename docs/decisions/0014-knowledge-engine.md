@@ -417,7 +417,8 @@ alone never grant access: the caller still needs an owner key, and the route its
   An `admin` role may revoke any role grant, its own included, but never the owner's access.
   Role names may not contain control or invisible characters.
 - **Quotas** stay per uploader (RAG-02.05): a member's upload to a shared base counts against
-  the member.
+  the member. A shared base can therefore hold more than its owner's own quota; the owner
+  bounds that by which roles get `write` access.
 - **Erase** (RAG-07.01): erasing a user's knowledge removes their bases with every upload in
   them, members' included, and their own uploads to bases shared with them. Export still covers
   the user's own bases only (with members' document metadata in them), not the user's uploads to
