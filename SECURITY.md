@@ -161,6 +161,14 @@ Dependabot (`.github/dependabot.yml`) opens weekly, grouped update PRs for `uv`,
 
 Current ignores: none.
 
+The npm packages (`web/`, `keycloak-theme/`) follow the same two steps. `npm audit` cannot ignore a single advisory, so CI runs `scripts/npm_audit_gate.py`, which fails on any advisory not listed in `.npm-audit-ignore.json`. Each entry there needs `id` (the GHSA ID), `statement` (why it does not apply, naming the package) and `expired_at`, no more than 90 days out; an expired entry stops ignoring, so the job fails again on that date.
+
+npm ignores:
+
+| Advisory | Package | Why it does not apply | Review by |
+| -------- | ------- | --------------------- | --------- |
+| GHSA-fc5q-39xc-vjpf | `picomatch` <=4.0.7 (ReDoS on crafted extglobs) | No fixed release exists. Reached only through build and test tooling (`vite`, `vitest`, `tinyglobby`, `fdir`, `typescript-eslint`), which matches glob patterns from this repository's config, never user input. Not in the web production dependency tree and not in the built web app or theme. | 2027-02-15 |
+
 ### Image vulnerabilities
 
 The `image-publish` workflow scans every image pushed from `main` (ADR 0008 decision 6) with Trivy, pinned by commit SHA, before it attests the digest. The scan fails on any fixable HIGH or CRITICAL finding in OS packages and the locked libraries (`ignore-unfixed`, severity `HIGH,CRITICAL`). Trivy's vulnerability database is downloaded at run time, on every run: caching is off, and a database update that fails fails the scan, so a stale or cached database never gives a pass. A new CVE can therefore fail a build that did not change.

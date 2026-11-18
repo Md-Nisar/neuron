@@ -16,6 +16,8 @@ Rules for this directory:
 
 - Every dependency is an exact version; `.npmrc` turns install scripts off. A new package must be
   at least 90 days old on npm (the `new-dependencies` CI job), and `npm audit` must stay clean.
+  An advisory with no fixed release may be ignored with a reason and a review date in
+  `.npm-audit-ignore.json` (SECURITY.md, "Dependency Vulnerabilities").
 - Model, tool and title text is untrusted: no `dangerouslySetInnerHTML` (lint fails on it).
 - The API image does not include this directory (`.dockerignore` is an allowlist).
 
