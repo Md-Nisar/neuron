@@ -25,7 +25,6 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -320,7 +319,10 @@ async def sweep(dsn: str, stalled_seconds: float) -> int:
         await psycopg.AsyncConnection.connect(dsn, row_factory=dict_row, options=_OPTIONS) as conn,
         conn.transaction(),
     ):
-        cursor = await conn.execute("SELECT pg_try_advisory_xact_lock(%s) AS locked", (_SWEEP,))
+        # The retry is scheduled on the database's clock, which the queue compares it with.
+        cursor = await conn.execute(
+            "SELECT pg_try_advisory_xact_lock(%s) AS locked, now() AS now", (_SWEEP,)
+        )
         if not (row := await cursor.fetchone()) or not row["locked"]:
             return 0  # another worker is sweeping
         cursor = await conn.execute(
@@ -341,7 +343,7 @@ async def sweep(dsn: str, stalled_seconds: float) -> int:
                     queries["retry_job"],
                     {
                         "job_id": job["id"],
-                        "retry_at": datetime.now(UTC),
+                        "retry_at": row["now"],
                         "new_priority": None,
                         "new_queue_name": None,
                         "new_lock": None,

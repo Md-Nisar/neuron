@@ -241,7 +241,7 @@ async def test_erase_counts_only_owned_threads_it_actually_skipped(
 ) -> None:
     service, threads, owner = await _two_threads(monkeypatch)
     # A run on one owned thread, and a lease on a thread that has no checkpoint (a first run
-    # still in flight): only the first is an owned thread that erasure skips.
+    # still in flight): both are in progress, so erasure reports both as skipped.
     busy = await service._run_guard.claim(
         thread_id=threads[0], owner_key=owner, streaming=False, guard_thread=True
     )
@@ -249,7 +249,7 @@ async def test_erase_counts_only_owned_threads_it_actually_skipped(
         thread_id="ghost", owner_key=owner, streaming=False, guard_thread=True
     )
     result = await service.erase_user_data("u")
-    assert (result.erased_count, result.skipped_busy_count) == (1, 1)
+    assert (result.erased_count, result.skipped_busy_count) == (1, 2)
     await busy.release()
     await ghost.release()
 

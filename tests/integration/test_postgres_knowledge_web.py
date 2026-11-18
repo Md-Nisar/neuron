@@ -130,7 +130,12 @@ async def test_a_page_is_fetched_once_stored_and_ingested(
     text = await _text(db, doc)
     assert "Day 29: the tomatoes in the Häuser were watered." in text
     assert "Home | About" not in text
-    # Ingesting again (a retry, a re-index) parses the stored version: no second fetch.
+    # A second run of the page (one that started before the first ended) parses the stored
+    # version: no second fetch.
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(
+            "UPDATE knowledge.documents SET status = 'parsing' WHERE doc_id = %s", (doc,)
+        )
     assert await ingestor.ingest(doc) == "ready"
     assert len(fetch.calls) == 1
     assert (await _row(db, doc))["blob_key"] == row["blob_key"]

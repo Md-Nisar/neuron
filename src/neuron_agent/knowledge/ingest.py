@@ -64,8 +64,11 @@ _LOAD = (
     "SELECT d.kb_id, d.mime_type, d.blob_key, d.sha256, d.source_ref, b.processing,"
     " b.ts_config::text AS ts_config"
     " FROM knowledge.documents d JOIN knowledge.bases b USING (kb_id)"
-    " WHERE d.doc_id = %s AND d.deleted_at IS NULL AND d.status <> 'deleting'"
-    " AND b.deleted_at IS NULL"
+    " WHERE d.doc_id = %s AND d.deleted_at IS NULL AND b.deleted_at IS NULL"
+    # A job runs only while its document is being ingested: a duplicate that starts after the
+    # document ended `ready` or `failed` (a slow worker swept as stalled) is skipped, so it
+    # neither takes a ready document out of search nor pays for its embeddings again.
+    " AND d.status IN ('queued', 'parsing', 'embedding')"
 )
 # The active profile, and during a re-index the building one: a document is embedded for both
 # (RAG-09.04). The write locks them (`FOR SHARE`), so a swap cannot commit in between.

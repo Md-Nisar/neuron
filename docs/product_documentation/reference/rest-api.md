@@ -139,6 +139,7 @@ When cross-origin resource sharing is configured via `APP_CORS_ALLOWED_ORIGINS`:
 - **Description:** Submits a message and streams real-time Server-Sent Events (`text/event-stream`).  
 - **Request Body:** Identical to `AgentRequest`.  
 - **Response Stream (`200 OK`):** Streams 7 event types (`run_started`, `token`, `tool_call`, `final`, `error`, `done`, `: ping`). See [SSE Protocol Specification](sse-protocol.md).
+- **Shutdown:** while a replica drains, an open stream ends with `service_shutting_down` when the drain delay ends, but a non-streaming `invoke` may run to its timeout. Retry an interrupted stream on another replica (`OPERATIONS.md`, "Shutdown").
 
 ---
 
@@ -254,14 +255,14 @@ When cross-origin resource sharing is configured via `APP_CORS_ALLOWED_ORIGINS`:
 - **Response (`200 OK`, `UserDataErasureResponse`):**
   ```json
   {
-    "erased_thread_count": 5,
-    "busy_thread_count": 0,
+    "erased_count": 5,
+    "skipped_busy_count": 0,
     "erased_memory_count": 2,
-    "erased_knowledge_base_count": 1,
-    "erased_knowledge_document_count": 4,
-    "knowledge_purge_pending": false
+    "knowledge": {"erased_base_count": 1, "erased_document_count": 4, "purge_pending": false, "complete": true},
+    "complete": true
   }
   ```
+- **Contract:** the request erases what exists when it runs. A thread with a run in progress, including a new thread whose first run has not saved anything yet, is not erased and is counted in `skipped_busy_count`, so `complete` is `false`. Repeat the request until `complete` is `true`, after the run ends. Data written by a request that starts after the erase has finished is not covered.
 
 ---
 
