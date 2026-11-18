@@ -664,6 +664,18 @@ CREATE POLICY kb_scope ON knowledge.document_tables
 """,
         feature="knowledge",
     ),
+    # One live document per web page in a base: two writers of a shared base adding the same
+    # URL at once get the first document (`ON CONFLICT DO NOTHING`), not two to embed.
+    Migration(
+        version=32,
+        name="documents_live_url_idx",
+        sql="CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS documents_live_url_idx"
+        " ON knowledge.documents (kb_id, source_ref)"
+        " WHERE source_type = 'web' AND deleted_at IS NULL",
+        concurrent=True,
+        index="knowledge.documents_live_url_idx",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"

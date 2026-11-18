@@ -24,7 +24,13 @@ import structlog
 
 from neuron_agent.config.settings import ProcessingPolicy
 from neuron_agent.knowledge.chunking import estimate_tokens
-from neuron_agent.knowledge.ingest import PROFILES, Connect, _vector, lock_document
+from neuron_agent.knowledge.ingest import (
+    PROFILES,
+    Connect,
+    _vector,
+    embed_passages,
+    lock_document,
+)
 from neuron_agent.knowledge.jobs import Task, defer
 from neuron_agent.knowledge.providers import (
     EmbeddingError,
@@ -164,7 +170,7 @@ class Reindexer:
             await conn.execute(_SCOPE, (str(kb_id),))
             rows = await (await conn.execute(_CHUNKS, ([kb_id], profile_id, doc_id))).fetchall()
         # Outside a transaction: no connection waits on the provider.
-        vectors = await model.embed_documents([row["passage"] for row in rows])
+        vectors = await embed_passages(model, [row["passage"] for row in rows])
         async with conn.transaction():
             # The document first, then the profile, in ingestion's order (see `swap`).
             if not await lock_document(conn, doc_id):
@@ -174,10 +180,10 @@ class Reindexer:
             async with conn.cursor() as cursor:
                 await cursor.executemany(
                     _INSERT,
-                    [
+                    (
                         (profile_id, _vector(vector), row["chunk_id"])
                         for row, vector in zip(rows, vectors, strict=True)
-                    ],
+                    ),
                 )
             tokens = sum(estimate_tokens(row["passage"]) for row in rows)
             await conn.execute(_TOKENS, (tokens, doc_id))

@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 from typing import Any
 
+import psycopg
 import pytest
 from test_postgres_knowledge_api import _SCOPES, _create, _jobs, _rows, api  # noqa: F401
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 from tests.conftest import JwtApi, bearer
+
+from neuron_agent.knowledge.service import KnowledgeBases
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -64,6 +68,36 @@ async def test_the_same_url_or_key_again_returns_the_first_document(
     # In another base the page is a document of its own.
     assert _add(client, alice, other["kb_id"]).json()["doc_id"] != first["doc_id"]
     assert len(await _jobs(db)) == 2
+
+
+async def test_a_page_added_by_another_writer_meanwhile_is_returned_not_duplicated(
+    api: tuple[JwtApi, RoleDatabase],  # noqa: F811
+    make_token: Callable[..., str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Another writer of the base commits the same URL after this request looked it up."""
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    kb_id = _create(client, alice)["kb_id"]
+    theirs = uuid.uuid4()
+    check_quota = KnowledgeBases._check_quota
+
+    async def race(self: KnowledgeBases, conn: Any, owner_key: str, size: int) -> None:
+        async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as c:
+            await c.execute(
+                "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type,"
+                " size_bytes, source_type, source_ref, status) VALUES (%s, %s, %s, 'Page',"
+                " 'text/html', 0, 'web', %s, 'queued')",
+                (theirs, kb_id, "b" * 64, _URL),
+            )
+        await check_quota(self, conn, owner_key, size)
+
+    monkeypatch.setattr(KnowledgeBases, "_check_quota", race)
+    response = _add(client, alice, kb_id)
+    assert response.status_code == 202, response.text
+    assert response.json()["doc_id"] == str(theirs)
+    assert await _rows(db.migrator_dsn, "SELECT doc_id FROM knowledge.documents") == [(theirs,)]
+    assert await _jobs(db) == []
 
 
 @pytest.mark.parametrize(

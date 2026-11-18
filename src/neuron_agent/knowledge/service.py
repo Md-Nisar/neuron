@@ -605,12 +605,18 @@ class KnowledgeBases:
             inserted = await cursor.fetchone() is not None
             if inserted:
                 await jobs.defer(conn, jobs.Task.INGEST_DOCUMENT, doc_id=doc_id)
-        if not inserted:  # lost a race on the same key, or the base was deleted meanwhile
+        if not inserted:  # lost a race on the same key or URL, or the base was deleted meanwhile
             if (
                 replay := await self.check_upload(owner_key, kb_id, idempotency_key, roles)
-            ) is None:
+            ) is not None:
+                return replay
+            async with self._transaction() as conn:
+                allowed = await KnowledgeAuthorization.allowed_kbs(conn, owner_key, roles)
+                params = {"kb": kb_id, "kbs": [*allowed.write], "ref": url}
+                row = await (await conn.execute(_BY_URL, params)).fetchone()
+            if row is None:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
-            return replay
+            return _accepted(row)
         self._audit(
             "knowledge_web_page_added", owner_key, _WRITE, doc_id, resource="knowledge_document"
         )
