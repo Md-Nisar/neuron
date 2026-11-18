@@ -12,7 +12,7 @@ from test_postgres_knowledge_api import _SCOPES, _create, _jobs, _rows, api  # n
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 from tests.conftest import JwtApi, bearer
 
-from neuron_agent.knowledge.service import KnowledgeService
+from neuron_agent.knowledge.service import KnowledgeBases
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres, pytest.mark.anyio]
 
@@ -80,9 +80,9 @@ async def test_a_page_added_by_another_writer_meanwhile_is_returned_not_duplicat
     alice = make_token("alice", scopes=_SCOPES)
     kb_id = _create(client, alice)["kb_id"]
     theirs = uuid.uuid4()
-    check_quota = KnowledgeService._check_quota
+    check_quota = KnowledgeBases._check_quota
 
-    async def race(self: KnowledgeService, conn: Any, owner_key: str, size: int) -> None:
+    async def race(self: KnowledgeBases, conn: Any, owner_key: str, size: int) -> None:
         async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as c:
             await c.execute(
                 "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type,"
@@ -92,7 +92,7 @@ async def test_a_page_added_by_another_writer_meanwhile_is_returned_not_duplicat
             )
         await check_quota(self, conn, owner_key, size)
 
-    monkeypatch.setattr(KnowledgeService, "_check_quota", race)
+    monkeypatch.setattr(KnowledgeBases, "_check_quota", race)
     response = _add(client, alice, kb_id)
     assert response.status_code == 202, response.text
     assert response.json()["doc_id"] == str(theirs)
