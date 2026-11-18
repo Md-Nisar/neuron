@@ -201,6 +201,11 @@ Requirements the Phase 1 stories must meet (from the security review of this ADR
    one. The worker uses the app role, or a third role that passes the same `role_problems`
    checks, and sets `neuron.kb_ids` per job. Policies have `WITH CHECK` as well as `USING`.
    An unset `neuron.kb_ids` (`current_setting('neuron.kb_ids', true)` is NULL) returns no rows.
+   Amendment (migration 33): RLS keeps `@@`, which is not leakproof, off `chunks_tsv_idx`, so
+   full-text candidates come from `knowledge.search_text`, a `SECURITY DEFINER` function owned
+   by the migrator. It applies the `kb_scope` expression itself, as a plain condition the index
+   can serve, besides the bases it is given, and returns chunk ids only; the passages are read
+   under RLS. EXECUTE is the app role's alone, and setup verifies it.
 2. **Owner predicate everywhere.** Every query on `bases`, `grants` and `documents` filters on
    the caller's `owner_key` (or, from Phase 2, a grant). RLS is defence in depth on `chunks` and
    `embeddings` only, where the volume is. RAG-01.02 records whether `bases` and `documents` get

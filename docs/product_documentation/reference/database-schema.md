@@ -296,6 +296,9 @@ SELECT set_config('neuron.kb_ids', 'uuid1,uuid2', true);
 ```
 If `neuron.kb_ids` is not explicitly set in the active transaction, the RLS policy evaluates to an empty array, returning zero rows.
 
+### Full-text candidates: `knowledge.search_text`
+Under RLS, Postgres cannot use `chunks_tsv_idx` for `@@` (not leakproof). Search therefore takes its full-text candidates from `knowledge.search_text(kbs uuid[], cfg regconfig, q text, n integer)` (migration 33): a `SECURITY DEFINER` function owned by the migrator, with `search_path` pinned to `pg_catalog, pg_temp`. It filters on the bases it is given and on the `kb_scope` expression over `neuron.kb_ids`, ranks at most 10,000 matches and returns chunk ids only. Passages are then read under RLS. EXECUTE is revoked from PUBLIC and granted to the app role only; setup verifies both.
+
 ---
 
 ## 5. Worker Column Privilege Matrix
