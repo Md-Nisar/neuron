@@ -9,5 +9,6 @@
 5ce1166ad9a85e3d22e7276f63039b51f62eb4a4:qa/raw_results/gates/c1/integration_pg.log:generic-api-key:76
 5ce1166ad9a85e3d22e7276f63039b51f62eb4a4:qa/raw_results/gates/c1/live_test_live_knowledge_rerank.log:generic-api-key:6
 5ce1166ad9a85e3d22e7276f63039b51f62eb4a4:qa/raw_results/gates/c3/live_table_answers.log:generic-api-key:7
-# Model name in the performance report (PR #624); not a credential.
+# Model name in the performance report (PR #624; the second line is its squash-merge commit); not a credential.
 77ce37007e15898fed5e8a763a1c3e9da6793a82:qa/performance_report.md:generic-api-key:18
+e2c0f337f5967e0f2f435339239607c3aaf8cfd7:qa/performance_report.md:generic-api-key:19

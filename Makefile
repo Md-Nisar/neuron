@@ -163,6 +163,6 @@ web-hosted:
 	echo "web/dist/_headers written for $$VITE_API_URL and $$VITE_OIDC_ISSUER"
 
 web-audit:
-	npm --prefix web audit --audit-level=low
+	python3 scripts/npm_audit_gate.py web
 
 web: web-format web-lint web-typecheck web-test web-build web-audit

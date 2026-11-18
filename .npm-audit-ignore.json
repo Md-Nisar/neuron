@@ -1,0 +1,9 @@
+{
+  "advisories": [
+    {
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "statement": "picomatch <=4.0.7 ReDoS on crafted extglob patterns; no fixed release exists. It reaches web/ and keycloak-theme/ only through build and test tooling (vite, vitest, tinyglobby, fdir, typescript-eslint), which match glob patterns written in this repository's config, never user input. It is not in the web production dependency tree (npm audit --omit=dev is clean) and is not bundled into the built web app or theme JAR.",
+      "expired_at": "2027-02-15"
+    }
+  ]
+}

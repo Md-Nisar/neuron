@@ -55,7 +55,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: npm audit --audit-level=low
+      - run: python3 ../scripts/npm_audit_gate.py .
 
   # The Keycloak login theme (keycloak-theme/). Builds the real theme JAR, so a broken theme cannot
   # reach the sign-in page unnoticed. Needs Maven and a JDK, which ubuntu-latest provides.
@@ -81,7 +81,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build-keycloak-theme
-      - run: npm audit --audit-level=low
+      - run: python3 ../scripts/npm_audit_gate.py .
 
   # Browser end to end (Chromium): the built web app, a real API process on the fake model and a
   # stand-in sign-in provider, all on loopback. No secret, no provider call.
