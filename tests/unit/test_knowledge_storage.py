@@ -263,3 +263,28 @@ async def test_a_missing_worker_role_is_skipped_and_a_shared_one_refused() -> No
     for shared in ("m", "a"):
         with pytest.raises(AppRoleError):
             await migrations._resolve_worker_role(_Conn(None), shared, "m", "a")  # type: ignore[arg-type]
+
+
+def test_only_the_app_role_may_run_the_text_search() -> None:
+    signature = migrations.SEARCH_TEXT_SIGNATURE
+    statements = [
+        s.as_string()
+        for s in migrations.knowledge_grant_statements(
+            {"app": "neuron_app", "worker": "neuron_worker"}, {signature}
+        )
+    ]
+    assert statements == [
+        'GRANT USAGE ON SCHEMA "knowledge" TO "neuron_app"',
+        f'REVOKE ALL ON FUNCTION {signature} FROM "neuron_app"',
+        f'GRANT EXECUTE ON FUNCTION {signature} TO "neuron_app"',
+        'GRANT USAGE ON SCHEMA "knowledge" TO "neuron_worker"',
+        f'REVOKE ALL ON FUNCTION {signature} FROM "neuron_worker"',
+    ]
+
+
+def test_the_text_search_applies_the_kb_scope_policy_expression() -> None:
+    """The function stands in for `kb_scope` on its query: it must not drift from the policy."""
+    scope = "kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[])"
+    policies = "".join(m.sql for m in migrations.MIGRATIONS if "CREATE POLICY kb_scope" in m.sql)
+    assert policies.count(f"USING ({scope})") == 3  # chunks, embeddings, document_tables
+    assert f"c.{scope}" in migrations.SEARCH_TEXT_QUERY
