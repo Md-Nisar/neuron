@@ -72,3 +72,25 @@ async def test_an_erase_never_completes_between_a_runs_lease_and_its_title(
     assert (erasure.erased_count, erasure.skipped_busy_count) == (0, 1)
     assert await titles.titles(owner, [thread_id]) == {thread_id: "my secret"}
     assert await _checkpoints(service, thread_id) > 0
+
+
+async def test_an_erase_counts_a_new_thread_whose_run_has_not_written_it_yet(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    guard = service._run_guard
+    claim = guard.claim
+    erasures = []
+
+    async def claim_then_erase(**kwargs: Any) -> Any:
+        # The run holds its new thread, which has no checkpoint yet, as the erase runs.
+        lease = await claim(**kwargs)
+        erasures.append(await service.erase_user_data("alice"))
+        return lease
+
+    monkeypatch.setattr(guard, "claim", claim_then_erase)
+    await service.invoke(AgentRequest(message="my secret", user_id="alice"))
+
+    [erasure] = erasures
+    # Not listed, but in progress: reported as skipped, never as a complete erasure.
+    assert (erasure.erased_count, erasure.skipped_busy_count) == (0, 1)

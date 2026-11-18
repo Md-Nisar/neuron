@@ -1252,6 +1252,13 @@ class AgentService:
                         finally:
                             await lease.release()
                         erased += 1
+                    if owner_key is not None:
+                        # A run that has claimed a new thread but not yet written its first
+                        # checkpoint is not in the listing: it is busy too, so the caller
+                        # retries rather than taking the erasure as complete.
+                        listed = {thread.thread_id for thread in page.threads}
+                        running = active_owned | await self._run_guard.active_threads_of(owner_key)
+                        skipped_busy += len(running - listed)
                     if skipped_busy == 0 and owner_key is not None:
                         await self._forget_owner_content(owner_key)
             if self._memory is not None:

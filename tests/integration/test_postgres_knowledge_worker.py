@@ -13,6 +13,7 @@ import sys
 import time
 import uuid
 from collections.abc import Iterator
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -195,6 +196,25 @@ async def test_sweeps_never_overlap_and_a_job_that_keeps_stalling_fails(stack: _
     poison = await _stall(stack, attempts=neuron_worker.MAX_ATTEMPTS - 1)
     assert await neuron_worker.sweep(stack.worker_dsn, 3) == 1
     assert await stack.status(poison) == "failed"
+
+
+async def test_a_swept_job_is_due_on_the_database_clock_whatever_the_worker_clock(
+    stack: _Stack, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class _Ahead(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> Any:
+            return datetime.now(tz) + timedelta(hours=1)
+
+    monkeypatch.setattr(neuron_worker, "datetime", _Ahead, raising=False)
+    job = await _stall(stack, attempts=0)
+    assert await neuron_worker.sweep(stack.worker_dsn, 3) == 1
+    rows = await _rows(
+        stack.role_db.migrator_dsn,
+        "SELECT scheduled_at <= now() FROM knowledge.procrastinate_jobs WHERE id = %s",
+        (job,),
+    )
+    assert rows == [(True,)]  # runnable now, not an hour from now
 
 
 async def test_the_document_of_a_job_that_keeps_stalling_ends_failed(stack: _Stack) -> None:

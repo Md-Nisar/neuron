@@ -143,8 +143,21 @@ async def test_a_second_run_leaves_exactly_one_chunk_set(
     assert first["document"] == ("ready", None, "plain-text/1")
     assert len(first["chunks"]) > 1
     assert first["embedded"] == len(first["chunks"])
+    # A duplicate job that starts after the document is ready changes nothing.
+    assert await ingestor.ingest(doc) == "skipped"
+    assert await _state(db, doc) == first
+    # One that started while the first run was still in progress replaces its chunks.
+    await _reopen(db, doc)
     assert await ingestor.ingest(doc) == "ready"
     assert await _state(db, doc) == first
+
+
+async def _reopen(db: RoleDatabase, doc: uuid.UUID) -> None:
+    """Put a document back in progress, as a second run that started meanwhile finds it."""
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(
+            "UPDATE knowledge.documents SET status = 'parsing' WHERE doc_id = %s", (doc,)
+        )
 
 
 async def _embedding_tokens(db: RoleDatabase) -> int:
@@ -171,7 +184,8 @@ async def test_embedding_tokens_are_recorded_for_the_uploader_on_every_ingestion
     sent = sum(estimate_tokens("\n".join([*headings, text])) for headings, text in chunks)
     assert sent > 0
     assert await _embedding_tokens(db) == sent
-    # A re-run embeds the document again and is charged again.
+    # A re-run of a document still in progress embeds it again and is charged again.
+    await _reopen(db, doc)
     assert await ingestor.ingest(doc) == "ready"
     assert await _embedding_tokens(db) == 2 * sent
     # Not the chat budget: the token ledger is untouched.
@@ -214,7 +228,8 @@ async def test_a_parser_error_fails_the_document_and_leaves_no_chunks(
             "ALTER TABLE knowledge.documents DISABLE TRIGGER documents_file_set_once"
         )
         await conn.execute(
-            "UPDATE knowledge.documents SET blob_key = %s, sha256 = %s WHERE doc_id = %s",
+            "UPDATE knowledge.documents SET blob_key = %s, sha256 = %s, status = 'queued'"
+            " WHERE doc_id = %s",
             (blob.key, blob.sha256, doc),
         )
     assert await ingestor.ingest(doc) == "failed"
@@ -231,6 +246,7 @@ async def test_a_csv_keeps_one_typed_table_until_it_fails(
     with_csv = Ingestor(**{**ingestor.__dict__, "parsers": (CsvParser(),)})
     doc = await _document(db, with_csv, "region,units\nNorth,3\nWest,\n", mime_type=CSV)
     assert await with_csv.ingest(doc) == "ready"
+    await _reopen(db, doc)
     assert await with_csv.ingest(doc) == "ready"  # replaced, not added
     query = (
         "SELECT position, name, columns, rows, row_count FROM knowledge.document_tables"

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Fix: decisions on the open questions of the November concurrency review (`audit/concurrency/Nov-26/fable/REPORT.md`):
+- `DELETE /v1/me/threads` counts a new thread whose first run has not saved anything yet in `skipped_busy_count`, so the response is `complete: false` and the caller repeats it. Before, the erase could report complete and the thread appear afterwards.
+- An ingest job runs only while its document is `queued`, `parsing` or `embedding`. A duplicate job that starts after the document ended `ready` or `failed` (a slow worker swept as stalled) is skipped: the document stays searchable and is not embedded or charged again. Re-indexing has its own job and is unaffected.
+- The stalled-job sweep schedules its retry on the database clock, which the queue compares it with, not the worker's.
+
 Performance: knowledge full-text search uses its GIN index. Under row-level security Postgres could not use `chunks_tsv_idx` for `@@`, which is not leakproof, so every full-text and hybrid search read every chunk of the bases it searched. Migration 33 adds `knowledge.search_text`, a `SECURITY DEFINER` function that applies the `kb_scope` policy's own `neuron.kb_ids` filter as a plain condition and returns chunk ids only; passages are still read under RLS. Only the app role may run it, and setup verifies that. At most 10,000 matches of a query are ranked, so a query of common words alone ranks a subset. On a 278,000-chunk base (`qa/retrieval_scale_benchmark.md`), hybrid search p95 fell from 3.9 s to 0.25 s, and 8 concurrent searches from a p95 of 4.6 s to 0.94 s.
 
 Fix: the ingestion worker embeds a document 256 passages at a time and keeps its vectors as float32 arrays, so a document at the 20,000-chunk cap holds about 80 MB per 1,024-dimension index profile instead of about 650 MB. The re-index does the same.
