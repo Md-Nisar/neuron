@@ -1,6 +1,10 @@
 # Knowledge screen: UX review and changes
 
-**Date:** 2026-11-19 · **Scope:** the web app's Knowledge section (`web/src/features/knowledge/`) and the two API additions it needed. Chat, the conversation list, "Your data" and the sign-in flow were not changed.
+**Date:** 2026-11-19
+
+**Reviewed code:** `main` at `f623be6` (Knowledge alerts and the knowledge system review, #630). The "before" audit and its screenshots were taken on this commit. The changes below were verified on commit `776d5e9`, the first commit of the pull request.
+
+**Scope:** the web app's Knowledge section (`web/src/features/knowledge/`) and the two API additions it needed. Chat, the conversation list, "Your data" and the sign-in flow were not changed.
 
 **Method:** the full local stack (Postgres with pgvector, `setup`, `neuron-worker`, the API on Postgres with knowledge on, the stand-in sign-in provider and the web app). It was driven in Chromium with Playwright at 1280 px and 390 px, in light and dark, before and after the change. The references were the project and file views of mature AI products (Claude's Projects): a list of containers, then one container's own page.
 
@@ -66,9 +70,9 @@ What already worked was kept: the wording of every message, error and failure co
 
 ## Security review
 
-The `security-reviewer` agent checked the SQL, the route validation, the document count and the download path. It found no injection or authorization gap: `sort` and `status` map to fixed fragments, `q` is a bound and escaped parameter, and the page and its total share the readable-bases filter.
+The `security-reviewer` agent ran on 2026-11-19, on the changes over `f623be6` before they were committed. It checked the SQL, the route validation, the document count and the download path. It found no injection or authorization gap: `sort` and `status` map to fixed fragments, `q` is a bound and escaped parameter, and the page and its total share the readable-bases filter.
 
-It found one low-severity issue, now fixed. The browser download saved the file under the raw title, bypassing the server's sanitized `Content-Disposition` name. A title with a bidi override (`invoice\u202Efdp.exe`) could look like another file type. Downloads now use `downloadName()`: control and format characters, and path and reserved characters, become `_`, and the name is trimmed and capped. A unit test covers it.
+It found one low-severity issue, now fixed. The browser download saved the file under the raw title, bypassing the server's sanitized `Content-Disposition` name. A title with a bidi override (`invoice\u202Efdp.exe`) could look like another file type. Downloads now use `downloadName()`: control and format characters, and path and reserved characters, become `_`, and the name is trimmed and capped. A unit test covers it. The fix is part of `776d5e9`.
 
 ## Deliberately not done
 
