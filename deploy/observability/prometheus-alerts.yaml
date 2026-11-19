@@ -482,6 +482,52 @@ groups:
         annotations:
           summary: "a knowledge job has waited over 30 minutes in the queue for 15 minutes"
           runbook_url: OPERATIONS.md#runbook-knowledge-queue
+      # Knowledge searches that fail: the agent's search tool answers "not available", so answers
+      # that need the user's documents cannot be given. A page, as for any feature that is down.
+      # The floor (0.01/s, 9 in 15 minutes) keeps a few failures at low traffic from paging.
+      - alert: NeuronKnowledgeSearchErrors
+        expr: (sum(rate(neuron_knowledge_search_duration_seconds_count{neuron_outcome="error"}[15m])) / sum(rate(neuron_knowledge_search_duration_seconds_count[15m]))) > 0.05 and sum(rate(neuron_knowledge_search_duration_seconds_count{neuron_outcome="error"}[15m])) > 0.01
+        for: 15m
+        labels:
+          severity: page
+          signal: knowledge_search_errors
+        annotations:
+          summary: "knowledge search errors above 5% of searches for 15 minutes"
+          runbook_url: OPERATIONS.md#runbook-knowledge-search
+      # The measured p95 with the hosted reranker is 3.8 s and its timeout is 6 s: above 5 s, the
+      # reranker or the database is slowing every answer that searches. 5 is a bucket bound.
+      - alert: NeuronKnowledgeSearchSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(neuron_knowledge_search_duration_seconds_bucket[15m]))) > 5
+        for: 15m
+        labels:
+          severity: ticket
+          signal: knowledge_search_slow
+        annotations:
+          summary: "knowledge search p95 above 5 seconds for 15 minutes"
+          runbook_url: OPERATIONS.md#runbook-knowledge-search
+      # Searches that succeed without the embedding model (full text only) or the reranker (fused
+      # order kept): quality falls while nothing fails. A base whose processing setting forbids
+      # the hosted reranker is configuration, not degradation, so that code is left out.
+      - alert: NeuronKnowledgeSearchDegraded
+        expr: (sum(rate(neuron_knowledge_search_degraded_total{error_type!="processing_locality_forbidden"}[15m])) / sum(rate(neuron_knowledge_search_duration_seconds_count[15m]))) > 0.1 and sum(rate(neuron_knowledge_search_degraded_total{error_type!="processing_locality_forbidden"}[15m])) > 0.01
+        for: 15m
+        labels:
+          severity: ticket
+          signal: knowledge_search_degraded
+        annotations:
+          summary: "over 10% of knowledge searches skipped the embedding model or reranker for 15 minutes"
+          runbook_url: OPERATIONS.md#runbook-knowledge-search
+      # A quarter of finished ingestions failing in an hour (at least 5) is more than users'
+      # unsupported or encrypted files: usually the parser or the embedding provider is down.
+      - alert: NeuronKnowledgeIngestFailing
+        expr: (sum(increase(neuron_knowledge_ingest_duration_seconds_count{neuron_outcome="failed"}[1h])) / sum(increase(neuron_knowledge_ingest_duration_seconds_count{neuron_outcome=~"ready|failed"}[1h]))) > 0.25 and sum(increase(neuron_knowledge_ingest_duration_seconds_count{neuron_outcome="failed"}[1h])) > 5
+        for: 15m
+        labels:
+          severity: ticket
+          signal: knowledge_ingest_failing
+        annotations:
+          summary: "over 25% of document ingestions failed in the last hour"
+          runbook_url: OPERATIONS.md#runbook-knowledge-ingest
 
   # Rejections that a client causes, so they open a ticket and page nobody: above 5% of /v1
   # requests and above 0.05 requests/s (3 a minute) for 15m, they point at a retry storm, a client

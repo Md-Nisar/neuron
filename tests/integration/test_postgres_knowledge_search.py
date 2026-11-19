@@ -236,7 +236,12 @@ async def test_only_bases_allowed_hosted_processing_are_searched_by_meaning(
 
 async def test_hybrid_falls_back_to_full_text_when_the_provider_is_down(
     role_db: RoleDatabase,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    degraded: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        retrieval.metrics, "record_knowledge_search_degraded", lambda *a: degraded.append(a)
+    )
     await _knowledge_db(role_db)
     [chunk] = await _document(role_db, await _base(role_db, _A), _A, ["pump fault table"])
     failing = _Counting(fail=True)
@@ -246,6 +251,8 @@ async def test_hybrid_falls_back_to_full_text_when_the_provider_is_down(
     )
     result = await retriever.search(_A, "pump", k=5)
     assert (result.path, [p.chunk_id for p in result.passages]) == ("none", [chunk])
+    # Counted, so an alert sees searches that lost their dense path while still succeeding.
+    assert degraded == [("dense_skipped", "embedding_provider_unavailable")]
     with pytest.raises(EmbeddingError):
         await retriever.search(_A, "pump", k=5, mode="dense")
 

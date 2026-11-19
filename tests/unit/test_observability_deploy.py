@@ -12,7 +12,7 @@ import yaml
 from neuron_agent.config.settings import Settings
 from neuron_agent.errors import base
 from neuron_agent.observability import semconv
-from neuron_agent.observability.metrics import LLM_LATENCY_BUCKETS
+from neuron_agent.observability.metrics import FAST_OPERATION_BUCKETS, LLM_LATENCY_BUCKETS
 
 _ROOT = Path(__file__).resolve().parents[2]
 _DEPLOY = _ROOT / "deploy" / "observability"
@@ -208,6 +208,10 @@ _SIGNALS = {
     "db_pool": "NeuronPostgresPoolSaturated",
     "run_leases": "NeuronRunLeasesExpired",
     "knowledge_queue": "NeuronKnowledgeQueueStuck",
+    "knowledge_search_errors": "NeuronKnowledgeSearchErrors",
+    "knowledge_search_slow": "NeuronKnowledgeSearchSlow",
+    "knowledge_search_degraded": "NeuronKnowledgeSearchDegraded",
+    "knowledge_ingest_failing": "NeuronKnowledgeIngestFailing",
     "thread_busy": "NeuronThreadBusyAnomaly",
     "too_many_concurrent_runs": "NeuronTooManyConcurrentRunsAnomaly",
     "denied_tools": "NeuronDeniedToolCallsSpike",
@@ -257,6 +261,10 @@ def test_service_health_and_rejection_alerts_exist_with_the_documented_severity(
         "db_pool": "page",
         "run_leases": "ticket",
         "knowledge_queue": "ticket",
+        "knowledge_search_errors": "page",
+        "knowledge_search_slow": "ticket",
+        "knowledge_search_degraded": "ticket",
+        "knowledge_ingest_failing": "ticket",
         "thread_busy": "ticket",
         "too_many_concurrent_runs": "ticket",
         "denied_tools": "ticket",
@@ -299,6 +307,34 @@ def test_knowledge_queue_alert_reads_the_worker_gauge_above_twice_the_parser_tim
     threshold = 2 * Settings.model_fields["knowledge_parser_timeout_seconds"].default
     assert alert["expr"] == f"max({name}) > {threshold}"
     assert alert["for"] == "15m"
+
+
+def test_knowledge_search_alerts_read_the_search_metrics_the_retriever_records() -> None:
+    found = _signal_alerts()
+    searches = _prometheus_name(semconv.METRIC_KNOWLEDGE_SEARCH_DURATION) + "_seconds"
+    degraded = _prometheus_name(semconv.METRIC_KNOWLEDGE_SEARCH_DEGRADED) + "_total"
+    errors = found["knowledge_search_errors"]["expr"]
+    assert f'{searches}_count{{neuron_outcome="error"}}' in errors and "> 0.05" in errors
+    slow = found["knowledge_search_slow"]["expr"]
+    assert f"rate({searches}_bucket[15m])" in slow
+    # The threshold is a bucket bound, below the reranker's default timeout.
+    (threshold,) = re.findall(r"\) > ([0-9.]+)$", slow)
+    assert float(threshold) in FAST_OPERATION_BUCKETS
+    assert float(threshold) < Settings.model_fields["knowledge_reranker_timeout_seconds"].default
+    quality = found["knowledge_search_degraded"]["expr"]
+    assert f'{degraded}{{error_type!="processing_locality_forbidden"}}' in quality
+    assert f"{searches}_count[15m]" in quality
+    retriever = (_ROOT / "src" / "neuron_agent" / "knowledge" / "retrieval.py").read_text("utf-8")
+    for outcome in ("dense_skipped", "rerank_skipped"):
+        assert f'record_knowledge_search_degraded("{outcome}"' in retriever
+
+
+def test_knowledge_ingest_alert_compares_failed_with_finished_ingestions() -> None:
+    expr = _signal_alerts()["knowledge_ingest_failing"]["expr"]
+    name = _prometheus_name(semconv.METRIC_KNOWLEDGE_INGEST_DURATION) + "_seconds_count"
+    assert f'{name}{{neuron_outcome="failed"}}' in expr
+    assert f'{name}{{neuron_outcome=~"ready|failed"}}' in expr  # not retries or skips
+    assert "> 0.25" in expr and "> 5" in expr
 
 
 def test_rejection_alerts_use_the_error_class_metric_and_real_error_codes() -> None:

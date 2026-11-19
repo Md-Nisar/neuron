@@ -172,6 +172,11 @@ def fuse(rankings: Sequence[Sequence[uuid.UUID]], k: int = RRF_K) -> list[tuple[
     return sorted(scores.items(), key=lambda pair: (-pair[1], str(pair[0])))
 
 
+def _rerank_skipped(code: str) -> None:
+    log.warning("knowledge_rerank_skipped", error_code=code)
+    metrics.record_knowledge_search_degraded("rerank_skipped", code)
+
+
 def ann_query(profile_id: int, dimensions: int) -> sql.Composed:
     """The HNSW query for one profile; both values come from its row, never from input."""
     return _ANN.format(dims=sql.Literal(dimensions), profile=sql.Literal(profile_id))
@@ -291,6 +296,7 @@ class Retriever:
                         raise
                     # Hybrid degrades to full text while the provider is down.
                     log.warning("knowledge_search_dense_skipped", error_code=exc.code)
+                    metrics.record_knowledge_search_degraded("dense_skipped", exc.code)
                 else:
                     vector = "[" + ",".join(repr(float(value)) for value in values) + "]"
         async with self._transaction() as conn:
@@ -338,7 +344,7 @@ class Retriever:
         probing = False
         if self._rerank_failures >= _RERANK_BREAKER_FAILURES:
             if time.monotonic() < self._rerank_open_until or self._rerank_probing:
-                log.warning("knowledge_rerank_skipped", error_code="rerank_circuit_open")
+                _rerank_skipped("rerank_circuit_open")
                 return passages[:k], False
             # Half-open: this one search tries the reranker, the others keep the RRF order; a
             # failure reopens the circuit for another cooldown.
@@ -357,11 +363,11 @@ class Retriever:
             async with asyncio.timeout(self._settings.knowledge_reranker_timeout_seconds):
                 order = await self._reranker.rerank(query, texts)
         except (EmbeddingError, RerankError) as exc:
-            log.warning("knowledge_rerank_skipped", error_code=exc.code)
+            _rerank_skipped(exc.code)
             self._rerank_failed(exc)
             return passages[:k], False
         except TimeoutError:
-            log.warning("knowledge_rerank_skipped", error_code="rerank_timeout")
+            _rerank_skipped("rerank_timeout")
             self._rerank_failed(None)
             return passages[:k], False
         finally:
