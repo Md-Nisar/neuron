@@ -35,6 +35,7 @@ from neuron_agent.models.factory import (
     classify_agent_error,
     get_retry_attempts,
     is_tainted,
+    model_call_steps,
     reset_retry_attempts,
 )
 from neuron_agent.observability import metrics, semconv, telemetry
@@ -62,6 +63,7 @@ async def call_agent(
     settings: Settings | None = None,
     authorization: AuthorizationContext | None = None,
     tainting: frozenset[str] = frozenset(),
+    steps_per_model_call: int = 2,
 ) -> dict[str, Any]:
     """Invoke the LangChain agent and normalize its output into application state.
 
@@ -105,7 +107,9 @@ async def call_agent(
     started = time.monotonic()
     try:
         invocation: dict[str, Any] = {
-            "config": agent_invocation_config(resolved_settings, run_id=run_id),
+            "config": agent_invocation_config(
+                resolved_settings, run_id=run_id, steps_per_model_call=steps_per_model_call
+            ),
         }
         if authorization is not None:
             invocation["context"] = authorization
@@ -326,6 +330,7 @@ def build_graph(
         if registry is not None
         else build_agent(resolved_settings)
     )
+    steps_per_model_call = model_call_steps(agent)
 
     async def agent_node(state: MainGraphState, config: RunnableConfig) -> dict[str, Any]:
         context = get_runtime().context
@@ -345,6 +350,7 @@ def build_graph(
                     settings=resolved_settings,
                     authorization=authorization,
                     tainting=tainting,
+                    steps_per_model_call=steps_per_model_call,
                 )
             except GraphBubbleUp:
                 outcome = "interrupted"

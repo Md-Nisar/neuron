@@ -1109,17 +1109,35 @@ class _ModelFallbackMiddleware(ModelFallbackMiddleware):
         return await super().awrap_model_call(request, counting_handler)
 
 
-def agent_invocation_config(settings: Settings, *, run_id: str | None) -> dict[str, Any]:
+def model_call_steps(agent: Any) -> int:
+    """The LangGraph steps one model call and its tool calls take in `agent`.
+
+    Every node of the agent loop runs once per model call: the model, the tools and, with
+    approval-gated tools, the approval check after each call. A budget of two steps per call
+    ran out two calls early whenever approval tools were registered, before the final-answer
+    step could make the run answer (the security evals' `agent_step_limit_exceeded`). An agent
+    with no graph (a test's stand-in) keeps the two steps of a model call and its tools.
+    """
+    nodes = getattr(agent, "nodes", None)
+    return 2 if nodes is None else len([name for name in nodes if name != "__start__"])
+
+
+def agent_invocation_config(
+    settings: Settings, *, run_id: str | None, steps_per_model_call: int = 2
+) -> dict[str, Any]:
     """Return the runtime recursion budget and, when known, the run ID for the agent loop.
 
-    `APP_MAX_AGENT_ITERATIONS` counts model calls. LangGraph's `recursion_limit` counts steps,
-    and every model call and every tool call is one, so N model calls need 2N steps. The
-    empty-reply retry runs inside one model step, so a step can make up to three provider calls.
+    `APP_MAX_AGENT_ITERATIONS` counts model calls. LangGraph's `recursion_limit` counts steps:
+    each model call and its tool calls take `steps_per_model_call` of them (see
+    `model_call_steps`), so N model calls need N times that. The empty-reply retry runs inside
+    one model step, so a step can make up to three provider calls.
 
     `AgentService` always supplies a run ID. Agent Server and LangGraph Studio inputs carry
     only `messages`, so LangGraph generates the run ID for those.
     """
-    config: dict[str, Any] = {"recursion_limit": 2 * settings.max_agent_iterations}
+    config: dict[str, Any] = {
+        "recursion_limit": steps_per_model_call * settings.max_agent_iterations
+    }
     if run_id:
         config["run_id"] = uuid.UUID(run_id)
     return config
