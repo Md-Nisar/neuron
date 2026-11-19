@@ -114,6 +114,8 @@ class KnowledgeBase(BaseModel):
     # The caller's access (RAG-09.03), so a client offers only what the server would allow:
     # `owner` alone deletes the base; `admin` renames it and manages its grants.
     access: Literal["owner", "admin", "write", "read"]
+    # Its live documents, in the list of bases only; None where a response leaves it out.
+    document_count: int | None = None
 
 
 DocumentStatus = Literal["queued", "parsing", "embedding", "ready", "failed"]

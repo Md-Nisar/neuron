@@ -36,6 +36,7 @@ function setup(grants: Grant[], reply?: { status: number; body: unknown }) {
         language: "simple",
         created_at: "",
         access: "owner",
+        document_count: null,
       }}
     />,
   );
@@ -63,7 +64,7 @@ describe("sharing a knowledge base", () => {
 
   it("shares with a role, changes its access and stops sharing, each saved whole", async () => {
     const { user, sent } = setup([]);
-    await screen.findByText("Not shared with any role.");
+    await screen.findByText("Not shared with any role. Only you can use it.");
 
     await user.type(screen.getByLabelText("Role"), "  finance ");
     await user.selectOptions(screen.getByLabelText("Access"), "write");
@@ -76,7 +77,7 @@ describe("sharing a knowledge base", () => {
       expect(sent()).toHaveLength(2);
     });
     await user.click(screen.getByRole("button", { name: "Stop sharing with finance" }));
-    await screen.findByText("Not shared with any role.");
+    await screen.findByText("Not shared with any role. Only you can use it.");
 
     expect(sent()).toEqual([
       [{ role: "finance", access: "write" }],

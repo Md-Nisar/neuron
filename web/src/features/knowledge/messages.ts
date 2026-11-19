@@ -1,7 +1,7 @@
 import { dataErrorText } from "@/features/data/messages";
 import { ApiError } from "@/lib/request";
 
-import type { GrantAccess, Processing } from "./parse";
+import type { BaseAccess, GrantAccess, Language, Processing } from "./parse";
 
 /** Fixed wording for a failed knowledge call. Server text is never shown. */
 export function knowledgeErrorText(error: unknown): string {
@@ -26,6 +26,15 @@ export function knowledgeErrorText(error: unknown): string {
 }
 
 export const NAME_MAX_CHARS = 80;
+
+export const languageLabel = (language: Language): string =>
+  language === "simple"
+    ? "Any language (exact words)"
+    : language.charAt(0).toUpperCase() + language.slice(1);
+
+/** How the caller holds a base, for its badge. */
+export const accessLabel = (access: BaseAccess): string =>
+  access === "owner" ? "Owner" : `Shared with you · ${ACCESS_TEXT[access].label}`;
 
 /** What each role grant allows (ADR 0014, "Amendment: sharing by role"). */
 export const ACCESS_TEXT: Record<GrantAccess, { label: string; detail: string }> = {

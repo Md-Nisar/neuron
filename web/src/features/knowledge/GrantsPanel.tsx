@@ -10,6 +10,7 @@ import type { DataDeps } from "@/features/data/api";
 import { ApiError } from "@/lib/request";
 
 import { getGrants, setGrants } from "./api";
+import { SELECT } from "./BaseDialogs";
 import { ACCESS_TEXT, knowledgeErrorText } from "./messages";
 import type { Grant, GrantAccess, KnowledgeBase } from "./parse";
 
@@ -18,8 +19,6 @@ export const ROLE_MAX_CHARS = 200;
 export const MAX_GRANTS = 50;
 
 const LEVELS = Object.keys(ACCESS_TEXT) as GrantAccess[];
-const SELECT =
-  "h-8 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
 function grantErrorText(error: unknown): string {
   if (error instanceof ApiError && error.kind === "invalid_request")
@@ -95,27 +94,29 @@ export function GrantsPanel({ deps, base }: { deps: DataDeps; base: KnowledgeBas
   }
 
   return (
-    <section aria-labelledby="sharing-heading" className="space-y-3">
-      <h3
-        id="sharing-heading"
-        ref={heading}
-        tabIndex={-1}
-        className="truncate text-sm font-semibold outline-none"
-      >
-        Sharing {name}
-      </h3>
-      <p className="text-sm text-muted-foreground">
-        People whose sign-in carries one of these roles get the access shown. A change counts from
-        their next request.
-      </p>
-      <ul className="space-y-1 text-xs text-muted-foreground">
+    <section aria-labelledby="sharing-heading" className="max-w-3xl space-y-4">
+      <div className="space-y-1">
+        <h2
+          id="sharing-heading"
+          ref={heading}
+          tabIndex={-1}
+          className="truncate text-sm font-semibold outline-none"
+        >
+          Sharing {name}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          People whose sign-in carries one of these roles get the access shown. A change counts from
+          their next request.
+        </p>
+      </div>
+      <dl className="grid gap-2 sm:grid-cols-3">
         {LEVELS.map((level) => (
-          <li key={level}>
-            <span className="font-medium text-foreground">{ACCESS_TEXT[level].label}:</span>{" "}
-            {ACCESS_TEXT[level].detail}
-          </li>
+          <div key={level} className="rounded-lg border px-3 py-2">
+            <dt className="text-xs font-medium">{ACCESS_TEXT[level].label}</dt>
+            <dd className="text-xs text-muted-foreground">{ACCESS_TEXT[level].detail}</dd>
+          </div>
         ))}
-      </ul>
+      </dl>
       {error !== null && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -128,16 +129,18 @@ export function GrantsPanel({ deps, base }: { deps: DataDeps; base: KnowledgeBas
         </div>
       )}
       {grants?.length === 0 && (
-        <p className="text-sm text-muted-foreground">Not shared with any role.</p>
+        <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+          Not shared with any role. Only you can use it.
+        </p>
       )}
       <ul
         aria-label={`Roles with access to ${name}`}
-        className="divide-y rounded-lg border empty:hidden"
+        className="divide-y rounded-xl border empty:hidden"
       >
         {grants?.map((grant) => {
           const label = displaySafe(grant.role);
           return (
-            <li key={grant.role} className="flex flex-wrap items-center gap-2 px-4 py-2">
+            <li key={grant.role} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
               <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
               <select
                 aria-label={`Access for ${label}`}
@@ -176,7 +179,10 @@ export function GrantsPanel({ deps, base }: { deps: DataDeps; base: KnowledgeBas
         })}
       </ul>
       {grants !== null && (
-        <form onSubmit={add} className="flex flex-wrap items-end gap-2">
+        <form
+          onSubmit={add}
+          className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 p-4"
+        >
           <div className="min-w-40 flex-1 space-y-1">
             <label className="block text-sm font-medium" htmlFor="grant-role">
               Role

@@ -46,16 +46,41 @@ export function deleteBase(deps: DataDeps, kbId: string): Promise<undefined> {
   return call(deps, { path: base(kbId), method: "DELETE" });
 }
 
+/** How a page of documents is narrowed and ordered; the server applies it to the whole base. */
+export interface DocumentQuery {
+  /** Matches anywhere in a title. */
+  search?: string;
+  status?: StatusFilter;
+  sort?: DocumentSort;
+}
+export type StatusFilter = "processing" | "ready" | "failed";
+export type DocumentSort = "oldest" | "newest" | "name" | "updated" | "size";
+
 export function listDocuments(
   deps: DataDeps,
   kbId: string,
   offset: number,
   limit = 50,
+  query: DocumentQuery = {},
 ): Promise<DocumentsPage> {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const search = query.search?.trim() ?? "";
+  if (search !== "") params.set("q", search);
+  if (query.status !== undefined) params.set("status", query.status);
+  if (query.sort !== undefined) params.set("sort", query.sort);
   return call(deps, {
-    path: `${base(kbId)}/documents?limit=${String(limit)}&offset=${String(offset)}`,
+    path: `${base(kbId)}/documents?${params.toString()}`,
     method: "GET",
     parse: parseDocuments,
+  });
+}
+
+/** The original file, as the server stored it; access is checked again on every call. */
+export function downloadDocument(deps: DataDeps, docId: string): Promise<Blob> {
+  return call<Blob>(deps, {
+    path: `/v1/knowledge/documents/${encodeURIComponent(docId)}/file`,
+    method: "GET",
+    blob: true,
   });
 }
 
