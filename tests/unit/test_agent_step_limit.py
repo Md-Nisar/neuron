@@ -8,6 +8,8 @@ from typing import Any
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.tools import tool
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphRecursionError
 from tests.conftest import StreamingFakeModel
 
@@ -17,6 +19,7 @@ from neuron_agent.graphs.main_graph import build_graph
 from neuron_agent.models import factory
 from neuron_agent.models.factory import agent_invocation_config, classify_agent_error
 from neuron_agent.security.authorization import AuthorizationContext
+from neuron_agent.tools.registry import ToolRegistry, ToolSpec, builtin_registry
 
 pytestmark = pytest.mark.anyio
 
@@ -138,3 +141,32 @@ async def test_with_one_model_call_allowed_it_is_offered_no_tools(
     assert result["answer"].answer == "84"
     assert len(offered) == 1
     assert "calculator" not in offered[0]
+
+
+async def test_with_approval_tools_the_last_allowed_call_still_answers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A mutating tool adds an approval step after every model call (nightly eval, 2026-11):
+    the budget must still reach the last allowed call, which is offered no tools and answers.
+    """
+
+    @tool
+    def note_taker(text: str) -> str:
+        """Save a note. This changes data outside the conversation."""
+        return "saved"
+
+    registry = ToolRegistry(
+        [*builtin_registry(), ToolSpec(note_taker, "tools:note_taker", "mutating")]
+    )
+    replies = [*(_calculator_call(n) for n in range(7)), AIMessage(content="84")]
+    script = _Script(iter(replies))
+    monkeypatch.setattr(factory, "create_chat_model", lambda _: StreamingFakeModel(messages=script))
+    graph = build_graph(Settings(env="test"), checkpointer=InMemorySaver(), registry=registry)
+    config = {"configurable": {"thread_id": "t"}}
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="hi")]}, config, context=_ALLOWED
+    )  # type: ignore[attr-defined]
+
+    assert script.calls == 8
+    assert result["answer"].answer == "84"
