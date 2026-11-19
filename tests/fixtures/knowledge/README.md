@@ -57,6 +57,13 @@ confidential data, so it may be sent to a hosted embedding API.
 - `evidence` is a short quote from the expected page or section. When the dataset was written,
   each quote was checked against the text of the cited page, except for the scanned log, which
   has no text layer.
+- `expected_facts` (dataset 1.3.0) are the facts a correct answer states, for grading answer
+  text (`EVALUATION.md`, "Answer metrics"). A `vital` fact is needed for a complete answer. A
+  fact is stated when any phrase in `any` appears in the answer as a whole phrase, ignoring
+  case. The first phrase must appear in the parsed text of an expected source; a unit test
+  checks it. Add a phrase when a correct answer words the fact another way.
+- `question_type` (dataset 1.3.0) is the kind of question, for per-slice results: `fact`,
+  `list`, `numeric`, `date`, `definition`, `yes_no` or `procedure`.
 
 ## Injection documents are inert data
 

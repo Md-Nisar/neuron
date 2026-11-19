@@ -9,8 +9,10 @@ are not downloaded here.
 from __future__ import annotations
 
 import copy
+import gzip
 import hashlib
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -180,3 +182,28 @@ def test_schema_rejects_an_answerable_case_without_a_source(dataset: dict[str, A
     validator = jsonschema.Draft202012Validator(_load(_SCHEMA))
     with pytest.raises(jsonschema.ValidationError):
         validator.validate(broken)
+
+
+def _phrase_in(alias: str, text: str) -> bool:
+    norm = re.sub(r"\s+", " ", alias).lower()
+    return re.search(rf"(?<![a-z0-9]){re.escape(norm)}(?![a-z0-9])", text) is not None
+
+
+def test_every_expected_fact_is_in_an_expected_source(dataset: dict[str, Any]) -> None:
+    # Facts are grounded: the first phrase of each one appears in the parsed text of an
+    # expected source document (the parser output stored for the eval).
+    parsed = json.loads(gzip.decompress((_FIXTURES / "knowledge/eval/parsed.json.gz").read_bytes()))
+    texts = {
+        doc_id: re.sub(r"\s+", " ", " ".join(b.get("text", "") for b in doc["blocks"])).lower()
+        for doc_id, doc in parsed["documents"].items()
+    }
+    missing = [
+        f"{case['id']}: {fact['any'][0]!r}"
+        for case in dataset["cases"]
+        if case["category"] == "answerable"
+        for fact in case["expected_facts"]
+        if not any(
+            _phrase_in(fact["any"][0], texts[s["document"]]) for s in case["expected_sources"]
+        )
+    ]
+    assert not missing, missing

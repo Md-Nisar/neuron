@@ -32,14 +32,16 @@
       "propertyNames": { "$ref": "#/$defs/suiteName" },
       "additionalProperties": { "$ref": "#/$defs/suite" }
     },
-    "retrieval": { "$ref": "#/$defs/retrieval" }
+    "retrieval": { "$ref": "#/$defs/retrieval" },
+    "answers": { "$ref": "#/$defs/answers" },
+    "faithfulness": { "$ref": "#/$defs/faithfulness" }
   },
   "$defs": {
     "suiteName": { "enum": ["single_turn", "multi_turn", "security", "approval"] },
     "count": { "type": "integer", "minimum": 0 },
     "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
     "retrieval": {
-      "description": "Knowledge retrieval and citation metrics (RAG-08.01), from `retrieval_metrics`. A rate is null when no case measured it, such as citation precision without a model run.",
+      "description": "Knowledge retrieval and citation metrics (RAG-08.01), from `retrieval_metrics`. A rate is null when no case measured it, such as citation source precision without a model run.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -48,7 +50,7 @@
         "unanswerable_cases",
         "recall_at_5",
         "mrr",
-        "citation_precision",
+        "citation_source_precision",
         "cited_correctly",
         "abstention_accuracy"
       ],
@@ -58,9 +60,57 @@
         "unanswerable_cases": { "$ref": "#/$defs/count" },
         "recall_at_5": { "$ref": "#/$defs/rate" },
         "mrr": { "$ref": "#/$defs/rate" },
-        "citation_precision": { "$ref": "#/$defs/rate" },
+        "citation_source_precision": { "$ref": "#/$defs/rate" },
         "cited_correctly": { "$ref": "#/$defs/rate" },
         "abstention_accuracy": { "$ref": "#/$defs/rate" }
+      }
+    },
+    "estimate": {
+      "description": "A rate and its 95% Wilson interval; both null when no case measured it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "ci95"],
+      "properties": {
+        "value": { "$ref": "#/$defs/rate" },
+        "ci95": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "array", "prefixItems": [{ "$ref": "#/$defs/rate" }, { "$ref": "#/$defs/rate" }], "minItems": 2, "maxItems": 2 }
+          ]
+        }
+      }
+    },
+    "answers": {
+      "description": "Answers graded against the cases' expected facts, from `retrieval_metrics.answer_report`; trials may be pooled.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answerable_answers", "unanswerable_answers", "correct", "partially_correct", "incorrect", "false_refusal", "hallucination", "vital_fact_recall", "crag_score"],
+      "properties": {
+        "answerable_answers": { "$ref": "#/$defs/count" },
+        "unanswerable_answers": { "$ref": "#/$defs/count" },
+        "correct": { "$ref": "#/$defs/estimate" },
+        "partially_correct": { "$ref": "#/$defs/estimate" },
+        "incorrect": { "$ref": "#/$defs/estimate" },
+        "false_refusal": { "$ref": "#/$defs/estimate" },
+        "hallucination": { "$ref": "#/$defs/estimate" },
+        "vital_fact_recall": { "$ref": "#/$defs/estimate" },
+        "crag_score": { "type": ["number", "null"], "minimum": -1, "maximum": 1 }
+      }
+    },
+    "faithfulness": {
+      "description": "Claim-level faithfulness and citation support from a model judge (`evaluation_judge.faithfulness_report`). Not a release gate until the judge agrees with human labels (Cohen's kappa of at least 0.6).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["judge_model", "judge_prompt_version", "answers_judged", "claims", "faithfulness", "citation_precision", "citation_recall", "judge_errors"],
+      "properties": {
+        "judge_model": { "type": "string", "minLength": 1 },
+        "judge_prompt_version": { "type": "integer", "minimum": 1 },
+        "answers_judged": { "$ref": "#/$defs/count" },
+        "claims": { "$ref": "#/$defs/count" },
+        "faithfulness": { "$ref": "#/$defs/estimate" },
+        "citation_precision": { "$ref": "#/$defs/estimate" },
+        "citation_recall": { "$ref": "#/$defs/estimate" },
+        "judge_errors": { "$ref": "#/$defs/count" }
       }
     },
     "milliseconds": { "type": ["number", "null"], "minimum": 0 },
