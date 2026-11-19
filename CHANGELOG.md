@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Observability: four knowledge alerts with runbooks, from the knowledge system review (`audit/knowledge/Nov-26/claude/REPORT.md`). `NeuronKnowledgeSearchErrors` (page), `NeuronKnowledgeSearchSlow`, `NeuronKnowledgeSearchDegraded` and `NeuronKnowledgeIngestFailing` (tickets). A new counter, `neuron.knowledge.search.degraded`, counts searches that succeeded without their dense path (`dense_skipped`, the embedding provider was down) or without the reranker (`rerank_skipped`), by stable error code. Until now these were only logged, so answer quality could fall with every request still succeeding. Thresholds are provisional.
+
 Fix: decisions on the open questions of the November concurrency review (`audit/concurrency/Nov-26/fable/REPORT.md`):
 - `DELETE /v1/me/threads` counts a new thread whose first run has not saved anything yet in `skipped_busy_count`, so the response is `complete: false` and the caller repeats it. Before, the erase could report complete and the thread appear afterwards.
 - An ingest job runs only while its document is `queued`, `parsing` or `embedding`. A duplicate job that starts after the document ended `ready` or `failed` (a slow worker swept as stalled) is skipped: the document stays searchable and is not embedded or charged again. Re-indexing has its own job and is unaffected.

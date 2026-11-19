@@ -7,11 +7,14 @@ from collections.abc import Sequence
 
 import anyio
 import pytest
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
 from neuron_agent.config.settings import ProcessingLocality, Settings
 from neuron_agent.knowledge import retrieval
 from neuron_agent.knowledge.reranking import RerankError
 from neuron_agent.knowledge.retrieval import Passage, Retriever
+from neuron_agent.observability import metrics, semconv
 
 pytestmark = pytest.mark.anyio
 
@@ -135,3 +138,50 @@ async def test_only_one_search_probes_a_half_open_circuit(
         release.set()
     assert sorted(results) == [False, False, True]
     assert reranker.calls == 4
+
+
+async def test_every_skipped_rerank_is_counted_with_its_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Skips keep the search succeeding, so only this counter shows the quality loss.
+    degraded: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        retrieval.metrics, "record_knowledge_search_degraded", lambda *a: degraded.append(a)
+    )
+    monkeypatch.setattr(retrieval.time, "monotonic", lambda: 1000.0)
+    kb = uuid.uuid4()
+    reranker = _Reranker([RerankError("rerank_unavailable"), TimeoutError()])
+    retriever = _retriever(reranker)
+    await _search(retriever, kb)
+    await _search(retriever, kb)
+    retriever._rerank_failures = 3  # open the circuit
+    retriever._rerank_open_until = 2000.0
+    await _search(retriever, kb)
+    assert degraded == [
+        ("rerank_skipped", "rerank_unavailable"),
+        ("rerank_skipped", "rerank_timeout"),
+        ("rerank_skipped", "rerank_circuit_open"),
+    ]
+
+
+def test_a_degraded_search_is_counted_by_outcome_and_code_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    monkeypatch.setattr(metrics, "_meter", lambda: provider.get_meter("test"))
+    metrics.record_knowledge_search_degraded("rerank_skipped", "rerank_timeout")
+    data = reader.get_metrics_data()
+    assert data is not None
+    [counter] = [
+        m
+        for r in data.resource_metrics
+        for s in r.scope_metrics
+        for m in s.metrics
+        if m.name == semconv.METRIC_KNOWLEDGE_SEARCH_DEGRADED
+    ]
+    [point] = counter.data.data_points
+    assert (point.value, dict(point.attributes)) == (
+        1,
+        {semconv.NEURON_OUTCOME: "rerank_skipped", semconv.ERROR_TYPE: "rerank_timeout"},
+    )

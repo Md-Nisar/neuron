@@ -134,6 +134,7 @@ class _Instruments:
     checkpoint_duration: metrics.Histogram
     knowledge_search_duration: metrics.Histogram
     knowledge_search_results: metrics.Histogram
+    knowledge_search_degraded: metrics.Counter
     knowledge_ingest_duration: metrics.Histogram
     knowledge_stage_errors: metrics.Counter
     knowledge_reconciled: metrics.Counter
@@ -250,6 +251,11 @@ def _build(meter: metrics.Meter) -> _Instruments:
             semconv.METRIC_KNOWLEDGE_SEARCH_RESULTS,
             unit="{passage}",
             description="Passages returned per successful knowledge search",
+        ),
+        knowledge_search_degraded=meter.create_counter(
+            semconv.METRIC_KNOWLEDGE_SEARCH_DEGRADED,
+            unit="{search}",
+            description="Knowledge searches that skipped the dense path or the reranker",
         ),
         knowledge_ingest_duration=meter.create_histogram(
             semconv.METRIC_KNOWLEDGE_INGEST_DURATION, unit="s", description="Ingestion attempt"
@@ -406,6 +412,13 @@ def record_knowledge_search(
     )
     if results is not None:
         instruments.knowledge_search_results.record(results, attributes)
+
+
+def record_knowledge_search_degraded(outcome: str, error_type: str) -> None:
+    """One search that kept going without a step: `dense_skipped` or `rerank_skipped`."""
+    _instruments().knowledge_search_degraded.add(
+        1, {semconv.NEURON_OUTCOME: outcome, semconv.ERROR_TYPE: error_type}
+    )
 
 
 def record_knowledge_ingest(seconds: float, *, outcome: str) -> None:

@@ -106,6 +106,11 @@ METRIC_CITATIONS_REJECTED = "neuron.citations.rejected"
 # each successful search returned (RAG-08.03).
 METRIC_KNOWLEDGE_SEARCH_DURATION = "neuron.knowledge.search.duration"
 METRIC_KNOWLEDGE_SEARCH_RESULTS = "neuron.knowledge.search.results"
+# Searches that succeeded with less than they were configured for, by `neuron.outcome`
+# (`dense_skipped`: a hybrid search ran on full text only; `rerank_skipped`: the fused order was
+# kept) and `error.type` (the stable code). Otherwise these are logged only, so search quality
+# could fall with every request still succeeding.
+METRIC_KNOWLEDGE_SEARCH_DEGRADED = "neuron.knowledge.search.degraded"
 # Ingestion attempts by `neuron.outcome` (ready, failed, skipped, retry), and failed stages by
 # `neuron.knowledge.ingest.stage` and `error.type` (the document's stable error code).
 METRIC_KNOWLEDGE_INGEST_DURATION = "neuron.knowledge.ingest.duration"
