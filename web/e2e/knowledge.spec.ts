@@ -365,3 +365,48 @@ test(
     await expect(member.getByText("No knowledge bases yet")).toBeVisible();
   },
 );
+
+// The document journey the other tests skip: one pick of several files, a worker failure shown
+// with its reason, the original file back through the authenticated download, and a bulk delete
+// the server keeps.
+test(
+  "a user uploads files, sees a failure's reason, downloads one and deletes them together",
+  { tag: ["@knowledge"] },
+  async ({ page }) => {
+    await signIn(page, `km${Date.now().toString(36)}`);
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await createBase(page, "Manuals");
+    const panel = page.getByRole("region", { name: "Documents in Manuals" });
+
+    const text = "Pump manual\n\nPump 7 is serviced every month.\n";
+    await panel.getByLabel("Upload files").setInputFiles([
+      { name: "pump-manual.txt", mimeType: "text/plain", buffer: Buffer.from(text) },
+      // Only a heading: the worker finds no text and fails it.
+      { name: "heading-only.md", mimeType: "text/markdown", buffer: Buffer.from("# Title\n") },
+    ]);
+    const ready = panel.getByRole("listitem").filter({ hasText: "pump-manual.txt" });
+    const failed = panel.getByRole("listitem").filter({ hasText: "heading-only.md" });
+    await expect(ready.getByText("Ready")).toBeVisible({ timeout: 60_000 });
+    await expect(failed.getByText("No text could be found in this file.")).toBeVisible({
+      timeout: 60_000,
+    });
+
+    await panel.getByRole("button", { name: "Actions for pump-manual.txt" }).click();
+    const download = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: "Download" }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe("pump-manual.txt");
+    expect(readFileSync(await file.path(), "utf8")).toBe(text);
+
+    await panel.getByRole("checkbox", { name: "Select all shown documents" }).check();
+    await panel.getByRole("button", { name: "Delete", exact: true }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Delete 2 documents?" });
+    await confirm.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("Deleted 2 documents.")).toBeVisible();
+    await expect(panel.getByRole("listitem")).toHaveCount(0);
+
+    // The index reads the count back from the server.
+    await page.getByRole("button", { name: "All knowledge bases" }).click();
+    await expect(page.getByText("0 documents")).toBeVisible();
+  },
+);
