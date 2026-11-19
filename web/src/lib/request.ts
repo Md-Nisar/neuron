@@ -27,6 +27,8 @@ export interface RequestOptions<T> {
   idempotencyKey?: string;
   /** Turns the parsed JSON body into `T`, or throws if it has the wrong shape. */
   parse?: (body: unknown) => T;
+  /** Resolve with the body as a Blob instead (a file download); `parse` is not used. */
+  blob?: boolean;
   signal?: AbortSignal | undefined;
   fetch?: typeof fetch | undefined;
 }
@@ -65,6 +67,7 @@ export async function apiRequest<T = undefined>(options: RequestOptions<T>): Pro
     const failure = await startError(response);
     throw new ApiError(failure.kind, failure.status, failure.code, failure.retryAfterSeconds);
   }
+  if (options.blob === true) return (await response.blob()) as T;
   if (response.status === 204 || options.parse === undefined) return undefined as T;
   try {
     return options.parse((await response.json()) as unknown);

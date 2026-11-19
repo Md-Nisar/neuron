@@ -238,13 +238,13 @@ With `APP_KNOWLEDGE_ENABLED=true` a user can manage their own knowledge bases an
 
 | Route | Does |
 | --- | --- |
-| `GET /v1/knowledge/bases` | The caller's knowledge bases, oldest first: `kb_id`, `name`, `processing`, `created_at` |
+| `GET /v1/knowledge/bases` | The caller's knowledge bases, oldest first: `kb_id`, `name`, `processing`, `language`, `created_at`, `access` and `document_count` (live documents; `null` in the create and rename responses) |
 | `POST /v1/knowledge/bases` | `{"name": "...", "processing": "hosted", "language": "simple"}` (`processing` optional, or `self_hosted`; `language` optional, a built-in Postgres text search configuration such as `english` or `german`, fixed at creation, RAG-09.08); `201`. At most `APP_KNOWLEDGE_MAX_BASES_PER_USER` (20), then `409 knowledge_base_limit_reached` |
 | `PATCH /v1/knowledge/bases/{kb_id}` | `{"name": "..."}`: rename |
 | `DELETE /v1/knowledge/bases/{kb_id}` | `202`: the base and its documents disappear at once, and the worker's purge then deletes their files, rows, chunks and embeddings, then the base |
 | `POST /v1/knowledge/bases/{kb_id}/documents` | Upload: `multipart/form-data` with one `file` part and an optional `title` field (else the file name); optional `Idempotency-Key` header (1–200 printable ASCII characters). `202` with `doc_id`, `kb_id`, `status` (`queued`) and `status_url` |
 | `POST /v1/knowledge/bases/{kb_id}/web-pages` | Add a web page (in development, v1.3.0): JSON `url` (public `https`, no credentials; `422 url_not_allowed` otherwise) and optional `title` (else the URL); optional `Idempotency-Key`. `202` as an upload; the worker fetches it, and the same URL in the base returns its document |
-| `GET /v1/knowledge/bases/{kb_id}/documents?limit&offset` | A page of the base's documents, oldest first, with `total`: `doc_id`, `kb_id`, `title`, `mime_type`, `size_bytes`, `page_count`, `status`, `error_code`, `created_at`, `updated_at` |
+| `GET /v1/knowledge/bases/{kb_id}/documents?limit&offset&q&status&sort` | A page of the base's documents, with `total` (the documents that match): `doc_id`, `kb_id`, `title`, `mime_type`, `size_bytes`, `page_count`, `status`, `error_code`, `created_at`, `updated_at`. Optional: `q` matches titles, case-insensitively (up to 300 characters); `status` is `processing` (`queued`, `parsing`, `embedding`), `ready` or `failed`; `sort` is `oldest` (the default), `newest`, `name`, `updated` (most recent first) or `size` (largest first). Any other value is `422` |
 | `GET /v1/knowledge/documents/{doc_id}` | One document: the same fields. `status` is the stage, below |
 | `GET /v1/knowledge/documents/{doc_id}/chunks/{chunk_id}` | The passage behind a citation: its extracted text, headings and pages, with `?neighbours=1` to `3` chunks on each side. Only for a `ready` document; a chunk of another document is `404` |
 | `GET /v1/knowledge/documents/{doc_id}/file` | The original file, always as an attachment (`Content-Disposition: attachment`, `nosniff`); text and Markdown go out as `text/plain` |

@@ -60,12 +60,13 @@ test.describe("Live Stack Comprehensive Verification", () => {
 
     // Navigate to Knowledge
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Knowledge bases" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Knowledge", level: 1 })).toBeVisible();
 
     // Create KB
     const kbName = `HR-Guide-${Date.now().toString(36)}`;
-    await page.getByLabel("New knowledge base").fill(kbName);
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "New knowledge base" }).click();
+    await page.getByRole("dialog").getByLabel("Name").fill(kbName);
+    await page.getByRole("dialog").getByRole("button", { name: "Create" }).click();
 
     // Documents panel for newly created base
     const panel = page.getByRole("region", { name: `Documents in ${kbName}` });
@@ -73,7 +74,7 @@ test.describe("Live Stack Comprehensive Verification", () => {
 
     // Upload document
     const docContent = `# Remote Work Policy\n\nEligible employees may work remotely up to 3 days per week with manager approval.\n`;
-    await panel.getByLabel(/Drop files here/).setInputFiles({
+    await panel.getByLabel("Upload files").setInputFiles({
       name: "remote-work.md",
       mimeType: "text/markdown",
       buffer: Buffer.from(docContent),
@@ -109,8 +110,9 @@ test.describe("Live Stack Comprehensive Verification", () => {
 
     // Clean up: delete KB
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await page.getByRole("button", { name: `Delete ${kbName}` }).click();
-    await page.getByRole("button", { name: "Confirm delete" }).click();
+    await page.getByRole("button", { name: `Actions for ${kbName}` }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await page.getByRole("button", { name: "Delete knowledge base" }).click();
     await expect(page.getByRole("button", { name: kbName })).toHaveCount(0, { timeout: 15_000 });
 
     await signOut(page);

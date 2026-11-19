@@ -64,7 +64,7 @@ from neuron_agent.knowledge.providers import (
 )
 from neuron_agent.knowledge.reranking import create_reranker
 from neuron_agent.knowledge.retrieval import Retriever
-from neuron_agent.knowledge.service import KnowledgeBases
+from neuron_agent.knowledge.service import DocumentSort, DocumentStatusGroup, KnowledgeBases
 from neuron_agent.observability import metrics
 from neuron_agent.observability.audit import audit
 from neuron_agent.observability.langsmith_governance import configure_langsmith
@@ -1371,13 +1371,24 @@ async def list_knowledge_documents(
     principal: Annotated[Principal | None, Depends(require_permission("knowledge:read"))] = None,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None, max_length=300),
+    status: DocumentStatusGroup | None = None,
+    sort: DocumentSort = "oldest",
     user_id: str | None = _UserIdHeader,
 ) -> KnowledgeDocumentsResponse:
-    """A page of one of the caller's knowledge bases' documents, with their status."""
+    """A page of one of the caller's knowledge bases' documents, with their status: `q` matches
+    titles, `status` is `processing`, `ready` or `failed`, and `sort` picks the order."""
     try:
         owner_key = _knowledge_owner(principal, user_id)
         documents, total = await knowledge.documents(
-            owner_key, kb_id, limit=limit, offset=offset, roles=_roles(principal)
+            owner_key,
+            kb_id,
+            limit=limit,
+            offset=offset,
+            roles=_roles(principal),
+            query=q,
+            status=status,
+            sort=sort,
         )
     except AppError as exc:
         raise _http_error("knowledge_documents_list_failed", exc) from exc

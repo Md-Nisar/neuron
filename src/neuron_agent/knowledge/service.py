@@ -64,8 +64,11 @@ log = structlog.get_logger(__name__)
 _READ, _WRITE, _ADMIN = "knowledge:read", "knowledge:write", "knowledge:admin"
 
 _LIST = (
-    "SELECT kb_id, name, processing, ts_config::text AS language, created_at FROM knowledge.bases"
-    " WHERE kb_id = ANY(%s) AND deleted_at IS NULL ORDER BY created_at, kb_id"
+    "SELECT b.kb_id, b.name, b.processing, b.ts_config::text AS language, b.created_at,"
+    " (SELECT count(*) FROM knowledge.documents d WHERE d.kb_id = b.kb_id"
+    " AND d.deleted_at IS NULL AND d.status <> 'deleting') AS document_count"
+    " FROM knowledge.bases b"
+    " WHERE b.kb_id = ANY(%s) AND b.deleted_at IS NULL ORDER BY b.created_at, b.kb_id"
 )
 _COUNT = "SELECT count(*) AS n FROM knowledge.bases WHERE owner_key = %s AND deleted_at IS NULL"
 # A new base takes the active index profile (RAG-09.04): setup seeds one, so there is a row.
@@ -178,12 +181,38 @@ _TOMBSTONE_DOCUMENT = (
     " AND b.deleted_at IS NULL AND d.deleted_at IS NULL"
     " AND d.status <> 'deleting' AND d.doc_id = %(doc)s RETURNING d.doc_id"
 )
-_DOCUMENTS = (
-    _DOCUMENT_COLUMNS
-    + _DOCUMENT_FILTER
-    + " AND d.kb_id = %(kb)s ORDER BY d.created_at, d.doc_id LIMIT %(limit)s OFFSET %(offset)s"
+# A page of one base's documents: an optional title match (`ILIKE`, the caller's text escaped)
+# and status group, in one of the fixed orders below. Only these literal fragments reach the SQL.
+DocumentSort = Literal["oldest", "newest", "name", "updated", "size"]
+DocumentStatusGroup = Literal["processing", "ready", "failed"]
+_DOCUMENT_ORDER: dict[str, str] = {
+    "oldest": "d.created_at, d.doc_id",
+    "newest": "d.created_at DESC, d.doc_id",
+    "name": "lower(d.title), d.doc_id",
+    "updated": "d.updated_at DESC, d.doc_id",
+    "size": "d.size_bytes DESC, d.doc_id",
+}
+_STATUS_GROUP: dict[str, tuple[str, ...]] = {
+    "processing": ("queued", "parsing", "embedding"),
+    "ready": ("ready",),
+    "failed": ("failed",),
+}
+_DOCUMENTS_WHERE = (
+    _DOCUMENT_FILTER
+    + " AND d.kb_id = %(kb)s"
+    + " AND (%(title)s::text IS NULL OR d.title ILIKE %(title)s ESCAPE '\\')"
+    + " AND (%(statuses)s::text[] IS NULL OR d.status = ANY(%(statuses)s))"
 )
-_DOCUMENT_COUNT = "SELECT count(*) AS n" + _DOCUMENT_FILTER + " AND d.kb_id = %(kb)s"
+_DOCUMENT_COUNT = "SELECT count(*) AS n" + _DOCUMENTS_WHERE
+
+
+def _title_pattern(query: str | None) -> str | None:
+    """`ILIKE` text that matches `query` anywhere in a title, its wildcards taken literally."""
+    text = (query or "").strip()
+    if not text:
+        return None
+    return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
 
 # An `Idempotency-Key` is the caller's, across bases (the index is per uploader): a replay is
 # honoured only for the same base while the document and base are live. The caller's write access
@@ -666,14 +695,31 @@ class KnowledgeBases:
         limit: int,
         offset: int,
         roles: frozenset[str] = frozenset(),
+        query: str | None = None,
+        status: DocumentStatusGroup | None = None,
+        sort: DocumentSort = "oldest",
     ) -> tuple[Sequence[KnowledgeDocument], int]:
-        """A page of a readable base's documents and their total; any other base is `404`."""
+        """A page of a readable base's documents and the total that match; any other base is
+        `404`. `query` matches titles, `status` a status group, and `sort` picks the order."""
+        page = (
+            _DOCUMENT_COLUMNS
+            + _DOCUMENTS_WHERE
+            + f" ORDER BY {_DOCUMENT_ORDER[sort]} LIMIT %(limit)s OFFSET %(offset)s"
+        )
         async with self._transaction() as conn:
             kbs = await self._readable(conn, owner_key, roles)
             if kb_id not in kbs:
                 raise KnowledgeBaseNotFoundError("knowledge base not found")
-            params = {"kbs": kbs, "kb": kb_id}
-            cursor = await conn.execute(_DOCUMENTS, {**params, "limit": limit, "offset": offset})
+            params = {
+                "kbs": kbs,
+                "kb": kb_id,
+                "title": _title_pattern(query),
+                "statuses": list(_STATUS_GROUP[status]) if status else None,
+            }
+            cursor = await conn.execute(
+                page,  # nosec B608 - the order is one of the fixed fragments above
+                {**params, "limit": limit, "offset": offset},
+            )
             documents = [KnowledgeDocument(**row) for row in await cursor.fetchall()]
             cursor = await conn.execute(_DOCUMENT_COUNT, params)
             total = await cursor.fetchone()

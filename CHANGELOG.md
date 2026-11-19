@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Web: the Knowledge screen is reworked after a UX audit (`audit/knowledge/Nov-26/claude/UX_REVIEW.md`). Knowledge bases show as cards or a list, with search, a filter for bases shared with the user, sorting, document counts and creation dates. Create, rename and delete happen in dialogs and from a menu on each base. Each base has its own page with a Documents tab and, for its admins, a Sharing tab. Documents can be searched by name, filtered by status, sorted, loaded past the first 100, selected and deleted together, and downloaded. Web pages are added from a dialog and show their address. Every action uses the existing routes and the permissions the server reports, as before.
+
+API: `GET /v1/knowledge/bases/{kb_id}/documents` takes optional `q` (a title search), `status` (`processing`, `ready` or `failed`) and `sort` (`oldest`, `newest`, `name`, `updated`, `size`); without them it answers as before. `GET /v1/knowledge/bases` adds each base's `document_count`. Both are additions to `/v1`.
+
 Observability: four knowledge alerts with runbooks, from the knowledge system review (`audit/knowledge/Nov-26/claude/REPORT.md`). `NeuronKnowledgeSearchErrors` (page), `NeuronKnowledgeSearchSlow`, `NeuronKnowledgeSearchDegraded` and `NeuronKnowledgeIngestFailing` (tickets). A new counter, `neuron.knowledge.search.degraded`, counts searches that succeeded without their dense path (`dense_skipped`, the embedding provider was down) or without the reranker (`rerank_skipped`), by stable error code. Until now these were only logged, so answer quality could fall with every request still succeeding. Thresholds are provisional.
 
 Fix: decisions on the open questions of the November concurrency review (`audit/concurrency/Nov-26/fable/REPORT.md`):

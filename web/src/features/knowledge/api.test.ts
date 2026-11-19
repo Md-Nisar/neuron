@@ -7,6 +7,7 @@ import {
   createBase,
   deleteBase,
   listBases,
+  downloadDocument,
   listDocuments,
   renameBase,
   uploadDocument,
@@ -22,7 +23,15 @@ const base = {
   created_at: "2026-11-01",
   access: "owner",
 };
-const doc = { doc_id: DOC, kb_id: KB, title: "a.pdf", size_bytes: 1, page_count: null };
+const doc = {
+  doc_id: DOC,
+  kb_id: KB,
+  title: "a.pdf",
+  size_bytes: 1,
+  page_count: null,
+  created_at: "2026-11-01",
+  updated_at: "2026-11-01",
+};
 const queued = { ...doc, status: "queued", error_code: null };
 
 function deps(response: Response) {
@@ -59,6 +68,7 @@ describe("knowledge API", () => {
     await renameBase(d, KB, "New");
     await deleteBase(d, KB);
     await listDocuments(d, KB, 50);
+    await listDocuments(d, KB, 0, 100, { search: " 50% off ", status: "failed", sort: "name" });
 
     const sentCalls = fetch.mock.calls.map(([url, init]) =>
       url instanceof URL ? `${init?.method ?? ""} ${url.pathname}${url.search}` : "",
@@ -74,6 +84,8 @@ describe("knowledge API", () => {
       `PATCH /v1/knowledge/bases/${KB}`,
       `DELETE /v1/knowledge/bases/${KB}`,
       `GET /v1/knowledge/bases/${KB}/documents?limit=50&offset=50`,
+      // The search is trimmed and URL-encoded; the server escapes its wildcards.
+      `GET /v1/knowledge/bases/${KB}/documents?limit=100&offset=0&q=50%25+off&status=failed&sort=name`,
     ]);
   });
 
@@ -97,6 +109,17 @@ describe("knowledge API", () => {
     });
     // The browser writes the multipart boundary; a JSON content type would break the upload.
     expect(init?.headers).not.toHaveProperty("Content-Type");
+  });
+
+  it("downloads a document's file as a Blob, with the token in a header", async () => {
+    const { deps: d, fetch } = deps(new Response("%PDF-1.7", { status: 200 }));
+
+    const file = await downloadDocument(d, DOC);
+
+    const { url, init } = sent(fetch);
+    expect(url).toBe(`/v1/knowledge/documents/${DOC}/file`);
+    expect(init?.headers).toMatchObject({ Authorization: "Bearer tok-1" });
+    expect(await file.text()).toBe("%PDF-1.7");
   });
 
   it("keeps the server's quota code", async () => {

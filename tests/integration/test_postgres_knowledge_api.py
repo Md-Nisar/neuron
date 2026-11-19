@@ -189,7 +189,9 @@ async def test_another_users_base_is_the_same_404_as_an_unknown_id(
         )
         assert response.json() == baseline.json() == {"detail": detail}
     listed = client.client.get("/v1/knowledge/bases", headers=bearer(alice)).json()
-    assert listed == {"bases": [base]}
+    # Unchanged, and its one document still there; only the list says how many it has.
+    assert base["document_count"] is None
+    assert listed == {"bases": [{**base, "document_count": 1}]}
     assert await _jobs(db) == []
 
 
@@ -323,6 +325,71 @@ async def test_the_owner_sees_live_documents_and_their_status(
     after = client.client.get(f"/v1/knowledge/documents/{docs[0]}", headers=bearer(alice))
     assert after.status_code == 404
     assert client.client.get(listing, headers=bearer(alice)).status_code == 404
+
+
+async def test_documents_are_searched_filtered_and_sorted_across_the_whole_base(
+    api: tuple[JwtApi, RoleDatabase], make_token: Callable[..., str]
+) -> None:
+    client, db = api
+    alice = make_token("alice", scopes=_SCOPES)
+    base = _create(client, alice)
+    titles = ["Beta plan.txt", "alpha_100% notes.txt", "Gamma plan.txt", "alphaX100 notes.txt"]
+    docs: list[str] = []
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        # Created oldest first; updated in another order; each with its own size and status.
+        for title, status, size, minutes in [
+            (titles[0], "ready", 30, 3),
+            (titles[1], "failed", 10, 1),
+            (titles[2], "embedding", 20, 2),
+            (titles[3], "ready", 5, 0),
+        ]:
+            doc = str(uuid.uuid4())
+            docs.append(doc)
+            await conn.execute(
+                "INSERT INTO knowledge.documents (doc_id, kb_id, uploaded_by, title, mime_type,"
+                " size_bytes, sha256, blob_key, status, created_at, updated_at)"
+                " SELECT %s, kb_id, owner_key, %s, 'text/plain', %s, %s, %s, %s,"
+                " now() - make_interval(mins => %s), now() - make_interval(mins => %s)"
+                " FROM knowledge.bases WHERE kb_id = %s",
+                (doc, title, size, uuid.uuid4().hex * 2, uuid.uuid4().hex, status,
+                 10 - len(docs), minutes, base["kb_id"]),
+            )  # fmt: skip
+    listing = f"/v1/knowledge/bases/{base['kb_id']}/documents"
+
+    def titles_of(query: str) -> tuple[list[str], int]:
+        response = client.client.get(f"{listing}?{query}", headers=bearer(alice))
+        assert response.status_code == 200, response.text
+        page = response.json()
+        return [d["title"] for d in page["documents"]], page["total"]
+
+    # The default stays oldest first, as before.
+    assert titles_of("")[0] == titles
+    assert titles_of("sort=newest")[0] == titles[::-1]
+    assert titles_of("sort=name")[0] == [titles[1], titles[3], titles[0], titles[2]]
+    assert titles_of("sort=size")[0] == [titles[0], titles[2], titles[1], titles[3]]
+    assert titles_of("sort=updated")[0] == [titles[3], titles[1], titles[2], titles[0]]
+    # Case-insensitive, anywhere in the title; `%` and `_` are matched as themselves.
+    assert titles_of("q=PLAN") == ([titles[0], titles[2]], 2)
+    assert titles_of("q=_100%25") == ([titles[1]], 1)
+    assert titles_of("q=%20%20") == (titles, 4)
+    # Status groups, combined with a search, and the total counts the matches only.
+    assert titles_of("status=processing") == ([titles[2]], 1)
+    assert titles_of("status=ready&q=notes") == ([titles[3]], 1)
+    assert titles_of("status=failed&limit=1&offset=0") == ([titles[1]], 1)
+    # Anything outside the fixed values is refused before it reaches the query.
+    for bad in ["sort=title;DROP", "status=deleting", "sort=created_at", "q=" + "x" * 301]:
+        response = client.client.get(f"{listing}?{bad}", headers=bearer(alice))
+        assert response.status_code == 422, bad
+
+    # The list of bases counts each one's live documents.
+    async with await psycopg.AsyncConnection.connect(db.migrator_dsn, autocommit=True) as conn:
+        await conn.execute(
+            "UPDATE knowledge.documents SET status = 'deleting', deleted_at = now()"
+            " WHERE doc_id = %s",
+            (docs[3],),
+        )
+    bases = client.client.get("/v1/knowledge/bases", headers=bearer(alice)).json()["bases"]
+    assert [(b["kb_id"], b["document_count"]) for b in bases] == [(base["kb_id"], 3)]
 
 
 def _upload(

@@ -49,6 +49,8 @@ export interface KnowledgeBase {
   language: Language;
   created_at: string;
   access: BaseAccess;
+  /** Its live documents, when the list of bases says; null otherwise. */
+  document_count: number | null;
 }
 
 /** A role's access to a base. The role is text the base's admin typed: shown as text. */
@@ -67,6 +69,11 @@ export interface KnowledgeDocument {
   status: DocumentStatus;
   /** A stable code when `failed`, mapped to fixed wording; anything else is dropped. */
   error_code: string | null;
+  mime_type: string;
+  created_at: string;
+  updated_at: string;
+  /** A web page's address (RAG-10.02); null for an upload. Shown as text, never as a link. */
+  source_url: string | null;
 }
 
 export interface DocumentsPage {
@@ -112,6 +119,15 @@ function oneOf<T extends string>(
   return value as T;
 }
 
+/** A count that may be absent or null (an older server, or a response that leaves it out). */
+function optionalCount(source: Record<string, unknown>, key: string): number | null {
+  const value = source[key];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0)
+    throw new TypeError("shape");
+  return value;
+}
+
 export function parseBase(body: unknown): KnowledgeBase {
   const base = record(body);
   return {
@@ -121,6 +137,7 @@ export function parseBase(body: unknown): KnowledgeBase {
     language: oneOf(base, "language", LANGUAGES),
     created_at: str(base, "created_at"),
     access: oneOf(base, "access", ACCESS),
+    document_count: optionalCount(base, "document_count"),
   };
 }
 
@@ -142,6 +159,10 @@ function parseDocument(body: unknown): KnowledgeDocument {
     page_count: pages,
     status: oneOf(doc, "status", STATUSES),
     error_code: typeof code === "string" && CODE.test(code) ? code : null,
+    mime_type: typeof doc["mime_type"] === "string" ? doc["mime_type"] : "",
+    created_at: str(doc, "created_at"),
+    updated_at: str(doc, "updated_at"),
+    source_url: typeof doc["source_url"] === "string" ? doc["source_url"] : null,
   };
 }
 

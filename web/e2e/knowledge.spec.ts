@@ -16,6 +16,15 @@ async function signIn(page: Page, user: string, roles = ""): Promise<void> {
   await expect(page.getByText(`Signed in as ${user}`)).toBeVisible();
 }
 
+/** Create a base from the Knowledge screen; its own page opens. */
+async function createBase(page: Page, name: string): Promise<void> {
+  await page.getByRole("button", { name: "New knowledge base" }).click();
+  const dialog = page.getByRole("dialog", { name: "New knowledge base" });
+  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
+}
+
 /** axe on the page's main area, in a real browser, so colour contrast is checked too. */
 async function violations(page: Page): Promise<string[]> {
   // Controls fade to new colours (`transition-all`) and the source sheet fades in
@@ -45,12 +54,11 @@ test(
     await signIn(page, user);
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
 
-    await page.getByLabel("New knowledge base").fill("Handbook");
-    await page.getByRole("button", { name: "Create" }).click();
+    await createBase(page, "Handbook");
     const panel = page.getByRole("region", { name: "Documents in Handbook" });
     await expect(panel.getByText(/sent to the configured embedding provider/)).toBeVisible();
 
-    await panel.getByLabel(/Drop files here/).setInputFiles({
+    await panel.getByLabel("Upload files").setInputFiles({
       name: "leave-policy.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("Leave policy\n\nEveryone gets 25 days of paid leave a year.\n"),
@@ -92,14 +100,14 @@ test(
 
 /** Make a base and put one text file in it, then wait for the worker to make it ready. */
 async function addBase(page: Page, name: string, file: string, text: string): Promise<void> {
-  await page.getByLabel("New knowledge base").fill(name);
-  await page.getByRole("button", { name: "Create" }).click();
+  await createBase(page, name);
   const panel = page.getByRole("region", { name: `Documents in ${name}` });
   await panel
-    .getByLabel(/Drop files here/)
+    .getByLabel("Upload files")
     .setInputFiles({ name: file, mimeType: "text/plain", buffer: Buffer.from(text) });
   const row = panel.getByRole("listitem").filter({ hasText: file });
   await expect(row.getByText("Ready")).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("button", { name: "All knowledge bases" }).click();
 }
 
 /** Send a turn and wait until one more scripted answer shows. */
@@ -155,7 +163,7 @@ test(
     await signIn(other, `${user}b`);
     const headers = { authorization: (await sent).headers()["authorization"] ?? "" };
     await other.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await expect(other.getByText("No knowledge bases yet.")).toBeVisible();
+    await expect(other.getByText("No knowledge bases yet")).toBeVisible();
     const none = "00000000-0000-4000-8000-000000000000";
     const theirs = await other.request.get(chunkUrl, { headers });
     const missing = await other.request.get(
@@ -183,8 +191,9 @@ test(
     // Delete the cited document: its old citation opens as unavailable, with no passage.
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
     await page.getByRole("button", { name: "Policies", exact: true }).click();
-    await page.getByRole("button", { name: "Delete leave-policy.txt" }).click();
-    await page.getByRole("button", { name: "Confirm delete leave-policy.txt" }).click();
+    await page.getByRole("button", { name: "Actions for leave-policy.txt" }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("listitem").filter({ hasText: "leave-policy.txt" })).toHaveCount(0);
     await page.getByRole("button", { name: "Chat", exact: true }).click();
     await firstChip().click();
@@ -218,8 +227,9 @@ test(
     await toggle.click();
 
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await page.getByRole("button", { name: "Delete Travel" }).click();
-    await page.getByRole("button", { name: "Confirm delete" }).click();
+    await page.getByRole("button", { name: "Actions for Travel" }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await page.getByRole("button", { name: "Delete knowledge base" }).click();
     await expect(page.getByRole("button", { name: "Travel", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Chat", exact: true }).click();
     await expect(toggle).toContainText("All knowledge");
@@ -274,7 +284,7 @@ test(
 
     await signIn(page, user);
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await expect(page.getByText("No knowledge bases yet.")).toBeVisible();
+    await expect(page.getByText("No knowledge bases yet")).toBeVisible();
   },
 );
 
@@ -310,11 +320,11 @@ test(
     const role = "e2e-team";
     await signIn(page, user);
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await page.getByLabel("New knowledge base").fill("Team handbook");
-    await page.getByRole("button", { name: "Create" }).click();
+    await createBase(page, "Team handbook");
+    await page.getByRole("tab", { name: "Sharing" }).click();
 
     const sharing = page.getByRole("region", { name: "Sharing Team handbook" });
-    await expect(sharing.getByText("Not shared with any role.")).toBeVisible();
+    await expect(sharing.getByText("Not shared with any role. Only you can use it.")).toBeVisible();
     await sharing.getByLabel("Role", { exact: true }).fill(role);
     await sharing.getByRole("button", { name: "Share" }).click();
     const access = sharing.getByRole("combobox", { name: `Access for ${role}` });
@@ -331,9 +341,11 @@ test(
     await member.getByRole("button", { name: "Team handbook", exact: true }).click();
     await expect(member.getByText("Shared with you · Read")).toBeVisible();
     await expect(member.getByText(/shared with you to read/)).toBeVisible();
-    await expect(member.getByLabel(/Drop files here/)).toHaveCount(0);
-    await expect(member.getByRole("button", { name: "Delete Team handbook" })).toHaveCount(0);
-    await expect(member.getByRole("region", { name: /^Sharing/ })).toHaveCount(0);
+    await expect(member.getByLabel("Upload files")).toHaveCount(0);
+    await expect(member.getByRole("tab", { name: "Sharing" })).toHaveCount(0);
+    await member.getByRole("button", { name: "Actions for Team handbook" }).click();
+    await expect(member.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
+    await member.keyboard.press("Escape");
 
     // A role with `admin` access may manage the sharing too.
     await access.selectOption("admin");
@@ -343,12 +355,58 @@ test(
     await member.getByRole("button", { name: "Knowledge", exact: true }).click();
     await member.getByRole("button", { name: "Team handbook", exact: true }).click();
     await expect(member.getByText("Shared with you · Manage")).toBeVisible();
+    await member.getByRole("tab", { name: "Sharing" }).click();
     await expect(member.getByRole("region", { name: "Sharing Team handbook" })).toBeVisible();
 
     await sharing.getByRole("button", { name: `Stop sharing with ${role}` }).click();
-    await expect(sharing.getByText("Not shared with any role.")).toBeVisible();
+    await expect(sharing.getByText("Not shared with any role. Only you can use it.")).toBeVisible();
     await member.getByRole("button", { name: "Chat" }).click();
     await member.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await expect(member.getByText("No knowledge bases yet.")).toBeVisible();
+    await expect(member.getByText("No knowledge bases yet")).toBeVisible();
+  },
+);
+
+// The document journey the other tests skip: one pick of several files, a worker failure shown
+// with its reason, the original file back through the authenticated download, and a bulk delete
+// the server keeps.
+test(
+  "a user uploads files, sees a failure's reason, downloads one and deletes them together",
+  { tag: ["@knowledge"] },
+  async ({ page }) => {
+    await signIn(page, `km${Date.now().toString(36)}`);
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await createBase(page, "Manuals");
+    const panel = page.getByRole("region", { name: "Documents in Manuals" });
+
+    const text = "Pump manual\n\nPump 7 is serviced every month.\n";
+    await panel.getByLabel("Upload files").setInputFiles([
+      { name: "pump-manual.txt", mimeType: "text/plain", buffer: Buffer.from(text) },
+      // Only a heading: the worker finds no text and fails it.
+      { name: "heading-only.md", mimeType: "text/markdown", buffer: Buffer.from("# Title\n") },
+    ]);
+    const ready = panel.getByRole("listitem").filter({ hasText: "pump-manual.txt" });
+    const failed = panel.getByRole("listitem").filter({ hasText: "heading-only.md" });
+    await expect(ready.getByText("Ready")).toBeVisible({ timeout: 60_000 });
+    await expect(failed.getByText("No text could be found in this file.")).toBeVisible({
+      timeout: 60_000,
+    });
+
+    await panel.getByRole("button", { name: "Actions for pump-manual.txt" }).click();
+    const download = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: "Download" }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe("pump-manual.txt");
+    expect(readFileSync(await file.path(), "utf8")).toBe(text);
+
+    await panel.getByRole("checkbox", { name: "Select all shown documents" }).check();
+    await panel.getByRole("button", { name: "Delete", exact: true }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Delete 2 documents?" });
+    await confirm.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("Deleted 2 documents.")).toBeVisible();
+    await expect(panel.getByRole("listitem")).toHaveCount(0);
+
+    // The index reads the count back from the server.
+    await page.getByRole("button", { name: "All knowledge bases" }).click();
+    await expect(page.getByText("0 documents")).toBeVisible();
   },
 );

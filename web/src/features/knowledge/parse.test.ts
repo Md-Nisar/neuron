@@ -11,6 +11,7 @@ const base = {
   language: "simple",
   created_at: "2026-11-01T10:00:00Z",
   access: "owner",
+  document_count: 2,
 };
 const doc = {
   doc_id: DOC,
@@ -20,11 +21,24 @@ const doc = {
   page_count: null,
   status: "queued",
   error_code: null,
+  mime_type: "application/pdf",
+  created_at: "2026-11-01T10:00:00Z",
+  updated_at: "2026-11-01T10:05:00Z",
+  source_url: null,
 };
 
 describe("parseBases", () => {
   it("accepts the list", () => {
     expect(parseBases({ bases: [base] })).toEqual([base]);
+  });
+
+  it("takes a missing or null document count as unknown", () => {
+    const older: Record<string, unknown> = { ...base };
+    delete older["document_count"];
+    expect(parseBases({ bases: [older, { ...base, document_count: null }] })).toEqual([
+      { ...base, document_count: null },
+      { ...base, document_count: null },
+    ]);
   });
 
   it.each([
@@ -33,6 +47,7 @@ describe("parseBases", () => {
     ["an unknown processing value", { bases: [{ ...base, processing: "cloud" }] }],
     ["an id that is not a UUID", { bases: [{ ...base, kb_id: "../x" }] }],
     ["a name that is not a string", { bases: [{ ...base, name: 5 }] }],
+    ["a negative document count", { bases: [{ ...base, document_count: -1 }] }],
   ])("rejects %s", (_name, body) => {
     expect(() => parseBases(body)).toThrow(TypeError);
   });
@@ -63,8 +78,18 @@ describe("parseDocuments", () => {
       { documents: [{ ...doc, doc_id: "a/b" }], total: 1 },
     ],
     ["no total", { documents: [doc] }],
+    ["no creation time", { documents: [{ ...doc, created_at: undefined }], total: 1 }],
   ])("rejects %s", (_name, body) => {
     expect(() => parseDocuments(body)).toThrow(TypeError);
+  });
+});
+
+describe("a web page", () => {
+  it("keeps its address as text, and an upload has none", () => {
+    const page = { ...doc, source_url: "https://example.com/a?b=<c>" };
+    const [web, upload] = parseDocuments({ documents: [page, doc], total: 2 }).documents;
+    expect(web?.source_url).toBe("https://example.com/a?b=<c>");
+    expect(upload?.source_url).toBeNull();
   });
 });
 
