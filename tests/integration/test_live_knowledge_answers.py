@@ -205,7 +205,8 @@ async def test_answers_cite_the_right_source_and_abstain_without_one(
             abstained[key] = done is not None and done.grounded is False
 
     faithfulness, judged = await _judge(settings, cases, replies, grades, texts, contexts)
-    report = retrieval_report(dataset["version"], ranks, answers, list(abstained.values()))
+    # Search is deterministic, so each trial repeats its ranks: every count is of case runs.
+    report = retrieval_report(dataset["version"], ranks * trials, answers, list(abstained.values()))
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     jsonschema.validate(report, {"$ref": "#/$defs/retrieval", "$defs": schema["$defs"]})
     missed = sorted(
@@ -237,7 +238,7 @@ async def test_answers_cite_the_right_source_and_abstain_without_one(
         for c in ("answerable", "unanswerable")
     }
     assert (report["answerable_cases"], report["unanswerable_cases"]) == (
-        counts["answerable"],
+        counts["answerable"] * trials,
         counts["unanswerable"] * trials,
     )
     jsonschema.validate(outcome["answers"], {"$ref": "#/$defs/answers", "$defs": schema["$defs"]})

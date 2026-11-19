@@ -187,7 +187,8 @@ def answer_report(
     """The eval report's `answers` section (`eval_report.schema.json`): how answers to
     answerable cases score against their expected facts, the false-refusal and hallucination
     rates, and CRAG's score over answerable and unanswerable cases. Rates carry a 95% Wilson
-    interval. Trials may be pooled: pass every trial's grades."""
+    interval. Trials may be pooled: pass every trial's grades (the intervals are then too
+    narrow, see `ci95`)."""
     total = len(grades)
     count = {label: sum(g.label == label for g in grades) for label in CRAG_SCORE}
     attempted = total - count[MISSING]

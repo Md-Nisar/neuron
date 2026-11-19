@@ -70,7 +70,7 @@ def _passages(tag: str, prefix: str, texts: Sequence[str]) -> str:
 
 
 def _parse(reply: str, cited: int) -> tuple[ClaimVerdict, ...]:
-    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", reply.strip())
+    text = re.sub(r"(?:^```(?:json)?\s*)|(?:\s*```$)", "", reply.strip())
     try:
         verdicts = _Verdicts.model_validate(json.loads(text))
     except (json.JSONDecodeError, ValidationError) as exc:

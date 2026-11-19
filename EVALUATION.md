@@ -239,7 +239,7 @@ Estimated cost is not reported: it depends on the optional pricing file of ADR 0
 
 | Field | Meaning |
 | --- | --- |
-| `answerable_cases`, `unanswerable_cases` | Cases scored. |
+| `answerable_cases`, `unanswerable_cases` | Cases scored; with `APP_KNOWLEDGE_EVAL_TRIALS`, case runs (cases times trials). |
 | `recall_at_5` | Share of answerable cases with a correct passage in search's top 5. |
 | `mrr` | Mean of 1/rank of each answerable case's first correct passage (0 for a miss). |
 | `citation_source_precision` | Share of all citations in answers to answerable cases that are in an expected source. Named `citation_precision` until dataset 1.3.0. It is not the literature's citation precision (does each citation support its sentence), which the judge below measures. |
