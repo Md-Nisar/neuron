@@ -9,8 +9,10 @@ are not downloaded here.
 from __future__ import annotations
 
 import copy
+import gzip
 import hashlib
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -180,3 +182,67 @@ def test_schema_rejects_an_answerable_case_without_a_source(dataset: dict[str, A
     validator = jsonschema.Draft202012Validator(_load(_SCHEMA))
     with pytest.raises(jsonschema.ValidationError):
         validator.validate(broken)
+
+
+def _phrase_in(alias: str, text: str) -> bool:
+    norm = re.sub(r"\s+", " ", alias).lower()
+    return re.search(rf"(?<![a-z0-9]){re.escape(norm)}(?![a-z0-9])", text) is not None
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"\s+", " ", text).lower().strip()
+
+
+@pytest.fixture(scope="module")
+def parsed() -> dict[str, Any]:
+    """The parser output stored for the eval, per document: its blocks."""
+    data = json.loads(gzip.decompress((_FIXTURES / "knowledge/eval/parsed.json.gz").read_bytes()))
+    return dict(data["documents"])
+
+
+def _text(parsed: dict[str, Any], source: dict[str, Any], page: int | None = None) -> str:
+    blocks = parsed[source["document"]]["blocks"]
+    return _norm(
+        " ".join(b.get("text", "") for b in blocks if page is None or b.get("page") == page)
+    )
+
+
+def _grounding_errors(cases: list[dict[str, Any]], parsed: dict[str, Any]) -> list[str]:
+    """Answerable cases whose facts or evidence are not in their expected sources: the first
+    phrase of every fact must appear in an expected document, and the evidence on an expected
+    page (or anywhere in a sectioned document)."""
+    errors = []
+    for case in cases:
+        if case["category"] != "answerable":
+            continue
+        sources = case["expected_sources"]
+        documents = " ".join(_text(parsed, s) for s in sources)
+        errors += [
+            f"{case['id']}: fact {fact['any'][0]!r}"
+            for fact in case["expected_facts"]
+            if not _phrase_in(fact["any"][0], documents)
+        ]
+        places = [_text(parsed, s, page) for s in sources for page in s.get("pages", [None])]
+        if not any(_norm(case["evidence"]) in place for place in places):
+            errors.append(f"{case['id']}: evidence")
+    return errors
+
+
+def test_every_expected_fact_is_in_an_expected_source(
+    dataset: dict[str, Any], parsed: dict[str, Any]
+) -> None:
+    # The OCR text of the scanned log joins "litres per" into one word, so that one quote,
+    # checked by hand when it was written, is not found as typed.
+    assert _grounding_errors(dataset["cases"], parsed) == ["answerable-063: evidence"]
+
+
+def test_case_ids_and_questions_do_not_repeat(dataset: dict[str, Any]) -> None:
+    ids = [c["id"] for c in dataset["cases"]]
+    assert len(ids) == len(set(ids))
+    # ACL cases ask one question as two users on purpose; answer cases must not repeat.
+    questions = [
+        _norm(c["question"])
+        for c in dataset["cases"]
+        if c["category"] in {"answerable", "unanswerable"}
+    ]
+    assert len(questions) == len(set(questions))

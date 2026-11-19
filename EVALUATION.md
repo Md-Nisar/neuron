@@ -239,10 +239,10 @@ Estimated cost is not reported: it depends on the optional pricing file of ADR 0
 
 | Field | Meaning |
 | --- | --- |
-| `answerable_cases`, `unanswerable_cases` | Cases scored. |
+| `answerable_cases`, `unanswerable_cases` | Cases scored; with `APP_KNOWLEDGE_EVAL_TRIALS`, case runs (cases times trials). |
 | `recall_at_5` | Share of answerable cases with a correct passage in search's top 5. |
 | `mrr` | Mean of 1/rank of each answerable case's first correct passage (0 for a miss). |
-| `citation_precision` | Share of all citations in answers to answerable cases that are correct. |
+| `citation_source_precision` | Share of all citations in answers to answerable cases that are in an expected source. Named `citation_precision` until dataset 1.3.0. It is not the literature's citation precision (does each citation support its sentence), which the judge below measures. |
 | `cited_correctly` | Share of answerable cases whose answer cites at least one correct passage. The v1.1.0 gate asks for 0.9. |
 | `abstention_accuracy` | Share of unanswerable cases whose answer abstained (`grounded` false, nothing cited). |
 
@@ -255,6 +255,29 @@ uv run python -m pytest tests/integration/test_live_knowledge_answers.py -m inte
 ```
 
 It takes about 35 minutes (76 runs, throttled to 30 model calls a minute). An answer cut off by the step limit counts as a miss; any other error makes the run inconclusive, so rerun it. Each case runs once, and `cited_correctly` has varied from 0.891 to 0.952 between runs of the same code, so a run near the gate is not by itself a regression. Results are in `docs/releases/v1.1.0-retrieval-eval.md`.
+
+**Answer metrics** (dataset 1.3.0). Citing the right page does not make an answer right, so the live answers test also grades each answer's text. Every answerable case lists its `expected_facts`: the facts a correct answer states, each marked vital or not, with the phrases that state it (`any`). An answer states a fact when one of those phrases appears in it as a whole phrase, ignoring case. A unit test checks that the first phrase of every fact appears in the parsed text of an expected source, so the facts come from the documents. Each answer gets a label, as in CRAG (Yang et al., 2024): `perfect` (every vital fact), `acceptable` (some), `incorrect` (none) or `missing` (it abstained). The report's `answers` section (`retrieval_metrics.answer_report`) gives each rate with its 95% Wilson interval:
+
+| Field | Meaning |
+| --- | --- |
+| `correct`, `partially_correct`, `incorrect` | Shares of answerable answers labelled perfect, acceptable and incorrect. |
+| `false_refusal` | Share of answerable answers that abstained. Read it beside `abstention_accuracy`: a system that refuses everything abstains perfectly. |
+| `hallucination` | Wrong answers among attempted ones: incorrect answers to answerable cases and answers to unanswerable ones, over all answers that did not abstain. |
+| `vital_fact_recall` | Vital facts stated, over vital facts expected (completeness). |
+| `crag_score` | Mean over answerable and unanswerable answers of +1 perfect, +0.5 acceptable, 0 missing, -1 incorrect; an unanswerable case scores +1 when it abstains and -1 when it answers. |
+
+Phrase matching is strict: a correct paraphrase outside a fact's phrases counts as not stated, which lowers `correct` and raises `incorrect`. Read the `graded` list of the report, and add a phrase to the fact when a person agrees the answer was right. These metrics are reported, not gated, until a few runs show their spread. `APP_KNOWLEDGE_EVAL_TRIALS=3` runs every case three times and pools the trials; trials of one case are correlated, so the pooled interval is too narrow.
+
+**Faithfulness judge.** With `APP_KNOWLEDGE_EVAL_JUDGE_MODEL` set to a model identifier, ideally of another family than the answering model, `src/neuron_agent/evaluation_judge.py` splits each attempted answer into claims (prompt `prompts/eval/claim_judge.md`, version pinned by a test). For each claim it lists the cited passages that state it, and says whether any cited or retrieved passage does. The report's `faithfulness` section gives:
+
+| Field | Meaning |
+| --- | --- |
+| `faithfulness` | Share of claims some cited or retrieved passage supports. The retrieved passages are search's top 10 for the question, an approximation of what the agent read. |
+| `citation_recall` | Share of claims a cited passage supports (ALCE). |
+| `citation_precision` | Share of cited passages that support at least one claim (ALCE). |
+| `judge_errors` | Answers whose verdict could not be read; they are left out. |
+
+The judge is uncalibrated. Its scores are not a gate until its verdicts agree with human labels: the `judged` list of the report holds every claim and verdict for people to label, and `evaluation_judge.cohen_kappa` compares the two. The bar is a kappa of at least 0.6 on 200 or more labelled claims, measured again whenever the judge model or its prompt changes.
 
 **Nightly retrieval gate (RAG-09.05).** `tests/integration/test_live_knowledge_retrieval.py` stores the corpus with the committed passage vectors, as ingestion stored them, then searches every answerable case as production does with an NVIDIA key: the question embedded by the live model and the candidates reranked live. recall@5 and MRR must stay within 0.02 of `evals/baselines/knowledge_retrieval_live.json`, and a failure names the metric. A change at the provider (the query embedding or the reranker) therefore shows up as a drop. Passages are not re-embedded: NVIDIA takes one per request, and the 2,068 passages would take over an hour at 30 calls a minute. The `knowledge-retrieval` job of `nightly-eval.yml` runs it before `live-eval`, in about 5 minutes (128 calls, paced to 30 a minute), and fails if the test skipped. It measures only deterministic metrics, so it needs no Ragas. Citation precision is not in the nightly. The answers test below takes 35 minutes and varies by about 0.06 between runs. Run it by hand after a change to prompts, tools or the model. To refresh the baseline after an intended change, run the test with `APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1`.
 

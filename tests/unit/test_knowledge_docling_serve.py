@@ -77,7 +77,7 @@ async def test_a_corpus_pdf_keeps_its_pages_and_headings() -> None:
                 evidence = _norm(case["evidence"])
                 assert any(evidence in pages[page] for page in source["pages"]), case["id"]
                 checked += 1
-    assert checked == 5
+    assert checked == 13
     headings = [block for block in parsed.blocks if block.kind == "heading"]
     assert len(headings) >= 20
     assert all(block.level and block.page for block in headings)

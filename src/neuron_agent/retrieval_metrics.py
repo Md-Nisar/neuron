@@ -1,10 +1,11 @@
 # Copyright 2026 Md Nisar Ahmed
 # SPDX-License-Identifier: Apache-2.0
 
-"""Retrieval and citation metrics for the knowledge eval (RAG-08.01).
+"""Retrieval, citation and answer metrics for the knowledge eval (RAG-08.01).
 
 Deterministic and model-free: they score passages and citations against a case's
-`expected_sources` in the RAG-00.03 dataset (`tests/fixtures/knowledge_cases.json`). A source
+`expected_sources`, and answers against its `expected_facts`, in the RAG-00.03 dataset
+(`tests/fixtures/knowledge_cases.json`). A source
 names a document and either the pages or the sections that hold the answer. A section is
 written as in the file (`## HNSW`, `1.  Introduction`); a plain-text RFC has no headings the
 parser can see, so a sectioned source also matches a passage that holds the case's `evidence`.
@@ -16,6 +17,8 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
+
+from neuron_agent.evaluation import wilson_interval
 
 RECALL_K = 5
 
@@ -81,9 +84,10 @@ def mean_reciprocal_rank(ranks: Sequence[int | None]) -> float | None:
     return sum(1 / r for r in ranks if r) / len(ranks) if ranks else None
 
 
-def citation_precision(answers: Sequence[Answer]) -> float | None:
+def citation_source_precision(answers: Sequence[Answer]) -> float | None:
     """The share of all citations, over answerable cases' answers, that are in an expected
-    source; None if nothing was cited."""
+    source; None if nothing was cited. Not the literature's citation precision, which asks
+    whether each citation supports its sentence (`evaluation_judge`)."""
     verdicts = [is_correct(case, c) for case, cited in answers for c in cited]
     return sum(verdicts) / len(verdicts) if verdicts else None
 
@@ -121,9 +125,95 @@ def retrieval_report(
         "unanswerable_cases": len(abstained),
         "recall_at_5": rounded(recall_at_k(ranks)),
         "mrr": rounded(mean_reciprocal_rank(ranks)),
-        "citation_precision": rounded(citation_precision(answers)),
+        "citation_source_precision": rounded(citation_source_precision(answers)),
         "cited_correctly": rounded(cited_correctly(answers)),
         "abstention_accuracy": rounded(abstention_accuracy(abstained)),
+    }
+
+
+def _rounded(value: float | None) -> float | None:
+    return None if value is None else round(value, 3)
+
+
+def _phrase(text: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<![a-z0-9]){re.escape(_norm(text))}(?![a-z0-9])")
+
+
+def states(fact: Mapping[str, Any], text: str) -> bool:
+    """Whether `text` states `fact`: one of its `any` phrases appears as a whole phrase,
+    ignoring case and spacing. A paraphrase outside the list counts as not stated."""
+    normalized = _norm(text)
+    return any(_phrase(alias).search(normalized) for alias in fact["any"])
+
+
+PERFECT, ACCEPTABLE, MISSING, INCORRECT = "perfect", "acceptable", "missing", "incorrect"
+# CRAG's scores (Yang et al., 2024): a wrong answer costs more than no answer.
+CRAG_SCORE = {PERFECT: 1.0, ACCEPTABLE: 0.5, MISSING: 0.0, INCORRECT: -1.0}
+
+
+@dataclass(frozen=True)
+class Grade:
+    """An answerable case's answer, graded against its expected facts."""
+
+    label: str  # PERFECT, ACCEPTABLE, MISSING (abstained) or INCORRECT
+    vital_stated: int
+    vital_total: int
+
+
+def grade_answer(case: Case, text: str, abstained: bool) -> Grade:
+    """Grade an answer to an answerable case: missing when it abstained, perfect when it
+    states every vital fact, acceptable when it states some, incorrect when it states none."""
+    vital = [fact for fact in case["expected_facts"] if fact["vital"]]
+    stated = 0 if abstained else sum(states(fact, text) for fact in vital)
+    if abstained:
+        label = MISSING
+    elif stated == len(vital):
+        label = PERFECT
+    else:
+        label = ACCEPTABLE if stated else INCORRECT
+    return Grade(label, stated, len(vital))
+
+
+def ci95(successes: int, total: int) -> list[float] | None:
+    """The 95% Wilson interval of a rate, rounded; None without trials. Repeated trials of one
+    case are not independent, so on pooled trials the interval is too narrow."""
+    interval = wilson_interval(successes, total)
+    return None if interval is None else [round(bound, 3) for bound in interval]
+
+
+def answer_report(
+    grades: Sequence[Grade], unanswerable_abstained: Sequence[bool]
+) -> dict[str, Any]:
+    """The eval report's `answers` section (`eval_report.schema.json`): how answers to
+    answerable cases score against their expected facts, the false-refusal and hallucination
+    rates, and CRAG's score over answerable and unanswerable cases. Rates carry a 95% Wilson
+    interval. Trials may be pooled: pass every trial's grades (the intervals are then too
+    narrow, see `ci95`)."""
+    total = len(grades)
+    count = {label: sum(g.label == label for g in grades) for label in CRAG_SCORE}
+    attempted = total - count[MISSING]
+    answered_unanswerable = sum(not a for a in unanswerable_abstained)
+
+    def rate(successes: int, n: int) -> dict[str, Any]:
+        return {"value": _rounded(successes / n if n else None), "ci95": ci95(successes, n)}
+
+    scores = [CRAG_SCORE[g.label] for g in grades] + [
+        1.0 if a else -1.0 for a in unanswerable_abstained
+    ]
+    return {
+        "answerable_answers": total,
+        "unanswerable_answers": len(unanswerable_abstained),
+        "correct": rate(count[PERFECT], total),
+        "partially_correct": rate(count[ACCEPTABLE], total),
+        "incorrect": rate(count[INCORRECT], total),
+        "false_refusal": rate(count[MISSING], total),
+        "hallucination": rate(
+            count[INCORRECT] + answered_unanswerable, attempted + answered_unanswerable
+        ),
+        "vital_fact_recall": rate(
+            sum(g.vital_stated for g in grades), sum(g.vital_total for g in grades)
+        ),
+        "crag_score": _rounded(sum(scores) / len(scores) if scores else None),
     }
 
 
