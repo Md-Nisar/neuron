@@ -126,7 +126,7 @@ def test_the_corpus_pdf_chunks_keep_their_headings_and_pages() -> None:
                 found += 1
                 assert hits, case["id"]
                 assert any(chunk.page_start in source["pages"] for chunk in hits), case["id"]
-    assert found == 5
+    assert found == 13
 
 
 def _norm(text: str) -> str:

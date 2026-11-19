@@ -65,29 +65,29 @@ confidential data, so it may be sent to a hosted embedding API.
 - `question_type` (dataset 1.3.0) is the kind of question, for per-slice results: `fact`,
   `list`, `numeric`, `date`, `definition`, `yes_no` or `procedure`.
 
-## Candidate cases (dataset 2.0.0)
+## Dataset 2.0.0
 
-`candidate_cases.json` holds 148 cases written for dataset 2.0.0: 124 answerable, 24
-unanswerable. They follow the case format above, with two additions:
+Dataset 2.0.0 added 148 cases (124 answerable, 24 unanswerable) to the 85 of 1.3.0, for 233.
+They follow the case format above, with two additions:
 
 - More `question_type`s: `comparison`, and `multi_hop` (the answer combines two documents or
   two places).
 - Unanswerable cases have a `question_type` too: `out_of_scope`, `near_miss` (a question close
   to something the corpus covers) or `false_premise`.
 
-They cover every public document and are stratified by question type. `make test` validates
-them against the schema. It also checks each fact and each evidence quote against the parsed
-corpus, and that no id or question repeats one in the dataset.
+They cover every public document and are stratified by question type. `make test` checks each
+fact and each evidence quote against the parsed corpus, and that no id or question repeats.
 
-They are not yet in `knowledge_cases.json` because every question needs a committed query
-vector, and embedding needs an NVIDIA key. To promote them:
+Their query vectors were made on 2026-11-19, while `nemotron-3.5-embed-1b` answered `503` on
+NVIDIA's API catalog: each is `nvidia/nemotron-3-embed-1b`'s 2,048-dimension vector, cut to
+its first 1,024 dimensions and rescaled to unit length. On the 2,070 texts both models embedded,
+that matches the committed `nemotron-3.5-embed-1b` vectors to a cosine of at least 0.9997
+(median 0.99998), and dense retrieval ranks the 67 shared answerable cases identically.
 
-1. Append the cases to `knowledge_cases.json`, set its version to 2.0.0, and delete this file.
-2. Run `NVIDIA_API_KEY=... uv run python scripts/build_knowledge_eval.py embed`.
-3. Refresh the retrieval baseline: run
-   `tests/integration/test_postgres_knowledge_retrieval.py` with
-   `APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1` on Postgres with pgvector 0.7 or later. Record the
-   old and new figures: the set is harder, so recall@5 and MRR are expected to fall.
+The harder set lowered the retrieval baseline (`evals/baselines/knowledge_retrieval.json`, RRF
+on pgvector 0.8.7) from recall@5 0.984 and MRR 0.833 on 64 answerable cases to 0.957 and 0.823
+on 188. The live nightly baseline (`knowledge_retrieval_live.json`) still holds dataset 1.3.0's
+figures: refresh it with `APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1` once the live model answers.
 
 ## Injection documents are inert data
 

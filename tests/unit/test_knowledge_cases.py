@@ -236,20 +236,13 @@ def test_every_expected_fact_is_in_an_expected_source(
     assert _grounding_errors(dataset["cases"], parsed) == ["answerable-063: evidence"]
 
 
-def test_candidate_cases_are_valid_grounded_and_new(
-    dataset: dict[str, Any], parsed: dict[str, Any]
-) -> None:
-    # Cases written for dataset 2.0.0 that wait for committed query vectors before they join
-    # the dataset (tests/fixtures/knowledge/README.md).
-    candidates = _load(_FIXTURES / "knowledge/candidate_cases.json")["cases"]
-    jsonschema.Draft202012Validator(_load(_SCHEMA)).validate({**dataset, "cases": candidates})
-    assert not _grounding_errors(candidates, parsed)
-    ids = [c["id"] for c in dataset["cases"] + candidates]
+def test_case_ids_and_questions_do_not_repeat(dataset: dict[str, Any]) -> None:
+    ids = [c["id"] for c in dataset["cases"]]
     assert len(ids) == len(set(ids))
     # ACL cases ask one question as two users on purpose; answer cases must not repeat.
     questions = [
         _norm(c["question"])
-        for c in dataset["cases"] + candidates
+        for c in dataset["cases"]
         if c["category"] in {"answerable", "unanswerable"}
     ]
     assert len(questions) == len(set(questions))
