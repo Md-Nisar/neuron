@@ -232,7 +232,14 @@ async def test_answers_cite_the_right_source_and_abstain_without_one(
             json.dump(outcome, out, indent=2)
             out.write("\n")
     assert not errors, f"inconclusive, rerun: {errors}"
-    assert (report["answerable_cases"], report["unanswerable_cases"]) == (64, 12 * trials)
+    counts = {
+        c: sum(case["category"] == c for case in dataset["cases"])
+        for c in ("answerable", "unanswerable")
+    }
+    assert (report["answerable_cases"], report["unanswerable_cases"]) == (
+        counts["answerable"],
+        counts["unanswerable"] * trials,
+    )
     jsonschema.validate(outcome["answers"], {"$ref": "#/$defs/answers", "$defs": schema["$defs"]})
     assert report["cited_correctly"] >= CITED_CORRECTLY_GATE, outcome
     assert all(abstained.values()), outcome

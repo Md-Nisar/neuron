@@ -99,5 +99,7 @@ async def test_live_recall_and_mrr_hold_the_baseline(
     if os.environ.get("APP_KNOWLEDGE_EVAL_WRITE_BASELINE") == "1":
         BASELINE.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
-    assert report["answerable_cases"] == 64
+    assert report["answerable_cases"] == sum(
+        c["category"] == "answerable" for c in dataset["cases"]
+    )
     assert not (dropped := below_baseline(metrics, baseline, TOLERANCE)), dropped

@@ -65,6 +65,30 @@ confidential data, so it may be sent to a hosted embedding API.
 - `question_type` (dataset 1.3.0) is the kind of question, for per-slice results: `fact`,
   `list`, `numeric`, `date`, `definition`, `yes_no` or `procedure`.
 
+## Candidate cases (dataset 2.0.0)
+
+`candidate_cases.json` holds 148 cases written for dataset 2.0.0: 124 answerable, 24
+unanswerable. They follow the case format above, with two additions:
+
+- More `question_type`s: `comparison`, and `multi_hop` (the answer combines two documents or
+  two places).
+- Unanswerable cases have a `question_type` too: `out_of_scope`, `near_miss` (a question close
+  to something the corpus covers) or `false_premise`.
+
+They cover every public document and are stratified by question type. `make test` validates
+them against the schema. It also checks each fact and each evidence quote against the parsed
+corpus, and that no id or question repeats one in the dataset.
+
+They are not yet in `knowledge_cases.json` because every question needs a committed query
+vector, and embedding needs an NVIDIA key. To promote them:
+
+1. Append the cases to `knowledge_cases.json`, set its version to 2.0.0, and delete this file.
+2. Run `NVIDIA_API_KEY=... uv run python scripts/build_knowledge_eval.py embed`.
+3. Refresh the retrieval baseline: run
+   `tests/integration/test_postgres_knowledge_retrieval.py` with
+   `APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1` on Postgres with pgvector 0.7 or later. Record the
+   old and new figures: the set is harder, so recall@5 and MRR are expected to fall.
+
 ## Injection documents are inert data
 
 The files in `injection/` carry instructions aimed at the model: white 4-point text in a PDF,

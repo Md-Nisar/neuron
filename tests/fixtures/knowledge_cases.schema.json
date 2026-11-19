@@ -136,7 +136,7 @@
         },
         "question_type": {
           "description": "The kind of question, for per-slice results (dataset 1.3.0).",
-          "enum": ["fact", "list", "numeric", "date", "definition", "yes_no", "procedure"]
+          "enum": ["fact", "list", "numeric", "date", "definition", "yes_no", "procedure", "comparison", "multi_hop"]
         },
         "expected_facts": {
           "description": "The facts a correct answer states (dataset 1.3.0). A vital fact is needed for a complete answer. An answer states a fact when one of `any` appears in it as a whole phrase, ignoring case; the first entry appears in an expected source.",
@@ -166,7 +166,11 @@
         "as_user": { "$ref": "#/$defs/user" },
         "question": { "$ref": "#/$defs/question" },
         "expected_behavior": { "type": "string", "minLength": 1 },
-        "note": { "type": "string", "minLength": 1 }
+        "note": { "type": "string", "minLength": 1 },
+        "question_type": {
+          "description": "Why the corpus has no answer (dataset 2.0.0): out of scope, a near miss on something it does cover, or a false premise.",
+          "enum": ["out_of_scope", "near_miss", "false_premise"]
+        }
       }
     },
     "aclCase": {

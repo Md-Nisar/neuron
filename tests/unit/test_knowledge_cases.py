@@ -189,21 +189,67 @@ def _phrase_in(alias: str, text: str) -> bool:
     return re.search(rf"(?<![a-z0-9]){re.escape(norm)}(?![a-z0-9])", text) is not None
 
 
-def test_every_expected_fact_is_in_an_expected_source(dataset: dict[str, Any]) -> None:
-    # Facts are grounded: the first phrase of each one appears in the parsed text of an
-    # expected source document (the parser output stored for the eval).
-    parsed = json.loads(gzip.decompress((_FIXTURES / "knowledge/eval/parsed.json.gz").read_bytes()))
-    texts = {
-        doc_id: re.sub(r"\s+", " ", " ".join(b.get("text", "") for b in doc["blocks"])).lower()
-        for doc_id, doc in parsed["documents"].items()
-    }
-    missing = [
-        f"{case['id']}: {fact['any'][0]!r}"
-        for case in dataset["cases"]
-        if case["category"] == "answerable"
-        for fact in case["expected_facts"]
-        if not any(
-            _phrase_in(fact["any"][0], texts[s["document"]]) for s in case["expected_sources"]
-        )
+def _norm(text: str) -> str:
+    return re.sub(r"\s+", " ", text).lower().strip()
+
+
+@pytest.fixture(scope="module")
+def parsed() -> dict[str, Any]:
+    """The parser output stored for the eval, per document: its blocks."""
+    data = json.loads(gzip.decompress((_FIXTURES / "knowledge/eval/parsed.json.gz").read_bytes()))
+    return dict(data["documents"])
+
+
+def _text(parsed: dict[str, Any], source: dict[str, Any], page: int | None = None) -> str:
+    blocks = parsed[source["document"]]["blocks"]
+    return _norm(
+        " ".join(b.get("text", "") for b in blocks if page is None or b.get("page") == page)
+    )
+
+
+def _grounding_errors(cases: list[dict[str, Any]], parsed: dict[str, Any]) -> list[str]:
+    """Answerable cases whose facts or evidence are not in their expected sources: the first
+    phrase of every fact must appear in an expected document, and the evidence on an expected
+    page (or anywhere in a sectioned document)."""
+    errors = []
+    for case in cases:
+        if case["category"] != "answerable":
+            continue
+        sources = case["expected_sources"]
+        documents = " ".join(_text(parsed, s) for s in sources)
+        errors += [
+            f"{case['id']}: fact {fact['any'][0]!r}"
+            for fact in case["expected_facts"]
+            if not _phrase_in(fact["any"][0], documents)
+        ]
+        places = [_text(parsed, s, page) for s in sources for page in s.get("pages", [None])]
+        if not any(_norm(case["evidence"]) in place for place in places):
+            errors.append(f"{case['id']}: evidence")
+    return errors
+
+
+def test_every_expected_fact_is_in_an_expected_source(
+    dataset: dict[str, Any], parsed: dict[str, Any]
+) -> None:
+    # The OCR text of the scanned log joins "litres per" into one word, so that one quote,
+    # checked by hand when it was written, is not found as typed.
+    assert _grounding_errors(dataset["cases"], parsed) == ["answerable-063: evidence"]
+
+
+def test_candidate_cases_are_valid_grounded_and_new(
+    dataset: dict[str, Any], parsed: dict[str, Any]
+) -> None:
+    # Cases written for dataset 2.0.0 that wait for committed query vectors before they join
+    # the dataset (tests/fixtures/knowledge/README.md).
+    candidates = _load(_FIXTURES / "knowledge/candidate_cases.json")["cases"]
+    jsonschema.Draft202012Validator(_load(_SCHEMA)).validate({**dataset, "cases": candidates})
+    assert not _grounding_errors(candidates, parsed)
+    ids = [c["id"] for c in dataset["cases"] + candidates]
+    assert len(ids) == len(set(ids))
+    # ACL cases ask one question as two users on purpose; answer cases must not repeat.
+    questions = [
+        _norm(c["question"])
+        for c in dataset["cases"] + candidates
+        if c["category"] in {"answerable", "unanswerable"}
     ]
-    assert not missing, missing
+    assert len(questions) == len(set(questions))
