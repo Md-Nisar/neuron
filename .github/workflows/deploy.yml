@@ -1,5 +1,9 @@
 name: deploy
 
+# PARKED: disabled in the repository's Actions settings since 2026-10-27, after ten failed runs.
+# No hosted environment exists (CLAUDE.md, "Project stage"), so there is nothing to deploy to.
+# Kept because image-publish.yml, ADR 0008 and tests/unit/test_deploy_workflow.py define the
+# path a deploy will take; enable it only once the Render services and their secrets exist.
 # Deploys by digest and never rebuilds (ADR 0008 decision 6, steps 5-7; #151).
 #   - staging:    every image-publish run on main that succeeded (build, scan, attest).
 #   - production: a `v*` tag, in the `production` Environment (required reviewer). It takes the

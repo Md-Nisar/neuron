@@ -3,6 +3,8 @@ name: ai-code-verification
 # Deterministic gates for every pull request, whoever (or whatever) wrote the code.
 # See docs/AI_CODE_VERIFICATION.md. The existing `ci` workflow still runs format, lint,
 # typecheck, tests, bandit and pip-audit; these jobs add what it does not cover.
+# Label and description edits change what these jobs decide, so they re-run on them; the secret
+# and dependency scans read only the code and run in pr-scans.yml on new commits only.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled, edited]
@@ -51,29 +53,6 @@ jobs:
             if approved "${pair#*:}"; then value=true; else value=false; fi
             echo "${pair%%:*}=$value" >> "$GITHUB_OUTPUT"
           done
-
-  secrets-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: "false"
-
-  dependency-review:
-    # Known-vulnerable or disallowed-license dependencies introduced by the PR.
-    # Needs the dependency graph (on by default for public repos; GitHub Advanced Security
-    # for private ones).
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
-        with:
-          fail-on-severity: moderate
-          deny-licenses: AGPL-3.0, GPL-3.0
 
   new-dependencies:
     # Hallucinated or brand-new packages ("slopsquatting").
