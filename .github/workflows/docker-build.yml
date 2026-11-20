@@ -1,8 +1,7 @@
 name: docker-build
 
+# Pull requests only: on main, image-publish.yml builds, scans and attests the same Dockerfile.
 on:
-  push:
-    branches: [main]
   pull_request:
     paths:
       - Dockerfile

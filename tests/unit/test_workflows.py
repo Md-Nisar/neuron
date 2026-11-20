@@ -157,7 +157,8 @@ def test_docker_build_workflow_only_builds() -> None:
     workflow = _load("docker-build.yml")
     text = (WORKFLOWS / "docker-build.yml").read_text("utf-8")
     assert workflow["permissions"] == {"contents": "read"}
-    assert workflow[True]["push"]["branches"] == ["main"]
+    # Main is built by image-publish.yml; building it here as well was a second build per merge.
+    assert set(workflow[True]) == {"pull_request"}
     paths = workflow[True]["pull_request"]["paths"]
     assert {"Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock"} <= set(paths)
     job = workflow["jobs"]["docker-build"]
@@ -333,6 +334,19 @@ def test_docs_describe_the_scan_database_the_workflow_and_the_verify_command() -
     assert "gh attestation verify oci://ghcr.io/md-nisar/neuron@" in operations
     assert "--signer-workflow Md-Nisar/neuron/.github/workflows/image-publish.yml" in operations
     assert "--predicate-type https://slsa.dev/provenance/v1" in operations
+
+
+# --- ci.yml triggers ---------------------------------------------------------------------------
+
+
+def test_ci_runs_once_per_pull_request_commit_and_cancels_superseded_runs() -> None:
+    workflow = _load("ci.yml")
+    # A bare `push` also ran every pull request branch commit a second time.
+    assert workflow[True]["push"] == {"branches": ["main"]}
+    assert "pull_request" in workflow[True]
+    assert workflow["concurrency"]["group"] == "ci-${{ github.ref }}"
+    # Main runs gate deploys (test_deploy_workflow.py), so they are never cancelled.
+    assert workflow["concurrency"]["cancel-in-progress"] == "${{ github.ref != 'refs/heads/main' }}"
 
 
 # --- ci.yml observability-config (issue #155) -------------------------------------------------

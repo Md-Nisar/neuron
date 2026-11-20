@@ -142,7 +142,7 @@ pytest_add_cli_args_test_selection = ["tests/security/", "tests/unit/"]
 also_copy = [
   "scripts/", "loadtest/", "deploy/", ".github/", "docs/", "web/", "keycloak-theme/", "evals/",
   ".env.example", "langgraph.json", "Makefile", "docker-compose.yml", "docker-compose.reference.yml",
-  "Dockerfile", ".dockerignore", ".trivyignore.yaml", "render.yaml",
+  "Dockerfile", ".dockerignore", ".trivyignore.yaml", ".npm-audit-ignore.json", "render.yaml",
   "AGENTS.md", "CLAUDE.md", "ARCHITECTURE.md", "README.md", "DEVELOPMENT.md", "EVALUATION.md",
   "CONTRIBUTING.md", "OPERATIONS.md", "SECURITY.md", "CHANGELOG.md",
 ]
