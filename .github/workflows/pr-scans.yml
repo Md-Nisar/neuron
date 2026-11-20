@@ -1,12 +1,14 @@
 name: pr-scans
 
 # The code scans of the deterministic gates (docs/AI_CODE_VERIFICATION.md): secrets and
-# dependencies. They read only the code, so they run on new commits, not on the label and
-# description edits that re-run ai-code-verification.yml. A separate workflow, so that an edit
+# dependencies. They read only the code, so they run on new commits and a change of base
+# branch, not on the label and description edits that re-run ai-code-verification.yml. A separate workflow, so that an edit
 # cancelling an ai-code-verification run can never cancel a scan.
+# `edited` is here only for a change of base branch, which changes the diff under review; the jobs
+# skip every other edit.
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
@@ -17,6 +19,7 @@ concurrency:
 
 jobs:
   secrets-scan:
+    if: github.event.action != 'edited' || github.event.changes.base != null
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,6 +34,7 @@ jobs:
     # Known-vulnerable or disallowed-license dependencies introduced by the PR.
     # Needs the dependency graph (on by default for public repos; GitHub Advanced Security
     # for private ones).
+    if: github.event.action != 'edited' || github.event.changes.base != null
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

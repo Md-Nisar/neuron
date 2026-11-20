@@ -114,7 +114,10 @@ def test_a_docs_or_web_only_pull_request_skips_and_anything_else_runs() -> None:
     assert runs("src/neuron_agent/prompts/system/main.md")  # Markdown below the top level counts
     assert runs("tests/integration/test_postgres_checkpointer.py")
     assert runs("uv.lock") and runs(".github/workflows/postgres-integration.yml")
-    assert not runs()  # an empty diff has nothing to test
+    run = next(s for s in _job()["steps"] if s.get("id") == "changes")["run"]
+    assert "set -euo pipefail" in run  # a failed diff fails the step, never skips the tests
+    assert "git diff --no-renames --name-only" in run  # a move out of src/ lists src/ too
+    assert '[ -z "$changed" ] ||' in run  # an empty diff runs the tests
 
 
 def test_every_step_after_the_change_check_is_skipped_with_it() -> None:
