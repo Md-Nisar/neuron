@@ -11,10 +11,12 @@ an hour at the nightly's request rate. A model change re-embeds them with
 `scripts/build_knowledge_eval.py embed`, which the cached-vector gate already requires.
 
 Live and billed, so marked `integration`; it skips without `NVIDIA_API_KEY` or
-`APP_TEST_POSTGRES_DSN` (the nightly job fails on a skip). Calls are paced to 30 a minute, the
-nightly's throttle. The gate measures order, not latency: the reranker gets 15 seconds instead of
+`APP_TEST_POSTGRES_DSN` (the nightly job fails on a skip). Calls are paced to 30 a minute, as the
+nightly job runs them. The gate measures order, not latency: the reranker gets 15 seconds instead of
 the production 3 (some calls take longer than 3 seconds), and a case that still falls back is
-tried once more before the run counts as inconclusive. `APP_KNOWLEDGE_EVAL_REPORT` and
+tried once more. A case whose query embedding or rerank fails twice (a provider outage) makes
+the run inconclusive: the report says so and the test is skipped, which the nightly reports as a
+warning, not a regression. `APP_KNOWLEDGE_EVAL_REPORT` and
 `APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1` work as in the cached-vector gate.
 """
 
@@ -25,6 +27,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import NoReturn
 
 import anyio
 import pytest
@@ -83,9 +86,12 @@ async def test_live_recall_and_mrr_hold_the_baseline(
             started = time.monotonic()
             result = await retriever.search(owners[case["as_user"]], case["question"], k=10)
             await anyio.sleep(max(0.0, SECONDS_PER_CASE - (time.monotonic() - started)))
-            if result.reranked:
+            if result.reranked and result.path != "none":
                 break
-        assert result.reranked, "the reranker fell back twice: the run is inconclusive"
+        if result.path == "none":
+            _inconclusive(dataset["version"], "the embedding model failed twice on one case")
+        if not result.reranked:
+            _inconclusive(dataset["version"], "the reranker fell back twice on one case")
         located = [
             Located(names[p.doc_id], p.page_start, p.page_end, tuple(p.headings), p.text)
             for p in result.passages
@@ -103,3 +109,11 @@ async def test_live_recall_and_mrr_hold_the_baseline(
         c["category"] == "answerable" for c in dataset["cases"]
     )
     assert not (dropped := below_baseline(metrics, baseline, TOLERANCE)), dropped
+
+
+def _inconclusive(dataset_version: str, reason: str) -> NoReturn:
+    """A provider outage measures nothing: say so in the report and skip, never fail."""
+    if path := os.environ.get("APP_KNOWLEDGE_EVAL_REPORT"):
+        report = {"status": "inconclusive", "dataset_version": dataset_version, "reason": reason}
+        Path(path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    pytest.skip(f"inconclusive: {reason}")

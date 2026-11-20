@@ -29,8 +29,9 @@ jobs:
   knowledge-retrieval:
     runs-on: ubuntu-latest
     environment: ai-review
-    # About 5 minutes of calls (64 cases at 30 calls a minute) plus set-up.
-    timeout-minutes: 15
+    # About 13 minutes of calls (188 answerable cases, two calls each at 30 a minute), plus
+    # set-up and a retry per case.
+    timeout-minutes: 30
     env:
       # The image postgres-integration pins; the test creates its own database roles.
       POSTGRES_IMAGE: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
@@ -80,10 +81,16 @@ jobs:
         run: >-
           .venv/bin/python -m pytest tests/integration/test_live_knowledge_retrieval.py
           -m integration -rs -o faulthandler_timeout=600 --junitxml=knowledge-junit.xml
-      # A skip exits 0, so require the test to have run.
+      # A skip exits 0, so require the test to have run, unless it reported a provider outage:
+      # that measures nothing and is a warning, not a regression.
       - name: Require an executed gate
         if: steps.provider.outputs.configured == 'true'
-        run: .venv/bin/python scripts/require_postgres_tests.py knowledge-junit.xml
+        run: |
+          if [ -f knowledge-retrieval.json ] && jq -e '.status == "inconclusive"' knowledge-retrieval.json > /dev/null; then
+            echo "::warning::Live retrieval gate inconclusive: $(jq -r .reason knowledge-retrieval.json)"
+            exit 0
+          fi
+          .venv/bin/python scripts/require_postgres_tests.py knowledge-junit.xml
       - name: Upload the report
         if: always() && steps.provider.outputs.configured == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -100,12 +107,12 @@ jobs:
     runs-on: ubuntu-latest
     # NVIDIA_API_KEY is an `ai-review` environment secret that only `main` may use (audit L-08).
     environment: ai-review
-    # 3 trials of every suite take about 74 minutes (run 39225629460) at the default 30 model
-    # calls per minute (EVALUATION.md). The cap leaves 36 minutes over that; a 75 minute cap
-    # cut a run off before the compare step. ai-review skips 03:00 to 05:30 UTC, which covers
-    # the 03:17 start plus this cap and knowledge-retrieval's, so keep them in step
+    # 3 trials of every suite took about 74 minutes (run 39225629460) at 30 model calls a
+    # minute; at 15 a minute with longer retries it is not yet measured, so the cap is 150. A
+    # 75 minute cap cut a run off before the compare step. ai-review skips 03:00 to 06:30 UTC,
+    # which covers the 03:17 start plus this cap and knowledge-retrieval's, so keep them in step
     # (tests/unit/test_workflows.py).
-    timeout-minutes: 110
+    timeout-minutes: 150
     steps:
       - name: Check the provider secret
         id: provider
@@ -146,11 +153,18 @@ jobs:
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           TRIALS: ${{ inputs.trials || '3' }}
+          # NVIDIA answered 429 to most calls at 30 a minute (runs 47 to 49) and to over half at
+          # 8 a minute, with no rate-limit headers. Four retries back off about 15 seconds.
+          APP_PROVIDER_MAX_RETRIES: "4"
         run: |
           case "$TRIALS" in ''|*[!0-9]*) echo "::error::trials must be a positive integer"; exit 1;; esac
           # The security gate is pass^k = 100% with k >= 3 (ADR 0007 section 6); compare also enforces it.
           if [ "$TRIALS" -lt 3 ]; then echo "::error::trials must be at least 3 for the security gate"; exit 1; fi
-          uv run neuron-eval --trials "$TRIALS" --output report.json > /dev/null
+          # The gated suites run first, so they get the provider's capacity before it runs out.
+          # The environment `uv sync` built above, so nothing is resolved or built here.
+          .venv/bin/neuron-eval --trials "$TRIALS" --max-requests-per-minute 15 \
+            --suite security --suite approval --suite single_turn --suite multi_turn \
+            --output report.json > /dev/null
       - name: Compare with the committed baseline
         if: steps.provider.outputs.configured == 'true'
         run: |

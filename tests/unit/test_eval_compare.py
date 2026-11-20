@@ -250,8 +250,9 @@ def test_nightly_workflow_is_least_privilege_and_bounded() -> None:
     assert workflow["permissions"] == {"contents": "read"}
     job = workflow["jobs"]["live-eval"]
     # Measured run: about 74 minutes; the cap leaves at least 30 over it (issue #157). The upper
-    # bound was 90 and is now 120: ai-review's skip window has to cover start plus the cap.
-    assert 74 + 30 <= job["timeout-minutes"] <= 120
+    # bound was 90, then 120, and is now 160 for the slower 15-a-minute throttle: ai-review's
+    # skip window has to cover start plus the cap (test_workflows.py).
+    assert 74 + 30 <= job["timeout-minutes"] <= 160
     assert workflow["concurrency"]["cancel-in-progress"] is False
     # The secret is only ever mapped through `env:`, never interpolated into a script.
     for step in job["steps"]:
@@ -259,4 +260,4 @@ def test_nightly_workflow_is_least_privilege_and_bounded() -> None:
     # The security gate needs k >= 3, so the workflow refuses fewer trials before any live call.
     run_step = next(s for s in job["steps"] if s.get("name") == "Run the live evals")
     assert 'if [ "$TRIALS" -lt 3 ]' in run_step["run"]
-    assert run_step["run"].index("-lt 3") < run_step["run"].index("uv run neuron-eval")
+    assert run_step["run"].index("-lt 3") < run_step["run"].index("neuron-eval --trials")
