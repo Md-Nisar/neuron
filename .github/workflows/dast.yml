@@ -1,9 +1,12 @@
 name: dast
 
-# ZAP API scan of the reference stack (ADR 0012 decision 7, #331). Manual only: it builds the
-# image, starts the stack, signs in as a test user and scans /openapi.json. Medium or higher
-# findings fail the run unless deploy/reference/zap-rules.tsv excuses them with a reason.
+# ZAP API scan of the reference stack (ADR 0012 decision 7, #331). Weekly and on demand: it builds
+# the image, starts the stack inside the runner, signs in as a test user and scans /openapi.json
+# on localhost; nothing outside the runner is scanned. Medium or higher findings fail the run
+# unless deploy/reference/zap-rules.tsv excuses them with a reason.
 on:
+  schedule:
+    - cron: "37 4 * * 4"
   workflow_dispatch:
 
 permissions:

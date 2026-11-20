@@ -58,9 +58,10 @@ def test_the_committed_rules_file_is_valid() -> None:
     dast_gate.load_rules((_ROOT / "deploy/reference/zap-rules.tsv").read_text(encoding="utf-8"))
 
 
-def test_the_workflow_is_manual_read_only_and_pins_the_scanner_by_digest() -> None:
+def test_the_workflow_is_weekly_read_only_and_pins_the_scanner_by_digest() -> None:
     workflow = yaml.safe_load((_ROOT / ".github/workflows/dast.yml").read_text(encoding="utf-8"))
-    assert workflow[True] == {"workflow_dispatch": None}
+    # Two manual runs in a month left API changes unscanned; it now also runs once a week.
+    assert workflow[True] == {"schedule": [{"cron": "37 4 * * 4"}], "workflow_dispatch": None}
     assert workflow["permissions"] == {"contents": "read"}
     script = (_ROOT / "scripts/dast_scan.sh").read_text(encoding="utf-8")
     assert "ghcr.io/zaproxy/zaproxy@sha256:" in script

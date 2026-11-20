@@ -1,0 +1,51 @@
+name: scheduled-alerts
+
+# A failed scheduled run notifies no one, so weekly mutation testing tested nothing for three
+# weeks unnoticed. This keeps one open issue per scheduled workflow, labelled
+# `scheduled-failure`: a failed scheduled run opens it, or comments on it if it is open, and the
+# next successful scheduled run closes it. It reads only the triggering run's metadata; nothing
+# from that run is checked out or executed.
+on:
+  workflow_run:
+    workflows: [nightly-eval, mutation-testing, dast, image-rescan]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  alert:
+    if: >-
+      github.event.workflow_run.event == 'schedule'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && contains(fromJSON('["success", "failure", "timed_out"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open, update or close the workflow's issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -euo pipefail
+          title="Scheduled $WORKFLOW is failing"
+          number=$(gh issue list --state open --label scheduled-failure --limit 100 --json number,title \
+            | jq -r --arg t "$title" 'map(select(.title == $t))[0].number // empty')
+          if [ "$CONCLUSION" = success ]; then
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "Passed again: $RUN_URL"
+            fi
+            exit 0
+          fi
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "Failed again ($CONCLUSION): $RUN_URL"
+          else
+            gh label create scheduled-failure --color B60205 \
+              --description "A scheduled workflow is failing" 2>/dev/null || true
+            gh issue create --title "$title" --label scheduled-failure \
+              --body "The scheduled \`$WORKFLOW\` run ended \`$CONCLUSION\`: $RUN_URL. This issue closes itself when a scheduled run passes again (.github/workflows/scheduled-alerts.yml)."
+          fi

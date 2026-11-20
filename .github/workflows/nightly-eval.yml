@@ -174,10 +174,18 @@ jobs:
           if [ ! -f "$baseline" ]; then
             echo "::notice::No baseline at $baseline; only the security gate applies. Review the uploaded report and commit it as the first baseline."
           fi
-          # Exit 1: a gate failed. Exit 2: inconclusive (infrastructure errors).
+          # Exit 1: a gate failed. Exit 2: inconclusive (infrastructure errors, never a gate):
+          # a warning, so that a red run always means a failed gate. A gate failure outranks
+          # inconclusive, so a run with both still fails.
           status=0
           uv run neuron-eval compare "$baseline" report.json > comparison.json || status=$?
           cat comparison.json
+          if [ "$status" -eq 2 ]; then
+            errors=$(jq -r '.infrastructure_errors | length' comparison.json)
+            echo "::warning::Nightly eval inconclusive: $errors case(s) hit infrastructure errors, so not every gate was judged. Rerun it."
+            echo "**Inconclusive:** $errors case(s) hit infrastructure errors; see comparison.json." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           exit "$status"
       - name: Upload the report
         if: always() && steps.provider.outputs.configured == 'true'

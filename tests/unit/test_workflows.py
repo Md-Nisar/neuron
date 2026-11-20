@@ -442,3 +442,59 @@ def test_code_scans_run_on_new_commits_only_in_their_own_workflow() -> None:
     )
     assert scans["permissions"] == {"contents": "read"}
     assert "edited" in verification[True]["pull_request"]["types"]
+
+
+def test_an_inconclusive_nightly_is_a_warning_and_a_failed_gate_fails() -> None:
+    compare = next(
+        s
+        for s in _load("nightly-eval.yml")["jobs"]["live-eval"]["steps"]
+        if s.get("name") == "Compare with the committed baseline"
+    )["run"]
+    # Exit 2 (infrastructure errors only) warns and passes; exit 1 (a gate) still fails the job.
+    inconclusive = compare.split('if [ "$status" -eq 2 ]; then', 1)[1].split("fi", 1)[0]
+    assert "::warning::" in inconclusive
+    assert inconclusive.rstrip().endswith("exit 0")
+    assert compare.rstrip().endswith('exit "$status"')
+
+
+def test_the_weekly_rescan_uses_the_publish_scan_settings_and_only_reads() -> None:
+    rescan = _load("image-rescan.yml")
+    assert set(rescan[True]) == {"schedule", "workflow_dispatch"}
+    assert rescan["permissions"] == {}
+    job = rescan["jobs"]["scan"]
+    assert job["permissions"] == {"contents": "read", "packages": "read", "actions": "read"}
+    published = _step_with(_publish_jobs()["scan"], "aquasecurity/trivy-action@")
+    ours = _step_with(job, "aquasecurity/trivy-action@")
+    assert ours["image-ref"] == "${{ steps.image.outputs.ref }}"
+    assert {k: v for k, v in ours.items() if k != "image-ref"} == {
+        k: v for k, v in published.items() if k != "image-ref"
+    }
+    assert [s["uses"] for s in job["steps"] if "trivy-action" in s.get("uses", "")] == [
+        s["uses"] for s in _publish_jobs()["scan"]["steps"] if "trivy-action" in s.get("uses", "")
+    ]
+    runs = " ".join(s.get("run", "") for s in job["steps"])
+    for verb in ("docker push", "delete", "--method"):
+        assert verb not in runs, verb
+    assert not [s for s in job["steps"] if "build-push-action" in s.get("uses", "")]
+
+
+def test_scheduled_failures_open_an_issue_and_a_pass_closes_it() -> None:
+    alerts = _load("scheduled-alerts.yml")
+    scheduled = {
+        path.stem
+        for path in WORKFLOWS.glob("*.yml")
+        if "schedule" in yaml.safe_load(path.read_text("utf-8"))[True]
+    }
+    # Every scheduled workflow is watched (CodeQL reports to code scanning instead).
+    assert set(alerts[True]["workflow_run"]["workflows"]) == scheduled - {"codeql"}
+    assert alerts["permissions"] == {}
+    job = alerts["jobs"]["alert"]
+    assert job["permissions"] == {"issues": "write"}
+    assert "github.event.workflow_run.event == 'schedule'" in job["if"]
+    assert "head_repository.full_name == github.repository" in job["if"]
+    run = job["steps"][0]["run"]
+    for command in ("gh issue create", "gh issue comment", "gh issue close"):
+        assert command in run, command
+    # The triggering run's values reach the script only through env, never inline.
+    assert "${{" not in run
+    assert "checkout" not in (WORKFLOWS / "scheduled-alerts.yml").read_text("utf-8")
