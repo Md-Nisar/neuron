@@ -13,8 +13,12 @@ on:
 permissions:
   contents: read
 
+# An edit that leaves the base branch alone runs in a group of its own, so its skipped run can
+# never cancel a scan and stand in for it as a passing check.
 concurrency:
-  group: pr-scans-${{ github.event.pull_request.number }}
+  group: >-
+    pr-scans-${{ github.event.pull_request.number }}-${{
+    github.event.action == 'edited' && github.event.changes.base == null && github.run_id || 'scan' }}
   cancel-in-progress: true
 
 jobs:

@@ -434,5 +434,11 @@ def test_code_scans_run_on_new_commits_only_in_their_own_workflow() -> None:
     # and cannot cancel them, since the two workflows have separate concurrency groups.
     assert not {"secrets-scan", "dependency-review"} & set(verification["jobs"])
     assert scans["concurrency"]["group"] != verification["concurrency"]["group"]
+    # A skipped edit run gets its own group (its run id), so it cannot cancel a scan.
+    group = " ".join(scans["concurrency"]["group"].split())
+    assert group == (
+        "pr-scans-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited'"
+        " && github.event.changes.base == null && github.run_id || 'scan' }}"
+    )
     assert scans["permissions"] == {"contents": "read"}
     assert "edited" in verification[True]["pull_request"]["types"]
