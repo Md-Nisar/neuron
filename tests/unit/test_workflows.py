@@ -97,7 +97,8 @@ def test_nightly_runs_every_suite_with_the_gated_ones_first() -> None:
 def test_an_inconclusive_retrieval_run_is_a_warning_and_anything_else_must_execute() -> None:
     steps = _load("nightly-eval.yml")["jobs"]["knowledge-retrieval"]["steps"]
     script = next(step for step in steps if step.get("name") == "Require an executed gate")["run"]
-    assert '.status == "inconclusive"' in script and "::warning::" in script
+    assert '.status == "inconclusive"' in script
+    assert "::warning::" in script
     assert script.rstrip().endswith("scripts/require_postgres_tests.py knowledge-junit.xml")
 
 

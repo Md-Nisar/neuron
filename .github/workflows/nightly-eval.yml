@@ -161,7 +161,8 @@ jobs:
           # The security gate is pass^k = 100% with k >= 3 (ADR 0007 section 6); compare also enforces it.
           if [ "$TRIALS" -lt 3 ]; then echo "::error::trials must be at least 3 for the security gate"; exit 1; fi
           # The gated suites run first, so they get the provider's capacity before it runs out.
-          uv run neuron-eval --trials "$TRIALS" --max-requests-per-minute 15 \
+          # The environment `uv sync` built above, so nothing is resolved or built here.
+          .venv/bin/neuron-eval --trials "$TRIALS" --max-requests-per-minute 15 \
             --suite security --suite approval --suite single_turn --suite multi_turn \
             --output report.json > /dev/null
       - name: Compare with the committed baseline
