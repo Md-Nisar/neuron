@@ -12,6 +12,8 @@ from typing import Any
 
 import yaml
 
+from neuron_agent.evaluation import SUITES
+
 WORKFLOWS = Path(".github/workflows")
 
 
@@ -81,6 +83,22 @@ def test_nightly_checks_the_model_before_the_evals_and_prints_only_a_status() ->
     assert "APP_DEFAULT_MODEL" in script
     # The response body can name the account or model; only the status code is printed.
     assert "-o /dev/null" in script and "%{http_code}" in script
+
+
+def test_nightly_runs_every_suite_with_the_gated_ones_first() -> None:
+    steps = _load("nightly-eval.yml")["jobs"]["live-eval"]["steps"]
+    script = next(step for step in steps if step.get("name") == "Run the live evals")["run"]
+    suites = re.findall(r"--suite (\w+)", script)
+    # Named explicitly for the order, so a new suite must be added here too.
+    assert sorted(suites) == sorted(SUITES)
+    assert suites[:2] == ["security", "approval"]
+
+
+def test_an_inconclusive_retrieval_run_is_a_warning_and_anything_else_must_execute() -> None:
+    steps = _load("nightly-eval.yml")["jobs"]["knowledge-retrieval"]["steps"]
+    script = next(step for step in steps if step.get("name") == "Require an executed gate")["run"]
+    assert '.status == "inconclusive"' in script and "::warning::" in script
+    assert script.rstrip().endswith("scripts/require_postgres_tests.py knowledge-junit.xml")
 
 
 def _uses_lines() -> list[tuple[str, str]]:

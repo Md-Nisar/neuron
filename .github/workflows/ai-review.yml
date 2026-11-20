@@ -45,7 +45,7 @@ jobs:
         id: window
         env:
           NIGHTLY_WINDOW_START_UTC: "03:00"
-          NIGHTLY_WINDOW_END_UTC: "05:30"
+          NIGHTLY_WINDOW_END_UTC: "06:30"
         run: |
           now=$(date -u +%H:%M)
           if [[ ! "$now" < "$NIGHTLY_WINDOW_START_UTC" && "$now" < "$NIGHTLY_WINDOW_END_UTC" ]]; then
