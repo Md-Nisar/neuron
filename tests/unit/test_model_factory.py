@@ -406,6 +406,10 @@ def test_ac1_an_openai_compatible_model_sends_requests_to_its_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-real-openai-key")
+    # Class-level lists outlive the test: clear them so a second run in one process (mutmut's
+    # clean run) sees only its own request.
+    _ChatServer.paths.clear()
+    _ChatServer.keys.clear()
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _ChatServer)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
