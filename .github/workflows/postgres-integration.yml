@@ -13,7 +13,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A pull request that changes only docs or web files skips the Postgres job. The decision is a
+  # job of its own, not a workflow path filter, so the check still reports (a skipped job passes
+  # a required check). Only these paths (and top-level Markdown) are skipped; anything else,
+  # every push to main, and a failure of this job run the tests.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      # The merge commit and its base, to list what the pull request changes.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: diff
+        run: |
+          set -euo pipefail
+          # --no-renames lists both sides of a move, so moving a file out of src/ still runs the
+          # tests. A failed diff fails the step; an empty one runs the tests.
+          changed=$(git diff --no-renames --name-only HEAD^1 HEAD)
+          if [ -z "$changed" ] || printf '%s\n' "$changed" | grep -qvE '^(docs/|web/|keycloak-theme/|audit/|qa/|assets/|[^/]+\.md$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Only docs or web files changed: the Postgres tests were skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   postgres-integration:
+    needs: changes
+    # Runs unless the change check said "false": on push (check skipped), and if it failed.
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -26,34 +58,12 @@ jobs:
       # The TLS success path of the start-up check (#139) must run here, not be skipped.
       APP_TEST_POSTGRES_REQUIRE_TLS: "1"
     steps:
-      # The merge commit and its base, to list what the pull request changes.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 2
-      # The check must still report on every pull request (it can be a required check), so a
-      # change to nothing these tests read passes it here instead of a workflow path filter.
-      # Only these paths (and top-level Markdown) are skipped; anything else, and every push to
-      # main, runs the tests.
-      - name: Skip a docs or web only change
-        id: changes
-        if: github.event_name == 'pull_request'
-        run: |
-          set -euo pipefail
-          # --no-renames lists both sides of a move, so moving a file out of src/ still runs the
-          # tests. A failed diff fails the step; an empty one runs the tests.
-          changed=$(git diff --no-renames --name-only HEAD^1 HEAD)
-          if [ -z "$changed" ] || printf '%s\n' "$changed" | grep -qvE '^(docs/|web/|keycloak-theme/|audit/|qa/|assets/|[^/]+\.md$)'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Only docs or web files changed: the Postgres tests were skipped." >> "$GITHUB_STEP_SUMMARY"
-          fi
       # A service container cannot mount a certificate, so the server is started here with TLS on
       # and a throwaway self-signed certificate that is discarded with the job. The password is
       # the same CI-only value as in the DSN above. The wait uses TCP (`-h 127.0.0.1`): the
       # image's temporary initialisation server listens on the socket only.
       - name: Start Postgres with TLS
-        if: steps.changes.outputs.run != 'false'
         run: |
           set -euo pipefail
           certs="$(mktemp -d)"
@@ -74,14 +84,10 @@ jobs:
           docker logs postgres >&2
           exit 1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        if: steps.changes.outputs.run != 'false'
-      - if: steps.changes.outputs.run != 'false'
-        run: uv python install 3.13
-      - if: steps.changes.outputs.run != 'false'
-        run: uv sync
+      - run: uv python install 3.13
+      - run: uv sync
       # No provider key is mapped into this job; refuse to run if one appears in the environment.
       - name: Refuse to run with a provider key
-        if: steps.changes.outputs.run != 'false'
         run: |
           if [ -n "${OPENAI_API_KEY:-}" ] || [ -n "${APP_OPENAI_API_KEY:-}" ]; then
             echo "A provider key is set; this job must not hold one." >&2
@@ -90,14 +96,11 @@ jobs:
       # `-m postgres` replaces the default `-m 'not integration'`, so only Postgres tests are
       # selected; the live-model tests carry no `postgres` marker and cannot run here.
       - name: Run the Postgres tests
-        if: steps.changes.outputs.run != 'false'
         run: uv run python -m pytest -m postgres -rs --junitxml=postgres-junit.xml
       # A skipped test exits 0, and an unset DSN skips every test, so count outcomes.
       - name: Require executed Postgres tests
-        if: steps.changes.outputs.run != 'false'
         run: uv run python scripts/require_postgres_tests.py postgres-junit.xml
       # RAG-08.02 AC2: each knowledge security case's control is removed in a copy of the
       # package, and one of its tests must fail. A skipped or passing case fails this step.
       - name: Knowledge security mutation check
-        if: steps.changes.outputs.run != 'false'
         run: .venv/bin/python scripts/knowledge_mutations.py

@@ -94,36 +94,38 @@ def test_postgres_runs_with_tls_and_the_tests_require_it() -> None:
     assert "APP_TEST_POSTGRES_REQUIRE_TLS" in tls_test
 
 
-def _skip_pattern() -> re.Pattern[str]:
-    [step] = [s for s in _job()["steps"] if s.get("id") == "changes"]
-    assert step["if"] == "github.event_name == 'pull_request'"  # main always runs the tests
-    match = re.search(r"grep -qvE '([^']+)'", step["run"])
-    assert match
-    return re.compile(match.group(1))
+def _change_check() -> dict[str, Any]:
+    workflow = yaml.safe_load(_FILE.read_text("utf-8"))
+    job: dict[str, Any] = workflow["jobs"]["changes"]
+    assert job["if"] == "github.event_name == 'pull_request'"  # main always runs the tests
+    assert job["steps"][0]["with"]["fetch-depth"] == 2  # the base, to diff against
+    return job
 
 
 def test_a_docs_or_web_only_pull_request_skips_and_anything_else_runs() -> None:
-    pattern = _skip_pattern()
+    run = _change_check()["steps"][1]["run"]
+    match = re.search(r"grep -qvE '([^']+)'", run)
+    assert match
+    pattern = re.compile(match.group(1))
 
     def runs(*changed: str) -> bool:
-        # The step runs the tests when any changed file falls outside the skipped paths.
+        # The tests run when any changed file falls outside the skipped paths.
         return any(not pattern.search(path) for path in changed)
 
     assert not runs("docs/ROADMAP.md", "README.md", "web/src/App.tsx", "keycloak-theme/x.ftl")
     assert runs("README.md", "src/neuron_agent/knowledge/store.py")
     assert runs("src/neuron_agent/prompts/system/main.md")  # Markdown below the top level counts
     assert runs("tests/integration/test_postgres_checkpointer.py")
-    assert runs("uv.lock") and runs(".github/workflows/postgres-integration.yml")
-    run = next(s for s in _job()["steps"] if s.get("id") == "changes")["run"]
+    assert runs("uv.lock")
+    assert runs(".github/workflows/postgres-integration.yml")
     assert "set -euo pipefail" in run  # a failed diff fails the step, never skips the tests
     assert "git diff --no-renames --name-only" in run  # a move out of src/ lists src/ too
     assert '[ -z "$changed" ] ||' in run  # an empty diff runs the tests
 
 
-def test_every_step_after_the_change_check_is_skipped_with_it() -> None:
-    steps = _job()["steps"]
-    position = next(i for i, s in enumerate(steps) if s.get("id") == "changes")
-    assert position == 1  # right after the checkout, which fetches the base to diff against
-    assert steps[0]["with"]["fetch-depth"] == 2
-    for step in steps[position + 1 :]:
-        assert step["if"] == "steps.changes.outputs.run != 'false'", step
+def test_the_tests_run_unless_the_change_check_says_skip() -> None:
+    job = _job()
+    assert job["needs"] == "changes"
+    # A failed or skipped check leaves the output empty, which runs the tests (fail closed).
+    assert job["if"] == "${{ !cancelled() && needs.changes.outputs.run != 'false' }}"
+    assert not [s for s in job["steps"] if "steps.changes" in str(s.get("if", ""))]
