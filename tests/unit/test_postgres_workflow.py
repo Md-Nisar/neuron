@@ -92,3 +92,40 @@ def test_postgres_runs_with_tls_and_the_tests_require_it() -> None:
     assert job["env"]["APP_TEST_POSTGRES_REQUIRE_TLS"] == "1"
     tls_test = Path("tests/integration/test_postgres_roles.py").read_text("utf-8")
     assert "APP_TEST_POSTGRES_REQUIRE_TLS" in tls_test
+
+
+def _change_check() -> dict[str, Any]:
+    workflow = yaml.safe_load(_FILE.read_text("utf-8"))
+    job: dict[str, Any] = workflow["jobs"]["changes"]
+    assert job["if"] == "github.event_name == 'pull_request'"  # main always runs the tests
+    assert job["steps"][0]["with"]["fetch-depth"] == 2  # the base, to diff against
+    return job
+
+
+def test_a_docs_or_web_only_pull_request_skips_and_anything_else_runs() -> None:
+    run = _change_check()["steps"][1]["run"]
+    match = re.search(r"grep -qvE '([^']+)'", run)
+    assert match
+    pattern = re.compile(match.group(1))
+
+    def runs(*changed: str) -> bool:
+        # The tests run when any changed file falls outside the skipped paths.
+        return any(not pattern.search(path) for path in changed)
+
+    assert not runs("docs/ROADMAP.md", "README.md", "web/src/App.tsx", "keycloak-theme/x.ftl")
+    assert runs("README.md", "src/neuron_agent/knowledge/store.py")
+    assert runs("src/neuron_agent/prompts/system/main.md")  # Markdown below the top level counts
+    assert runs("tests/integration/test_postgres_checkpointer.py")
+    assert runs("uv.lock")
+    assert runs(".github/workflows/postgres-integration.yml")
+    assert "set -euo pipefail" in run  # a failed diff fails the step, never skips the tests
+    assert "git diff --no-renames --name-only" in run  # a move out of src/ lists src/ too
+    assert '[ -z "$changed" ] ||' in run  # an empty diff runs the tests
+
+
+def test_the_tests_run_unless_the_change_check_says_skip() -> None:
+    job = _job()
+    assert job["needs"] == "changes"
+    # A failed or skipped check leaves the output empty, which runs the tests (fail closed).
+    assert job["if"] == "${{ !cancelled() && needs.changes.outputs.run != 'false' }}"
+    assert not [s for s in job["steps"] if "steps.changes" in str(s.get("if", ""))]

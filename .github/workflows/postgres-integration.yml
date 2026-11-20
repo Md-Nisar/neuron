@@ -13,7 +13,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A pull request that changes only docs or web files skips the Postgres job. The decision is a
+  # job of its own, not a workflow path filter, so the check still reports (a skipped job passes
+  # a required check). Only these paths (and top-level Markdown) are skipped; anything else,
+  # every push to main, and a failure of this job run the tests.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      # The merge commit and its base, to list what the pull request changes.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: diff
+        run: |
+          set -euo pipefail
+          # --no-renames lists both sides of a move, so moving a file out of src/ still runs the
+          # tests. A failed diff fails the step; an empty one runs the tests.
+          changed=$(git diff --no-renames --name-only HEAD^1 HEAD)
+          if [ -z "$changed" ] || printf '%s\n' "$changed" | grep -qvE '^(docs/|web/|keycloak-theme/|audit/|qa/|assets/|[^/]+\.md$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Only docs or web files changed: the Postgres tests were skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   postgres-integration:
+    needs: changes
+    # Runs unless the change check said "false": on push (check skipped), and if it failed.
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

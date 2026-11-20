@@ -420,3 +420,25 @@ def test_override_labels_count_only_when_an_admin_or_maintainer_applied_them() -
         assert job["needs"] == "override-labels" and job["if"] == "${{ !cancelled() }}"
     assert "needs.override-labels.outputs.large-pr" in text
     assert text.count("needs.override-labels.outputs.new-dependency") == 3
+
+
+def test_code_scans_run_on_new_commits_only_in_their_own_workflow() -> None:
+    scans = _load("pr-scans.yml")
+    verification = _load("ai-code-verification.yml")
+    assert scans[True]["pull_request"]["types"] == ["opened", "synchronize", "reopened", "edited"]
+    assert set(scans["jobs"]) == {"secrets-scan", "dependency-review"}
+    for job in scans["jobs"].values():
+        # An edit re-runs the scans only when it changes the base branch, and so the diff.
+        assert job["if"] == "github.event.action != 'edited' || github.event.changes.base != null"
+    # The required checks keep their names; a label or description edit no longer re-runs them,
+    # and cannot cancel them, since the two workflows have separate concurrency groups.
+    assert not {"secrets-scan", "dependency-review"} & set(verification["jobs"])
+    assert scans["concurrency"]["group"] != verification["concurrency"]["group"]
+    # A skipped edit run gets its own group (its run id), so it cannot cancel a scan.
+    group = " ".join(scans["concurrency"]["group"].split())
+    assert group == (
+        "pr-scans-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited'"
+        " && github.event.changes.base == null && github.run_id || 'scan' }}"
+    )
+    assert scans["permissions"] == {"contents": "read"}
+    assert "edited" in verification[True]["pull_request"]["types"]
