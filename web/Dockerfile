@@ -2,7 +2,7 @@
 # unprivileged nginx on port 8080. The defaults in `src/lib/auth/config.ts` and `src/lib/api.ts`
 # already point at the local Keycloak (localhost:8180) and API (127.0.0.1:8000).
 # node:22.22.0-bookworm-slim
-FROM node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94 AS build
+FROM node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS build
 WORKDIR /web
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
