@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Date | 2026-11-22 |
-| Status | Proposal for the owner. Nothing here is decided until the ADR drafts in section 4 are accepted into `docs/decisions/`. |
+| Status | **Decided 2026-11-22.** The owner accepted all nine recommendations in section 6, with native tools (draft A only). Recorded as [ADR 0016](../../../decisions/0016-structured-data-gateway.md). No production environment exists, so only the proof (P0) starts now. |
 | Question | Four documents propose how Neuron should answer questions from databases. Where do they agree, where do they conflict, and what single design should go forward? |
 | Inputs | [Data Agent assessment](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md) (28 Oct), [structured data decision](STRUCTURED_DATA_DECISION_AND_HANDOFF.md) (12 Nov), [chart decision](CHART_GENERATION_DECISION_AND_HANDOFF.md) (12 Nov), [AI-to-database architecture v2.0](AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md) (22 Nov), and the principles in [fine-grained data access control](../landscape/FINE_GRAINED_DATA_ACCESS_CONTROL_FOR_AGENTS.md) (25 Oct) |
 | Review | Revised the same day after an architecture review: section 3.6 (how Neuron reaches the gateway), the sample-size change in section 5 and the risks in section 7 were added. |
@@ -169,6 +169,8 @@ If the owner chooses MCP over native tools, adopt draft 0017 as written in the d
 Thresholds in decision B8 are unchanged; only the sample behind them grows.
 
 ## 6. Decisions for the owner
+
+**Owner decision, 2026-11-22: all nine recommendations accepted.**
 
 | # | Decision | Recommendation |
 | --- | --- | --- |
