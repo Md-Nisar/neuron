@@ -247,7 +247,7 @@ In-process by default, behind `DataAgentPort`. \[R\] Move to `RemoteDataAgent` o
 
 ### 4.7 Design upgrades from studying Omni
 
-**\[R\] Omni's production analytics agent confirms the core design: abstract query, not SQL; permissions in the semantic layer; rows kept out of the main model's context. It also shows eleven upgrades worth making.** Source details are in the [landscape doc](NAO_LICENSE_AND_FIT_ASSESSMENT.md), section 5. All are concepts only; Omni is proprietary.
+**\[R\] Omni's production analytics agent confirms the core design: abstract query, not SQL; permissions in the semantic layer; rows kept out of the main model's context. It also shows eleven upgrades worth making.** Source details are in the [landscape doc](../landscape/NAO_LICENSE_AND_FIT_ASSESSMENT.md), section 5. All are concepts only; Omni is proprietary.
 
 | # | Area | Upgrade | Omni practice it follows | Phase |
 | --- | --- | --- | --- | --- |
@@ -344,7 +344,7 @@ aggregation:
 
 | Source | License (verified) | Study and adapt | Leave alone |
 | --- | --- | --- | --- |
-| [nao](NAO_LICENSE_AND_FIT_ASSESSMENT.md) | Apache 2.0 core; MIT CLI; 63 files under a commercial license | Context as reviewable files (`RULES.md`, per-table docs); `nao test` style context tests; semantic-layer "exclusive" mode; async ask-and-poll contract (`ask_nao` / `get_nao_answer`); clarification status; BI import skills (Metabase, Tableau); MIT sqlglot guards in `cli/nao_core/config/databases/` (allow-listed tables, excluded columns, row predicates) | Every `/* @license Enterprise */` file: SSO, row-level security wiring, column exclusion service, budgets, license checks |
+| [nao](../landscape/NAO_LICENSE_AND_FIT_ASSESSMENT.md) | Apache 2.0 core; MIT CLI; 63 files under a commercial license | Context as reviewable files (`RULES.md`, per-table docs); `nao test` style context tests; semantic-layer "exclusive" mode; async ask-and-poll contract (`ask_nao` / `get_nao_answer`); clarification status; BI import skills (Metabase, Tableau); MIT sqlglot guards in `cli/nao_core/config/databases/` (allow-listed tables, excluded columns, row predicates) | Every `/* @license Enterprise */` file: SSO, row-level security wiring, column exclusion service, budgets, license checks |
 | [Cube](https://github.com/cube-js/cube) Core | Apache 2.0 / MIT | `access_policy` model: groups plus user attributes produce row filters and member-level access; security context from the JWT; `queryRewrite` hook; pre-aggregation caching | Cube Cloud-only features; also evaluate Cube Core as a dependency (section 8) |
 | [Wren AI](https://github.com/Canner/WrenAI) core | Apache 2.0 for `core/`, `sdk/`, `skills/`; docs CC BY 4.0; future AGPL modules announced | Modeling definition language (MDL) for semantic models; text-to-SQL pipeline structure; connector layering | Commercial tier (row and column security, access control); any AGPL path once added |
 | [Trino OPA plugin](https://trino.io/docs/current/security/opa-access-control.html) | Apache 2.0 | Decision interface: per table, return row-filter expressions and one mask per column; identity + groups as input; batch mode | — |
@@ -486,6 +486,6 @@ Phase 2 is highlighted because it is the first release with user value; Phase 3 
 * [Trino — Open Policy Agent access control](https://trino.io/docs/current/security/opa-access-control.html)
 * [Wren AI — open-core page](https://www.getwren.ai/oss) and [repository license map](https://github.com/Canner/WrenAI)
 * [Cube repository](https://github.com/cube-js/cube) (Apache 2.0 / MIT)
-* [nao repository](https://github.com/getnao/nao) and the companion [Data Analytics Agents — Landscape and Prior Art](NAO_LICENSE_AND_FIT_ASSESSMENT.md)
+* [nao repository](https://github.com/getnao/nao) and the companion [Data Analytics Agents — Landscape and Prior Art](../landscape/NAO_LICENSE_AND_FIT_ASSESSMENT.md)
 
 **Project docs:** Agent Platform Research 01 (architecture blueprint), Research 02 (harness design study), Enterprise AI Agent Use Cases — Evidence Review (Oct 2026).

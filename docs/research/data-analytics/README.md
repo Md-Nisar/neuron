@@ -5,14 +5,22 @@ place. This page organises the material; it does not decide anything or settle t
 lists. As of 2026-11-22, only the uploaded-tables feature (RAG-11.01, v1.4.0) is decided and built.
 Everything else is a research proposal.
 
+## Layout
+
+| Folder | Holds |
+| --- | --- |
+| `landscape/` | Background studies: access control for agents, and the data-agent product landscape |
+| `proposals/` | Designs and decision briefs for Neuron, none accepted as an ADR yet |
+| `reference-code/` | Tested reference code that backs a proposal (`nl2data-ref`, 68 tests) |
+
 ## Reading order
 
-1. [`FINE_GRAINED_DATA_ACCESS_CONTROL_FOR_AGENTS.md`](FINE_GRAINED_DATA_ACCESS_CONTROL_FOR_AGENTS.md): who may see which rows, and why the agent must not decide it.
-2. [`NAO_LICENSE_AND_FIT_ASSESSMENT.md`](NAO_LICENSE_AND_FIT_ASSESSMENT.md): the open-source and commercial data-agent landscape.
-3. [`NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md`](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md): the first Data Agent design for Neuron.
-4. [`STRUCTURED_DATA_DECISION_AND_HANDOFF.md`](STRUCTURED_DATA_DECISION_AND_HANDOFF.md): the latest Neuron-specific proposal (Data Gateway, ADR drafts 0016–0018, proof plan).
-5. [`CHART_GENERATION_DECISION_AND_HANDOFF.md`](CHART_GENERATION_DECISION_AND_HANDOFF.md): charts, which depend on item 4.
-6. [`AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md`](AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md) and [`nl2data-ref/`](nl2data-ref/): a general, platform-neutral architecture with tested reference code. It was written without reading items 1–5.
+1. [`landscape/FINE_GRAINED_DATA_ACCESS_CONTROL_FOR_AGENTS.md`](landscape/FINE_GRAINED_DATA_ACCESS_CONTROL_FOR_AGENTS.md): who may see which rows, and why the agent must not decide it.
+2. [`landscape/NAO_LICENSE_AND_FIT_ASSESSMENT.md`](landscape/NAO_LICENSE_AND_FIT_ASSESSMENT.md): the open-source and commercial data-agent landscape.
+3. [`proposals/NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md`](proposals/NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md): the first Data Agent design for Neuron.
+4. [`proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md`](proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md): the latest Neuron-specific proposal (Data Gateway, ADR drafts 0016–0018, proof plan).
+5. [`proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md`](proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md): charts, which depend on item 4.
+6. [`proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md`](proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md) and [`reference-code/nl2data-ref/`](reference-code/nl2data-ref/): a general, platform-neutral architecture with tested reference code. It was written without reading items 1–5.
 
 ## Documents
 

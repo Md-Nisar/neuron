@@ -7,7 +7,7 @@
 | Version | **2.0** (review-driven revision of 1.0) |
 | Date | 18 November 2026 (updated 22 November 2026: NVIDIA Auto Ontology added to the assessment and the bake-off) |
 | Audience | Platform, data, AI, security and SRE engineering |
-| Companion code | `nl2data-ref` 2.0.0 — 68 tests passing (53 unit, 12 Postgres 16 integration, 3 capacity) |
+| Companion code | [`nl2data-ref`](../reference-code/nl2data-ref/) 2.0.0 — 68 tests passing (53 unit, 12 Postgres 16 integration, 3 capacity) |
 | Supersedes | v1.0 of this document, the earlier blueprint doc, and both supporting research reports |
 
 ---
