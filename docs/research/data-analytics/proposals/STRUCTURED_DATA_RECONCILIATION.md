@@ -6,16 +6,18 @@
 | Status | Proposal for the owner. Nothing here is decided until the ADR drafts in section 4 are accepted into `docs/decisions/`. |
 | Question | Four documents propose how Neuron should answer questions from databases. Where do they agree, where do they conflict, and what single design should go forward? |
 | Inputs | [Data Agent assessment](NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md) (28 Oct), [structured data decision](STRUCTURED_DATA_DECISION_AND_HANDOFF.md) (12 Nov), [chart decision](CHART_GENERATION_DECISION_AND_HANDOFF.md) (12 Nov), [AI-to-database architecture v2.0](AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md) (22 Nov), and the principles in [fine-grained data access control](../landscape/FINE_GRAINED_DATA_ACCESS_CONTROL_FOR_AGENTS.md) (25 Oct) |
+| Review | Revised the same day after an architecture review: section 3.6 (how Neuron reaches the gateway), the sample-size change in section 5 and the risks in section 7 were added. |
 | Method | The structured data decision and the v2.0 architecture were read in full; the Data Agent assessment (summary, sections 4 and 4.2), the access-control decisions (section 13) and the chart summary were read for their recommendations. Neuron's constraints were re-checked in code at `4f64d1b`. NVIDIA Auto Ontology was re-checked upstream on 2026-11-22. |
 
 ## 1. Outcome
 
-1. **Go forward with the Data Gateway design from the 12 November decision, amended as in section 3.6.** It is the only proposal written against Neuron's actual code and rules, and its constraints still hold. The v2.0 architecture reaches the same shape from the general literature; its contribution is tested code and nine amendments, not a different architecture.
+1. **Go forward with the Data Gateway design from the 12 November decision, amended as in section 3.7.** It is the only proposal written against Neuron's actual code and rules, and its constraints still hold. The v2.0 architecture reaches the same shape from the general literature; its contribution is tested code and nine amendments, not a different architecture.
 2. **The proposals agree on more than they disagree.** All four want semantic or typed access before free SQL, validation in code, read-only execution under the user's own permissions, honest refusal, and accuracy measured on Neuron's own questions.
-3. **Four real conflicts remain** (sections 3.2 to 3.5): who may write SQL, where SQL runs, the role of MCP Toolbox, and whether certified answers come before generated ones. Each has a recommendation with its evidence.
-4. **Two ADR drafts, not three and not one** (section 4). Drafts 0016 and 0018 merge into one Data Gateway ADR. Draft 0017 stays separate because it amends ADR 0009 for every MCP server, not only for data.
-5. **Superseded:** the Data Agent assessment's in-process subagent with Toolbox execution. Its two lasting ideas, a typed analysis spec instead of SQL and a data component that writes no prose, survive as `query_metric` and the gateway's no-prose envelope.
-6. **Nine owner decisions** are listed in section 6, each with a recommendation.
+3. **Five real conflicts remain** (sections 3.2 to 3.6): who may write SQL, where SQL runs, the role of MCP Toolbox, whether certified answers come before generated ones, and how Neuron reaches the gateway. Each has a recommendation with its evidence.
+4. **One ADR draft if Neuron reaches the gateway through native tools, as recommended; two if through MCP** (section 4). Drafts 0016 and 0018 merge into one Data Gateway ADR. Draft 0017 is needed only for the MCP route, because it amends ADR 0009 for every MCP server.
+5. **The proof's release thresholds need larger samples** (section 5). On 25 answerable questions, 22 correct (88%) has a 95% interval of 70% to 96%, and 8 unanswerable questions cannot show a 90% refusal rate: one miss is 87.5%.
+6. **Superseded:** the Data Agent assessment's in-process subagent with Toolbox execution. Its two lasting ideas, a typed analysis spec instead of SQL and a data component that writes no prose, survive as `query_metric` and the gateway's no-prose envelope.
+7. **Nine owner decisions** are listed in section 6, each with a recommendation; risks of this recommendation are in section 7.
 
 ## 2. What changed since 12 November
 
@@ -25,7 +27,7 @@
 | Auto Ontology upstream is at version 1.3.0 (`pyproject.toml`, commit of 2026-11-20). The repository still has no release tags; its only tag is `pre-main-merge-backup`. | The B1 condition "a tagged, versioned release" is still unmet. The security notes in v2.0 came from a 25 October snapshot and must be re-checked at the pinned commit in spike S1. |
 | A VLDB 2026 study found annotation errors in 52.8% of BIRD Mini-Dev and 62.8% of checked Spider 2.0-Snow examples. | Proof dataset D2 (BIRD Mini-Dev) is indicative only. Gates stay on D3, Neuron's own set, as the 12 November plan already does. |
 | MCP specification 2026-07-28 is stateless; MCP Python SDK 2.0 renamed `FastMCP` to `MCPServer`. | The gateway's MCP server pins its protocol revision and SDK major version. |
-| `nl2data-ref` provides a sqlglot allowlist guard (27 attacks refused) and a Postgres 16 setup that holds with the guard bypassed (12 integration tests). | Starting points for gateway tasks P1.7 and P1.8 (section 3.6, A3 and A4). |
+| `nl2data-ref` provides a sqlglot allowlist guard (27 attacks refused) and a Postgres 16 setup that holds with the guard bypassed (12 integration tests). | Starting points for gateway tasks P1.7 and P1.8 (section 3.7, A3 and A4). |
 
 Still true at `4f64d1b`: the MCP client reaches only public addresses in staging and production (`security/egress.py`, `PublicOnlyBackend`); every `read` MCP tool needs approval once a run is tainted (`tools/registry.py`, `gated_after_taint`); MCP output is capped at 16,384 bytes (`config/settings.py`).
 
@@ -79,7 +81,24 @@ Still true at `4f64d1b`: the MCP client reaches only public addresses in staging
 
 **Recommendation: keep `ask` in P1, and move verified queries from P2 into P1.** `ask` is needed in P1 because it is the proof's control arm and the contract's main tool. Verified queries are small (decision B6, row 6, sizes them S) and give a certified path from the first release. `query_metric` stays in P2: it needs a compiler and a certified model. Every P1 answer carries a trust label (A1), so generated answers are never presented as certified.
 
-### 3.6 Amendments to the gateway design
+### 3.6 Conflict 5: how Neuron reaches the gateway
+
+| Data Agent | Decision | v2.0 |
+| --- | --- | --- |
+| A native tool, `ask_data_agent`, in process | An MCP server of a new "first-party" class (draft 0017): private-address allow-list, signed identity assertion, and an exemption from the after-taint approval | MCP only at external boundaries; internal calls are typed functions |
+
+**Recommendation: native Neuron tools that call the gateway over HTTP, not MCP.** The gateway stays a separate process holding the credentials; only the transport changes.
+
+**Why.**
+
+- **No platform-wide change.** The MCP route needs draft 0017 to amend ADR 0009 for every MCP server: a trust class, a private-address allow-list and a signing key. Native tools need none of it.
+- **The approval gate applies to MCP, not to native tools.** `tools/registry.py` gates only `source == "mcp"` read tools after a run is tainted. Native tools such as the knowledge tools are `builtin`, `read` and `taints_run=True`, and run without a pause. Native gateway tools follow the same path, so combined document-and-data answers work without relaxing the MCP rule. The exemption is not hidden: the ADR must state that the question text leaves the process only for the first-party gateway at a configured address.
+- **Typed contract, no text cap.** Native tools get typed arguments and a structured result, instead of MCP's text-only output capped at 16,384 bytes. A size cap stays, for the model's context.
+- **Fewer moving parts.** No tool pins to regenerate, no MCP protocol or SDK version to track (section 2).
+
+**What it costs.** Other MCP clients cannot use the gateway directly. If that becomes a requirement, the gateway can add an MCP facade over the same contract later, and draft 0017 returns then. Neuron ships a small client and four tool definitions, built with the `add-tool` checklist.
+
+### 3.7 Amendments to the gateway design
 
 | # | Amendment | Source | Changes |
 | --- | --- | --- | --- |
@@ -93,7 +112,7 @@ Still true at `4f64d1b`: the MCP client reaches only public addresses in staging
 | A8 | Literal values ("NY" or "New York") are resolved by a live query under the caller's role, never from a shared value index | v2.0 §10.1 T5 | Baseline engine (P1.10) |
 | A9 | D3 reference answers are double-annotated and disagreements adjudicated before any gate uses them | v2.0 §15.1; VLDB 2026 | Task P0.1 |
 
-### 3.7 What is dropped or deferred
+### 3.8 What is dropped or deferred
 
 | Item | From | Why |
 | --- | --- | --- |
@@ -105,7 +124,7 @@ Still true at `4f64d1b`: the MCP client reaches only public addresses in staging
 
 ## 4. Consolidated ADR drafts
 
-ADR numbers follow decision C1: 0015 stays reserved for the product-direction ADR unless the owner says otherwise (section 6, item 6).
+With native tools (section 3.6), only draft A is needed. With MCP, draft B is added. ADR numbers follow decision C1: 0015 stays reserved for the product-direction ADR unless the owner says otherwise (section 6, item 6).
 
 ### Draft A: Structured data questions through a Data Gateway (replaces drafts 0016 and 0018)
 
@@ -115,22 +134,23 @@ ADR numbers follow decision C1: 0015 stays reserved for the product-direction AD
 
 **Decision.**
 
-1. A separate process, `neuron-data-gateway`, in this repository, exposes one Neuron-owned MCP contract (decision C2, version 1.1 with amendments A1 and A5). Neuron core never imports a provider or a database driver for it.
-2. Model-written SQL never reaches a connected database directly. Only the gateway executes: one validated `SELECT` in a read-only transaction, under a database role mapped from the caller's scopes in gateway configuration, with a statement timeout and a row cap. The sandbox over uploaded tables (ADR 0014 amendment "tables") is unchanged.
-3. The validator uses a function allowlist and rejects locking clauses, `INTO`, data-modifying and recursive CTEs, relations outside the allow-listed schemas, and more than one statement. Adding a SQL dialect requires a reviewed allowlist and a failing-input test suite for that dialect.
-4. Answers carry `trust`: `certified` for verified queries and `query_metric`, `exploratory` for generated SQL.
-5. Semantic content is Apache Ossie YAML under version control; only certified terms are served. Engines implement one interface (question, source and semantic context in; SQL proposal and references, or a refusal code, out), never execute against the governed source, and never return prose.
-6. The built-in `baseline` engine ships first. NVIDIA Auto Ontology is an optional adapter, pinned to a commit, only after spike S2 passes. MCP Toolbox is a source adapter only after a trigger in decision B3 fires. No engine is required by the contract, the evaluation or the default configuration.
-7. Literal values are resolved by live queries under the caller's role; there is no shared value index.
-8. The first source type is PostgreSQL. The feature is off by default and experimental until the B8 release thresholds are met and recorded.
+1. A separate process, `neuron-data-gateway`, in this repository, implements one Neuron-owned contract (decision C2, version 1.1 with amendments A1 and A5). Neuron core never imports a provider or a database driver for it.
+2. Neuron reaches the gateway through native `read` tools with `taints_run=True`, over HTTP to one configured address (`APP_DATA_GATEWAY_URL`), authenticated by a service credential plus a short-lived identity assertion minted from the runtime `AuthorizationContext` (claims as in decision C2). In staging and production it is the only private address Neuron's API process may call, and the question text the tools send goes nowhere else. The user's bearer token is never forwarded.
+3. Model-written SQL never reaches a connected database directly. Only the gateway executes: one validated `SELECT` in a read-only transaction, under a database role mapped from the caller's scopes in gateway configuration, with a statement timeout and a row cap. The sandbox over uploaded tables (ADR 0014 amendment "tables") is unchanged.
+4. The validator uses a function allowlist and rejects locking clauses, `INTO`, data-modifying and recursive CTEs, relations outside the allow-listed schemas, and more than one statement. Adding a SQL dialect requires a reviewed allowlist and a failing-input test suite for that dialect.
+5. Answers carry `trust`: `certified` for verified queries and `query_metric`, `exploratory` for generated SQL.
+6. Semantic content is Apache Ossie YAML under version control; only certified terms are served. Engines implement one interface (question, source and semantic context in; SQL proposal and references, or a refusal code, out), never execute against the governed source, and never return prose.
+7. The built-in `baseline` engine ships first. NVIDIA Auto Ontology is an optional adapter, pinned to a commit, only after spike S2 passes. MCP Toolbox is a source adapter only after a trigger in decision B3 fires. No engine is required by the contract, the evaluation or the default configuration.
+8. Literal values are resolved by live queries under the caller's role; there is no shared value index.
+9. The first source type is PostgreSQL. The feature is off by default and experimental until the B8 release thresholds are met and recorded.
 
-**Consequences.** A second deployable to secure and operate. A package boundary `data_gateway/` that imports nothing from `api/`, `services/`, `graphs/`, `agents/`, `models/` or `knowledge/`, enforced by a boundaries test. A new pinned dependency, `sqlglot`. The "Deliberately not built" list in decision B5 is part of this ADR.
+**Consequences.** A second deployable to secure and operate. A package boundary `data_gateway/` that imports nothing from `api/`, `services/`, `graphs/`, `agents/`, `models/` or `knowledge/`, enforced by a boundaries test. A new pinned dependency, `sqlglot`. Two new settings, `APP_DATA_GATEWAY_URL` and the assertion signing key, with the safeguards in decision B7. Four gateway tools added through the `add-tool` checklist. The "Deliberately not built" list in decision B5 is part of this ADR.
 
-**Alternatives rejected.** Decision B4's table; section 3.3 of this note.
+**Alternatives rejected.** Decision B4's table; sections 3.3 (in-process execution) and 3.6 (MCP transport) of this note.
 
-### Draft B: First-party MCP servers and the identity assertion (draft 0017, amends ADR 0009)
+### Draft B, only for the MCP route: First-party MCP servers and the identity assertion (draft 0017, amends ADR 0009)
 
-Adopt draft 0017 as written in the decision's section C1, with two additions:
+If the owner chooses MCP over native tools, adopt draft 0017 as written in the decision's section C1, with two additions:
 
 - The first-party server pins its MCP protocol revision and SDK major version; a change of either is a contract change.
 - Decision 5, which exempts first-party `read` tools from the after-taint approval, still needs the owner's sign-off (section 6, item 2). Without it, combined document-and-data answers pause for approval and everything else stands.
@@ -143,25 +163,38 @@ Adopt draft 0017 as written in the decision's section C1, with two additions:
 | P0.3 Arms C and B | Validate both arms' SQL with the A3 guard; score with `nl2data-ref`'s result comparator |
 | P0.4 Auto Ontology (S1) | Pin an upstream commit at version 1.3.0 or later; re-check its Postgres connector (read-only transaction, `set_config` use) at that commit |
 | P0.5 Run all arms | Report D2 separately as indicative, because of its label noise |
+| D3 size | At least 100 answerable, 30 unanswerable and 20 ambiguous questions, so every threshold can be measured: 85 of 100 correct has a 95% interval of 77% to 91%, against 70% to 96% for 22 of 25. Report Wilson intervals beside every rate; gate on the point estimate with that minimum size |
 | P0.6 Safety (S3) | Run the guard-bypassed Postgres tests against the D3 mart as well as the gateway prototype |
 
-Thresholds in decision B8 are unchanged.
+Thresholds in decision B8 are unchanged; only the sample behind them grows.
 
 ## 6. Decisions for the owner
 
 | # | Decision | Recommendation |
 | --- | --- | --- |
 | 1 | Is there a real product requirement and a first database or user (decision question 2)? | Record the requirement as experimental. If there is no real user yet, run P0 only and stop. |
-| 2 | Exempt first-party gateway `read` tools from the after-taint approval (decision question 3)? | Approve, limited as draft 0017 limits it: first-party, `read`, arguments within the contract caps. |
+| 2 | Reach the gateway through native tools or MCP (section 3.6)? This replaces decision question 3, the after-taint exemption, which only the MCP route needs. | Native tools. |
 | 3 | Gateway P1 before or after RAG-E09, and after F0.2 (decision question 1)? | P0 now; P1 after F0.2, as the decision recommends. |
 | 4 | Verified queries in P1 (section 3.5)? | Yes. |
 | 5 | Which model for the engine, and which egress class by default (decision question 4, A7)? | Neuron's configured model; schema and certified terms only by default. |
-| 6 | ADR numbering and shape: two drafts as in section 4, 0015 still reserved (decision question 7)? | Yes. |
+| 6 | ADR numbering and shape: draft A only (draft B too if MCP is chosen), 0015 still reserved (decision question 7)? | Yes. |
 | 7 | Is A4 hardening required of customers or only recommended? | Required in Neuron's test mart and reference deployment; recommended to customers. |
 | 8 | Role-level mapping first, or per-user row-level security from day one (decision question 6)? | Role-level first; `neuron.user_sub` is available for customers who key policies on it. |
 | 9 | Positioning: "measured accuracy on your own questions" instead of "comparable to Cortex Analyst" (decision question 8)? | Yes. |
 
-## 7. Status of each document after this note
+## 7. Risks of this recommendation
+
+| Risk | Mitigation |
+| --- | --- |
+| Analytics is not among the first three use cases in the 18-month roadmap, so this can pull effort from committed work | Decision 1 gates everything after P0 on a recorded product requirement |
+| A second deployable with no hosted environment to run it in | P1 waits for F0.2; P0 needs no product code |
+| Apache Ossie is young (incubating since 2026); its format may change | Pin the spec version the store validates against; the baseline engine reads only metrics, dimensions and terms |
+| Enlarging D3 to 150 questions costs authoring and double-annotation time | Draw questions from real use where a design partner exists; record authoring hours as the 12 Nov plan does |
+| `sqlglot` behaviour shifts between versions (comment handling, `qualify`) | Exact pin; the guard's attack corpus runs on every upgrade |
+| The identity assertion's signing key becomes a high-value secret in the API process | 60-second lifetime, audience-bound, single use, rotation through JWKS (decision B7); replaceable by IdP token exchange with no contract change |
+| Native tools make the gateway Neuron-only | An MCP facade can be added later over the same contract (section 3.6) |
+
+## 8. Status of each document after this note
 
 | Document | Status |
 | --- | --- |
