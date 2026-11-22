@@ -29,7 +29,7 @@ No single mechanism covers enterprise integration. Each has a place.
 | **Webhooks** | How applications start work in Neuron | Second | One signed inbound endpoint; events become runs. |
 | **GraphQL** | Applications that offer only GraphQL | Second | Introspection gives a schema; operations are curated like OpenAPI ones. |
 | **Event streams and message queues** | High-volume event sources | Later, through a bridge | Neuron should not embed Kafka or AMQP clients early. An integration platform or a small bridge posts events to the webhook endpoint. |
-| **Database integration** | Read-only access to legacy data with no API | Later | Parameterised, pre-approved queries against a read replica or view. Never free-form SQL from the model. |
+| **Database integration** | Read-only access to legacy data with no API | Later | Parameterised, pre-approved queries against a read replica or view. Model-written SQL never reaches a connected database directly; only the Data Gateway executes validated SQL (ADR 0016). |
 | **MCP (server)** | How other assistants call Neuron's governed capabilities | Later | Neuron becomes a tool provider to Copilot, Claude and others. |
 | **A2A** | Agent-to-agent delegation across vendors | Later, on demand | Useful when a customer's other agents must hand tasks to Neuron. Not needed to integrate applications. |
 | **Legacy adapters, RPA, browser automation** | Applications with no programmatic interface | Not built in Neuron | Call an RPA vendor's robot as a tool. Browser automation inside Neuron stays excluded (`NEURON_GLOBAL_AGENT_ARCHITECTURE_RESEARCH.md`, section 6). |

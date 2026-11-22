@@ -2,8 +2,8 @@
 
 Everything Neuron has written or built about answering questions from tables and databases, in one
 place. This page organises the material; it does not decide anything or settle the conflicts it
-lists. As of 2026-11-22, only the uploaded-tables feature (RAG-11.01, v1.4.0) is decided and built.
-Everything else is a research proposal.
+lists. As of 2026-11-22, the uploaded-tables feature (RAG-11.01, v1.4.0) is built, and ADR 0016
+(Data Gateway) is accepted but not implemented: only its proof, DG-E00, may start.
 
 ## Layout
 
@@ -33,7 +33,7 @@ Everything else is a research proposal.
 | 2026-11-12 | Structured data decision and handoff | Adopt NVIDIA Auto Ontology? What about MCP Toolbox? | A separate `neuron-data-gateway` process executes every query itself, PostgreSQL first; Auto Ontology only as an optional engine; Toolbox later as a source adapter; semantic content in Apache Ossie YAML; ADR drafts 0016–0018; a no-code proof (P0) first | Proposal; ADRs not accepted |
 | 2026-11-12 | Chart generation decision and handoff | Flint or alternatives for charts? | Flint later as the first optional renderer; a Neuron-owned chart contract; rules before the model | Proposal; depends on the gateway |
 | 2026-11-18, updated 2026-11-22 | AI-to-database solution architecture v2.0 + `nl2data-ref` | What is the most robust general design for NL access to databases? | Semantic layer first, verified queries second, guarded generated SQL as a labelled fallback; database-enforced security; vendor and Auto Ontology bake-off before building | Research (PR #642); not reconciled with the rows above |
-| 2026-11-22 | Structured data reconciliation | Where do the proposals agree and conflict, and what goes forward? | The Data Gateway design from 12 Nov, amended by nine points from v2.0; model-written SQL never reaches a connected database directly; Neuron reaches the gateway through native tools, not MCP; verified queries in P1; larger proof samples; one ADR draft | Proposal for owner decision |
+| 2026-11-22 | Structured data reconciliation | Where do the proposals agree and conflict, and what goes forward? | The Data Gateway design from 12 Nov, amended by nine points from v2.0; model-written SQL never reaches a connected database directly; Neuron reaches the gateway through native tools, not MCP; verified queries in P1; larger proof samples; one ADR draft | Decided 2026-11-22: accepted as ADR 0016 |
 
 ## What is built
 
@@ -43,11 +43,11 @@ Everything else is a research proposal.
 | Table eval cases | `tests/fixtures/knowledge/table_cases.json` | Cases that search-only answers failed |
 | Knowledge tables with role grants and row-level security | RAG-01.02 (#417) | Applies to the Knowledge Engine's own storage, not to external databases |
 
-Not built: connections to external databases, a Data Agent or Data Gateway, a semantic layer, charts. ADR numbers 0016–0018 exist only as drafts inside the structured data decision; 0015 is reserved for the product-direction ADR.
+Not built: connections to external databases, a Data Agent or Data Gateway, a semantic layer, charts. [ADR 0016](../../decisions/0016-structured-data-gateway.md) is accepted, with its proof backlog in [`NEURON_DATA_GATEWAY_BACKLOG.md`](../../product/NEURON_DATA_GATEWAY_BACKLOG.md); draft ADRs 0017 and 0018 in the structured data decision are not adopted. 0015 is reserved for the product-direction ADR.
 
 ## Where the documents agree and differ
 
-Each cell is what that document proposes. The reconciliation (22 Nov) recommends a position on each conflict; nothing is decided until its ADR drafts are accepted.
+Each cell is what that document proposes. The reconciliation (22 Nov) recommends a position on each conflict, and ADR 0016 accepts them.
 
 | Topic | Data Agent assessment (28 Oct) | Structured data decision (12 Nov) | AI-to-database architecture (22 Nov) | Built (v1.4.0) |
 | --- | --- | --- | --- | --- |
