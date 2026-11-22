@@ -14,6 +14,6 @@ Background studies and decision proposals. Nothing here is built or decided unti
 
 Notes:
 - Some documents overlap (the three use-case studies, the two roadmaps). Read the one closest to your question and check its date.
-- `data-analytics/NAO_LICENSE_AND_FIT_ASSESSMENT.md` opens with the title "Data Analytics Agents: Landscape and Prior Art for Neuron".
+- `data-analytics/landscape/NAO_LICENSE_AND_FIT_ASSESSMENT.md` opens with the title "Data Analytics Agents: Landscape and Prior Art for Neuron".
 - Earlier release research stays beside its release: `docs/research-notes.md`, `docs/releases/v0.9.0-research.md`, `docs/ai-code-verification/research.md`.
 - Documents do not yet carry a status (draft, accepted, superseded). Add one when a document is acted on.
