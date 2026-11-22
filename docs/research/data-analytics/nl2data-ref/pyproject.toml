@@ -1,0 +1,9 @@
+[project]
+name = "nl2data-ref"
+version = "2.0.0"
+description = "Reference components for the AI-to-Database solution architecture (guard, typed metrics, answer checks, governance, executor, capacity model)"
+requires-python = ">=3.11"
+dependencies = ["sqlglot==30.33.0", "pydantic>=2.11,<3", "psycopg[binary]>=3.2,<4"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]

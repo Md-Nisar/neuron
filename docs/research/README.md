@@ -5,7 +5,7 @@ Background studies and decision proposals. Nothing here is built or decided unti
 | Folder | What it holds |
 |---|---|
 | `rag/` | The three consolidated RAG reports. Inputs to ADR 0014 and `docs/product/NEURON_RAG_PRODUCT_BACKLOG.md`. |
-| `data-analytics/` | Data Agent, structured-data and chart decisions, nao and data-agent landscape, fine-grained data access control. |
+| `data-analytics/` | Data Agent, structured-data and chart decisions, nao and data-agent landscape, fine-grained data access control, the AI-to-database solution architecture (v2.0) with its tested reference code in `nl2data-ref/`. |
 | `agent-ui/` | A2UI assessment and handoff. |
 | `enterprise-strategy/vision-and-roadmap/` | Vision, 18-month and must-have roadmaps, success metrics, Opus handoff. |
 | `enterprise-strategy/use-cases/` | Problem analysis, first three use cases, first use case and build-vs-buy, evidence-backed use cases. |
