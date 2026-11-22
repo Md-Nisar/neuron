@@ -1,10 +1,10 @@
 # Neuron Data Gateway backlog (structured data questions)
 
-Status: **Draft**, 2026-11-22. Derived from [ADR 0016](../decisions/0016-structured-data-gateway.md),
+Status: **In progress**, 2026-11-22. Derived from [ADR 0016](../decisions/0016-structured-data-gateway.md),
 the [structured data handoff](../research/data-analytics/proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md)
 (part C, task list C3) and the
 [reconciliation](../research/data-analytics/proposals/STRUCTURED_DATA_RECONCILIATION.md) (section 5).
-No GitHub issues have been created from it yet.
+Issues: epic #644, stories #645 to #651.
 
 ## Conventions
 
@@ -16,7 +16,7 @@ No GitHub issues have been created from it yet.
 
 | Epic | Phase | Content | May start |
 | --- | --- | --- | --- |
-| **DG-E00 Proof** | P0 | Datasets, arms, spikes S1 to S4, decision record. No product code. | Now |
+| **DG-E00 Proof** (#644) | P0 | Datasets, arms, spikes S1 to S4, decision record. No product code. | Now |
 | DG-E01 Gateway MVP | P1 | Contract 1.1, Postgres executor, validator, baseline engine, verified queries, native tools, identity assertion, audit, evaluation suite (handoff tasks P1.1 to P1.14 with reconciliation amendments) | When the three gates in ADR 0016's status hold |
 | DG-E02 Trust | P2 | `query_metric`, data citations with the numeric check, explanation card, combined answers | After DG-E01 |
 | DG-E03 Reach | P3 | Auto Ontology adapter, Toolbox source adapter, second source type | Each on its own trigger |
@@ -27,7 +27,7 @@ Only DG-E00 is broken into stories below. The later epics get stories when their
 
 Rules for every story:
 
-- The work happens on a spike branch that is never merged to `main`.
+- The work happens on `spike/data-gateway-p0`, which is never merged to `main` (see "Spike Branches" in `DEVELOPMENT.md`).
 - Results, commands, model names, commits and hardware are recorded in
   `docs/releases/data-gateway-p0/`, and only that record is merged.
 - The default engine model is Neuron's configured development model; for a stronger second
@@ -38,7 +38,7 @@ Rules for every story:
 Total estimate: 3.5 to 4.5 engineer-weeks, against the handoff's single week, because D3 grows
 to 150 questions with double annotation.
 
-### DG-00.01 Seed the D3 mart
+### DG-00.01 Seed the D3 mart (#645)
 
 - **Epic:** DG-E00 · **Phase:** 0 · **Priority:** P0 · **Estimate:** 1.5 w
 - **Depends on:** none
@@ -73,7 +73,7 @@ to 150 questions with double annotation.
 - [ ] Adversarial cases.
 - [ ] Second annotator pass and adjudication log.
 
-### DG-00.02 Hand-write the Ossie models for D3 and D1
+### DG-00.02 Hand-write the Ossie models for D3 and D1 (#646)
 
 - **Epic:** DG-E00 · **Phase:** 0 · **Priority:** P0 · **Estimate:** 0.5 w
 - **Depends on:** DG-00.01
@@ -96,7 +96,7 @@ to 150 questions with double annotation.
 - [ ] D1 model.
 - [ ] Validation script and authoring log.
 
-### DG-00.03 Prototype arms C and B with deterministic scoring
+### DG-00.03 Prototype arms C and B with deterministic scoring (#647)
 
 - **Epic:** DG-E00 · **Phase:** 0 · **Priority:** P0 · **Estimate:** 1 w
 - **Depends on:** DG-00.01, DG-00.02
@@ -129,7 +129,7 @@ to 150 questions with double annotation.
 - [ ] Baseline engine prompt and Ossie context builder.
 - [ ] Scoring with the comparator and Wilson intervals.
 
-### DG-00.04 Stand up NVIDIA Auto Ontology at a pinned commit (spike S1)
+### DG-00.04 Stand up NVIDIA Auto Ontology at a pinned commit (spike S1) (#648)
 
 - **Epic:** DG-E00 · **Phase:** 0 · **Priority:** P1 · **Estimate:** 0.5 w
 - **Depends on:** DG-00.01
@@ -155,7 +155,7 @@ to 150 questions with double annotation.
 - [ ] Connector and egress review notes.
 - [ ] Generated ontology (A1), then at most four hours of certification (A2).
 
-### DG-00.05 Run all arms and the Ossie round trip (spikes S2 and S4)
+### DG-00.05 Run all arms and the Ossie round trip (spikes S2 and S4) (#649)
 
 - **Epic:** DG-E00 · **Phase:** 0 · **Priority:** P0 · **Estimate:** 0.5 w
 - **Depends on:** DG-00.03, DG-00.04
@@ -179,7 +179,7 @@ to 150 questions with double annotation.
 - [ ] Round-trip test.
 - [ ] Results table.
 
-### DG-00.06 Safety prototype (spike S3)
+### DG-00.06 Safety prototype (spike S3) (#650)
 
 - **Epic:** DG-E00 · **Phase:** 0 · **Priority:** P0 · **Estimate:** 0.5 w
 - **Depends on:** DG-00.01, DG-00.03
@@ -202,7 +202,7 @@ to 150 questions with double annotation.
 - [ ] Database tests pointed at the mart.
 - [ ] Case-by-case log.
 
-### DG-00.07 Decision record
+### DG-00.07 Decision record (#651)
 
 - **Epic:** DG-E00 · **Phase:** 0 · **Priority:** P0 · **Estimate:** 0.25 w
 - **Depends on:** DG-00.05, DG-00.06

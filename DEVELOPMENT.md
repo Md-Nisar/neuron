@@ -62,6 +62,10 @@ uv run python scripts/token_report.py <transcript-dir> -o docs/releases/<version
 
 It sums input, output, cache-read and cache-write tokens per agent, grouped by issue number (the most frequent `#<number>` in the agent prompt; otherwise "unattributed") and by role (implement, review, CI fix, other, from prompt keywords). It reports tokens, not money. Record each merged issue's tokens, review rounds and CI re-pushes in the tracker row (#161).
 
+## Spike Branches
+
+Throwaway experiments (proofs, prototypes, measurements) live on branches named `spike/<topic>`, for example `spike/data-gateway-p0`. A spike branch is never merged to `main`: it skips the PR gates, and its code is not product code. What a spike proves is recorded in `docs/releases/` and merged through an ordinary PR, with the spike branch and commit named in the record.
+
 ## Adding a Tool
 
 1. Add the tool under `src/neuron_agent/tools/`.
