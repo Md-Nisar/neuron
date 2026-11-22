@@ -21,6 +21,7 @@ Everything else is a research proposal.
 4. [`proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md`](proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md): the latest Neuron-specific proposal (Data Gateway, ADR drafts 0016–0018, proof plan).
 5. [`proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md`](proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md): charts, which depend on item 4.
 6. [`proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md`](proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md) and [`reference-code/nl2data-ref/`](reference-code/nl2data-ref/): a general, platform-neutral architecture with tested reference code. It was written without reading items 1–5.
+7. [`proposals/STRUCTURED_DATA_RECONCILIATION.md`](proposals/STRUCTURED_DATA_RECONCILIATION.md): reconciles items 3, 4 and 6 into one design with two ADR drafts and nine owner decisions. Read this first if you only read one.
 
 ## Documents
 
@@ -28,10 +29,11 @@ Everything else is a research proposal.
 | --- | --- | --- | --- | --- |
 | 2026-10-25 | Fine-grained data access control for agents | How do agents respect row and column permissions? | Keep authorization out of the agent: the application owns grants, the data layer enforces them, the agent carries the user's token (token exchange, no user fields in tool schemas) | Research |
 | 2026-10-28 (update 31 Oct) | Data analytics agents: landscape and prior art | Which open-source data agents exist, and what can Neuron use? | Build Neuron's own Data Agent; adopt none of nao, Wren AI, Cube, Vanna, DB-GPT and others as a backend; clean-room rules | Research; recorded as a decision of 28 Oct in the document |
-| 2026-10-28 | Neuron Data Agent architecture assessment | How should Neuron's Data Agent be built? | Specialist subagent behind one tool, `ask_data_agent`; the model writes an analysis spec, never SQL; code compiles it against a semantic layer and runs it read-only through MCP Toolbox; Flint charts | Research |
+| 2026-10-28 | Neuron Data Agent architecture assessment | How should Neuron's Data Agent be built? | Specialist subagent behind one tool, `ask_data_agent`; the model writes an analysis spec, never SQL; code compiles it against a semantic layer and runs it read-only through MCP Toolbox; Flint charts | Research; superseded on architecture by the reconciliation (22 Nov) |
 | 2026-11-12 | Structured data decision and handoff | Adopt NVIDIA Auto Ontology? What about MCP Toolbox? | A separate `neuron-data-gateway` process executes every query itself, PostgreSQL first; Auto Ontology only as an optional engine; Toolbox later as a source adapter; semantic content in Apache Ossie YAML; ADR drafts 0016–0018; a no-code proof (P0) first | Proposal; ADRs not accepted |
 | 2026-11-12 | Chart generation decision and handoff | Flint or alternatives for charts? | Flint later as the first optional renderer; a Neuron-owned chart contract; rules before the model | Proposal; depends on the gateway |
 | 2026-11-18, updated 2026-11-22 | AI-to-database solution architecture v2.0 + `nl2data-ref` | What is the most robust general design for NL access to databases? | Semantic layer first, verified queries second, guarded generated SQL as a labelled fallback; database-enforced security; vendor and Auto Ontology bake-off before building | Research (PR #642); not reconciled with the rows above |
+| 2026-11-22 | Structured data reconciliation | Where do the proposals agree and conflict, and what goes forward? | The Data Gateway design from 12 Nov, amended by nine points from v2.0; model-written SQL never reaches a connected database directly; verified queries in P1; two ADR drafts | Proposal for owner decision |
 
 ## What is built
 
@@ -45,7 +47,7 @@ Not built: connections to external databases, a Data Agent or Data Gateway, a se
 
 ## Where the documents agree and differ
 
-For the reconciliation step. Each cell is what that document proposes; nothing here is a decision.
+Each cell is what that document proposes. The reconciliation (22 Nov) recommends a position on each conflict; nothing is decided until its ADR drafts are accepted.
 
 | Topic | Data Agent assessment (28 Oct) | Structured data decision (12 Nov) | AI-to-database architecture (22 Nov) | Built (v1.4.0) |
 | --- | --- | --- | --- | --- |
