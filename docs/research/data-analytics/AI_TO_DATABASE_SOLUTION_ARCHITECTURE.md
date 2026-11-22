@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Version | **2.0** (review-driven revision of 1.0) |
-| Date | 18 November 2026 |
+| Date | 18 November 2026 (updated 22 November 2026: NVIDIA Auto Ontology added to the assessment and the bake-off) |
 | Audience | Platform, data, AI, security and SRE engineering |
 | Companion code | `nl2data-ref` 2.0.0 — 68 tests passing (53 unit, 12 Postgres 16 integration, 3 capacity) |
 | Supersedes | v1.0 of this document, the earlier blueprint doc, and both supporting research reports |
@@ -122,7 +122,7 @@ The design goal is **never confidently wrong**, with measurable proof.
 
 ### 1.4 Buy-versus-build rule (now measured, not asserted)
 
-If more than ~80% of questions hit one platform, the Phase 0 bake-off includes that platform's agent (Cortex Agents, Genie, Fabric data agent, Google Conversational Analytics API). **Buy** if it meets the Tier 1/2 accuracy gates, identity requirements and cost envelope; then spend effort on its semantic model and verified queries. **Build** (this design) when the bake-off fails a gate, data spans several warehouses, OLTP access with per-user security is required, or lock-in is unacceptable. Semantic definitions stay portable either way (MetricFlow / Apache Ossie [Verify maturity]).
+If more than ~80% of questions hit one platform, the Phase 0 bake-off includes that platform's agent (Cortex Agents, Genie, Fabric data agent, Google Conversational Analytics API). It also includes NVIDIA Auto Ontology, the open-source option that covers the semantic layer, fallback SQL and context layer in one package (§7.3). **Buy** if it meets the Tier 1/2 accuracy gates, identity requirements and cost envelope; then spend effort on its semantic model and verified queries. **Build** (this design) when the bake-off fails a gate, data spans several warehouses, OLTP access with per-user security is required, or lock-in is unacceptable. Semantic definitions stay portable either way (MetricFlow / Apache Ossie [Verify maturity]).
 
 ---
 
@@ -409,6 +409,7 @@ Each criterion scored 1–5, weighted, normalised to 100. **Evidence level**: **
 | Cube Core | 79 | S/D | Adopt if caching / multi-tenant semantics needed |
 | dbt MetricFlow | 78 | D | Adopt for dbt shops / multi-warehouse |
 | OpenMetadata | 75 | S | Viable after licence review |
+| NVIDIA Auto Ontology 1.1.0 | 75 | D (partial source review) | **Bake-off candidate** (Phase 0) |
 | LiteLLM | 66 | D | Avoid by default; hardened only |
 | WrenAI | 60 | S | Learn from |
 | Postgres MCP Pro | 57 | D | Learn from (incl. CVE-2026-85620) |
@@ -424,6 +425,7 @@ Scores are computed from the per-criterion ratings (kept with the source reposit
 | [bytebase/dbhub](https://github.com/bytebase/dbhub) | [Verify] | Active | Reviewed Toolbox token costs; MCP server design reference |
 | [malloydata/malloy](https://github.com/malloydata/malloy) | MIT ◐ | Active | Candidate Tier 1 query target (spike) |
 | Hasura / PostGraphile | [Verify licences] | Active | Typed, permission-aware GraphQL for OLTP Tier 2 (spike) |
+| [NVIDIA Auto Ontology](https://github.com/NVIDIA/auto-ontology) | Apache-2.0 | Active (v1.1.0; NVIDIA not accepting external contributions) | Open-source NL-to-SQL over an auto-generated ontology: builds glossary terms, metric definitions and relationships from metadata; a multi-agent text-to-SQL pipeline tries semantic SQL first, then raw tables, with join-path, value and empty-result checks; read-only MCP server (`ask_question`, `check_answerable`, glossary tools, `describe_table`; no raw table browser); Postgres + pgvector; NVIDIA NIM models by default; Databricks, Postgres, Snowflake, DuckDB and other connectors. BIRD evaluation in a separate `ontology-sql-eval` repo. **Bake-off candidate.** Security notes from source review: DuckDB opens read-only by default, but the Postgres connector runs on an autocommit pool with no read-only transaction and no allowlist guard was found, so write protection rests on the database credentials you configure. It sets its statement timeout with `set_config`, which conflicts with our hardened identity model B (§5.5): give it a separate read-only login or use identity model A |
 | [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | MIT | 2.x since 28 Jul 2026 ✔ | `ask_data` server |
 
 The full v1 inventory (LangGraph, Toolbox, sqlglot, pgvector, Langfuse, promptfoo, DuckDB, OPA/Cedar, MetricFlow, Cube, DataHub, OpenMetadata, Unity Catalog, Trino, DataFusion, LiteLLM, MS Agent Framework, AutoGen/Semantic Kernel (maintenance), ADK, OpenAI Agents SDK, LlamaIndex, LangChain SQL toolkit, WrenAI, Vanna, Dataherald (dormant), defog sqlcoder/sql-eval, CHESS, Arctic-Text2SQL-R1, ReFoRCE, Spider2, BIRD, DeepEval, Phoenix, Guardrails AI, NeMo Guardrails, MindsDB, Superset, archived reference servers) and its licence notes remain valid; see §22 for links.
@@ -436,7 +438,7 @@ The full v1 inventory (LangGraph, Toolbox, sqlglot, pgvector, Langfuse, promptfo
 | Semantic layer candidate(s) | Native vs MetricFlow vs Cube on 50 golden questions | Accuracy, latency, ops effort |
 | LangGraph checkpoint + resume | Idempotency and replay under failure | Chaos test passes |
 | Langfuse redaction | No raw rows or PII in stored traces | Automated scan of trace store |
-| Vendor agent(s) | Bake-off on the golden set | Report with accuracy/latency/cost |
+| Vendor agent(s) and NVIDIA Auto Ontology | Bake-off on the golden set | Report with accuracy/latency/cost; for Auto Ontology also ontology-generation effort and a write-attempt test against its configured credentials |
 
 ### 7.5 Licensing checklist
 
@@ -1484,6 +1486,7 @@ def ask_data(question: str, resume_token: str | None = None) -> dict:
 | Agentic text-to-SQL only | Analyst exploration | ~50% production accuracy | Rejected as default |
 | Malloy / LookML-query as Tier 1 target | Compositional analytics beyond metric/dimension grammar | New language and tooling | **Spike** in Phase 0–1 |
 | GraphQL engines with row permissions (Hasura, PostGraphile) | OLTP data with existing row rules | Another service; schema exposure design | **Spike** for OLTP Tier 2 |
+| NVIDIA Auto Ontology (open source) | You want a ready-made ontology/semantic layer, fallback SQL and MCP server without vendor lock-in | Full extra stack (Next.js UI, Better Auth, ingestion worker); tens of seconds per answer by its own docs; DB write protection depends on credentials; NVIDIA takes no external contributions | **Measured in Phase 0 bake-off** |
 | All-in-one OSS (WrenAI, Vanna) | Prototypes | Licence/maintenance/security issues | Rejected as core |
 | Fine-tuned open model | Residency, high volume | Retraining cost | Optional for Tier 3 |
 | Internal MCP everywhere | Multi-team tool sharing | Latency, auth complexity | Rejected for MVP; revisit when Tier 3 splits out |
@@ -1567,7 +1570,7 @@ gantt
 
 **Ownership and licences:** [ClickHouse acquires Langfuse](https://clickhouse.com/zh/blog/clickhouse-acquires-langfuse-open-source-llm-observability) · [promptfoo joins OpenAI](https://www.promptfoo.dev/blog/promptfoo-joining-openai/) · [OpenMetadata vs DataHub](https://open-metadata.org/learning-center/openmetadata-vs-datahub)
 
-**Repositories:** [LangGraph](https://github.com/langchain-ai/langgraph) · [sqlglot](https://github.com/tobymao/sqlglot) · [pgvector](https://github.com/pgvector/pgvector) · [Langfuse](https://github.com/langfuse/langfuse) · [promptfoo](https://github.com/promptfoo/promptfoo) · [DuckDB](https://github.com/duckdb/duckdb) · [OPA](https://github.com/open-policy-agent/opa) · [Cedar](https://github.com/cedar-policy/cedar) · [MetricFlow](https://github.com/dbt-labs/metricflow) · [Cube](https://github.com/cube-js/cube) · [DataHub](https://github.com/datahub-project/datahub) · [OpenMetadata](https://github.com/open-metadata/OpenMetadata) · [Trino](https://github.com/trinodb/trino) · [MS Agent Framework](https://github.com/microsoft/agent-framework) · [Google ADK](https://github.com/google/adk-python) · [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) · [LlamaIndex](https://github.com/run-llama/llama_index) · [WrenAI](https://github.com/Canner/WrenAI) · [CHESS](https://github.com/ShayanTalaei/CHESS) · [defog sql-eval](https://github.com/defog-ai/sql-eval) · [Arctic training](https://github.com/snowflakedb/ArcticTraining/tree/main/projects/arctic_text2sql_r1) · [DeepEval](https://github.com/confident-ai/deepeval) · [Phoenix](https://github.com/Arize-ai/phoenix) · [LiteLLM](https://github.com/BerriAI/litellm) · [Postgres MCP Pro](https://github.com/crystaldba/postgres-mcp) · [DBHub](https://github.com/bytebase/dbhub) · [Malloy](https://github.com/malloydata/malloy) · [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
+**Repositories:** [LangGraph](https://github.com/langchain-ai/langgraph) · [sqlglot](https://github.com/tobymao/sqlglot) · [pgvector](https://github.com/pgvector/pgvector) · [Langfuse](https://github.com/langfuse/langfuse) · [promptfoo](https://github.com/promptfoo/promptfoo) · [DuckDB](https://github.com/duckdb/duckdb) · [OPA](https://github.com/open-policy-agent/opa) · [Cedar](https://github.com/cedar-policy/cedar) · [MetricFlow](https://github.com/dbt-labs/metricflow) · [Cube](https://github.com/cube-js/cube) · [DataHub](https://github.com/datahub-project/datahub) · [OpenMetadata](https://github.com/open-metadata/OpenMetadata) · [Trino](https://github.com/trinodb/trino) · [MS Agent Framework](https://github.com/microsoft/agent-framework) · [Google ADK](https://github.com/google/adk-python) · [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) · [LlamaIndex](https://github.com/run-llama/llama_index) · [WrenAI](https://github.com/Canner/WrenAI) · [CHESS](https://github.com/ShayanTalaei/CHESS) · [defog sql-eval](https://github.com/defog-ai/sql-eval) · [Arctic training](https://github.com/snowflakedb/ArcticTraining/tree/main/projects/arctic_text2sql_r1) · [DeepEval](https://github.com/confident-ai/deepeval) · [Phoenix](https://github.com/Arize-ai/phoenix) · [LiteLLM](https://github.com/BerriAI/litellm) · [Postgres MCP Pro](https://github.com/crystaldba/postgres-mcp) · [DBHub](https://github.com/bytebase/dbhub) · [Malloy](https://github.com/malloydata/malloy) · [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) · [NVIDIA Auto Ontology](https://github.com/NVIDIA/auto-ontology)
 
 ---
 
@@ -1631,6 +1634,7 @@ gantt
 | MCP 2026-07-28 stateless | Confirmed | WorkOS and others |
 | MCP Python SDK 2.0 removes `mcp.server.fastmcp` | Confirmed | Official migration guide |
 | promptfoo plugin names | Confirmed | promptfoo docs |
+| NVIDIA Auto Ontology: Apache-2.0, v1.1.0, read-only MCP tool set, NL-to-SQL pipeline, connector behaviour | Confirmed by reading the repository source (fork synced to upstream commit of 25 Oct 2026); accuracy not measured | GitHub |
 | Vendor accuracy figures (Snowflake, Genie, Fabric, dbt) | Not independently verified; labelled ○ | — |
 | Spider 2.0-Snow 96.7% | Aggregator only; labelled ◐ | — |
 
