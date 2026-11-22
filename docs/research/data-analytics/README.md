@@ -21,7 +21,7 @@ Everything else is a research proposal.
 4. [`proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md`](proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md): the latest Neuron-specific proposal (Data Gateway, ADR drafts 0016–0018, proof plan).
 5. [`proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md`](proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md): charts, which depend on item 4.
 6. [`proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md`](proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md) and [`reference-code/nl2data-ref/`](reference-code/nl2data-ref/): a general, platform-neutral architecture with tested reference code. It was written without reading items 1–5.
-7. [`proposals/STRUCTURED_DATA_RECONCILIATION.md`](proposals/STRUCTURED_DATA_RECONCILIATION.md): reconciles items 3, 4 and 6 into one design with two ADR drafts and nine owner decisions. Read this first if you only read one.
+7. [`proposals/STRUCTURED_DATA_RECONCILIATION.md`](proposals/STRUCTURED_DATA_RECONCILIATION.md): reconciles items 3, 4 and 6 into one design with one ADR draft and nine owner decisions. Read this first if you only read one.
 
 ## Documents
 
@@ -33,7 +33,7 @@ Everything else is a research proposal.
 | 2026-11-12 | Structured data decision and handoff | Adopt NVIDIA Auto Ontology? What about MCP Toolbox? | A separate `neuron-data-gateway` process executes every query itself, PostgreSQL first; Auto Ontology only as an optional engine; Toolbox later as a source adapter; semantic content in Apache Ossie YAML; ADR drafts 0016–0018; a no-code proof (P0) first | Proposal; ADRs not accepted |
 | 2026-11-12 | Chart generation decision and handoff | Flint or alternatives for charts? | Flint later as the first optional renderer; a Neuron-owned chart contract; rules before the model | Proposal; depends on the gateway |
 | 2026-11-18, updated 2026-11-22 | AI-to-database solution architecture v2.0 + `nl2data-ref` | What is the most robust general design for NL access to databases? | Semantic layer first, verified queries second, guarded generated SQL as a labelled fallback; database-enforced security; vendor and Auto Ontology bake-off before building | Research (PR #642); not reconciled with the rows above |
-| 2026-11-22 | Structured data reconciliation | Where do the proposals agree and conflict, and what goes forward? | The Data Gateway design from 12 Nov, amended by nine points from v2.0; model-written SQL never reaches a connected database directly; verified queries in P1; two ADR drafts | Proposal for owner decision |
+| 2026-11-22 | Structured data reconciliation | Where do the proposals agree and conflict, and what goes forward? | The Data Gateway design from 12 Nov, amended by nine points from v2.0; model-written SQL never reaches a connected database directly; Neuron reaches the gateway through native tools, not MCP; verified queries in P1; larger proof samples; one ADR draft | Proposal for owner decision |
 
 ## What is built
 
