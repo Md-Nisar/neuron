@@ -72,8 +72,9 @@ def caller(dataset: str, persona: str) -> str:
         return "reader, may see all data."
     regions = ", ".join(D3_PERSONAS[persona]["regions"])
     conf = "may" if D3_PERSONAS[persona]["role"] == "d3_manager" else "may not"
-    return (f"{persona}. Rows are limited to region(s) {regions}; the caller {conf} see "
-            "confidential pay and assessor-note data.")
+    return (f"{persona}, with access to region(s) {regions} only; the caller {conf} see "
+            "confidential pay and assessor-note data. The database itself already limits every "
+            "table to the caller's rows: do not add region filters for that.")
 
 
 def schema_context(admin: psycopg.Connection, dataset: str, persona: str) -> str:
@@ -107,7 +108,10 @@ def ossie_context(dataset: str) -> str:
         m = yaml.safe_load((DG / "ossie" / f"{name}.ossie.yaml").read_text())
         m.pop("nonportable_extensions", None)
         parts.append(yaml.safe_dump(m, sort_keys=False, width=110))
-    return "Semantic models (Apache Ossie YAML):\n" + "\n---\n".join(parts)
+    return ("Semantic models (Apache Ossie YAML). SQL runs against the physical tables: a dataset's "
+            "`source` is the table, and a field's or metric's `expression.sql` is the SQL to write over "
+            "it (field names are not column names). Model-scoped metrics refer to fields as "
+            "dataset.field; expand them to their expressions.\n" + "\n---\n".join(parts))
 
 
 def build_prompt(arm: str, dataset: str, persona: str, question: str, ctx_cache: dict,
