@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645): built and checked; awaiting the owner on three deviations and the ADR 0016 decision 5 wording. DG-00.02 (#646): three Ossie models (D3 sales, D3 skills, D1) validate against the pinned spec; awaiting the owner on certification (section 5). Record PR: #653 |
+| Status | DG-00.01 (#645) and DG-00.02 (#646) done (D14); ADR 0016 corrections to be drafted for the owner. DG-00.03 (#647): approach proposed, awaiting the owner. Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -170,6 +170,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D11 | 2026-11-23 | Sales batch 5 accepted as recommended: S-U-020 to S-U-022 stay "refuse" (the evidence queries show the entity is absent). Record design for unanswerable questions confirmed: expected behaviour, kind, why, and an evidence query where the answer depends on the data. | Owner |
 | D12 | 2026-11-23 | Sales batch 6 accepted as recommended: S-U-027 stays "refuse"; S-M-011, S-M-014 and S-M-017 replaced by S-M-021 to S-M-023; S-M-013 replaced by S-M-024 ("average discount": plain vs value-weighted). Then: move to skills, write all remaining batches, and **approve them myself**. | Owner |
 | D13 | 2026-11-23 | DG-00.02 approach, all as recommended: (1) pin Apache Ossie `main` at `91689e6` (spec `0.3.0.dev0`; the only tag, `osi-0.1.1-rc1`, uses an older shape); (2) Ossie core has no "certified" notion, so certified terms are listed in a `neuron` entry under `nonportable_extensions` (another ADR 0016 wording point for later); (3) D1 is NVIDIA `auto-ontology-eval` at `e727e4d` (Wide World Importers ported to Postgres, MIT), loaded as database `d1`; (4) confidential tables (rep compensation, assessor notes) are left out of the D3 model; (5) models are written from the schema and business meaning only, without reading the 300 D3 or 41 D1 questions, so arm B is not tuned to the test; (6) hours per model are Claude's elapsed time, not comparable to a person's four-hour budget. Owner also asked Claude to watch PR #653. | Owner |
+| D14 | 2026-11-23 | Owner: "Accepted with your recommendation, start DG-00.03". Read as accepting every recommendation then pending. DG-00.01: the three deviations are accepted (three data roles; no claims function under A'; a model as second annotator with batches after D12 approved by Claude), and Claude drafts the ADR 0016 corrections (decision 5; certification not expressible in core Ossie) for owner approval rather than editing the ADR. DG-00.02: the certified-term lists stand as written and D3 stays two models. #645 and #646 are done on this record; closing the issues on GitHub waits for the owner. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
