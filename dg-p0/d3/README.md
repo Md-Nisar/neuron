@@ -13,6 +13,8 @@ Spike code on `spike/data-gateway-p0`; never merged to `main`. Results go to
 | `personas.json` | `emea_analyst`, `apac_analyst`, `global_manager`, each with its own login and data role |
 | `load.sh` | One command: recreates database `d3` and loads it |
 | `check.py` | Acceptance checks: isolation, fail-closed, escape attempts, reference questions |
+| `batch.py` | Freezes one batch of 25 (`batches/<name>.src.jsonl`) with expected answers per persona, runs the second annotator, writes `batches/<name>.md` for owner review |
+| `batches/` | Batches under review. A batch joins `questions.jsonl` only after the owner accepts it |
 
 ```bash
 D3_ADMIN_DSN="host=... port=... user=postgres" ./load.sh
