@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); question batches not started; Q8 counts open |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); sales batch 1 written and second-annotated, awaiting owner review (24 of 25 agree; S-A-017 to adjudicate, F2); skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -115,7 +115,7 @@ counts all zero. Kill criterion: baseline below 60% on D3 with the best model.
 | Q5 | Is there a key for a second, stronger model, and may the synthetic D3 schema go to it? |
 | Q6 | Where should S1 (Auto Ontology) run, given no Docker daemon here? |
 | Q7 | Is this log's location right (`docs/releases/data-gateway-p0/`), and should it live on `spike/data-gateway-p0`? |
-| Q8 | Skills questions: share the 100/30/20/30 counts with sales, or add their own? (Database placement answered by D4.) |
+| Q8 | Skills questions: share the 100/30/20/30 counts with sales, or add their own? **Answered by D6: their own.** |
 | Q9 | Answered by D5. |
 
 ### 1.8 Proposed plan for the design spike
@@ -162,6 +162,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D3 | 2026-11-23 | DG-00.01 approach: work on `spike/data-gateway-p0` (push allowed); sales domain; **add an employee skill assessment dataset** (scope addition to DG-00.01; how it counts toward the 150 questions is open, Q8); second annotator is option (b), a different model's independent pass with the owner adjudicating, recorded as model plus owner review, not two humans; owner reviews each batch of 25. | Owner |
 | D4 | 2026-11-23 | Skills dataset lives in the same `d3` database as a separate schema, `skills`. Answers the first half of Q8; how its questions count toward the 150 is still open. | Owner |
 | D5 | 2026-11-23 | Fix F1 and F1b with option A': policies keyed on the data role through `app.role_regions`, one login per data role. F1c (timeout) stays a documented residual for the executor. Answers Q9. | Owner |
+| D6 | 2026-11-23 | Skills gets its own question set with the same counts as sales: 100 answerable, 30 unanswerable, 20 ambiguous, 30 adversarial. D3 now holds 360 questions (300 plus 60 adversarial), about twice the annotation work; batches of 25 stay. Answers Q8. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -245,3 +246,35 @@ is an owner call.
   role (analyst and manager) but three data roles, because A' needs a role per region scope.
   ADR 0016 decision 5's wording ("claims set only by the gateway", `set_config` revoked as the
   safeguard) no longer describes the mart. Correcting the ADR is an owner action; it is not done.
+
+### F2 (2026-11-23): an outer join to a reference table reports hidden rows as zero
+
+Found by the second annotator on sales batch 1, question S-A-017, "How many sales reps work in
+each region?". The reference counts `sales.sales_reps` by region. The second annotator's query
+starts from `sales.regions` (reference data, every region visible) and LEFT JOINs the reps
+(regional, filtered by row-level security). For the EMEA analyst it answers "Americas 0, Asia
+Pacific 0, EMEA 8". Both other regions have 8 reps. Row-level security hides rows; it cannot make
+a query say "I don't know", so the hidden rows come back as a confident zero.
+
+Why it matters: B8 counts "wrong answers without refusal" (threshold 5%). This is that kind of
+answer, produced by a correct-looking query on a correctly hardened database. It is a property of
+row-level security combined with fully visible reference tables, not of this question.
+
+Not acted on (backlog only, D2). Recorded for the stories it touches: the baseline engine and
+answer composer (DG-00.03/04) must not present zeros for regions outside the caller's scope, and
+the D3 set should keep S-A-017 as a deliberate trap. Owner adjudicates S-A-017's expected answer.
+
+### Sales batch 1 (2026-11-23)
+
+`dg-p0/d3/batches/sales-01.md` on `spike/data-gateway-p0`. 25 answerable questions: counts,
+revenue (net amount of completed orders), grouping, top-N, monthly series, growth, return rate,
+one reference-only question (S-A-023), and one confidential question (S-A-024: the manager gets
+an answer, analysts are refused). Second annotator: `LLM_MODEL` at temperature 0, given the
+question and the schema file, never the reference SQL; about 11 s per question.
+
+- 24 of 25 agree for every persona. S-A-025 agrees with the columns in a different order; the
+  comparator now accepts that (`ok (columns reordered)`).
+- S-A-017 disagrees: see F2.
+- S-A-021 was replaced before review: its first wording ("never placed an order") gave 0 for every
+  persona, which a blocked or empty query would also give, so it tested nothing.
+- No ties at the top-N cut-offs (S-A-008, S-A-011, S-A-016), checked by hand.
