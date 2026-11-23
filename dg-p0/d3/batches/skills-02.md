@@ -66,7 +66,7 @@ ORDER BY level
 | Persona | Reference answer | Agree |
 | --- | --- | --- |
 | emea_analyst | level, employees → 1, 8; 3, 15; 5, 13; 2, 14; 4, 15 | yes |
-| apac_analyst | level, employees → 1, 12; 3, 10; 5, 13; 2, 12; 4, 26 | yes |
+| apac_analyst | level, employees → 1, 12; 3, 10; 5, 13; 4, 26; 2, 12 | yes |
 | global_manager | level, employees → 1, 25; 3, 44; 5, 44; 2, 40; 4, 60 | yes |
 
 ## K-A-029: How many assessments gave a score of 1 (novice) across all cycles?

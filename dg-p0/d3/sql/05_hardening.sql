@@ -97,3 +97,10 @@ BEGIN
                         THEN mapped ELSE any_mapping END);
   END LOOP;
 END $$;
+
+-- 6. Finding F3: the mapping itself is row-filtered, so a data role sees only its own regions.
+--    The policies above read it as the invoking role, which needs exactly those rows.
+ALTER TABLE app.role_regions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.role_regions FORCE ROW LEVEL SECURITY;
+CREATE POLICY own_mapping ON app.role_regions FOR SELECT TO d3_analyst_emea, d3_analyst_apac, d3_manager
+  USING (role_name = current_user);

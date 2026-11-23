@@ -12,6 +12,9 @@ Checks:
   fail-closed a login that has not switched into its data role reads nothing, and a data role
               with no region mapping sees no rows in any table
   escape      no SET, RESET ROLE, SET ROLE, write or file read widens what a session sees
+  adversarial every SQL case is stopped by the layer it names (the nl2data-ref guard, the
+              database, or both), every planted text is present and visible to its persona, and
+              no table changes during the run
   questions   every reference query in questions.jsonl returns its expected result per persona, and
               every unanswerable question's evidence query still finds nothing, and every
               reading of an ambiguous question returns its expected result per persona
@@ -31,6 +34,7 @@ HERE = pathlib.Path(__file__).parent
 REF = HERE.parents[1] / "docs/research/data-analytics/reference-code/nl2data-ref"
 sys.path.insert(0, str(REF))
 from nl2data_ref.answer_checks import results_match  # noqa: E402
+from nl2data_ref.guard import Scope, validate  # noqa: E402
 
 DSN = os.environ["D3_DSN"]
 PERSONAS = json.loads((HERE / "personas.json").read_text())
@@ -133,6 +137,8 @@ def check_isolation(admin: psycopg.Connection) -> None:
                 got[0][0] == want and want > 0 and out[0][0] == 0,
                 f"isolation {name}: {t} sees {got[0][0]} of {want} own rows, {out[0][0]} outside",
             )
+        _, other = run_as(p, "SELECT count(*) FROM app.role_regions WHERE role_name <> current_user")
+        ok(other == [(0,)], f"isolation {name}: sees no other role's region mapping (F3)")
         for t in REFERENCE:
             want = admin.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
             _, got = run_as(p, f"SELECT count(*) FROM {t}")
@@ -221,6 +227,58 @@ def check_escape() -> None:
     print(f"KNOWN escape: a session can lift statement_timeout ({err or 'allowed'}); see F1c")
 
 
+def fingerprint(admin: psycopg.Connection) -> dict[str, str]:
+    """md5 of every table's full contents in sales, skills and app."""
+    tables = [r[0] for r in admin.execute(
+        "SELECT format('%I.%I', schemaname, tablename) FROM pg_tables "
+        "WHERE schemaname IN ('sales', 'skills', 'app') ORDER BY 1").fetchall()]
+    return {t: admin.execute(
+        f"SELECT md5(coalesce(string_agg(x::text, ',' ORDER BY x::text), '')) FROM {t} x").fetchone()[0]
+        for t in tables}
+
+
+def guard_scope(admin: psycopg.Connection, persona: dict) -> Scope:
+    """What the persona may read, in the reference guard's terms (the gateway's future catalog)."""
+    schema: dict = {}
+    for sch, tab, col, typ in admin.execute(
+        "SELECT table_schema, table_name, column_name, data_type FROM information_schema.columns "
+        "WHERE table_schema IN ('sales', 'skills')"
+    ).fetchall():
+        schema.setdefault(sch, {}).setdefault(tab, {})[col] = typ
+    return Scope(readable_tables=frozenset(readable(persona)), schema=schema)
+
+
+def check_adversarial(admin: psycopg.Connection) -> None:
+    path = HERE / "adversarial.jsonl"
+    before = fingerprint(admin)
+    scopes = {name: guard_scope(admin, p) for name, p in PERSONAS.items()}
+    for line in path.read_text().splitlines():
+        c = json.loads(line)
+        p, exp = PERSONAS[c["persona"]], c["expected"]
+        if "planted_sql" in c:
+            n = admin.execute(c["planted_sql"]).fetchone()[0]
+            ok(n >= 1, f"adversarial {c['id']}: planted text present ({n})")
+        if "visible_sql" in c:
+            _, rows = run_as(p, c["visible_sql"])
+            ok(rows == [(1,)], f"adversarial {c['id']}: planted row visible to {c['persona']}")
+        if "sql" not in c["input"]:
+            continue
+        v = validate(c["input"]["sql"], scopes[c["persona"]])
+        want = exp["guard"]["verdict"]
+        ok(v.ok == (want == "allow"), f"adversarial {c['id']}: guard {'allows' if v.ok else 'rejects ' + str(v.code)}")
+        try:
+            _, rows = run_as(p, c["input"]["sql"])
+            got: dict = {"rows": [list(r) for r in rows]}
+        except psycopg.Error as e:
+            got = {"error": True, "class": type(e).__name__}
+        db = exp["database"]
+        good = got.get("error", False) if db.get("error") else got.get("rows") == db["rows"]
+        ok(good, f"adversarial {c['id']}: database gives {got.get('class') or got.get('rows')}")
+    after = fingerprint(admin)
+    changed = [t for t in before if before[t] != after.get(t)]
+    ok(not changed, f"adversarial: no table changed ({', '.join(changed) or 'none'})")
+
+
 def check_questions() -> None:
     path = HERE / "questions.jsonl"
     if not path.exists():
@@ -259,6 +317,7 @@ def main() -> int:
     with psycopg.connect(f"{DSN} dbname=d3 user=postgres") as admin:
         check_isolation(admin)
         check_fail_closed(admin)
+        check_adversarial(admin)
     check_escape()
     check_questions()
     print(f"\n{len(failures)} failure(s)")

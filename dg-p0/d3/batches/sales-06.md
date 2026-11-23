@@ -73,12 +73,12 @@ SELECT c.name, round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100))
 - apac_analyst: name, revenue → Cedar Labs Ltd, 1398153.79
 - global_manager: name, revenue → Nova Retail Inc, 1520102.67
 
-Reading 2, Most completed orders:
+Reading 2, Most completed orders (every customer tied for first):
 ```sql
-SELECT c.name, count(*) AS orders FROM sales.orders o JOIN sales.customers c ON c.customer_id = o.customer_id WHERE o.status = 'completed' GROUP BY c.customer_id, c.name ORDER BY orders DESC, c.name LIMIT 1
+WITH t AS (SELECT c.name, count(*) AS orders FROM sales.orders o JOIN sales.customers c ON c.customer_id = o.customer_id WHERE o.status = 'completed' GROUP BY c.customer_id, c.name) SELECT name, orders FROM t WHERE orders = (SELECT max(orders) FROM t)
 ```
 - emea_analyst: name, orders → Clear Labs Pty, 19
-- apac_analyst: name, orders → Harbor Works Ltd, 17
+- apac_analyst: name, orders → Harbor Works Ltd, 17; North Works Ltd, 17
 - global_manager: name, orders → Clear Labs Pty, 19
 
 ## S-M-003: What is our biggest product?

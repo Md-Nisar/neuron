@@ -565,7 +565,7 @@ FROM skills.assessor_notes
 | --- | --- | --- |
 | emea_analyst | refused (InsufficientPrivilege) | yes |
 | apac_analyst | refused (InsufficientPrivilege) | yes |
-| global_manager | avg_chars → 33.2 | yes |
+| global_manager | avg_chars → 33.8 | yes |
 
 ## K-A-075: How many line managers have more than 5 current direct reports?
 

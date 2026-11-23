@@ -369,27 +369,38 @@ ORDER BY category
 | apac_analyst | category, avg_list_price → Accessories, 232.45; Hardware, 6905.12; Software, 2344.05; Services, 2418.85 | yes |
 | global_manager | category, avg_list_price → Accessories, 232.45; Hardware, 6905.12; Software, 2344.05; Services, 2418.85 | yes |
 
-## S-A-041: Which customer placed the most orders in 2025, whatever their status, and how many?
+## S-A-041: Which customer placed the most orders in 2025, whatever their status, and how many? If several customers tie, list them all.
 
 Reference:
 ```sql
-SELECT c.name, count(*) AS orders FROM sales.orders o JOIN sales.customers c ON c.customer_id = o.customer_id WHERE o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01' GROUP BY c.customer_id, c.name ORDER BY orders DESC LIMIT 1
+WITH t AS (SELECT c.name, count(*) AS orders FROM sales.orders o JOIN sales.customers c ON c.customer_id = o.customer_id WHERE o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01' GROUP BY c.customer_id, c.name) SELECT name, orders FROM t WHERE orders = (SELECT max(orders) FROM t)
 ```
 Second annotator:
 ```sql
+WITH cust_orders AS (
+    SELECT
+        c.customer_id,
+        c.name,
+        COUNT(o.order_id) AS order_count
+    FROM sales.customers c
+    JOIN sales.orders o ON o.customer_id = c.customer_id
+    WHERE o.ordered_on >= DATE '2025-01-01'
+      AND o.ordered_on < DATE '2026-01-01'
+    GROUP BY c.customer_id, c.name
+),
+max_orders AS (
+    SELECT MAX(order_count) AS max_cnt FROM cust_orders
+)
 SELECT
-    c.name AS customer,
-    COUNT(o.order_id) AS order_count
-FROM sales.orders o
-JOIN sales.customers c ON c.customer_id = o.customer_id
-WHERE EXTRACT(YEAR FROM o.ordered_on) = 2025
-GROUP BY c.name
-ORDER BY order_count DESC
-LIMIT 1
+    co.name AS customer,
+    co.order_count
+FROM cust_orders co
+JOIN max_orders mo ON co.order_count = mo.max_cnt
+ORDER BY co.name
 ```
 | Persona | Reference answer | Agree |
 | --- | --- | --- |
-| emea_analyst | name, orders → Atlas Labs GmbH, 15 | yes |
+| emea_analyst | name, orders → Atlas Labs GmbH, 15; Green Labs Co, 15 | yes |
 | apac_analyst | name, orders → Cedar Labs Ltd, 19 | yes |
 | global_manager | name, orders → Cedar Labs Ltd, 19 | yes |
 
