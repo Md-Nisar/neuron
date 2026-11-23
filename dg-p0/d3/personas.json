@@ -1,0 +1,5 @@
+{
+  "emea_analyst": {"login": "d3_login_analyst", "role": "d3_analyst", "user": "u-emea-1", "regions": ["EMEA"]},
+  "apac_analyst": {"login": "d3_login_analyst", "role": "d3_analyst", "user": "u-apac-1", "regions": ["APAC"]},
+  "global_manager": {"login": "d3_login_manager", "role": "d3_manager", "user": "u-mgr-1", "regions": ["EMEA", "APAC", "AMER"]}
+}
