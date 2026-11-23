@@ -11,8 +11,9 @@ reference per persona. Writes batches/<name>.jsonl and batches/<name>.md for own
 
 The annotator's SQL runs only through check.run_as: one statement, read-only transaction, the
 persona's data role, row-level security. The API key is read from the environment and never
-printed. `python batch.py <name> --accept` appends an owner-accepted batch to questions.jsonl,
-which check.py then verifies on every run. Previous annotator SQL is reused if the output file
+printed. `python batch.py <name> --accept [--alt=ID,ID]` appends an owner-accepted batch to
+questions.jsonl, which check.py then verifies on every run; --alt keeps the second annotator's
+answer as an accepted alternative form. Previous annotator SQL is reused if the output file
 exists (pass --fresh to re-ask).
 """
 
@@ -157,20 +158,31 @@ def main(name: str, fresh: bool) -> int:
     return 0
 
 
-def accept(name: str) -> int:
-    """Owner accepted the batch: append its questions, with reference answers, to questions.jsonl."""
+def accept(name: str, alt: set[str]) -> int:
+    """Owner accepted the batch: append its questions, with reference answers, to questions.jsonl.
+
+    For ids in `alt`, the owner also accepted the second annotator's answer as an equally correct
+    form (for example months as dates rather than numbers); it is kept as `alternatives`.
+    """
     path = HERE / "questions.jsonl"
     have = {json.loads(x)["id"] for x in path.read_text().splitlines() if x} if path.exists() else set()
     keep = ("id", "category", "question", "reference_sql", "order_matters", "expected")
+    batch = list(map(json.loads, (HERE / f"batches/{name}.jsonl").read_text().splitlines()))
+    if unknown := alt - {q["id"] for q in batch}:
+        sys.exit(f"--alt names questions not in this batch: {sorted(unknown)}")
     with path.open("a") as f:
-        for q in map(json.loads, (HERE / f"batches/{name}.jsonl").read_text().splitlines()):
+        for q in batch:
             if q["id"] in have:
                 sys.exit(f"{q['id']} is already in questions.jsonl")
-            f.write(json.dumps({k: q[k] for k in keep}, default=str) + "\n")
+            rec = {k: q[k] for k in keep}
+            if q["id"] in alt:
+                rec["alternatives"] = [{p: a["second"] for p, a in q["agreement"].items()}]
+            f.write(json.dumps(rec, default=str) + "\n")
     return 0
 
 
 if __name__ == "__main__":
     if "--accept" in sys.argv:
-        sys.exit(accept(sys.argv[1]))
+        alt = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--alt=")), "")
+        sys.exit(accept(sys.argv[1], set(filter(None, alt.split(",")))))
     sys.exit(main(sys.argv[1], "--fresh" in sys.argv))
