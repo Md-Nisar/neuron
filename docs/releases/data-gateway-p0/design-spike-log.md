@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): approach proposed (section 7). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): in progress (D17, section 7). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -173,6 +173,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D14 | 2026-11-23 | Owner: "Accepted with your recommendation, start DG-00.03". Read as accepting every recommendation then pending. DG-00.01: the three deviations are accepted (three data roles; no claims function under A'; a model as second annotator with batches after D12 approved by Claude), and Claude drafts the ADR 0016 corrections (decision 5; certification not expressible in core Ossie) for owner approval rather than editing the ADR. DG-00.02: the certified-term lists stand as written and D3 stays two models. #645 and #646 are done on this record; closing the issues on GitHub waits for the owner. | Owner |
 | D15 | 2026-11-23 | DG-00.03 approach, all as recommended: (1) score with the DG-00.01 comparator from `batch.py` (columns by position in any order, extra columns allowed, 0.01 tolerance, row order only where `order_matters`) and report `nl2data-ref`'s `results_match` beside it; a deviation from the backlog wording, because name matching and 6-digit rounding mark correct answers wrong; (2) execute with the A' executor (persona login, read-only, `SET LOCAL ROLE`, 15 s timeout, one guard-approved statement), not `nl2data-ref`'s claims executor; (3) arm C sees the caller's schema with database comments, planted ones included; arm B sees the Ossie model; (4) one model call per distinct context; (5) full runs: D3 (300 questions plus the 34 adversarial cases that are questions; 20 was a miscount) and D1 (41), both arms. | Owner |
 | D16 | 2026-11-23 | Owner: "You decide" on the three DG-00.03 questions. Claude chose its recommendations: (1) in DG-00.05, arm B sees the caller's physical columns beside the Ossie model (option b), so the comparison measures what the semantic content adds rather than F5; arm B as measured in DG-00.03 stays in the record; (2) the F4 guard fix is ported to `main` as PR #654 (3 lines and a test that fails without it; review and merge are the owner's); (3) D1 is reported both ways: the scorer now also gives "answerable units not answered" (refused or asked to clarify) beside accuracy when the engine wrote SQL (spike `c72871d`; no other figure changed). | Owner (delegated) |
+| D17 | 2026-11-23 | DG-00.04 approach, all as recommended (section 7): run here with the container's Docker daemon; pin `NVIDIA/auto-ontology` at `7dac5ff7` (1.3.0); chat model `LLM_MODEL` as in arms B and C, NVIDIA embeddings and rerank, key from the environment only; no non-NVIDIA endpoint exists, recorded; own read-only login `ao_reader` on `d3`, all regions, no confidential tables; egress by code review and a logging CONNECT proxy; A1 on D3, then at most four hours of certification by Claude (A2) for owner review; D1 and D2 wait for DG-00.05. Claude also watches PR #654. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -782,7 +783,7 @@ Deviations: the DG-00.01 comparator rather than `results_match`, and the A' exec
 The intervals are wide (34 questions). The first row is comparable with NVIDIA's harness; the
 last two together say what kind of failure it is.
 
-## 7. DG-00.04: Auto Ontology at a pinned commit (2026-11-23, proposed, not started)
+## 7. DG-00.04: Auto Ontology at a pinned commit (2026-11-23, accepted as D17)
 
 ### What was checked before proposing
 
