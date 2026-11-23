@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | Following the DG backlog one issue at a time (D2). Next: DG-00.01 (#645), approach awaiting owner approval |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0`: sales schema, hardening, loader and checker done; finding F1 open; question batches not started |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -115,6 +115,8 @@ counts all zero. Kill criterion: baseline below 60% on D3 with the best model.
 | Q5 | Is there a key for a second, stronger model, and may the synthetic D3 schema go to it? |
 | Q6 | Where should S1 (Auto Ontology) run, given no Docker daemon here? |
 | Q7 | Is this log's location right (`docs/releases/data-gateway-p0/`), and should it live on `spike/data-gateway-p0`? |
+| Q8 | Skills dataset: same D3 database (second schema) or separate? Does it share the 100/30/20/30 counts or add its own? |
+| Q9 | F1: fix option A, B or C? |
 
 ### 1.8 Proposed plan for the design spike
 
@@ -157,6 +159,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | --- | --- | --- | --- |
 | D1 | 2026-11-23 | Spike scope is (a) + (c): carry out DG-E00 as accepted (track 1), and design what ADR 0016 leaves open (track 2). ADR 0016 is reopened only where evidence calls for it. Answers Q1. | Owner |
 | D2 | 2026-11-23 | Superseded D1 after section 3 showed analytics is not in the backlog: no design work outside the backlog. Track 2 (T1 to T6) is dropped; gaps G1 to G4 stay recorded but are not worked. The DG-E00 stories are done one at a time, in dependency order, each approach agreed before work starts. | Owner |
+| D3 | 2026-11-23 | DG-00.01 approach: work on `spike/data-gateway-p0` (push allowed); sales domain; **add an employee skill assessment dataset** (scope addition to DG-00.01; how it counts toward the 150 questions is open, Q8); second annotator is option (b), a different model's independent pass with the owner adjudicating, recorded as model plus owner review, not two humans; owner reviews each batch of 25. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -181,3 +184,28 @@ Consequences for track 2: topic T3 (analytics beyond one query) designs somethin
 covers, and two of its options cross lines ADR 0016 draws (charts and reports are on the
 "Deliberately not built" list; code execution is RAG-12.02's highest-risk item). Any of them going
 forward needs a product requirement and an ADR amendment, not only a story.
+
+## 4. Findings
+
+### F1 (2026-11-23): claims can be rewritten with `SET`, so the database alone does not hold
+
+- **What.** ADR 0016 decision 5 and `nl2data-ref` revoke `set_config` from PUBLIC so that only
+  the `SECURITY DEFINER` function sets claims. The `SET` command is not covered: any role may
+  write a custom `app.*` setting. As `d3_analyst` with EMEA claims, `SET LOCAL app.regions =
+  'EMEA,APAC,AMER'` raised visible APAC orders from 0 to 1,057 (checker: 1,884 foreign orders).
+- **Why it was missed.** The reference attack list tries `set_config` but never `SET`.
+- **Exposure.** Needs a second statement. The gateway's validator and single-statement execution
+  stop it, so this is a defence-in-depth gap: "the database holds with the guard bypassed" is
+  false for claims. It matters for S3 (DG-00.06) and for the customer hardening guide.
+- **Evidence.** `spike/data-gateway-p0` at `5728d9d`, `dg-p0/d3/check.py`, PostgreSQL 16.15.
+- **Fix options (owner to choose):**
+
+| Option | How | For | Against |
+| --- | --- | --- | --- |
+| A. Role-keyed policies | One data role per scope (for example `d3_analyst_emea`); policies read a `role_regions` table with `current_user`. `SET ROLE` is limited by membership, so it cannot be forged | Pure database enforcement, no secret; matches ADR 0016's "role-level mapping first" | Roles multiply with scopes; per-user policies (`neuron.user_sub`) stay forgeable |
+| B. Signed claims | `set_claims` stores claims plus an HMAC (pgcrypto) bound to backend pid and transaction start; `app.regions()` (`SECURITY DEFINER`) verifies it with a key only its owner can read | Keeps claims and per-user policies; forged values fail closed | A key inside the database; more code; pgcrypto needed (available here) |
+| C. Accept and document | Rely on the validator and single-statement execution; state the limit in ADR 0016 | No change | Drops a defence layer the ADR claims |
+
+Recommendation: A for the mart now (the role-level mapping ADR 0016 already chose), B noted as
+the path for per-user policies. Either way ADR 0016 decision 5's wording needs correcting, which
+is an owner call.
