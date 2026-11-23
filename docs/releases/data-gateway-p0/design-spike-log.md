@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): in progress (D17, section 7). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; owner review of A2 and two questions pending. Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -847,8 +847,55 @@ last two together say what kind of failure it is.
   design ("There is no way to configure a token for the server itself"). A gateway calling it as a
   service would use a user's API token on the REST routes the MCP tools wrap.
 - **F8. The backend trusts an unauthenticated header.** FastAPI reads `x-auto-ontology-user-id` and
-  must not be reachable except through the Next.js gateway, yet the reference Compose publishes
-  `3001:3001` and the server binds `0.0.0.0`. Here everything is bound or used on loopback.
+  must not be reachable except through the Next.js gateway. Upstream documents this
+  (`docs/conversation-api.md`, "Trust boundary"), yet the reference Compose publishes `3001:3001`
+  and the server binds `0.0.0.0`. Here only loopback was used.
 - **F9. Compilation sends data, not only schema.** Attribute descriptions include sample column
   values in the LLM prompt (`semantic/attribute_descriptions.py`). Decision 8 allows the schema
   and certified terms only.
+
+### Results (spike `dg-p0/auto-ontology/` at `de750a0`)
+
+| Step | Result |
+| --- | --- |
+| A1 | Semantic compilation of D3 through `d3_ao_reader`: 16 tables in 247 s, no warnings (after D18; the first run, 288 s, had its profiling refused on 9 tables and was redone). 16 terms, one per table, including "Role Region" from the access-control table; 51 column attributes; 0 SQL attributes. As Ossie: 16 datasets, 26 relationships, 77 fields, **0 metrics** (the hand-written D3 models have 12). Snapshot in `a1/` |
+| End to end, A1 | Through `/api/chat/completions` with the viewer token: S-A-002 (orders in 2025) 2065, correct, 12.6 s; S-A-010 (average completed-order value, 2025) 71,733.9999 against 71,734.00, correct, 14.4 s |
+| `search_terms`, `describe_table` | Their routes (`/api/terms`, `/api/exploration/tables/{id}/details`) answer with the viewer token; the MCP server itself was not run (F7) |
+| Write attempt | `write_attempt.py`: 7 statements through the connector (`DELETE`, `UPDATE`, `INSERT`, `GRANT`, `DROP`, and `SET default_transaction_read_only = off` followed by `DELETE`) all refused as read-only; 4 requests through chat ("delete every cancelled order", "set order 1 to completed", a `GRANT`, a `DROP`) answered with a `SELECT` or declined; for the `GRANT` it said `rep_compensation` is not in its catalog. Table fingerprints: 18 tables, **0 changed** (`runs/write_attempt.out`) |
+| A2 | `certify.py` with `a2/certify.yaml`, written from the hand-written Ossie models only (D13 point 5): 15 terms described and certified; "Role Region" described as access control and left uncertified; 13 certified SQL attributes (the 12 hand-written metrics plus net amount); 50 of 51 column attributes reviewed (`a2/columns.tsv`) and certified, two descriptions corrected. About 10 minutes of Claude's elapsed time, not comparable to a person's four hours (D13 point 6). Snapshot in `a2/export/` |
+| A2 sanity | S-A-004 (revenue 2025): the generated SQL is the certified Revenue expression, 122,521,671.79, correct; S-A-002 still 2065 |
+| Egress | 298 connections over 19 minutes, all `CONNECT integrate.api.nvidia.com:443` (chat and embeddings). None to the rerank host, Next.js telemetry (off, as in upstream's image) or anything else. The logger sees clients that honour `HTTPS_PROXY`; content is not decrypted, so what is sent is known from the code (F9) |
+| Model | Chat `nvidia/nemotron-3-ultra-550b-a55b` (`LLM_MODEL`, as arms B and C); embeddings `nvidia/nemotron-3.5-embed-1b`. No non-NVIDIA OpenAI-compatible endpoint is available here, so none was tried |
+| D3 regression | `d3/check.py` after the policy change: 0 failures |
+
+- **F10. Auto Ontology's Ossie export does not match the pinned Ossie.** 1.3.0 writes
+  `version: 0.2.0.dev0`, with field SQL under `expression.dialects` and vendor data under
+  `custom_extensions`. The pinned Ossie `main` (`91689e6`, 0.3.0.dev0) rejects `custom_extensions`
+  (renamed `nonportable_extensions`), so the export fails schema validation. DG-00.05's round trip
+  must convert between the two versions or pin a matching Ossie.
+
+### DG-00.04 against its acceptance criteria
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| Another engineer follows the written steps, and Auto Ontology answers a D3 question end to end | Met, with the deviations below | `dg-p0/auto-ontology/README.md`; `runs/ask.jsonl` (two correct answers on A1), `runs/ask_a2.jsonl` |
+| Asked to change data through the write-protected login, nothing changes, and the attempt is recorded | Met | `runs/write_attempt.out`: 11 attempts, all refused or declined, 0 of 18 tables changed |
+
+Requirements: pinned at 1.3.0 (`7dac5ff7`); non-NVIDIA endpoint: none available, recorded; the two
+tool routes called with a service credential (a viewer's API token, F7); connector re-checked (read-only
+transaction, yes; `set_config`, yes, F6 and D18); own read-only login; egress recorded.
+
+Deviations: run from source rather than images; Python 3.12.13; the "service credential" is a
+viewer's API token on the REST routes, because MCP takes no service credential (F7); `set_config`
+granted to this login (D18).
+
+### For the owner
+
+1. **Review A2.** `a2/certify.yaml` and `a2/columns.tsv` hold every certification Claude made. As in D14,
+   they stand until you change them.
+2. **F9 in DG-00.05.** Compilation sends sample column values to the model, which decision 8
+   does not allow. Auto Ontology has a distinct-value probing setting. Choose: (a) measure A1 and
+   A2 as upstream ships them and record F9 (recommended: the comparison is about the engine, and
+   the product posture is a decision for the ADR 0016 corrections), or (b) switch probing off and
+   recompile.
+
