@@ -1,0 +1,137 @@
+# DG-00.04 A2: certification of Auto Ontology's compiled D3 model (A1), by Claude, owner to review.
+# Source: the business meaning in the hand-written D3 Ossie models (dg-p0/ossie/d3_*.ossie.yaml),
+# themselves written from the schema without reading the D3 questions (D13 point 5). Nothing here
+# comes from the questions, so A2 has the same knowledge as arm B and is not tuned to the test.
+#
+# terms: Auto Ontology term name -> description to set; name and description are then certified.
+# A term listed with certify: false keeps its generated text and stays uncertified.
+# sql_attributes: one per hand-written metric (12) plus the certified field net_amount, as the full
+# SELECT that Auto Ontology requires; certified after creation.
+
+terms:
+  Region: {description: "Sales regions (EMEA, APAC, AMER). Departments and employees also belong to a region."}
+  Country: {description: "Countries and the sales region each belongs to."}
+  Customer: {description: "Customers, one row per customer account."}
+  Product: {description: "Product catalogue."}
+  Sales Rep: {description: "Sales representatives; each works in one region."}
+  Order: {description: "Sales orders. Only completed orders count as revenue."}
+  Order Line: {description: "Order lines. The net amount of a line is quantity * unit_price * (1 - discount_pct / 100)."}
+  Return: {description: "Returned units against an order line."}
+  Department: {description: "Departments; each sits in one region."}
+  Employee: {description: "Employees, current and former. An employee is current when left_on is empty."}
+  Skill: {description: "Skills that employees are assessed on."}
+  Assessment Cycle: {description: "Half-year assessment cycles, for example 2024-H1."}
+  Assessment: {description: "One score per employee, skill and cycle, given by an assessor (usually the line manager)."}
+  Role Target: {description: "Expected score per job title and skill."}
+  Certification: {description: "Professional certifications held by employees."}
+  Role Region:
+    certify: false
+    description: "Access-control mapping of database roles to regions. Not business data; do not use it to answer questions."
+
+sql_attributes:
+  - term: Order Line
+    name: Net Amount
+    description: "Net amount of an order line in USD: quantity * unit_price * (1 - discount_pct / 100)."
+    expression: "SELECT l.quantity * l.unit_price * (1 - l.discount_pct / 100) FROM sales.order_lines l"
+  - term: Order
+    name: Revenue
+    description: "Net revenue in USD: net line amounts of completed orders. Returns are not deducted. Also called sales, net sales, turnover."
+    expression: "SELECT SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) FROM sales.order_lines l JOIN sales.orders o ON o.order_id = l.order_id WHERE o.status = 'completed'"
+  - term: Order Line
+    name: Units Sold
+    description: "Units on completed orders."
+    expression: "SELECT SUM(l.quantity) FROM sales.order_lines l JOIN sales.orders o ON o.order_id = l.order_id WHERE o.status = 'completed'"
+  - term: Order
+    name: Average Order Value
+    description: "Revenue divided by the number of completed orders (AOV)."
+    expression: "SELECT SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) / COUNT(DISTINCT o.order_id) FROM sales.order_lines l JOIN sales.orders o ON o.order_id = l.order_id WHERE o.status = 'completed'"
+  - term: Customer
+    name: Customer Count
+    description: "Number of customer accounts."
+    expression: "SELECT COUNT(c.customer_id) FROM sales.customers c"
+  - term: Order
+    name: Order Count
+    description: "Number of orders of any status."
+    expression: "SELECT COUNT(o.order_id) FROM sales.orders o"
+  - term: Order
+    name: Completed Order Count
+    description: "Number of completed orders."
+    expression: "SELECT COUNT(o.order_id) FROM sales.orders o WHERE o.status = 'completed'"
+  - term: Return
+    name: Returned Units
+    description: "Units returned."
+    expression: "SELECT SUM(r.quantity) FROM sales.returns r"
+  - term: Employee
+    name: Headcount
+    description: "Number of current employees (left_on is empty)."
+    expression: "SELECT COUNT(e.employee_id) FROM skills.employees e WHERE e.left_on IS NULL"
+  - term: Employee
+    name: Leavers
+    description: "Number of employees who have left (left_on is set)."
+    expression: "SELECT COUNT(e.employee_id) FROM skills.employees e WHERE e.left_on IS NOT NULL"
+  - term: Assessment
+    name: Assessment Count
+    description: "Number of assessments."
+    expression: "SELECT COUNT(a.assessment_id) FROM skills.assessments a"
+  - term: Assessment
+    name: Average Score
+    description: "Mean assessment score on the 1 to 5 scale."
+    expression: "SELECT AVG(a.score) FROM skills.assessments a"
+  - term: Certification
+    name: Certification Count
+    description: "Number of certifications, valid or expired."
+    expression: "SELECT COUNT(c.certification_id) FROM skills.certifications c"
+
+# columns: column attributes Claude reviewed (a2/columns.tsv) and certifies; a description here
+# replaces the generated one. role_regions.role_name is left uncertified (access-control table).
+columns:
+  - {table: assessments, column: assessed_on}
+  - {table: assessments, column: assessment_id}
+  - {table: assessments, column: score}
+  - {table: assessment_cycles, column: cycle_id}
+  - {table: assessment_cycles, column: ends_on}
+  - {table: assessment_cycles, column: name}
+  - {table: assessment_cycles, column: starts_on}
+  - {table: certifications, column: certification_id}
+  - {table: certifications, column: expires_on}
+  - {table: certifications, column: issued_on}
+  - {table: certifications, column: name}
+  - {table: countries, column: country_code}
+  - {table: countries, column: name}
+  - {table: customers, column: created_on}
+  - {table: customers, column: customer_id}
+  - {table: customers, column: name}
+  - {table: customers, column: segment}
+  - {table: departments, column: department_id}
+  - {table: departments, column: name}
+  - {table: employees, column: employee_id}
+  - {table: employees, column: hired_on}
+  - {table: employees, column: job_title}
+  - {table: employees, column: left_on, description: "Date the employee left; empty means the employee is still employed."}
+  - {table: employees, column: level}
+  - {table: employees, column: name}
+  - {table: orders, column: ordered_on}
+  - {table: orders, column: order_id}
+  - {table: orders, column: status, description: "Order status: pending, completed or cancelled. Only completed orders count as revenue."}
+  - {table: order_lines, column: discount_pct}
+  - {table: order_lines, column: line_no}
+  - {table: order_lines, column: quantity}
+  - {table: order_lines, column: unit_price}
+  - {table: products, column: category}
+  - {table: products, column: list_price}
+  - {table: products, column: name}
+  - {table: products, column: product_id}
+  - {table: regions, column: region_id}
+  - {table: regions, column: name}
+  - {table: returns, column: quantity}
+  - {table: returns, column: reason}
+  - {table: returns, column: returned_on}
+  - {table: returns, column: return_id}
+  - {table: role_targets, column: job_title}
+  - {table: role_targets, column: target_score}
+  - {table: sales_reps, column: hired_on}
+  - {table: sales_reps, column: name}
+  - {table: sales_reps, column: rep_id}
+  - {table: skills, column: category}
+  - {table: skills, column: skill_id}
+  - {table: skills, column: name}

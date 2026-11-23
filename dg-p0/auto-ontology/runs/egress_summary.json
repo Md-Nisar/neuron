@@ -1,8 +1,8 @@
 {
  "from": "2026-11-23T21:33:26+00:00",
- "to": "2026-11-23T21:46:45+00:00",
- "connections": 285,
+ "to": "2026-11-23T21:52:05+00:00",
+ "connections": 298,
  "by_target": {
-  "CONNECT integrate.api.nvidia.com:443": 285
+  "CONNECT integrate.api.nvidia.com:443": 298
  }
 }

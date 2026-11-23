@@ -1,0 +1,216 @@
+version: 0.2.0.dev0
+name: d3_mapping
+description: Maps the d3_ontology onto the d3 semantic model
+ontology_ref:
+  name: d3_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d3
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: AssessmentCycle
+  object_mappings:
+  - expression: assessment_cycle.cycle_id
+  link_mappings:
+  - object_mapping:
+      expression: assessment_cycle.cycle_id
+    children:
+    - object_mapping:
+        concept: Date
+        expression: assessment_cycle.ends_on
+      relationship: ends_on
+    - object_mapping:
+        concept: String
+        expression: assessment_cycle.name
+      relationship: name
+    - object_mapping:
+        concept: Date
+        expression: assessment_cycle.starts_on
+      relationship: starts_on
+- concept: Country
+  object_mappings:
+  - expression: country.country_code
+  link_mappings:
+  - object_mapping:
+      expression: country.country_code
+    children:
+    - object_mapping:
+        concept: String
+        expression: country.country_name
+      relationship: country_name
+    - object_mapping:
+        concept: Region
+        expression: country.region_id
+      relationship: region
+- concept: Customer
+  object_mappings:
+  - expression: customer.customer_id
+  link_mappings:
+  - object_mapping:
+      expression: customer.customer_id
+    children:
+    - object_mapping:
+        concept: Date
+        expression: customer.created_on
+      relationship: created_on
+    - object_mapping:
+        concept: String
+        expression: customer.name
+      relationship: name
+    - object_mapping:
+        concept: String
+        expression: customer.segment
+      relationship: segment
+    - object_mapping:
+        concept: Region
+        expression: customer.region_id
+      relationship: region
+    - object_mapping:
+        concept: Country
+        expression: customer.country_code
+      relationship: country
+- concept: Department
+  object_mappings:
+  - expression: department.department_id
+  link_mappings:
+  - object_mapping:
+      expression: department.department_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: department.department_name
+      relationship: department_name
+    - object_mapping:
+        concept: Region
+        expression: department.region_id
+      relationship: region
+- concept: Employee
+  object_mappings:
+  - expression: employee.employee_id
+  link_mappings:
+  - object_mapping:
+      expression: employee.employee_id
+    children:
+    - object_mapping:
+        concept: Integer
+        expression: employee.level
+      relationship: level
+    - object_mapping:
+        concept: Date
+        expression: employee.hired_on
+      relationship: hired_on
+    - object_mapping:
+        concept: String
+        expression: employee.name
+      relationship: name
+    - object_mapping:
+        concept: Date
+        expression: employee.left_on
+      relationship: left_on
+    - object_mapping:
+        concept: String
+        expression: employee.job_title
+      relationship: job_title
+    - object_mapping:
+        concept: Employee
+        expression: employee.manager_id
+      relationship: employee
+    - object_mapping:
+        concept: Region
+        expression: employee.region_id
+      relationship: region
+    - object_mapping:
+        concept: Department
+        expression: employee.department_id
+      relationship: department
+- concept: Order
+  object_mappings:
+  - expression: order.order_id
+  link_mappings:
+  - object_mapping:
+      expression: order.order_id
+    children:
+    - object_mapping:
+        concept: Date
+        expression: order.ordered_on
+      relationship: ordered_on
+    - object_mapping:
+        concept: String
+        expression: order.status
+      relationship: status
+    - object_mapping:
+        concept: SalesRep
+        expression: order.rep_id
+      relationship: sales_rep
+    - object_mapping:
+        concept: Region
+        expression: order.region_id
+      relationship: region
+    - object_mapping:
+        concept: Customer
+        expression: order.customer_id
+      relationship: customer
+- concept: Product
+  object_mappings:
+  - expression: product.product_id
+  link_mappings:
+  - object_mapping:
+      expression: product.product_id
+    children:
+    - object_mapping:
+        concept: Decimal
+        expression: product.list_price
+      relationship: list_price
+    - object_mapping:
+        concept: String
+        expression: product.name
+      relationship: name
+    - object_mapping:
+        concept: String
+        expression: product.category
+      relationship: category
+- concept: Region
+  object_mappings:
+  - expression: region.region_id
+  link_mappings:
+  - object_mapping:
+      expression: region.region_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: region.region_name
+      relationship: region_name
+- concept: SalesRep
+  object_mappings:
+  - expression: sales_rep.rep_id
+  link_mappings:
+  - object_mapping:
+      expression: sales_rep.rep_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: sales_rep.name
+      relationship: name
+    - object_mapping:
+        concept: Date
+        expression: sales_rep.hired_on
+      relationship: hired_on
+    - object_mapping:
+        concept: Region
+        expression: sales_rep.region_id
+      relationship: region
+- concept: Skill
+  object_mappings:
+  - expression: skill.skill_id
+  link_mappings:
+  - object_mapping:
+      expression: skill.skill_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: skill.skill_category
+      relationship: skill_category
+    - object_mapping:
+        concept: String
+        expression: skill.skill_name
+      relationship: skill_name

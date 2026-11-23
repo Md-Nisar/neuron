@@ -1,0 +1,52 @@
+term	table	column	certified	description
+Assessment	assessments	assessed_on	False	Records the calendar date when the assessment was conducted, formatted as YYYY-MM-DD.
+Assessment	assessments	assessment_id	False	Uniquely identifies each assessment evaluation record.
+Assessment	assessments	score	False	Represents the numerical rating assigned to an assessment on a 1 to 5 scale.
+Assessment Cycle	assessment_cycles	cycle_id	False	Uniquely identifies each assessment cycle and links to associated assessments.
+Assessment Cycle	assessment_cycles	ends_on	False	Records the official end date of the cycle in YYYY-MM-DD format.
+Assessment Cycle	assessment_cycles	name	False	Provides the cycle's display label in year-half-year format such as 2024-H1.
+Assessment Cycle	assessment_cycles	starts_on	False	Records the official start date of the cycle in YYYY-MM-DD format.
+Certification	certifications	certification_id	False	Unique identifier assigned to each professional certification record.
+Certification	certifications	expires_on	False	Date the certification becomes invalid and requires renewal, formatted as YYYY-MM-DD.
+Certification	certifications	issued_on	False	Date the certification was granted to the holder, formatted as YYYY-MM-DD.
+Certification	certifications	name	False	Official title of the professional certification held by an individual.
+Country	countries	country_code	False	Unique ISO country code (2-3 characters) identifying each nation, used to link customers to their country.
+Country	countries	name	False	Full official country name in text format, such as Germany or United Arab Emirates.
+Customer	customers	created_on	False	Date the customer record was first created in the system, formatted as YYYY-MM-DD.
+Customer	customers	customer_id	False	Unique integer identifier for each customer, used to link orders to the customer who placed them.
+Customer	customers	name	False	Full legal or display name of the customer, such as Atlas Analytics SA or Nova Motors SA.
+Customer	customers	segment	False	Categorization label grouping customers by shared business characteristics like value tier or behavior, e.g., SMB, Consumer, Enterprise.
+Department	departments	department_id	False	Unique identifier for each department, referenced by employees to indicate their assigned department.
+Department	departments	name	False	Department name combined with its geographic region, such as Engineering EMEA or Support APAC.
+Employee	employees	employee_id	False	Unique identifier for each employee, used to link assessments, certifications, and reporting relationships.
+Employee	employees	hired_on	False	Date the employee was hired, formatted as YYYY-MM-DD.
+Employee	employees	job_title	False	Current role or position held by the employee within the organization.
+Employee	employees	left_on	False	Date the employee left the organization, if applicable, formatted as YYYY-MM-DD.
+Employee	employees	level	False	Numeric grade representing the employee's seniority level within the career framework.
+Employee	employees	name	False	Full legal name of the employee as recorded in HR systems.
+Order	orders	ordered_on	False	Records the date the customer placed the order in YYYY-MM-DD format.
+Order	orders	order_id	False	Uniquely identifies each customer order and links to its line items and return records.
+Order	orders	status	False	Indicates the order's current processing state, such as pending, completed, or cancelled.
+Order Line	order_lines	discount_pct	False	Numeric percentage discount applied to the line item's unit price.
+Order Line	order_lines	line_no	False	Sequential integer identifying each line item within an order, referenced by returns to link returned items.
+Order Line	order_lines	quantity	False	Integer count of product units ordered or sold on this specific line.
+Order Line	order_lines	unit_price	False	Numeric standard price per single unit before any discounts are applied.
+Product	products	category	False	Groups products into business categories such as Hardware, Software, Services, or Accessories for reporting and navigation.
+Product	products	list_price	False	States the standard retail price of the product, expressed as a decimal number with two decimal places.
+Product	products	name	False	Provides the customer-facing product name used in catalogs and sales communications.
+Product	products	product_id	False	Uniquely identifies each product in the catalog and links to order lines showing where the product appears in customer orders.
+Region	regions	region_id	False	A unique text code (e.g., EMEA, APAC, AMER) that identifies a geographic region and is referenced by assessments, certifications, countries, customers, departments, and other entities.
+Region	regions	name	False	The human-readable name of the geographic region, such as Europe, Middle East and Africa, Asia Pacific, or Americas.
+Return	returns	quantity	False	Indicates the number of items returned in the transaction.
+Return	returns	reason	False	Captures the customer's stated reason for returning the item.
+Return	returns	returned_on	False	Records the date the return was processed or received in YYYY-MM-DD format.
+Return	returns	return_id	False	Uniquely identifies each return transaction with a numeric code.
+Role Region	role_regions	role_name	False	Identifies the role, such as a job title or access level, associated with a region.
+Role Target	role_targets	job_title	False	Identifies the specific role or position name, such as Team Lead or Engineer, associated with performance targets.
+Role Target	role_targets	target_score	False	Specifies the performance rating goal for a role on a 2-to-5 scale, such as 4 or 5.
+Sales Rep	sales_reps	hired_on	False	Indicates the date the sales representative was hired, formatted as YYYY-MM-DD.
+Sales Rep	sales_reps	name	False	Records the full legal or preferred name of the sales representative.
+Sales Rep	sales_reps	rep_id	False	Uniquely identifies each sales representative and links to the orders they manage.
+Skill	skills	category	False	Functional grouping that classifies the skill by professional domain or type, such as Technical or Leadership.
+Skill	skills	skill_id	False	Unique numeric identifier for a skill, used to link assessments and role targets to the specific capability.
+Skill	skills	name	False	Descriptive title of the skill, such as a technology, methodology, or competency (e.g., Python, SQL).
