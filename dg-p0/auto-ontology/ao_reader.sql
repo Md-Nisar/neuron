@@ -37,3 +37,10 @@ BEGIN
                    p.policyname, p.schemaname, p.tablename);
   END LOOP;
 END $$;
+
+-- Owner decision D18 (finding F6): Auto Ontology's connector applies read_only and
+-- statement_timeout with set_config() inside each transaction, and 05_hardening.sql revokes
+-- set_config from PUBLIC. A deliberate deviation from ADR 0016 decision 5, for this login only:
+-- under A' no authorization depends on a setting, the login is read-only and a member of no role,
+-- and Auto Ontology rejects set_config in model-written SQL.
+GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO d3_ao_reader;
