@@ -1,0 +1,255 @@
+# D3 sales mart (DG-00.02). Hand-written from sql/01_sales_schema.sql and its business rules only,
+# without reading the evaluation questions (D13). Spec: Apache Ossie main at 91689e6.
+# Left out on purpose: sales.rep_compensation (confidential, managers only; D13).
+version: 0.3.0.dev0
+name: d3_sales
+description: Sales mart for 2024 and 2025 - customers, orders, order lines, products, returns and sales reps, by region. Amounts are USD.
+ai_context:
+  instructions: >-
+    Revenue counts completed orders only; cancelled and pending orders are never revenue.
+    Net line amount is quantity * unit_price * (1 - discount_pct / 100). Rows are filtered to the
+    regions the caller may see, so totals cover only those regions.
+datasets:
+  - name: regions
+    source: sales.regions
+    primary_key: [region_id]
+    description: Sales regions.
+    fields:
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: region_name
+        expression: {sql: name}
+        datatype: String
+        ai_context: {synonyms: [region]}
+
+  - name: countries
+    source: sales.countries
+    primary_key: [country_code]
+    description: Countries and the sales region each belongs to.
+    fields:
+      - name: country_code
+        expression: {sql: country_code}
+        datatype: String
+        description: ISO 3166-1 alpha-2 code.
+      - name: country_name
+        expression: {sql: name}
+        datatype: String
+        ai_context: {synonyms: [country]}
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+
+  - name: customers
+    source: sales.customers
+    primary_key: [customer_id]
+    description: Customers, one row per customer account.
+    ai_context: {synonyms: [clients, accounts]}
+    fields:
+      - name: customer_id
+        expression: {sql: customer_id}
+        datatype: Integer
+      - name: customer_name
+        expression: {sql: name}
+        datatype: String
+      - name: segment
+        expression: {sql: segment}
+        datatype: String
+        description: Enterprise, SMB (small and medium business) or Consumer.
+      - name: country_code
+        expression: {sql: country_code}
+        datatype: String
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: created_on
+        expression: {sql: created_on}
+        datatype: Date
+        dimension: {is_time: true}
+        description: Date the customer account was opened.
+    metrics:
+      - name: customer_count
+        expression: {sql: COUNT(customer_id)}
+        datatype: Integer
+        description: Number of customer accounts.
+
+  - name: products
+    source: sales.products
+    primary_key: [product_id]
+    description: Product catalogue.
+    fields:
+      - name: product_id
+        expression: {sql: product_id}
+        datatype: Integer
+      - name: product_name
+        expression: {sql: name}
+        datatype: String
+      - name: category
+        expression: {sql: category}
+        datatype: String
+        description: Hardware, Software, Services or Accessories.
+      - name: list_price
+        expression: {sql: list_price}
+        datatype: Decimal
+        description: Catalogue price per unit in USD, before discounts.
+
+  - name: sales_reps
+    source: sales.sales_reps
+    primary_key: [rep_id]
+    description: Sales representatives; each works in one region.
+    ai_context: {synonyms: [reps, salespeople, account managers]}
+    fields:
+      - name: rep_id
+        expression: {sql: rep_id}
+        datatype: Integer
+      - name: rep_name
+        expression: {sql: name}
+        datatype: String
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: hired_on
+        expression: {sql: hired_on}
+        datatype: Date
+        dimension: {is_time: true}
+
+  - name: orders
+    source: sales.orders
+    primary_key: [order_id]
+    description: Sales orders. Only completed orders count as revenue.
+    fields:
+      - name: order_id
+        expression: {sql: order_id}
+        datatype: Integer
+      - name: customer_id
+        expression: {sql: customer_id}
+        datatype: Integer
+      - name: rep_id
+        expression: {sql: rep_id}
+        datatype: Integer
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+        description: Region of the customer, copied from the customer.
+      - name: ordered_on
+        expression: {sql: ordered_on}
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context: {synonyms: [order date]}
+      - name: status
+        expression: {sql: status}
+        datatype: String
+        description: completed, cancelled or pending. Cancelled and pending orders are not revenue.
+    metrics:
+      - name: order_count
+        expression: {sql: COUNT(order_id)}
+        datatype: Integer
+        description: Number of orders of any status.
+      - name: completed_order_count
+        expression: {sql: "COUNT(order_id) FILTER (WHERE status = 'completed')"}
+        datatype: Integer
+        description: Number of completed orders.
+
+  - name: order_lines
+    source: sales.order_lines
+    primary_key: [order_id, line_no]
+    description: Order lines.
+    fields:
+      - name: order_id
+        expression: {sql: order_id}
+        datatype: Integer
+      - name: line_no
+        expression: {sql: line_no}
+        datatype: Integer
+      - name: product_id
+        expression: {sql: product_id}
+        datatype: Integer
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: quantity
+        expression: {sql: quantity}
+        datatype: Integer
+        ai_context: {synonyms: [units]}
+      - name: unit_price
+        expression: {sql: unit_price}
+        datatype: Decimal
+        description: Agreed price per unit in USD, before the line discount.
+      - name: discount_pct
+        expression: {sql: discount_pct}
+        datatype: Decimal
+        description: Line discount in percent (0 to 100).
+      - name: net_amount
+        expression: {sql: quantity * unit_price * (1 - discount_pct / 100)}
+        datatype: Decimal
+        description: Net line amount in USD after the line discount.
+
+  - name: returns
+    source: sales.returns
+    primary_key: [return_id]
+    description: Returned units against an order line.
+    fields:
+      - name: return_id
+        expression: {sql: return_id}
+        datatype: Integer
+      - name: order_id
+        expression: {sql: order_id}
+        datatype: Integer
+      - name: line_no
+        expression: {sql: line_no}
+        datatype: Integer
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: returned_on
+        expression: {sql: returned_on}
+        datatype: Date
+        dimension: {is_time: true}
+      - name: returned_quantity
+        expression: {sql: quantity}
+        datatype: Integer
+      - name: reason
+        expression: {sql: reason}
+        datatype: String
+        description: damaged, wrong_item, not_needed or late_delivery.
+    metrics:
+      - name: returned_units
+        expression: {sql: SUM(returned_quantity)}
+        datatype: Integer
+        description: Units returned.
+
+relationships:
+  - {name: countries_to_regions, from: countries, to: regions, from_columns: [region_id], to_columns: [region_id]}
+  - {name: customers_to_countries, from: customers, to: countries, from_columns: [country_code], to_columns: [country_code]}
+  - {name: customers_to_regions, from: customers, to: regions, from_columns: [region_id], to_columns: [region_id]}
+  - {name: sales_reps_to_regions, from: sales_reps, to: regions, from_columns: [region_id], to_columns: [region_id]}
+  - {name: orders_to_customers, from: orders, to: customers, from_columns: [customer_id], to_columns: [customer_id]}
+  - {name: orders_to_sales_reps, from: orders, to: sales_reps, from_columns: [rep_id], to_columns: [rep_id]}
+  - {name: orders_to_regions, from: orders, to: regions, from_columns: [region_id], to_columns: [region_id]}
+  - {name: order_lines_to_orders, from: order_lines, to: orders, from_columns: [order_id], to_columns: [order_id]}
+  - {name: order_lines_to_products, from: order_lines, to: products, from_columns: [product_id], to_columns: [product_id]}
+  - {name: returns_to_order_lines, from: returns, to: order_lines, from_columns: [order_id, line_no], to_columns: [order_id, line_no]}
+
+metrics:
+  - name: revenue
+    expression: {sql: "SUM(order_lines.net_amount) FILTER (WHERE orders.status = 'completed')"}
+    datatype: Decimal
+    description: Net revenue in USD - net line amounts of completed orders. Returns are not deducted.
+    ai_context: {synonyms: [sales, net sales, turnover]}
+  - name: units_sold
+    expression: {sql: "SUM(order_lines.quantity) FILTER (WHERE orders.status = 'completed')"}
+    datatype: Integer
+    description: Units on completed orders.
+  - name: average_order_value
+    expression: {sql: "SUM(order_lines.net_amount) FILTER (WHERE orders.status = 'completed') / COUNT(DISTINCT orders.order_id) FILTER (WHERE orders.status = 'completed')"}
+    datatype: Decimal
+    description: Revenue divided by the number of completed orders.
+    ai_context: {synonyms: [AOV]}
+
+nonportable_extensions:
+  - vendor_name: neuron
+    data:
+      certified_by: "Claude, DG-00.02; owner to confirm"
+      certified_terms: [regions, countries, customers, products, sales_reps, orders, order_lines, returns,
+        customers.customer_count, orders.order_count, orders.completed_order_count,
+        order_lines.net_amount, returns.returned_units, revenue, units_sold, average_order_value]

@@ -1,0 +1,246 @@
+# D3 skills mart (DG-00.02). Hand-written from sql/02_skills_schema.sql and its business rules
+# only, without reading the evaluation questions (D13). Spec: Apache Ossie main at 91689e6.
+# Left out on purpose: skills.assessor_notes (confidential, managers only; D13).
+# Ossie has no cross-model references, so this model carries its own copy of sales.regions.
+version: 0.3.0.dev0
+name: d3_skills
+description: Employee skill assessments for 2024 and 2025 - employees, departments, skills, half-year assessment cycles, scores, role targets and certifications, by region.
+ai_context:
+  instructions: >-
+    Scores run from 1 (novice) to 5 (expert). Current employees have no left_on date. A skill gap
+    is a job title's target score minus the employee's latest score for that skill (from the most
+    recent cycle with a score). Rows are filtered to the regions the caller may see.
+datasets:
+  - name: regions
+    source: sales.regions
+    primary_key: [region_id]
+    description: Regions that departments and employees belong to.
+    fields:
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: region_name
+        expression: {sql: name}
+        datatype: String
+        ai_context: {synonyms: [region]}
+
+  - name: departments
+    source: skills.departments
+    primary_key: [department_id]
+    description: Departments; each sits in one region.
+    fields:
+      - name: department_id
+        expression: {sql: department_id}
+        datatype: Integer
+      - name: department_name
+        expression: {sql: name}
+        datatype: String
+        ai_context: {synonyms: [department, team]}
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+
+  - name: employees
+    source: skills.employees
+    primary_key: [employee_id]
+    description: Employees, current and former.
+    ai_context: {synonyms: [staff, people, workforce]}
+    fields:
+      - name: employee_id
+        expression: {sql: employee_id}
+        datatype: Integer
+      - name: employee_name
+        expression: {sql: name}
+        datatype: String
+      - name: department_id
+        expression: {sql: department_id}
+        datatype: Integer
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: job_title
+        expression: {sql: job_title}
+        datatype: String
+        description: Engineer, Analyst, Consultant, Team Lead or Manager.
+        ai_context: {synonyms: [role]}
+      - name: level
+        expression: {sql: level}
+        datatype: Integer
+        description: Career level from 1 (junior) to 5 (principal).
+      - name: manager_id
+        expression: {sql: manager_id}
+        datatype: Integer
+        description: Line manager; empty for department heads.
+      - name: hired_on
+        expression: {sql: hired_on}
+        datatype: Date
+        dimension: {is_time: true}
+      - name: left_on
+        expression: {sql: left_on}
+        datatype: Date
+        dimension: {is_time: true}
+        description: Date the employee left; empty means still employed.
+      - name: is_current
+        expression: {sql: left_on IS NULL}
+        datatype: Boolean
+        description: True for people still employed.
+    metrics:
+      - name: headcount
+        expression: {sql: COUNT(employee_id) FILTER (WHERE is_current)}
+        datatype: Integer
+        description: Number of current employees.
+      - name: leavers
+        expression: {sql: COUNT(employee_id) FILTER (WHERE NOT is_current)}
+        datatype: Integer
+        description: Number of employees who have left.
+
+  - name: skills
+    source: skills.skills
+    primary_key: [skill_id]
+    unique_keys: [[skill_name]]
+    description: Skills that employees are assessed on.
+    fields:
+      - name: skill_id
+        expression: {sql: skill_id}
+        datatype: Integer
+      - name: skill_name
+        expression: {sql: name}
+        datatype: String
+      - name: skill_category
+        expression: {sql: category}
+        datatype: String
+        description: Technical, Leadership, Communication or Domain.
+
+  - name: assessment_cycles
+    source: skills.assessment_cycles
+    primary_key: [cycle_id]
+    unique_keys: [[cycle_name]]
+    description: Half-year assessment cycles, for example 2024-H1.
+    fields:
+      - name: cycle_id
+        expression: {sql: cycle_id}
+        datatype: Integer
+      - name: cycle_name
+        expression: {sql: name}
+        datatype: String
+        ai_context: {synonyms: [cycle, review period, half]}
+      - name: starts_on
+        expression: {sql: starts_on}
+        datatype: Date
+        dimension: {is_time: true}
+      - name: ends_on
+        expression: {sql: ends_on}
+        datatype: Date
+        dimension: {is_time: true}
+
+  - name: assessments
+    source: skills.assessments
+    primary_key: [assessment_id]
+    unique_keys: [[employee_id, skill_id, cycle_id]]
+    description: One score per employee, skill and cycle, given by an assessor (usually the line manager).
+    ai_context: {synonyms: [ratings, evaluations, scores]}
+    fields:
+      - name: assessment_id
+        expression: {sql: assessment_id}
+        datatype: Integer
+      - name: employee_id
+        expression: {sql: employee_id}
+        datatype: Integer
+      - name: skill_id
+        expression: {sql: skill_id}
+        datatype: Integer
+      - name: cycle_id
+        expression: {sql: cycle_id}
+        datatype: Integer
+      - name: assessor_id
+        expression: {sql: assessor_id}
+        datatype: Integer
+        description: Employee who gave the score.
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: score
+        expression: {sql: score}
+        datatype: Integer
+        description: 1 = novice, 2 = developing, 3 = proficient, 4 = advanced, 5 = expert.
+      - name: assessed_on
+        expression: {sql: assessed_on}
+        datatype: Date
+        dimension: {is_time: true}
+    metrics:
+      - name: assessment_count
+        expression: {sql: COUNT(assessment_id)}
+        datatype: Integer
+        description: Number of assessments.
+      - name: average_score
+        expression: {sql: AVG(score)}
+        datatype: Decimal
+        description: Mean score on the 1 to 5 scale.
+
+  - name: role_targets
+    source: skills.role_targets
+    primary_key: [job_title, skill_id]
+    description: Expected score per job title and skill.
+    fields:
+      - name: job_title
+        expression: {sql: job_title}
+        datatype: String
+      - name: skill_id
+        expression: {sql: skill_id}
+        datatype: Integer
+      - name: target_score
+        expression: {sql: target_score}
+        datatype: Integer
+        description: Score expected for the job title, 1 to 5.
+
+  - name: certifications
+    source: skills.certifications
+    primary_key: [certification_id]
+    description: Professional certifications held by employees.
+    fields:
+      - name: certification_id
+        expression: {sql: certification_id}
+        datatype: Integer
+      - name: employee_id
+        expression: {sql: employee_id}
+        datatype: Integer
+      - name: region_id
+        expression: {sql: region_id}
+        datatype: String
+      - name: certification_name
+        expression: {sql: name}
+        datatype: String
+      - name: issued_on
+        expression: {sql: issued_on}
+        datatype: Date
+        dimension: {is_time: true}
+      - name: expires_on
+        expression: {sql: expires_on}
+        datatype: Date
+        dimension: {is_time: true}
+        description: Expiry date; empty means it does not expire.
+    metrics:
+      - name: certification_count
+        expression: {sql: COUNT(certification_id)}
+        datatype: Integer
+        description: Number of certifications, valid or expired.
+
+relationships:
+  - {name: departments_to_regions, from: departments, to: regions, from_columns: [region_id], to_columns: [region_id]}
+  - {name: employees_to_departments, from: employees, to: departments, from_columns: [department_id], to_columns: [department_id]}
+  - {name: employees_to_regions, from: employees, to: regions, from_columns: [region_id], to_columns: [region_id]}
+  - {name: employees_to_manager, from: employees, to: employees, from_columns: [manager_id], to_columns: [employee_id]}
+  - {name: assessments_to_employees, from: assessments, to: employees, from_columns: [employee_id], to_columns: [employee_id]}
+  - {name: assessments_to_assessor, from: assessments, to: employees, from_columns: [assessor_id], to_columns: [employee_id]}
+  - {name: assessments_to_skills, from: assessments, to: skills, from_columns: [skill_id], to_columns: [skill_id]}
+  - {name: assessments_to_cycles, from: assessments, to: assessment_cycles, from_columns: [cycle_id], to_columns: [cycle_id]}
+  - {name: role_targets_to_skills, from: role_targets, to: skills, from_columns: [skill_id], to_columns: [skill_id]}
+  - {name: certifications_to_employees, from: certifications, to: employees, from_columns: [employee_id], to_columns: [employee_id]}
+
+nonportable_extensions:
+  - vendor_name: neuron
+    data:
+      certified_by: "Claude, DG-00.02; owner to confirm"
+      certified_terms: [regions, departments, employees, skills, assessment_cycles, assessments,
+        role_targets, certifications, employees.is_current, employees.headcount, employees.leavers,
+        assessments.assessment_count, assessments.average_score, certifications.certification_count]

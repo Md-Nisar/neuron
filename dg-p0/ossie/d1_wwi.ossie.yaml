@@ -1,0 +1,417 @@
+# D1 Wide World Importers on Postgres (DG-00.02). Hand-written from the schema of NVIDIA
+# auto-ontology-eval at e727e4d and the documented meaning of Microsoft's sample, without reading
+# its 41 evaluation questions or custom analyses (D13). Spec: Apache Ossie main at 91689e6.
+# Left out on purpose: *_archive history tables, system parameters, sensor tables, the website
+# views, and credential or banking columns (people.hashedpassword, logonname; supplier bank details).
+version: 0.3.0.dev0
+name: d1_wwi
+description: Wide World Importers, a wholesale novelty-goods distributor - customers, sales orders, invoices, stock items, stock movements, suppliers and purchase orders, 2013-01 to 2016-05. Amounts in USD.
+ai_context:
+  instructions: >-
+    Sales are measured from invoices (goods actually billed); orders are what customers asked for.
+    Invoice line extended_price includes tax; sales excluding tax are quantity * unit_price.
+    Rows in the main tables are the current version; history tables are not modelled.
+datasets:
+  # ---------- reference data ----------
+  - name: countries
+    source: application.countries
+    primary_key: [country_id]
+    fields:
+      - {name: country_id, expression: {sql: countryid}, datatype: Integer}
+      - {name: country_name, expression: {sql: countryname}, datatype: String}
+      - {name: continent, expression: {sql: continent}, datatype: String}
+      - {name: world_region, expression: {sql: region}, datatype: String}
+      - {name: subregion, expression: {sql: subregion}, datatype: String}
+
+  - name: state_provinces
+    source: application.stateprovinces
+    primary_key: [state_province_id]
+    description: States and provinces, each with a sales territory.
+    fields:
+      - {name: state_province_id, expression: {sql: stateprovinceid}, datatype: Integer}
+      - {name: state_province_code, expression: {sql: stateprovincecode}, datatype: String}
+      - {name: state_province_name, expression: {sql: stateprovincename}, datatype: String, ai_context: {synonyms: [state]}}
+      - {name: country_id, expression: {sql: countryid}, datatype: Integer}
+      - {name: sales_territory, expression: {sql: salesterritory}, datatype: String, description: "Sales territory the state belongs to, for example Southeast."}
+
+  - name: cities
+    source: application.cities
+    primary_key: [city_id]
+    fields:
+      - {name: city_id, expression: {sql: cityid}, datatype: Integer}
+      - {name: city_name, expression: {sql: cityname}, datatype: String}
+      - {name: state_province_id, expression: {sql: stateprovinceid}, datatype: Integer}
+      - {name: latest_recorded_population, expression: {sql: latestrecordedpopulation}, datatype: Integer}
+
+  - name: people
+    source: application.people
+    primary_key: [person_id]
+    description: Employees and customer or supplier contacts.
+    fields:
+      - {name: person_id, expression: {sql: personid}, datatype: Integer}
+      - {name: full_name, expression: {sql: fullname}, datatype: String}
+      - {name: preferred_name, expression: {sql: preferredname}, datatype: String}
+      - {name: is_employee, expression: {sql: isemployee}, datatype: Boolean}
+      - {name: is_salesperson, expression: {sql: issalesperson}, datatype: Boolean, ai_context: {synonyms: [sales rep]}}
+
+  - {name: delivery_methods, source: application.deliverymethods, primary_key: [delivery_method_id],
+     fields: [{name: delivery_method_id, expression: {sql: deliverymethodid}, datatype: Integer},
+              {name: delivery_method_name, expression: {sql: deliverymethodname}, datatype: String}]}
+  - {name: payment_methods, source: application.paymentmethods, primary_key: [payment_method_id],
+     fields: [{name: payment_method_id, expression: {sql: paymentmethodid}, datatype: Integer},
+              {name: payment_method_name, expression: {sql: paymentmethodname}, datatype: String}]}
+  - {name: transaction_types, source: application.transactiontypes, primary_key: [transaction_type_id],
+     description: "Kinds of financial and stock transactions, for example Customer Invoice or Stock Receipt.",
+     fields: [{name: transaction_type_id, expression: {sql: transactiontypeid}, datatype: Integer},
+              {name: transaction_type_name, expression: {sql: transactiontypename}, datatype: String}]}
+
+  # ---------- customers ----------
+  - {name: customer_categories, source: sales.customercategories, primary_key: [customer_category_id],
+     description: "Customer types, for example Novelty Shop or Supermarket.",
+     fields: [{name: customer_category_id, expression: {sql: customercategoryid}, datatype: Integer},
+              {name: customer_category_name, expression: {sql: customercategoryname}, datatype: String}]}
+  - {name: buying_groups, source: sales.buyinggroups, primary_key: [buying_group_id],
+     description: "Groups of customers that buy together, such as franchise chains.",
+     fields: [{name: buying_group_id, expression: {sql: buyinggroupid}, datatype: Integer},
+              {name: buying_group_name, expression: {sql: buyinggroupname}, datatype: String}]}
+
+  - name: customers
+    source: sales.customers
+    primary_key: [customer_id]
+    description: Customers, one row per customer account. A customer may be billed to another account.
+    ai_context: {synonyms: [clients, stores, accounts]}
+    fields:
+      - {name: customer_id, expression: {sql: customerid}, datatype: Integer}
+      - {name: customer_name, expression: {sql: customername}, datatype: String}
+      - {name: bill_to_customer_id, expression: {sql: billtocustomerid}, datatype: Integer}
+      - {name: customer_category_id, expression: {sql: customercategoryid}, datatype: Integer}
+      - {name: buying_group_id, expression: {sql: buyinggroupid}, datatype: Integer, description: "Empty when the customer is not in a buying group."}
+      - {name: primary_contact_person_id, expression: {sql: primarycontactpersonid}, datatype: Integer}
+      - {name: delivery_method_id, expression: {sql: deliverymethodid}, datatype: Integer}
+      - {name: delivery_city_id, expression: {sql: deliverycityid}, datatype: Integer}
+      - {name: credit_limit, expression: {sql: creditlimit}, datatype: Decimal}
+      - {name: account_opened_date, expression: {sql: accountopeneddate}, datatype: Date, dimension: {is_time: true}}
+      - {name: standard_discount_percentage, expression: {sql: standarddiscountpercentage}, datatype: Decimal}
+      - {name: is_on_credit_hold, expression: {sql: isoncredithold}, datatype: Boolean}
+      - {name: payment_days, expression: {sql: paymentdays}, datatype: Integer, description: "Days the customer has to pay an invoice."}
+    metrics:
+      - {name: customer_count, expression: {sql: COUNT(customer_id)}, datatype: Integer}
+
+  # ---------- sales orders and invoices ----------
+  - name: orders
+    source: sales.orders
+    primary_key: [order_id]
+    description: Customer orders. An order is invoiced once its goods are picked.
+    fields:
+      - {name: order_id, expression: {sql: orderid}, datatype: Integer}
+      - {name: customer_id, expression: {sql: customerid}, datatype: Integer}
+      - {name: salesperson_person_id, expression: {sql: salespersonpersonid}, datatype: Integer}
+      - {name: backorder_order_id, expression: {sql: backorderorderid}, datatype: Integer, description: "Order created for items that could not be supplied; empty if none."}
+      - {name: order_date, expression: {sql: orderdate}, datatype: Date, dimension: {is_time: true}}
+      - {name: expected_delivery_date, expression: {sql: expecteddeliverydate}, datatype: Date, dimension: {is_time: true}}
+      - {name: picking_completed_when, expression: {sql: pickingcompletedwhen}, datatype: DateTime, dimension: {is_time: true}}
+    metrics:
+      - {name: order_count, expression: {sql: COUNT(order_id)}, datatype: Integer}
+
+  - name: order_lines
+    source: sales.orderlines
+    primary_key: [order_line_id]
+    fields:
+      - {name: order_line_id, expression: {sql: orderlineid}, datatype: Integer}
+      - {name: order_id, expression: {sql: orderid}, datatype: Integer}
+      - {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer}
+      - {name: quantity, expression: {sql: quantity}, datatype: Integer}
+      - {name: unit_price, expression: {sql: unitprice}, datatype: Decimal}
+      - {name: tax_rate, expression: {sql: taxrate}, datatype: Decimal, description: "Tax rate in percent."}
+      - {name: picked_quantity, expression: {sql: pickedquantity}, datatype: Integer}
+      - {name: line_amount_excluding_tax, expression: {sql: quantity * unitprice}, datatype: Decimal}
+    metrics:
+      - {name: ordered_value_excluding_tax, expression: {sql: SUM(line_amount_excluding_tax)}, datatype: Decimal, description: "Value of goods ordered, before tax."}
+      - {name: ordered_units, expression: {sql: SUM(quantity)}, datatype: Integer}
+
+  - name: invoices
+    source: sales.invoices
+    primary_key: [invoice_id]
+    description: Invoices, one per order shipped. A credit note is an invoice with is_credit_note true.
+    fields:
+      - {name: invoice_id, expression: {sql: invoiceid}, datatype: Integer}
+      - {name: customer_id, expression: {sql: customerid}, datatype: Integer}
+      - {name: bill_to_customer_id, expression: {sql: billtocustomerid}, datatype: Integer}
+      - {name: order_id, expression: {sql: orderid}, datatype: Integer}
+      - {name: delivery_method_id, expression: {sql: deliverymethodid}, datatype: Integer}
+      - {name: salesperson_person_id, expression: {sql: salespersonpersonid}, datatype: Integer}
+      - {name: invoice_date, expression: {sql: invoicedate}, datatype: Date, dimension: {is_time: true}}
+      - {name: is_credit_note, expression: {sql: iscreditnote}, datatype: Boolean}
+      - {name: total_dry_items, expression: {sql: totaldryitems}, datatype: Integer}
+      - {name: total_chiller_items, expression: {sql: totalchilleritems}, datatype: Integer}
+      - {name: confirmed_delivery_time, expression: {sql: confirmeddeliverytime}, datatype: DateTime, dimension: {is_time: true}}
+    metrics:
+      - {name: invoice_count, expression: {sql: COUNT(invoice_id)}, datatype: Integer}
+
+  - name: invoice_lines
+    source: sales.invoicelines
+    primary_key: [invoice_line_id]
+    fields:
+      - {name: invoice_line_id, expression: {sql: invoicelineid}, datatype: Integer}
+      - {name: invoice_id, expression: {sql: invoiceid}, datatype: Integer}
+      - {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer}
+      - {name: quantity, expression: {sql: quantity}, datatype: Integer}
+      - {name: unit_price, expression: {sql: unitprice}, datatype: Decimal}
+      - {name: tax_rate, expression: {sql: taxrate}, datatype: Decimal}
+      - {name: tax_amount, expression: {sql: taxamount}, datatype: Decimal}
+      - {name: line_profit, expression: {sql: lineprofit}, datatype: Decimal, description: "Profit on the line, before tax."}
+      - {name: extended_price, expression: {sql: extendedprice}, datatype: Decimal, description: "Line total including tax."}
+      - {name: amount_excluding_tax, expression: {sql: extendedprice - taxamount}, datatype: Decimal}
+    metrics:
+      - {name: sales_excluding_tax, expression: {sql: SUM(amount_excluding_tax)}, datatype: Decimal, description: "Invoiced sales before tax.", ai_context: {synonyms: [revenue, sales, turnover]}}
+      - {name: sales_including_tax, expression: {sql: SUM(extended_price)}, datatype: Decimal}
+      - {name: profit, expression: {sql: SUM(line_profit)}, datatype: Decimal, ai_context: {synonyms: [gross profit, margin]}}
+      - {name: units_invoiced, expression: {sql: SUM(quantity)}, datatype: Integer}
+
+  - name: customer_transactions
+    source: sales.customertransactions
+    primary_key: [customer_transaction_id]
+    description: "Customer ledger: invoices (positive amounts) and payments received (negative amounts)."
+    fields:
+      - {name: customer_transaction_id, expression: {sql: customertransactionid}, datatype: Integer}
+      - {name: customer_id, expression: {sql: customerid}, datatype: Integer}
+      - {name: transaction_type_id, expression: {sql: transactiontypeid}, datatype: Integer}
+      - {name: invoice_id, expression: {sql: invoiceid}, datatype: Integer}
+      - {name: payment_method_id, expression: {sql: paymentmethodid}, datatype: Integer}
+      - {name: transaction_date, expression: {sql: transactiondate}, datatype: Date, dimension: {is_time: true}}
+      - {name: amount_excluding_tax, expression: {sql: amountexcludingtax}, datatype: Decimal}
+      - {name: tax_amount, expression: {sql: taxamount}, datatype: Decimal}
+      - {name: transaction_amount, expression: {sql: transactionamount}, datatype: Decimal}
+      - {name: outstanding_balance, expression: {sql: outstandingbalance}, datatype: Decimal}
+      - {name: is_finalized, expression: {sql: isfinalized}, datatype: Boolean}
+    metrics:
+      - {name: amount_outstanding, expression: {sql: SUM(outstanding_balance)}, datatype: Decimal, description: "Money still owed by customers.", ai_context: {synonyms: [receivables, unpaid]}}
+
+  - name: special_deals
+    source: sales.specialdeals
+    primary_key: [special_deal_id]
+    description: Promotions - a discount or special price for a stock item or stock group, for a customer, buying group or customer category, between two dates.
+    ai_context: {synonyms: [promotions, deals, discounts]}
+    fields:
+      - {name: special_deal_id, expression: {sql: specialdealid}, datatype: Integer}
+      - {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer}
+      - {name: customer_id, expression: {sql: customerid}, datatype: Integer}
+      - {name: buying_group_id, expression: {sql: buyinggroupid}, datatype: Integer}
+      - {name: customer_category_id, expression: {sql: customercategoryid}, datatype: Integer}
+      - {name: stock_group_id, expression: {sql: stockgroupid}, datatype: Integer}
+      - {name: deal_description, expression: {sql: dealdescription}, datatype: String}
+      - {name: start_date, expression: {sql: startdate}, datatype: Date, dimension: {is_time: true}}
+      - {name: end_date, expression: {sql: enddate}, datatype: Date, dimension: {is_time: true}}
+      - {name: discount_amount, expression: {sql: discountamount}, datatype: Decimal}
+      - {name: discount_percentage, expression: {sql: discountpercentage}, datatype: Decimal}
+      - {name: deal_unit_price, expression: {sql: unitprice}, datatype: Decimal}
+
+  # ---------- stock ----------
+  - {name: colors, source: warehouse.colors, primary_key: [color_id],
+     fields: [{name: color_id, expression: {sql: colorid}, datatype: Integer},
+              {name: color_name, expression: {sql: colorname}, datatype: String}]}
+  - {name: package_types, source: warehouse.packagetypes, primary_key: [package_type_id],
+     fields: [{name: package_type_id, expression: {sql: packagetypeid}, datatype: Integer},
+              {name: package_type_name, expression: {sql: packagetypename}, datatype: String}]}
+  - {name: stock_groups, source: warehouse.stockgroups, primary_key: [stock_group_id],
+     description: "Product groups, for example Novelty Items or Clothing. A stock item can be in several groups.",
+     ai_context: {synonyms: [product category]},
+     fields: [{name: stock_group_id, expression: {sql: stockgroupid}, datatype: Integer},
+              {name: stock_group_name, expression: {sql: stockgroupname}, datatype: String}]}
+  - {name: stock_item_stock_groups, source: warehouse.stockitemstockgroups, primary_key: [stock_item_stock_group_id],
+     description: "Which stock groups each stock item belongs to (many to many).",
+     fields: [{name: stock_item_stock_group_id, expression: {sql: stockitemstockgroupid}, datatype: Integer},
+              {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer},
+              {name: stock_group_id, expression: {sql: stockgroupid}, datatype: Integer}]}
+
+  - name: stock_items
+    source: warehouse.stockitems
+    primary_key: [stock_item_id]
+    description: Products the company sells.
+    ai_context: {synonyms: [products, items, SKUs]}
+    fields:
+      - {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer}
+      - {name: stock_item_name, expression: {sql: stockitemname}, datatype: String}
+      - {name: supplier_id, expression: {sql: supplierid}, datatype: Integer}
+      - {name: color_id, expression: {sql: colorid}, datatype: Integer}
+      - {name: unit_package_id, expression: {sql: unitpackageid}, datatype: Integer}
+      - {name: outer_package_id, expression: {sql: outerpackageid}, datatype: Integer}
+      - {name: brand, expression: {sql: brand}, datatype: String}
+      - {name: size, expression: {sql: size}, datatype: String}
+      - {name: lead_time_days, expression: {sql: leadtimedays}, datatype: Integer}
+      - {name: quantity_per_outer, expression: {sql: quantityperouter}, datatype: Integer}
+      - {name: is_chiller_stock, expression: {sql: ischillerstock}, datatype: Boolean, description: "Needs refrigeration."}
+      - {name: tax_rate, expression: {sql: taxrate}, datatype: Decimal}
+      - {name: unit_price, expression: {sql: unitprice}, datatype: Decimal, description: "Standard selling price per unit, before tax."}
+      - {name: recommended_retail_price, expression: {sql: recommendedretailprice}, datatype: Decimal}
+      - {name: typical_weight_per_unit, expression: {sql: typicalweightperunit}, datatype: Decimal}
+
+  - name: stock_item_holdings
+    source: warehouse.stockitemholdings
+    primary_key: [stock_item_id]
+    description: Current stock on hand per stock item.
+    ai_context: {synonyms: [inventory, stock levels]}
+    fields:
+      - {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer}
+      - {name: quantity_on_hand, expression: {sql: quantityonhand}, datatype: Integer}
+      - {name: bin_location, expression: {sql: binlocation}, datatype: String}
+      - {name: last_cost_price, expression: {sql: lastcostprice}, datatype: Decimal}
+      - {name: reorder_level, expression: {sql: reorderlevel}, datatype: Integer}
+      - {name: target_stock_level, expression: {sql: targetstocklevel}, datatype: Integer}
+      - {name: is_below_reorder_level, expression: {sql: quantityonhand < reorderlevel}, datatype: Boolean}
+    metrics:
+      - {name: stock_value_at_cost, expression: {sql: SUM(quantity_on_hand * last_cost_price)}, datatype: Decimal}
+
+  - name: stock_item_transactions
+    source: warehouse.stockitemtransactions
+    primary_key: [stock_item_transaction_id]
+    description: "Stock movements: receipts are positive, issues to customers negative, stocktake adjustments either sign."
+    fields:
+      - {name: stock_item_transaction_id, expression: {sql: stockitemtransactionid}, datatype: Integer}
+      - {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer}
+      - {name: transaction_type_id, expression: {sql: transactiontypeid}, datatype: Integer}
+      - {name: customer_id, expression: {sql: customerid}, datatype: Integer}
+      - {name: invoice_id, expression: {sql: invoiceid}, datatype: Integer}
+      - {name: supplier_id, expression: {sql: supplierid}, datatype: Integer}
+      - {name: purchase_order_id, expression: {sql: purchaseorderid}, datatype: Integer}
+      - {name: transaction_occurred_when, expression: {sql: transactionoccurredwhen}, datatype: DateTime, dimension: {is_time: true}}
+      - {name: quantity, expression: {sql: quantity}, datatype: Decimal}
+
+  # ---------- purchasing ----------
+  - {name: supplier_categories, source: purchasing.suppliercategories, primary_key: [supplier_category_id],
+     fields: [{name: supplier_category_id, expression: {sql: suppliercategoryid}, datatype: Integer},
+              {name: supplier_category_name, expression: {sql: suppliercategoryname}, datatype: String}]}
+
+  - name: suppliers
+    source: purchasing.suppliers
+    primary_key: [supplier_id]
+    ai_context: {synonyms: [vendors]}
+    fields:
+      - {name: supplier_id, expression: {sql: supplierid}, datatype: Integer}
+      - {name: supplier_name, expression: {sql: suppliername}, datatype: String}
+      - {name: supplier_category_id, expression: {sql: suppliercategoryid}, datatype: Integer}
+      - {name: primary_contact_person_id, expression: {sql: primarycontactpersonid}, datatype: Integer}
+      - {name: delivery_method_id, expression: {sql: deliverymethodid}, datatype: Integer}
+      - {name: delivery_city_id, expression: {sql: deliverycityid}, datatype: Integer}
+      - {name: payment_days, expression: {sql: paymentdays}, datatype: Integer}
+
+  - name: purchase_orders
+    source: purchasing.purchaseorders
+    primary_key: [purchase_order_id]
+    fields:
+      - {name: purchase_order_id, expression: {sql: purchaseorderid}, datatype: Integer}
+      - {name: supplier_id, expression: {sql: supplierid}, datatype: Integer}
+      - {name: order_date, expression: {sql: orderdate}, datatype: Date, dimension: {is_time: true}}
+      - {name: delivery_method_id, expression: {sql: deliverymethodid}, datatype: Integer}
+      - {name: contact_person_id, expression: {sql: contactpersonid}, datatype: Integer}
+      - {name: expected_delivery_date, expression: {sql: expecteddeliverydate}, datatype: Date, dimension: {is_time: true}}
+      - {name: is_order_finalized, expression: {sql: isorderfinalized}, datatype: Boolean}
+    metrics:
+      - {name: purchase_order_count, expression: {sql: COUNT(purchase_order_id)}, datatype: Integer}
+
+  - name: purchase_order_lines
+    source: purchasing.purchaseorderlines
+    primary_key: [purchase_order_line_id]
+    description: Lines of a purchase order, counted in outers (supplier packs).
+    fields:
+      - {name: purchase_order_line_id, expression: {sql: purchaseorderlineid}, datatype: Integer}
+      - {name: purchase_order_id, expression: {sql: purchaseorderid}, datatype: Integer}
+      - {name: stock_item_id, expression: {sql: stockitemid}, datatype: Integer}
+      - {name: ordered_outers, expression: {sql: orderedouters}, datatype: Integer}
+      - {name: received_outers, expression: {sql: receivedouters}, datatype: Integer}
+      - {name: package_type_id, expression: {sql: packagetypeid}, datatype: Integer}
+      - {name: expected_unit_price_per_outer, expression: {sql: expectedunitpriceperouter}, datatype: Decimal}
+      - {name: last_receipt_date, expression: {sql: lastreceiptdate}, datatype: Date, dimension: {is_time: true}}
+      - {name: is_order_line_finalized, expression: {sql: isorderlinefinalized}, datatype: Boolean}
+
+  - name: supplier_transactions
+    source: purchasing.suppliertransactions
+    primary_key: [supplier_transaction_id]
+    description: Supplier ledger - supplier invoices, payments and credit notes.
+    fields:
+      - {name: supplier_transaction_id, expression: {sql: suppliertransactionid}, datatype: Integer}
+      - {name: supplier_id, expression: {sql: supplierid}, datatype: Integer}
+      - {name: transaction_type_id, expression: {sql: transactiontypeid}, datatype: Integer}
+      - {name: purchase_order_id, expression: {sql: purchaseorderid}, datatype: Integer}
+      - {name: payment_method_id, expression: {sql: paymentmethodid}, datatype: Integer}
+      - {name: transaction_date, expression: {sql: transactiondate}, datatype: Date, dimension: {is_time: true}}
+      - {name: amount_excluding_tax, expression: {sql: amountexcludingtax}, datatype: Decimal}
+      - {name: tax_amount, expression: {sql: taxamount}, datatype: Decimal}
+      - {name: transaction_amount, expression: {sql: transactionamount}, datatype: Decimal}
+      - {name: outstanding_balance, expression: {sql: outstandingbalance}, datatype: Decimal}
+      - {name: is_finalized, expression: {sql: isfinalized}, datatype: Boolean}
+    metrics:
+      - {name: amount_owed_to_suppliers, expression: {sql: SUM(outstanding_balance)}, datatype: Decimal, ai_context: {synonyms: [payables]}}
+
+relationships:
+  - {name: state_provinces_to_countries, from: state_provinces, to: countries, from_columns: [country_id], to_columns: [country_id]}
+  - {name: cities_to_state_provinces, from: cities, to: state_provinces, from_columns: [state_province_id], to_columns: [state_province_id]}
+  - {name: customers_to_bill_to, from: customers, to: customers, from_columns: [bill_to_customer_id], to_columns: [customer_id]}
+  - {name: customers_to_categories, from: customers, to: customer_categories, from_columns: [customer_category_id], to_columns: [customer_category_id]}
+  - {name: customers_to_buying_groups, from: customers, to: buying_groups, from_columns: [buying_group_id], to_columns: [buying_group_id]}
+  - {name: customers_to_primary_contact, from: customers, to: people, from_columns: [primary_contact_person_id], to_columns: [person_id]}
+  - {name: customers_to_delivery_methods, from: customers, to: delivery_methods, from_columns: [delivery_method_id], to_columns: [delivery_method_id]}
+  - {name: customers_to_delivery_cities, from: customers, to: cities, from_columns: [delivery_city_id], to_columns: [city_id]}
+  - {name: orders_to_customers, from: orders, to: customers, from_columns: [customer_id], to_columns: [customer_id]}
+  - {name: orders_to_salespeople, from: orders, to: people, from_columns: [salesperson_person_id], to_columns: [person_id]}
+  - {name: orders_to_backorders, from: orders, to: orders, from_columns: [backorder_order_id], to_columns: [order_id]}
+  - {name: order_lines_to_orders, from: order_lines, to: orders, from_columns: [order_id], to_columns: [order_id]}
+  - {name: order_lines_to_stock_items, from: order_lines, to: stock_items, from_columns: [stock_item_id], to_columns: [stock_item_id]}
+  - {name: invoices_to_customers, from: invoices, to: customers, from_columns: [customer_id], to_columns: [customer_id]}
+  - {name: invoices_to_bill_to, from: invoices, to: customers, from_columns: [bill_to_customer_id], to_columns: [customer_id]}
+  - {name: invoices_to_orders, from: invoices, to: orders, from_columns: [order_id], to_columns: [order_id]}
+  - {name: invoices_to_salespeople, from: invoices, to: people, from_columns: [salesperson_person_id], to_columns: [person_id]}
+  - {name: invoices_to_delivery_methods, from: invoices, to: delivery_methods, from_columns: [delivery_method_id], to_columns: [delivery_method_id]}
+  - {name: invoice_lines_to_invoices, from: invoice_lines, to: invoices, from_columns: [invoice_id], to_columns: [invoice_id]}
+  - {name: invoice_lines_to_stock_items, from: invoice_lines, to: stock_items, from_columns: [stock_item_id], to_columns: [stock_item_id]}
+  - {name: customer_transactions_to_customers, from: customer_transactions, to: customers, from_columns: [customer_id], to_columns: [customer_id]}
+  - {name: customer_transactions_to_types, from: customer_transactions, to: transaction_types, from_columns: [transaction_type_id], to_columns: [transaction_type_id]}
+  - {name: customer_transactions_to_invoices, from: customer_transactions, to: invoices, from_columns: [invoice_id], to_columns: [invoice_id]}
+  - {name: customer_transactions_to_payment_methods, from: customer_transactions, to: payment_methods, from_columns: [payment_method_id], to_columns: [payment_method_id]}
+  - {name: special_deals_to_stock_items, from: special_deals, to: stock_items, from_columns: [stock_item_id], to_columns: [stock_item_id]}
+  - {name: special_deals_to_customers, from: special_deals, to: customers, from_columns: [customer_id], to_columns: [customer_id]}
+  - {name: special_deals_to_buying_groups, from: special_deals, to: buying_groups, from_columns: [buying_group_id], to_columns: [buying_group_id]}
+  - {name: special_deals_to_customer_categories, from: special_deals, to: customer_categories, from_columns: [customer_category_id], to_columns: [customer_category_id]}
+  - {name: special_deals_to_stock_groups, from: special_deals, to: stock_groups, from_columns: [stock_group_id], to_columns: [stock_group_id]}
+  - {name: stock_item_stock_groups_to_stock_items, from: stock_item_stock_groups, to: stock_items, from_columns: [stock_item_id], to_columns: [stock_item_id]}
+  - {name: stock_item_stock_groups_to_stock_groups, from: stock_item_stock_groups, to: stock_groups, from_columns: [stock_group_id], to_columns: [stock_group_id]}
+  - {name: stock_items_to_suppliers, from: stock_items, to: suppliers, from_columns: [supplier_id], to_columns: [supplier_id]}
+  - {name: stock_items_to_colors, from: stock_items, to: colors, from_columns: [color_id], to_columns: [color_id]}
+  - {name: stock_items_to_unit_package, from: stock_items, to: package_types, from_columns: [unit_package_id], to_columns: [package_type_id]}
+  - {name: stock_items_to_outer_package, from: stock_items, to: package_types, from_columns: [outer_package_id], to_columns: [package_type_id]}
+  - {name: stock_item_holdings_to_stock_items, from: stock_item_holdings, to: stock_items, from_columns: [stock_item_id], to_columns: [stock_item_id]}
+  - {name: stock_item_transactions_to_stock_items, from: stock_item_transactions, to: stock_items, from_columns: [stock_item_id], to_columns: [stock_item_id]}
+  - {name: stock_item_transactions_to_types, from: stock_item_transactions, to: transaction_types, from_columns: [transaction_type_id], to_columns: [transaction_type_id]}
+  - {name: stock_item_transactions_to_customers, from: stock_item_transactions, to: customers, from_columns: [customer_id], to_columns: [customer_id]}
+  - {name: stock_item_transactions_to_invoices, from: stock_item_transactions, to: invoices, from_columns: [invoice_id], to_columns: [invoice_id]}
+  - {name: stock_item_transactions_to_suppliers, from: stock_item_transactions, to: suppliers, from_columns: [supplier_id], to_columns: [supplier_id]}
+  - {name: stock_item_transactions_to_purchase_orders, from: stock_item_transactions, to: purchase_orders, from_columns: [purchase_order_id], to_columns: [purchase_order_id]}
+  - {name: suppliers_to_categories, from: suppliers, to: supplier_categories, from_columns: [supplier_category_id], to_columns: [supplier_category_id]}
+  - {name: suppliers_to_primary_contact, from: suppliers, to: people, from_columns: [primary_contact_person_id], to_columns: [person_id]}
+  - {name: suppliers_to_delivery_cities, from: suppliers, to: cities, from_columns: [delivery_city_id], to_columns: [city_id]}
+  - {name: purchase_orders_to_suppliers, from: purchase_orders, to: suppliers, from_columns: [supplier_id], to_columns: [supplier_id]}
+  - {name: purchase_orders_to_contacts, from: purchase_orders, to: people, from_columns: [contact_person_id], to_columns: [person_id]}
+  - {name: purchase_order_lines_to_purchase_orders, from: purchase_order_lines, to: purchase_orders, from_columns: [purchase_order_id], to_columns: [purchase_order_id]}
+  - {name: purchase_order_lines_to_stock_items, from: purchase_order_lines, to: stock_items, from_columns: [stock_item_id], to_columns: [stock_item_id]}
+  - {name: supplier_transactions_to_suppliers, from: supplier_transactions, to: suppliers, from_columns: [supplier_id], to_columns: [supplier_id]}
+  - {name: supplier_transactions_to_types, from: supplier_transactions, to: transaction_types, from_columns: [transaction_type_id], to_columns: [transaction_type_id]}
+  - {name: supplier_transactions_to_purchase_orders, from: supplier_transactions, to: purchase_orders, from_columns: [purchase_order_id], to_columns: [purchase_order_id]}
+
+metrics:
+  - name: gross_margin_pct
+    expression: {sql: 100 * SUM(invoice_lines.line_profit) / SUM(invoice_lines.amount_excluding_tax)}
+    datatype: Decimal
+    description: Profit as a percentage of invoiced sales before tax.
+  - name: average_invoice_value
+    expression: {sql: SUM(invoice_lines.amount_excluding_tax) / COUNT(DISTINCT invoices.invoice_id)}
+    datatype: Decimal
+    description: Invoiced sales before tax divided by the number of invoices.
+
+nonportable_extensions:
+  - vendor_name: neuron
+    data:
+      certified_by: "Claude, DG-00.02; owner to confirm"
+      certified_terms: [customers, orders, order_lines, invoices, invoice_lines, stock_items, stock_groups,
+        suppliers, purchase_orders, invoice_lines.sales_excluding_tax, invoice_lines.profit,
+        invoice_lines.units_invoiced, orders.order_count, invoices.invoice_count,
+        customer_transactions.amount_outstanding, gross_margin_pct, average_invoice_value]
