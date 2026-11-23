@@ -718,8 +718,9 @@ No statement failed in the database. No table changed during scoring.
      the engine writes model field names as if they were columns. For example, it writes
      `cycle_name` and `skill_category` where the columns are `name` and `category`.
    - The guard stops all of them before they run, so they cost accuracy, not safety.
-   - When arm B's SQL does pass the guard, it is about as good as arm C's (68.7% against 82.2%
-     when answered, most of the gap being these rejections).
+   - When arm B's SQL does pass the guard, it is right 389 of 393 times (99.0%), against arm C's
+     456 of 548 (83.2%). The semantic model makes the engine far more precise; what it loses is
+     the step from model names to physical columns.
    - So a baseline engine that sees only an Ossie model needs either a deterministic expander from
      field to SQL expression, or the physical columns beside the model. This decides how DG-00.05
      should run arm B.
