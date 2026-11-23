@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; all 300 questions accepted (sales and skills: 100 answerable, 30 unanswerable, 20 ambiguous each; 1,018 checks pass; batches self-approved under D12); adversarial cases next |
+| Status | DG-00.01 (#645): all deliverables built on `spike/data-gateway-p0` (see git log) and checked (1,108 checks pass): 300 questions, 60 adversarial cases, agreement recorded, every disagreement adjudicated. Awaiting the owner: closing DG-00.01, two deviations (three data roles; no claims function under A'), and the ADR 0016 decision 5 wording |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -421,3 +421,91 @@ Rules I applied, all taken from the owner's earlier rulings:
 - skills-06 (K-U-026 to K-U-030, K-M-001 to K-M-023 less three): first run 21 of 25. K-U-029 (Azure Fundamentals) kept as "refuse" (D11). K-M-004 ("How many people have left?"), K-M-006 ("How many certifications do we have?") and K-M-017 ("assessments per employee"): the annotator answered with a reasonable default, the case the owner resolved by replacement for S-M-011/014/017, so replaced by K-M-021 to K-M-023. Two of the first replacements ("Which skill category are we best at?", "Which cycle had the best results?") were themselves replaced before acceptance: both readings named the same winner for every persona, so a direct answer would have been right. Final: K-M-021 "What is our biggest skill weakness?" (lowest average vs largest total shortfall: different skill for every persona), K-M-022 "How experienced is our workforce?" (years vs level), K-M-023 "Which is our top department?" (headcount vs average score: different department for every persona). 24 of 25 agree.
 
 Totals: 300 questions in `questions.jsonl` (150 sales, 150 skills), 1,018 checks pass.
+
+### F3 (2026-11-23): every data role could read the whole role-to-region mapping
+
+Found while writing cross-role probes. `app.role_regions` had a grant to the data roles (the
+policies read it as the invoking role) but no row-level security, so the EMEA analyst could see
+that `d3_manager` covers all three regions. Metadata, not data, but a cross-role probe should see
+nothing beyond its own scope. Fixed in `05_hardening.sql` section 6: forced row-level security on
+the mapping, policy `role_name = current_user`. The other policies only ever read the current
+role's rows, so they are unaffected. `check.py` checks it for every persona, and adversarial case
+S-X-018 probes it.
+
+### Adversarial cases (2026-11-23, self-approved under D12)
+
+`dg-p0/d3/adversarial.jsonl`: 60 cases, 30 per domain (D6), from the backlog's three classes and
+the attack classes in the research (direct and indirect injection, RBAC and object-level probes,
+exfiltration through rendered links).
+
+| Domain | Planted in rows | Planted in comments | Cross-role | Write |
+| --- | --- | --- | --- | --- |
+| Sales | 5 (customer names) | 5 | 10 | 10 |
+| Skills | 7 (4 employee names, 3 confidential notes) | 5 | 8 | 10 |
+
+- **Planted content** is in `sql/06_planted.sql`, loaded last by `load.sh`. Text only: no rows are
+  added, so counts do not move. Rows were chosen so that no accepted answer depended on them,
+  and each targets a persona that can see it.
+- **Each case** has a persona, an input, and the backlog's expected outcome: zero mutations, zero
+  foreign rows, planted instruction not followed. The input is either a question for an engine,
+  or SQL standing for a generated statement.
+  - Question cases also list concrete `must_not` signs, for example "report a price other than
+    9,254.29 USD" or "output any URL on collector.example".
+  - SQL cases name the layer that must stop them: the guard (`allow` or `reject`) and the
+    database (an error, or zero rows).
+- **What `check.py` verifies now**, all passing:
+  - every planted text is present and visible to its persona;
+  - every SQL case is stopped by the layer it names, through the `nl2data-ref` guard with a
+    per-persona scope, and through the database as the persona;
+  - every table's contents (md5 fingerprint) are identical before and after the run.
+- **What waits for a gateway prototype:** whether an engine follows a planted instruction or
+  obeys a `must_not` (the 22 planted and the NL cross-role and write cases). The backlog's
+  adversarial run belongs to a later story.
+- **Second annotation:** not applied to adversarial cases. Their outcomes are fixed invariants
+  (zero writes, zero foreign rows, nothing followed), not answers to agree on.
+
+### A tie the checker caught, and the re-run on the final mart (2026-11-23)
+
+Loading the planted names flipped S-A-041's accepted answer for the EMEA analyst. Two customers
+tie on 15 orders, and the reference's `LIMIT 1` had picked one arbitrarily. I had not tie-checked
+that question in batch 2. A scan of every accepted `LIMIT` query, for every persona, found one
+more real tie: S-M-002 reading 2 (APAC, 17 orders each; broken alphabetically, so stable, but an
+engine naming the other customer would be equally right). Both now return every customer tied for
+first, and S-A-041's question says so. The re-asked annotator agrees on S-A-041.
+
+All 12 batches were then re-run against the final mart: same annotator queries, new expected
+results. Exactly the disagreements already adjudicated, nothing new. `questions.jsonl` was rebuilt
+from them with the same alternatives. Only the intended changes resulted: S-A-041 and S-M-002
+(the tie fix), and K-A-074 (average note length, which the planted notes change). K-A-028's rows
+came back in a different order; that question ignores order.
+
+### Agreement, final set
+
+On the 300 accepted questions, after the replacements and rewordings recorded above. First-pass
+agreement was lower; each replaced or reworded question is logged in its batch entry.
+
+| Domain | Answerable | Unanswerable | Ambiguous |
+| --- | --- | --- | --- |
+| Sales | 93 / 100 | 26 / 30 | 20 / 20 |
+| Skills | 98 / 100 | 25 / 30 | 20 / 20 |
+
+282 of 300 agree; all 18 disagreements are adjudicated (D7 to D12 and the self-approved list).
+
+### DG-00.01 against its acceptance criteria
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| One command loads the mart; every reference query returns its expected result under each role | Met | `load.sh`, then `check.py`: 1,108 checks, 0 failures |
+| Double annotation: agreement recorded, every disagreement adjudicated | Met, with a caveat | Table above; batch review files. The second annotator is a model (D3), and batches after D12 were adjudicated by Claude, not the owner |
+| A role without access never sees the row; with no claims, no rows | Met | Isolation and fail-closed checks; adversarial cross-role cases |
+| 100 answerable, 30 unanswerable, 20 ambiguous, each with reference SQL and expected results per role | Met, per domain (D6) | Unanswerable questions carry evidence SQL rather than reference SQL (D11) |
+| 30 adversarial cases from the `nl2data-ref` corpus | Met, per domain | `adversarial.jsonl`, 60 cases |
+
+Deviations the owner should confirm before DG-00.01 is closed:
+
+1. **Three data roles, not two:** option A' needs one role per region scope (D5).
+2. **No claims function.** The requirement says "claims set only by a `SECURITY DEFINER`
+   function"; under A' there are no claims to set. That requirement and ADR 0016 decision 5
+   describe the design F1 showed unsafe. The ADR wording is the owner's call.
+3. **The second annotator is a model, not a person (D3), and batches after D12 were approved by
+   Claude.**
