@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); sales batch 1 accepted (25 questions in `questions.jsonl`, 233 checks pass); sales batch 2 awaiting owner review (24 of 25 agree; S-A-035 to adjudicate, F2); skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); sales batches 1 and 2 accepted (49 questions in `questions.jsonl`, all checks pass); sales batch 3 awaiting owner review (22 of 25 agree; 3 to adjudicate); skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -164,6 +164,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D5 | 2026-11-23 | Fix F1 and F1b with option A': policies keyed on the data role through `app.role_regions`, one login per data role. F1c (timeout) stays a documented residual for the executor. Answers Q9. | Owner |
 | D6 | 2026-11-23 | Skills gets its own question set with the same counts as sales: 100 answerable, 30 unanswerable, 20 ambiguous, 30 adversarial. D3 now holds 360 questions (300 plus 60 adversarial), about twice the annotation work; batches of 25 stay. Answers Q8. | Owner |
 | D7 | 2026-11-23 | Sales batch 1 accepted as written. S-A-017 keeps the reference answer (reps the persona can see) and stays in the set as a deliberate F2 trap. Finish all sales questions before starting skills. | Owner |
+| D8 | 2026-11-23 | Sales batch 2 accepted. S-A-035 keeps the reference answer and stays as an F2 trap. S-A-047 swapped for a sharper question; because the new one is unreviewed, it moves to batch 3 and batch 2 is accepted with 24 questions. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -298,3 +299,23 @@ confidential question (S-A-048, average base salary).
 - S-A-035 disagrees: a second F2 case. "How many customers are there in each country?" The
   annotator LEFT JOINs customers to the fully visible countries table and reports 0 customers
   in the 7 countries outside an analyst's region.
+
+### Sales batch 3 (2026-11-23)
+
+`dg-p0/d3/batches/sales-03.md`. The new S-A-047 (lines with a discount of 10% or more) plus
+S-A-051 to S-A-074: harder questions, including a median, a window function (cumulative and
+month-over-month), year-over-year per region and per rep, a return rate by category, cross-tabs,
+customer cohorts, revenue net of returns, a weekday, and a confidential one (S-A-069, total pay).
+
+- Comparator change: the annotator may return extra columns (S-A-070 added the customer id next
+  to the name). Batches 1 and 2 were re-run: unchanged.
+- One tie checked: in S-A-070, two EMEA customers returned 27 units each. They are inside the
+  top 3, not at the cut-off, so the question ignores row order.
+- 22 of 25 agree. The 3 disagreements:
+  - S-A-052 (revenue per region, 2024 and 2025): a third F2 case. The analysts get 0 for the
+    regions they cannot see. For the manager the numbers match; only the label differs
+    (region name instead of id).
+  - S-A-054 and S-A-061 (cumulative and month-over-month revenue): the numbers match for every
+    persona. The annotator labels months as dates (2025-02-01), the reference as month numbers
+    (2). The comparator does not treat these as equal, on purpose: deciding when two labels mean
+    the same thing is the owner's call, not the comparator's.
