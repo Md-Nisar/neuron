@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0`: sales schema, hardening, loader and checker done; finding F1 open; question batches not started |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); question batches not started; Q8 counts open |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -115,8 +115,8 @@ counts all zero. Kill criterion: baseline below 60% on D3 with the best model.
 | Q5 | Is there a key for a second, stronger model, and may the synthetic D3 schema go to it? |
 | Q6 | Where should S1 (Auto Ontology) run, given no Docker daemon here? |
 | Q7 | Is this log's location right (`docs/releases/data-gateway-p0/`), and should it live on `spike/data-gateway-p0`? |
-| Q8 | Skills dataset: same D3 database (second schema) or separate? Does it share the 100/30/20/30 counts or add its own? |
-| Q9 | F1, F1b, F1c: fix option A', B' or C? (A' recommended) |
+| Q8 | Skills questions: share the 100/30/20/30 counts with sales, or add their own? (Database placement answered by D4.) |
+| Q9 | Answered by D5. |
 
 ### 1.8 Proposed plan for the design spike
 
@@ -160,6 +160,8 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D1 | 2026-11-23 | Spike scope is (a) + (c): carry out DG-E00 as accepted (track 1), and design what ADR 0016 leaves open (track 2). ADR 0016 is reopened only where evidence calls for it. Answers Q1. | Owner |
 | D2 | 2026-11-23 | Superseded D1 after section 3 showed analytics is not in the backlog: no design work outside the backlog. Track 2 (T1 to T6) is dropped; gaps G1 to G4 stay recorded but are not worked. The DG-E00 stories are done one at a time, in dependency order, each approach agreed before work starts. | Owner |
 | D3 | 2026-11-23 | DG-00.01 approach: work on `spike/data-gateway-p0` (push allowed); sales domain; **add an employee skill assessment dataset** (scope addition to DG-00.01; how it counts toward the 150 questions is open, Q8); second annotator is option (b), a different model's independent pass with the owner adjudicating, recorded as model plus owner review, not two humans; owner reviews each batch of 25. | Owner |
+| D4 | 2026-11-23 | Skills dataset lives in the same `d3` database as a separate schema, `skills`. Answers the first half of Q8; how its questions count toward the 150 is still open. | Owner |
+| D5 | 2026-11-23 | Fix F1 and F1b with option A': policies keyed on the data role through `app.role_regions`, one login per data role. F1c (timeout) stays a documented residual for the executor. Answers Q9. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -229,3 +231,17 @@ forward needs a product requirement and an ADR amendment, not only a story.
 Revised recommendation: A'. Recommendation: A for the mart now (the role-level mapping ADR 0016 already chose), B noted as
 the path for per-user policies. Either way ADR 0016 decision 5's wording needs correcting, which
 is an owner call.
+
+### F1 resolution (2026-11-23, `spike/data-gateway-p0` at `6b9b90b`)
+
+- **Change.** Claims and `app.set_claims` are removed. Every policy compares `region_id` with
+  `app.role_regions` for `current_user`. Only the superuser writes that table. Each login is a
+  member of exactly one data role: `d3_analyst_emea`, `d3_analyst_apac` or `d3_manager`.
+- **Evidence.** `check.py`: 158 checks pass, 0 fail. The `SET app.regions` and `RESET ROLE`
+  re-entry cases see 0 foreign orders. Three deliberate breaks were each caught, then reverted:
+  opening one policy, mapping a second region to a role, granting a confidential table.
+- **Residual.** F1c is reported as `KNOWN`, not as a pass.
+- **Deviation from the backlog.** DG-00.01 says "two data roles". The mart now has two kinds of
+  role (analyst and manager) but three data roles, because A' needs a role per region scope.
+  ADR 0016 decision 5's wording ("claims set only by the gateway", `set_config` revoked as the
+  safeguard) no longer describes the mart. Correcting the ADR is an owner action; it is not done.
