@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); sales batch 1 written and second-annotated, awaiting owner review (24 of 25 agree; S-A-017 to adjudicate, F2); skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); sales batch 1 accepted (25 questions in `questions.jsonl`, 233 checks pass); sales batch 2 awaiting owner review (24 of 25 agree; S-A-035 to adjudicate, F2); skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -163,6 +163,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D4 | 2026-11-23 | Skills dataset lives in the same `d3` database as a separate schema, `skills`. Answers the first half of Q8; how its questions count toward the 150 is still open. | Owner |
 | D5 | 2026-11-23 | Fix F1 and F1b with option A': policies keyed on the data role through `app.role_regions`, one login per data role. F1c (timeout) stays a documented residual for the executor. Answers Q9. | Owner |
 | D6 | 2026-11-23 | Skills gets its own question set with the same counts as sales: 100 answerable, 30 unanswerable, 20 ambiguous, 30 adversarial. D3 now holds 360 questions (300 plus 60 adversarial), about twice the annotation work; batches of 25 stay. Answers Q8. | Owner |
+| D7 | 2026-11-23 | Sales batch 1 accepted as written. S-A-017 keeps the reference answer (reps the persona can see) and stays in the set as a deliberate F2 trap. Finish all sales questions before starting skills. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -278,3 +279,22 @@ question and the schema file, never the reference SQL; about 11 s per question.
 - S-A-021 was replaced before review: its first wording ("never placed an order") gave 0 for every
   persona, which a blocked or empty query would also give, so it tested nothing.
 - No ties at the top-N cut-offs (S-A-008, S-A-011, S-A-016), checked by hand.
+
+### Sales batch 2 (2026-11-23)
+
+`dg-p0/d3/batches/sales-02.md`. 25 answerable questions, S-A-026 to S-A-050: quarters, statuses,
+per-rep revenue, discount value, gross value, returns by category, top 3, distinct and repeat
+customers, lines per order, share of revenue, largest order, days to return, and one more
+confidential question (S-A-048, average base salary).
+
+- First run: 22 of 25 agreed. After the two fixes below, 24 of 25 agree.
+- S-A-028 was a comparator fault, not a disagreement. Both queries gave the same revenue to the
+  cent, but the reference comparator buckets numbers to 6 significant digits, so 2,716,515.00
+  and 2,716,514.996 fall into different buckets. `batch.py` now compares numbers within 0.01.
+  Batch 1 was re-run with the new comparator: unchanged, 24 of 25.
+- S-A-047's first wording ("sold below the list price") was mine and ambiguous: the annotator
+  read "sold" as completed orders only, as batch 1 had taught. Reworded to "in orders of any
+  status"; the re-asked annotator then agrees. Owner to confirm the rewording.
+- S-A-035 disagrees: a second F2 case. "How many customers are there in each country?" The
+  annotator LEFT JOINs customers to the fully visible countries table and reports 0 customers
+  in the 7 countries outside an analyst's region.
