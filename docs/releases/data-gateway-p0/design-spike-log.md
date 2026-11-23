@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; owner review of A2 and two questions pending. Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): in progress (D20, section 8). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -175,6 +175,8 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D16 | 2026-11-23 | Owner: "You decide" on the three DG-00.03 questions. Claude chose its recommendations: (1) in DG-00.05, arm B sees the caller's physical columns beside the Ossie model (option b), so the comparison measures what the semantic content adds rather than F5; arm B as measured in DG-00.03 stays in the record; (2) the F4 guard fix is ported to `main` as PR #654 (3 lines and a test that fails without it; review and merge are the owner's); (3) D1 is reported both ways: the scorer now also gives "answerable units not answered" (refused or asked to clarify) beside accuracy when the engine wrote SQL (spike `c72871d`; no other figure changed). | Owner (delegated) |
 | D17 | 2026-11-23 | DG-00.04 approach, all as recommended (section 7): run here with the container's Docker daemon; pin `NVIDIA/auto-ontology` at `7dac5ff7` (1.3.0); chat model `LLM_MODEL` as in arms B and C, NVIDIA embeddings and rerank, key from the environment only; no non-NVIDIA endpoint exists, recorded; own read-only login `ao_reader` on `d3`, all regions, no confidential tables; egress by code review and a logging CONNECT proxy; A1 on D3, then at most four hours of certification by Claude (A2) for owner review; D1 and D2 wait for DG-00.05. Claude also watches PR #654. | Owner |
 | D18 | 2026-11-23 | F6, as recommended: `GRANT EXECUTE ON set_config` to `d3_ao_reader` only, a recorded deviation from ADR 0016 decision 5 for Auto Ontology's login. Under A' no authorization depends on a setting; the login is read-only, a member of no role, and Auto Ontology rejects `set_config` in model-written SQL. Checked after the grant: read-only queries run, a write is refused, read-only cannot be turned off mid-transaction, `rep_compensation` is still denied. | Owner |
+| D19 | 2026-11-23 | Owner: "Accepted with your recommendation, start DG-00.05", then: continue with DG-00.05 and the remaining two stories, "take your decisions", stop and ask only if a very critical decision is required, and keep the PR updated. Read as: A2 stands as certified (`a2/certify.yaml`, `a2/columns.tsv`); F9 option (a), Auto Ontology measured as shipped with F9 recorded; decisions in DG-00.05 to DG-00.07 are delegated to Claude and recorded below as "Claude (delegated)". | Owner |
+| D20 | 2026-11-23 | DG-00.05 approach (section 8): same model in every arm; arm C on D3 and D1 reused from DG-00.03; arm B run as D16 decided (Ossie model plus physical columns); A1 and A2 asked through Auto Ontology's gateway with the caller line as `evidence`, their SQL re-run through the guard and the persona's executor; D2 is BIRD Mini-Dev's PostgreSQL edition, all 500 questions, with BIRD's evidence for every arm and Ossie models generated from BIRD's own documentation for arms B and A2; Ossie round trip in both directions through a version converter (F10). | Claude (delegated) |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -900,3 +902,32 @@ granted to this login (D18).
    the engine, and whether Neuron may accept this egress is a question for the ADR 0016
    corrections), or (b) patch the prompt to drop samples, which measures a modified Auto Ontology.
 
+
+**Answered (D19).** A2 stands as certified; F9 option (a).
+
+## 8. DG-00.05: all arms on D1, D2 and D3, and the Ossie round trip (2026-11-23, D20)
+
+### Approach (D20, Claude under the owner's delegation)
+
+| Topic | Decision | Why |
+| --- | --- | --- |
+| Model | `LLM_MODEL` (nvidia/nemotron-3-ultra-550b-a55b) in every arm; temperature 0 where the harness sets it; Auto Ontology's own settings as shipped | The backlog asks for the same model in every arm; F9 option (a) |
+| Arm C on D3 and D1 | Reused from DG-00.03 (`full-d3`, `full-d1`) | Same model, prompt and settings; re-running would only add noise |
+| Arm B | Run again as D16 decided: the Ossie model plus the caller's physical tables and columns, without database comments (arm id `BP`). DG-00.03's model-only arm B is shown beside it | Measures what the semantic content adds, not F5 |
+| Arms A1 and A2 | One stateless call per unit to Auto Ontology's gateway (`/api/chat/completions`, viewer token). The arms B and C caller line goes in `evidence`; `prediction` off; `target_db` set. The submitted SQL is re-run through the same guard and the persona's A' executor as every other arm | One scoring path for all arms. Auto Ontology cannot act as a persona, so the persona's scope is applied where the gateway would apply it |
+| A1 and A2 outcomes | SQL becomes "sql"; a reply without SQL that ends with a question becomes "clarify"; any other reply without SQL becomes "refuse"; an error after retries is "unparsed" | Auto Ontology has no clarify outcome (its pipeline ends in SQL, an information answer or "unconstructable") |
+| D2 | BIRD Mini-Dev, PostgreSQL edition (500 questions, 11 databases), one database per BIRD database, read-only logins. BIRD's evidence goes to every arm (C and B in the question, A1 and A2 in `evidence`). Unqualified table names get `public.` before the guard, for every arm | BIRD's harness gives the evidence; the guard needs `schema.table` |
+| B and A2 on D2 | No hand-written model exists for BIRD (DG-00.02 wrote D1 and D3), so `d2/gen_ossie.py` generates one per database from BIRD's column and value descriptions and keys, with no judgement and no metrics. A2 on D2 certifies from the same models | Gives B and A2 the same knowledge on D2; labelled as generated, not hand-written |
+| A1 and A2 on D1 and D2 | A1 compiled fresh by Auto Ontology; A2 certified by `certify_db.py`, which applies the D3 rules mechanically from the Ossie model (terms and plain columns certified with the model's descriptions; metrics become certified SQL attributes) | Same rules as D3's A2, nothing tuned to the questions |
+| A1 on D3 | The DG-00.04 snapshot (`a1/`) restored by Auto Ontology's import after the A2 run | Measures the A1 that DG-00.04 recorded |
+| Round trip | Both directions: hand-written D3 Ossie model to Auto Ontology and back, and Auto Ontology's A2 export to the pinned Ossie and back, through `roundtrip/convert_ossie.py` (0.3.0.dev0 and 0.2.0.dev0, F10). Every metric and field is listed as kept or lost | The acceptance criterion |
+| Model calls for A1 and A2 | Not observable per question (Auto Ontology makes several internal calls); reported as such | Its LLM client does not log calls |
+
+### Progress
+
+| Step | Result |
+| --- | --- |
+| D2 loaded | `d2/load.sh`: 11 databases, 75 tables; `d2/freeze.py`: 500 expected answers, none excluded (every gold query runs within 15 s), 13 over the guard's 1,000-row limit (unscorable), 2 empty. BIRD repeats two `question_id`s, so questions are numbered by position (`B-001` to `B-500`) |
+| D2 oracle | The gold SQL through the guard and executor scores 485 of 487 scorable; 2 gold queries (B-122, B-133) use `AGE`, which the guard's allowlist does not include; both also depend on today's date, so their frozen answers hold for 2026-11-23 only |
+| D2 models | 11 generated Ossie models pass the pinned validator; `check_models.py` finds dangling foreign keys in BIRD's own data (codebase_community, formula_1, card_games, european_football_2), not model errors |
+| Auto Ontology | Connected to D3, D1 and the 11 D2 databases (`env.sh`, `AO_DATASETS=all`); the startup pass compiled 0 tables on D3 (its certified model untouched) and compiles D1 and D2 |
