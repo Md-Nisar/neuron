@@ -116,7 +116,7 @@ counts all zero. Kill criterion: baseline below 60% on D3 with the best model.
 | Q6 | Where should S1 (Auto Ontology) run, given no Docker daemon here? |
 | Q7 | Is this log's location right (`docs/releases/data-gateway-p0/`), and should it live on `spike/data-gateway-p0`? |
 | Q8 | Skills dataset: same D3 database (second schema) or separate? Does it share the 100/30/20/30 counts or add its own? |
-| Q9 | F1: fix option A, B or C? |
+| Q9 | F1, F1b, F1c: fix option A', B' or C? (A' recommended) |
 
 ### 1.8 Proposed plan for the design spike
 
@@ -206,6 +206,26 @@ forward needs a product requirement and an ADR amendment, not only a story.
 | B. Signed claims | `set_claims` stores claims plus an HMAC (pgcrypto) bound to backend pid and transaction start; `app.regions()` (`SECURITY DEFINER`) verifies it with a key only its owner can read | Keeps claims and per-user policies; forged values fail closed | A key inside the database; more code; pgcrypto needed (available here) |
 | C. Accept and document | Rely on the validator and single-statement execution; state the limit in ADR 0016 | No change | Drops a defence layer the ADR claims |
 
-Recommendation: A for the mart now (the role-level mapping ADR 0016 already chose), B noted as
+**F1b and F1c (2026-11-23, raised by an automated security review, confirmed by hand).**
+
+- **F1b.** After `SET LOCAL ROLE d3_analyst`, `RESET ROLE` returns to the login, which may call
+  `app.set_claims` with any regions, because the function trusts the caller's array. APAC orders
+  visible: 0 to 1,057. This also defeats option B: signing protects a value, not who chose it.
+- **F1c.** `SET LOCAL statement_timeout = 0` lifts the role's 15 s default. PostgreSQL 16 has no
+  `transaction_timeout` (added in 17).
+- All three need a second statement, so the validator and single-statement execution still stop
+  them. The checker now has a failing case for each (`514b953`).
+
+**Revised options.**
+
+- **A'.** Role-keyed policies, with **one login per data role** (`d3_login_analyst_emea` and so
+  on). A login can then reach only its own role, so neither `SET` nor `RESET ROLE` widens it.
+- **B'.** Signed claims, plus `set_claims` checking the requested regions against an entitlement
+  table keyed on `session_user`. More code.
+- **Either.** The executor issues `SET LOCAL statement_timeout` immediately before the statement,
+  and validates that the statement is not a utility statement. A PostgreSQL 17 test mart could
+  add `transaction_timeout` as a database-side cap.
+
+Revised recommendation: A'. Recommendation: A for the mart now (the role-level mapping ADR 0016 already chose), B noted as
 the path for per-user policies. Either way ADR 0016 decision 5's wording needs correcting, which
 is an owner call.
