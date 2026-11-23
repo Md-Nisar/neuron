@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring pending. Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). Next: DG-00.04 approach. Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -172,6 +172,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D13 | 2026-11-23 | DG-00.02 approach, all as recommended: (1) pin Apache Ossie `main` at `91689e6` (spec `0.3.0.dev0`; the only tag, `osi-0.1.1-rc1`, uses an older shape); (2) Ossie core has no "certified" notion, so certified terms are listed in a `neuron` entry under `nonportable_extensions` (another ADR 0016 wording point for later); (3) D1 is NVIDIA `auto-ontology-eval` at `e727e4d` (Wide World Importers ported to Postgres, MIT), loaded as database `d1`; (4) confidential tables (rep compensation, assessor notes) are left out of the D3 model; (5) models are written from the schema and business meaning only, without reading the 300 D3 or 41 D1 questions, so arm B is not tuned to the test; (6) hours per model are Claude's elapsed time, not comparable to a person's four-hour budget. Owner also asked Claude to watch PR #653. | Owner |
 | D14 | 2026-11-23 | Owner: "Accepted with your recommendation, start DG-00.03". Read as accepting every recommendation then pending. DG-00.01: the three deviations are accepted (three data roles; no claims function under A'; a model as second annotator with batches after D12 approved by Claude), and Claude drafts the ADR 0016 corrections (decision 5; certification not expressible in core Ossie) for owner approval rather than editing the ADR. DG-00.02: the certified-term lists stand as written and D3 stays two models. #645 and #646 are done on this record; closing the issues on GitHub waits for the owner. | Owner |
 | D15 | 2026-11-23 | DG-00.03 approach, all as recommended: (1) score with the DG-00.01 comparator from `batch.py` (columns by position in any order, extra columns allowed, 0.01 tolerance, row order only where `order_matters`) and report `nl2data-ref`'s `results_match` beside it; a deviation from the backlog wording, because name matching and 6-digit rounding mark correct answers wrong; (2) execute with the A' executor (persona login, read-only, `SET LOCAL ROLE`, 15 s timeout, one guard-approved statement), not `nl2data-ref`'s claims executor; (3) arm C sees the caller's schema with database comments, planted ones included; arm B sees the Ossie model; (4) one model call per distinct context; (5) full runs: D3 (300 questions plus the 34 adversarial cases that are questions; 20 was a miscount) and D1 (41), both arms. | Owner |
+| D16 | 2026-11-23 | Owner: "You decide" on the three DG-00.03 questions. Claude chose its recommendations: (1) in DG-00.05, arm B sees the caller's physical columns beside the Ossie model (option b), so the comparison measures what the semantic content adds rather than F5; arm B as measured in DG-00.03 stays in the record; (2) the F4 guard fix is ported to `main` as PR #654 (3 lines and a test that fails without it; review and merge are the owner's); (3) D1 is reported both ways: the scorer now also gives "answerable units not answered" (refused or asked to clarify) beside accuracy when the engine wrote SQL (spike `c72871d`; no other figure changed). | Owner (delegated) |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -769,3 +770,14 @@ Deviations: the DG-00.01 comparator rather than `results_match`, and the A' exec
 3. **D1 scoring.** NVIDIA's harness has no clarify or refuse option. For a like-for-like comparison
    with arms A1 and A2 in DG-00.05, report D1 both ways: as now, and with clarify and refuse
    counted as "not answered".
+
+**Answered (D16).** All three as recommended. D1 read both ways, from `runs/full-d1/score.md`:
+
+| D1, 34 scorable answerable questions | Arm B | Arm C |
+| --- | --- | --- |
+| Execution accuracy, refusals and clarifications counted wrong | 8/34 = 23.5% | 7/34 = 20.6% |
+| Not answered (refused or asked to clarify) | 18/34 = 52.9% | 18/34 = 52.9% |
+| Accuracy when the engine wrote SQL | 8/16 = 50.0% | 7/16 = 43.8% |
+
+The intervals are wide (34 questions). The first row is comparable with NVIDIA's harness; the
+last two together say what kind of failure it is.
