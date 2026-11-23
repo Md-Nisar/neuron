@@ -3,8 +3,8 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | Milestone 1 done. Scope decided (D1). Analytics scope mapped (section 3) |
-| Scope | Structured data access, data analytics and the Data Gateway (DG) |
+| Status | Following the DG backlog one issue at a time (D2). Next: DG-00.01 (#645), approach awaiting owner approval |
+| Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
 This log records findings, discussions, decisions, options, trade-offs and open questions, newest
@@ -156,6 +156,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | # | Date | Decision | By |
 | --- | --- | --- | --- |
 | D1 | 2026-11-23 | Spike scope is (a) + (c): carry out DG-E00 as accepted (track 1), and design what ADR 0016 leaves open (track 2). ADR 0016 is reopened only where evidence calls for it. Answers Q1. | Owner |
+| D2 | 2026-11-23 | Superseded D1 after section 3 showed analytics is not in the backlog: no design work outside the backlog. Track 2 (T1 to T6) is dropped; gaps G1 to G4 stay recorded but are not worked. The DG-E00 stories are done one at a time, in dependency order, each approach agreed before work starts. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
