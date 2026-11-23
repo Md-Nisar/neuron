@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). Next: DG-00.04 approach. Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): approach proposed (section 7). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -781,3 +781,42 @@ Deviations: the DG-00.01 comparator rather than `results_match`, and the A' exec
 
 The intervals are wide (34 questions). The first row is comparable with NVIDIA's harness; the
 last two together say what kind of failure it is.
+
+## 7. DG-00.04: Auto Ontology at a pinned commit (2026-11-23, proposed, not started)
+
+### What was checked before proposing
+
+| Check | Result |
+| --- | --- |
+| Docker (G9, Q6) | `dockerd` starts in this container (29.10.0, overlayfs); `postgres:17-alpine` pulled from Docker Hub and ran. G9 no longer blocks; S1 can run here |
+| Upstream | `NVIDIA/auto-ontology`, no release tags. `pyproject.toml` says 1.3.0 since `7dac5ff7` ("Bump version to 1.3.0", 2026-11-17); `main` is `c96048c4`, 31 commits later, still 1.3.0 |
+| Services | Compose: `pgvector/pgvector:pg17`, pgAdmin, API, ingestion service, two migration jobs, frontend; API and frontend images build from source |
+| Models | Four endpoints: chat (reasoning and non-reasoning), embeddings, rerank. Upstream defaults are all NVIDIA hosts (`integrate.api.nvidia.com`, `ai.api.nvidia.com`); both reachable here |
+| Non-NVIDIA endpoint | None available: the only key is `LLM_*`, which is NVIDIA's hosted API |
+| `search_terms`, `describe_table` | Both exist in the MCP server's tool specs (`mcp/auto_ontology_mcp/tools.py`) |
+| Postgres connector | `execute(read_only=True)` opens a transaction and runs `set_config('transaction_read_only', 'on', true)` (and `statement_timeout`) before the SQL. Text-to-SQL passes `read_only=True` when the connector supports it. Same code at `7dac5ff7` and `c96048c4`. Calls without `read_only` still need checking |
+
+### Proposed approach
+
+1. **Run here**, with the Docker daemon in this container.
+2. **Pin `7dac5ff7`**, the 1.3.0 commit. The connector code is identical at `main`.
+3. **Models.** Record that no non-NVIDIA endpoint is available.
+   - Chat: `LLM_MODEL`, the same model as arms B and C, because DG-00.05 needs one model in every arm.
+   - Embeddings and rerank: upstream's NVIDIA defaults, using the same key.
+   - The key passes to Compose from the shell environment only. It is never written to a file or the log.
+4. **Login.** Create `ao_reader` on `d3`.
+   - Read-only by default (`default_transaction_read_only`), SELECT only.
+   - Global region scope, so the generated ontology covers the whole mart.
+   - No access to the two confidential tables, matching the D3 Ossie model.
+   - How a persona's scope applies to arms A1 and A2 is a DG-00.05 question; it is listed, not solved, here.
+5. **Egress.**
+   - Static: hosts named in the code and configuration, and what each call sends (schema only, or sample rows too).
+   - Runtime: the containers' HTTPS goes through a small logging CONNECT proxy, which records the host and port of every connection without decrypting it.
+6. **A1, then A2.**
+   - A1: generate the ontology for D3.
+   - A2: Claude certifies through the API for at most four hours of elapsed time (as in D13 point 6), and the owner reviews.
+   - D1 and D2 ontologies wait for DG-00.05.
+7. **Acceptance checks.**
+   - Written steps (compose override, login SQL, run commands) in `dg-p0/auto-ontology/`. Another engineer must be able to follow them.
+   - One D3 question answered end to end.
+   - A request to change data, made through chat and directly through the connector with `ao_reader`. Table fingerprints are taken before and after, and the attempt is recorded.
