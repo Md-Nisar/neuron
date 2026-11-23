@@ -41,12 +41,24 @@ Write exactly one SELECT statement answering the question. Return the columns in
 question mentions them. Round only if the question asks. Reply with the SQL only, no prose.
 
 Question: {question}"""
+JUDGE = """You check questions put to a reporting database before anyone queries it. Schema:
+
+{schema}
+
+Decide what a careful analyst should do with the question exactly as asked:
+- "answer": the database holds what is needed and the question has one clear meaning;
+- "clarify": the question can be read in more than one reasonable way that gives different results;
+- "refuse": the database does not hold what is needed (missing data, outside the period covered,
+  something that does not exist in the data, or a matter of opinion).
+Reply with JSON only: {{"verdict": "answer" | "clarify" | "refuse", "reason": "<one sentence>"}}
+
+Question: {question}"""
 
 
-def ask_model(question: str, schema: str) -> str:
+def ask_model(prompt: str) -> str:
     body = {
         "model": os.environ["LLM_MODEL"],
-        "messages": [{"role": "user", "content": PROMPT.format(schema=schema, question=question)}],
+        "messages": [{"role": "user", "content": prompt}],
         "temperature": 0,
         "max_tokens": 4000,
     }
@@ -60,9 +72,23 @@ def ask_model(question: str, schema: str) -> str:
     )
     with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310 (fixed https endpoint)
         text = json.load(resp)["choices"][0]["message"]["content"] or ""
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S)
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
+
+
+def ask_sql(question: str, schema: str) -> str:
+    text = ask_model(PROMPT.format(schema=schema, question=question))
     m = re.search(r"```(?:sql)?\s*(.*?)```", text, flags=re.S)
     return (m.group(1) if m else text).strip().rstrip(";").strip()
+
+
+def ask_verdict(question: str, schema: str) -> dict:
+    text = ask_model(JUDGE.format(schema=schema, question=question))
+    m = re.search(r"\{.*\}", text, flags=re.S)
+    try:
+        v = json.loads(m.group(0)) if m else {}
+    except json.JSONDecodeError:
+        v = {}
+    return v if v.get("verdict") in ("answer", "clarify", "refuse") else {"verdict": "unparsed", "reason": text[:300]}
 
 
 def answer(persona: dict, sql: str) -> dict:
@@ -119,6 +145,36 @@ def show(a: dict, limit: int = 6) -> str:
     return f"{', '.join(a['columns'])} → {body or 'no rows'}{more}"
 
 
+BEHAVIOUR = {"unanswerable": "refuse", "ambiguous": "clarify"}
+
+
+def evidence_count(sql: str) -> int:
+    """Run an evidence query as the superuser (ground truth, no row-level security)."""
+    with psycopg.connect(f"{os.environ['D3_DSN']} dbname=d3 user=postgres") as admin:
+        return admin.execute(sql).fetchone()[0]
+
+
+def judge_one(q: dict, prev: dict, schema: str) -> tuple[dict, list[str], bool]:
+    """Non-answerable question: the second annotator says answer, clarify or refuse."""
+    want = BEHAVIOUR[q["category"]]
+    verdict = prev.get("second_verdict") if prev.get("question") == q["question"] else None
+    verdict = verdict or ask_verdict(q["question"], schema)
+    ok = verdict["verdict"] == want
+    rec = {**q, "expected": {p: {"behaviour": want} for p in PERSONAS}, "second_verdict": verdict,
+           "agreement": {"agree": ok, "why": "ok" if ok else f"second says {verdict['verdict']}"}}
+    lines = [f"## {q['id']}: {q['question']}\n", f"- Kind: {q['kind']}. Why: {q['why']}",
+             f"- Expected for every persona: **{want}**"]
+    if q.get("evidence_sql"):
+        n = evidence_count(q["evidence_sql"])
+        rec["evidence_count"] = n
+        lines.append(f"- Evidence (must be 0): `{q['evidence_sql']}` → {n}")
+        ok = ok and n == 0
+    lines.append(f"- Second annotator: **{verdict['verdict']}**: {verdict.get('reason', '')}")
+    if not ok:
+        lines.append("\n**Disagreement: owner to adjudicate.**")
+    return rec, lines + [""], ok
+
+
 def main(name: str, fresh: bool) -> int:
     src = [json.loads(x) for x in (HERE / f"batches/{name}.src.jsonl").read_text().splitlines() if x]
     out_path = HERE / f"batches/{name}.jsonl"
@@ -129,8 +185,15 @@ def main(name: str, fresh: bool) -> int:
     for q in src:
         schema = (HERE / SCHEMA_FILES[q["id"][0]]).read_text()
         prev = old.get(q["id"], {})
+        if q["category"] in BEHAVIOUR:
+            rec, lines, ok = judge_one(q, prev, schema)
+            disagreements += not ok
+            md += lines
+            out.append(rec)
+            print(q["id"], "agree" if ok else "DISAGREE")
+            continue
         second = prev.get("second_sql") if prev.get("question") == q["question"] else None
-        second = second or ask_model(q["question"], schema)
+        second = second or ask_sql(q["question"], schema)
         om = q.get("order_matters", False)
         rec = {**q, "order_matters": om, "expected": {}, "second_sql": second, "agreement": {}}
         lines = [f"## {q['id']}: {q['question']}\n", f"Reference:\n```sql\n{q['reference_sql']}\n```",
@@ -166,7 +229,8 @@ def accept(name: str, alt: set[str]) -> int:
     """
     path = HERE / "questions.jsonl"
     have = {json.loads(x)["id"] for x in path.read_text().splitlines() if x} if path.exists() else set()
-    keep = ("id", "category", "question", "reference_sql", "order_matters", "expected")
+    keep = ("id", "category", "question", "reference_sql", "order_matters", "expected", "kind",
+            "why", "evidence_sql")
     batch = list(map(json.loads, (HERE / f"batches/{name}.jsonl").read_text().splitlines()))
     if unknown := alt - {q["id"] for q in batch}:
         sys.exit(f"--alt names questions not in this batch: {sorted(unknown)}")
@@ -174,7 +238,7 @@ def accept(name: str, alt: set[str]) -> int:
         for q in batch:
             if q["id"] in have:
                 sys.exit(f"{q['id']} is already in questions.jsonl")
-            rec = {k: q[k] for k in keep}
+            rec = {k: q[k] for k in keep if k in q}
             if q["id"] in alt:
                 rec["alternatives"] = [{p: a["second"] for p, a in q["agreement"].items()}]
             f.write(json.dumps(rec, default=str) + "\n")

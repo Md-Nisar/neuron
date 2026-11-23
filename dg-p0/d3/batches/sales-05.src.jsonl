@@ -1,0 +1,25 @@
+{"id": "S-U-001", "category": "unanswerable", "question": "What was our profit margin in 2025?", "kind": "missing_data", "why": "There is no cost data, so profit cannot be computed."}
+{"id": "S-U-002", "category": "unanswerable", "question": "What was the gross margin on Hardware products?", "kind": "missing_data", "why": "There is no product cost, so margin cannot be computed."}
+{"id": "S-U-003", "category": "unanswerable", "question": "How much did we spend on shipping in 2025?", "kind": "missing_data", "why": "There is no shipping or freight data."}
+{"id": "S-U-004", "category": "unanswerable", "question": "What is the email address of each Enterprise customer?", "kind": "missing_data", "why": "Customers have no contact details."}
+{"id": "S-U-005", "category": "unanswerable", "question": "Which marketing campaign brought in the most revenue?", "kind": "missing_data", "why": "There is no campaign data."}
+{"id": "S-U-006", "category": "unanswerable", "question": "Which sales reps hit their 2025 sales target?", "kind": "missing_data", "why": "There are no sales targets."}
+{"id": "S-U-007", "category": "unanswerable", "question": "How many units of each product are in stock?", "kind": "missing_data", "why": "There is no inventory data."}
+{"id": "S-U-008", "category": "unanswerable", "question": "How satisfied were customers with their orders in 2025?", "kind": "missing_data", "why": "There are no ratings or survey data."}
+{"id": "S-U-009", "category": "unanswerable", "question": "Which supplier provides the Edge Server?", "kind": "missing_data", "why": "There is no supplier data."}
+{"id": "S-U-010", "category": "unanswerable", "question": "What was total 2025 revenue in euros?", "kind": "missing_data", "why": "Prices are in USD and there are no exchange rates."}
+{"id": "S-U-011", "category": "unanswerable", "question": "How many website visits turned into orders?", "kind": "missing_data", "why": "There is no web traffic data."}
+{"id": "S-U-012", "category": "unanswerable", "question": "How much sales tax was collected on 2025 orders?", "kind": "missing_data", "why": "There is no tax data."}
+{"id": "S-U-013", "category": "unanswerable", "question": "Which industry is each Enterprise customer in?", "kind": "missing_data", "why": "Customers have a segment but no industry."}
+{"id": "S-U-014", "category": "unanswerable", "question": "Why were orders cancelled in 2025?", "kind": "missing_data", "why": "Cancelled orders carry no reason; only returns have reasons."}
+{"id": "S-U-015", "category": "unanswerable", "question": "How many sales calls did each rep make in 2025?", "kind": "missing_data", "why": "There is no activity or call data."}
+{"id": "S-U-016", "category": "unanswerable", "question": "What was revenue in 2023?", "kind": "out_of_range", "why": "Orders cover 2024 and 2025 only.", "evidence_sql": "SELECT count(*) FROM sales.orders WHERE ordered_on < DATE '2024-01-01'"}
+{"id": "S-U-017", "category": "unanswerable", "question": "How many orders were placed in 2026?", "kind": "out_of_range", "why": "Orders end on 31 December 2025.", "evidence_sql": "SELECT count(*) FROM sales.orders WHERE ordered_on >= DATE '2026-01-01'"}
+{"id": "S-U-018", "category": "unanswerable", "question": "What will revenue be in 2026?", "kind": "out_of_range", "why": "A forecast, not a fact in the data; forecasting is excluded from the gateway."}
+{"id": "S-U-019", "category": "unanswerable", "question": "How many orders were placed in March 2020?", "kind": "out_of_range", "why": "Orders cover 2024 and 2025 only.", "evidence_sql": "SELECT count(*) FROM sales.orders WHERE ordered_on < DATE '2024-01-01'"}
+{"id": "S-U-020", "category": "unanswerable", "question": "How much revenue came from customers in Mexico?", "kind": "nonexistent_entity", "why": "Mexico is not a country in the data.", "evidence_sql": "SELECT count(*) FROM sales.countries WHERE name ILIKE '%mexico%' OR country_code = 'MX'"}
+{"id": "S-U-021", "category": "unanswerable", "question": "What was revenue from the Quantum Router in 2025?", "kind": "nonexistent_entity", "why": "There is no product of that name.", "evidence_sql": "SELECT count(*) FROM sales.products WHERE name ILIKE '%quantum%'"}
+{"id": "S-U-022", "category": "unanswerable", "question": "How many orders did the sales rep John Smith handle?", "kind": "nonexistent_entity", "why": "There is no rep of that name.", "evidence_sql": "SELECT count(*) FROM sales.sales_reps WHERE name ILIKE '%john smith%'"}
+{"id": "S-U-023", "category": "unanswerable", "question": "How much revenue came from Government customers in 2025?", "kind": "nonexistent_entity", "why": "Segments are Enterprise, SMB and Consumer only.", "evidence_sql": "SELECT count(*) FROM sales.customers WHERE segment ILIKE '%gov%'"}
+{"id": "S-U-024", "category": "unanswerable", "question": "Which of our products has the best quality?", "kind": "subjective", "why": "Quality is not measured in the data."}
+{"id": "S-U-025", "category": "unanswerable", "question": "How does our 2025 revenue compare with our competitors'?", "kind": "outside_database", "why": "There is no competitor data."}

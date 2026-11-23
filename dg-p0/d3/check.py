@@ -12,7 +12,8 @@ Checks:
   fail-closed a login that has not switched into its data role reads nothing, and a data role
               with no region mapping sees no rows in any table
   escape      no SET, RESET ROLE, SET ROLE, write or file read widens what a session sees
-  questions   every reference query in questions.jsonl returns its expected result per persona
+  questions   every reference query in questions.jsonl returns its expected result per persona, and
+              every unanswerable question's evidence query still finds nothing
 """
 
 from __future__ import annotations
@@ -228,6 +229,10 @@ def check_questions() -> None:
         if not line.strip():
             continue
         q = json.loads(line)
+        if q.get("evidence_sql"):
+            with psycopg.connect(f"{DSN} dbname=d3 user=postgres") as admin:
+                n = admin.execute(q["evidence_sql"]).fetchone()[0]
+            ok(n == 0, f"question {q['id']}: evidence it is unanswerable holds ({n})")
         if q["category"] != "answerable":
             continue
         for name, exp in q["expected"].items():
