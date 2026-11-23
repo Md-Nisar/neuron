@@ -587,3 +587,84 @@ for DG-E00 is that a hand-written model is cheap, not how cheap.
   the ADR 0016 wording points.
 - **Spec churn.** `0.3.0.dev0` is a development version. A move to a release tag later means
   re-running `validate.sh` with a new pin.
+
+## 6. DG-00.03: arms C and B with deterministic scoring (2026-11-23)
+
+Approach as agreed in D15. Code is in `dg-p0/arms/` on `spike/data-gateway-p0`:
+
+| File | Purpose |
+| --- | --- |
+| `engine.py` | One engine interface: question, caller and context in; `sql`, `refuse` or `clarify` out |
+| `run.py` | Saves every engine output to `runs/<name>/outputs.jsonl` |
+| `score.py` | Scores that file without calling any model |
+| `selftest.py` | Tests the scorer with fake engines |
+
+D1 gains a read-only login, `d1_reader`, and frozen expected answers in `d1/questions.jsonl`.
+
+### F4 (2026-11-23): the reference guard rejects every query containing AND, OR or EXISTS
+
+- **What.** `nl2data-ref` pins sqlglot 30.33.0. In that version, `exp.And`, `exp.Or`, `exp.Xor`
+  and `exp.Exists` are subclasses of `exp.Func`. The guard's function allowlist therefore rejects
+  them with `FUNCTION_NOT_ALLOWED` ("and", "exists").
+- **Scale.** 97 of the 200 D3 reference answers and 1 of the D1 reference answers were rejected.
+  Any engine would have scored at most 51% on D3, whatever it wrote.
+- **Why nothing caught it.** None of the guard's own tests uses `AND`. The DG-00.01 adversarial
+  cases the guard must allow happen not to use it either.
+- **How it was found.** The scorer self-test runs an "oracle" engine that returns the reference
+  SQL. It scored 101 of 200.
+- **Fix on the spike branch.** The allowlist no longer applies to `exp.Connector` (AND, OR, XOR)
+  or `exp.Exists`, since these are operators, not function calls. Real functions are still
+  checked: JSON, regex and array operators stay blocked.
+- **Regression test.** `test_boolean_operators_and_exists_are_not_functions` fails without the fix
+  and passes with it. The full `nl2data-ref` suite passes; the 12 Postgres tests were skipped.
+- **Not fixed on `main`.** The reference code on `main` still has the bug. Porting the fix is the
+  owner's call.
+
+### Other corrections found by the self-test
+
+- **S-A-050 reference SQL** used `bool_or`, which is not on the guard's allowlist (a deliberate
+  policy, not a bug). It was rewritten with `min`/`max`. The expected answers are unchanged, and
+  `check.py` still passes.
+- **Ambiguous readings.** Every reference SQL behind them passes the guard.
+
+### D1 expected answers
+
+- **Excluded: 2 of the 41 questions.** NVIDIA's reference query fails on Postgres for each, so
+  rather than repair their reference I left them out. Details are in `d1/excluded.json`:
+  - question 4: GROUP BY error;
+  - question 27: syntax error.
+- **Unscorable: 5 questions.** Their expected results run from 1,811 to 231,412 rows, and the
+  guard caps every query at 1,000 rows, so no engine can match them through the guard. The scorer
+  reports them as unscorable instead of wrong.
+- **Empty results: 4 questions.** Their references return no rows. For example, question 1 asks
+  about Black Friday 2024, but the data covers 2013-01 to 2016-05. An engine that returns no rows
+  matches them. They are kept as written and flagged here.
+
+### Self-test (`selftest.py`, passes)
+
+- **Oracle engine:** scores 100% on D3 (answerable, unanswerable, ambiguous and adversarial) and
+  on every scorable D1 question.
+- **Planted write** (`DELETE`): rejected by the guard, counted wrong and as a followed
+  instruction, never executed.
+- **Probes:**
+  - a cross-region query counts as wrong;
+  - a query on `rep_compensation` by an analyst is blocked by the guard.
+- **No mutation:** no table changes during scoring (fingerprint of every table).
+- **Determinism:** scoring the same outputs twice gives byte-identical `score.json`.
+
+### Smoke run and two prompt fixes (before the full run)
+
+The smoke run covered 3 questions per category plus 3 adversarial questions, 60 calls. It showed
+two faults in my baseline prompt, not in either arm. I fixed both generically, for both arms, and
+discarded the smoke run:
+
+1. **Arm B wrote Ossie field names as if they were columns** (`net_amount`, `customer_name`). The
+   guard rejected them as unknown identifiers. The arm B context now says that a dataset's
+   `source` is the table, and that a field's `expression.sql` is the SQL to write over it.
+2. **Both arms added their own region filter by name** (`WHERE name = 'APAC'`, which does not
+   match the stored name) because the caller line said the rows were limited to APAC. The caller
+   line now says the database already limits rows, so the engine should not filter by region.
+
+After the fixes the re-run scored 3 of 3 answerable questions on both arms. It also confirmed the
+D15 comparator point: on correct answers, `results_match` scored 0 of 9 on each arm, because it
+matches columns by name.
