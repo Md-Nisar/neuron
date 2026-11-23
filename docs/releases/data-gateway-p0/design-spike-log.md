@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645): all deliverables built on `spike/data-gateway-p0` (see git log) and checked (1,108 checks pass): 300 questions, 60 adversarial cases, agreement recorded, every disagreement adjudicated. Awaiting the owner: closing DG-00.01, three deviations (three data roles; no claims function under A'; a model as second annotator, with batches after D12 approved by Claude), and the ADR 0016 decision 5 wording |
+| Status | DG-00.01 (#645): built and checked; awaiting the owner on three deviations and the ADR 0016 decision 5 wording. DG-00.02 (#646): three Ossie models (D3 sales, D3 skills, D1) validate against the pinned spec; awaiting the owner on certification (section 5). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -169,6 +169,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D10 | 2026-11-23 | Sales batch 4 accepted as recommended: S-A-096 keeps the reference (the annotator's query failed); S-A-098 accepts region names as an alternative to ids. The 100 answerable sales questions are complete. | Owner |
 | D11 | 2026-11-23 | Sales batch 5 accepted as recommended: S-U-020 to S-U-022 stay "refuse" (the evidence queries show the entity is absent). Record design for unanswerable questions confirmed: expected behaviour, kind, why, and an evidence query where the answer depends on the data. | Owner |
 | D12 | 2026-11-23 | Sales batch 6 accepted as recommended: S-U-027 stays "refuse"; S-M-011, S-M-014 and S-M-017 replaced by S-M-021 to S-M-023; S-M-013 replaced by S-M-024 ("average discount": plain vs value-weighted). Then: move to skills, write all remaining batches, and **approve them myself**. | Owner |
+| D13 | 2026-11-23 | DG-00.02 approach, all as recommended: (1) pin Apache Ossie `main` at `91689e6` (spec `0.3.0.dev0`; the only tag, `osi-0.1.1-rc1`, uses an older shape); (2) Ossie core has no "certified" notion, so certified terms are listed in a `neuron` entry under `nonportable_extensions` (another ADR 0016 wording point for later); (3) D1 is NVIDIA `auto-ontology-eval` at `e727e4d` (Wide World Importers ported to Postgres, MIT), loaded as database `d1`; (4) confidential tables (rep compensation, assessor notes) are left out of the D3 model; (5) models are written from the schema and business meaning only, without reading the 300 D3 or 41 D1 questions, so arm B is not tuned to the test; (6) hours per model are Claude's elapsed time, not comparable to a person's four-hour budget. Owner also asked Claude to watch PR #653. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -509,3 +510,78 @@ Deviations the owner should confirm before DG-00.01 is closed:
    describe the design F1 showed unsafe. The ADR wording is the owner's call.
 3. **The second annotator is a model, not a person (D3), and batches after D12 were approved by
    Claude.**
+
+## 5. DG-00.02: hand-written Ossie models (2026-11-23, `spike/data-gateway-p0` at `83bde9d`)
+
+Approach as agreed in D13. Files are in `dg-p0/ossie/` and `dg-p0/d1/`; usage is in `ossie/README.md`.
+
+### What was built
+
+| Model | Datasets | Relationships | Metrics | Left out |
+| --- | --- | --- | --- | --- |
+| `d3_sales` | 8 | 10 | 7 | `rep_compensation` (confidential) |
+| `d3_skills` | 8 | 10 | 5 | `assessor_notes` (confidential) |
+| `d1_wwi` | 28 | 52 | 15 | `*_archive` history, sensor tables, system parameters, website views, credential and bank columns |
+
+- **D3 is two models, not one.** An Ossie document holds exactly one model, and the sales and
+  skills question sets are separate (D6). Ossie has no cross-model references, so `d3_skills`
+  carries its own `regions` dataset over `sales.regions`. This was my choice; the owner can
+  merge the two into one model instead.
+- **D1** is loaded by `d1/load.sh` from NVIDIA `auto-ontology-eval` at `e727e4d`, the same
+  steps as its `seed_wwi.py` but stopping on the first error. The loader does not overwrite or
+  drop `d3`. `d1/counts.py` checks every one of the 48 tables against its CSV: 48 PASS. The data
+  covers 2013-01 to 2016-05.
+- **Certified terms** are listed under `nonportable_extensions` (vendor `neuron`) with
+  `certified_by: "Claude, DG-00.02; owner to confirm"`. Nothing is marked as owner-certified.
+- **How the models were written.** Each model came from its schema DDL and documented business
+  rules only; no evaluation question was read. I checked three descriptive claims against the
+  data before keeping them:
+  - The D1 customer ledger holds only invoices (positive amounts) and payments (negative). My
+    first draft also mentioned refunds and credit notes; there are none, so I corrected it.
+  - D1 stock movements: receipts are positive, issues negative, stocktake adjustments either sign.
+  - D1 invoice line `extendedprice` equals quantity × unit price + tax on every row, so sales
+    excluding tax is `extendedprice - taxamount`.
+
+### Validation (acceptance: "passes against the pinned Ossie schema")
+
+`ossie/validate.sh` runs three things:
+1. **The pinned validator.** `apache/ossie` `validation/validate.py` at `91689e6`, schema
+   `core-spec/ossie-schema.json`, spec `0.3.0.dev0`. It checks the schema and its own semantic
+   rules (references, keys, metric scoping). Result: 3 of 3 pass.
+2. **A negative control.** A copy of `d3_sales` with a relationship pointing at an undeclared
+   field must fail. The validator rejects it with "to_columns references undeclared field".
+3. **`check_models.py` against the live databases.** This goes beyond the acceptance criterion:
+   the Ossie validator checks the document, not whether it matches the database. Each field and
+   metric runs as a query, and each relationship is checked for dangling keys and a unique
+   target key. Results:
+   - `d3_sales`: 35 checks pass;
+   - `d3_skills`: 33 pass;
+   - `d1_wwi`: 147 pass.
+
+   I also tested the check itself on a copy with a misspelled column and a wrong join key. It
+   flagged exactly the affected checks (10 of 35).
+   The model's `revenue` metric gives 180,865,887.16, identical to a direct SQL computation.
+
+Python for validation: jsonschema 4.26.0, pyyaml 6.0.3, sqlglot 30.33.0, psycopg 3.
+
+### Authoring log (acceptance: "hours per model are listed")
+
+| Model | Elapsed (container clock, UTC) | Within the 4-hour budget |
+| --- | --- | --- |
+| D3 (both models, including the live check script) | 19:35:11 to 19:37:21, about 2 minutes | Yes |
+| D1 | 19:37:21 to 19:39:32, about 2 minutes | Yes |
+
+These are Claude's elapsed times. They are not comparable with the four hours a person is
+budgeted (D13), and they exclude reading the Ossie spec and loading D1. The figure that matters
+for DG-E00 is that a hand-written model is cheap, not how cheap.
+
+### For the owner
+
+- **Certification.** Confirm the certified-term lists, or name terms to drop. Until then every
+  term reads "Claude, owner to confirm".
+- **ADR 0016.** "Only certified terms are served" needs a mechanism Ossie does not define.
+  `nonportable_extensions` works, but by the spec's own rule it is non-portable: an
+  Auto-Ontology export will not carry it. This matters for the round trip in DG-00.05. Add it to
+  the ADR 0016 wording points.
+- **Spec churn.** `0.3.0.dev0` is a development version. A move to a release tag later means
+  re-running `validate.sh` with a new pin.
