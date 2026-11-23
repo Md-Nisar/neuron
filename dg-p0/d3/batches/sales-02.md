@@ -1,6 +1,6 @@
 # Batch sales-02: owner review
 
-25 questions, 24 agree on every persona, 1 to adjudicate.
+24 questions, 23 agree on every persona, 1 to adjudicate.
 
 ## S-A-026: What was revenue in each quarter of 2025, in quarter order?
 
@@ -516,25 +516,6 @@ ORDER BY c.segment
 | emea_analyst | segment, orders → Enterprise, 93; Consumer, 244; SMB, 282 | yes |
 | apac_analyst | segment, orders → Consumer, 203; Enterprise, 156; SMB, 242 | yes |
 | global_manager | segment, orders → Enterprise, 369; Consumer, 572; SMB, 767 | yes |
-
-## S-A-047: How many order lines, in orders of any status, have a unit price below the product's list price?
-
-Reference:
-```sql
-SELECT count(*) AS lines FROM sales.order_lines l JOIN sales.products p USING (product_id) WHERE l.unit_price < p.list_price
-```
-Second annotator:
-```sql
-SELECT count(*) AS order_lines_below_list_price
-FROM sales.order_lines ol
-JOIN sales.products p ON ol.product_id = p.product_id
-WHERE ol.unit_price < p.list_price
-```
-| Persona | Reference answer | Agree |
-| --- | --- | --- |
-| emea_analyst | lines → 2798 | yes |
-| apac_analyst | lines → 2684 | yes |
-| global_manager | lines → 7549 | yes |
 
 ## S-A-048: What was the average base salary of sales reps in 2025? Round to two decimal places.
 

@@ -93,15 +93,18 @@ def agree(exp: dict, got: dict, order_matters: bool) -> tuple[bool, str]:
     if "error" in exp or "error" in got:
         same = exp.get("error") == got.get("error")
         return same, "same error" if same else f"{exp.get('error', 'rows')} vs {got.get('error', 'rows')}"
-    if len(got["columns"]) != len(exp["columns"]):
+    if len(got["columns"]) < len(exp["columns"]):
         return False, f"{len(got['columns'])} columns vs {len(exp['columns'])}"
     if len(got["rows"]) != len(exp["rows"]):
         return False, f"{len(got['rows'])} rows vs {len(exp['rows'])}"
-    # Column names differ between annotators, so match by position; a different column order
-    # with the same values counts as agreement.
-    for perm in permutations(range(len(exp["columns"]))):
+    # Column names differ between annotators, so match by position. The same values in another
+    # column order, or with extra columns (an id beside a name), count as agreement.
+    n, k = len(got["columns"]), len(exp["columns"])
+    for perm in permutations(range(n), k):
         rows = [[r[i] for i in perm] for r in got["rows"]]
         if same_rows(rows, exp["rows"], order_matters):
+            if n > k:
+                return True, "ok (extra columns)"
             return True, "ok" if list(perm) == sorted(perm) else "ok (columns reordered)"
     return False, "values differ"
 
