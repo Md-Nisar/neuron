@@ -5,10 +5,12 @@ Spike code on `spike/data-gateway-p0`; never merged to `main`. Results go to
 
 | File | Purpose |
 | --- | --- |
-| `sql/01_schema.sql` | Sales schema: regions, countries, customers, products, sales reps, orders, order lines, returns, rep compensation |
-| `sql/02_hardening.sql` | ADR 0016 decision 5, adapted from `nl2data-ref`: claims via a `SECURITY DEFINER` function, forced fail-closed RLS, one login per data role |
-| `gen_seed.py` → `sql/03_seed.sql` | Deterministic synthetic data (seed 20261123): 300 customers, 3,000 orders, 7,551 lines, 325 returns |
-| `personas.json` | `emea_analyst`, `apac_analyst` (role `d3_analyst`), `global_manager` (role `d3_manager`) |
+| `sql/01_sales_schema.sql` | Schema `sales`: regions, countries, customers, products, sales reps, orders, order lines, returns, rep compensation (confidential) |
+| `sql/02_skills_schema.sql` | Schema `skills`: departments, employees, skills, assessment cycles, assessments, role targets, certifications, assessor notes (confidential) |
+| `gen_sales.py` → `sql/03_sales_seed.sql` | Seed 20261123: 300 customers, 3,000 orders, 7,551 lines, 325 returns |
+| `gen_skills.py` → `sql/04_skills_seed.sql` | Seed 20261124: 242 employees, 6,213 assessments, 138 certifications, 377 assessor notes |
+| `sql/05_hardening.sql` | Option A': policies keyed on the data role through `app.role_regions`; one login per data role; forced, fail-closed RLS on every table |
+| `personas.json` | `emea_analyst`, `apac_analyst`, `global_manager`, each with its own login and data role |
 | `load.sh` | One command: recreates database `d3` and loads it |
 | `check.py` | Acceptance checks: isolation, fail-closed, escape attempts, reference questions |
 
@@ -17,9 +19,11 @@ D3_ADMIN_DSN="host=... port=... user=postgres" ./load.sh
 D3_DSN="host=... port=..." python check.py     # needs psycopg 3 and sqlglot 30.33.0
 ```
 
-## Known failures
+Generators use the standard library only and are deterministic: rerunning one reproduces its
+SQL file byte for byte.
 
-Three escape checks fail (F1, F1b, F1c in the log): `SET app.regions`, `RESET ROLE` then `set_claims`, and lifting `statement_timeout`. Revoking `set_config` does not
-block the `SET` command, so with the guard bypassed a second statement can rewrite the claims
-and read other regions. Recorded as finding F1 in the design spike log; fix awaiting owner
-decision.
+## Residual limit
+
+`KNOWN escape: a session can lift statement_timeout` (finding F1c). A role's timeout is a
+default; PostgreSQL 16 cannot stop a second statement from lifting it. The executor must set
+`SET LOCAL statement_timeout` itself and run exactly one validated `SELECT`.
