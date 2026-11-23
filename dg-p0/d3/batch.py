@@ -163,13 +163,27 @@ def judge_one(q: dict, prev: dict, schema: str) -> tuple[dict, list[str], bool]:
     rec = {**q, "expected": {p: {"behaviour": want} for p in PERSONAS}, "second_verdict": verdict,
            "agreement": {"agree": ok, "why": "ok" if ok else f"second says {verdict['verdict']}"}}
     lines = [f"## {q['id']}: {q['question']}\n", f"- Kind: {q['kind']}. Why: {q['why']}",
+             f"- Second annotator: **{verdict['verdict']}**: {verdict.get('reason', '')}",
              f"- Expected for every persona: **{want}**"]
+    for i, it in enumerate(q.get("interpretations", []), 1):
+        lines.append(f"\nReading {i}, {it['label']}:\n```sql\n{it['reference_sql']}\n```")
+        for pname, p in PERSONAS.items():
+            a = answer(p, it["reference_sql"])
+            rec["expected"][pname].setdefault("interpretations", []).append(a)
+            lines.append(f"- {pname}: {show(a)}")
+    if q.get("interpretations"):
+        # Ambiguous only if the readings give different answers, for every persona.
+        same = [pname for pname, e in rec["expected"].items()
+                if any(agree(a, b, False)[0] for i, a in enumerate(e["interpretations"])
+                       for b in e["interpretations"][i + 1:])]
+        if same:
+            lines.append(f"- **Readings give the same answer for {', '.join(same)}.**")
+            ok = False
     if q.get("evidence_sql"):
         n = evidence_count(q["evidence_sql"])
         rec["evidence_count"] = n
         lines.append(f"- Evidence (must be 0): `{q['evidence_sql']}` → {n}")
         ok = ok and n == 0
-    lines.append(f"- Second annotator: **{verdict['verdict']}**: {verdict.get('reason', '')}")
     if not ok:
         lines.append("\n**Disagreement: owner to adjudicate.**")
     return rec, lines + [""], ok
@@ -230,7 +244,7 @@ def accept(name: str, alt: set[str]) -> int:
     path = HERE / "questions.jsonl"
     have = {json.loads(x)["id"] for x in path.read_text().splitlines() if x} if path.exists() else set()
     keep = ("id", "category", "question", "reference_sql", "order_matters", "expected", "kind",
-            "why", "evidence_sql")
+            "why", "evidence_sql", "interpretations")
     batch = list(map(json.loads, (HERE / f"batches/{name}.jsonl").read_text().splitlines()))
     if unknown := alt - {q["id"] for q in batch}:
         sys.exit(f"--alt names questions not in this batch: {sorted(unknown)}")

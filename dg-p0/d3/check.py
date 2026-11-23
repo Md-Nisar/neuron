@@ -13,7 +13,8 @@ Checks:
               with no region mapping sees no rows in any table
   escape      no SET, RESET ROLE, SET ROLE, write or file read widens what a session sees
   questions   every reference query in questions.jsonl returns its expected result per persona, and
-              every unanswerable question's evidence query still finds nothing
+              every unanswerable question's evidence query still finds nothing, and every
+              reading of an ambiguous question returns its expected result per persona
 """
 
 from __future__ import annotations
@@ -233,6 +234,12 @@ def check_questions() -> None:
             with psycopg.connect(f"{DSN} dbname=d3 user=postgres") as admin:
                 n = admin.execute(q["evidence_sql"]).fetchone()[0]
             ok(n == 0, f"question {q['id']}: evidence it is unanswerable holds ({n})")
+        for i, it in enumerate(q.get("interpretations", [])):
+            for name, exp in q["expected"].items():
+                cols, rows = run_as(PERSONAS[name], it["reference_sql"])
+                e = exp["interpretations"][i]
+                match, why = results_match(cols, rows, e["columns"], e["rows"])
+                ok(match, f"question {q['id']} reading {i + 1} {name}: {why}")
         if q["category"] != "answerable":
             continue
         for name, exp in q["expected"].items():
