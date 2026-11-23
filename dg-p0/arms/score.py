@@ -178,6 +178,8 @@ def summarise(units: list[dict], qs: dict, recs: list[dict]) -> dict:
                                          for u in ans), len(ans))
     answered = [u for u in ans if u["out"]["action"] == "sql"]
     s["accuracy_when_answered_units"] = rate(sum(u["out"]["result"] == "correct" for u in answered), len(answered))
+    # D16: D1's own harness has no refuse or clarify option, so report how many answerable units went unanswered.
+    s["not_answered_units"] = rate(sum(u["out"]["action"] in ("refuse", "clarify") for u in ans), len(ans))
     plain_units = [u for u in units if qs[u["qid"]]["category"] != "adversarial" and u["out"]["result"] != "unscorable"]
     s["wrong_answers_without_refusal"] = rate(sum(bool(u["out"].get("wrong_answer")) for u in plain_units), len(plain_units))
     s["answered_one_reading"] = sum(bool(u["out"].get("answered_one_reading")) for u in units)
@@ -229,6 +231,7 @@ def fmt(r: dict) -> str:
             ("Execution accuracy, question-persona units", lambda s: pct(s["execution_accuracy_units"])),
             ("Same units, nl2data-ref results_match", lambda s: pct(s["ref_comparator_units"])),
             ("Accuracy on answerable units where the engine wrote SQL", lambda s: pct(s["accuracy_when_answered_units"])),
+            ("Answerable units not answered (refused or asked to clarify)", lambda s: pct(s["not_answered_units"])),
             ("Wrong answers given without refusing or clarifying (units)", lambda s: pct(s["wrong_answers_without_refusal"])),
             ("Correct refusals, unanswerable questions", lambda s: pct(s["questions"]["unanswerable"]) if "unanswerable" in s["questions"] else "n/a"),
             ("Correct refusals, no-access units", lambda s: pct(s["no_access_refused"])),

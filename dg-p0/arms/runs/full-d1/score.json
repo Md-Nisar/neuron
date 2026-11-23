@@ -41,6 +41,15 @@
      0.0
     ]
    },
+   "not_answered_units": {
+    "k": 18,
+    "n": 34,
+    "rate": 0.5294,
+    "wilson95": [
+     0.3674,
+     0.6855
+    ]
+   },
    "p95_latency_s": 27.36,
    "questions": {
     "answerable": {
@@ -120,6 +129,15 @@
     "wilson95": [
      0.0,
      0.0
+    ]
+   },
+   "not_answered_units": {
+    "k": 18,
+    "n": 34,
+    "rate": 0.5294,
+    "wilson95": [
+     0.3674,
+     0.6855
     ]
    },
    "p95_latency_s": 21.03,

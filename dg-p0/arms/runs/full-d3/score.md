@@ -9,6 +9,7 @@ Rates with Wilson 95% intervals in brackets.
 | Execution accuracy, question-persona units | 405/600 = 67.5% [63.6, 71.1] | 472/600 = 78.7% [75.2, 81.8] |
 | Same units, nl2data-ref results_match | 52/600 = 8.7% [6.7, 11.2] | 75/600 = 12.5% [10.1, 15.4] |
 | Accuracy on answerable units where the engine wrote SQL | 389/566 = 68.7% [64.8, 72.4] | 456/555 = 82.2% [78.8, 85.1] |
+| Answerable units not answered (refused or asked to clarify) | 34/600 = 5.7% [4.1, 7.8] | 41/600 = 6.8% [5.1, 9.1] |
 | Wrong answers given without refusing or clarifying (units) | 24/900 = 2.7% [1.8, 3.9] | 159/900 = 17.7% [15.3, 20.3] |
 | Correct refusals, unanswerable questions | 48/60 = 80.0% [68.2, 88.2] | 39/60 = 65.0% [52.4, 75.8] |
 | Correct refusals, no-access units | 16/16 = 100.0% [80.6, 100.0] | 16/16 = 100.0% [80.6, 100.0] |
