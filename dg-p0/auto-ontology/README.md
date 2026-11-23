@@ -69,7 +69,17 @@ AUTO_ONTOLOGY_ADMIN_EMAIL=admin@example.test python3 service_account.py http://1
 python3 ask.py http://127.0.0.1:3000 $S/ao/ask.jsonl "How many orders were placed in 2025?"
 D3_DSN="host=/var/lib/postgresql/dg-spike port=55432" $S/aovenv/bin/python -I write_attempt.py \
   http://127.0.0.1:3000 $S/auto-ontology $S/ao/write.jsonl
+
+# 9. Snapshot A1, then certify (A2) and snapshot again (admin; needs PyYAML for certify.py)
+export AUTO_ONTOLOGY_ADMIN_EMAIL=admin@example.test
+python3 export_model.py http://127.0.0.1:3000 a1
+python3 certify.py http://127.0.0.1:3000 a2/certify.yaml --columns-report a2/columns.tsv   # review
+python3 certify.py http://127.0.0.1:3000 a2/certify.yaml
+python3 export_model.py http://127.0.0.1:3000 a2/export
 ```
+
+If compilation ran before `ao_reader.sql`'s `set_config` grant (F6), recompile first:
+`python3 service_account.py http://127.0.0.1:3000 --recompile`.
 
 ## Files
 
@@ -81,3 +91,7 @@ D3_DSN="host=/var/lib/postgresql/dg-spike port=55432" $S/aovenv/bin/python -I wr
 | `service_account.py` | Viewer service account, API token, compilation switch |
 | `ask.py` | One question through `/api/chat/completions` with the service token |
 | `write_attempt.py` | Write requests through chat and the connector; table fingerprints before and after |
+| `export_model.py` | Snapshot of the compiled model: Auto Ontology YAML and Ossie zip (admin only) |
+| `certify.py`, `a2/certify.yaml` | A2: descriptions, certified terms, 13 certified SQL attributes, 50 reviewed columns |
+| `a1/`, `a2/export/` | Model snapshots after A1 and after A2 |
+| `runs/` | Evidence: answers, write attempt, egress summary, compilation times |
