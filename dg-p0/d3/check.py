@@ -88,8 +88,10 @@ def check_isolation(admin: psycopg.Connection) -> None:
             _, outside = run_as(
                 p, f"SELECT count(*) FROM sales.{t} WHERE NOT (region_id = ANY(app.regions()))"
             )
-            ok(got[0][0] == want and want > 0 and outside[0][0] == 0,
-               f"isolation {name}: {t} sees {got[0][0]} of {want} own rows, {outside[0][0]} outside")
+            ok(
+                got[0][0] == want and want > 0 and outside[0][0] == 0,
+                f"isolation {name}: {t} sees {got[0][0]} of {want} own rows, {outside[0][0]} outside",
+            )
         for t in REFERENCE:
             want = admin.execute(f"SELECT count(*) FROM sales.{t}").fetchone()[0]
             _, got = run_as(p, f"SELECT count(*) FROM sales.{t}")
@@ -114,9 +116,16 @@ def check_escape() -> None:
         ("manager into analyst role", manager, ["SET ROLE d3_analyst"]),
         ("re-set claims as data role", analyst, ["SET ROLE d3_analyst", claims]),
         ("write as login", analyst, ["DELETE FROM sales.orders"]),
-        ("write as data role (rw txn)", manager,
-         ["SET default_transaction_read_only = off", "BEGIN READ WRITE", "SET ROLE d3_manager",
-          "UPDATE sales.orders SET status = 'cancelled'"]),
+        (
+            "write as data role (rw txn)",
+            manager,
+            [
+                "SET default_transaction_read_only = off",
+                "BEGIN READ WRITE",
+                "SET ROLE d3_manager",
+                "UPDATE sales.orders SET status = 'cancelled'",
+            ],
+        ),
         ("create table", manager, ["SET ROLE d3_manager", "CREATE TABLE sales.x (i int)"]),
         ("read server file", manager, ["SELECT pg_read_file('/etc/passwd')"]),
     ]
@@ -130,9 +139,40 @@ def check_escape() -> None:
         conn.execute("SELECT app.set_claims(%s, %s)", (analyst["user"], analyst["regions"]))
         conn.execute("SET LOCAL ROLE d3_analyst")
         conn.execute("SET LOCAL app.regions = 'EMEA,APAC,AMER'")
-        seen = conn.execute("SELECT count(*) FROM sales.orders WHERE region_id <> 'EMEA'").fetchone()
+        seen = conn.execute(
+            "SELECT count(*) FROM sales.orders WHERE region_id <> 'EMEA'"
+        ).fetchone()
         conn.rollback()
-    ok(seen[0] == 0, f"escape: SET app.regions as data role does not widen ({seen[0]} foreign orders)")
+    ok(
+        seen[0] == 0,
+        f"escape: SET app.regions as data role does not widen ({seen[0]} foreign orders)",
+    )
+    # RESET ROLE returns to the login, which may call set_claims with any regions (F1b).
+    with connect(analyst["login"]) as conn:
+        conn.execute("BEGIN READ ONLY")
+        conn.execute("SELECT app.set_claims(%s, %s)", (analyst["user"], analyst["regions"]))
+        conn.execute("SET LOCAL ROLE d3_analyst")
+        conn.execute("RESET ROLE")
+        conn.execute(claims)
+        conn.execute("SET LOCAL ROLE d3_analyst")
+        seen = conn.execute(
+            "SELECT count(*) FROM sales.orders WHERE region_id <> 'EMEA'"
+        ).fetchone()
+        conn.rollback()
+    ok(
+        seen[0] == 0,
+        f"escape: RESET ROLE then set_claims does not widen ({seen[0]} foreign orders)",
+    )
+    # The role's statement_timeout is only a default; the session can lift it (F1c).
+    with connect(analyst["login"]) as conn:
+        conn.execute("SET ROLE d3_analyst")
+        err = None
+        try:
+            conn.execute("SET statement_timeout = 0")
+        except psycopg.Error as e:
+            err = type(e).__name__
+        conn.rollback()
+    ok(err is not None, f"escape refused: lift statement_timeout ({err})")
 
 
 def check_questions() -> None:
@@ -153,8 +193,9 @@ def check_questions() -> None:
                 ok(err == exp["error"], f"question {q['id']} {name}: refused with {err}")
                 continue
             cols, rows = run_as(p, q["reference_sql"])
-            match, why = results_match(cols, rows, exp["columns"], exp["rows"],
-                                       order_matters=q.get("order_matters", False))
+            match, why = results_match(
+                cols, rows, exp["columns"], exp["rows"], order_matters=q.get("order_matters", False)
+            )
             ok(match, f"question {q['id']} {name}: {why}")
 
 

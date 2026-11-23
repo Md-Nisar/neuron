@@ -17,9 +17,9 @@ D3_ADMIN_DSN="host=... port=... user=postgres" ./load.sh
 D3_DSN="host=... port=..." python check.py     # needs psycopg 3 and sqlglot 30.33.0
 ```
 
-## Known failure
+## Known failures
 
-`escape: SET app.regions as data role does not widen` fails. Revoking `set_config` does not
+Three escape checks fail (F1, F1b, F1c in the log): `SET app.regions`, `RESET ROLE` then `set_claims`, and lifting `statement_timeout`. Revoking `set_config` does not
 block the `SET` command, so with the guard bypassed a second statement can rewrite the claims
 and read other regions. Recorded as finding F1 in the design spike log; fix awaiting owner
 decision.
