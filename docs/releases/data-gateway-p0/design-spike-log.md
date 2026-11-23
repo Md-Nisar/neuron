@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; sales batches 1 to 3 accepted (74 questions in `questions.jsonl`, all checks pass); sales batch 4 awaiting owner review (24 of 26 agree; 2 to adjudicate); skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; 100 answerable sales questions accepted (`questions.jsonl`, all checks pass); sales batch 5 (25 unanswerable) awaiting owner review (22 of 25 agree; 3 to adjudicate); skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -166,6 +166,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D7 | 2026-11-23 | Sales batch 1 accepted as written. S-A-017 keeps the reference answer (reps the persona can see) and stays in the set as a deliberate F2 trap. Finish all sales questions before starting skills. | Owner |
 | D8 | 2026-11-23 | Sales batch 2 accepted. S-A-035 keeps the reference answer and stays as an F2 trap. S-A-047 swapped for a sharper question; because the new one is unreviewed, it moves to batch 3 and batch 2 is accepted with 24 questions. | Owner |
 | D9 | 2026-11-23 | Sales batch 3 accepted. S-A-052 keeps the reference answer and stays as an F2 trap. For S-A-054 and S-A-061, months as dates and months as numbers are both correct: the second annotator's answer is stored as an accepted alternative (`alternatives` in `questions.jsonl`). | Owner |
+| D10 | 2026-11-23 | Sales batch 4 accepted as recommended: S-A-096 keeps the reference (the annotator's query failed); S-A-098 accepts region names as an alternative to ids. The 100 answerable sales questions are complete. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -335,3 +336,26 @@ named countries and products, shares, HAVING, and one confidential question (S-A
     GroupingError (an aggregate without GROUP BY). An annotator mistake; the reference stands.
   - S-A-098 (revenue per segment per region): the numbers match for every persona; the annotator
     labels regions by name, the reference by id. Same kind of case as the month labels in D9.
+
+### Sales batch 5: unanswerable, part 1 (2026-11-23)
+
+`dg-p0/d3/batches/sales-05.md`. S-U-001 to S-U-025. The other 5 unanswerable questions go with
+the 20 ambiguous ones in batch 6.
+
+Record shape (a choice of mine, open to the owner): no reference SQL, since there is nothing to
+query. Instead, `expected` is `{"behaviour": "refuse"}` for every persona, with `kind`
+(missing_data, out_of_range, nonexistent_entity, subjective, outside_database) and `why`. When
+the question depends on the data (a year, country, product, rep or segment that is not there),
+an `evidence_sql` must return 0 as the superuser. `check.py` re-runs every evidence query, so a
+change to the seed that made such a question answerable would fail the check.
+
+Second annotator for non-answerable categories: the same model, asked to classify the question
+as answer, clarify or refuse, given the schema only.
+
+- 22 of 25 agree: all 15 missing-data, 4 out-of-range, 1 subjective, 1 outside-database and the
+  Government segment question (the schema's CHECK constraint lists the segments).
+- S-U-020 (Mexico), S-U-021 (Quantum Router), S-U-022 (rep John Smith): the annotator says
+  answer, or clarify, because it sees the schema but not the values. Nothing in the schema says
+  Mexico, that product or that rep is absent; only the data does. The evidence queries confirm
+  each is absent. A schema-only engine would answer "0" for these, a wrong answer without
+  refusal, unless it looks up values before answering.
