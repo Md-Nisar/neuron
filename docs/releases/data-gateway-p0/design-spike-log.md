@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; 100 answerable sales questions accepted (`questions.jsonl`, all checks pass); all 300 questions accepted (sales and skills: 100 answerable, 30 unanswerable, 20 ambiguous each; 1,018 checks pass); adversarial cases next; skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; all 300 questions accepted (sales and skills: 100 answerable, 30 unanswerable, 20 ambiguous each; 1,018 checks pass; batches self-approved under D12); adversarial cases next |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
