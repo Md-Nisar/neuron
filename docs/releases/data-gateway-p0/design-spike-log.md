@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`6b9b90b`): sales and skills schemas, A' hardening, loader and checker done (158 checks pass); sales batches 1 and 2 accepted (49 questions in `questions.jsonl`, all checks pass); sales batch 3 awaiting owner review (22 of 25 agree; 3 to adjudicate); skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`4b5bd7a`): sales and skills schemas, A' hardening, loader, checker and batch runner done; sales batches 1 and 2 accepted (49 questions in `questions.jsonl`, all checks pass); sales batch 3 awaiting owner review (22 of 25 agree; 3 to adjudicate); skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
