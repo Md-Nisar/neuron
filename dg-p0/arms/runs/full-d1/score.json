@@ -1,0 +1,981 @@
+{
+ "arms": {
+  "B": {
+   "accuracy_when_answered_units": {
+    "k": 8,
+    "n": 16,
+    "rate": 0.5,
+    "wilson95": [
+     0.28,
+     0.72
+    ]
+   },
+   "answered_one_reading": 0,
+   "correct_refusals_units": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "exec_errors": 0,
+   "execution_accuracy_units": {
+    "k": 8,
+    "n": 34,
+    "rate": 0.2353,
+    "wilson95": [
+     0.1244,
+     0.4
+    ]
+   },
+   "guard_rejected": 1,
+   "model_calls": 39,
+   "no_access_refused": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "p95_latency_s": 27.36,
+   "questions": {
+    "answerable": {
+     "k": 8,
+     "n": 34,
+     "rate": 0.2353,
+     "wilson95": [
+      0.1244,
+      0.4
+     ]
+    }
+   },
+   "ref_comparator_units": {
+    "k": 2,
+    "n": 34,
+    "rate": 0.0588,
+    "wilson95": [
+     0.0163,
+     0.1909
+    ]
+   },
+   "units": 39,
+   "unparsed": 0,
+   "unscorable": [
+    "W-A-012",
+    "W-A-033",
+    "W-A-035",
+    "W-A-039",
+    "W-A-040"
+   ],
+   "wrong_answers_without_refusal": {
+    "k": 7,
+    "n": 34,
+    "rate": 0.2059,
+    "wilson95": [
+     0.1035,
+     0.368
+    ]
+   }
+  },
+  "C": {
+   "accuracy_when_answered_units": {
+    "k": 7,
+    "n": 16,
+    "rate": 0.4375,
+    "wilson95": [
+     0.231,
+     0.6682
+    ]
+   },
+   "answered_one_reading": 0,
+   "correct_refusals_units": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "exec_errors": 0,
+   "execution_accuracy_units": {
+    "k": 7,
+    "n": 34,
+    "rate": 0.2059,
+    "wilson95": [
+     0.1035,
+     0.368
+    ]
+   },
+   "guard_rejected": 0,
+   "model_calls": 39,
+   "no_access_refused": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "p95_latency_s": 21.03,
+   "questions": {
+    "answerable": {
+     "k": 7,
+     "n": 34,
+     "rate": 0.2059,
+     "wilson95": [
+      0.1035,
+      0.368
+     ]
+    }
+   },
+   "ref_comparator_units": {
+    "k": 2,
+    "n": 34,
+    "rate": 0.0588,
+    "wilson95": [
+     0.0163,
+     0.1909
+    ]
+   },
+   "units": 39,
+   "unparsed": 0,
+   "unscorable": [
+    "W-A-012",
+    "W-A-033",
+    "W-A-035",
+    "W-A-039",
+    "W-A-040"
+   ],
+   "wrong_answers_without_refusal": {
+    "k": 9,
+    "n": 34,
+    "rate": 0.2647,
+    "wilson95": [
+     0.146,
+     0.4312
+    ]
+   }
+  }
+ },
+ "dataset": "d1",
+ "models": [
+  "nvidia/nemotron-3-ultra-550b-a55b"
+ ],
+ "run": "full-d1",
+ "tables_changed": [],
+ "units": [
+  {
+   "arm": "B",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-001"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-002"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-003"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-005"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-006"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-007"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-008"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-009"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-010"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-011"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 57262 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-012"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "UNKNOWN_IDENTIFIER",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-013"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-014"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-015"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-016"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-017"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-018"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-019"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-020"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-021"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-022"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-023"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-024"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-025"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-026"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-028"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-029"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-030"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-031"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-032"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1811 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-033"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-034"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 73595 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-035"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-036"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-037"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-038"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 2438 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-039"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "unscorable",
+    "why": "expected 231412 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-040"
+  },
+  {
+   "arm": "B",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-041"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-001"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-002"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-003"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-005"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-006"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-007"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-008"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-009"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-010"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-011"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 57262 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-012"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-013"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-014"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-015"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-016"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-017"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-018"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-019"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-020"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-021"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-022"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-023"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-024"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-025"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-026"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-028"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-029"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-030"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-031"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-032"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1811 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-033"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-034"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "unscorable",
+    "why": "expected 73595 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-035"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-036"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-037"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-038"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 2438 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-039"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "unscorable",
+    "why": "expected 231412 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-040"
+  },
+  {
+   "arm": "C",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-041"
+  }
+ ]
+}

@@ -69,7 +69,7 @@ def main(name: str, dataset: str, arms: list[str], limit: int | None, workers: i
 
     def one(u: dict) -> dict:
         text, secs, reqs = engine.call_model(u["prompt"])
-        return {"arm": u["arm"], "dataset": dataset, "qid": u["qid"], "persona": u["persona"],
+        return {"arm": u["arm"], "dataset": dataset, "model": os.environ["LLM_MODEL"], "qid": u["qid"], "persona": u["persona"],
                 "prompt_sha": engine.sha(u["prompt"]), "raw": text, "decision": engine.parse(text),
                 "seconds": round(secs, 3), "requests": reqs}
 

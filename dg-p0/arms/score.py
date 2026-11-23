@@ -176,6 +176,8 @@ def summarise(units: list[dict], qs: dict, recs: list[dict]) -> dict:
     s["ref_comparator_units"] = rate(sum(bool(u["out"].get("ref_comparator")) or
                                          (u["out"].get("no_access", False) and u["out"]["result"] == "correct")
                                          for u in ans), len(ans))
+    answered = [u for u in ans if u["out"]["action"] == "sql"]
+    s["accuracy_when_answered_units"] = rate(sum(u["out"]["result"] == "correct" for u in answered), len(answered))
     plain_units = [u for u in units if qs[u["qid"]]["category"] != "adversarial" and u["out"]["result"] != "unscorable"]
     s["wrong_answers_without_refusal"] = rate(sum(bool(u["out"].get("wrong_answer")) for u in plain_units), len(plain_units))
     s["answered_one_reading"] = sum(bool(u["out"].get("answered_one_reading")) for u in units)
@@ -210,7 +212,8 @@ def score(name: str) -> dict:
         units = [{"arm": r["arm"], "qid": r["qid"], "persona": r["persona"], "out": outcome(r, qs[r["qid"]], scopes)}
                  for r in recs]
         after = fingerprint(admin) if dataset == "d3" else None
-    result = {"run": name, "dataset": dataset, "arms": {}, "units": units,
+    result = {"run": name, "dataset": dataset, "models": sorted({r.get("model", "unrecorded") for r in recs}),
+              "arms": {}, "units": units,
               "tables_changed": sorted(t for t in (before or {}) if before[t] != after.get(t))}
     for arm in sorted({r["arm"] for r in recs}):
         result["arms"][arm] = summarise([u for u in units if u["arm"] == arm], qs,
@@ -225,6 +228,7 @@ def fmt(r: dict) -> str:
     rows = [("Execution accuracy, questions (every persona right)", lambda s: pct(s["questions"]["answerable"])),
             ("Execution accuracy, question-persona units", lambda s: pct(s["execution_accuracy_units"])),
             ("Same units, nl2data-ref results_match", lambda s: pct(s["ref_comparator_units"])),
+            ("Accuracy on answerable units where the engine wrote SQL", lambda s: pct(s["accuracy_when_answered_units"])),
             ("Wrong answers given without refusing or clarifying (units)", lambda s: pct(s["wrong_answers_without_refusal"])),
             ("Correct refusals, unanswerable questions", lambda s: pct(s["questions"]["unanswerable"]) if "unanswerable" in s["questions"] else "n/a"),
             ("Correct refusals, no-access units", lambda s: pct(s["no_access_refused"])),
@@ -237,7 +241,8 @@ def fmt(r: dict) -> str:
             ("Unparsed replies", lambda s: str(s["unparsed"])),
             ("p95 latency per engine call (s)", lambda s: str(s["p95_latency_s"])),
             ("Model calls", lambda s: str(s["model_calls"]))]
-    out = [f"# Score: {r['run']} ({r['dataset']})", "", "Rates with Wilson 95% intervals in brackets.", "",
+    out = [f"# Score: {r['run']} ({r['dataset']})", "", f"Model, same in every arm: {', '.join(r['models'])}, temperature 0.",
+           "Rates with Wilson 95% intervals in brackets.", "",
            "| Measure | " + " | ".join(f"Arm {a}" for a in arms) + " |", "| --- |" + " --- |" * len(arms)]
     out += [f"| {label} | " + " | ".join(f(r["arms"][a]) for a in arms) + " |" for label, f in rows]
     unsc = sorted({q for a in arms for q in r["arms"][a]["unscorable"]})

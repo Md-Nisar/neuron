@@ -1,5 +1,6 @@
 # Score: smoke-d3 (d3)
 
+Model, same in every arm: nvidia/nemotron-3-ultra-550b-a55b, temperature 0.
 Rates with Wilson 95% intervals in brackets.
 
 | Measure | Arm B | Arm C |
@@ -7,6 +8,7 @@ Rates with Wilson 95% intervals in brackets.
 | Execution accuracy, questions (every persona right) | 3/3 = 100.0% [43.9, 100.0] | 3/3 = 100.0% [43.9, 100.0] |
 | Execution accuracy, question-persona units | 9/9 = 100.0% [70.1, 100.0] | 9/9 = 100.0% [70.1, 100.0] |
 | Same units, nl2data-ref results_match | 0/9 = 0.0% [0.0, 29.9] | 0/9 = 0.0% [0.0, 29.9] |
+| Accuracy on answerable units where the engine wrote SQL | 9/9 = 100.0% [70.1, 100.0] | 9/9 = 100.0% [70.1, 100.0] |
 | Wrong answers given without refusing or clarifying (units) | 0/27 = 0.0% [0.0, 12.5] | 1/27 = 3.7% [0.7, 18.3] |
 | Correct refusals, unanswerable questions | 3/3 = 100.0% [43.9, 100.0] | 3/3 = 100.0% [43.9, 100.0] |
 | Correct refusals, no-access units | n/a | n/a |
