@@ -1,0 +1,641 @@
+order_id,order_date,quarter,region,sales_rep,category,product,units,unit_price_usd,discount_pct,revenue_usd,status
+ORD-20260003,2026-01-02,Q1,North America,Tom Becker,Footwear,Vapor Trail Runners,12,129.0,20,1238.4,Shipped
+ORD-20260391,2026-01-02,Q1,North America,Tom Becker,Apparel,Merino Base Layer,2,79.0,0,158.0,Delivered
+ORD-20260395,2026-01-02,Q1,North America,Priya Raman,Camping,Nomad Sleeping Bag,5,149.0,10,670.5,Delivered
+ORD-20260091,2026-01-05,Q1,North America,Dana Whitfield,Footwear,Vapor Trail Runners,5,129.0,5,612.75,Delivered
+ORD-20260340,2026-01-05,Q1,APAC,Arjun Mehta,Apparel,Alpine Shell Jacket,4,189.0,10,680.4,Delivered
+ORD-20260592,2026-01-05,Q1,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260604,2026-01-05,Q1,North America,Dana Whitfield,Electronics,Trailhead GPS Watch,5,249.0,0,1245.0,Delivered
+ORD-20260441,2026-01-06,Q1,North America,Priya Raman,Apparel,Merino Base Layer,4,79.0,15,268.6,Delivered
+ORD-20260072,2026-01-07,Q1,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,1,59.0,5,56.05,Delivered
+ORD-20260046,2026-01-09,Q1,EMEA,Amara Okafor,Electronics,Summit Headlamp Pro,2,59.0,0,118.0,Delivered
+ORD-20260195,2026-01-09,Q1,LATAM,Mateo Silva,Camping,Cascade 2P Tent,6,329.0,20,1579.2,Delivered
+ORD-20260229,2026-01-09,Q1,EMEA,Lukas Meyer,Footwear,Vapor Trail Runners,5,129.0,5,612.75,Delivered
+ORD-20260575,2026-01-09,Q1,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,9,249.0,5,2128.95,Delivered
+ORD-20260310,2026-01-10,Q1,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,3,189.0,0,567.0,Delivered
+ORD-20260587,2026-01-10,Q1,LATAM,Mateo Silva,Apparel,Alpine Shell Jacket,1,189.0,0,189.0,Delivered
+ORD-20260006,2026-01-12,Q1,APAC,Mei Lin Tan,Apparel,Alpine Shell Jacket,9,189.0,15,1445.85,Delivered
+ORD-20260211,2026-01-12,Q1,APAC,Arjun Mehta,Camping,Cascade 2P Tent,10,329.0,0,3290.0,Shipped
+ORD-20260393,2026-01-12,Q1,APAC,Kenji Watanabe,Apparel,Ridge Hiking Pants,9,95.0,15,726.75,Delivered
+ORD-20260516,2026-01-12,Q1,EMEA,Sofia Rossi,Electronics,Summit Headlamp Pro,4,59.0,10,212.4,Delivered
+ORD-20260622,2026-01-12,Q1,LATAM,Mateo Silva,Camping,Nomad Sleeping Bag,2,149.0,0,298.0,Delivered
+ORD-20260102,2026-01-13,Q1,EMEA,Lukas Meyer,Apparel,Merino Base Layer,5,79.0,0,395.0,Delivered
+ORD-20260245,2026-01-13,Q1,EMEA,Sofia Rossi,Camping,Nomad Sleeping Bag,5,149.0,0,745.0,Delivered
+ORD-20260358,2026-01-13,Q1,EMEA,Sofia Rossi,Camping,Nomad Sleeping Bag,5,149.0,10,670.5,Returned
+ORD-20260045,2026-01-14,Q1,APAC,Arjun Mehta,Camping,Nomad Sleeping Bag,10,149.0,5,1415.5,Delivered
+ORD-20260199,2026-01-14,Q1,EMEA,Lukas Meyer,Electronics,Summit Headlamp Pro,8,59.0,0,472.0,Delivered
+ORD-20260107,2026-01-16,Q1,EMEA,Lukas Meyer,Electronics,Basecamp Solar Charger,3,89.0,10,240.3,Delivered
+ORD-20260150,2026-01-16,Q1,EMEA,Sofia Rossi,Apparel,Merino Base Layer,2,79.0,10,142.2,Delivered
+ORD-20260515,2026-01-16,Q1,APAC,Arjun Mehta,Camping,Nomad Sleeping Bag,11,149.0,10,1475.1,Delivered
+ORD-20260078,2026-01-17,Q1,EMEA,Lukas Meyer,Apparel,Merino Base Layer,4,79.0,10,284.4,Cancelled
+ORD-20260134,2026-01-17,Q1,EMEA,Amara Okafor,Apparel,Merino Base Layer,2,79.0,5,150.1,Shipped
+ORD-20260311,2026-01-17,Q1,North America,Tom Becker,Apparel,Merino Base Layer,9,79.0,0,711.0,Shipped
+ORD-20260595,2026-01-17,Q1,North America,Tom Becker,Apparel,Ridge Hiking Pants,2,95.0,10,171.0,Delivered
+ORD-20260596,2026-01-17,Q1,North America,Dana Whitfield,Apparel,Ridge Hiking Pants,9,95.0,0,855.0,Delivered
+ORD-20260182,2026-01-18,Q1,LATAM,Mateo Silva,Apparel,Merino Base Layer,5,79.0,0,395.0,Delivered
+ORD-20260545,2026-01-18,Q1,North America,Priya Raman,Apparel,Merino Base Layer,6,79.0,10,426.6,Delivered
+ORD-20260226,2026-01-19,Q1,LATAM,Camila Duarte,Electronics,Summit Headlamp Pro,7,59.0,0,413.0,Delivered
+ORD-20260194,2026-01-20,Q1,North America,Priya Raman,Electronics,Summit Headlamp Pro,5,59.0,0,295.0,Cancelled
+ORD-20260202,2026-01-20,Q1,APAC,Kenji Watanabe,Camping,Nomad Sleeping Bag,11,149.0,20,1311.2,Delivered
+ORD-20260421,2026-01-20,Q1,APAC,Mei Lin Tan,Apparel,Ridge Hiking Pants,12,95.0,5,1083.0,Delivered
+ORD-20260624,2026-01-20,Q1,APAC,Kenji Watanabe,Electronics,Basecamp Solar Charger,4,89.0,5,338.2,Delivered
+ORD-20260243,2026-01-21,Q1,LATAM,Camila Duarte,Apparel,Alpine Shell Jacket,6,189.0,20,907.2,Delivered
+ORD-20260171,2026-01-22,Q1,EMEA,Lukas Meyer,Camping,Nomad Sleeping Bag,5,149.0,10,670.5,Delivered
+ORD-20260488,2026-01-22,Q1,EMEA,Sofia Rossi,Camping,Cascade 2P Tent,7,329.0,20,1842.4,Delivered
+ORD-20260022,2026-01-23,Q1,North America,Tom Becker,Footwear,Granite Trail Boots,11,179.0,0,1969.0,Delivered
+ORD-20260611,2026-01-23,Q1,EMEA,Amara Okafor,Apparel,Merino Base Layer,8,79.0,10,568.8,Returned
+ORD-20260222,2026-01-24,Q1,APAC,Kenji Watanabe,Apparel,Ridge Hiking Pants,6,95.0,20,456.0,Delivered
+ORD-20260384,2026-01-24,Q1,APAC,Mei Lin Tan,Electronics,Trailhead GPS Watch,8,249.0,0,1992.0,Cancelled
+ORD-20260389,2026-01-24,Q1,APAC,Mei Lin Tan,Footwear,Granite Trail Boots,5,179.0,10,805.5,Delivered
+ORD-20260525,2026-01-25,Q1,EMEA,Lukas Meyer,Footwear,Vapor Trail Runners,2,129.0,10,232.2,Delivered
+ORD-20260554,2026-01-25,Q1,North America,Tom Becker,Apparel,Alpine Shell Jacket,9,189.0,0,1701.0,Delivered
+ORD-20260290,2026-01-26,Q1,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,4,189.0,0,756.0,Delivered
+ORD-20260145,2026-01-27,Q1,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,3,249.0,0,747.0,Delivered
+ORD-20260283,2026-01-27,Q1,EMEA,Amara Okafor,Apparel,Ridge Hiking Pants,8,95.0,10,684.0,Shipped
+ORD-20260036,2026-01-28,Q1,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,8,189.0,0,1512.0,Delivered
+ORD-20260493,2026-01-28,Q1,LATAM,Mateo Silva,Electronics,Summit Headlamp Pro,6,59.0,10,318.6,Shipped
+ORD-20260605,2026-01-28,Q1,APAC,Mei Lin Tan,Electronics,Basecamp Solar Charger,4,89.0,0,356.0,Delivered
+ORD-20260063,2026-01-30,Q1,LATAM,Mateo Silva,Camping,Nomad Sleeping Bag,6,149.0,10,804.6,Delivered
+ORD-20260487,2026-01-31,Q1,North America,Priya Raman,Electronics,Summit Headlamp Pro,4,59.0,5,224.2,Delivered
+ORD-20260168,2026-02-01,Q1,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,8,189.0,0,1512.0,Delivered
+ORD-20260148,2026-02-02,Q1,APAC,Kenji Watanabe,Apparel,Ridge Hiking Pants,1,95.0,10,85.5,Delivered
+ORD-20260299,2026-02-02,Q1,LATAM,Camila Duarte,Electronics,Trailhead GPS Watch,8,249.0,5,1892.4,Delivered
+ORD-20260434,2026-02-02,Q1,North America,Dana Whitfield,Footwear,Granite Trail Boots,6,179.0,15,912.9,Delivered
+ORD-20260186,2026-02-03,Q1,North America,Dana Whitfield,Camping,Nomad Sleeping Bag,4,149.0,15,506.6,Delivered
+ORD-20260242,2026-02-03,Q1,APAC,Arjun Mehta,Electronics,Basecamp Solar Charger,9,89.0,10,720.9,Delivered
+ORD-20260385,2026-02-04,Q1,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,3,189.0,0,567.0,Delivered
+ORD-20260470,2026-02-04,Q1,North America,Priya Raman,Apparel,Merino Base Layer,4,79.0,0,316.0,Delivered
+ORD-20260250,2026-02-05,Q1,North America,Tom Becker,Footwear,Granite Trail Boots,6,179.0,10,966.6,Delivered
+ORD-20260568,2026-02-05,Q1,North America,Dana Whitfield,Apparel,Ridge Hiking Pants,3,95.0,0,285.0,Returned
+ORD-20260116,2026-02-06,Q1,North America,Tom Becker,Apparel,Alpine Shell Jacket,5,189.0,20,756.0,Shipped
+ORD-20260184,2026-02-07,Q1,EMEA,Amara Okafor,Footwear,Vapor Trail Runners,7,129.0,10,812.7,Cancelled
+ORD-20260081,2026-02-08,Q1,EMEA,Sofia Rossi,Apparel,Merino Base Layer,4,79.0,0,316.0,Delivered
+ORD-20260118,2026-02-08,Q1,North America,Dana Whitfield,Camping,Ember Camp Stove,2,69.0,5,131.1,Delivered
+ORD-20260478,2026-02-09,Q1,LATAM,Camila Duarte,Electronics,Basecamp Solar Charger,3,89.0,5,253.65,Delivered
+ORD-20260141,2026-02-10,Q1,North America,Tom Becker,Camping,Nomad Sleeping Bag,5,149.0,0,745.0,Delivered
+ORD-20260547,2026-02-10,Q1,North America,Tom Becker,Footwear,Granite Trail Boots,5,179.0,10,805.5,Delivered
+ORD-20260598,2026-02-10,Q1,APAC,Mei Lin Tan,Electronics,Basecamp Solar Charger,5,89.0,10,400.5,Delivered
+ORD-20260382,2026-02-12,Q1,LATAM,Camila Duarte,Footwear,Vapor Trail Runners,9,129.0,20,928.8,Returned
+ORD-20260423,2026-02-12,Q1,EMEA,Sofia Rossi,Apparel,Alpine Shell Jacket,7,189.0,0,1323.0,Delivered
+ORD-20260083,2026-02-13,Q1,EMEA,Lukas Meyer,Electronics,Trailhead GPS Watch,6,249.0,10,1344.6,Delivered
+ORD-20260154,2026-02-13,Q1,EMEA,Amara Okafor,Camping,Nomad Sleeping Bag,7,149.0,10,938.7,Delivered
+ORD-20260567,2026-02-13,Q1,EMEA,Sofia Rossi,Apparel,Merino Base Layer,5,79.0,0,395.0,Delivered
+ORD-20260076,2026-02-14,Q1,North America,Tom Becker,Electronics,Basecamp Solar Charger,1,89.0,10,80.1,Delivered
+ORD-20260227,2026-02-14,Q1,APAC,Kenji Watanabe,Apparel,Ridge Hiking Pants,7,95.0,0,665.0,Delivered
+ORD-20260239,2026-02-14,Q1,EMEA,Sofia Rossi,Apparel,Merino Base Layer,4,79.0,10,284.4,Delivered
+ORD-20260602,2026-02-14,Q1,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,7,59.0,5,392.35,Delivered
+ORD-20260152,2026-02-15,Q1,EMEA,Lukas Meyer,Footwear,Vapor Trail Runners,3,129.0,10,348.3,Returned
+ORD-20260533,2026-02-15,Q1,EMEA,Amara Okafor,Footwear,Vapor Trail Runners,3,129.0,15,328.95,Delivered
+ORD-20260634,2026-02-15,Q1,APAC,Kenji Watanabe,Apparel,Alpine Shell Jacket,6,189.0,5,1077.3,Shipped
+ORD-20260322,2026-02-16,Q1,North America,Dana Whitfield,Footwear,Granite Trail Boots,1,179.0,10,161.1,Delivered
+ORD-20260001,2026-02-18,Q1,EMEA,Sofia Rossi,Camping,Cascade 2P Tent,10,329.0,15,2796.5,Delivered
+ORD-20260332,2026-02-18,Q1,EMEA,Amara Okafor,Footwear,Vapor Trail Runners,6,129.0,10,696.6,Delivered
+ORD-20260640,2026-02-18,Q1,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,2,129.0,10,232.2,Delivered
+ORD-20260018,2026-02-19,Q1,North America,Dana Whitfield,Footwear,Vapor Trail Runners,5,129.0,0,645.0,Delivered
+ORD-20260339,2026-02-19,Q1,EMEA,Lukas Meyer,Electronics,Summit Headlamp Pro,1,59.0,5,56.05,Delivered
+ORD-20260377,2026-02-19,Q1,APAC,Arjun Mehta,Apparel,Alpine Shell Jacket,7,189.0,10,1190.7,Cancelled
+ORD-20260548,2026-02-19,Q1,EMEA,Amara Okafor,Electronics,Summit Headlamp Pro,6,59.0,5,336.3,Delivered
+ORD-20260465,2026-02-20,Q1,North America,Priya Raman,Apparel,Alpine Shell Jacket,6,189.0,10,1020.6,Delivered
+ORD-20260509,2026-02-20,Q1,North America,Priya Raman,Apparel,Alpine Shell Jacket,1,189.0,0,189.0,Shipped
+ORD-20260043,2026-02-21,Q1,North America,Dana Whitfield,Footwear,Vapor Trail Runners,9,129.0,10,1044.9,Delivered
+ORD-20260125,2026-02-21,Q1,EMEA,Amara Okafor,Electronics,Summit Headlamp Pro,10,59.0,0,590.0,Delivered
+ORD-20260600,2026-02-21,Q1,APAC,Mei Lin Tan,Apparel,Ridge Hiking Pants,4,95.0,20,304.0,Delivered
+ORD-20260400,2026-02-23,Q1,APAC,Arjun Mehta,Footwear,Vapor Trail Runners,8,129.0,0,1032.0,Delivered
+ORD-20260563,2026-02-23,Q1,EMEA,Amara Okafor,Apparel,Merino Base Layer,3,79.0,15,201.45,Delivered
+ORD-20260522,2026-02-24,Q1,APAC,Mei Lin Tan,Electronics,Summit Headlamp Pro,5,59.0,5,280.25,Delivered
+ORD-20260629,2026-02-24,Q1,APAC,Kenji Watanabe,Electronics,Trailhead GPS Watch,9,249.0,5,2128.95,Delivered
+ORD-20260490,2026-02-26,Q1,EMEA,Sofia Rossi,Apparel,Merino Base Layer,10,79.0,5,750.5,Delivered
+ORD-20260394,2026-02-27,Q1,North America,Dana Whitfield,Electronics,Basecamp Solar Charger,6,89.0,5,507.3,Delivered
+ORD-20260529,2026-02-27,Q1,North America,Dana Whitfield,Electronics,Basecamp Solar Charger,8,89.0,10,640.8,Delivered
+ORD-20260397,2026-02-28,Q1,APAC,Arjun Mehta,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260256,2026-03-01,Q1,North America,Tom Becker,Electronics,Summit Headlamp Pro,9,59.0,5,504.45,Delivered
+ORD-20260066,2026-03-03,Q1,APAC,Arjun Mehta,Camping,Nomad Sleeping Bag,3,149.0,10,402.3,Delivered
+ORD-20260497,2026-03-03,Q1,LATAM,Camila Duarte,Electronics,Basecamp Solar Charger,7,89.0,0,623.0,Delivered
+ORD-20260498,2026-03-03,Q1,North America,Priya Raman,Electronics,Summit Headlamp Pro,3,59.0,10,159.3,Delivered
+ORD-20260362,2026-03-04,Q1,North America,Dana Whitfield,Electronics,Basecamp Solar Charger,8,89.0,5,676.4,Delivered
+ORD-20260302,2026-03-05,Q1,LATAM,Camila Duarte,Footwear,Vapor Trail Runners,4,129.0,5,490.2,Delivered
+ORD-20260213,2026-03-06,Q1,North America,Tom Becker,Camping,Cascade 2P Tent,6,329.0,10,1776.6,Delivered
+ORD-20260200,2026-03-07,Q1,North America,Tom Becker,Footwear,Vapor Trail Runners,6,129.0,20,619.2,Delivered
+ORD-20260312,2026-03-08,Q1,APAC,Arjun Mehta,Apparel,Alpine Shell Jacket,5,189.0,0,945.0,Cancelled
+ORD-20260313,2026-03-08,Q1,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,2,249.0,0,498.0,Delivered
+ORD-20260357,2026-03-08,Q1,APAC,Mei Lin Tan,Camping,Nomad Sleeping Bag,4,149.0,20,476.8,Delivered
+ORD-20260380,2026-03-08,Q1,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,8,59.0,5,448.4,Delivered
+ORD-20260267,2026-03-09,Q1,North America,Dana Whitfield,Electronics,Basecamp Solar Charger,1,89.0,0,89.0,Delivered
+ORD-20260582,2026-03-09,Q1,EMEA,Lukas Meyer,Footwear,Granite Trail Boots,6,179.0,15,912.9,Returned
+ORD-20260132,2026-03-10,Q1,North America,Dana Whitfield,Camping,Cascade 2P Tent,3,329.0,10,888.3,Delivered
+ORD-20260471,2026-03-10,Q1,North America,Priya Raman,Apparel,Ridge Hiking Pants,2,95.0,10,171.0,Delivered
+ORD-20260476,2026-03-10,Q1,LATAM,Camila Duarte,Electronics,Basecamp Solar Charger,4,89.0,5,338.2,Delivered
+ORD-20260482,2026-03-10,Q1,EMEA,Lukas Meyer,Electronics,Basecamp Solar Charger,2,89.0,5,169.1,Delivered
+ORD-20260065,2026-03-11,Q1,APAC,Kenji Watanabe,Footwear,Vapor Trail Runners,6,129.0,15,657.9,Delivered
+ORD-20260170,2026-03-11,Q1,North America,Priya Raman,Footwear,Granite Trail Boots,3,179.0,10,483.3,Delivered
+ORD-20260341,2026-03-12,Q1,EMEA,Sofia Rossi,Apparel,Merino Base Layer,1,79.0,10,71.1,Shipped
+ORD-20260445,2026-03-14,Q1,APAC,Mei Lin Tan,Camping,Nomad Sleeping Bag,8,149.0,10,1072.8,Delivered
+ORD-20260572,2026-03-14,Q1,APAC,Kenji Watanabe,Footwear,Vapor Trail Runners,6,129.0,10,696.6,Delivered
+ORD-20260139,2026-03-15,Q1,North America,Priya Raman,Footwear,Granite Trail Boots,6,179.0,10,966.6,Delivered
+ORD-20260219,2026-03-16,Q1,LATAM,Mateo Silva,Electronics,Trailhead GPS Watch,7,249.0,10,1568.7,Delivered
+ORD-20260169,2026-03-17,Q1,North America,Priya Raman,Apparel,Ridge Hiking Pants,4,95.0,5,361.0,Cancelled
+ORD-20260330,2026-03-17,Q1,North America,Priya Raman,Apparel,Ridge Hiking Pants,2,95.0,0,190.0,Delivered
+ORD-20260419,2026-03-17,Q1,EMEA,Sofia Rossi,Electronics,Summit Headlamp Pro,9,59.0,10,477.9,Returned
+ORD-20260042,2026-03-18,Q1,North America,Priya Raman,Electronics,Trailhead GPS Watch,11,249.0,0,2739.0,Delivered
+ORD-20260410,2026-03-18,Q1,EMEA,Amara Okafor,Camping,Nomad Sleeping Bag,5,149.0,0,745.0,Delivered
+ORD-20260365,2026-03-20,Q1,North America,Priya Raman,Electronics,Basecamp Solar Charger,1,89.0,5,84.55,Delivered
+ORD-20260576,2026-03-21,Q1,EMEA,Lukas Meyer,Electronics,Trailhead GPS Watch,2,249.0,10,448.2,Delivered
+ORD-20260277,2026-03-22,Q1,North America,Dana Whitfield,Footwear,Granite Trail Boots,7,179.0,0,1253.0,Delivered
+ORD-20260039,2026-03-24,Q1,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,8,129.0,10,928.8,Delivered
+ORD-20260221,2026-03-26,Q1,EMEA,Amara Okafor,Footwear,Vapor Trail Runners,7,129.0,10,812.7,Delivered
+ORD-20260210,2026-03-27,Q1,LATAM,Mateo Silva,Apparel,Alpine Shell Jacket,5,189.0,0,945.0,Delivered
+ORD-20260519,2026-03-27,Q1,EMEA,Amara Okafor,Camping,Nomad Sleeping Bag,7,149.0,10,938.7,Delivered
+ORD-20260484,2026-03-28,Q1,North America,Priya Raman,Apparel,Alpine Shell Jacket,2,189.0,10,340.2,Delivered
+ORD-20260523,2026-03-28,Q1,EMEA,Amara Okafor,Apparel,Ridge Hiking Pants,7,95.0,20,532.0,Delivered
+ORD-20260158,2026-03-29,Q1,North America,Tom Becker,Footwear,Vapor Trail Runners,8,129.0,0,1032.0,Shipped
+ORD-20260216,2026-03-30,Q1,EMEA,Amara Okafor,Footwear,Vapor Trail Runners,5,129.0,10,580.5,Returned
+ORD-20260504,2026-03-30,Q1,LATAM,Mateo Silva,Apparel,Alpine Shell Jacket,7,189.0,0,1323.0,Delivered
+ORD-20260037,2026-03-31,Q1,North America,Priya Raman,Camping,Ember Camp Stove,11,69.0,10,683.1,Cancelled
+ORD-20260224,2026-03-31,Q1,EMEA,Amara Okafor,Apparel,Merino Base Layer,9,79.0,0,711.0,Delivered
+ORD-20260308,2026-03-31,Q1,APAC,Arjun Mehta,Camping,Cascade 2P Tent,3,329.0,0,987.0,Delivered
+ORD-20260364,2026-03-31,Q1,North America,Priya Raman,Electronics,Basecamp Solar Charger,6,89.0,5,507.3,Delivered
+ORD-20260429,2026-03-31,Q1,APAC,Kenji Watanabe,Camping,Ember Camp Stove,8,69.0,10,496.8,Shipped
+ORD-20260138,2026-04-01,Q2,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,9,189.0,15,1445.85,Delivered
+ORD-20260418,2026-04-02,Q2,EMEA,Sofia Rossi,Camping,Ember Camp Stove,3,69.0,15,175.95,Delivered
+ORD-20260614,2026-04-03,Q2,EMEA,Lukas Meyer,Electronics,Summit Headlamp Pro,7,59.0,0,413.0,Delivered
+ORD-20260269,2026-04-05,Q2,North America,Tom Becker,Electronics,Summit Headlamp Pro,4,59.0,5,224.2,Delivered
+ORD-20260450,2026-04-08,Q2,North America,Tom Becker,Footwear,Vapor Trail Runners,9,129.0,15,986.85,Delivered
+ORD-20260029,2026-04-10,Q2,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,4,249.0,0,996.0,Delivered
+ORD-20260181,2026-04-10,Q2,North America,Priya Raman,Camping,Nomad Sleeping Bag,9,149.0,0,1341.0,Delivered
+ORD-20260359,2026-04-10,Q2,APAC,Kenji Watanabe,Apparel,Ridge Hiking Pants,1,95.0,10,85.5,Shipped
+ORD-20260489,2026-04-10,Q2,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,1,129.0,10,116.1,Delivered
+ORD-20260172,2026-04-11,Q2,EMEA,Sofia Rossi,Electronics,Summit Headlamp Pro,5,59.0,0,295.0,Delivered
+ORD-20260438,2026-04-11,Q2,EMEA,Lukas Meyer,Camping,Cascade 2P Tent,4,329.0,0,1316.0,Delivered
+ORD-20260249,2026-04-13,Q2,North America,Priya Raman,Electronics,Basecamp Solar Charger,2,89.0,10,160.2,Delivered
+ORD-20260278,2026-04-13,Q2,EMEA,Amara Okafor,Electronics,Basecamp Solar Charger,5,89.0,10,400.5,Delivered
+ORD-20260520,2026-04-15,Q2,North America,Dana Whitfield,Footwear,Granite Trail Boots,1,179.0,0,179.0,Delivered
+ORD-20260637,2026-04-16,Q2,North America,Tom Becker,Apparel,Merino Base Layer,4,79.0,10,284.4,Delivered
+ORD-20260616,2026-04-17,Q2,North America,Priya Raman,Apparel,Alpine Shell Jacket,8,189.0,10,1360.8,Delivered
+ORD-20260164,2026-04-18,Q2,APAC,Kenji Watanabe,Apparel,Merino Base Layer,3,79.0,20,189.6,Delivered
+ORD-20260040,2026-04-19,Q2,APAC,Kenji Watanabe,Camping,Nomad Sleeping Bag,2,149.0,0,298.0,Delivered
+ORD-20260174,2026-04-19,Q2,EMEA,Lukas Meyer,Camping,Ember Camp Stove,13,69.0,0,897.0,Delivered
+ORD-20260326,2026-04-19,Q2,APAC,Mei Lin Tan,Electronics,Trailhead GPS Watch,3,249.0,5,709.65,Shipped
+ORD-20260406,2026-04-20,Q2,LATAM,Camila Duarte,Camping,Nomad Sleeping Bag,7,149.0,20,834.4,Delivered
+ORD-20260057,2026-04-21,Q2,North America,Priya Raman,Footwear,Granite Trail Boots,10,179.0,20,1432.0,Delivered
+ORD-20260100,2026-04-21,Q2,North America,Priya Raman,Electronics,Summit Headlamp Pro,6,59.0,10,318.6,Delivered
+ORD-20260353,2026-04-21,Q2,LATAM,Mateo Silva,Electronics,Basecamp Solar Charger,2,89.0,0,178.0,Delivered
+ORD-20260053,2026-04-22,Q2,EMEA,Amara Okafor,Electronics,Basecamp Solar Charger,11,89.0,10,881.1,Delivered
+ORD-20260350,2026-04-23,Q2,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,8,59.0,5,448.4,Delivered
+ORD-20260612,2026-04-23,Q2,APAC,Arjun Mehta,Footwear,Vapor Trail Runners,6,129.0,5,735.3,Delivered
+ORD-20260021,2026-04-24,Q2,EMEA,Lukas Meyer,Apparel,Alpine Shell Jacket,1,189.0,15,160.65,Delivered
+ORD-20260560,2026-04-24,Q2,APAC,Kenji Watanabe,Footwear,Vapor Trail Runners,5,129.0,5,612.75,Delivered
+ORD-20260512,2026-04-25,Q2,North America,Tom Becker,Electronics,Basecamp Solar Charger,1,89.0,5,84.55,Delivered
+ORD-20260580,2026-04-25,Q2,APAC,Mei Lin Tan,Footwear,Granite Trail Boots,6,179.0,10,966.6,Delivered
+ORD-20260584,2026-04-26,Q2,North America,Priya Raman,Apparel,Merino Base Layer,4,79.0,0,316.0,Delivered
+ORD-20260004,2026-04-27,Q2,EMEA,Amara Okafor,Footwear,Vapor Trail Runners,6,129.0,15,657.9,Returned
+ORD-20260019,2026-04-27,Q2,EMEA,Amara Okafor,Camping,Cascade 2P Tent,2,329.0,0,658.0,Delivered
+ORD-20260059,2026-04-27,Q2,North America,Priya Raman,Footwear,Granite Trail Boots,6,179.0,10,966.6,Delivered
+ORD-20260189,2026-04-27,Q2,North America,Dana Whitfield,Camping,Cascade 2P Tent,4,329.0,0,1316.0,Delivered
+ORD-20260185,2026-04-28,Q2,APAC,Arjun Mehta,Footwear,Vapor Trail Runners,1,129.0,10,116.1,Delivered
+ORD-20260444,2026-04-29,Q2,LATAM,Camila Duarte,Apparel,Merino Base Layer,10,79.0,0,790.0,Delivered
+ORD-20260530,2026-04-29,Q2,EMEA,Amara Okafor,Electronics,Summit Headlamp Pro,9,59.0,0,531.0,Delivered
+ORD-20260360,2026-04-30,Q2,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,1,189.0,10,170.1,Delivered
+ORD-20260271,2026-05-01,Q2,LATAM,Camila Duarte,Electronics,Summit Headlamp Pro,5,59.0,0,295.0,Delivered
+ORD-20260321,2026-05-01,Q2,APAC,Arjun Mehta,Footwear,Granite Trail Boots,6,179.0,20,859.2,Delivered
+ORD-20260323,2026-05-01,Q2,North America,Priya Raman,Camping,Nomad Sleeping Bag,7,149.0,0,1043.0,Delivered
+ORD-20260325,2026-05-01,Q2,EMEA,Lukas Meyer,Apparel,Ridge Hiking Pants,6,95.0,0,570.0,Delivered
+ORD-20260439,2026-05-01,Q2,North America,Tom Becker,Apparel,Alpine Shell Jacket,1,189.0,10,170.1,Returned
+ORD-20260623,2026-05-02,Q2,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,8,249.0,5,1892.4,Delivered
+ORD-20260555,2026-05-03,Q2,North America,Tom Becker,Apparel,Merino Base Layer,12,79.0,15,805.8,Delivered
+ORD-20260176,2026-05-04,Q2,APAC,Kenji Watanabe,Electronics,Basecamp Solar Charger,14,89.0,10,1121.4,Returned
+ORD-20260303,2026-05-04,Q2,North America,Dana Whitfield,Footwear,Granite Trail Boots,7,179.0,10,1127.7,Shipped
+ORD-20260336,2026-05-04,Q2,APAC,Mei Lin Tan,Electronics,Summit Headlamp Pro,6,59.0,5,336.3,Delivered
+ORD-20260496,2026-05-04,Q2,LATAM,Mateo Silva,Electronics,Trailhead GPS Watch,3,249.0,0,747.0,Delivered
+ORD-20260201,2026-05-05,Q2,North America,Dana Whitfield,Electronics,Trailhead GPS Watch,15,249.0,5,3548.25,Delivered
+ORD-20260570,2026-05-05,Q2,North America,Priya Raman,Electronics,Summit Headlamp Pro,6,59.0,5,336.3,Delivered
+ORD-20260452,2026-05-06,Q2,North America,Dana Whitfield,Apparel,Merino Base Layer,5,79.0,10,355.5,Delivered
+ORD-20260480,2026-05-06,Q2,APAC,Kenji Watanabe,Footwear,Granite Trail Boots,7,179.0,5,1190.35,Delivered
+ORD-20260275,2026-05-07,Q2,North America,Tom Becker,Apparel,Merino Base Layer,9,79.0,10,639.9,Delivered
+ORD-20260352,2026-05-07,Q2,North America,Priya Raman,Apparel,Ridge Hiking Pants,6,95.0,20,456.0,Delivered
+ORD-20260454,2026-05-07,Q2,North America,Tom Becker,Apparel,Alpine Shell Jacket,3,189.0,0,567.0,Delivered
+ORD-20260143,2026-05-08,Q2,North America,Tom Becker,Footwear,Granite Trail Boots,9,179.0,15,1369.35,Cancelled
+ORD-20260558,2026-05-08,Q2,APAC,Arjun Mehta,Footwear,Granite Trail Boots,6,179.0,0,1074.0,Delivered
+ORD-20260070,2026-05-09,Q2,North America,Tom Becker,Camping,Cascade 2P Tent,2,329.0,10,592.2,Delivered
+ORD-20260317,2026-05-09,Q2,EMEA,Sofia Rossi,Apparel,Ridge Hiking Pants,8,95.0,5,722.0,Returned
+ORD-20260557,2026-05-09,Q2,EMEA,Sofia Rossi,Apparel,Merino Base Layer,4,79.0,20,252.8,Delivered
+ORD-20260108,2026-05-10,Q2,APAC,Kenji Watanabe,Footwear,Granite Trail Boots,10,179.0,10,1611.0,Delivered
+ORD-20260058,2026-05-11,Q2,APAC,Arjun Mehta,Electronics,Basecamp Solar Charger,5,89.0,0,445.0,Delivered
+ORD-20260550,2026-05-11,Q2,APAC,Arjun Mehta,Camping,Ember Camp Stove,9,69.0,10,558.9,Delivered
+ORD-20260431,2026-05-12,Q2,APAC,Arjun Mehta,Apparel,Ridge Hiking Pants,2,95.0,0,190.0,Delivered
+ORD-20260329,2026-05-13,Q2,APAC,Arjun Mehta,Electronics,Basecamp Solar Charger,5,89.0,10,400.5,Cancelled
+ORD-20260286,2026-05-14,Q2,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,5,129.0,0,645.0,Delivered
+ORD-20260093,2026-05-16,Q2,EMEA,Amara Okafor,Camping,Nomad Sleeping Bag,8,149.0,10,1072.8,Delivered
+ORD-20260379,2026-05-17,Q2,APAC,Kenji Watanabe,Electronics,Basecamp Solar Charger,7,89.0,0,623.0,Delivered
+ORD-20260401,2026-05-17,Q2,EMEA,Lukas Meyer,Camping,Cascade 2P Tent,9,329.0,0,2961.0,Delivered
+ORD-20260416,2026-05-17,Q2,EMEA,Sofia Rossi,Camping,Nomad Sleeping Bag,4,149.0,20,476.8,Delivered
+ORD-20260449,2026-05-17,Q2,North America,Priya Raman,Footwear,Vapor Trail Runners,9,129.0,15,986.85,Delivered
+ORD-20260518,2026-05-17,Q2,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,7,59.0,0,413.0,Delivered
+ORD-20260155,2026-05-18,Q2,North America,Tom Becker,Apparel,Merino Base Layer,7,79.0,0,553.0,Delivered
+ORD-20260287,2026-05-18,Q2,EMEA,Sofia Rossi,Electronics,Basecamp Solar Charger,3,89.0,0,267.0,Delivered
+ORD-20260373,2026-05-18,Q2,APAC,Kenji Watanabe,Electronics,Trailhead GPS Watch,1,249.0,10,224.1,Delivered
+ORD-20260214,2026-05-19,Q2,APAC,Arjun Mehta,Electronics,Basecamp Solar Charger,1,89.0,10,80.1,Delivered
+ORD-20260044,2026-05-20,Q2,North America,Tom Becker,Camping,Cascade 2P Tent,6,329.0,0,1974.0,Delivered
+ORD-20260324,2026-05-20,Q2,North America,Tom Becker,Electronics,Summit Headlamp Pro,9,59.0,5,504.45,Delivered
+ORD-20260101,2026-05-21,Q2,APAC,Arjun Mehta,Footwear,Vapor Trail Runners,4,129.0,10,464.4,Delivered
+ORD-20260166,2026-05-21,Q2,North America,Priya Raman,Footwear,Granite Trail Boots,12,179.0,10,1933.2,Delivered
+ORD-20260284,2026-05-21,Q2,North America,Priya Raman,Footwear,Granite Trail Boots,8,179.0,0,1432.0,Delivered
+ORD-20260335,2026-05-22,Q2,LATAM,Mateo Silva,Footwear,Vapor Trail Runners,9,129.0,5,1102.95,Delivered
+ORD-20260437,2026-05-22,Q2,APAC,Kenji Watanabe,Camping,Ember Camp Stove,5,69.0,15,293.25,Delivered
+ORD-20260163,2026-05-24,Q2,North America,Tom Becker,Footwear,Vapor Trail Runners,7,129.0,0,903.0,Delivered
+ORD-20260232,2026-05-24,Q2,North America,Priya Raman,Apparel,Alpine Shell Jacket,6,189.0,10,1020.6,Delivered
+ORD-20260328,2026-05-25,Q2,APAC,Mei Lin Tan,Camping,Cascade 2P Tent,4,329.0,15,1118.6,Delivered
+ORD-20260583,2026-05-26,Q2,North America,Priya Raman,Apparel,Ridge Hiking Pants,2,95.0,0,190.0,Delivered
+ORD-20260279,2026-05-27,Q2,EMEA,Sofia Rossi,Electronics,Basecamp Solar Charger,7,89.0,0,623.0,Delivered
+ORD-20260319,2026-05-27,Q2,EMEA,Sofia Rossi,Apparel,Alpine Shell Jacket,8,189.0,10,1360.8,Delivered
+ORD-20260435,2026-05-27,Q2,EMEA,Sofia Rossi,Apparel,Ridge Hiking Pants,6,95.0,10,513.0,Delivered
+ORD-20260456,2026-05-27,Q2,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,1,249.0,0,249.0,Delivered
+ORD-20260599,2026-05-28,Q2,APAC,Kenji Watanabe,Apparel,Merino Base Layer,13,79.0,10,924.3,Delivered
+ORD-20260156,2026-05-30,Q2,North America,Priya Raman,Footwear,Vapor Trail Runners,1,129.0,0,129.0,Delivered
+ORD-20260276,2026-05-30,Q2,EMEA,Sofia Rossi,Apparel,Alpine Shell Jacket,6,189.0,10,1020.6,Delivered
+ORD-20260345,2026-05-30,Q2,North America,Priya Raman,Electronics,Basecamp Solar Charger,7,89.0,0,623.0,Delivered
+ORD-20260467,2026-05-31,Q2,North America,Tom Becker,Apparel,Ridge Hiking Pants,5,95.0,5,451.25,Delivered
+ORD-20260551,2026-05-31,Q2,LATAM,Mateo Silva,Electronics,Basecamp Solar Charger,2,89.0,5,169.1,Delivered
+ORD-20260028,2026-06-02,Q2,EMEA,Lukas Meyer,Apparel,Alpine Shell Jacket,10,189.0,10,1701.0,Delivered
+ORD-20260092,2026-06-02,Q2,EMEA,Lukas Meyer,Electronics,Basecamp Solar Charger,6,89.0,5,507.3,Delivered
+ORD-20260315,2026-06-02,Q2,LATAM,Camila Duarte,Electronics,Summit Headlamp Pro,4,59.0,5,224.2,Delivered
+ORD-20260472,2026-06-02,Q2,EMEA,Lukas Meyer,Camping,Ember Camp Stove,5,69.0,0,345.0,Delivered
+ORD-20260149,2026-06-03,Q2,EMEA,Sofia Rossi,Apparel,Ridge Hiking Pants,7,95.0,15,565.25,Delivered
+ORD-20260280,2026-06-04,Q2,North America,Priya Raman,Camping,Ember Camp Stove,5,69.0,10,310.5,Delivered
+ORD-20260289,2026-06-04,Q2,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,4,129.0,15,438.6,Delivered
+ORD-20260253,2026-06-05,Q2,EMEA,Amara Okafor,Footwear,Granite Trail Boots,7,179.0,0,1253.0,Delivered
+ORD-20260609,2026-06-05,Q2,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,7,249.0,5,1655.85,Delivered
+ORD-20260217,2026-06-06,Q2,LATAM,Mateo Silva,Apparel,Alpine Shell Jacket,8,189.0,0,1512.0,Delivered
+ORD-20260161,2026-06-07,Q2,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,3,59.0,5,168.15,Delivered
+ORD-20260251,2026-06-08,Q2,APAC,Arjun Mehta,Apparel,Alpine Shell Jacket,2,189.0,0,378.0,Delivered
+ORD-20260293,2026-06-08,Q2,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,5,59.0,10,265.5,Delivered
+ORD-20260017,2026-06-10,Q2,North America,Priya Raman,Apparel,Ridge Hiking Pants,7,95.0,5,631.75,Delivered
+ORD-20260301,2026-06-10,Q2,North America,Priya Raman,Electronics,Trailhead GPS Watch,3,249.0,0,747.0,Delivered
+ORD-20260366,2026-06-11,Q2,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,2,189.0,0,378.0,Delivered
+ORD-20260038,2026-06-12,Q2,EMEA,Sofia Rossi,Camping,Nomad Sleeping Bag,9,149.0,10,1206.9,Delivered
+ORD-20260613,2026-06-12,Q2,North America,Dana Whitfield,Footwear,Granite Trail Boots,1,179.0,0,179.0,Delivered
+ORD-20260088,2026-06-13,Q2,North America,Priya Raman,Camping,Ember Camp Stove,15,69.0,0,1035.0,Delivered
+ORD-20260188,2026-06-15,Q2,APAC,Kenji Watanabe,Camping,Ember Camp Stove,6,69.0,15,351.9,Returned
+ORD-20260238,2026-06-15,Q2,APAC,Arjun Mehta,Camping,Nomad Sleeping Bag,12,149.0,20,1430.4,Delivered
+ORD-20260436,2026-06-15,Q2,APAC,Mei Lin Tan,Apparel,Merino Base Layer,5,79.0,10,355.5,Delivered
+ORD-20260543,2026-06-15,Q2,APAC,Mei Lin Tan,Footwear,Granite Trail Boots,5,179.0,10,805.5,Delivered
+ORD-20260628,2026-06-15,Q2,EMEA,Lukas Meyer,Apparel,Ridge Hiking Pants,1,95.0,0,95.0,Delivered
+ORD-20260079,2026-06-16,Q2,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,4,129.0,15,438.6,Delivered
+ORD-20260355,2026-06-17,Q2,EMEA,Amara Okafor,Footwear,Granite Trail Boots,5,179.0,0,895.0,Delivered
+ORD-20260571,2026-06-17,Q2,EMEA,Sofia Rossi,Camping,Nomad Sleeping Bag,10,149.0,15,1266.5,Delivered
+ORD-20260294,2026-06-18,Q2,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,6,129.0,10,696.6,Delivered
+ORD-20260295,2026-06-18,Q2,North America,Priya Raman,Footwear,Vapor Trail Runners,2,129.0,5,245.1,Returned
+ORD-20260396,2026-06-18,Q2,EMEA,Amara Okafor,Electronics,Summit Headlamp Pro,8,59.0,5,448.4,Delivered
+ORD-20260023,2026-06-19,Q2,APAC,Mei Lin Tan,Apparel,Alpine Shell Jacket,2,189.0,0,378.0,Delivered
+ORD-20260106,2026-06-19,Q2,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,4,249.0,5,946.2,Returned
+ORD-20260331,2026-06-19,Q2,EMEA,Lukas Meyer,Footwear,Vapor Trail Runners,5,129.0,15,548.25,Delivered
+ORD-20260574,2026-06-19,Q2,EMEA,Amara Okafor,Footwear,Granite Trail Boots,4,179.0,20,572.8,Delivered
+ORD-20260347,2026-06-20,Q2,LATAM,Mateo Silva,Camping,Cascade 2P Tent,6,329.0,0,1974.0,Delivered
+ORD-20260633,2026-06-20,Q2,North America,Priya Raman,Apparel,Alpine Shell Jacket,6,189.0,5,1077.3,Delivered
+ORD-20260494,2026-06-21,Q2,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,1,249.0,0,249.0,Delivered
+ORD-20260442,2026-06-22,Q2,APAC,Arjun Mehta,Apparel,Merino Base Layer,12,79.0,20,758.4,Cancelled
+ORD-20260177,2026-06-24,Q2,APAC,Arjun Mehta,Apparel,Ridge Hiking Pants,2,95.0,5,180.5,Delivered
+ORD-20260257,2026-06-25,Q2,EMEA,Amara Okafor,Electronics,Basecamp Solar Charger,3,89.0,0,267.0,Delivered
+ORD-20260464,2026-06-25,Q2,EMEA,Lukas Meyer,Apparel,Alpine Shell Jacket,9,189.0,5,1615.95,Delivered
+ORD-20260503,2026-06-25,Q2,EMEA,Amara Okafor,Apparel,Ridge Hiking Pants,2,95.0,15,161.5,Cancelled
+ORD-20260514,2026-06-25,Q2,APAC,Mei Lin Tan,Footwear,Granite Trail Boots,4,179.0,0,716.0,Delivered
+ORD-20260589,2026-06-25,Q2,North America,Priya Raman,Apparel,Merino Base Layer,2,79.0,0,158.0,Delivered
+ORD-20260314,2026-06-27,Q2,North America,Priya Raman,Camping,Nomad Sleeping Bag,9,149.0,0,1341.0,Shipped
+ORD-20260064,2026-06-28,Q2,North America,Dana Whitfield,Camping,Nomad Sleeping Bag,7,149.0,15,886.55,Delivered
+ORD-20260367,2026-06-28,Q2,North America,Priya Raman,Electronics,Basecamp Solar Charger,7,89.0,5,591.85,Delivered
+ORD-20260443,2026-06-29,Q2,North America,Dana Whitfield,Footwear,Vapor Trail Runners,6,129.0,0,774.0,Delivered
+ORD-20260218,2026-06-30,Q2,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,4,189.0,0,756.0,Delivered
+ORD-20260348,2026-06-30,Q2,North America,Priya Raman,Camping,Ember Camp Stove,11,69.0,5,721.05,Returned
+ORD-20260544,2026-06-30,Q2,North America,Dana Whitfield,Camping,Nomad Sleeping Bag,12,149.0,10,1609.2,Delivered
+ORD-20260005,2026-07-01,Q3,North America,Tom Becker,Electronics,Basecamp Solar Charger,5,89.0,10,400.5,Delivered
+ORD-20260084,2026-07-01,Q3,APAC,Mei Lin Tan,Camping,Ember Camp Stove,13,69.0,20,717.6,Delivered
+ORD-20260105,2026-07-01,Q3,APAC,Mei Lin Tan,Electronics,Trailhead GPS Watch,3,249.0,0,747.0,Delivered
+ORD-20260140,2026-07-01,Q3,APAC,Kenji Watanabe,Apparel,Merino Base Layer,7,79.0,10,497.7,Delivered
+ORD-20260298,2026-07-01,Q3,North America,Tom Becker,Apparel,Ridge Hiking Pants,8,95.0,10,684.0,Delivered
+ORD-20260363,2026-07-01,Q3,APAC,Arjun Mehta,Footwear,Granite Trail Boots,6,179.0,0,1074.0,Delivered
+ORD-20260424,2026-07-01,Q3,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,4,189.0,0,756.0,Cancelled
+ORD-20260579,2026-07-01,Q3,North America,Tom Becker,Camping,Nomad Sleeping Bag,10,149.0,0,1490.0,Delivered
+ORD-20260233,2026-07-03,Q3,North America,Dana Whitfield,Electronics,Trailhead GPS Watch,6,249.0,0,1494.0,Delivered
+ORD-20260247,2026-07-03,Q3,North America,Tom Becker,Apparel,Alpine Shell Jacket,4,189.0,0,756.0,Delivered
+ORD-20260455,2026-07-03,Q3,North America,Dana Whitfield,Electronics,Trailhead GPS Watch,1,249.0,5,236.55,Delivered
+ORD-20260009,2026-07-04,Q3,APAC,Arjun Mehta,Camping,Nomad Sleeping Bag,13,149.0,0,1937.0,Delivered
+ORD-20260254,2026-07-05,Q3,LATAM,Camila Duarte,Electronics,Basecamp Solar Charger,5,89.0,5,422.75,Returned
+ORD-20260027,2026-07-06,Q3,APAC,Arjun Mehta,Footwear,Granite Trail Boots,9,179.0,15,1369.35,Delivered
+ORD-20260371,2026-07-06,Q3,North America,Tom Becker,Footwear,Granite Trail Boots,1,179.0,0,179.0,Delivered
+ORD-20260425,2026-07-06,Q3,LATAM,Mateo Silva,Apparel,Ridge Hiking Pants,7,95.0,0,665.0,Delivered
+ORD-20260469,2026-07-06,Q3,APAC,Kenji Watanabe,Apparel,Alpine Shell Jacket,1,189.0,15,160.65,Delivered
+ORD-20260060,2026-07-07,Q3,EMEA,Lukas Meyer,Electronics,Summit Headlamp Pro,5,59.0,5,280.25,Delivered
+ORD-20260447,2026-07-07,Q3,LATAM,Camila Duarte,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260606,2026-07-09,Q3,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,11,189.0,0,2079.0,Shipped
+ORD-20260590,2026-07-10,Q3,North America,Priya Raman,Camping,Ember Camp Stove,9,69.0,0,621.0,Delivered
+ORD-20260002,2026-07-11,Q3,APAC,Mei Lin Tan,Camping,Ember Camp Stove,5,69.0,20,276.0,Delivered
+ORD-20260056,2026-07-11,Q3,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,7,189.0,0,1323.0,Delivered
+ORD-20260115,2026-07-11,Q3,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,3,249.0,5,709.65,Delivered
+ORD-20260207,2026-07-11,Q3,North America,Tom Becker,Apparel,Alpine Shell Jacket,6,189.0,20,907.2,Delivered
+ORD-20260069,2026-07-12,Q3,North America,Tom Becker,Apparel,Ridge Hiking Pants,6,95.0,5,541.5,Delivered
+ORD-20260112,2026-07-12,Q3,North America,Dana Whitfield,Apparel,Ridge Hiking Pants,11,95.0,0,1045.0,Delivered
+ORD-20260129,2026-07-12,Q3,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,6,59.0,5,336.3,Delivered
+ORD-20260192,2026-07-12,Q3,North America,Tom Becker,Apparel,Alpine Shell Jacket,6,189.0,15,963.9,Delivered
+ORD-20260483,2026-07-13,Q3,EMEA,Sofia Rossi,Electronics,Summit Headlamp Pro,9,59.0,5,504.45,Delivered
+ORD-20260552,2026-07-13,Q3,APAC,Arjun Mehta,Footwear,Granite Trail Boots,5,179.0,10,805.5,Shipped
+ORD-20260007,2026-07-14,Q3,APAC,Mei Lin Tan,Apparel,Ridge Hiking Pants,8,95.0,10,684.0,Delivered
+ORD-20260062,2026-07-14,Q3,North America,Tom Becker,Camping,Nomad Sleeping Bag,7,149.0,10,938.7,Delivered
+ORD-20260215,2026-07-14,Q3,North America,Priya Raman,Apparel,Merino Base Layer,6,79.0,0,474.0,Delivered
+ORD-20260537,2026-07-14,Q3,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,6,189.0,0,1134.0,Delivered
+ORD-20260601,2026-07-14,Q3,North America,Priya Raman,Apparel,Alpine Shell Jacket,4,189.0,10,680.4,Delivered
+ORD-20260014,2026-07-15,Q3,APAC,Mei Lin Tan,Apparel,Alpine Shell Jacket,7,189.0,20,1058.4,Shipped
+ORD-20260085,2026-07-15,Q3,APAC,Mei Lin Tan,Apparel,Ridge Hiking Pants,2,95.0,5,180.5,Delivered
+ORD-20260316,2026-07-15,Q3,North America,Tom Becker,Electronics,Summit Headlamp Pro,7,59.0,5,392.35,Delivered
+ORD-20260032,2026-07-16,Q3,EMEA,Sofia Rossi,Electronics,Basecamp Solar Charger,6,89.0,5,507.3,Delivered
+ORD-20260403,2026-07-16,Q3,EMEA,Sofia Rossi,Apparel,Alpine Shell Jacket,1,189.0,15,160.65,Cancelled
+ORD-20260008,2026-07-17,Q3,LATAM,Camila Duarte,Apparel,Alpine Shell Jacket,3,189.0,0,567.0,Shipped
+ORD-20260270,2026-07-17,Q3,EMEA,Amara Okafor,Footwear,Granite Trail Boots,4,179.0,15,608.6,Delivered
+ORD-20260430,2026-07-19,Q3,North America,Tom Becker,Camping,Nomad Sleeping Bag,5,149.0,0,745.0,Delivered
+ORD-20260433,2026-07-19,Q3,APAC,Mei Lin Tan,Camping,Ember Camp Stove,9,69.0,20,496.8,Cancelled
+ORD-20260244,2026-07-20,Q3,North America,Dana Whitfield,Camping,Cascade 2P Tent,9,329.0,0,2961.0,Delivered
+ORD-20260409,2026-07-20,Q3,North America,Dana Whitfield,Footwear,Vapor Trail Runners,6,129.0,20,619.2,Delivered
+ORD-20260585,2026-07-21,Q3,APAC,Arjun Mehta,Footwear,Granite Trail Boots,5,179.0,5,850.25,Delivered
+ORD-20260272,2026-07-22,Q3,LATAM,Camila Duarte,Camping,Nomad Sleeping Bag,14,149.0,10,1877.4,Delivered
+ORD-20260446,2026-07-22,Q3,APAC,Mei Lin Tan,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260486,2026-07-22,Q3,North America,Tom Becker,Electronics,Summit Headlamp Pro,7,59.0,5,392.35,Delivered
+ORD-20260109,2026-07-24,Q3,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,7,189.0,15,1124.55,Delivered
+ORD-20260024,2026-07-25,Q3,North America,Dana Whitfield,Apparel,Ridge Hiking Pants,6,95.0,5,541.5,Shipped
+ORD-20260047,2026-07-26,Q3,APAC,Arjun Mehta,Electronics,Basecamp Solar Charger,7,89.0,10,560.7,Cancelled
+ORD-20260288,2026-07-26,Q3,EMEA,Sofia Rossi,Apparel,Merino Base Layer,4,79.0,10,284.4,Delivered
+ORD-20260333,2026-07-26,Q3,LATAM,Camila Duarte,Apparel,Ridge Hiking Pants,1,95.0,0,95.0,Delivered
+ORD-20260346,2026-07-27,Q3,North America,Tom Becker,Camping,Nomad Sleeping Bag,7,149.0,15,886.55,Delivered
+ORD-20260607,2026-07-28,Q3,APAC,Kenji Watanabe,Electronics,Basecamp Solar Charger,4,89.0,10,320.4,Delivered
+ORD-20260147,2026-07-29,Q3,APAC,Mei Lin Tan,Camping,Nomad Sleeping Bag,11,149.0,10,1475.1,Cancelled
+ORD-20260511,2026-07-29,Q3,North America,Tom Becker,Camping,Cascade 2P Tent,9,329.0,5,2812.95,Delivered
+ORD-20260625,2026-07-29,Q3,North America,Priya Raman,Electronics,Basecamp Solar Charger,1,89.0,5,84.55,Delivered
+ORD-20260075,2026-07-30,Q3,North America,Tom Becker,Electronics,Summit Headlamp Pro,4,59.0,10,212.4,Delivered
+ORD-20260086,2026-07-30,Q3,APAC,Kenji Watanabe,Camping,Cascade 2P Tent,12,329.0,0,3948.0,Delivered
+ORD-20260318,2026-07-31,Q3,North America,Dana Whitfield,Electronics,Trailhead GPS Watch,3,249.0,0,747.0,Returned
+ORD-20260159,2026-08-01,Q3,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,8,249.0,0,1992.0,Shipped
+ORD-20260114,2026-08-02,Q3,North America,Tom Becker,Electronics,Basecamp Solar Charger,4,89.0,10,320.4,Delivered
+ORD-20260131,2026-08-02,Q3,North America,Dana Whitfield,Apparel,Merino Base Layer,5,79.0,20,316.0,Delivered
+ORD-20260304,2026-08-02,Q3,North America,Tom Becker,Electronics,Summit Headlamp Pro,5,59.0,0,295.0,Delivered
+ORD-20260193,2026-08-03,Q3,EMEA,Sofia Rossi,Camping,Ember Camp Stove,8,69.0,0,552.0,Returned
+ORD-20260117,2026-08-04,Q3,North America,Priya Raman,Apparel,Ridge Hiking Pants,6,95.0,0,570.0,Delivered
+ORD-20260165,2026-08-04,Q3,North America,Priya Raman,Camping,Ember Camp Stove,8,69.0,5,524.4,Delivered
+ORD-20260539,2026-08-04,Q3,APAC,Kenji Watanabe,Electronics,Basecamp Solar Charger,5,89.0,5,422.75,Delivered
+ORD-20260388,2026-08-05,Q3,APAC,Mei Lin Tan,Camping,Ember Camp Stove,9,69.0,10,558.9,Delivered
+ORD-20260035,2026-08-06,Q3,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,5,189.0,10,850.5,Delivered
+ORD-20260135,2026-08-06,Q3,EMEA,Sofia Rossi,Electronics,Basecamp Solar Charger,8,89.0,5,676.4,Delivered
+ORD-20260462,2026-08-06,Q3,EMEA,Lukas Meyer,Electronics,Summit Headlamp Pro,2,59.0,5,112.1,Delivered
+ORD-20260126,2026-08-07,Q3,North America,Dana Whitfield,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260235,2026-08-07,Q3,EMEA,Lukas Meyer,Electronics,Basecamp Solar Charger,3,89.0,0,267.0,Delivered
+ORD-20260261,2026-08-07,Q3,APAC,Mei Lin Tan,Electronics,Summit Headlamp Pro,1,59.0,0,59.0,Delivered
+ORD-20260292,2026-08-07,Q3,North America,Priya Raman,Electronics,Trailhead GPS Watch,7,249.0,10,1568.7,Delivered
+ORD-20260432,2026-08-08,Q3,EMEA,Lukas Meyer,Apparel,Alpine Shell Jacket,8,189.0,10,1360.8,Delivered
+ORD-20260390,2026-08-09,Q3,EMEA,Sofia Rossi,Electronics,Basecamp Solar Charger,1,89.0,0,89.0,Delivered
+ORD-20260089,2026-08-10,Q3,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,6,129.0,0,774.0,Delivered
+ORD-20260268,2026-08-10,Q3,EMEA,Sofia Rossi,Electronics,Basecamp Solar Charger,2,89.0,10,160.2,Delivered
+ORD-20260378,2026-08-10,Q3,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260492,2026-08-10,Q3,EMEA,Lukas Meyer,Electronics,Trailhead GPS Watch,9,249.0,0,2241.0,Delivered
+ORD-20260581,2026-08-10,Q3,LATAM,Mateo Silva,Electronics,Summit Headlamp Pro,9,59.0,5,504.45,Delivered
+ORD-20260617,2026-08-10,Q3,APAC,Arjun Mehta,Footwear,Granite Trail Boots,3,179.0,0,537.0,Delivered
+ORD-20260631,2026-08-10,Q3,APAC,Mei Lin Tan,Camping,Nomad Sleeping Bag,13,149.0,5,1840.15,Delivered
+ORD-20260016,2026-08-12,Q3,APAC,Mei Lin Tan,Electronics,Basecamp Solar Charger,4,89.0,5,338.2,Delivered
+ORD-20260179,2026-08-12,Q3,APAC,Kenji Watanabe,Apparel,Ridge Hiking Pants,9,95.0,20,684.0,Delivered
+ORD-20260113,2026-08-13,Q3,LATAM,Camila Duarte,Electronics,Trailhead GPS Watch,4,249.0,0,996.0,Delivered
+ORD-20260228,2026-08-13,Q3,APAC,Arjun Mehta,Footwear,Vapor Trail Runners,7,129.0,0,903.0,Delivered
+ORD-20260499,2026-08-14,Q3,LATAM,Mateo Silva,Camping,Cascade 2P Tent,20,329.0,15,5593.0,Delivered
+ORD-20260427,2026-08-16,Q3,EMEA,Lukas Meyer,Camping,Nomad Sleeping Bag,7,149.0,0,1043.0,Delivered
+ORD-20260337,2026-08-17,Q3,North America,Priya Raman,Apparel,Ridge Hiking Pants,6,95.0,15,484.5,Shipped
+ORD-20260099,2026-08-19,Q3,North America,Tom Becker,Footwear,Granite Trail Boots,3,179.0,0,537.0,Delivered
+ORD-20260167,2026-08-19,Q3,North America,Priya Raman,Electronics,Summit Headlamp Pro,9,59.0,0,531.0,Delivered
+ORD-20260375,2026-08-19,Q3,APAC,Kenji Watanabe,Electronics,Summit Headlamp Pro,4,59.0,5,224.2,Delivered
+ORD-20260415,2026-08-19,Q3,EMEA,Amara Okafor,Camping,Ember Camp Stove,9,69.0,5,589.95,Delivered
+ORD-20260122,2026-08-20,Q3,APAC,Arjun Mehta,Electronics,Basecamp Solar Charger,7,89.0,10,560.7,Delivered
+ORD-20260468,2026-08-20,Q3,APAC,Kenji Watanabe,Electronics,Summit Headlamp Pro,5,59.0,5,280.25,Delivered
+ORD-20260535,2026-08-20,Q3,North America,Dana Whitfield,Apparel,Merino Base Layer,6,79.0,15,402.9,Delivered
+ORD-20260090,2026-08-22,Q3,EMEA,Amara Okafor,Electronics,Basecamp Solar Charger,8,89.0,0,712.0,Delivered
+ORD-20260191,2026-08-22,Q3,LATAM,Mateo Silva,Camping,Nomad Sleeping Bag,6,149.0,0,894.0,Cancelled
+ORD-20260327,2026-08-22,Q3,North America,Priya Raman,Footwear,Granite Trail Boots,8,179.0,10,1288.8,Delivered
+ORD-20260485,2026-08-22,Q3,EMEA,Lukas Meyer,Camping,Nomad Sleeping Bag,8,149.0,5,1132.4,Delivered
+ORD-20260527,2026-08-24,Q3,North America,Priya Raman,Footwear,Vapor Trail Runners,8,129.0,20,825.6,Delivered
+ORD-20260370,2026-08-25,Q3,North America,Priya Raman,Electronics,Trailhead GPS Watch,1,249.0,5,236.55,Delivered
+ORD-20260399,2026-08-25,Q3,EMEA,Lukas Meyer,Electronics,Summit Headlamp Pro,8,59.0,5,448.4,Delivered
+ORD-20260402,2026-08-25,Q3,APAC,Mei Lin Tan,Electronics,Summit Headlamp Pro,8,59.0,0,472.0,Delivered
+ORD-20260475,2026-08-25,Q3,EMEA,Sofia Rossi,Apparel,Ridge Hiking Pants,11,95.0,0,1045.0,Returned
+ORD-20260532,2026-08-25,Q3,APAC,Mei Lin Tan,Electronics,Trailhead GPS Watch,10,249.0,0,2490.0,Delivered
+ORD-20260041,2026-08-26,Q3,North America,Priya Raman,Electronics,Summit Headlamp Pro,3,59.0,10,159.3,Delivered
+ORD-20260010,2026-08-28,Q3,APAC,Arjun Mehta,Footwear,Vapor Trail Runners,10,129.0,15,1096.5,Delivered
+ORD-20260071,2026-08-28,Q3,North America,Dana Whitfield,Camping,Nomad Sleeping Bag,12,149.0,20,1430.4,Delivered
+ORD-20260183,2026-08-28,Q3,North America,Tom Becker,Camping,Nomad Sleeping Bag,7,149.0,15,886.55,Delivered
+ORD-20260376,2026-08-28,Q3,North America,Priya Raman,Electronics,Basecamp Solar Charger,6,89.0,10,480.6,Delivered
+ORD-20260608,2026-08-28,Q3,North America,Dana Whitfield,Camping,Ember Camp Stove,15,69.0,20,828.0,Cancelled
+ORD-20260635,2026-08-28,Q3,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,5,129.0,20,516.0,Shipped
+ORD-20260407,2026-08-29,Q3,North America,Tom Becker,Apparel,Merino Base Layer,6,79.0,0,474.0,Delivered
+ORD-20260151,2026-08-30,Q3,APAC,Arjun Mehta,Apparel,Merino Base Layer,7,79.0,10,497.7,Delivered
+ORD-20260234,2026-08-30,Q3,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,2,129.0,10,232.2,Returned
+ORD-20260386,2026-08-30,Q3,APAC,Mei Lin Tan,Electronics,Summit Headlamp Pro,5,59.0,0,295.0,Delivered
+ORD-20260025,2026-08-31,Q3,EMEA,Lukas Meyer,Electronics,Trailhead GPS Watch,9,249.0,0,2241.0,Delivered
+ORD-20260263,2026-08-31,Q3,North America,Tom Becker,Apparel,Alpine Shell Jacket,1,189.0,15,160.65,Delivered
+ORD-20260561,2026-08-31,Q3,North America,Dana Whitfield,Footwear,Vapor Trail Runners,7,129.0,0,903.0,Delivered
+ORD-20260562,2026-08-31,Q3,North America,Dana Whitfield,Footwear,Granite Trail Boots,4,179.0,0,716.0,Cancelled
+ORD-20260146,2026-09-01,Q3,EMEA,Amara Okafor,Electronics,Trailhead GPS Watch,7,249.0,0,1743.0,Delivered
+ORD-20260534,2026-09-01,Q3,APAC,Arjun Mehta,Footwear,Granite Trail Boots,1,179.0,10,161.1,Delivered
+ORD-20260564,2026-09-01,Q3,North America,Dana Whitfield,Electronics,Basecamp Solar Charger,4,89.0,5,338.2,Delivered
+ORD-20260565,2026-09-01,Q3,North America,Dana Whitfield,Apparel,Ridge Hiking Pants,9,95.0,0,855.0,Delivered
+ORD-20260015,2026-09-02,Q3,LATAM,Mateo Silva,Apparel,Alpine Shell Jacket,11,189.0,20,1663.2,Delivered
+ORD-20260212,2026-09-03,Q3,North America,Priya Raman,Electronics,Summit Headlamp Pro,6,59.0,0,354.0,Delivered
+ORD-20260473,2026-09-03,Q3,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,6,249.0,10,1344.6,Delivered
+ORD-20260536,2026-09-03,Q3,North America,Tom Becker,Camping,Nomad Sleeping Bag,6,149.0,10,804.6,Delivered
+ORD-20260223,2026-09-04,Q3,LATAM,Mateo Silva,Electronics,Basecamp Solar Charger,9,89.0,5,760.95,Delivered
+ORD-20260236,2026-09-04,Q3,APAC,Mei Lin Tan,Electronics,Basecamp Solar Charger,6,89.0,5,507.3,Delivered
+ORD-20260463,2026-09-04,Q3,North America,Tom Becker,Footwear,Vapor Trail Runners,5,129.0,10,580.5,Delivered
+ORD-20260080,2026-09-05,Q3,APAC,Arjun Mehta,Camping,Nomad Sleeping Bag,9,149.0,20,1072.8,Delivered
+ORD-20260209,2026-09-05,Q3,North America,Priya Raman,Apparel,Ridge Hiking Pants,10,95.0,15,807.5,Delivered
+ORD-20260412,2026-09-06,Q3,LATAM,Camila Duarte,Apparel,Alpine Shell Jacket,4,189.0,0,756.0,Delivered
+ORD-20260621,2026-09-06,Q3,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,3,59.0,0,177.0,Returned
+ORD-20260636,2026-09-06,Q3,North America,Priya Raman,Electronics,Trailhead GPS Watch,3,249.0,5,709.65,Delivered
+ORD-20260569,2026-09-07,Q3,EMEA,Sofia Rossi,Footwear,Granite Trail Boots,2,179.0,0,358.0,Delivered
+ORD-20260296,2026-09-08,Q3,EMEA,Lukas Meyer,Apparel,Merino Base Layer,4,79.0,10,284.4,Delivered
+ORD-20260334,2026-09-08,Q3,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,3,59.0,0,177.0,Delivered
+ORD-20260411,2026-09-08,Q3,EMEA,Amara Okafor,Apparel,Merino Base Layer,10,79.0,0,790.0,Delivered
+ORD-20260094,2026-09-09,Q3,LATAM,Mateo Silva,Electronics,Trailhead GPS Watch,2,249.0,0,498.0,Delivered
+ORD-20260097,2026-09-09,Q3,EMEA,Amara Okafor,Apparel,Merino Base Layer,7,79.0,0,553.0,Delivered
+ORD-20260128,2026-09-09,Q3,EMEA,Amara Okafor,Footwear,Granite Trail Boots,1,179.0,0,179.0,Delivered
+ORD-20260451,2026-09-09,Q3,North America,Priya Raman,Footwear,Vapor Trail Runners,1,129.0,20,103.2,Delivered
+ORD-20260460,2026-09-09,Q3,APAC,Mei Lin Tan,Footwear,Granite Trail Boots,7,179.0,20,1002.4,Delivered
+ORD-20260481,2026-09-09,Q3,North America,Priya Raman,Apparel,Merino Base Layer,6,79.0,0,474.0,Delivered
+ORD-20260542,2026-09-09,Q3,North America,Tom Becker,Apparel,Merino Base Layer,4,79.0,0,316.0,Delivered
+ORD-20260048,2026-09-10,Q3,North America,Priya Raman,Camping,Cascade 2P Tent,3,329.0,20,789.6,Delivered
+ORD-20260121,2026-09-10,Q3,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,4,249.0,5,946.2,Delivered
+ORD-20260266,2026-09-10,Q3,North America,Dana Whitfield,Camping,Cascade 2P Tent,13,329.0,0,4277.0,Delivered
+ORD-20260505,2026-09-11,Q3,EMEA,Lukas Meyer,Apparel,Ridge Hiking Pants,5,95.0,15,403.75,Delivered
+ORD-20260103,2026-09-12,Q3,North America,Dana Whitfield,Apparel,Ridge Hiking Pants,12,95.0,0,1140.0,Delivered
+ORD-20260033,2026-09-13,Q3,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,5,59.0,5,280.25,Delivered
+ORD-20260136,2026-09-13,Q3,EMEA,Lukas Meyer,Apparel,Merino Base Layer,2,79.0,15,134.3,Delivered
+ORD-20260361,2026-09-13,Q3,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,5,189.0,0,945.0,Delivered
+ORD-20260383,2026-09-13,Q3,APAC,Arjun Mehta,Footwear,Vapor Trail Runners,8,129.0,10,928.8,Delivered
+ORD-20260095,2026-09-14,Q3,North America,Dana Whitfield,Camping,Cascade 2P Tent,7,329.0,15,1957.55,Delivered
+ORD-20260343,2026-09-14,Q3,North America,Priya Raman,Footwear,Vapor Trail Runners,4,129.0,10,464.4,Returned
+ORD-20260458,2026-09-15,Q3,EMEA,Lukas Meyer,Footwear,Granite Trail Boots,10,179.0,5,1700.5,Delivered
+ORD-20260074,2026-09-18,Q3,LATAM,Camila Duarte,Apparel,Alpine Shell Jacket,8,189.0,20,1209.6,Delivered
+ORD-20260157,2026-09-18,Q3,EMEA,Amara Okafor,Apparel,Ridge Hiking Pants,5,95.0,0,475.0,Delivered
+ORD-20260297,2026-09-18,Q3,LATAM,Mateo Silva,Electronics,Trailhead GPS Watch,8,249.0,5,1892.4,Delivered
+ORD-20260068,2026-09-19,Q3,North America,Dana Whitfield,Apparel,Merino Base Layer,4,79.0,15,268.6,Delivered
+ORD-20260374,2026-09-19,Q3,North America,Priya Raman,Apparel,Merino Base Layer,1,79.0,0,79.0,Delivered
+ORD-20260073,2026-09-21,Q3,APAC,Arjun Mehta,Electronics,Basecamp Solar Charger,3,89.0,0,267.0,Delivered
+ORD-20260597,2026-09-21,Q3,EMEA,Amara Okafor,Footwear,Granite Trail Boots,11,179.0,10,1772.1,Delivered
+ORD-20260208,2026-09-23,Q3,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,4,189.0,10,680.4,Delivered
+ORD-20260491,2026-09-24,Q3,APAC,Mei Lin Tan,Footwear,Granite Trail Boots,9,179.0,10,1449.9,Delivered
+ORD-20260098,2026-09-25,Q3,EMEA,Amara Okafor,Apparel,Ridge Hiking Pants,3,95.0,0,285.0,Shipped
+ORD-20260368,2026-09-25,Q3,LATAM,Mateo Silva,Footwear,Vapor Trail Runners,5,129.0,0,645.0,Delivered
+ORD-20260030,2026-09-26,Q3,APAC,Kenji Watanabe,Footwear,Granite Trail Boots,9,179.0,0,1611.0,Delivered
+ORD-20260501,2026-09-26,Q3,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,7,59.0,5,392.35,Delivered
+ORD-20260130,2026-09-27,Q3,North America,Priya Raman,Camping,Ember Camp Stove,10,69.0,15,586.5,Delivered
+ORD-20260230,2026-09-27,Q3,APAC,Arjun Mehta,Electronics,Trailhead GPS Watch,4,249.0,0,996.0,Shipped
+ORD-20260506,2026-09-27,Q3,APAC,Mei Lin Tan,Apparel,Merino Base Layer,1,79.0,5,75.05,Delivered
+ORD-20260262,2026-09-28,Q3,North America,Tom Becker,Apparel,Merino Base Layer,3,79.0,0,237.0,Delivered
+ORD-20260306,2026-09-29,Q3,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,6,59.0,0,354.0,Delivered
+ORD-20260495,2026-09-29,Q3,EMEA,Amara Okafor,Electronics,Basecamp Solar Charger,5,89.0,5,422.75,Delivered
+ORD-20260127,2026-09-30,Q3,APAC,Mei Lin Tan,Apparel,Merino Base Layer,5,79.0,10,355.5,Delivered
+ORD-20260231,2026-09-30,Q3,EMEA,Sofia Rossi,Camping,Cascade 2P Tent,1,329.0,20,263.2,Delivered
+ORD-20260309,2026-09-30,Q3,North America,Dana Whitfield,Apparel,Ridge Hiking Pants,7,95.0,10,598.5,Delivered
+ORD-20260588,2026-09-30,Q3,APAC,Kenji Watanabe,Footwear,Granite Trail Boots,1,179.0,10,161.1,Delivered
+ORD-20260051,2026-10-01,Q4,APAC,Arjun Mehta,Apparel,Alpine Shell Jacket,10,189.0,20,1512.0,Delivered
+ORD-20260540,2026-10-01,Q4,APAC,Kenji Watanabe,Electronics,Summit Headlamp Pro,1,59.0,5,56.05,Delivered
+ORD-20260405,2026-10-02,Q4,APAC,Arjun Mehta,Apparel,Ridge Hiking Pants,8,95.0,10,684.0,Delivered
+ORD-20260417,2026-10-03,Q4,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,10,59.0,0,590.0,Delivered
+ORD-20260627,2026-10-03,Q4,LATAM,Camila Duarte,Electronics,Basecamp Solar Charger,3,89.0,5,253.65,Delivered
+ORD-20260282,2026-10-04,Q4,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,5,129.0,0,645.0,Delivered
+ORD-20260307,2026-10-04,Q4,APAC,Arjun Mehta,Apparel,Merino Base Layer,12,79.0,10,853.2,Delivered
+ORD-20260500,2026-10-04,Q4,LATAM,Mateo Silva,Camping,Ember Camp Stove,3,69.0,0,207.0,Delivered
+ORD-20260573,2026-10-04,Q4,APAC,Kenji Watanabe,Electronics,Trailhead GPS Watch,7,249.0,5,1655.85,Cancelled
+ORD-20260241,2026-10-05,Q4,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,4,129.0,15,438.6,Delivered
+ORD-20260408,2026-10-05,Q4,EMEA,Lukas Meyer,Footwear,Vapor Trail Runners,5,129.0,10,580.5,Delivered
+ORD-20260531,2026-10-05,Q4,APAC,Kenji Watanabe,Apparel,Ridge Hiking Pants,5,95.0,5,451.25,Delivered
+ORD-20260050,2026-10-06,Q4,North America,Priya Raman,Apparel,Merino Base Layer,6,79.0,20,379.2,Delivered
+ORD-20260338,2026-10-06,Q4,North America,Tom Becker,Electronics,Trailhead GPS Watch,2,249.0,10,448.2,Delivered
+ORD-20260603,2026-10-06,Q4,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,11,59.0,0,649.0,Delivered
+ORD-20260012,2026-10-07,Q4,North America,Priya Raman,Camping,Ember Camp Stove,3,69.0,20,165.6,Delivered
+ORD-20260459,2026-10-07,Q4,EMEA,Amara Okafor,Camping,Cascade 2P Tent,5,329.0,0,1645.0,Delivered
+ORD-20260586,2026-10-07,Q4,LATAM,Camila Duarte,Apparel,Ridge Hiking Pants,17,95.0,10,1453.5,Delivered
+ORD-20260067,2026-10-08,Q4,North America,Tom Becker,Electronics,Basecamp Solar Charger,4,89.0,0,356.0,Delivered
+ORD-20260285,2026-10-08,Q4,EMEA,Lukas Meyer,Camping,Nomad Sleeping Bag,6,149.0,0,894.0,Shipped
+ORD-20260508,2026-10-08,Q4,EMEA,Amara Okafor,Footwear,Granite Trail Boots,8,179.0,0,1432.0,Delivered
+ORD-20260260,2026-10-09,Q4,EMEA,Amara Okafor,Camping,Cascade 2P Tent,8,329.0,0,2632.0,Delivered
+ORD-20260474,2026-10-09,Q4,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,4,129.0,10,464.4,Delivered
+ORD-20260187,2026-10-10,Q4,North America,Tom Becker,Footwear,Vapor Trail Runners,4,129.0,10,464.4,Cancelled
+ORD-20260541,2026-10-10,Q4,EMEA,Sofia Rossi,Apparel,Alpine Shell Jacket,4,189.0,0,756.0,Delivered
+ORD-20260559,2026-10-10,Q4,EMEA,Amara Okafor,Electronics,Basecamp Solar Charger,3,89.0,0,267.0,Delivered
+ORD-20260566,2026-10-10,Q4,APAC,Kenji Watanabe,Footwear,Granite Trail Boots,1,179.0,5,170.05,Delivered
+ORD-20260546,2026-10-11,Q4,LATAM,Mateo Silva,Camping,Cascade 2P Tent,6,329.0,20,1579.2,Delivered
+ORD-20260632,2026-10-11,Q4,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,4,249.0,5,946.2,Shipped
+ORD-20260133,2026-10-12,Q4,APAC,Kenji Watanabe,Apparel,Merino Base Layer,6,79.0,10,426.6,Returned
+ORD-20260466,2026-10-12,Q4,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,4,189.0,15,642.6,Delivered
+ORD-20260524,2026-10-12,Q4,LATAM,Mateo Silva,Electronics,Basecamp Solar Charger,4,89.0,0,356.0,Delivered
+ORD-20260054,2026-10-13,Q4,APAC,Mei Lin Tan,Apparel,Merino Base Layer,12,79.0,15,805.8,Delivered
+ORD-20260273,2026-10-13,Q4,LATAM,Camila Duarte,Camping,Cascade 2P Tent,3,329.0,15,838.95,Delivered
+ORD-20260387,2026-10-13,Q4,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,3,59.0,5,168.15,Delivered
+ORD-20260246,2026-10-14,Q4,APAC,Kenji Watanabe,Footwear,Vapor Trail Runners,5,129.0,0,645.0,Delivered
+ORD-20260248,2026-10-14,Q4,North America,Tom Becker,Camping,Nomad Sleeping Bag,1,149.0,15,126.65,Delivered
+ORD-20260513,2026-10-14,Q4,APAC,Mei Lin Tan,Camping,Nomad Sleeping Bag,10,149.0,0,1490.0,Delivered
+ORD-20260414,2026-10-15,Q4,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,5,129.0,15,548.25,Delivered
+ORD-20260205,2026-10-16,Q4,EMEA,Lukas Meyer,Apparel,Alpine Shell Jacket,11,189.0,0,2079.0,Delivered
+ORD-20260258,2026-10-16,Q4,North America,Tom Becker,Footwear,Vapor Trail Runners,7,129.0,10,812.7,Delivered
+ORD-20260320,2026-10-16,Q4,EMEA,Lukas Meyer,Apparel,Ridge Hiking Pants,9,95.0,15,726.75,Delivered
+ORD-20260517,2026-10-16,Q4,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,5,59.0,5,280.25,Delivered
+ORD-20260620,2026-10-16,Q4,EMEA,Amara Okafor,Camping,Ember Camp Stove,8,69.0,10,496.8,Delivered
+ORD-20260087,2026-10-17,Q4,North America,Tom Becker,Footwear,Granite Trail Boots,10,179.0,10,1611.0,Delivered
+ORD-20260203,2026-10-17,Q4,APAC,Arjun Mehta,Camping,Ember Camp Stove,5,69.0,0,345.0,Returned
+ORD-20260225,2026-10-17,Q4,APAC,Arjun Mehta,Electronics,Trailhead GPS Watch,5,249.0,5,1182.75,Delivered
+ORD-20260556,2026-10-17,Q4,North America,Dana Whitfield,Footwear,Vapor Trail Runners,8,129.0,10,928.8,Delivered
+ORD-20260026,2026-10-18,Q4,APAC,Mei Lin Tan,Camping,Cascade 2P Tent,7,329.0,0,2303.0,Delivered
+ORD-20260180,2026-10-18,Q4,EMEA,Lukas Meyer,Camping,Ember Camp Stove,7,69.0,10,434.7,Delivered
+ORD-20260619,2026-10-18,Q4,North America,Dana Whitfield,Footwear,Vapor Trail Runners,7,129.0,15,767.55,Delivered
+ORD-20260119,2026-10-19,Q4,North America,Tom Becker,Electronics,Basecamp Solar Charger,6,89.0,5,507.3,Delivered
+ORD-20260528,2026-10-19,Q4,EMEA,Amara Okafor,Apparel,Ridge Hiking Pants,14,95.0,0,1330.0,Delivered
+ORD-20260020,2026-10-20,Q4,EMEA,Lukas Meyer,Apparel,Alpine Shell Jacket,8,189.0,0,1512.0,Delivered
+ORD-20260061,2026-10-20,Q4,APAC,Mei Lin Tan,Electronics,Summit Headlamp Pro,4,59.0,5,224.2,Delivered
+ORD-20260142,2026-10-20,Q4,EMEA,Amara Okafor,Apparel,Alpine Shell Jacket,8,189.0,0,1512.0,Delivered
+ORD-20260420,2026-10-20,Q4,North America,Priya Raman,Footwear,Vapor Trail Runners,4,129.0,10,464.4,Delivered
+ORD-20260538,2026-10-20,Q4,North America,Priya Raman,Electronics,Trailhead GPS Watch,7,249.0,0,1743.0,Delivered
+ORD-20260031,2026-10-21,Q4,APAC,Mei Lin Tan,Apparel,Ridge Hiking Pants,9,95.0,0,855.0,Delivered
+ORD-20260204,2026-10-21,Q4,North America,Tom Becker,Electronics,Trailhead GPS Watch,4,249.0,5,946.2,Shipped
+ORD-20260240,2026-10-21,Q4,EMEA,Lukas Meyer,Apparel,Ridge Hiking Pants,14,95.0,5,1263.5,Delivered
+ORD-20260426,2026-10-21,Q4,EMEA,Lukas Meyer,Electronics,Basecamp Solar Charger,5,89.0,5,422.75,Delivered
+ORD-20260413,2026-10-22,Q4,EMEA,Lukas Meyer,Apparel,Merino Base Layer,12,79.0,0,948.0,Delivered
+ORD-20260422,2026-10-22,Q4,APAC,Arjun Mehta,Camping,Ember Camp Stove,7,69.0,0,483.0,Delivered
+ORD-20260477,2026-10-22,Q4,North America,Priya Raman,Apparel,Alpine Shell Jacket,8,189.0,10,1360.8,Delivered
+ORD-20260618,2026-10-22,Q4,APAC,Kenji Watanabe,Camping,Nomad Sleeping Bag,10,149.0,20,1192.0,Returned
+ORD-20260453,2026-10-23,Q4,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,10,129.0,0,1290.0,Delivered
+ORD-20260526,2026-10-23,Q4,North America,Tom Becker,Footwear,Granite Trail Boots,4,179.0,15,608.6,Delivered
+ORD-20260638,2026-10-23,Q4,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,4,189.0,10,680.4,Delivered
+ORD-20260137,2026-10-25,Q4,EMEA,Lukas Meyer,Apparel,Merino Base Layer,5,79.0,0,395.0,Delivered
+ORD-20260291,2026-10-25,Q4,North America,Tom Becker,Footwear,Vapor Trail Runners,9,129.0,5,1102.95,Delivered
+ORD-20260369,2026-10-25,Q4,EMEA,Amara Okafor,Electronics,Basecamp Solar Charger,4,89.0,0,356.0,Delivered
+ORD-20260578,2026-10-26,Q4,North America,Tom Becker,Electronics,Summit Headlamp Pro,6,59.0,5,336.3,Delivered
+ORD-20260096,2026-10-27,Q4,LATAM,Mateo Silva,Electronics,Trailhead GPS Watch,7,249.0,5,1655.85,Delivered
+ORD-20260198,2026-10-27,Q4,North America,Priya Raman,Apparel,Alpine Shell Jacket,4,189.0,0,756.0,Delivered
+ORD-20260265,2026-10-28,Q4,North America,Tom Becker,Apparel,Alpine Shell Jacket,4,189.0,20,604.8,Delivered
+ORD-20260440,2026-10-28,Q4,EMEA,Lukas Meyer,Camping,Cascade 2P Tent,7,329.0,10,2072.7,Delivered
+ORD-20260610,2026-10-28,Q4,APAC,Arjun Mehta,Electronics,Summit Headlamp Pro,5,59.0,10,265.5,Delivered
+ORD-20260457,2026-10-29,Q4,LATAM,Mateo Silva,Camping,Ember Camp Stove,8,69.0,0,552.0,Delivered
+ORD-20260354,2026-10-30,Q4,North America,Tom Becker,Electronics,Basecamp Solar Charger,7,89.0,0,623.0,Delivered
+ORD-20260428,2026-10-30,Q4,LATAM,Camila Duarte,Electronics,Summit Headlamp Pro,6,59.0,5,336.3,Delivered
+ORD-20260111,2026-10-31,Q4,North America,Priya Raman,Footwear,Granite Trail Boots,7,179.0,0,1253.0,Delivered
+ORD-20260264,2026-11-02,Q4,North America,Priya Raman,Electronics,Basecamp Solar Charger,2,89.0,5,169.1,Returned
+ORD-20260461,2026-11-02,Q4,North America,Priya Raman,Footwear,Granite Trail Boots,14,179.0,15,2130.1,Delivered
+ORD-20260153,2026-11-03,Q4,APAC,Arjun Mehta,Apparel,Ridge Hiking Pants,6,95.0,15,484.5,Shipped
+ORD-20260252,2026-11-03,Q4,EMEA,Lukas Meyer,Electronics,Trailhead GPS Watch,1,249.0,0,249.0,Returned
+ORD-20260510,2026-11-03,Q4,EMEA,Lukas Meyer,Camping,Ember Camp Stove,6,69.0,15,351.9,Delivered
+ORD-20260013,2026-11-05,Q4,North America,Priya Raman,Electronics,Summit Headlamp Pro,1,59.0,5,56.05,Delivered
+ORD-20260255,2026-11-05,Q4,North America,Dana Whitfield,Electronics,Basecamp Solar Charger,9,89.0,10,720.9,Delivered
+ORD-20260553,2026-11-05,Q4,APAC,Kenji Watanabe,Camping,Ember Camp Stove,3,69.0,20,165.6,Shipped
+ORD-20260162,2026-11-06,Q4,EMEA,Lukas Meyer,Electronics,Basecamp Solar Charger,7,89.0,0,623.0,Delivered
+ORD-20260594,2026-11-06,Q4,North America,Priya Raman,Apparel,Merino Base Layer,11,79.0,10,782.1,Delivered
+ORD-20260349,2026-11-07,Q4,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,5,129.0,0,645.0,Delivered
+ORD-20260577,2026-11-07,Q4,North America,Tom Becker,Electronics,Summit Headlamp Pro,3,59.0,10,159.3,Delivered
+ORD-20260178,2026-11-08,Q4,EMEA,Sofia Rossi,Apparel,Merino Base Layer,4,79.0,0,316.0,Delivered
+ORD-20260124,2026-11-09,Q4,EMEA,Sofia Rossi,Footwear,Vapor Trail Runners,4,129.0,0,516.0,Delivered
+ORD-20260305,2026-11-09,Q4,EMEA,Lukas Meyer,Footwear,Vapor Trail Runners,7,129.0,0,903.0,Delivered
+ORD-20260392,2026-11-10,Q4,North America,Priya Raman,Camping,Nomad Sleeping Bag,3,149.0,0,447.0,Delivered
+ORD-20260144,2026-11-11,Q4,North America,Dana Whitfield,Apparel,Alpine Shell Jacket,7,189.0,20,1058.4,Delivered
+ORD-20260190,2026-11-11,Q4,APAC,Mei Lin Tan,Footwear,Vapor Trail Runners,2,129.0,10,232.2,Delivered
+ORD-20260237,2026-11-11,Q4,North America,Tom Becker,Electronics,Summit Headlamp Pro,5,59.0,0,295.0,Delivered
+ORD-20260052,2026-11-12,Q4,APAC,Arjun Mehta,Camping,Cascade 2P Tent,8,329.0,0,2632.0,Delivered
+ORD-20260342,2026-11-12,Q4,North America,Dana Whitfield,Camping,Nomad Sleeping Bag,5,149.0,5,707.75,Delivered
+ORD-20260034,2026-11-13,Q4,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,4,59.0,0,236.0,Delivered
+ORD-20260591,2026-11-13,Q4,North America,Priya Raman,Apparel,Merino Base Layer,9,79.0,0,711.0,Delivered
+ORD-20260104,2026-11-14,Q4,North America,Dana Whitfield,Footwear,Granite Trail Boots,4,179.0,15,608.6,Delivered
+ORD-20260356,2026-11-14,Q4,EMEA,Sofia Rossi,Apparel,Ridge Hiking Pants,5,95.0,0,475.0,Delivered
+ORD-20260398,2026-11-14,Q4,North America,Priya Raman,Camping,Cascade 2P Tent,5,329.0,0,1645.0,Delivered
+ORD-20260593,2026-11-14,Q4,LATAM,Mateo Silva,Footwear,Granite Trail Boots,8,179.0,15,1217.2,Delivered
+ORD-20260351,2026-11-15,Q4,EMEA,Sofia Rossi,Footwear,Granite Trail Boots,2,179.0,15,304.3,Delivered
+ORD-20260404,2026-11-15,Q4,North America,Tom Becker,Camping,Nomad Sleeping Bag,10,149.0,10,1341.0,Shipped
+ORD-20260055,2026-11-16,Q4,EMEA,Sofia Rossi,Camping,Ember Camp Stove,7,69.0,15,410.55,Delivered
+ORD-20260120,2026-11-16,Q4,EMEA,Amara Okafor,Camping,Nomad Sleeping Bag,6,149.0,10,804.6,Delivered
+ORD-20260479,2026-11-16,Q4,North America,Tom Becker,Electronics,Basecamp Solar Charger,8,89.0,5,676.4,Delivered
+ORD-20260173,2026-11-17,Q4,APAC,Kenji Watanabe,Apparel,Merino Base Layer,6,79.0,0,474.0,Delivered
+ORD-20260448,2026-11-17,Q4,EMEA,Amara Okafor,Camping,Ember Camp Stove,7,69.0,10,434.7,Delivered
+ORD-20260049,2026-11-18,Q4,APAC,Kenji Watanabe,Footwear,Vapor Trail Runners,5,129.0,5,612.75,Delivered
+ORD-20260123,2026-11-18,Q4,North America,Dana Whitfield,Electronics,Summit Headlamp Pro,4,59.0,5,224.2,Cancelled
+ORD-20260196,2026-11-18,Q4,North America,Tom Becker,Electronics,Trailhead GPS Watch,1,249.0,5,236.55,Delivered
+ORD-20260110,2026-11-19,Q4,North America,Priya Raman,Electronics,Trailhead GPS Watch,1,249.0,10,224.1,Delivered
+ORD-20260521,2026-11-19,Q4,LATAM,Mateo Silva,Electronics,Summit Headlamp Pro,9,59.0,0,531.0,Delivered
+ORD-20260626,2026-11-19,Q4,North America,Priya Raman,Electronics,Basecamp Solar Charger,13,89.0,0,1157.0,Delivered
+ORD-20260281,2026-11-20,Q4,APAC,Arjun Mehta,Camping,Nomad Sleeping Bag,7,149.0,10,938.7,Delivered
+ORD-20260344,2026-11-20,Q4,EMEA,Lukas Meyer,Apparel,Merino Base Layer,6,79.0,0,474.0,Returned
+ORD-20260549,2026-11-20,Q4,APAC,Arjun Mehta,Electronics,Trailhead GPS Watch,5,249.0,0,1245.0,Delivered
+ORD-20260639,2026-11-21,Q4,APAC,Mei Lin Tan,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260175,2026-11-22,Q4,North America,Dana Whitfield,Footwear,Granite Trail Boots,5,179.0,15,760.75,Shipped
+ORD-20260197,2026-11-22,Q4,EMEA,Sofia Rossi,Apparel,Alpine Shell Jacket,15,189.0,15,2409.75,Delivered
+ORD-20260206,2026-11-22,Q4,LATAM,Mateo Silva,Apparel,Merino Base Layer,11,79.0,10,782.1,Delivered
+ORD-20260300,2026-11-22,Q4,LATAM,Mateo Silva,Apparel,Alpine Shell Jacket,13,189.0,0,2457.0,Returned
+ORD-20260372,2026-11-22,Q4,APAC,Kenji Watanabe,Electronics,Basecamp Solar Charger,7,89.0,0,623.0,Shipped
+ORD-20260630,2026-11-22,Q4,EMEA,Amara Okafor,Camping,Nomad Sleeping Bag,1,149.0,0,149.0,Delivered
+ORD-20260077,2026-11-23,Q4,LATAM,Mateo Silva,Apparel,Merino Base Layer,7,79.0,10,497.7,Delivered
+ORD-20260082,2026-11-23,Q4,APAC,Kenji Watanabe,Camping,Ember Camp Stove,8,69.0,15,469.2,Delivered
+ORD-20260507,2026-11-23,Q4,EMEA,Sofia Rossi,Electronics,Trailhead GPS Watch,6,249.0,5,1419.3,Delivered
+ORD-20260381,2026-11-24,Q4,APAC,Kenji Watanabe,Electronics,Trailhead GPS Watch,4,249.0,5,946.2,Delivered
+ORD-20260615,2026-11-24,Q4,EMEA,Amara Okafor,Camping,Nomad Sleeping Bag,7,149.0,5,990.85,Delivered
+ORD-20260220,2026-11-25,Q4,APAC,Mei Lin Tan,Camping,Nomad Sleeping Bag,6,149.0,5,849.3,Delivered
+ORD-20260274,2026-11-25,Q4,APAC,Mei Lin Tan,Camping,Nomad Sleeping Bag,5,149.0,0,745.0,Delivered
+ORD-20260011,2026-11-26,Q4,EMEA,Sofia Rossi,Apparel,Merino Base Layer,10,79.0,5,750.5,Delivered
+ORD-20260160,2026-11-26,Q4,APAC,Kenji Watanabe,Footwear,Vapor Trail Runners,7,129.0,0,903.0,Delivered
+ORD-20260259,2026-11-26,Q4,North America,Tom Becker,Apparel,Merino Base Layer,4,79.0,15,268.6,Delivered
+ORD-20260502,2026-11-26,Q4,LATAM,Mateo Silva,Electronics,Summit Headlamp Pro,8,59.0,5,448.4,Delivered
