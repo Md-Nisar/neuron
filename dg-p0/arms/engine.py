@@ -28,6 +28,9 @@ DATASETS = {
     # Arm B gets every model of the dataset, as arm C gets the whole database: no free routing.
     "d3": {"db": "d3", "models": ["d3_sales", "d3_skills"]},
     "d1": {"db": "d1", "models": ["d1_wwi"]},
+    # D2 (DG-00.05): one database per BIRD Mini-Dev database; the question names it. Its models
+    # are generated from BIRD's documentation (d2/gen_ossie.py), not hand-written.
+    "d2": {"db": None, "models": None},
 }
 D3_PERSONAS = json.loads((DG / "d3/personas.json").read_text())
 D3_REGIONAL = ["sales.customers", "sales.sales_reps", "sales.orders", "sales.order_lines", "sales.returns",
@@ -61,14 +64,14 @@ Question: {question}"""
 
 
 def readable(dataset: str, persona: str) -> list[str]:
-    if dataset == "d1":
+    if dataset in ("d1", "d2"):
         return []  # every table in the four schemas; see schema_context
     extra = D3_CONFIDENTIAL if D3_PERSONAS[persona]["role"] == "d3_manager" else []
     return D3_REGIONAL + extra + D3_REFERENCE
 
 
 def caller(dataset: str, persona: str) -> str:
-    if dataset == "d1":
+    if dataset in ("d1", "d2"):
         return "reader, may see all data."
     regions = ", ".join(D3_PERSONAS[persona]["regions"])
     conf = "may" if D3_PERSONAS[persona]["role"] == "d3_manager" else "may not"
@@ -77,9 +80,13 @@ def caller(dataset: str, persona: str) -> str:
             "table to the caller's rows: do not add region filters for that.")
 
 
-def schema_context(admin: psycopg.Connection, dataset: str, persona: str) -> str:
-    """Arm C: tables the caller may read, as the catalog describes them, comments included."""
-    if dataset == "d1":
+def schema_context(admin: psycopg.Connection, dataset: str, persona: str, comments: bool = True) -> str:
+    """Arm C: tables the caller may read, as the catalog describes them, comments included.
+    Arm BP (DG-00.05, D16): the same tables, columns and keys without comments."""
+    if dataset == "d2":
+        tables = [r[0] for r in admin.execute(
+            "SELECT format('%s.%I', schemaname, tablename) FROM pg_tables WHERE schemaname = 'public' ORDER BY 1").fetchall()]
+    elif dataset == "d1":
         tables = [r[0] for r in admin.execute(
             "SELECT format('%s.%s', schemaname, tablename) FROM pg_tables WHERE schemaname IN "
             "('application', 'purchasing', 'sales', 'warehouse') ORDER BY 1").fetchall()]
@@ -88,12 +95,12 @@ def schema_context(admin: psycopg.Connection, dataset: str, persona: str) -> str
     out = ["Schema (tables you can query):"]
     for t in tables:
         tc = admin.execute("SELECT obj_description(%s::regclass, 'pg_class')", (t,)).fetchone()[0]
-        out.append(f"\nTABLE {t}" + (f"  -- {tc}" if tc else ""))
+        out.append(f"\nTABLE {t}" + (f"  -- {tc}" if tc and comments else ""))
         for name, typ, notnull, com in admin.execute(
             "SELECT a.attname, format_type(a.atttypid, a.atttypmod), a.attnotnull, "
             "col_description(a.attrelid, a.attnum) FROM pg_attribute a WHERE a.attrelid = %s::regclass "
             "AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum", (t,)).fetchall():
-            out.append(f"  {name} {typ}{' NOT NULL' if notnull else ''}" + (f"  -- {com}" if com else ""))
+            out.append(f"  {name} {typ}{' NOT NULL' if notnull else ''}" + (f"  -- {com}" if com and comments else ""))
         for (cdef,) in admin.execute(
             "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = %s::regclass "
             "AND contype IN ('p', 'f', 'u') ORDER BY contype, conname", (t,)).fetchall():
@@ -101,11 +108,13 @@ def schema_context(admin: psycopg.Connection, dataset: str, persona: str) -> str
     return "\n".join(out)
 
 
-def ossie_context(dataset: str) -> str:
+def ossie_context(dataset: str, db: str | None = None) -> str:
     """Arm B: the dataset's Ossie models as served to an engine."""
     parts = []
-    for name in DATASETS[dataset]["models"]:
-        m = yaml.safe_load((DG / "ossie" / f"{name}.ossie.yaml").read_text())
+    paths = ([DG / "d2/ossie" / f"{db}.ossie.yaml"] if dataset == "d2"
+             else [DG / "ossie" / f"{name}.ossie.yaml" for name in DATASETS[dataset]["models"]])
+    for path in paths:
+        m = yaml.safe_load(path.read_text())
         m.pop("nonportable_extensions", None)
         parts.append(yaml.safe_dump(m, sort_keys=False, width=110))
     return ("Semantic models (Apache Ossie YAML). SQL runs against the physical tables: a dataset's "
@@ -115,10 +124,16 @@ def ossie_context(dataset: str) -> str:
 
 
 def build_prompt(arm: str, dataset: str, persona: str, question: str, ctx_cache: dict,
-                 admin: psycopg.Connection) -> str:
-    key = (arm, dataset, persona if arm == "C" else "")
+                 admin: psycopg.Connection, db: str | None = None) -> str:
+    key = (arm, dataset, db, persona if arm in ("C", "BP") else "")
     if key not in ctx_cache:
-        ctx_cache[key] = schema_context(admin, dataset, persona) if arm == "C" else ossie_context(dataset)
+        if arm == "C":
+            ctx_cache[key] = schema_context(admin, dataset, persona)
+        elif arm == "BP":  # D16: the Ossie model with the caller's physical columns beside it
+            phys = schema_context(admin, dataset, persona, comments=False)
+            ctx_cache[key] = ossie_context(dataset, db) + "\n\nPhysical s" + phys[1:]
+        else:
+            ctx_cache[key] = ossie_context(dataset, db)
     return PROMPT.format(today=TODAY, caller=caller(dataset, persona), context=ctx_cache[key],
                          question=question)
 

@@ -1,0 +1,11 @@
+# DG-00.05 A2 on D1: the two model-scoped metrics of dg-p0/ossie/d1_wwi.ossie.yaml, written out as
+# the full SELECT Auto Ontology requires (dataset-scoped metrics are expanded by certify_db.py).
+sql_attributes:
+  - table: sales.invoicelines
+    name: Gross Margin Pct
+    description: "Profit as a percentage of invoiced sales before tax."
+    expression: "SELECT 100 * SUM(il.lineprofit) / SUM(il.extendedprice - il.taxamount) FROM sales.invoicelines il"
+  - table: sales.invoices
+    name: Average Invoice Value
+    description: "Invoiced sales before tax divided by the number of invoices."
+    expression: "SELECT SUM(il.extendedprice - il.taxamount) / COUNT(DISTINCT i.invoiceid) FROM sales.invoicelines il JOIN sales.invoices i ON i.invoiceid = il.invoiceid"

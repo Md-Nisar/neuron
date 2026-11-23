@@ -22,7 +22,9 @@ import sys
 from decimal import Decimal
 
 import psycopg
+import sqlglot
 from psycopg import sql as psql
+from sqlglot import exp
 
 HERE = pathlib.Path(__file__).parent
 DG = HERE.parent
@@ -51,20 +53,20 @@ def plain(rows) -> list:
     return json.loads(json.dumps([[float(v) if isinstance(v, Decimal) else v for v in r] for r in rows], default=str))
 
 
-def d1_scope(admin: psycopg.Connection) -> Scope:
+def d1_scope(admin: psycopg.Connection, schemas: tuple = ("application", "purchasing", "sales", "warehouse")) -> Scope:
     schema: dict = {}
     tables = set()
     for sch, tab, col, typ in admin.execute(
             "SELECT c.table_schema, c.table_name, c.column_name, c.data_type FROM information_schema.columns c "
             "JOIN information_schema.tables t USING (table_schema, table_name) WHERE t.table_type = 'BASE TABLE' "
-            "AND c.table_schema IN ('application', 'purchasing', 'sales', 'warehouse')").fetchall():
+            "AND c.table_schema = ANY(%s)", (list(schemas),)).fetchall():
         schema.setdefault(sch, {}).setdefault(tab, {})[col] = typ
         tables.add(f"{sch}.{tab}")
     return Scope(readable_tables=frozenset(tables), schema=schema)
 
 
-def d1_run(sql: str) -> tuple[list[str], list]:
-    with psycopg.connect(f"{DSN} dbname=d1 user=d1_reader") as conn:
+def d1_run(sql: str, db: str = "d1", user: str = "d1_reader") -> tuple[list[str], list]:
+    with psycopg.connect(f"{DSN} dbname={db} user={user}") as conn:
         cur = conn.cursor()
         cur.execute("BEGIN READ ONLY")
         cur.execute("SET LOCAL statement_timeout = '15s'")
@@ -75,13 +77,33 @@ def d1_run(sql: str) -> tuple[list[str], list]:
     return cols, rows
 
 
-def execute(dataset: str, persona: str, sql: str, scopes: dict) -> dict:
+def default_schema(sql: str, schema: str = "public") -> str:
+    """D2 only: name the search-path schema on unqualified tables, as a gateway that knows the
+    connection's search_path would, so the guard (which needs schema.table) can judge BIRD-style
+    SQL. Applied to every arm alike; unparsable SQL is passed through for the guard to reject."""
+    try:
+        tree = sqlglot.parse_one(sql, read="postgres")
+    except sqlglot.errors.ParseError:
+        return sql
+    ctes = {c.alias_or_name.lower() for c in tree.find_all(exp.CTE)}
+    for t in tree.find_all(exp.Table):
+        if t.name and not t.args.get("db") and t.name.lower() not in ctes:
+            t.set("db", exp.to_identifier(schema))
+    return tree.sql(dialect="postgres")
+
+
+def execute(dataset: str, persona: str, sql: str, scopes: dict, db: str | None = None) -> dict:
     """Guard, then the A' executor. Returns what the caller would receive."""
-    v = validate(sql, scopes[persona])
+    if dataset == "d2":
+        sql = default_schema(sql)
+    v = validate(sql, scopes[db] if dataset == "d2" else scopes[persona])
     if not v.ok:
         return {"guard": "rejected", "code": v.code}
     try:
-        cols, rows = d1_run(v.sql) if dataset == "d1" else run_as(PERSONAS[persona], v.sql)
+        if dataset == "d2":
+            cols, rows = d1_run(v.sql, db, "d2_reader")
+        else:
+            cols, rows = d1_run(v.sql) if dataset == "d1" else run_as(PERSONAS[persona], v.sql)
     except psycopg.Error as e:
         return {"guard": "allowed", "error": type(e).__name__}
     return {"guard": "allowed", "columns": cols, "rows": plain(rows)}
@@ -123,7 +145,7 @@ def outcome(rec: dict, q: dict, scopes: dict) -> dict:
     if action != "sql":
         out["result"] = "correct" if action == want else "wrong"
         return out
-    res = execute(rec["dataset"], p, d["sql"], scopes)
+    res = execute(rec["dataset"], p, d["sql"], scopes, q.get("db"))
     if res["guard"] == "rejected":
         return {**out, "result": "wrong", "guard": "rejected", "guard_code": res["code"]}
     if "error" in res:
@@ -140,8 +162,8 @@ def outcome(rec: dict, q: dict, scopes: dict) -> dict:
 
 
 def load_questions(dataset: str) -> dict:
-    if dataset == "d1":
-        return {q["id"]: q for q in map(json.loads, (DG / "d1/questions.jsonl").read_text().splitlines())}
+    if dataset in ("d1", "d2"):
+        return {q["id"]: q for q in map(json.loads, (DG / f"{dataset}/questions.jsonl").read_text().splitlines())}
     qs = {q["id"]: q for q in map(json.loads, (DG / "d3/questions.jsonl").read_text().splitlines())}
     for a in map(json.loads, (DG / "d3/adversarial.jsonl").read_text().splitlines()):
         if "question" in a["input"]:
@@ -196,7 +218,8 @@ def summarise(units: list[dict], qs: dict, recs: list[dict]) -> dict:
     s["unparsed"] = sum(u["out"]["action"] == "unparsed" for u in units)
     s["unscorable"] = sorted({u["qid"] for u in units if u["out"]["result"] == "unscorable"})
     s["p95_latency_s"] = p95([r["seconds"] for r in recs])
-    s["model_calls"] = sum(r["requests"] for r in recs)
+    calls = [r["requests"] for r in recs]
+    s["model_calls"] = None if any(c is None for c in calls) else sum(calls)  # Auto Ontology: not observable
     s["units"] = len(units)
     return s
 
@@ -207,9 +230,15 @@ def score(name: str) -> dict:
     recs.sort(key=lambda r: (r["arm"], r["qid"], r["persona"]))
     dataset = recs[0]["dataset"]
     qs = load_questions(dataset)
-    with psycopg.connect(f"{DSN} dbname={dataset} user=postgres") as admin:
-        scopes = ({"reader": d1_scope(admin)} if dataset == "d1"
-                  else {n: guard_scope(admin, p) for n, p in PERSONAS.items()})
+    if dataset == "d2":
+        scopes = {}
+        for db in sorted({q["db"] for q in qs.values()}):
+            with psycopg.connect(f"{DSN} dbname={db} user=postgres") as c:
+                scopes[db] = d1_scope(c, ("public",))
+    with psycopg.connect(f"{DSN} dbname={'d3' if dataset == 'd2' else dataset} user=postgres") as admin:
+        if dataset != "d2":
+            scopes = ({"reader": d1_scope(admin)} if dataset == "d1"
+                      else {n: guard_scope(admin, p) for n, p in PERSONAS.items()})
         before = fingerprint(admin) if dataset == "d3" else None
         units = [{"arm": r["arm"], "qid": r["qid"], "persona": r["persona"], "out": outcome(r, qs[r["qid"]], scopes)}
                  for r in recs]
@@ -243,7 +272,7 @@ def fmt(r: dict) -> str:
             ("Statements that failed in the database", lambda s: str(s["exec_errors"])),
             ("Unparsed replies", lambda s: str(s["unparsed"])),
             ("p95 latency per engine call (s)", lambda s: str(s["p95_latency_s"])),
-            ("Model calls", lambda s: str(s["model_calls"]))]
+            ("Model calls", lambda s: "not observable (internal)" if s["model_calls"] is None else str(s["model_calls"]))]
     out = [f"# Score: {r['run']} ({r['dataset']})", "", f"Model, same in every arm: {', '.join(r['models'])}, temperature 0.",
            "Rates with Wilson 95% intervals in brackets.", "",
            "| Measure | " + " | ".join(f"Arm {a}" for a in arms) + " |", "| --- |" + " --- |" * len(arms)]

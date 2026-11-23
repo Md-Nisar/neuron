@@ -12,7 +12,17 @@ POSTGRES_PORT=55433
 POSTGRES_USER=postgres
 POSTGRES_DATABASE=auto_ontology
 # The mart: D3 through its own read-only login (ao_reader.sql), over the spike cluster's socket.
-CONNECTION_STRINGS="postgresql://d3_ao_reader@/d3?host=/var/lib/postgresql/dg-spike&port=55432"
+# DG-00.05 (AO_DATASETS=all): also D1 and the 11 D2 databases, through their own read-only logins
+# (ao_reader_d1_d2.sql, ../d2/load.sh).
+_sock="host=/var/lib/postgresql/dg-spike&port=55432"
+CONNECTION_STRINGS="postgresql://d3_ao_reader@/d3?$_sock"
+if [ "${AO_DATASETS:-d3}" = all ]; then
+  CONNECTION_STRINGS="$CONNECTION_STRINGS,postgresql://d1_ao_reader@/d1?$_sock"
+  for _db in california_schools card_games codebase_community debit_card_specializing european_football_2 \
+             financial formula_1 student_club superhero thrombosis_prediction toxicology; do
+    CONNECTION_STRINGS="$CONNECTION_STRINGS,postgresql://d2_ao_reader@/d2_$_db?$_sock"
+  done
+fi
 # Chat: the same model as arms B and C. Embeddings and rerank: upstream's NVIDIA defaults.
 DEFAULT_MODELS_ENDPOINT=https://integrate.api.nvidia.com/v1
 DEFAULT_MODELS_API_KEY="$LLM_API_KEY"

@@ -39,11 +39,20 @@ def units(dataset: str, limit: int | None) -> list[dict]:
         adv_q = [a for a in adv if "question" in a["input"]]
         for a in adv_q[:limit] if limit else adv_q:
             out.append({"qid": a["id"], "persona": a["persona"], "question": a["input"]["question"]})
+    elif dataset == "d2":  # BIRD's evidence goes with the question, as in BIRD's own harness
+        qs = [json.loads(line) for line in (engine.DG / "d2/questions.jsonl").read_text().splitlines()]
+        for q in qs[:limit] if limit else qs:
+            out.append({"qid": q["id"], "persona": "reader", "db": q["db"], "evidence": q["evidence"],
+                        "question": q["question"]})
     else:
         qs = [json.loads(line) for line in (engine.DG / "d1/questions.jsonl").read_text().splitlines()]
         for q in qs[:limit] if limit else qs:
             out.append({"qid": q["id"], "persona": "reader", "question": q["question"]})
     return out
+
+
+def with_evidence(u: dict) -> str:
+    return u["question"] + (f"\nEvidence (given with the question): {u['evidence']}" if u.get("evidence") else "")
 
 
 def main(name: str, dataset: str, arms: list[str], limit: int | None, workers: int) -> int:
@@ -55,15 +64,23 @@ def main(name: str, dataset: str, arms: list[str], limit: int | None, workers: i
         for line in path.read_text().splitlines():
             r = json.loads(line)
             done.add((r["arm"], r["qid"], r["persona"]))
-    admin = psycopg.connect(os.environ["D3_DSN"] + f" dbname={engine.DATASETS[dataset]['db']} user=postgres")
+    admins: dict = {}
+
+    def admin(db: str) -> psycopg.Connection:
+        if db not in admins:
+            admins[db] = psycopg.connect(os.environ["D3_DSN"] + f" dbname={db} user=postgres")
+        return admins[db]
     ctx: dict = {}
     todo = []
     for arm in arms:
         for u in units(dataset, limit):
             if (arm, u["qid"], u["persona"]) not in done:
+                db = u.get("db") or engine.DATASETS[dataset]["db"]
                 todo.append({**u, "arm": arm, "dataset": dataset,
-                             "prompt": engine.build_prompt(arm, dataset, u["persona"], u["question"], ctx, admin)})
-    admin.close()
+                             "prompt": engine.build_prompt(arm, dataset, u["persona"], with_evidence(u), ctx,
+                                                           admin(db), u.get("db"))})
+    for c in admins.values():
+        c.close()
     print(f"{len(done)} done, {len(todo)} to call", flush=True)
     lock, failed = threading.Lock(), 0
 
