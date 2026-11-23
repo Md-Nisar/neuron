@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; 100 answerable sales questions accepted (`questions.jsonl`, all checks pass); sales batch 5 (25 unanswerable) awaiting owner review (22 of 25 agree; 3 to adjudicate); skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; 100 answerable sales questions accepted (`questions.jsonl`, all checks pass); sales batch 5 accepted (125 questions); sales batch 6 (5 unanswerable, 20 ambiguous) awaiting owner review, with 3 drafted replacements in `sales-06b`; skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -167,6 +167,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D8 | 2026-11-23 | Sales batch 2 accepted. S-A-035 keeps the reference answer and stays as an F2 trap. S-A-047 swapped for a sharper question; because the new one is unreviewed, it moves to batch 3 and batch 2 is accepted with 24 questions. | Owner |
 | D9 | 2026-11-23 | Sales batch 3 accepted. S-A-052 keeps the reference answer and stays as an F2 trap. For S-A-054 and S-A-061, months as dates and months as numbers are both correct: the second annotator's answer is stored as an accepted alternative (`alternatives` in `questions.jsonl`). | Owner |
 | D10 | 2026-11-23 | Sales batch 4 accepted as recommended: S-A-096 keeps the reference (the annotator's query failed); S-A-098 accepts region names as an alternative to ids. The 100 answerable sales questions are complete. | Owner |
+| D11 | 2026-11-23 | Sales batch 5 accepted as recommended: S-U-020 to S-U-022 stay "refuse" (the evidence queries show the entity is absent). Record design for unanswerable questions confirmed: expected behaviour, kind, why, and an evidence query where the answer depends on the data. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -359,3 +360,33 @@ as answer, clarify or refuse, given the schema only.
   Mexico, that product or that rep is absent; only the data does. The evidence queries confirm
   each is absent. A schema-only engine would answer "0" for these, a wrong answer without
   refusal, unless it looks up values before answering.
+
+### Sales batch 6: unanswerable part 2 and ambiguous (2026-11-23)
+
+`dg-p0/d3/batches/sales-06.md`: S-U-026 to S-U-030 and S-M-001 to S-M-020.
+
+Correction to what I told the owner when batch 5 was sent: recording each reading of an ambiguous
+question is not beyond the backlog. DG-00.01 asks for "reference SQL and expected results per
+role" for the ambiguous questions too. Each ambiguous record therefore holds `interpretations`,
+each with a label, reference SQL and an expected result per persona; `check.py` re-runs them.
+`batch.py` flags a question whose readings give the same answer for some persona, since a direct
+answer would then be right for that persona.
+
+20 of 25 agree. The 5 disagreements:
+
+- S-U-027 (returns from Spain): the annotator says clarify (count of returns or units?). Spain is
+  absent (evidence 0), the same schema-only limit as S-U-020 to S-U-022.
+- S-M-011 ("How many orders were there in 2025?"), S-M-014 ("average price of our products") and
+  S-M-017 ("revenue for Hardware", no period): the annotator says answer, picking one reading
+  (all statuses; list price; both years). Each pick is a reasonable default that a careful
+  analyst could state and use, so these are weak tests of clarification. My view: the annotator
+  is right about these three.
+- S-M-013 ("revenue from new customers in 2025"): the annotator agrees it is ambiguous, but for
+  the EMEA analyst both readings give the same answer: every EMEA customer whose first order
+  was in 2025 also opened their account in 2025 (28 and 28).
+
+Drafted replacements, `dg-p0/d3/batches/sales-06b.md`, all three agree (clarify), with no ties
+at their top-1 cut-offs: S-M-021 (category that grew the most: USD or percent), S-M-022 (largest
+market: revenue or completed orders), S-M-023 (most valuable segment: total or per customer).
+For some analysts, two readings name the same country or segment with a different measure; the
+ambiguity is in the measure.
