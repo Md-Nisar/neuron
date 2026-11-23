@@ -11,7 +11,9 @@ reference per persona. Writes batches/<name>.jsonl and batches/<name>.md for own
 
 The annotator's SQL runs only through check.run_as: one statement, read-only transaction, the
 persona's data role, row-level security. The API key is read from the environment and never
-printed. Previous annotator SQL is reused if the output file exists (pass --fresh to re-ask).
+printed. `python batch.py <name> --accept` appends an owner-accepted batch to questions.jsonl,
+which check.py then verifies on every run. Previous annotator SQL is reused if the output file
+exists (pass --fresh to re-ask).
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ from decimal import Decimal
 
 import psycopg
 
-from check import HERE, PERSONAS, results_match, run_as
+from check import HERE, PERSONAS, run_as
 
 SCHEMA_FILES = {"S": "sql/01_sales_schema.sql", "K": "sql/02_skills_schema.sql"}
 PROMPT = """You write PostgreSQL 16 queries for a reporting database. Schema:
@@ -71,23 +73,37 @@ def answer(persona: dict, sql: str) -> dict:
     return {"columns": cols, "rows": plain}
 
 
+def same_rows(got: list, exp: list, order_matters: bool) -> bool:
+    """Equal row sets, numbers within 0.01 (the reference rounds money to cents; the annotator
+    may not). Significant-digit bucketing is not used: it splits values half a cent apart."""
+    if len(got) != len(exp):
+        return False
+    key = lambda r: [(0, v, "") if isinstance(v, (int, float)) else (1, 0, str(v)) for v in r]  # noqa: E731
+    if not order_matters:
+        got, exp = sorted(got, key=key), sorted(exp, key=key)
+    for g, e in zip(got, exp):
+        for a, b in zip(g, e):
+            num = isinstance(a, (int, float)) and isinstance(b, (int, float))
+            if not (abs(a - b) <= 0.01 if num else str(a) == str(b)):
+                return False
+    return True
+
+
 def agree(exp: dict, got: dict, order_matters: bool) -> tuple[bool, str]:
     if "error" in exp or "error" in got:
         same = exp.get("error") == got.get("error")
         return same, "same error" if same else f"{exp.get('error', 'rows')} vs {got.get('error', 'rows')}"
     if len(got["columns"]) != len(exp["columns"]):
         return False, f"{len(got['columns'])} columns vs {len(exp['columns'])}"
+    if len(got["rows"]) != len(exp["rows"]):
+        return False, f"{len(got['rows'])} rows vs {len(exp['rows'])}"
     # Column names differ between annotators, so match by position; a different column order
     # with the same values counts as agreement.
     for perm in permutations(range(len(exp["columns"]))):
         rows = [[r[i] for i in perm] for r in got["rows"]]
-        ok, why = results_match(
-            [got["columns"][i] for i in perm], rows, exp["columns"], exp["rows"],
-            order_matters=order_matters, match_columns_by_name=False,
-        )
-        if ok:
+        if same_rows(rows, exp["rows"], order_matters):
             return True, "ok" if list(perm) == sorted(perm) else "ok (columns reordered)"
-    return False, why
+    return False, "values differ"
 
 
 def show(a: dict, limit: int = 6) -> str:
@@ -138,5 +154,20 @@ def main(name: str, fresh: bool) -> int:
     return 0
 
 
+def accept(name: str) -> int:
+    """Owner accepted the batch: append its questions, with reference answers, to questions.jsonl."""
+    path = HERE / "questions.jsonl"
+    have = {json.loads(x)["id"] for x in path.read_text().splitlines() if x} if path.exists() else set()
+    keep = ("id", "category", "question", "reference_sql", "order_matters", "expected")
+    with path.open("a") as f:
+        for q in map(json.loads, (HERE / f"batches/{name}.jsonl").read_text().splitlines()):
+            if q["id"] in have:
+                sys.exit(f"{q['id']} is already in questions.jsonl")
+            f.write(json.dumps({k: q[k] for k in keep}, default=str) + "\n")
+    return 0
+
+
 if __name__ == "__main__":
+    if "--accept" in sys.argv:
+        sys.exit(accept(sys.argv[1]))
     sys.exit(main(sys.argv[1], "--fresh" in sys.argv))

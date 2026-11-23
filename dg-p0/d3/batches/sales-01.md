@@ -409,9 +409,9 @@ ORDER BY r.name
 ```
 | Persona | Reference answer | Agree |
 | --- | --- | --- |
-| emea_analyst | region, reps → EMEA, 8 | NO: row count 3 != 1 |
+| emea_analyst | region, reps → EMEA, 8 | NO: 3 rows vs 1 |
 | | second: region, sales_rep_count → Americas, 0; Asia Pacific, 0; Europe, Middle East and Africa, 8 | |
-| apac_analyst | region, reps → APAC, 8 | NO: row count 3 != 1 |
+| apac_analyst | region, reps → APAC, 8 | NO: 3 rows vs 1 |
 | | second: region, sales_rep_count → Americas, 0; Asia Pacific, 8; Europe, Middle East and Africa, 0 | |
 | global_manager | region, reps → APAC, 8; EMEA, 8; AMER, 8 | NO: values differ |
 | | second: region, sales_rep_count → Americas, 8; Asia Pacific, 8; Europe, Middle East and Africa, 8 | |
