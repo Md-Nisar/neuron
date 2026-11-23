@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645): all deliverables built on `spike/data-gateway-p0` (see git log) and checked (1,108 checks pass): 300 questions, 60 adversarial cases, agreement recorded, every disagreement adjudicated. Awaiting the owner: closing DG-00.01, two deviations (three data roles; no claims function under A'), and the ADR 0016 decision 5 wording |
+| Status | DG-00.01 (#645): all deliverables built on `spike/data-gateway-p0` (see git log) and checked (1,108 checks pass): 300 questions, 60 adversarial cases, agreement recorded, every disagreement adjudicated. Awaiting the owner: closing DG-00.01, three deviations (three data roles; no claims function under A'; a model as second annotator, with batches after D12 approved by Claude), and the ADR 0016 decision 5 wording |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
