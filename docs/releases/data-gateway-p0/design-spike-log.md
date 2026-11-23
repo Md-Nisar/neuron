@@ -821,3 +821,33 @@ last two together say what kind of failure it is.
    - Written steps (compose override, login SQL, run commands) in `dg-p0/auto-ontology/`. Another engineer must be able to follow them.
    - One D3 question answered end to end.
    - A request to change data, made through chat and directly through the connector with `ao_reader`. Table fingerprints are taken before and after, and the attempt is recorded.
+
+### Progress (spike `dg-p0/auto-ontology/`)
+
+| Step | Result |
+| --- | --- |
+| Pin | `7dac5ff7` checked out; run from source with its `uv.lock` (`uv sync --no-dev --frozen`) and the image's own commands (`alembic upgrade head`, `python -m auto_ontology.server`, `python -m auto_ontology.ingestion_service`, `prisma/migrate.sh`, `next start`) |
+| Deviation: no images | The images were not built: the build would need NVIDIA's Dockerfile edited to trust this sandbox's TLS-intercepting proxy. Only the metadata store runs in Docker (`pgvector/pgvector:pg17`) |
+| Deviation: Python | 3.12.13, not the image's 3.12.16, which this `uv` cannot fetch |
+| Mart login | `ao_reader.sql`: `d3_ao_reader` is a login and its own data role (Auto Ontology cannot `SET ROLE`), added to the A' policies, three regions, no confidential tables, read-only, 15 s. Checked: sees all 3,000 orders; `rep_compensation` denied; `CREATE TABLE` refused |
+| Catalog | Ingested 15 tables. The confidential tables are absent (not visible to the login); `app.role_regions` is catalogued |
+| Service credential | `service_account.py`: viewer account, API token (`x-api-key`). Token reads `/api/terms`; a manage call returns 403 |
+| Egress so far | `integrate.api.nvidia.com:443` only (embeddings), through `egress_log.py` |
+
+### Findings so far
+
+- **F6. Auto Ontology cannot query a mart hardened per ADR 0016 decision 5.** Its connector applies
+  `read_only` and `statement_timeout` with `SELECT set_config(...)` inside the transaction.
+  `05_hardening.sql` revokes `set_config` from PUBLIC. Every read-only or time-capped query fails
+  with `permission denied for function set_config`: column profiling during compilation, and all
+  text-to-SQL, which always asks for `read_only` on Postgres. Plain queries work. This answers the
+  story's "does it use `set_config`?": yes, and it conflicts with decision 5.
+- **F7. No service credential for MCP.** Auto Ontology's MCP server takes per-user OAuth only, by
+  design ("There is no way to configure a token for the server itself"). A gateway calling it as a
+  service would use a user's API token on the REST routes the MCP tools wrap.
+- **F8. The backend trusts an unauthenticated header.** FastAPI reads `x-auto-ontology-user-id` and
+  must not be reachable except through the Next.js gateway, yet the reference Compose publishes
+  `3001:3001` and the server binds `0.0.0.0`. Here everything is bound or used on loopback.
+- **F9. Compilation sends data, not only schema.** Attribute descriptions include sample column
+  values in the LLM prompt (`semantic/attribute_descriptions.py`). Decision 8 allows the schema
+  and certified terms only.
