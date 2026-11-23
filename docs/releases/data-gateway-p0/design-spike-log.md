@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; 100 answerable sales questions accepted (`questions.jsonl`, all checks pass); sales batch 5 accepted (125 questions); sales batch 6 (5 unanswerable, 20 ambiguous) awaiting owner review, with 3 drafted replacements in `sales-06b`; skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; 100 answerable sales questions accepted (`questions.jsonl`, all checks pass); all 300 questions accepted (sales and skills: 100 answerable, 30 unanswerable, 20 ambiguous each; 1,018 checks pass); adversarial cases next; skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -168,6 +168,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D9 | 2026-11-23 | Sales batch 3 accepted. S-A-052 keeps the reference answer and stays as an F2 trap. For S-A-054 and S-A-061, months as dates and months as numbers are both correct: the second annotator's answer is stored as an accepted alternative (`alternatives` in `questions.jsonl`). | Owner |
 | D10 | 2026-11-23 | Sales batch 4 accepted as recommended: S-A-096 keeps the reference (the annotator's query failed); S-A-098 accepts region names as an alternative to ids. The 100 answerable sales questions are complete. | Owner |
 | D11 | 2026-11-23 | Sales batch 5 accepted as recommended: S-U-020 to S-U-022 stay "refuse" (the evidence queries show the entity is absent). Record design for unanswerable questions confirmed: expected behaviour, kind, why, and an evidence query where the answer depends on the data. | Owner |
+| D12 | 2026-11-23 | Sales batch 6 accepted as recommended: S-U-027 stays "refuse"; S-M-011, S-M-014 and S-M-017 replaced by S-M-021 to S-M-023; S-M-013 replaced by S-M-024 ("average discount": plain vs value-weighted). Then: move to skills, write all remaining batches, and **approve them myself**. | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -390,3 +391,33 @@ at their top-1 cut-offs: S-M-021 (category that grew the most: USD or percent), 
 market: revenue or completed orders), S-M-023 (most valuable segment: total or per customer).
 For some analysts, two readings name the same country or segment with a different measure; the
 ambiguity is in the measure.
+
+### Self-approved batches (2026-11-23, under D12)
+
+From D12 on, I (Claude) adjudicate and accept each batch; the owner no longer reviews each
+batch. This changes what "double-annotated" means for these batches: the two annotators are
+the reference author (Claude) and the second model, and the adjudicator is the reference author
+too, not an independent person. The owner can audit any decision below; the batch review files
+(`dg-p0/d3/batches/*.md`) hold both queries and every persona's answer.
+
+Rules I applied, all taken from the owner's earlier rulings:
+- Same values with a different label for the same thing (an id for a name, a date for a month
+  number) is accepted as an alternative (D9, D10).
+- A schema-only annotator cannot see that a named value is absent; with an evidence query
+  returning 0, the question stays "refuse" (D11).
+- An ambiguous question the annotator simply answers with a reasonable default is replaced
+  (D12). I added one rule of my own: a "which X" ambiguous question whose readings name the
+  same X for every persona is also replaced, since a direct answer would then be right.
+- A disagreement caused by my own wording is fixed in the wording and the annotator re-asked.
+- A question whose answer is 0 for every persona, or 0 for one persona, is replaced before
+  running, as with S-A-021.
+
+- skills-01 (K-A-001 to K-A-025): 24 of 25 agree. Before running, K-A-024 ("which employee holds the most certifications") was reworded to a count, since many employees tie at 2. K-A-008: same counts, the annotator labels cycles by id rather than name; accepted with the id form as an alternative (rule from D9 and D10).
+- skills-02 (K-A-026 to K-A-050): 24 of 25 agree. Before running, K-A-030 ("certification held by the most employees") became a per-certification count, since two EMEA certifications tie at 7. K-A-047 first read "already left by the date of the assessment"; the annotator counted same-day assessments and differed by 2 to 3, so the wording was mine to fix: now "strictly later than their leaving date", and the re-asked annotator agrees. K-A-038 ("which skill has the largest total gap"): the annotator names the same skill (SQL) without the total; the question asks only which skill, so the name alone is accepted as an alternative.
+- Seed quirk found by K-A-047: 133 assessments are dated after the employee left. It makes no answer wrong; the question keeps it as a legitimate data-quality check.
+- skills-03 (K-A-051 to K-A-075): 25 of 25 agree. Before running, K-A-075 ("current employees whose manager has left") was replaced because it returned 0 for every persona; now "line managers with more than 5 current direct reports" (4, 4, 12).
+- skills-04 (K-A-076 to K-A-100): 25 of 25 agree. Before running, K-A-080 ("hired and left within 2025") was replaced because it returned 0 for the APAC analyst; now "employees who left during 2024" (3, 1, 6). K-A-083's wording was tidied.
+- skills-05 (K-U-001 to K-U-025, unanswerable): 21 of 25 agree. K-U-018 to K-U-021 (Rust, a Marketing department, CISSP, Jane Doe): the annotator says answer or clarify because it sees the schema, not the values; each evidence query returns 0. Kept as "refuse", following the owner's ruling on the same case in D11. The Director question agrees, because the schema's CHECK constraint lists the job titles.
+- skills-06 (K-U-026 to K-U-030, K-M-001 to K-M-023 less three): first run 21 of 25. K-U-029 (Azure Fundamentals) kept as "refuse" (D11). K-M-004 ("How many people have left?"), K-M-006 ("How many certifications do we have?") and K-M-017 ("assessments per employee"): the annotator answered with a reasonable default, the case the owner resolved by replacement for S-M-011/014/017, so replaced by K-M-021 to K-M-023. Two of the first replacements ("Which skill category are we best at?", "Which cycle had the best results?") were themselves replaced before acceptance: both readings named the same winner for every persona, so a direct answer would have been right. Final: K-M-021 "What is our biggest skill weakness?" (lowest average vs largest total shortfall: different skill for every persona), K-M-022 "How experienced is our workforce?" (years vs level), K-M-023 "Which is our top department?" (headcount vs average score: different department for every persona). 24 of 25 agree.
+
+Totals: 300 questions in `questions.jsonl` (150 sales, 150 skills), 1,018 checks pass.
