@@ -6,7 +6,10 @@ service credential by design, so the "service credential" is this viewer's API t
 x-api-key to the /api routes the MCP tools wrap. Secrets are read from and written to AO_LOCAL_ENV
 (a file outside the repository), never printed.
 
-  AO_LOCAL_ENV=... python service_account.py http://127.0.0.1:3000
+  AO_LOCAL_ENV=... python service_account.py http://127.0.0.1:3000 [--recompile]
+
+--recompile deletes the compiled semantic layer and compiles again (used after D18, because the
+first run's column profiling was refused, finding F6).
 """
 import http.cookiejar
 import json
@@ -54,6 +57,9 @@ def main() -> None:
         env["AO_API_TOKEN"] = minted.get("token") or minted.get("key")
     with open(ENV_FILE, "w") as f:
         f.write("".join(f"{k}={v}\n" for k, v in env.items()))
+    if "--recompile" in sys.argv:
+        call(admin, "POST", "/api/semantic-compilation/reset")
+        call(admin, "PUT", "/api/configurations/semantic-compilation", {"enabled": False})
     print("semantic compilation:", call(admin, "PUT", "/api/configurations/semantic-compilation", {"enabled": True}))
     me = call(opener(), "GET", "/api/terms", headers={"x-api-key": env["AO_API_TOKEN"]})
     print("service token works on /api/terms:", isinstance(me, (list, dict)))

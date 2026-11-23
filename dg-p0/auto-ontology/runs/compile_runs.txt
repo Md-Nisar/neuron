@@ -1,0 +1,4 @@
+2026-11-23 21:39:34,929 INFO auto_ontology.ingestion_service.semantic_scheduler: Finished semantic compilation successfully for database d3: 16 table(s) compiled in 287.7s
+2026-11-23 21:39:34,958 INFO auto_ontology.ingestion_service.semantic_scheduler: semantic: finished successfully — 1 database(s), 16 table(s) compiled in 287.7s
+2026-11-23 21:44:03,703 INFO auto_ontology.ingestion_service.semantic_scheduler: Finished semantic compilation successfully for database d3: 16 table(s) compiled in 247.2s
+2026-11-23 21:44:03,725 INFO auto_ontology.ingestion_service.semantic_scheduler: semantic: finished successfully — 1 database(s), 16 table(s) compiled in 247.2s
