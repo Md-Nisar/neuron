@@ -894,8 +894,9 @@ granted to this login (D18).
 1. **Review A2.** `a2/certify.yaml` and `a2/columns.tsv` hold every certification Claude made. As in D14,
    they stand until you change them.
 2. **F9 in DG-00.05.** Compilation sends sample column values to the model, which decision 8
-   does not allow. Auto Ontology has a distinct-value probing setting. Choose: (a) measure A1 and
-   A2 as upstream ships them and record F9 (recommended: the comparison is about the engine, and
-   the product posture is a decision for the ADR 0016 corrections), or (b) switch probing off and
-   recompile.
+   does not allow. No setting at the pinned commit stops it: switching off distinct-value probing
+   still samples rows ("sampling rows as usual"), and PII detection only tags columns. Choose:
+   (a) measure A1 and A2 as upstream ships them and record F9 (recommended: the comparison is about
+   the engine, and whether Neuron may accept this egress is a question for the ADR 0016
+   corrections), or (b) patch the prompt to drop samples, which measures a modified Auto Ontology.
 
