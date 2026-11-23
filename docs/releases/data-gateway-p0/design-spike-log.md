@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (`4b5bd7a`): sales and skills schemas, A' hardening, loader, checker and batch runner done; sales batches 1 and 2 accepted (49 questions in `questions.jsonl`, all checks pass); sales batch 3 awaiting owner review (22 of 25 agree; 3 to adjudicate); skills gets its own set (D6) |
+| Status | DG-00.01 (#645) in progress on `spike/data-gateway-p0` (see git log): sales and skills schemas, A' hardening, loader, checker and batch runner done; sales batches 1 to 3 accepted (74 questions in `questions.jsonl`, all checks pass); sales batch 4 awaiting owner review (24 of 26 agree; 2 to adjudicate); skills gets its own set (D6) |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -165,6 +165,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D6 | 2026-11-23 | Skills gets its own question set with the same counts as sales: 100 answerable, 30 unanswerable, 20 ambiguous, 30 adversarial. D3 now holds 360 questions (300 plus 60 adversarial), about twice the annotation work; batches of 25 stay. Answers Q8. | Owner |
 | D7 | 2026-11-23 | Sales batch 1 accepted as written. S-A-017 keeps the reference answer (reps the persona can see) and stays in the set as a deliberate F2 trap. Finish all sales questions before starting skills. | Owner |
 | D8 | 2026-11-23 | Sales batch 2 accepted. S-A-035 keeps the reference answer and stays as an F2 trap. S-A-047 swapped for a sharper question; because the new one is unreviewed, it moves to batch 3 and batch 2 is accepted with 24 questions. | Owner |
+| D9 | 2026-11-23 | Sales batch 3 accepted. S-A-052 keeps the reference answer and stays as an F2 trap. For S-A-054 and S-A-061, months as dates and months as numbers are both correct: the second annotator's answer is stored as an accepted alternative (`alternatives` in `questions.jsonl`). | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -319,3 +320,18 @@ customer cohorts, revenue net of returns, a weekday, and a confidential one (S-A
     persona. The annotator labels months as dates (2025-02-01), the reference as month numbers
     (2). The comparator does not treat these as equal, on purpose: deciding when two labels mean
     the same thing is the owner's call, not the comparator's.
+
+### Sales batch 4 (2026-11-23)
+
+`dg-p0/d3/batches/sales-04.md`. S-A-075 to S-A-100, 26 questions, which completes the 100
+answerable sales questions. More everyday wording: date ranges ("first half of 2025", "last
+quarter of 2024"), terms only the column comments explain ("small and medium business" for SMB),
+named countries and products, shares, HAVING, and one confidential question (S-A-087).
+
+- Caught before running: S-A-094 named a product that does not exist; changed to "Edge Server".
+- No ties at the top-1 cut-offs (S-A-079, S-A-083, S-A-090, S-A-099), checked by hand.
+- 24 of 26 agree. The 2 disagreements:
+  - S-A-096 (highest discount, and how many lines got it): the annotator's query fails with a
+    GroupingError (an aggregate without GROUP BY). An annotator mistake; the reference stands.
+  - S-A-098 (revenue per segment per region): the numbers match for every persona; the annotator
+    labels regions by name, the reference by id. Same kind of case as the month labels in D9.
