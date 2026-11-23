@@ -1,6 +1,6 @@
 # Batch sales-06: owner review
 
-25 questions, 20 agree on every persona, 5 to adjudicate.
+25 questions, 24 agree on every persona, 1 to adjudicate.
 
 ## S-U-026: What was the average delivery time for orders in 2025?
 
@@ -257,30 +257,6 @@ SELECT r.name, count(*) AS orders FROM sales.orders o JOIN sales.sales_reps r ON
 - apac_analyst: name, orders → Mei Clarke, 88
 - global_manager: name, orders → Avery Haddad, 96
 
-## S-M-011: How many orders were there in 2025?
-
-- Kind: ambiguous. Why: All orders, or only completed ones (which are the only ones that count as revenue).
-- Second annotator: **answer**: The orders table has an ordered_on date column and the schema covers 2024-2025, so counting orders placed in 2025 is directly supported.
-- Expected for every persona: **clarify**
-
-Reading 1, All statuses:
-```sql
-SELECT count(*) AS orders FROM sales.orders o WHERE o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01'
-```
-- emea_analyst: orders → 742
-- apac_analyst: orders → 723
-- global_manager: orders → 2065
-
-Reading 2, Completed only:
-```sql
-SELECT count(*) AS orders FROM sales.orders o WHERE o.status = 'completed' AND o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01'
-```
-- emea_analyst: orders → 619
-- apac_analyst: orders → 601
-- global_manager: orders → 1708
-
-**Disagreement: owner to adjudicate.**
-
 ## S-M-012: What were sales in December?
 
 - Kind: ambiguous. Why: The year is missing, and "sales" is taken as revenue.
@@ -302,55 +278,6 @@ SELECT round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS 
 - emea_analyst: revenue → 5842265.92
 - apac_analyst: revenue → 5011701.37
 - global_manager: revenue → 13819868.73
-
-## S-M-013: How much revenue did new customers bring in 2025?
-
-- Kind: ambiguous. Why: "New" can mean the account was opened in 2025, or the first order was in 2025.
-- Second annotator: **clarify**: The question does not specify whether revenue should be gross or net of returns, nor whether 'new customers' means accounts created in 2025 or customers making their first purchase in 2025.
-- Expected for every persona: **clarify**
-
-Reading 1, Account opened in 2025:
-```sql
-SELECT round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS revenue FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.customers c ON c.customer_id = o.customer_id WHERE o.status = 'completed' AND o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01' AND c.created_on >= DATE '2025-01-01'
-```
-- emea_analyst: revenue → 15611078.42
-- apac_analyst: revenue → 13850072.86
-- global_manager: revenue → 41917696.71
-
-Reading 2, First order in 2025:
-```sql
-SELECT round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS revenue FROM sales.order_lines l JOIN sales.orders o USING (order_id) WHERE o.status = 'completed' AND o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01' AND o.customer_id NOT IN (SELECT customer_id FROM sales.orders WHERE ordered_on < DATE '2025-01-01')
-```
-- emea_analyst: revenue → 15611078.42
-- apac_analyst: revenue → 15769852.61
-- global_manager: revenue → 46750528.85
-- **Readings give the same answer for emea_analyst.**
-
-**Disagreement: owner to adjudicate.**
-
-## S-M-014: What is the average price of our products?
-
-- Kind: ambiguous. Why: Catalogue list price, or the unit price actually agreed on order lines.
-- Second annotator: **answer**: The products table contains a list_price column representing catalogue prices, so the average product price can be computed directly.
-- Expected for every persona: **clarify**
-
-Reading 1, Average list price:
-```sql
-SELECT round(avg(list_price), 2) AS avg_price FROM sales.products
-```
-- emea_analyst: avg_price → 2975.11
-- apac_analyst: avg_price → 2975.11
-- global_manager: avg_price → 2975.11
-
-Reading 2, Average agreed unit price:
-```sql
-SELECT round(avg(unit_price), 2) AS avg_price FROM sales.order_lines
-```
-- emea_analyst: avg_price → 2801.75
-- apac_analyst: avg_price → 2767.36
-- global_manager: avg_price → 2816.52
-
-**Disagreement: owner to adjudicate.**
 
 ## S-M-015: Which month had the best sales in 2025?
 
@@ -395,30 +322,6 @@ SELECT round(100 * (sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) 
 - emea_analyst: change_pct → 85.6
 - apac_analyst: change_pct → 116.5
 - global_manager: change_pct → 110.0
-
-## S-M-017: What is the revenue for Hardware?
-
-- Kind: ambiguous. Why: No period: both years, or only the latest one.
-- Second annotator: **answer**: The database contains product categories, order lines with pricing and discounts, and order statuses, allowing calculation of revenue for Hardware from completed orders.
-- Expected for every persona: **clarify**
-
-Reading 1, 2024 and 2025:
-```sql
-SELECT round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS revenue FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.products p USING (product_id) WHERE o.status = 'completed' AND p.category = 'Hardware'
-```
-- emea_analyst: revenue → 40354537.17
-- apac_analyst: revenue → 35823259.38
-- global_manager: revenue → 106136775.16
-
-Reading 2, 2025 only:
-```sql
-SELECT round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS revenue FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.products p USING (product_id) WHERE o.status = 'completed' AND o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01' AND p.category = 'Hardware'
-```
-- emea_analyst: revenue → 26209063.75
-- apac_analyst: revenue → 24542643.69
-- global_manager: revenue → 71511891.12
-
-**Disagreement: owner to adjudicate.**
 
 ## S-M-018: How many products did we sell in 2025?
 
@@ -485,3 +388,91 @@ SELECT round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS 
 - emea_analyst: gross_revenue → 44072021.08
 - apac_analyst: gross_revenue → 43182863.5
 - global_manager: gross_revenue → 122521671.79
+
+## S-M-021: Which product category grew the most in 2025?
+
+- Kind: ambiguous. Why: Growth in USD or in percent, against 2024.
+- Second annotator: **clarify**: The question does not specify the growth metric (revenue, units, orders), the comparison baseline (year-over-year vs. within 2025), or whether growth is absolute or percentage, leading to multiple reasonable interpretations.
+- Expected for every persona: **clarify**
+
+Reading 1, Largest growth in USD:
+```sql
+SELECT p.category, round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) FILTER (WHERE o.ordered_on >= DATE '2025-01-01') - sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) FILTER (WHERE o.ordered_on < DATE '2025-01-01'), 2) AS growth_usd FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.products p USING (product_id) WHERE o.status = 'completed' GROUP BY p.category ORDER BY growth_usd DESC LIMIT 1
+```
+- emea_analyst: category, growth_usd → Hardware, 12063590.33
+- apac_analyst: category, growth_usd → Hardware, 13262027.99
+- global_manager: category, growth_usd → Hardware, 36887007.09
+
+Reading 2, Largest growth in percent:
+```sql
+SELECT p.category, round(100 * (sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) FILTER (WHERE o.ordered_on >= DATE '2025-01-01') / sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) FILTER (WHERE o.ordered_on < DATE '2025-01-01') - 1), 1) AS growth_pct FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.products p USING (product_id) WHERE o.status = 'completed' GROUP BY p.category ORDER BY growth_pct DESC LIMIT 1
+```
+- emea_analyst: category, growth_pct → Services, 94.0
+- apac_analyst: category, growth_pct → Software, 131.4
+- global_manager: category, growth_pct → Software, 118.1
+
+## S-M-022: Which country is our largest market?
+
+- Kind: ambiguous. Why: Largest by revenue, or by number of completed orders (2024 and 2025).
+- Second annotator: **clarify**: The question does not specify the metric for 'largest market' (e.g., revenue, customers, orders, units), and different metrics could yield different countries.
+- Expected for every persona: **clarify**
+
+Reading 1, Most revenue:
+```sql
+SELECT co.name AS country, round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS revenue FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.customers c ON c.customer_id = o.customer_id JOIN sales.countries co ON co.country_code = c.country_code WHERE o.status = 'completed' GROUP BY co.name ORDER BY revenue DESC LIMIT 1
+```
+- emea_analyst: country, revenue → Germany, 19963026.6
+- apac_analyst: country, revenue → Japan, 18120119.83
+- global_manager: country, revenue → Germany, 19963026.6
+
+Reading 2, Most completed orders:
+```sql
+SELECT co.name AS country, count(*) AS orders FROM sales.orders o JOIN sales.customers c ON c.customer_id = o.customer_id JOIN sales.countries co ON co.country_code = c.country_code WHERE o.status = 'completed' GROUP BY co.name ORDER BY orders DESC LIMIT 1
+```
+- emea_analyst: country, orders → Germany, 260
+- apac_analyst: country, orders → India, 264
+- global_manager: country, orders → Brazil, 269
+
+## S-M-023: Which customer segment is the most valuable?
+
+- Kind: ambiguous. Why: Most total revenue, or most revenue per customer (2024 and 2025).
+- Second annotator: **clarify**: The term 'most valuable' is ambiguous: it could mean highest total revenue, highest average revenue per customer, highest revenue net of returns, or another metric, and no time period is specified.
+- Expected for every persona: **clarify**
+
+Reading 1, Most total revenue:
+```sql
+SELECT c.segment, round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)), 2) AS revenue FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.customers c ON c.customer_id = o.customer_id WHERE o.status = 'completed' GROUP BY c.segment ORDER BY revenue DESC LIMIT 1
+```
+- emea_analyst: segment, revenue → SMB, 30700151.66
+- apac_analyst: segment, revenue → SMB, 26959138.74
+- global_manager: segment, revenue → SMB, 82180599.76
+
+Reading 2, Most revenue per customer:
+```sql
+SELECT c.segment, round(sum(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) / count(DISTINCT c.customer_id), 2) AS revenue_per_customer FROM sales.order_lines l JOIN sales.orders o USING (order_id) JOIN sales.customers c ON c.customer_id = o.customer_id WHERE o.status = 'completed' GROUP BY c.segment ORDER BY revenue_per_customer DESC LIMIT 1
+```
+- emea_analyst: segment, revenue_per_customer → Consumer, 716652.16
+- apac_analyst: segment, revenue_per_customer → SMB, 641884.26
+- global_manager: segment, revenue_per_customer → Consumer, 634693.33
+
+## S-M-024: What was our average discount in 2025?
+
+- Kind: ambiguous. Why: A plain average of line discount percentages, or total discount as a percentage of gross value (weighted by value).
+- Second annotator: **clarify**: The question does not specify whether the average should be a simple mean of discount_pct across order lines, weighted by quantity, weighted by revenue, or computed per order or per customer, and whether only completed orders should count.
+- Expected for every persona: **clarify**
+
+Reading 1, Average of line discount percent:
+```sql
+SELECT round(avg(l.discount_pct), 2) AS avg_discount_pct FROM sales.order_lines l JOIN sales.orders o USING (order_id) WHERE o.status = 'completed' AND o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01'
+```
+- emea_analyst: avg_discount_pct → 4.76
+- apac_analyst: avg_discount_pct → 5.06
+- global_manager: avg_discount_pct → 4.94
+
+Reading 2, Total discount over gross value, percent:
+```sql
+SELECT round(100 * sum(l.quantity * l.unit_price * l.discount_pct / 100) / sum(l.quantity * l.unit_price), 2) AS avg_discount_pct FROM sales.order_lines l JOIN sales.orders o USING (order_id) WHERE o.status = 'completed' AND o.ordered_on >= DATE '2025-01-01' AND o.ordered_on < DATE '2026-01-01'
+```
+- emea_analyst: avg_discount_pct → 4.68
+- apac_analyst: avg_discount_pct → 4.9
+- global_manager: avg_discount_pct → 4.84
