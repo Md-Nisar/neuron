@@ -1,0 +1,12 @@
+[
+ {
+  "question_id": 4,
+  "question": "calculate the average transaction amount per customer",
+  "error": "column \"ct.customerid\" must appear in the GROUP BY clause or be used in an aggregate function"
+ },
+ {
+  "question_id": 27,
+  "question": "what are the 4 best sellers in \"North America\"?",
+  "error": "syntax error at or near \"by\""
+ }
+]

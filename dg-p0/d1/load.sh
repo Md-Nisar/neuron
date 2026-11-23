@@ -24,4 +24,5 @@ done
 for f in 05_fkeys 06_views; do
   psql "$DB" -v ON_ERROR_STOP=1 -q -f "$W/ddl/$f.sql"
 done
+psql "$DB" -v ON_ERROR_STOP=1 -q -f "$(dirname "$0")/reader.sql"
 echo "d1 loaded"
