@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | Milestone 1 (context discovery) done; waiting for owner input before any design or build work |
+| Status | Milestone 1 done. Scope decided (D1). Analytics scope mapped (section 3) |
 | Scope | Structured data access, data analytics and the Data Gateway (DG) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -153,4 +153,30 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 
 ## 2. Decisions
 
-None yet.
+| # | Date | Decision | By |
+| --- | --- | --- | --- |
+| D1 | 2026-11-23 | Spike scope is (a) + (c): carry out DG-E00 as accepted (track 1), and design what ADR 0016 leaves open (track 2). ADR 0016 is reopened only where evidence calls for it. Answers Q1. | Owner |
+
+## 3. Is analytics in the backlog? (2026-11-23)
+
+Short answer: **no, not as its own item.** ADR 0016 and the DG backlog cover one thing:
+single-question answers from a database (`ask`, verified queries, later `query_metric`).
+Analytics beyond that appears only as excluded, deferred or conditional items.
+
+| Capability | Where it stands | Source |
+| --- | --- | --- |
+| One question, one `SELECT`, answer with SQL shown | In scope: DG-E01 (P1) | ADR 0016; DG backlog |
+| Governed metrics by dimension and time grain (`query_metric`) | In scope: DG-E02 (P2) | DG backlog |
+| "Answer card": table, SQL and provenance in the web app | Planned with P2's explanation card; no DG story yet | Handoff P2.4; chart decision §7 |
+| Numbers "computed by code" from results | Named in ADR 0016 decision 9, but nothing performs the computing | ADR 0016 |
+| Rule-based charts, chart type switching, PNG and CSV export | Research proposal only; "with governed metrics". No backlog story | Chart decision §5, §7 |
+| Multi-step analysis, follow-ups over an earlier result | Not mentioned anywhere | none |
+| Sandboxed code execution (charts and analysis that need code) | RAG-12.02: phase 5, P2, "Pending"; "kept only if read-only SQL proves insufficient"; highest-risk item | RAG backlog; tracker |
+| Cross-source joins | Excluded | Handoff B5 "Deliberately not built" (part of ADR 0016) |
+| Charts, dashboards, scheduled reports, forecasting | Excluded | Handoff B5 (part of ADR 0016); chart decision §7 excludes dashboards |
+| BI front end | Excluded | Handoff B5 |
+
+Consequences for track 2: topic T3 (analytics beyond one query) designs something no backlog item
+covers, and two of its options cross lines ADR 0016 draws (charts and reports are on the
+"Deliberately not built" list; code execution is RAG-12.02's highest-risk item). Any of them going
+forward needs a product requirement and an ADR amendment, not only a story.
