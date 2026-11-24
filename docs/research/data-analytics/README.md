@@ -9,7 +9,7 @@ lists. As of 2026-11-22, the uploaded-tables feature (RAG-11.01, v1.4.0) is buil
 
 | Folder | Holds |
 | --- | --- |
-| `landscape/` | Background studies: access control for agents, and the data-agent product landscape |
+| `landscape/` | Background studies: access control for agents, the data-agent product landscape, and how industry closes the gaps the P0 spike found |
 | `proposals/` | Designs and decision briefs for Neuron, none accepted as an ADR yet |
 | `reference-code/` | Tested reference code that backs a proposal (`nl2data-ref`, 68 tests) |
 
@@ -20,6 +20,7 @@ lists. As of 2026-11-22, the uploaded-tables feature (RAG-11.01, v1.4.0) is buil
 3. [`proposals/NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md`](proposals/NEURON_DATA_AGENT_ARCHITECTURE_ASSESSMENT.md): the first Data Agent design for Neuron.
 4. [`proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md`](proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md): the latest Neuron-specific proposal (Data Gateway, ADR drafts 0016–0018, proof plan).
 5. [`proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md`](proposals/CHART_GENERATION_DECISION_AND_HANDOFF.md): charts, which depend on item 4.
+6. [`landscape/DATA_GATEWAY_P0_INDUSTRY_BENCHMARK.md`](landscape/DATA_GATEWAY_P0_INDUSTRY_BENCHMARK.md): after the P0 spike, how other products handle refusal, clarification, latency and certification.
 6. [`proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md`](proposals/AI_TO_DATABASE_SOLUTION_ARCHITECTURE.md) and [`reference-code/nl2data-ref/`](reference-code/nl2data-ref/): a general, platform-neutral architecture with tested reference code. It was written without reading items 1–5.
 7. [`proposals/STRUCTURED_DATA_RECONCILIATION.md`](proposals/STRUCTURED_DATA_RECONCILIATION.md): reconciles items 3, 4 and 6 into one design with one ADR draft and nine owner decisions. Read this first if you only read one.
 
