@@ -111,7 +111,7 @@ def main(name: str, limit: int | None, workers: int, sample: str | None = None) 
     tok, lock, failed = ao_run.token(), threading.Lock(), 0
 
     def one(u: dict) -> dict | None:
-        text, b_secs, reqs = engine.call_model(u["prompt"], attempts=8)
+        text, b_secs, reqs = engine.call_model(u["prompt"], attempts=20)
         b = engine.parse(text)
         rec = {
             "arm": ARM,
