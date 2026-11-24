@@ -82,7 +82,7 @@ ASKS_BACK = re.compile(r"\?\s*(\**\s*)?$")
 def decide(rec: dict) -> dict:
     if rec["sql"]:
         return {"action": "sql", "sql": rec["sql"].rstrip(";").strip()}
-    if rec["error"]:
+    if rec["error"] or not rec["response"].strip():  # an empty reply is a failed run, not a refusal
         return {"action": "unparsed"}
     text = rec["response"].strip()
     if ASKS_BACK.search(text):
