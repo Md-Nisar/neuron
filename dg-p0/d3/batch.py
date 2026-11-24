@@ -72,13 +72,13 @@ def ask_model(prompt: str) -> str:
             "Content-Type": "application/json",
         },
     )
-    for i in range(1, 9):  # D26: retry rate limits and server errors with backoff, as engine.call_model
+    for i in range(1, 31):  # D26: retry rate limits and server errors with backoff, as engine.call_model
         try:
             with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310 (fixed https endpoint)
                 text = json.load(resp)["choices"][0]["message"]["content"] or ""
             break
         except urllib.error.HTTPError as e:
-            if e.code != 429 and e.code < 500 or i == 8:
+            if e.code != 429 and e.code < 500 or i == 30:
                 raise
             time.sleep(min(120, 5 * 2 ** (i - 1)))
     return re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
@@ -244,13 +244,13 @@ def main(name: str, fresh: bool) -> int:
     return 0
 
 
-def accept(name: str, alt: set[str]) -> int:
+def accept(name: str, alt: set[str], target: str = "questions.jsonl") -> int:
     """Owner accepted the batch: append its questions, with reference answers, to questions.jsonl.
 
     For ids in `alt`, the owner also accepted the second annotator's answer as an equally correct
     form (for example months as dates rather than numbers); it is kept as `alternatives`.
     """
-    path = HERE / "questions.jsonl"
+    path = HERE / target  # D26: the fresh set goes to fresh.jsonl
     have = {json.loads(x)["id"] for x in path.read_text().splitlines() if x} if path.exists() else set()
     keep = ("id", "category", "question", "reference_sql", "order_matters", "expected", "kind",
             "why", "evidence_sql", "interpretations")
@@ -260,7 +260,7 @@ def accept(name: str, alt: set[str]) -> int:
     with path.open("a") as f:
         for q in batch:
             if q["id"] in have:
-                sys.exit(f"{q['id']} is already in questions.jsonl")
+                sys.exit(f"{q['id']} is already in {target}")
             rec = {k: q[k] for k in keep if k in q}
             if q["id"] in alt:
                 rec["alternatives"] = [{p: a["second"] for p, a in q["agreement"].items()}]
@@ -271,5 +271,6 @@ def accept(name: str, alt: set[str]) -> int:
 if __name__ == "__main__":
     if "--accept" in sys.argv:
         alt = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--alt=")), "")
-        sys.exit(accept(sys.argv[1], set(filter(None, alt.split(",")))))
+        to = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--to=")), "questions.jsonl")
+        sys.exit(accept(sys.argv[1], set(filter(None, alt.split(","))), to))
     sys.exit(main(sys.argv[1], "--fresh" in sys.argv))

@@ -1,7 +1,7 @@
 """Arm T4, live (D26): B decides and names the values, the gateway checks them, A2 writes.
 
   D3_DSN=... AO_LOCAL_ENV=... LLM_BASE_URL=... LLM_API_KEY=... LLM_MODEL=... \\
-    [D3_QUESTIONS=fresh.jsonl] python t4_run.py <run-name> [--limit=N] [--workers=2]
+    [D3_QUESTIONS=fresh.jsonl] python t4_run.py <run-name> [--limit=N] [--workers=2] [--sample=live-sample.json]
 
 Per (question, persona), in order, every step measured:
 1. Arm B (BP: the Ossie model plus the caller's physical columns) with one addition to its prompt:
@@ -91,7 +91,7 @@ def ask_a2(u: dict, tok: str) -> tuple[dict, dict, float]:
     return {"action": "unparsed"}, rec, secs
 
 
-def main(name: str, limit: int | None, workers: int) -> int:
+def main(name: str, limit: int | None, workers: int, sample: str | None = None) -> int:
     path = run.HERE / "runs" / name / "outputs.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     done = (
@@ -99,7 +99,9 @@ def main(name: str, limit: int | None, workers: int) -> int:
         if path.exists()
         else set()
     )
-    todo = [u for u in run.units("d3", limit) if (u["qid"], u["persona"]) not in done]
+    keep = set(json.loads((engine.DG / "d3" / sample).read_text())["qids"]) if sample else None
+    todo = [u for u in run.units("d3", limit)
+            if (u["qid"], u["persona"]) not in done and (keep is None or u["qid"] in keep)]
     ctx: dict = {}
     with psycopg.connect(os.environ["D3_DSN"] + " dbname=d3 user=postgres") as admin:
         scopes = {n: score.guard_scope(admin, p) for n, p in score.PERSONAS.items()}
@@ -121,7 +123,7 @@ def main(name: str, limit: int | None, workers: int) -> int:
             "raw": text[:4000],
             "b_decision": b,
             "b_seconds": round(b_secs, 3),
-            "requests": None,
+            "requests": reqs,
         }
         if b["action"] != "sql":
             return {
@@ -188,5 +190,6 @@ if __name__ == "__main__":
             sys.argv[1],
             int(args["limit"]) if "limit" in args else None,
             int(args.get("workers", "2")),
+            args.get("sample"),
         )
     )
