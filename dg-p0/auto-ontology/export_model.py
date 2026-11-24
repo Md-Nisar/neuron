@@ -27,8 +27,18 @@ def export(body: bytes) -> bytes:
         return r.read()
 
 
+def database_id(name: str) -> str:
+    """The export filter takes catalog database ids; look the name up in a full export."""
+    import yaml
+    full = yaml.safe_load(export(b'{"format": "auto_ontology"}'))
+    for d in full["data_layer"]["databases"]:
+        if any(s.get("database_name") == name for s in d["schemas"]):
+            return d["id"]
+    raise SystemExit(f"no database named {name}")
+
+
 db = sys.argv[3] if len(sys.argv) > 3 else None
-scope = {"databases": [db]} if db else {}
+scope = {"databases": [database_id(db)]} if db else {}
 os.makedirs(out, exist_ok=True)
 with open(os.path.join(out, f"{db or 'd3'}.auto_ontology.yaml"), "wb") as f:
     f.write(export(json.dumps({"format": "auto_ontology", **scope}).encode()))

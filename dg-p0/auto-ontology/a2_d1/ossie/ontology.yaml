@@ -1,0 +1,4215 @@
+version: 0.2.0.dev0
+name: d1_ontology
+description: Business concepts of the d1 semantic model
+ontology:
+- concept: ArchivedCity
+  type: EntityType
+  description: Archived records of cities with their geographic and population details,
+    including validity periods and audit information.
+  relationships:
+  - name: archived_valid_to
+    description: Indicates the effective end date and time of the city record in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has archived valid to {DateTime}'
+  - name: archived_valid_from
+    description: Indicates the effective start date and time of the city record in
+      YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has archived valid from {DateTime}'
+  - name: archived_location
+    description: Records the city's geographic coordinates in Well-Known Text point
+      format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has archived location {String}'
+  - name: archived_last_edited_by
+    description: Identifies the user who last modified the city record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has archived last edited by {Integer}'
+  - name: archived_city_id
+    description: Uniquely identifies each city in the archive.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has archived city id {Integer}'
+  - name: archived_city_name
+    description: Stores the official name of the city.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has archived city name {String}'
+  - name: archived_latest_recorded_population
+    description: Holds the most recent population count recorded for the city.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has archived latest recorded population {Integer}'
+  - name: state_province
+    roles:
+    - concept: StateProvince
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCity} has {StateProvince}'
+- concept: ArchivedColor
+  type: EntityType
+  description: Archived record of a color including its effective date range and audit
+    information.
+  relationships:
+  - name: archived_valid_from
+    description: Timestamp indicating when the color record becomes effective, formatted
+      as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedColor} has archived valid from {DateTime}'
+  - name: archived_color_name
+    description: Name of the color as displayed to users.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedColor} has archived color name {String}'
+  - name: archived_valid_to
+    description: Timestamp indicating when the color record ceases to be effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedColor} has archived valid to {DateTime}'
+  - name: archived_color_id
+    description: Unique identifier for a color, used to reference the color across
+      the system.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedColor} has archived color id {Integer}'
+  - name: archived_last_edited_by
+    description: Identifies the user who last modified the color record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedColor} has archived last edited by {Integer}'
+- concept: ArchivedCountry
+  type: EntityType
+  description: Archived version of country reference data including historical validity
+    periods.
+  relationships:
+  - name: archived_valid_from
+    description: Timestamp when this country record version became effective, formatted
+      as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived valid from {DateTime}'
+  - name: archived_subregion
+    description: Subregion within the region further specifying the country's location.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived subregion {String}'
+  - name: archived_iso_alpha3_code
+    description: Three-letter ISO 3166-1 alpha-3 code uniquely identifying the country.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived iso alpha3 code {String}'
+  - name: archived_latest_recorded_population
+    description: Most recent population count recorded for the country.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived latest recorded population {Integer}'
+  - name: archived_valid_to
+    description: Timestamp when this country record version ceased to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived valid to {DateTime}'
+  - name: archived_iso_numeric_code
+    description: Numeric ISO 3166-1 code assigned to the country for standardized
+      identification.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived iso numeric code {Integer}'
+  - name: archived_country_id
+    description: Unique identifier for each archived country record version.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived country id {Integer}'
+  - name: archived_country_type
+    description: Political status classification of the country such as UN Member
+      State.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived country type {String}'
+  - name: archived_continent
+    description: Continent where the country is geographically located.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived continent {String}'
+  - name: archived_formal_name
+    description: Official legal name of the country as recognized internationally.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived formal name {String}'
+  - name: lasteditedby
+    description: Identifier of the user who last modified this archived country record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has lasteditedby {Integer}'
+  - name: archived_country_name
+    description: Commonly used name identifying the country in business contexts.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived country name {String}'
+  - name: archived_border
+    description: Geospatial multipolygon defining the country's territorial boundaries.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived border {String}'
+  - name: archived_region
+    description: Geographic region grouping the country for analytical purposes.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCountry} has archived region {String}'
+- concept: ArchivedCustomer
+  type: EntityType
+  description: Archived snapshot of customer master data including contact, address,
+    credit, and delivery details.
+  relationships:
+  - name: archived_buying_group_id
+    description: Identifies the buying group associated with the archived customer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived buying group id {Integer}'
+  - name: archived_alternate_contact_person_id
+    description: References the alternate contact person linked to the archived customer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived alternate contact person id {Integer}'
+  - name: archived_phone_number
+    description: Stores the primary phone number of the archived customer in (XXX)
+      XXX-XXXX format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived phone number {String}'
+  - name: postaladdressline2
+    description: Identifies the city or town for the customer's postal address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has postaladdressline2 {String}'
+  - name: archived_run_position
+    description: Indicates the sequence position of the archived customer within a
+      delivery run.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived run position {String}'
+  - name: archived_delivery_run
+    description: Identifies the delivery run or route assigned to the archived customer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived delivery run {String}'
+  - name: archived_postal_city_id
+    description: Specifies the postal mailing city for the archived customer using
+      a city identifier.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived postal city id {Integer}'
+  - name: archived_postal_postal_code
+    description: Identifies the postal code for the customer's postal address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived postal postal code {String}'
+  - name: deliveryaddressline1
+    description: Identifies the first line of the customer's delivery address, typically
+      suite, unit, or shop number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has deliveryaddressline1 {String}'
+  - name: archived_fax_number
+    description: Stores the fax number of the archived customer in (XXX) XXX-XXXX
+      format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived fax number {String}'
+  - name: archived_credit_limit
+    description: Defines the maximum credit amount extended to the archived customer.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived credit limit {Decimal}'
+  - name: archived_delivery_city_id
+    description: Specifies the delivery city for the archived customer using a city
+      identifier.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived delivery city id {Integer}'
+  - name: archived_account_opened_date
+    description: Records the date the archived customer's account was opened in YYYY-MM-DD
+      format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived account opened date {Date}'
+  - name: archived_valid_from
+    description: Indicates the date and time from which the archived customer record
+      is effective, in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived valid from {DateTime}'
+  - name: archived_valid_to
+    description: Indicates the date and time until which the archived customer record
+      remains valid, in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived valid to {DateTime}'
+  - name: archived_delivery_postal_code
+    description: Identifies the postal code for the customer's delivery address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived delivery postal code {String}'
+  - name: archived_is_statement_sent
+    description: Flags whether a statement has been sent to the archived customer.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived is statement sent {Boolean}'
+  - name: archived_last_edited_by
+    description: Identifies the user who last modified the archived customer record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived last edited by {Integer}'
+  - name: archived_is_on_credit_hold
+    description: Flags whether the archived customer is currently on credit hold.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived is on credit hold {Boolean}'
+  - name: deliveryaddressline2
+    description: Identifies the street name and number for the customer's delivery
+      address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has deliveryaddressline2 {String}'
+  - name: archived_standard_discount_percentage
+    description: Indicates the default discount percentage applied to the archived
+      customer's orders.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived standard discount percentage {Decimal}'
+  - name: archived_payment_days
+    description: Specifies the number of days allowed for the archived customer to
+      pay invoices.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived payment days {Integer}'
+  - name: archived_website_url
+    description: Provides the website URL of the archived customer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has archived website url {String}'
+  - name: deliverylocation
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has {Customer}'
+  - name: billtocustomerid
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has {Customer}'
+  - name: customerid
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has {Customer}'
+  - name: postaladdressline1
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has {Customer}'
+  - name: customer_category
+    roles:
+    - concept: CustomerCategory
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has {CustomerCategory}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has {Person}'
+  - name: delivery_method
+    roles:
+    - concept: DeliveryMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedCustomer} has {DeliveryMethod}'
+- concept: ArchivedDeliveryMethod
+  type: EntityType
+  description: Archived records of delivery methods, including their validity periods
+    and audit information.
+  relationships:
+  - name: archived_last_edited_by
+    description: lasteditedby identifies the user who last modified the archived delivery
+      method.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedDeliveryMethod} has archived last edited by {Integer}'
+  - name: archived_valid_to
+    description: validto records the date and time when the delivery method ceases
+      to be effective, formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedDeliveryMethod} has archived valid to {DateTime}'
+  - name: archived_valid_from
+    description: validfrom records the date and time when the delivery method becomes
+      effective, formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedDeliveryMethod} has archived valid from {DateTime}'
+  - name: archived_delivery_method_name
+    description: deliverymethodname provides the descriptive name of the delivery
+      method type.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedDeliveryMethod} has archived delivery method name {String}'
+  - name: archived_delivery_method_id
+    description: deliverymethodid uniquely identifies each archived delivery method
+      record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedDeliveryMethod} has archived delivery method id {Integer}'
+- concept: ArchivedPackageType
+  type: EntityType
+  relationships:
+  - name: archived_package_type_name
+    description: Descriptive name identifying the type of package in the archive.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPackageType} has archived package type name {String}'
+  - name: archived_last_edited_by
+    description: Identifies the user who last modified the archived package type record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPackageType} has archived last edited by {Integer}'
+  - name: archived_valid_to
+    description: Timestamp when the archived package type ceased to be effective,
+      without time zone.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPackageType} has archived valid to {DateTime}'
+  - name: archived_package_type_id
+    description: Unique numeric identifier for each archived package type record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPackageType} has archived package type id {Integer}'
+  - name: archived_valid_from
+    description: Timestamp when the archived package type became effective, without
+      time zone.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPackageType} has archived valid from {DateTime}'
+- concept: ArchivedPaymentMethod
+  type: EntityType
+  description: A payment method record preserved in the archive with its effective
+    date range.
+  relationships:
+  - name: archived_valid_from
+    description: Records the timestamp when the archived payment method becomes effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPaymentMethod} has archived valid from {DateTime}'
+  - name: lasteditedby
+    description: Identifies the user who last modified the archived payment method
+      record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPaymentMethod} has lasteditedby {Integer}'
+  - name: archived_payment_method_name
+    description: Provides the descriptive name of the archived payment method, such
+      as Credit Card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPaymentMethod} has archived payment method name {String}'
+  - name: archived_valid_to
+    description: Records the timestamp when the archived payment method ceases to
+      be effective, formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPaymentMethod} has archived valid to {DateTime}'
+  - name: archived_payment_method_id
+    description: Identifies a specific archived payment method record using a unique
+      numeric key.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPaymentMethod} has archived payment method id {Integer}'
+- concept: ArchivedPerson
+  type: EntityType
+  description: An archived record of a person (user or employee) including identity,
+    authentication, contact, role, and temporal validity details.
+  relationships:
+  - name: archived_valid_from
+    description: Indicates the date and time when this archived person record became
+      effective, in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived valid from {DateTime}'
+  - name: archived_full_name
+    description: The person's full legal or formal name as recorded in the archive.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived full name {String}'
+  - name: archived_custom_fields
+    description: Stores structured employee attributes including hire date, job title,
+      sales territory, commission rate, and languages in JSON format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived custom fields {String}'
+  - name: archived_is_permitted_to_logon
+    description: Indicates whether the archived person's account is authorized to
+      authenticate and access the system.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived is permitted to logon {Boolean}'
+  - name: archived_search_name
+    description: A concatenated search field combining preferred and full name for
+      optimized lookup.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived search name {String}'
+  - name: archived_user_preferences
+    description: Stores the archived person's interface and regional settings in JSON
+      format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived user preferences {String}'
+  - name: archived_email_address
+    description: The primary email address used for communication and notifications
+      with the archived person.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived email address {String}'
+  - name: archived_preferred_name
+    description: The informal or chosen name the person prefers to be called.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived preferred name {String}'
+  - name: archived_fax_number
+    description: The fax number for document transmission associated with the archived
+      person, formatted as (XXX) XXX-XXXX.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived fax number {String}'
+  - name: archived_is_external_logon_provider
+    description: Flags whether authentication for the archived person is delegated
+      to an external identity provider.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived is external logon provider {Boolean}'
+  - name: archived_is_system_user
+    description: Indicates whether the archived account represents a system-level
+      user rather than a human.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived is system user {Boolean}'
+  - name: archived_logon_name
+    description: The unique login identifier, typically an email address, or 'NO LOGON'
+      when access is disabled.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived logon name {String}'
+  - name: archived_is_employee
+    description: Specifies whether the archived person is an internal employee of
+      the organization.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived is employee {Boolean}'
+  - name: archived_phone_number
+    description: The primary contact phone number for the archived person, formatted
+      as (XXX) XXX-XXXX.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived phone number {String}'
+  - name: archived_valid_to
+    description: Indicates the date and time when this archived person record ceased
+      to be effective, in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived valid to {DateTime}'
+  - name: lasteditedby
+    description: Identifies the user who last modified this archived person record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has lasteditedby {Integer}'
+  - name: archived_is_salesperson
+    description: Denotes whether the archived person holds a sales role with associated
+      permissions.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived is salesperson {Boolean}'
+  - name: archived_other_languages
+    description: Lists additional languages spoken by the employee as an array of
+      language names.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has archived other languages {String}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedPerson} has {Person}'
+- concept: ArchivedStateProvince
+  type: EntityType
+  relationships:
+  - name: archived_border
+    description: The geographic boundary of the state or province stored as WKT polygon
+      or multipolygon geometry.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has archived border {String}'
+  - name: countryid
+    description: Identifies the country to which the state or province belongs.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has countryid {Integer}'
+  - name: archived_valid_from
+    description: The timestamp when the state or province record became effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has archived valid from {DateTime}'
+  - name: archived_latest_recorded_population
+    description: The most recent population count recorded for the state or province.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has archived latest recorded population {Integer}'
+  - name: archived_valid_to
+    description: The timestamp when the state or province record ceases to be effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has archived valid to {DateTime}'
+  - name: archived_state_province_code
+    description: The two-letter postal code that uniquely identifies a state or province.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has archived state province code {String}'
+  - name: archived_sales_territory
+    description: The sales territory region assigned to the state or province for
+      sales management.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has archived sales territory {String}'
+  - name: archived_state_province_name
+    description: The full official name of the state or province.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has archived state province name {String}'
+  - name: lasteditedby
+    description: Identifies the user who last modified the state or province record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has lasteditedby {Integer}'
+  - name: state_province
+    roles:
+    - concept: StateProvince
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStateProvince} has {StateProvince}'
+- concept: ArchivedStockGroup
+  type: EntityType
+  relationships:
+  - name: archived_stock_group_name
+    description: Business name describing the archived stock group, such as Footwear.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockGroup} has archived stock group name {String}'
+  - name: archived_stock_group_id
+    description: Unique numeric identifier for the archived stock group.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockGroup} has archived stock group id {Integer}'
+  - name: lasteditedby
+    description: Identifies the user who last modified the archived stock group record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockGroup} has lasteditedby {Integer}'
+  - name: archived_valid_to
+    description: Timestamp when the archived stock group record ceases to be effective,
+      formatted YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockGroup} has archived valid to {DateTime}'
+  - name: archived_valid_from
+    description: Timestamp when the archived stock group record becomes effective,
+      formatted YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockGroup} has archived valid from {DateTime}'
+- concept: ArchivedStockItem
+  type: EntityType
+  description: Archived version of a stock item including all product details, pricing,
+    attributes, and validity period.
+  relationships:
+  - name: outerpackageid
+    description: Identifier for the outer packaging configuration used in shipping
+      or storage.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has outerpackageid {Integer}'
+  - name: lasteditedby
+    description: Identifies the user who last modified the archived stock item record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has lasteditedby {Integer}'
+  - name: archived_unit_price
+    description: Standard price per single unit of the product.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived unit price {Decimal}'
+  - name: archived_brand
+    description: Brand name under which the product is sold.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived brand {String}'
+  - name: archived_size
+    description: Size designation or scale such as clothing sizes or model scales.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived size {String}'
+  - name: archived_lead_time_days
+    description: Number of days to replenish or receive the item after ordering.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived lead time days {Integer}'
+  - name: archived_barcode
+    description: Unique barcode identifier assigned to the product.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived barcode {String}'
+  - name: archived_tags
+    description: Lists descriptive product tags like comfort, control type, or storage
+      capacity as a text array.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived tags {String}'
+  - name: unitpackageid
+    description: Identifier for the individual unit packaging type.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has unitpackageid {Integer}'
+  - name: archived_custom_fields
+    description: Contains flexible product attributes like manufacture country, age
+      range, and product range in JSON format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived custom fields {String}'
+  - name: archived_typical_weight_per_unit
+    description: Typical weight per unit, likely in kilograms.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived typical weight per unit {Decimal}'
+  - name: colorid
+    description: Numeric code identifying the product's color variant.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has colorid {Integer}'
+  - name: archived_stock_item_name
+    description: The complete product name identifying type, color, and size or scale.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived stock item name {String}'
+  - name: archived_recommended_retail_price
+    description: Manufacturer's suggested retail price for the product.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived recommended retail price {Decimal}'
+  - name: archived_internal_comments
+    description: Stores internal organizational notes about the archived stock item
+      for reference.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived internal comments {String}'
+  - name: archived_valid_to
+    description: Specifies the effective end date and time of the archived stock item
+      record in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived valid to {DateTime}'
+  - name: archived_is_chiller_stock
+    description: Flag indicating if the item requires chilled storage.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived is chiller stock {Boolean}'
+  - name: archived_marketing_comments
+    description: Marketing comments highlighting product features and target use cases.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived marketing comments {String}'
+  - name: archived_search_details
+    description: Provides a concatenated search description with product name, color,
+      scale, and key attributes.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived search details {String}'
+  - name: archived_tax_rate
+    description: Applicable tax rate percentage for the product.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived tax rate {Decimal}'
+  - name: archived_quantity_per_outer
+    description: Number of individual units per outer packaging or carton.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived quantity per outer {Integer}'
+  - name: archived_valid_from
+    description: Specifies the effective start date and time of the archived stock
+      item record in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has archived valid from {DateTime}'
+  - name: supplier
+    roles:
+    - concept: Supplier
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has {Supplier}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedStockItem} has {StockItem}'
+- concept: ArchivedSupplier
+  type: EntityType
+  description: Archived snapshot of supplier master data including banking details,
+    addresses, payment terms, and validity period.
+  relationships:
+  - name: deliveryaddressline2
+    description: Holds the street name and number for the supplier's delivery location.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has deliveryaddressline2 {String}'
+  - name: archived_bank_account_name
+    description: Name registered on the supplier's bank account for payment processing
+      at time of archiving.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived bank account name {String}'
+  - name: archived_valid_from
+    description: Shows the timestamp when the archived supplier record becomes effective,
+      in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived valid from {DateTime}'
+  - name: postaladdressline2
+    description: Contains the city or locality for the supplier's postal mailing address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has postaladdressline2 {String}'
+  - name: lasteditedby
+    description: Identifies the user who last modified the archived supplier record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has lasteditedby {Integer}'
+  - name: deliverycityid
+    description: Identifies the city where deliveries are made for the supplier in
+      this archived snapshot.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has deliverycityid {Integer}'
+  - name: archived_supplier_reference
+    description: External reference code used by partners or procurement systems to
+      identify the supplier.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived supplier reference {String}'
+  - name: archived_delivery_postal_code
+    description: Specifies the postal code for the supplier's delivery address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived delivery postal code {String}'
+  - name: postaladdressline1
+    description: Records the first line of the supplier's postal mailing address,
+      usually a PO Box.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has postaladdressline1 {String}'
+  - name: archived_supplier_id
+    description: Unique identifier for the archived supplier record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived supplier id {Integer}'
+  - name: archived_delivery_location
+    description: Provides a textual description of the supplier's delivery location.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived delivery location {String}'
+  - name: archived_fax_number
+    description: Records the supplier's fax number for document transmission, formatted
+      as a phone number with area code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived fax number {String}'
+  - name: archived_phone_number
+    description: Primary telephone number for contacting the supplier's business.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived phone number {String}'
+  - name: archived_bank_account_code
+    description: Bank routing or sort code for domestic transfers to the supplier's
+      account.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived bank account code {String}'
+  - name: deliveryaddressline1
+    description: Captures the first line of the supplier's delivery address, such
+      as building, floor, or suite.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has deliveryaddressline1 {String}'
+  - name: archived_internal_comments
+    description: Internal operational notes about supplier contact preferences or
+      special handling instructions.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived internal comments {String}'
+  - name: primarycontactpersonid
+    description: Identifies the primary contact person for the supplier in this archived
+      snapshot.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has primarycontactpersonid {Integer}'
+  - name: archived_bank_account_number
+    description: Bank account number used for electronic payments to the supplier.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived bank account number {String}'
+  - name: archived_bank_account_branch
+    description: Branch location of the financial institution holding the supplier's
+      bank account.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived bank account branch {String}'
+  - name: archived_postal_postal_code
+    description: Indicates the postal code for the supplier's postal mailing address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived postal postal code {String}'
+  - name: archived_supplier_name
+    description: Legal or trading name of the supplier at time of archiving.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived supplier name {String}'
+  - name: archived_bank_international_code
+    description: International bank identifier (e.g., SWIFT/BIC) for cross-border
+      payments to the supplier.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived bank international code {String}'
+  - name: archived_valid_to
+    description: Shows the timestamp when the archived supplier record ceases to be
+      effective, in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived valid to {DateTime}'
+  - name: archived_payment_days
+    description: Number of days allowed for payment after invoice receipt per supplier
+      payment terms.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived payment days {Integer}'
+  - name: archived_website_url
+    description: Stores the supplier's official website URL for reference and communication.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has archived website url {String}'
+  - name: alternatecontactpersonid
+    description: Identifies the alternate contact person for the supplier in this
+      archived snapshot.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has alternatecontactpersonid {Integer}'
+  - name: postalcityid
+    description: Identifies the city used for the supplier's postal mailing address
+      in this archived snapshot.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has postalcityid {Integer}'
+  - name: delivery_method
+    roles:
+    - concept: DeliveryMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has {DeliveryMethod}'
+  - name: supplier_category
+    roles:
+    - concept: SupplierCategory
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplier} has {SupplierCategory}'
+- concept: ArchivedSupplierCategory
+  type: EntityType
+  relationships:
+  - name: archived_last_edited_by
+    description: Identifies the user who last edited the archived supplier category
+      record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplierCategory} has archived last edited by {Integer}'
+  - name: archived_valid_from
+    description: Timestamp when the archived supplier category became effective, format
+      YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplierCategory} has archived valid from {DateTime}'
+  - name: archived_supplier_category_id
+    description: Unique identifier for an archived supplier category.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplierCategory} has archived supplier category id {Integer}'
+  - name: archived_supplier_category_name
+    description: Name of the archived supplier category, such as Courier.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplierCategory} has archived supplier category name {String}'
+  - name: archived_valid_to
+    description: Timestamp when the archived supplier category ceased to be effective,
+      format YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedSupplierCategory} has archived valid to {DateTime}'
+- concept: ArchivedTransactionType
+  type: EntityType
+  description: Archived version of transaction type definitions with effective date
+    ranges.
+  relationships:
+  - name: archived_transaction_type_name
+    description: Descriptive name identifying the archived transaction type, such
+      as Contra.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedTransactionType} has archived transaction type name {String}'
+  - name: archived_transaction_type_id
+    description: Unique identifier for each archived transaction type definition.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedTransactionType} has archived transaction type id {Integer}'
+  - name: lasteditedby
+    description: Identifies the user who last modified the archived transaction type
+      record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedTransactionType} has lasteditedby {Integer}'
+  - name: archived_valid_to
+    description: Effective end date and time of the archived transaction type in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedTransactionType} has archived valid to {DateTime}'
+  - name: archived_valid_from
+    description: Effective start date and time of the archived transaction type in
+      YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ArchivedTransactionType} has archived valid from {DateTime}'
+- concept: BuyingGroupArchive
+  type: EntityType
+  relationships:
+  - name: archived_last_edited_by
+    description: References the user who most recently updated the buying group record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{BuyingGroupArchive} has archived last edited by {Integer}'
+  - name: archived_buying_group_name
+    description: Provides the descriptive name assigned to the buying group.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{BuyingGroupArchive} has archived buying group name {String}'
+  - name: archived_buying_group_id
+    description: Identifies each buying group with a unique numeric code.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{BuyingGroupArchive} has archived buying group id {Integer}'
+  - name: archived_valid_from
+    description: Indicates the date and time when the buying group record becomes
+      effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{BuyingGroupArchive} has archived valid from {DateTime}'
+  - name: archived_valid_to
+    description: Indicates the date and time when the buying group record ceases to
+      be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{BuyingGroupArchive} has archived valid to {DateTime}'
+- concept: Buyinggroups
+  type: EntityType
+  description: Groups of customers that buy together, such as franchise chains.
+  identify_by:
+  - buyinggroupid
+  relationships:
+  - name: validfrom
+    description: Timestamp indicating when the buying group record becomes effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Buyinggroups} has validfrom {DateTime}'
+  - name: validto
+    description: Timestamp indicating when the buying group record ceases to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Buyinggroups} has validto {DateTime}'
+  - name: buyinggroupid
+    description: Unique identifier for a buying group, linking customers and special
+      deals to their purchasing collective.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Buyinggroups} is identified by buyinggroupid {Integer}'
+  - name: buyinggroupname
+    description: Name of the buying group representing a collective of customers for
+      procurement purposes.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Buyinggroups} has buyinggroupname {String}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Buyinggroups} has {Person}'
+- concept: City
+  type: EntityType
+  identify_by:
+  - city_id
+  relationships:
+  - name: city_name
+    description: Name of the city, such as Albany or Alexandria.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{City} has city name {String}'
+  - name: latest_recorded_population
+    description: Most recent population count recorded for the city.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{City} has latest recorded population {Integer}'
+  - name: location
+    description: Geographic location of the city as a WKT point with longitude and
+      latitude.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{City} has location {String}'
+  - name: valid_from
+    description: Timestamp when the city record became valid, formatted as YYYY-MM-DD
+      HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{City} has valid from {DateTime}'
+  - name: valid_to
+    description: Timestamp when the city record ceased to be valid.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{City} has valid to {DateTime}'
+  - name: city_id
+    description: Unique identifier for a city, referenced by customer delivery and
+      postal cities, supplier delivery and postal cities, and system delivery city.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{City} is identified by city id {Integer}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{City} has {Person}'
+  - name: state_province
+    roles:
+    - concept: StateProvince
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{City} has {StateProvince}'
+- concept: ColdRoomTemperature
+  type: EntityType
+  description: Temperature readings recorded for cold rooms, including measurement
+    time and validity period.
+  relationships:
+  - name: valid_from
+    description: Indicates the start date and time when this temperature record becomes
+      effective, formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperature} has valid from {DateTime}'
+  - name: recorded_when
+    description: Records the exact date and time the temperature was measured, formatted
+      as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperature} has recorded when {DateTime}'
+  - name: valid_to
+    description: Specifies the date and time after which this temperature record is
+      no longer valid.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperature} has valid to {DateTime}'
+  - name: temperature
+    description: Stores the cold room temperature in degrees Celsius at the recording
+      moment.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperature} has temperature {Decimal}'
+  - name: coldroomsensornumber
+    description: Identifies the specific sensor that captured the temperature reading.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperature} has coldroomsensornumber {Integer}'
+  - name: cold_room_temperature_id
+    description: Identifies each individual cold room temperature reading.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperature} has cold room temperature id {Integer}'
+- concept: ColdRoomTemperatureArchive
+  type: EntityType
+  description: Archived records of cold room temperature readings with validity periods.
+  relationships:
+  - name: coldroomsensornumber
+    description: Identifies the sensor that captured the temperature reading in the
+      cold room.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperatureArchive} has coldroomsensornumber {Integer}'
+  - name: archived_cold_room_temperature_id
+    description: Uniquely identifies each archived cold room temperature reading.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperatureArchive} has archived cold room temperature id {Integer}'
+  - name: archived_recorded_when
+    description: Records the exact date and time the temperature was measured, formatted
+      as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperatureArchive} has archived recorded when {DateTime}'
+  - name: archived_temperature
+    description: Stores the measured temperature in degrees Celsius for the cold room
+      at the recorded time.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperatureArchive} has archived temperature {Decimal}'
+  - name: archived_valid_to
+    description: Indicates the end date and time when this temperature record ceases
+      to be effective, formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperatureArchive} has archived valid to {DateTime}'
+  - name: archived_valid_from
+    description: Indicates the start date and time when this temperature record becomes
+      effective, formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ColdRoomTemperatureArchive} has archived valid from {DateTime}'
+- concept: Color
+  type: EntityType
+  identify_by:
+  - color_id
+  relationships:
+  - name: color_id
+    description: Identifies a color uniquely and links to stock items that use this
+      color.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Color} is identified by color id {Integer}'
+  - name: color_name
+    description: Provides the descriptive name of the color, such as Azure or Black.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Color} has color name {String}'
+  - name: valid_from
+    description: Records the date and time (YYYY-MM-DD HH:MM:SS) when the color becomes
+      effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Color} has valid from {DateTime}'
+  - name: valid_to
+    description: Records the date and time when the color ceases to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Color} has valid to {DateTime}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Color} has {Person}'
+- concept: Country
+  type: EntityType
+  identify_by:
+  - country_id
+  relationships:
+  - name: country_name
+    description: Commonly used name of the country in everyday business contexts.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has country name {String}'
+  - name: subregion
+    description: Subregion within the region where the country resides.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has subregion {String}'
+  - name: region
+    description: Broader geographical region grouping the country.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has region {String}'
+  - name: valid_to
+    description: Timestamp when this country record ceased to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has valid to {DateTime}'
+  - name: formal_name
+    description: Official legal name of the country as recognized internationally.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has formal name {String}'
+  - name: continent
+    description: Continent where the country is geographically located.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has continent {String}'
+  - name: country_id
+    description: Unique numeric identifier for each country, referenced by state/province
+      records to link them to their country.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Country} is identified by country id {Integer}'
+  - name: isoalpha3code
+    description: Three-letter ISO 3166-1 alpha-3 code identifying the country.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has isoalpha3code {String}'
+  - name: iso_numeric_code
+    description: Numeric ISO 3166-1 code assigned to the country.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has iso numeric code {Integer}'
+  - name: valid_from
+    description: Timestamp when this country record became effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has valid from {DateTime}'
+  - name: country_type
+    description: Classification of the country such as UN Member State.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has country type {String}'
+  - name: border
+    description: Geographic boundary of the country stored as WKT polygon or multipolygon.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has border {String}'
+  - name: latest_recorded_population
+    description: Most recent population count recorded for the country.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has latest recorded population {Integer}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has {Person}'
+- concept: CustomerCategory
+  type: EntityType
+  description: Customer types, for example Novelty Shop or Supermarket.
+  identify_by:
+  - customer_category_id
+  relationships:
+  - name: customer_category_name
+    description: Provides the descriptive name for the customer category, such as
+      Agent, Wholesaler, or Supermarket.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategory} has customer category name {String}'
+  - name: valid_to
+    description: Records the date and time when the customer category ceases to be
+      effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategory} has valid to {DateTime}'
+  - name: valid_from
+    description: Records the date and time when the customer category becomes effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategory} has valid from {DateTime}'
+  - name: customer_category_id
+    description: Uniquely identifies each customer category and connects it to customers,
+      archived customers, and special deals.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{CustomerCategory} is identified by customer category id {Integer}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategory} has {Person}'
+- concept: CustomerCategoryArchive
+  type: EntityType
+  relationships:
+  - name: archived_valid_from
+    description: Timestamp when the archived category record becomes effective, formatted
+      YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategoryArchive} has archived valid from {DateTime}'
+  - name: archived_customer_category_name
+    description: Business name classifying the customer category, such as Retailer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategoryArchive} has archived customer category name {String}'
+  - name: archived_valid_to
+    description: Timestamp when the archived category record ceases to be effective,
+      formatted YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategoryArchive} has archived valid to {DateTime}'
+  - name: archived_customer_category_id
+    description: Unique identifier for each archived customer category record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategoryArchive} has archived customer category id {Integer}'
+  - name: lasteditedby
+    description: Identifies the user who last modified the archived category record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerCategoryArchive} has lasteditedby {Integer}'
+- concept: Customer
+  type: EntityType
+  description: Customers, one row per customer account. A customer may be billed to
+    another account.
+  identify_by:
+  - customer_id
+  relationships:
+  - name: postaladdressline1
+    description: Postal address line 1 captures the primary mailing address line,
+      typically a PO Box number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has postaladdressline1 {String}'
+  - name: valid_to
+    description: Valid to marks the date and time when the customer record expires.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has valid to {DateTime}'
+  - name: standard_discount_percentage
+    description: Default discount percentage applied to the customer's orders.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has standard discount percentage {Decimal}'
+  - name: phone_number
+    description: Primary contact phone number for the customer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has phone number {String}'
+  - name: run_position
+    description: Sequence position of the customer on the delivery route.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has run position {String}'
+  - name: deliveryaddressline1
+    description: First line of the delivery address, typically unit or suite.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has deliveryaddressline1 {String}'
+  - name: credit_limit
+    description: Maximum credit amount extended to the customer for purchasing on
+      account.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has credit limit {Decimal}'
+  - name: website_url
+    description: Website address of the customer organization.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has website url {String}'
+  - name: delivery_run
+    description: Identifier for the delivery route assigned to the customer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has delivery run {String}'
+  - name: account_opened_date
+    description: Date the customer account was established, in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has account opened date {Date}'
+  - name: customer_name
+    description: Name of the customer organization, including branch or location designation.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has customer name {String}'
+  - name: delivery_postal_code
+    description: Delivery postal code identifies the ZIP code where goods are shipped.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has delivery postal code {String}'
+  - name: payment_days
+    description: Days the customer has to pay an invoice.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has payment days {Integer}'
+  - name: postal_postal_code
+    description: Postal postal code holds the ZIP code for the customer's mailing
+      address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has postal postal code {String}'
+  - name: delivery_location
+    description: Delivery location stores the geographic coordinates (longitude, latitude)
+      of the shipment destination.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has delivery location {String}'
+  - name: is_statement_sent
+    description: Flag indicating whether a statement has been sent to the customer.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has is statement sent {Boolean}'
+  - name: postaladdressline2
+    description: Postal address line 2 records the city or locality for the mailing
+      address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has postaladdressline2 {String}'
+  - name: deliveryaddressline2
+    description: Second line of the delivery address, typically street number and
+      name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has deliveryaddressline2 {String}'
+  - name: fax_number
+    description: Fax number for the customer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has fax number {String}'
+  - name: is_on_credit_hold
+    description: Flag indicating whether the customer is on credit hold.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has is on credit hold {Boolean}'
+  - name: customer_id
+    description: Unique identifier for each customer, used to link orders, invoices,
+      and transactions to the customer.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Customer} is identified by customer id {Integer}'
+  - name: valid_from
+    description: Valid from marks the date and time (YYYY-MM-DD HH:MM:SS) when the
+      customer record becomes active.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has valid from {DateTime}'
+  - name: deliverycityid
+    roles:
+    - concept: City
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {City}'
+  - name: postalcityid
+    roles:
+    - concept: City
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {City}'
+  - name: buyinggroups
+    roles:
+    - concept: Buyinggroups
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {Buyinggroups}'
+  - name: lasteditedby
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {Person}'
+  - name: primarycontactpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {Person}'
+  - name: alternatecontactpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {Person}'
+  - name: delivery_method
+    roles:
+    - concept: DeliveryMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {DeliveryMethod}'
+  - name: customer
+    roles:
+    - concept: Customer
+      name: customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {Customer:customer}'
+  - name: customer_category
+    roles:
+    - concept: CustomerCategory
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has {CustomerCategory}'
+- concept: CustomerTransaction
+  type: EntityType
+  description: 'Customer ledger: invoices (positive amounts) and payments received
+    (negative amounts).'
+  relationships:
+  - name: transaction_date
+    description: Records the calendar date when the customer transaction occurred
+      in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has transaction date {Date}'
+  - name: outstanding_balance
+    description: Shows the remaining balance owed after the customer transaction,
+      currently only 0 in samples.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has outstanding balance {Decimal}'
+  - name: is_finalized
+    description: Flags whether the customer transaction has been finalized, with sample
+      value True.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has is finalized {Boolean}'
+  - name: last_edited_when
+    description: Records the timestamp of the most recent edit to the customer transaction
+      in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has last edited when {DateTime}'
+  - name: finalization_date
+    description: Indicates the calendar date the customer transaction was finalized,
+      stored as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has finalization date {Date}'
+  - name: amount_excluding_tax
+    description: Stores the pre-tax monetary amount of the customer transaction, such
+      as 648 or 2160.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has amount excluding tax {Decimal}'
+  - name: transaction_id
+    description: Uniquely identifies each customer transaction with an integer value
+      such as 2, 5, or 15.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has transaction id {Integer}'
+  - name: tax_amount
+    description: Captures the tax charged on the customer transaction, with values
+      like 97.2 or 324.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has tax amount {Decimal}'
+  - name: transaction_amount
+    description: Represents the total customer transaction amount including tax, for
+      example 745.2 or 2484.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has transaction amount {Decimal}'
+  - name: payment_method
+    roles:
+    - concept: PaymentMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has {PaymentMethod}'
+  - name: invoice
+    roles:
+    - concept: Invoice
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has {Invoice}'
+  - name: customer
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has {Customer}'
+  - name: transaction_type
+    roles:
+    - concept: TransactionType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has {TransactionType}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CustomerTransaction} has {Person}'
+- concept: DeliveryMethod
+  type: EntityType
+  description: A method used for delivering shipments, including its effective date
+    range.
+  identify_by:
+  - delivery_method_id
+  relationships:
+  - name: delivery_method_id
+    description: Unique identifier for a delivery method, referenced by customers,
+      invoices, purchase orders, suppliers, and archived customers to link their preferred
+      shipping option.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{DeliveryMethod} is identified by delivery method id {Integer}'
+  - name: valid_from
+    description: Timestamp indicating when the delivery method becomes effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DeliveryMethod} has valid from {DateTime}'
+  - name: delivery_method_name
+    description: Descriptive name of the delivery method such as Post, Courier, Delivery
+      Van, Customer Collect, or Chilled Van.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DeliveryMethod} has delivery method name {String}'
+  - name: valid_to
+    description: Timestamp indicating when the delivery method ceases to be valid,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DeliveryMethod} has valid to {DateTime}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DeliveryMethod} has {Person}'
+- concept: Invoice
+  type: EntityType
+  description: Invoices, one per order shipped. A credit note is an invoice with is_credit_note
+    true.
+  identify_by:
+  - invoice_id
+  relationships:
+  - name: customer_purchase_order_number
+    description: Stores the customer's purchase order reference number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has customer purchase order number {String}'
+  - name: run_position
+    description: Indicates the delivery sequence position within its run.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has run position {String}'
+  - name: delivery_run
+    description: Identifies the assigned delivery route or run.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has delivery run {String}'
+  - name: internal_comments
+    description: Stores internal staff notes not shared with customers.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has internal comments {String}'
+  - name: last_edited_when
+    description: Indicates the date and time the invoice record was last modified,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has last edited when {DateTime}'
+  - name: total_chiller_items
+    description: Counts the number of chilled or refrigerated line items.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has total chiller items {Integer}'
+  - name: confirmed_received_by
+    description: Records the name of the person confirming delivery receipt.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has confirmed received by {String}'
+  - name: delivery_instructions
+    description: Contains the delivery address and location details.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has delivery instructions {String}'
+  - name: confirmed_delivery_time
+    description: Records the confirmed delivery completion timestamp in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has confirmed delivery time {DateTime}'
+  - name: comments
+    description: Holds general notes about the invoice.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has comments {String}'
+  - name: is_credit_note
+    description: Indicates whether the invoice is a credit note.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has is credit note {Boolean}'
+  - name: returned_delivery_data
+    description: Stores JSON-formatted delivery tracking data with events, timestamps,
+      driver, GPS, and recipient.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has returned delivery data {String}'
+  - name: invoice_id
+    description: Identifies the invoice and links to related customer transactions,
+      line items, and stock movements.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Invoice} is identified by invoice id {Integer}'
+  - name: total_dry_items
+    description: Counts the number of dry goods line items.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has total dry items {Integer}'
+  - name: invoice_date
+    description: Records the invoice issue date in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has invoice date {Date}'
+  - name: credit_note_reason
+    description: Captures the reason for issuing a credit note.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has credit note reason {String}'
+  - name: delivery_method
+    roles:
+    - concept: DeliveryMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {DeliveryMethod}'
+  - name: lasteditedby
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Person}'
+  - name: accountspersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Person}'
+  - name: salespersonpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Person}'
+  - name: contactpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Person}'
+  - name: packedbypersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Person}'
+  - name: billtocustomerid
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Customer}'
+  - name: customerid
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Customer}'
+  - name: order
+    roles:
+    - concept: Order
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Invoice} has {Order}'
+- concept: InvoiceLine
+  type: EntityType
+  description: Represents a line item on an invoice, capturing product details, pricing,
+    tax, and profit information.
+  relationships:
+  - name: unit_price
+    description: Specifies the pre-tax price per unit of the product on this invoice
+      line.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has unit price {Decimal}'
+  - name: quantity
+    description: Records the number of units sold for this invoice line item.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has quantity {Integer}'
+  - name: invoice_line_id
+    description: Uniquely identifies each invoice line item with an integer value.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has invoice line id {Integer}'
+  - name: extended_price
+    description: Line total including tax.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has extended price {Decimal}'
+  - name: tax_rate
+    description: Indicates the tax rate percentage applied to this invoice line item.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has tax rate {Decimal}'
+  - name: tax_amount
+    description: Shows the calculated tax amount for this invoice line based on quantity,
+      unit price, and tax rate.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has tax amount {Decimal}'
+  - name: last_edited_when
+    description: Records the date and time the invoice line was last modified, in
+      YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has last edited when {DateTime}'
+  - name: description
+    description: Describes the product or service sold on the invoice line, including
+      attributes such as color and size.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has description {String}'
+  - name: line_profit
+    description: Profit on the line, before tax.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has line profit {Decimal}'
+  - name: invoice
+    roles:
+    - concept: Invoice
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has {Invoice}'
+  - name: package_type
+    roles:
+    - concept: PackageType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has {PackageType}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has {StockItem}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{InvoiceLine} has {Person}'
+- concept: Order
+  type: EntityType
+  description: Customer orders. An order is invoiced once its goods are picked.
+  identify_by:
+  - order_id
+  relationships:
+  - name: picking_completed_when
+    description: Timestamp when order picking was completed, formatted as YYYY-MM-DD
+      HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has picking completed when {DateTime}'
+  - name: order_date
+    description: Date the order was placed, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has order date {Date}'
+  - name: customer_purchase_order_number
+    description: Customer's purchase order number associated with the order, e.g.,
+      17639.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has customer purchase order number {String}'
+  - name: comments
+    description: General comments about the order.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has comments {String}'
+  - name: order_id
+    description: Unique identifier for each order, linking invoices, order lines,
+      and backorder orders.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Order} is identified by order id {Integer}'
+  - name: internal_comments
+    description: Internal notes about the order.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has internal comments {String}'
+  - name: delivery_instructions
+    description: Special delivery instructions for the order.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has delivery instructions {String}'
+  - name: last_edited_when
+    description: Timestamp when the order was last edited, formatted as YYYY-MM-DD
+      HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has last edited when {DateTime}'
+  - name: is_undersupply_backordered
+    description: Flag indicating whether the order is backordered due to undersupply.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has is undersupply backordered {Boolean}'
+  - name: expected_delivery_date
+    description: Date the order is expected to be delivered, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has expected delivery date {Date}'
+  - name: customer
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has {Customer}'
+  - name: salespersonpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has {Person}'
+  - name: contactpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has {Person}'
+  - name: lasteditedby
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has {Person}'
+  - name: pickedbypersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has {Person}'
+  - name: order
+    roles:
+    - concept: Order
+      name: order
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has {Order:order}'
+- concept: OrderLine
+  type: EntityType
+  relationships:
+  - name: unit_price
+    description: Records the price per single unit for this order line.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has unit price {Decimal}'
+  - name: description
+    description: Describes the product with name, color, size, and other distinguishing
+      attributes.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has description {String}'
+  - name: last_edited_when
+    description: Records the timestamp when this order line was last modified in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has last edited when {DateTime}'
+  - name: tax_rate
+    description: Tax rate in percent.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has tax rate {Decimal}'
+  - name: picked_quantity
+    description: Shows the quantity of units picked for fulfillment on this order
+      line.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has picked quantity {Integer}'
+  - name: quantity
+    description: Specifies the number of units ordered for this line item.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has quantity {Integer}'
+  - name: picking_completed_when
+    description: Captures the timestamp when picking for this order line was completed
+      in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has picking completed when {DateTime}'
+  - name: order_line_id
+    description: Identifies each line item within an order.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has order line id {Integer}'
+  - name: package_type
+    roles:
+    - concept: PackageType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has {PackageType}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has {Person}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has {StockItem}'
+  - name: order
+    roles:
+    - concept: Order
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{OrderLine} has {Order}'
+- concept: PackageType
+  type: EntityType
+  identify_by:
+  - package_type_id
+  relationships:
+  - name: package_type_name
+    description: Provides the descriptive name of the package type, such as Bag, Box,
+      or Can.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PackageType} has package type name {String}'
+  - name: valid_to
+    description: Specifies the date and time until which the package type remains
+      effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PackageType} has valid to {DateTime}'
+  - name: package_type_id
+    description: Identifies a package type and links it to invoice lines, order lines,
+      purchase order lines, and stock item packaging definitions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{PackageType} is identified by package type id {Integer}'
+  - name: valid_from
+    description: Indicates the date and time when the package type becomes effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PackageType} has valid from {DateTime}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PackageType} has {Person}'
+- concept: PaymentMethod
+  type: EntityType
+  description: A method of payment such as Cash, Check, Credit Card, or EFT, including
+    its effective date range.
+  identify_by:
+  - payment_method_id
+  relationships:
+  - name: valid_to
+    description: Indicates the effective end date and time when the payment method
+      is no longer valid.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PaymentMethod} has valid to {DateTime}'
+  - name: payment_method_id
+    description: Uniquely identifies each payment method and links it to customer
+      and supplier transactions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{PaymentMethod} is identified by payment method id {Integer}'
+  - name: valid_from
+    description: Indicates the effective start date and time of the payment method
+      in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PaymentMethod} has valid from {DateTime}'
+  - name: payment_method_name
+    description: Specifies the payment method name, such as Cash, Check, Credit Card,
+      or EFT.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PaymentMethod} has payment method name {String}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PaymentMethod} has {Person}'
+- concept: Person
+  type: EntityType
+  description: Employees and customer or supplier contacts.
+  identify_by:
+  - person_id
+  relationships:
+  - name: email_address
+    description: Primary email address for the person.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has email address {String}'
+  - name: search_name
+    description: Concatenated name fields optimized for search functionality.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has search name {String}'
+  - name: phone_number
+    description: Primary contact phone number in (XXX) XXX-XXXX format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has phone number {String}'
+  - name: valid_to
+    description: Indicates the date and time when the employee record ceases to be
+      effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has valid to {DateTime}'
+  - name: is_employee
+    description: Indicates whether the person is an employee of the organization.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has is employee {Boolean}'
+  - name: is_system_user
+    description: Flags whether the person is a system-level user such as a service
+      account.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has is system user {Boolean}'
+  - name: is_external_logon_provider
+    description: Indicates whether authentication uses an external identity provider.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has is external logon provider {Boolean}'
+  - name: full_name
+    description: Full legal or display name of the person, used as customer name in
+      archives.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has full name {String}'
+  - name: is_permitted_to_logon
+    description: Indicates whether the person is allowed to log on to the system.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has is permitted to logon {Boolean}'
+  - name: other_languages
+    description: Lists additional languages spoken by the employee as a JSON array.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has other languages {String}'
+  - name: logon_name
+    description: Username or email for authentication, or 'NO LOGON' placeholder when
+      not permitted.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has logon name {String}'
+  - name: fax_number
+    description: Fax number in (XXX) XXX-XXXX format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has fax number {String}'
+  - name: valid_from
+    description: Indicates the effective start date and time of the employee record
+      in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has valid from {DateTime}'
+  - name: person_id
+    description: Identifies a person uniquely and links to records they last edited.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Person} is identified by person id {Integer}'
+  - name: is_salesperson
+    description: Indicates whether the person holds a sales role.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has is salesperson {Boolean}'
+  - name: user_preferences
+    description: Stores user-specific UI and regional preferences in JSON format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has user preferences {String}'
+  - name: custom_fields
+    description: Stores assorted employee attributes such as hire date, title, sales
+      territory, commission rate, and other languages in a JSON object.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has custom fields {String}'
+  - name: preferred_name
+    description: Informal name used for display and communication.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has preferred name {String}'
+  - name: person
+    roles:
+    - concept: Person
+      name: person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Person} has {Person:person}'
+- concept: PurchaseOrder
+  type: EntityType
+  description: Represents a purchase order placed with a supplier.
+  identify_by:
+  - purchase_order_id
+  relationships:
+  - name: purchase_order_id
+    description: Unique identifier for the purchase order, referenced by order lines,
+      stock transactions, and supplier transactions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{PurchaseOrder} is identified by purchase order id {Integer}'
+  - name: is_order_finalized
+    description: Flag indicating whether the purchase order has been finalized.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has is order finalized {Boolean}'
+  - name: order_date
+    description: Date the purchase order was placed, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has order date {Date}'
+  - name: internal_comments
+    description: Internal comments for internal use regarding the purchase order.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has internal comments {String}'
+  - name: supplier_reference
+    description: Supplier's reference number for the purchase order, alphanumeric
+      format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has supplier reference {String}'
+  - name: comments
+    description: General comments or notes about the purchase order.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has comments {String}'
+  - name: expected_delivery_date
+    description: Expected delivery date for the purchase order, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has expected delivery date {Date}'
+  - name: last_edited_when
+    description: Timestamp of the last edit to the purchase order, formatted as YYYY-MM-DD
+      HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has last edited when {DateTime}'
+  - name: supplier
+    roles:
+    - concept: Supplier
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has {Supplier}'
+  - name: lasteditedby
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has {Person}'
+  - name: contactpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has {Person}'
+  - name: delivery_method
+    roles:
+    - concept: DeliveryMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrder} has {DeliveryMethod}'
+- concept: PurchaseOrderLine
+  type: EntityType
+  description: Lines of a purchase order, counted in outers (supplier packs).
+  relationships:
+  - name: description
+    description: Provides detailed product description including brand, color, style,
+      and size.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has description {String}'
+  - name: received_outers
+    description: Tracks the number of outer packaging units actually received for
+      this line.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has received outers {Integer}'
+  - name: is_order_line_finalized
+    description: Indicates whether this purchase order line has been finalized and
+      closed.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has is order line finalized {Boolean}'
+  - name: last_receipt_date
+    description: Records the date of the most recent goods receipt for this line in
+      YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has last receipt date {Date}'
+  - name: last_edited_when
+    description: Captures the timestamp of the last modification to this line in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has last edited when {DateTime}'
+  - name: ordered_outers
+    description: Records the number of outer packaging units ordered for this line.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has ordered outers {Integer}'
+  - name: purchase_order_line_id
+    description: Identifies each line item within a purchase order.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has purchase order line id {Integer}'
+  - name: expected_unit_price_per_outer
+    description: Specifies the expected unit price per outer packaging unit for this
+      line.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has expected unit price per outer {Decimal}'
+  - name: purchase_order
+    roles:
+    - concept: PurchaseOrder
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has {PurchaseOrder}'
+  - name: package_type
+    roles:
+    - concept: PackageType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has {PackageType}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has {StockItem}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PurchaseOrderLine} has {Person}'
+- concept: SpecialDeal
+  type: EntityType
+  description: Promotions - a discount or special price for a stock item or stock
+    group, for a customer, buying group or customer category, between two dates.
+  relationships:
+  - name: end_date
+    description: Calendar date when the promotional offer expires, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has end date {Date}'
+  - name: last_edited_when
+    description: Timestamp recording the most recent modification of the offer record,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has last edited when {DateTime}'
+  - name: special_deal_id
+    description: Unique identifier that distinguishes each promotional offer in the
+      system.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has special deal id {Integer}'
+  - name: deal_description
+    description: Text summarizing the discount, quarter, product line, and product
+      name for the offer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has deal description {String}'
+  - name: discount_amount
+    description: Absolute monetary value subtracted from the product price under the
+      offer.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has discount amount {Decimal}'
+  - name: unit_price
+    description: Standard selling price of the product linked to the promotional offer.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has unit price {Decimal}'
+  - name: discount_percentage
+    description: Percentage reduction applied to the product price for the offer,
+      e.g., 10 or 15.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has discount percentage {Decimal}'
+  - name: start_date
+    description: Calendar date when the promotional offer becomes active, formatted
+      as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has start date {Date}'
+  - name: stock_group
+    roles:
+    - concept: StockGroup
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has {StockGroup}'
+  - name: buyinggroups
+    roles:
+    - concept: Buyinggroups
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has {Buyinggroups}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has {Person}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has {StockItem}'
+  - name: customer_category
+    roles:
+    - concept: CustomerCategory
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has {CustomerCategory}'
+  - name: customer
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SpecialDeal} has {Customer}'
+- concept: StateProvince
+  type: EntityType
+  description: States and provinces, each with a sales territory.
+  identify_by:
+  - state_province_id
+  relationships:
+  - name: border
+    description: Geographic boundary polygon(s) defining the state or province borders.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has border {String}'
+  - name: state_province_id
+    description: Unique identifier for each state or province, referenced by cities
+      and archived records to link locations.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{StateProvince} is identified by state province id {Integer}'
+  - name: valid_to
+    description: End date when this state or province record ceased to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has valid to {DateTime}'
+  - name: valid_from
+    description: Start date when this state or province record became effective, format
+      YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has valid from {DateTime}'
+  - name: state_province_code
+    description: Standard two-letter code representing the state or province, such
+      as AL or CA.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has state province code {String}'
+  - name: sales_territory
+    description: Sales territory the state belongs to, for example Southeast.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has sales territory {String}'
+  - name: state_province_name
+    description: Full official name of the state or province, e.g., Alabama or California.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has state province name {String}'
+  - name: latest_recorded_population
+    description: Most recent recorded population count for the state or province,
+      e.g., 41,460,453.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has latest recorded population {Integer}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has {Person}'
+  - name: country
+    roles:
+    - concept: Country
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StateProvince} has {Country}'
+- concept: StockGroup
+  type: EntityType
+  description: Product groups, for example Novelty Items or Clothing. A stock item
+    can be in several groups.
+  identify_by:
+  - stock_group_id
+  relationships:
+  - name: stock_group_id
+    description: Unique identifier for a stock group that categorizes inventory items
+      and links to special deals and stock item assignments.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{StockGroup} is identified by stock group id {Integer}'
+  - name: valid_from
+    description: Timestamp in YYYY-MM-DD HH:MM:SS format indicating when the stock
+      group became effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockGroup} has valid from {DateTime}'
+  - name: valid_to
+    description: Timestamp indicating when the stock group ceased to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockGroup} has valid to {DateTime}'
+  - name: stock_group_name
+    description: Descriptive name classifying related products into categories like
+      Novelty Items or Clothing.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockGroup} has stock group name {String}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockGroup} has {Person}'
+- concept: StockItem
+  type: EntityType
+  description: Products the company sells.
+  identify_by:
+  - stock_item_id
+  relationships:
+  - name: search_details
+    description: Stores the searchable product description text used for search indexing
+      and display.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has search details {String}'
+  - name: tags
+    description: Contains a list of descriptive tags for product categorization and
+      filtering, stored as an array.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has tags {String}'
+  - name: unit_price
+    description: Standard selling price per unit, before tax.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has unit price {Decimal}'
+  - name: is_chiller_stock
+    description: Needs refrigeration.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has is chiller stock {Boolean}'
+  - name: brand
+    description: Indicates the brand associated with the stock item.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has brand {String}'
+  - name: custom_fields
+    description: Stores product-specific metadata like country of manufacture and
+      target age range in semi-structured text format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has custom fields {String}'
+  - name: quantity_per_outer
+    description: Defines the number of individual units contained in one outer packaging
+      carton.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has quantity per outer {Integer}'
+  - name: valid_from
+    description: Records the effective start date and time of the stock item in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has valid from {DateTime}'
+  - name: valid_to
+    description: Records the effective end date and time of the stock item record.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has valid to {DateTime}'
+  - name: tax_rate
+    description: Specifies the applicable tax rate percentage for the stock item.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has tax rate {Decimal}'
+  - name: stock_item_name
+    description: Provides the customer-facing name of the stock item.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has stock item name {String}'
+  - name: marketing_comments
+    description: Contains marketing-oriented descriptive comments for customer-facing
+      use.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has marketing comments {String}'
+  - name: typical_weight_per_unit
+    description: Indicates the typical weight of a single unit of the stock item in
+      kilograms.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has typical weight per unit {Decimal}'
+  - name: recommended_retail_price
+    description: Records the manufacturer's suggested retail price for the stock item.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has recommended retail price {Decimal}'
+  - name: barcode
+    description: Provides the unique barcode number assigned to the stock item for
+      scanning and tracking.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has barcode {String}'
+  - name: internal_comments
+    description: Holds internal notes or comments about the stock item for staff reference.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has internal comments {String}'
+  - name: size
+    description: Specifies the size or scale designation of the stock item.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has size {String}'
+  - name: lead_time_days
+    description: States the number of days required to replenish the stock item from
+      the supplier.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has lead time days {Integer}'
+  - name: stock_item_id
+    description: Identifies the stock item and links it to invoice lines, order lines,
+      purchase order lines, special deals, and stock holdings.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{StockItem} is identified by stock item id {Integer}'
+  - name: unitpackageid
+    roles:
+    - concept: PackageType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has {PackageType}'
+  - name: outerpackageid
+    roles:
+    - concept: PackageType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has {PackageType}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has {Person}'
+  - name: supplier
+    roles:
+    - concept: Supplier
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has {Supplier}'
+  - name: color
+    roles:
+    - concept: Color
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItem} has {Color}'
+- concept: StockItemHolding
+  type: EntityType
+  description: Current stock on hand per stock item.
+  relationships:
+  - name: reorder_level
+    description: The minimum stock quantity that triggers a replenishment order for
+      this stock item.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has reorder level {Integer}'
+  - name: last_stocktake_quantity
+    description: The quantity of this stock item recorded during the most recent physical
+      inventory count.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has last stocktake quantity {Integer}'
+  - name: last_cost_price
+    description: The most recent unit cost price paid to acquire this stock item.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has last cost price {Decimal}'
+  - name: last_edited_when
+    description: The date and time in YYYY-MM-DD HH:MM:SS format when this inventory
+      record was last modified.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has last edited when {DateTime}'
+  - name: quantity_on_hand
+    description: The current count of units physically present in inventory for this
+      stock item.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has quantity on hand {Integer}'
+  - name: bin_location
+    description: The alphanumeric code identifying the specific warehouse bin or shelf
+      where this stock item is stored.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has bin location {String}'
+  - name: target_stock_level
+    description: The desired optimal stock quantity to maintain for this stock item.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has target stock level {Integer}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has {Person}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemHolding} has {StockItem}'
+- concept: StockItemStockGroupAssociation
+  type: EntityType
+  description: Which stock groups each stock item belongs to (many to many).
+  relationships:
+  - name: association_id
+    description: Uniquely identifies each association linking a stock item to a stock
+      group.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemStockGroupAssociation} has association id {Integer}'
+  - name: last_edited_when
+    description: Records the date and time the stock item-stock group association
+      was last updated, in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemStockGroupAssociation} has last edited when {DateTime}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemStockGroupAssociation} has {StockItem}'
+  - name: stock_group
+    roles:
+    - concept: StockGroup
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemStockGroupAssociation} has {StockGroup}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemStockGroupAssociation} has {Person}'
+- concept: StockItemTransaction
+  type: EntityType
+  description: 'Stock movements: receipts are positive, issues to customers negative,
+    stocktake adjustments either sign.'
+  relationships:
+  - name: quantity
+    description: Indicates the quantity change in the transaction, with negative values
+      representing reductions like sales or returns.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has quantity {Decimal}'
+  - name: transaction_id
+    description: Uniquely identifies each stock item transaction record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has transaction id {Integer}'
+  - name: transaction_date
+    description: Records the date and time the stock transaction occurred in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has transaction date {DateTime}'
+  - name: last_edited_date
+    description: Shows when the transaction record was last updated, in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has last edited date {DateTime}'
+  - name: stock_item
+    roles:
+    - concept: StockItem
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has {StockItem}'
+  - name: customer
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has {Customer}'
+  - name: supplier
+    roles:
+    - concept: Supplier
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has {Supplier}'
+  - name: invoice
+    roles:
+    - concept: Invoice
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has {Invoice}'
+  - name: purchase_order
+    roles:
+    - concept: PurchaseOrder
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has {PurchaseOrder}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has {Person}'
+  - name: transaction_type
+    roles:
+    - concept: TransactionType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{StockItemTransaction} has {TransactionType}'
+- concept: Supplier
+  type: EntityType
+  description: Represents a supplier organization with its identification, banking,
+    contact, address, and validity details.
+  identify_by:
+  - supplier_id
+  relationships:
+  - name: deliveryaddressline1
+    description: First line of the supplier's delivery address, typically building,
+      suite, or unit level.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has deliveryaddressline1 {String}'
+  - name: website_url
+    description: Official website address of the supplier organization.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has website url {String}'
+  - name: postaladdressline2
+    description: Second line of the postal mailing address, typically the suburb or
+      locality.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has postaladdressline2 {String}'
+  - name: bank_international_code
+    description: International bank code (e.g., SWIFT/BIC) for cross-border payments
+      to the supplier.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has bank international code {String}'
+  - name: postaladdressline1
+    description: First line of the postal mailing address, usually a PO Box number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has postaladdressline1 {String}'
+  - name: postal_postal_code
+    description: Postal code for the supplier's postal mailing address, typically
+      a five-digit ZIP code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has postal postal code {String}'
+  - name: delivery_location
+    description: Geographic coordinates of the delivery location in WKT POINT format
+      with longitude and latitude.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has delivery location {String}'
+  - name: bank_account_number
+    description: Account number for the supplier's bank account used in payment transactions.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has bank account number {String}'
+  - name: bank_account_name
+    description: Name registered on the supplier's bank account for payment processing.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has bank account name {String}'
+  - name: bank_account_branch
+    description: The specific bank branch where the supplier's account is held.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has bank account branch {String}'
+  - name: supplier_id
+    description: Unique identifier for the supplier, used to link purchase orders,
+      stock items, and transactions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Supplier} is identified by supplier id {Integer}'
+  - name: supplier_reference
+    description: An alphanumeric code that identifies the supplier in external or
+      internal systems.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has supplier reference {String}'
+  - name: bank_account_code
+    description: Bank sort code or routing identifier for the supplier's account.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has bank account code {String}'
+  - name: valid_from
+    description: Timestamp when the supplier record becomes effective, formatted as
+      YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has valid from {DateTime}'
+  - name: valid_to
+    description: Timestamp when the supplier record ceases to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has valid to {DateTime}'
+  - name: delivery_postal_code
+    description: Postal code identifying the supplier's delivery location, typically
+      a five-digit ZIP code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has delivery postal code {String}'
+  - name: payment_days
+    description: Number of days allowed for payment to the supplier after invoice
+      receipt.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has payment days {Integer}'
+  - name: internal_comments
+    description: Internal notes about supplier contact preferences or communication
+      guidelines.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has internal comments {String}'
+  - name: phone_number
+    description: Primary telephone number for contacting the supplier.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has phone number {String}'
+  - name: deliveryaddressline2
+    description: Second line of the supplier's delivery address, usually street name
+      and number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has deliveryaddressline2 {String}'
+  - name: supplier_name
+    description: The official legal or trading name of the supplier organization.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has supplier name {String}'
+  - name: fax_number
+    description: Fax number for the supplier, used for document transmission.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has fax number {String}'
+  - name: lasteditedby
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has {Person}'
+  - name: primarycontactpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has {Person}'
+  - name: alternatecontactpersonid
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has {Person}'
+  - name: deliverycityid
+    roles:
+    - concept: City
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has {City}'
+  - name: postalcityid
+    roles:
+    - concept: City
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has {City}'
+  - name: supplier_category
+    roles:
+    - concept: SupplierCategory
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has {SupplierCategory}'
+  - name: delivery_method
+    roles:
+    - concept: DeliveryMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Supplier} has {DeliveryMethod}'
+- concept: SupplierCategory
+  type: EntityType
+  description: A category used to classify suppliers, such as 'Toy Supplier' or 'Clothing
+    Supplier'. Includes lifecycle timestamps indicating when the category is valid.
+  identify_by:
+  - supplier_category_id
+  relationships:
+  - name: supplier_category_id
+    description: Unique identifier for a supplier category, referenced by suppliers
+      and archived suppliers.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{SupplierCategory} is identified by supplier category id {Integer}'
+  - name: valid_from
+    description: Timestamp indicating when the supplier category becomes valid, formatted
+      as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierCategory} has valid from {DateTime}'
+  - name: supplier_category_name
+    description: Name of the supplier category, such as Toy Supplier or Clothing Supplier.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierCategory} has supplier category name {String}'
+  - name: valid_to
+    description: Timestamp indicating when the supplier category is no longer valid.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierCategory} has valid to {DateTime}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierCategory} has {Person}'
+- concept: SupplierTransaction
+  type: EntityType
+  description: Supplier ledger - supplier invoices, payments and credit notes.
+  relationships:
+  - name: amount_excluding_tax
+    description: Transaction amount before tax, expressed in currency units.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has amount excluding tax {Decimal}'
+  - name: supplier_invoice_number
+    description: Supplier-assigned invoice number associated with the transaction.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has supplier invoice number {String}'
+  - name: transaction_amount
+    description: Total transaction amount including tax, expressed in currency units.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has transaction amount {Decimal}'
+  - name: transaction_id
+    description: Unique numeric key identifying each supplier transaction record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has transaction id {Integer}'
+  - name: finalization_date
+    description: Date the transaction was finalized, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has finalization date {Date}'
+  - name: transaction_date
+    description: Date the supplier transaction occurred, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has transaction date {Date}'
+  - name: last_edited_when
+    description: Timestamp of the most recent edit to the transaction record, formatted
+      as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has last edited when {DateTime}'
+  - name: tax_amount
+    description: Tax calculated on the transaction, expressed in currency units.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has tax amount {Decimal}'
+  - name: outstanding_balance
+    description: Remaining unpaid balance for the transaction, expressed in currency
+      units.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has outstanding balance {Decimal}'
+  - name: is_finalized
+    description: Boolean flag indicating whether the transaction has been finalized.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has is finalized {Boolean}'
+  - name: supplier
+    roles:
+    - concept: Supplier
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has {Supplier}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has {Person}'
+  - name: payment_method
+    roles:
+    - concept: PaymentMethod
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has {PaymentMethod}'
+  - name: transaction_type
+    roles:
+    - concept: TransactionType
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has {TransactionType}'
+  - name: purchase_order
+    roles:
+    - concept: PurchaseOrder
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SupplierTransaction} has {PurchaseOrder}'
+- concept: SystemParameter
+  type: EntityType
+  description: Configuration settings for the system including delivery and postal
+    addresses, application settings, and audit information.
+  relationships:
+  - name: postaladdressline2
+    description: Provides the second line of the postal mailing address, usually a
+      building or location name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has postaladdressline2 {String}'
+  - name: delivery_location
+    description: Records the delivery location as a WKT point coordinate.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has delivery location {String}'
+  - name: postal_postal_code
+    description: Stores the postal mailing address postal code in YYMMDD format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has postal postal code {String}'
+  - name: delivery_postal_code
+    description: Stores the delivery address postal code in YYMMDD format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has delivery postal code {String}'
+  - name: application_settings
+    description: Holds JSON-formatted application configuration settings for portals
+      and logging.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has application settings {String}'
+  - name: deliveryaddressline2
+    description: Provides the second line of the delivery address, usually the street
+      address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has deliveryaddressline2 {String}'
+  - name: system_parameter_id
+    description: Identifies the system parameter configuration record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has system parameter id {Integer}'
+  - name: deliveryaddressline1
+    description: Specifies the first line of the delivery address, such as suite or
+      unit number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has deliveryaddressline1 {String}'
+  - name: postaladdressline1
+    description: Specifies the first line of the postal mailing address, often a PO
+      Box number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has postaladdressline1 {String}'
+  - name: last_edited_when
+    description: Records the timestamp of the last modification to the system parameter
+      in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has last edited when {DateTime}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has {Person}'
+  - name: postalcityid
+    roles:
+    - concept: City
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has {City}'
+  - name: deliverycityid
+    roles:
+    - concept: City
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SystemParameter} has {City}'
+- concept: TransactionType
+  type: EntityType
+  description: Kinds of financial and stock transactions, for example Customer Invoice
+    or Stock Receipt.
+  identify_by:
+  - transaction_type_id
+  relationships:
+  - name: valid_from
+    description: Timestamp when the transaction type definition becomes effective,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TransactionType} has valid from {DateTime}'
+  - name: transaction_type_name
+    description: Descriptive label for a transaction type, such as Customer Invoice
+      or Supplier Invoice.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TransactionType} has transaction type name {String}'
+  - name: transaction_type_id
+    description: Unique numeric identifier for a transaction type, referenced in customer,
+      stock item, and supplier transactions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{TransactionType} is identified by transaction type id {Integer}'
+  - name: valid_to
+    description: Timestamp when the transaction type definition ceases to be effective.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TransactionType} has valid to {DateTime}'
+  - name: person
+    roles:
+    - concept: Person
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TransactionType} has {Person}'
+- concept: VehicleTemperatureReading
+  type: EntityType
+  relationships:
+  - name: chillersensornumber
+    description: Identifies the specific chiller sensor that captured the temperature
+      reading.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{VehicleTemperatureReading} has chillersensornumber {Integer}'
+  - name: full_sensor_data
+    description: Contains the complete raw sensor payload including location, registration,
+      sensor ID, timestamp, and temperature in JSON format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{VehicleTemperatureReading} has full sensor data {String}'
+  - name: vehicleregistration
+    description: Identifies the vehicle associated with the temperature reading using
+      its registration number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{VehicleTemperatureReading} has vehicleregistration {String}'
+  - name: is_compressed
+    description: Indicates whether the sensor data payload is stored in a compressed
+      format.
+    roles:
+    - concept: Boolean
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{VehicleTemperatureReading} has is compressed {Boolean}'
+  - name: recorded_when
+    description: Records the date and time the temperature measurement was taken in
+      YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{VehicleTemperatureReading} has recorded when {DateTime}'
+  - name: reading_id
+    description: Uniquely identifies each vehicle temperature reading record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{VehicleTemperatureReading} has reading id {Integer}'
+  - name: temperature
+    description: Stores the measured temperature value for the vehicle at the recording
+      time.
+    roles:
+    - concept: Decimal
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{VehicleTemperatureReading} has temperature {Decimal}'

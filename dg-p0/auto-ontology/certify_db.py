@@ -48,14 +48,24 @@ def norm(name: str) -> str:
     return name.replace('"', "").strip().lower()
 
 
-req = urllib.request.Request(
-    sa.BASE + "/api/model/export",
-    method="POST",
-    data=json.dumps({"format": "auto_ontology", "databases": [db]}).encode(),
-    headers={"Content-Type": "application/json", "Origin": sa.BASE},
+def export(scope: dict) -> dict:
+    req = urllib.request.Request(
+        sa.BASE + "/api/model/export",
+        method="POST",
+        data=json.dumps({"format": "auto_ontology", **scope}).encode(),
+        headers={"Content-Type": "application/json", "Origin": sa.BASE},
+    )
+    with admin.open(req) as r:
+        return yaml.safe_load(io.TextIOWrapper(r, encoding="utf-8"))
+
+
+# The export filter takes catalog database ids, so look the name up in a full export first.
+db_id = next(
+    d["id"]
+    for d in export({})["data_layer"]["databases"]
+    if any(s.get("database_name") == db for s in d["schemas"])
 )
-with admin.open(req) as r:
-    doc = yaml.safe_load(io.TextIOWrapper(r, encoding="utf-8"))
+doc = export({"databases": [db_id]})
 tables, columns = {}, {}
 for d in doc["data_layer"]["databases"]:
     for s in d["schemas"]:
@@ -166,7 +176,11 @@ for a in attrs:
     if term is None:
         done["invalid"].append({a["name"]: f"no certified term for {a['table']}"})
         continue
-    cur = existing.get((term["id"], a["name"]))
+    # SQL attribute names are unique across every database in Auto Ontology: on a clash with
+    # another database's attribute, the name carries this database's name.
+    cur = existing.get((term["id"], a["name"])) or existing.get((term["id"], f"{a['name']} ({db})"))
+    if cur:
+        a = {**a, "name": cur["name"]}
     check = {
         "expression": a["expression"],
         "term_id": term["id"],
@@ -183,11 +197,20 @@ for a in attrs:
         "term_id": term["id"],
         "source": "manual",
     }
-    attr = (
-        call("PUT", f"/api/sql-attributes/{cur['id']}", body)
-        if cur
-        else call("POST", "/api/sql-attributes", body)
-    )["data"]
+    if cur:
+        attr = call("PUT", f"/api/sql-attributes/{cur['id']}", body)["data"]
+    elif dry:
+        attr = {"id": "dry"}
+    else:
+        try:
+            attr = sa.call(admin, "POST", "/api/sql-attributes", body)["data"]
+        except urllib.error.HTTPError as e:
+            if e.code != 409:
+                raise SystemExit(
+                    f"POST /api/sql-attributes -> {e.code}: {e.read().decode()[:300]}"
+                ) from None
+            body["name"] = a["name"] = f"{a['name']} ({db})"
+            attr = call("POST", "/api/sql-attributes", body)["data"]
     call("PATCH", f"/api/sql-attributes/{attr['id']}", {"certified": True})
     done["sql_attributes"] += 1
     log.append(("sql_attribute", term["name"], a["table"], "certified", a["expression"]))

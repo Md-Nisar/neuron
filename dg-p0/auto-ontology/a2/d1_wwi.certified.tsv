@@ -1,0 +1,508 @@
+kind	term	object	outcome	description_or_sql
+term	Archived City	application.cities_archive	left	
+column	Archived City	application.cities_archive.validto	left	
+column	Archived City	application.cities_archive.validfrom	left	
+column	Archived City	application.cities_archive.location	left	
+column	Archived City	application.cities_archive.lasteditedby	left	
+column	Archived City	application.cities_archive.cityid	left	
+column	Archived City	application.cities_archive.cityname	left	
+column	Archived City	application.cities_archive.latestrecordedpopulation	left	
+term	Archived Color	warehouse.colors_archive	left	
+column	Archived Color	warehouse.colors_archive.validfrom	left	
+column	Archived Color	warehouse.colors_archive.colorname	left	
+column	Archived Color	warehouse.colors_archive.validto	left	
+column	Archived Color	warehouse.colors_archive.colorid	left	
+column	Archived Color	warehouse.colors_archive.lasteditedby	left	
+term	Archived Country	application.countries_archive	left	
+column	Archived Country	application.countries_archive.validfrom	left	
+column	Archived Country	application.countries_archive.subregion	left	
+column	Archived Country	application.countries_archive.isoalpha3code	left	
+column	Archived Country	application.countries_archive.latestrecordedpopulation	left	
+column	Archived Country	application.countries_archive.validto	left	
+column	Archived Country	application.countries_archive.isonumericcode	left	
+column	Archived Country	application.countries_archive.countryid	left	
+column	Archived Country	application.countries_archive.countrytype	left	
+column	Archived Country	application.countries_archive.continent	left	
+column	Archived Country	application.countries_archive.formalname	left	
+column	Archived Country	application.countries_archive.lasteditedby	left	
+column	Archived Country	application.countries_archive.countryname	left	
+column	Archived Country	application.countries_archive.border	left	
+column	Archived Country	application.countries_archive.region	left	
+term	Archived Customer	sales.customers_archive	left	
+column	Archived Customer	sales.customers_archive.buyinggroupid	left	
+column	Archived Customer	sales.customers_archive.alternatecontactpersonid	left	
+column	Archived Customer	sales.customers_archive.phonenumber	left	
+column	Archived Customer	sales.customers_archive.postaladdressline2	left	
+column	Archived Customer	sales.customers_archive.runposition	left	
+column	Archived Customer	sales.customers_archive.deliveryrun	left	
+column	Archived Customer	sales.customers_archive.postalcityid	left	
+column	Archived Customer	sales.customers_archive.postalpostalcode	left	
+column	Archived Customer	sales.customers_archive.deliveryaddressline1	left	
+column	Archived Customer	sales.customers_archive.faxnumber	left	
+column	Archived Customer	sales.customers_archive.creditlimit	left	
+column	Archived Customer	sales.customers_archive.deliverycityid	left	
+column	Archived Customer	sales.customers_archive.accountopeneddate	left	
+column	Archived Customer	sales.customers_archive.validfrom	left	
+column	Archived Customer	sales.customers_archive.validto	left	
+column	Archived Customer	sales.customers_archive.deliverypostalcode	left	
+column	Archived Customer	sales.customers_archive.isstatementsent	left	
+column	Archived Customer	sales.customers_archive.lasteditedby	left	
+column	Archived Customer	sales.customers_archive.isoncredithold	left	
+column	Archived Customer	sales.customers_archive.deliveryaddressline2	left	
+column	Archived Customer	sales.customers_archive.standarddiscountpercentage	left	
+column	Archived Customer	sales.customers_archive.paymentdays	left	
+column	Archived Customer	sales.customers_archive.websiteurl	left	
+term	Archived Delivery Method	application.deliverymethods_archive	left	
+column	Archived Delivery Method	application.deliverymethods_archive.lasteditedby	left	
+column	Archived Delivery Method	application.deliverymethods_archive.validto	left	
+column	Archived Delivery Method	application.deliverymethods_archive.validfrom	left	
+column	Archived Delivery Method	application.deliverymethods_archive.deliverymethodname	left	
+column	Archived Delivery Method	application.deliverymethods_archive.deliverymethodid	left	
+term	Archived Package Type	warehouse.packagetypes_archive	left	
+column	Archived Package Type	warehouse.packagetypes_archive.packagetypename	left	
+column	Archived Package Type	warehouse.packagetypes_archive.lasteditedby	left	
+column	Archived Package Type	warehouse.packagetypes_archive.validto	left	
+column	Archived Package Type	warehouse.packagetypes_archive.packagetypeid	left	
+column	Archived Package Type	warehouse.packagetypes_archive.validfrom	left	
+term	Archived Payment Method	application.paymentmethods_archive	left	
+column	Archived Payment Method	application.paymentmethods_archive.validfrom	left	
+column	Archived Payment Method	application.paymentmethods_archive.lasteditedby	left	
+column	Archived Payment Method	application.paymentmethods_archive.paymentmethodname	left	
+column	Archived Payment Method	application.paymentmethods_archive.validto	left	
+column	Archived Payment Method	application.paymentmethods_archive.paymentmethodid	left	
+term	Archived Person	application.people_archive	left	
+column	Archived Person	application.people_archive.validfrom	left	
+column	Archived Person	application.people_archive.fullname	left	
+column	Archived Person	application.people_archive.customfields	left	
+column	Archived Person	application.people_archive.ispermittedtologon	left	
+column	Archived Person	application.people_archive.searchname	left	
+column	Archived Person	application.people_archive.hashedpassword	left	
+column	Archived Person	application.people_archive.userpreferences	left	
+column	Archived Person	application.people_archive.emailaddress	left	
+column	Archived Person	application.people_archive.preferredname	left	
+column	Archived Person	application.people_archive.faxnumber	left	
+column	Archived Person	application.people_archive.isexternallogonprovider	left	
+column	Archived Person	application.people_archive.issystemuser	left	
+column	Archived Person	application.people_archive.logonname	left	
+column	Archived Person	application.people_archive.photo	left	
+column	Archived Person	application.people_archive.isemployee	left	
+column	Archived Person	application.people_archive.phonenumber	left	
+column	Archived Person	application.people_archive.validto	left	
+column	Archived Person	application.people_archive.lasteditedby	left	
+column	Archived Person	application.people_archive.issalesperson	left	
+column	Archived Person	application.people_archive.otherlanguages	left	
+term	Archived State Province	application.stateprovinces_archive	left	
+column	Archived State Province	application.stateprovinces_archive.border	left	
+column	Archived State Province	application.stateprovinces_archive.countryid	left	
+column	Archived State Province	application.stateprovinces_archive.validfrom	left	
+column	Archived State Province	application.stateprovinces_archive.latestrecordedpopulation	left	
+column	Archived State Province	application.stateprovinces_archive.validto	left	
+column	Archived State Province	application.stateprovinces_archive.stateprovincecode	left	
+column	Archived State Province	application.stateprovinces_archive.salesterritory	left	
+column	Archived State Province	application.stateprovinces_archive.stateprovincename	left	
+column	Archived State Province	application.stateprovinces_archive.lasteditedby	left	
+term	Archived Stock Group	warehouse.stockgroups_archive	left	
+column	Archived Stock Group	warehouse.stockgroups_archive.stockgroupname	left	
+column	Archived Stock Group	warehouse.stockgroups_archive.stockgroupid	left	
+column	Archived Stock Group	warehouse.stockgroups_archive.lasteditedby	left	
+column	Archived Stock Group	warehouse.stockgroups_archive.validto	left	
+column	Archived Stock Group	warehouse.stockgroups_archive.validfrom	left	
+term	Archived Stock Item	warehouse.stockitems_archive	left	
+column	Archived Stock Item	warehouse.stockitems_archive.outerpackageid	left	
+column	Archived Stock Item	warehouse.stockitems_archive.lasteditedby	left	
+column	Archived Stock Item	warehouse.stockitems_archive.unitprice	left	
+column	Archived Stock Item	warehouse.stockitems_archive.brand	left	
+column	Archived Stock Item	warehouse.stockitems_archive.size	left	
+column	Archived Stock Item	warehouse.stockitems_archive.leadtimedays	left	
+column	Archived Stock Item	warehouse.stockitems_archive.barcode	left	
+column	Archived Stock Item	warehouse.stockitems_archive.tags	left	
+column	Archived Stock Item	warehouse.stockitems_archive.unitpackageid	left	
+column	Archived Stock Item	warehouse.stockitems_archive.customfields	left	
+column	Archived Stock Item	warehouse.stockitems_archive.typicalweightperunit	left	
+column	Archived Stock Item	warehouse.stockitems_archive.colorid	left	
+column	Archived Stock Item	warehouse.stockitems_archive.stockitemname	left	
+column	Archived Stock Item	warehouse.stockitems_archive.recommendedretailprice	left	
+column	Archived Stock Item	warehouse.stockitems_archive.photo	left	
+column	Archived Stock Item	warehouse.stockitems_archive.internalcomments	left	
+column	Archived Stock Item	warehouse.stockitems_archive.validto	left	
+column	Archived Stock Item	warehouse.stockitems_archive.ischillerstock	left	
+column	Archived Stock Item	warehouse.stockitems_archive.marketingcomments	left	
+column	Archived Stock Item	warehouse.stockitems_archive.searchdetails	left	
+column	Archived Stock Item	warehouse.stockitems_archive.taxrate	left	
+column	Archived Stock Item	warehouse.stockitems_archive.quantityperouter	left	
+column	Archived Stock Item	warehouse.stockitems_archive.validfrom	left	
+term	Archived Supplier	purchasing.suppliers_archive	left	
+column	Archived Supplier	purchasing.suppliers_archive.deliveryaddressline2	left	
+column	Archived Supplier	purchasing.suppliers_archive.bankaccountname	left	
+column	Archived Supplier	purchasing.suppliers_archive.validfrom	left	
+column	Archived Supplier	purchasing.suppliers_archive.postaladdressline2	left	
+column	Archived Supplier	purchasing.suppliers_archive.lasteditedby	left	
+column	Archived Supplier	purchasing.suppliers_archive.deliverycityid	left	
+column	Archived Supplier	purchasing.suppliers_archive.supplierreference	left	
+column	Archived Supplier	purchasing.suppliers_archive.deliverypostalcode	left	
+column	Archived Supplier	purchasing.suppliers_archive.postaladdressline1	left	
+column	Archived Supplier	purchasing.suppliers_archive.supplierid	left	
+column	Archived Supplier	purchasing.suppliers_archive.deliverylocation	left	
+column	Archived Supplier	purchasing.suppliers_archive.faxnumber	left	
+column	Archived Supplier	purchasing.suppliers_archive.phonenumber	left	
+column	Archived Supplier	purchasing.suppliers_archive.bankaccountcode	left	
+column	Archived Supplier	purchasing.suppliers_archive.deliveryaddressline1	left	
+column	Archived Supplier	purchasing.suppliers_archive.internalcomments	left	
+column	Archived Supplier	purchasing.suppliers_archive.primarycontactpersonid	left	
+column	Archived Supplier	purchasing.suppliers_archive.bankaccountnumber	left	
+column	Archived Supplier	purchasing.suppliers_archive.bankaccountbranch	left	
+column	Archived Supplier	purchasing.suppliers_archive.postalpostalcode	left	
+column	Archived Supplier	purchasing.suppliers_archive.suppliername	left	
+column	Archived Supplier	purchasing.suppliers_archive.bankinternationalcode	left	
+column	Archived Supplier	purchasing.suppliers_archive.validto	left	
+column	Archived Supplier	purchasing.suppliers_archive.paymentdays	left	
+column	Archived Supplier	purchasing.suppliers_archive.websiteurl	left	
+column	Archived Supplier	purchasing.suppliers_archive.alternatecontactpersonid	left	
+column	Archived Supplier	purchasing.suppliers_archive.postalcityid	left	
+term	Archived Supplier Category	purchasing.suppliercategories_archive	left	
+column	Archived Supplier Category	purchasing.suppliercategories_archive.lasteditedby	left	
+column	Archived Supplier Category	purchasing.suppliercategories_archive.validfrom	left	
+column	Archived Supplier Category	purchasing.suppliercategories_archive.suppliercategoryid	left	
+column	Archived Supplier Category	purchasing.suppliercategories_archive.suppliercategoryname	left	
+column	Archived Supplier Category	purchasing.suppliercategories_archive.validto	left	
+term	Archived Transaction Type	application.transactiontypes_archive	left	
+column	Archived Transaction Type	application.transactiontypes_archive.transactiontypename	left	
+column	Archived Transaction Type	application.transactiontypes_archive.transactiontypeid	left	
+column	Archived Transaction Type	application.transactiontypes_archive.lasteditedby	left	
+column	Archived Transaction Type	application.transactiontypes_archive.validto	left	
+column	Archived Transaction Type	application.transactiontypes_archive.validfrom	left	
+term	Buying Group Archive	sales.buyinggroups_archive	left	
+column	Buying Group Archive	sales.buyinggroups_archive.lasteditedby	left	
+column	Buying Group Archive	sales.buyinggroups_archive.buyinggroupname	left	
+column	Buying Group Archive	sales.buyinggroups_archive.buyinggroupid	left	
+column	Buying Group Archive	sales.buyinggroups_archive.validfrom	left	
+column	Buying Group Archive	sales.buyinggroups_archive.validto	left	
+term	Buyinggroups	sales.buyinggroups	certified	Groups of customers that buy together, such as franchise chains.
+column	Buyinggroups	sales.buyinggroups.validfrom	left	
+column	Buyinggroups	sales.buyinggroups.validto	left	
+column	Buyinggroups	sales.buyinggroups.buyinggroupid	certified	(generated kept)
+column	Buyinggroups	sales.buyinggroups.buyinggroupname	certified	(generated kept)
+term	City	application.cities	certified	(generated kept)
+column	City	application.cities.cityname	certified	(generated kept)
+column	City	application.cities.latestrecordedpopulation	certified	(generated kept)
+column	City	application.cities.location	left	
+column	City	application.cities.validfrom	left	
+column	City	application.cities.validto	left	
+column	City	application.cities.cityid	certified	(generated kept)
+term	Cold Room Temperature	warehouse.coldroomtemperatures	left	
+column	Cold Room Temperature	warehouse.coldroomtemperatures.validfrom	left	
+column	Cold Room Temperature	warehouse.coldroomtemperatures.recordedwhen	left	
+column	Cold Room Temperature	warehouse.coldroomtemperatures.validto	left	
+column	Cold Room Temperature	warehouse.coldroomtemperatures.temperature	left	
+column	Cold Room Temperature	warehouse.coldroomtemperatures.coldroomsensornumber	left	
+column	Cold Room Temperature	warehouse.coldroomtemperatures.coldroomtemperatureid	left	
+term	Cold Room Temperature Archive	warehouse.coldroomtemperatures_archive	left	
+column	Cold Room Temperature Archive	warehouse.coldroomtemperatures_archive.coldroomsensornumber	left	
+column	Cold Room Temperature Archive	warehouse.coldroomtemperatures_archive.coldroomtemperatureid	left	
+column	Cold Room Temperature Archive	warehouse.coldroomtemperatures_archive.recordedwhen	left	
+column	Cold Room Temperature Archive	warehouse.coldroomtemperatures_archive.temperature	left	
+column	Cold Room Temperature Archive	warehouse.coldroomtemperatures_archive.validto	left	
+column	Cold Room Temperature Archive	warehouse.coldroomtemperatures_archive.validfrom	left	
+term	Color	warehouse.colors	certified	(generated kept)
+column	Color	warehouse.colors.colorid	certified	(generated kept)
+column	Color	warehouse.colors.colorname	certified	(generated kept)
+column	Color	warehouse.colors.validfrom	left	
+column	Color	warehouse.colors.validto	left	
+term	Country (d1.application.countries)	application.countries	certified	(generated kept)
+column	Country (d1.application.countries)	application.countries.countryname	certified	(generated kept)
+column	Country (d1.application.countries)	application.countries.subregion	certified	(generated kept)
+column	Country (d1.application.countries)	application.countries.region	certified	(generated kept)
+column	Country (d1.application.countries)	application.countries.validto	left	
+column	Country (d1.application.countries)	application.countries.formalname	left	
+column	Country (d1.application.countries)	application.countries.continent	certified	(generated kept)
+column	Country (d1.application.countries)	application.countries.countryid	certified	(generated kept)
+column	Country (d1.application.countries)	application.countries.isoalpha3code	left	
+column	Country (d1.application.countries)	application.countries.isonumericcode	left	
+column	Country (d1.application.countries)	application.countries.validfrom	left	
+column	Country (d1.application.countries)	application.countries.countrytype	left	
+column	Country (d1.application.countries)	application.countries.border	left	
+column	Country (d1.application.countries)	application.countries.latestrecordedpopulation	left	
+term	Customer Category	sales.customercategories	certified	Customer types, for example Novelty Shop or Supermarket.
+column	Customer Category	sales.customercategories.customercategoryname	certified	(generated kept)
+column	Customer Category	sales.customercategories.validto	left	
+column	Customer Category	sales.customercategories.validfrom	left	
+column	Customer Category	sales.customercategories.customercategoryid	certified	(generated kept)
+term	Customer Category Archive	sales.customercategories_archive	left	
+column	Customer Category Archive	sales.customercategories_archive.validfrom	left	
+column	Customer Category Archive	sales.customercategories_archive.customercategoryname	left	
+column	Customer Category Archive	sales.customercategories_archive.validto	left	
+column	Customer Category Archive	sales.customercategories_archive.customercategoryid	left	
+column	Customer Category Archive	sales.customercategories_archive.lasteditedby	left	
+term	Customer (d1.sales.customers)	sales.customers	certified	Customers, one row per customer account. A customer may be billed to another account.
+column	Customer (d1.sales.customers)	sales.customers.postaladdressline1	left	
+column	Customer (d1.sales.customers)	sales.customers.validto	left	
+column	Customer (d1.sales.customers)	sales.customers.standarddiscountpercentage	certified	(generated kept)
+column	Customer (d1.sales.customers)	sales.customers.phonenumber	left	
+column	Customer (d1.sales.customers)	sales.customers.runposition	left	
+column	Customer (d1.sales.customers)	sales.customers.deliveryaddressline1	left	
+column	Customer (d1.sales.customers)	sales.customers.creditlimit	certified	(generated kept)
+column	Customer (d1.sales.customers)	sales.customers.websiteurl	left	
+column	Customer (d1.sales.customers)	sales.customers.deliveryrun	left	
+column	Customer (d1.sales.customers)	sales.customers.accountopeneddate	certified	(generated kept)
+column	Customer (d1.sales.customers)	sales.customers.customername	certified	(generated kept)
+column	Customer (d1.sales.customers)	sales.customers.deliverypostalcode	left	
+column	Customer (d1.sales.customers)	sales.customers.paymentdays	certified	Days the customer has to pay an invoice.
+column	Customer (d1.sales.customers)	sales.customers.postalpostalcode	left	
+column	Customer (d1.sales.customers)	sales.customers.deliverylocation	left	
+column	Customer (d1.sales.customers)	sales.customers.isstatementsent	left	
+column	Customer (d1.sales.customers)	sales.customers.postaladdressline2	left	
+column	Customer (d1.sales.customers)	sales.customers.deliveryaddressline2	left	
+column	Customer (d1.sales.customers)	sales.customers.faxnumber	left	
+column	Customer (d1.sales.customers)	sales.customers.isoncredithold	certified	(generated kept)
+column	Customer (d1.sales.customers)	sales.customers.customerid	certified	(generated kept)
+column	Customer (d1.sales.customers)	sales.customers.validfrom	left	
+term	Customer Transaction	sales.customertransactions	certified	Customer ledger: invoices (positive amounts) and payments received (negative amounts).
+column	Customer Transaction	sales.customertransactions.transactiondate	certified	(generated kept)
+column	Customer Transaction	sales.customertransactions.outstandingbalance	certified	(generated kept)
+column	Customer Transaction	sales.customertransactions.isfinalized	certified	(generated kept)
+column	Customer Transaction	sales.customertransactions.lasteditedwhen	left	
+column	Customer Transaction	sales.customertransactions.finalizationdate	left	
+column	Customer Transaction	sales.customertransactions.amountexcludingtax	certified	(generated kept)
+column	Customer Transaction	sales.customertransactions.customertransactionid	certified	(generated kept)
+column	Customer Transaction	sales.customertransactions.taxamount	certified	(generated kept)
+column	Customer Transaction	sales.customertransactions.transactionamount	certified	(generated kept)
+term	Delivery Method	application.deliverymethods	certified	(generated kept)
+column	Delivery Method	application.deliverymethods.deliverymethodid	certified	(generated kept)
+column	Delivery Method	application.deliverymethods.validfrom	left	
+column	Delivery Method	application.deliverymethods.deliverymethodname	certified	(generated kept)
+column	Delivery Method	application.deliverymethods.validto	left	
+term	Invoice	sales.invoices	certified	Invoices, one per order shipped. A credit note is an invoice with is_credit_note true.
+column	Invoice	sales.invoices.customerpurchaseordernumber	left	
+column	Invoice	sales.invoices.runposition	left	
+column	Invoice	sales.invoices.deliveryrun	left	
+column	Invoice	sales.invoices.internalcomments	left	
+column	Invoice	sales.invoices.lasteditedwhen	left	
+column	Invoice	sales.invoices.totalchilleritems	certified	(generated kept)
+column	Invoice	sales.invoices.confirmedreceivedby	left	
+column	Invoice	sales.invoices.deliveryinstructions	left	
+column	Invoice	sales.invoices.confirmeddeliverytime	certified	(generated kept)
+column	Invoice	sales.invoices.comments	left	
+column	Invoice	sales.invoices.iscreditnote	certified	(generated kept)
+column	Invoice	sales.invoices.returneddeliverydata	left	
+column	Invoice	sales.invoices.invoiceid	certified	(generated kept)
+column	Invoice	sales.invoices.totaldryitems	certified	(generated kept)
+column	Invoice	sales.invoices.invoicedate	certified	(generated kept)
+column	Invoice	sales.invoices.creditnotereason	left	
+term	Invoice Line	sales.invoicelines	certified	(generated kept)
+column	Invoice Line	sales.invoicelines.unitprice	certified	(generated kept)
+column	Invoice Line	sales.invoicelines.quantity	certified	(generated kept)
+column	Invoice Line	sales.invoicelines.invoicelineid	certified	(generated kept)
+column	Invoice Line	sales.invoicelines.extendedprice	certified	Line total including tax.
+column	Invoice Line	sales.invoicelines.taxrate	certified	(generated kept)
+column	Invoice Line	sales.invoicelines.taxamount	certified	(generated kept)
+column	Invoice Line	sales.invoicelines.lasteditedwhen	left	
+column	Invoice Line	sales.invoicelines.description	left	
+column	Invoice Line	sales.invoicelines.lineprofit	certified	Profit on the line, before tax.
+term	Order (d1.sales.orders)	sales.orders	certified	Customer orders. An order is invoiced once its goods are picked.
+column	Order (d1.sales.orders)	sales.orders.pickingcompletedwhen	certified	(generated kept)
+column	Order (d1.sales.orders)	sales.orders.orderdate	certified	(generated kept)
+column	Order (d1.sales.orders)	sales.orders.customerpurchaseordernumber	left	
+column	Order (d1.sales.orders)	sales.orders.comments	left	
+column	Order (d1.sales.orders)	sales.orders.orderid	certified	(generated kept)
+column	Order (d1.sales.orders)	sales.orders.internalcomments	left	
+column	Order (d1.sales.orders)	sales.orders.deliveryinstructions	left	
+column	Order (d1.sales.orders)	sales.orders.lasteditedwhen	left	
+column	Order (d1.sales.orders)	sales.orders.isundersupplybackordered	left	
+column	Order (d1.sales.orders)	sales.orders.expecteddeliverydate	certified	(generated kept)
+term	Order Line (d1.sales.orderlines)	sales.orderlines	certified	(generated kept)
+column	Order Line (d1.sales.orderlines)	sales.orderlines.unitprice	certified	(generated kept)
+column	Order Line (d1.sales.orderlines)	sales.orderlines.description	left	
+column	Order Line (d1.sales.orderlines)	sales.orderlines.lasteditedwhen	left	
+column	Order Line (d1.sales.orderlines)	sales.orderlines.taxrate	certified	Tax rate in percent.
+column	Order Line (d1.sales.orderlines)	sales.orderlines.pickedquantity	certified	(generated kept)
+column	Order Line (d1.sales.orderlines)	sales.orderlines.quantity	certified	(generated kept)
+column	Order Line (d1.sales.orderlines)	sales.orderlines.pickingcompletedwhen	left	
+column	Order Line (d1.sales.orderlines)	sales.orderlines.orderlineid	certified	(generated kept)
+term	Package Type	warehouse.packagetypes	certified	(generated kept)
+column	Package Type	warehouse.packagetypes.packagetypename	certified	(generated kept)
+column	Package Type	warehouse.packagetypes.validto	left	
+column	Package Type	warehouse.packagetypes.packagetypeid	certified	(generated kept)
+column	Package Type	warehouse.packagetypes.validfrom	left	
+term	Payment Method	application.paymentmethods	certified	(generated kept)
+column	Payment Method	application.paymentmethods.validto	left	
+column	Payment Method	application.paymentmethods.paymentmethodid	certified	(generated kept)
+column	Payment Method	application.paymentmethods.validfrom	left	
+column	Payment Method	application.paymentmethods.paymentmethodname	certified	(generated kept)
+term	Person	application.people	certified	Employees and customer or supplier contacts.
+column	Person	application.people.emailaddress	left	
+column	Person	application.people.searchname	left	
+column	Person	application.people.hashedpassword	left	
+column	Person	application.people.phonenumber	left	
+column	Person	application.people.validto	left	
+column	Person	application.people.isemployee	certified	(generated kept)
+column	Person	application.people.issystemuser	left	
+column	Person	application.people.isexternallogonprovider	left	
+column	Person	application.people.fullname	certified	(generated kept)
+column	Person	application.people.ispermittedtologon	left	
+column	Person	application.people.otherlanguages	left	
+column	Person	application.people.logonname	left	
+column	Person	application.people.faxnumber	left	
+column	Person	application.people.validfrom	left	
+column	Person	application.people.personid	certified	(generated kept)
+column	Person	application.people.issalesperson	certified	(generated kept)
+column	Person	application.people.userpreferences	left	
+column	Person	application.people.photo	left	
+column	Person	application.people.customfields	left	
+column	Person	application.people.preferredname	certified	(generated kept)
+term	Purchase Order	purchasing.purchaseorders	certified	(generated kept)
+column	Purchase Order	purchasing.purchaseorders.purchaseorderid	certified	(generated kept)
+column	Purchase Order	purchasing.purchaseorders.isorderfinalized	certified	(generated kept)
+column	Purchase Order	purchasing.purchaseorders.orderdate	certified	(generated kept)
+column	Purchase Order	purchasing.purchaseorders.internalcomments	left	
+column	Purchase Order	purchasing.purchaseorders.supplierreference	left	
+column	Purchase Order	purchasing.purchaseorders.comments	left	
+column	Purchase Order	purchasing.purchaseorders.expecteddeliverydate	certified	(generated kept)
+column	Purchase Order	purchasing.purchaseorders.lasteditedwhen	left	
+term	Purchase Order Line	purchasing.purchaseorderlines	certified	Lines of a purchase order, counted in outers (supplier packs).
+column	Purchase Order Line	purchasing.purchaseorderlines.description	left	
+column	Purchase Order Line	purchasing.purchaseorderlines.receivedouters	certified	(generated kept)
+column	Purchase Order Line	purchasing.purchaseorderlines.isorderlinefinalized	certified	(generated kept)
+column	Purchase Order Line	purchasing.purchaseorderlines.lastreceiptdate	certified	(generated kept)
+column	Purchase Order Line	purchasing.purchaseorderlines.lasteditedwhen	left	
+column	Purchase Order Line	purchasing.purchaseorderlines.orderedouters	certified	(generated kept)
+column	Purchase Order Line	purchasing.purchaseorderlines.purchaseorderlineid	certified	(generated kept)
+column	Purchase Order Line	purchasing.purchaseorderlines.expectedunitpriceperouter	certified	(generated kept)
+term	Special Deal	sales.specialdeals	certified	Promotions - a discount or special price for a stock item or stock group, for a customer, buying group or customer category, between two dates.
+column	Special Deal	sales.specialdeals.enddate	certified	(generated kept)
+column	Special Deal	sales.specialdeals.lasteditedwhen	left	
+column	Special Deal	sales.specialdeals.specialdealid	certified	(generated kept)
+column	Special Deal	sales.specialdeals.dealdescription	certified	(generated kept)
+column	Special Deal	sales.specialdeals.discountamount	certified	(generated kept)
+column	Special Deal	sales.specialdeals.unitprice	certified	(generated kept)
+column	Special Deal	sales.specialdeals.discountpercentage	certified	(generated kept)
+column	Special Deal	sales.specialdeals.startdate	certified	(generated kept)
+term	State Province	application.stateprovinces	certified	States and provinces, each with a sales territory.
+column	State Province	application.stateprovinces.border	left	
+column	State Province	application.stateprovinces.stateprovinceid	certified	(generated kept)
+column	State Province	application.stateprovinces.validto	left	
+column	State Province	application.stateprovinces.validfrom	left	
+column	State Province	application.stateprovinces.stateprovincecode	certified	(generated kept)
+column	State Province	application.stateprovinces.salesterritory	certified	Sales territory the state belongs to, for example Southeast.
+column	State Province	application.stateprovinces.stateprovincename	certified	(generated kept)
+column	State Province	application.stateprovinces.latestrecordedpopulation	left	
+term	Stock Group	warehouse.stockgroups	certified	Product groups, for example Novelty Items or Clothing. A stock item can be in several groups.
+column	Stock Group	warehouse.stockgroups.stockgroupid	certified	(generated kept)
+column	Stock Group	warehouse.stockgroups.validfrom	left	
+column	Stock Group	warehouse.stockgroups.validto	left	
+column	Stock Group	warehouse.stockgroups.stockgroupname	certified	(generated kept)
+term	Stock Item	warehouse.stockitems	certified	Products the company sells.
+column	Stock Item	warehouse.stockitems.searchdetails	left	
+column	Stock Item	warehouse.stockitems.tags	left	
+column	Stock Item	warehouse.stockitems.unitprice	certified	Standard selling price per unit, before tax.
+column	Stock Item	warehouse.stockitems.ischillerstock	certified	Needs refrigeration.
+column	Stock Item	warehouse.stockitems.brand	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.customfields	left	
+column	Stock Item	warehouse.stockitems.quantityperouter	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.validfrom	left	
+column	Stock Item	warehouse.stockitems.validto	left	
+column	Stock Item	warehouse.stockitems.taxrate	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.stockitemname	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.marketingcomments	left	
+column	Stock Item	warehouse.stockitems.typicalweightperunit	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.recommendedretailprice	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.barcode	left	
+column	Stock Item	warehouse.stockitems.internalcomments	left	
+column	Stock Item	warehouse.stockitems.size	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.photo	left	
+column	Stock Item	warehouse.stockitems.leadtimedays	certified	(generated kept)
+column	Stock Item	warehouse.stockitems.stockitemid	certified	(generated kept)
+term	Stock Item Holding	warehouse.stockitemholdings	certified	Current stock on hand per stock item.
+column	Stock Item Holding	warehouse.stockitemholdings.reorderlevel	certified	(generated kept)
+column	Stock Item Holding	warehouse.stockitemholdings.laststocktakequantity	left	
+column	Stock Item Holding	warehouse.stockitemholdings.lastcostprice	certified	(generated kept)
+column	Stock Item Holding	warehouse.stockitemholdings.lasteditedwhen	left	
+column	Stock Item Holding	warehouse.stockitemholdings.quantityonhand	certified	(generated kept)
+column	Stock Item Holding	warehouse.stockitemholdings.binlocation	certified	(generated kept)
+column	Stock Item Holding	warehouse.stockitemholdings.targetstocklevel	certified	(generated kept)
+term	Stock Item Stock Group Association	warehouse.stockitemstockgroups	certified	Which stock groups each stock item belongs to (many to many).
+column	Stock Item Stock Group Association	warehouse.stockitemstockgroups.stockitemstockgroupid	certified	(generated kept)
+column	Stock Item Stock Group Association	warehouse.stockitemstockgroups.lasteditedwhen	left	
+term	Stock Item Transaction	warehouse.stockitemtransactions	certified	Stock movements: receipts are positive, issues to customers negative, stocktake adjustments either sign.
+column	Stock Item Transaction	warehouse.stockitemtransactions.quantity	certified	(generated kept)
+column	Stock Item Transaction	warehouse.stockitemtransactions.stockitemtransactionid	certified	(generated kept)
+column	Stock Item Transaction	warehouse.stockitemtransactions.transactionoccurredwhen	certified	(generated kept)
+column	Stock Item Transaction	warehouse.stockitemtransactions.lasteditedwhen	left	
+term	Supplier	purchasing.suppliers	certified	(generated kept)
+column	Supplier	purchasing.suppliers.deliveryaddressline1	left	
+column	Supplier	purchasing.suppliers.websiteurl	left	
+column	Supplier	purchasing.suppliers.postaladdressline2	left	
+column	Supplier	purchasing.suppliers.bankinternationalcode	left	
+column	Supplier	purchasing.suppliers.postaladdressline1	left	
+column	Supplier	purchasing.suppliers.postalpostalcode	left	
+column	Supplier	purchasing.suppliers.deliverylocation	left	
+column	Supplier	purchasing.suppliers.bankaccountnumber	left	
+column	Supplier	purchasing.suppliers.bankaccountname	left	
+column	Supplier	purchasing.suppliers.bankaccountbranch	left	
+column	Supplier	purchasing.suppliers.supplierid	certified	(generated kept)
+column	Supplier	purchasing.suppliers.supplierreference	left	
+column	Supplier	purchasing.suppliers.bankaccountcode	left	
+column	Supplier	purchasing.suppliers.validfrom	left	
+column	Supplier	purchasing.suppliers.validto	left	
+column	Supplier	purchasing.suppliers.deliverypostalcode	left	
+column	Supplier	purchasing.suppliers.paymentdays	certified	(generated kept)
+column	Supplier	purchasing.suppliers.internalcomments	left	
+column	Supplier	purchasing.suppliers.phonenumber	left	
+column	Supplier	purchasing.suppliers.deliveryaddressline2	left	
+column	Supplier	purchasing.suppliers.suppliername	certified	(generated kept)
+column	Supplier	purchasing.suppliers.faxnumber	left	
+term	Supplier Category	purchasing.suppliercategories	certified	(generated kept)
+column	Supplier Category	purchasing.suppliercategories.suppliercategoryid	certified	(generated kept)
+column	Supplier Category	purchasing.suppliercategories.validfrom	left	
+column	Supplier Category	purchasing.suppliercategories.suppliercategoryname	certified	(generated kept)
+column	Supplier Category	purchasing.suppliercategories.validto	left	
+term	Supplier Transaction	purchasing.suppliertransactions	certified	Supplier ledger - supplier invoices, payments and credit notes.
+column	Supplier Transaction	purchasing.suppliertransactions.amountexcludingtax	certified	(generated kept)
+column	Supplier Transaction	purchasing.suppliertransactions.supplierinvoicenumber	left	
+column	Supplier Transaction	purchasing.suppliertransactions.transactionamount	certified	(generated kept)
+column	Supplier Transaction	purchasing.suppliertransactions.suppliertransactionid	certified	(generated kept)
+column	Supplier Transaction	purchasing.suppliertransactions.finalizationdate	left	
+column	Supplier Transaction	purchasing.suppliertransactions.transactiondate	certified	(generated kept)
+column	Supplier Transaction	purchasing.suppliertransactions.lasteditedwhen	left	
+column	Supplier Transaction	purchasing.suppliertransactions.taxamount	certified	(generated kept)
+column	Supplier Transaction	purchasing.suppliertransactions.outstandingbalance	certified	(generated kept)
+column	Supplier Transaction	purchasing.suppliertransactions.isfinalized	certified	(generated kept)
+term	System Parameter	application.systemparameters	left	
+column	System Parameter	application.systemparameters.postaladdressline2	left	
+column	System Parameter	application.systemparameters.deliverylocation	left	
+column	System Parameter	application.systemparameters.postalpostalcode	left	
+column	System Parameter	application.systemparameters.deliverypostalcode	left	
+column	System Parameter	application.systemparameters.applicationsettings	left	
+column	System Parameter	application.systemparameters.deliveryaddressline2	left	
+column	System Parameter	application.systemparameters.systemparameterid	left	
+column	System Parameter	application.systemparameters.deliveryaddressline1	left	
+column	System Parameter	application.systemparameters.postaladdressline1	left	
+column	System Parameter	application.systemparameters.lasteditedwhen	left	
+term	Transaction Type	application.transactiontypes	certified	Kinds of financial and stock transactions, for example Customer Invoice or Stock Receipt.
+column	Transaction Type	application.transactiontypes.validfrom	left	
+column	Transaction Type	application.transactiontypes.transactiontypename	certified	(generated kept)
+column	Transaction Type	application.transactiontypes.transactiontypeid	certified	(generated kept)
+column	Transaction Type	application.transactiontypes.validto	left	
+term	Vehicle Temperature Reading	warehouse.vehicletemperatures	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.chillersensornumber	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.compressedsensordata	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.fullsensordata	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.vehicleregistration	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.iscompressed	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.recordedwhen	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.vehicletemperatureid	left	
+column	Vehicle Temperature Reading	warehouse.vehicletemperatures.temperature	left	
+sql_attribute	Customer (d1.sales.customers)	sales.customers	certified	SELECT COUNT((customerid)) FROM sales.customers
+sql_attribute	Order (d1.sales.orders)	sales.orders	certified	SELECT COUNT((orderid)) FROM sales.orders
+sql_attribute	Order Line (d1.sales.orderlines)	sales.orderlines	certified	SELECT SUM((quantity * unitprice)) FROM sales.orderlines
+sql_attribute	Order Line (d1.sales.orderlines)	sales.orderlines	certified	SELECT SUM((quantity)) FROM sales.orderlines
+sql_attribute	Invoice	sales.invoices	certified	SELECT COUNT((invoiceid)) FROM sales.invoices
+sql_attribute	Invoice Line	sales.invoicelines	certified	SELECT SUM((extendedprice - taxamount)) FROM sales.invoicelines
+sql_attribute	Invoice Line	sales.invoicelines	certified	SELECT SUM((extendedprice)) FROM sales.invoicelines
+sql_attribute	Invoice Line	sales.invoicelines	certified	SELECT SUM((lineprofit)) FROM sales.invoicelines
+sql_attribute	Invoice Line	sales.invoicelines	certified	SELECT SUM((quantity)) FROM sales.invoicelines
+sql_attribute	Customer Transaction	sales.customertransactions	certified	SELECT SUM((outstandingbalance)) FROM sales.customertransactions
+sql_attribute	Stock Item Holding	warehouse.stockitemholdings	certified	SELECT SUM((quantityonhand) * (lastcostprice)) FROM warehouse.stockitemholdings
+sql_attribute	Purchase Order	purchasing.purchaseorders	certified	SELECT COUNT((purchaseorderid)) FROM purchasing.purchaseorders
+sql_attribute	Supplier Transaction	purchasing.suppliertransactions	certified	SELECT SUM((outstandingbalance)) FROM purchasing.suppliertransactions
+sql_attribute	Invoice Line	sales.invoicelines	certified	SELECT 100 * SUM(il.lineprofit) / SUM(il.extendedprice - il.taxamount) FROM sales.invoicelines il
+sql_attribute	Invoice	sales.invoices	certified	SELECT SUM(il.extendedprice - il.taxamount) / COUNT(DISTINCT i.invoiceid) FROM sales.invoicelines il JOIN sales.invoices i ON i.invoiceid = il.invoiceid
