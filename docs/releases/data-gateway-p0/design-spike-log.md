@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Follow-up, opportunity 1 (D24): estimated offline (section 11). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -180,6 +180,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D21 | 2026-11-24 | DG-00.06 approach (section 9): the gateway prototype replays the engine decisions of the DG-00.05 runs (all four arms) through the guard and the A' executor, so the safety run covers exactly what the accuracy table scores; a foreign-row probe runs in the same read-only transaction; all 60 adversarial cases (D6 doubled the backlog's 30); the 26 SQL cases also run with the guard bypassed; `nl2data-ref`'s guard-bypassed database tests are ported to the mart's A' hardening, each mapping stated. | Claude (delegated) |
 | D22 | 2026-11-24 | DG-00.07 reading rules (decision record): accuracy is read per question (right for every persona), with units beside it; "correct refusal" is the unanswerable questions; "wrong answers" counts every non-adversarial D3 unit; p95 is per question as measured (4 to 6 concurrent requests); only one model exists here, so "best available model" is that model. | Claude (delegated) |
 | D23 | 2026-11-24 | The decision record (DG-00.07) is final, after a review of the whole spike: gate 2 of ADR 0016 is not met; the kill criterion is not triggered; Auto Ontology stays a conditional GO. The review corrected two statements (D2's uplift is +9.3, below the 10-point bar, on one dataset only; p95 counts 934 requests, not questions) and added how firm each verdict is. No verdict changed. | Owner, on Claude's review |
+| D24 | 2026-11-24 | Owner: "Accepted with your recommendation, start opportunity 1" (the industry benchmark's "triage, then write"). Read as: estimate it offline from the saved DG-00.05 outputs, no model calls, scored by the unchanged scorer; the decision record stays final and unchanged (section 11) | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -1107,3 +1108,64 @@ S2 on D1 rests on point estimates.
    per D2 I have designed nothing beyond the DG-E00 stories.
 3. **ADR 0016 corrections (D14)** are still to draft: decision 5 (F6, D18), certification outside core
    Ossie (D13, F11), and now the round-trip limits (F12).
+
+## 11. Follow-up: "triage, then write", estimated offline (2026-11-24, D24)
+
+Opportunity 1 of the [industry benchmark](../../research/data-analytics/landscape/DATA_GATEWAY_P0_INDUSTRY_BENCHMARK.md):
+arm B decides whether to answer, and arm A2 writes the SQL whenever B would answer. Built as arm
+**T** by `dg-p0/arms/triage.py` (spike `2c57274`) from the saved outputs of `bp-d3`/`ao-d3-a2`,
+`bp-d1`/`ao-d1-a2` and `cb-d2`/`ao-d2-a2`. No model was called; `score.py` is unchanged.
+
+**Check.** Every one of the 1,473 T units (934 + 39 + 500) scores exactly as the same unit scored
+in its source arm (0 differences), so T is a pure re-routing of measured outcomes.
+
+### D3 against B8 (n as in the decision record)
+
+| Threshold | B | A2 | **T (B gates, A2 writes)** |
+| --- | --- | --- | --- |
+| Accuracy, at least 85% | 71.0% [64.4, 76.8] | 89.5% [84.5, 93.0] | **86.5% [81.1, 90.5] met** (point estimate) |
+| Wrong answers without refusal or clarification, at most 5% | 3.7% [2.6, 5.1] | 16.6% [14.3, 19.1] | **5.9% [4.5, 7.6] not met** (narrowly) |
+| Correct refusal, at least 90% | 80.0% [68.2, 88.2] | 46.7% [34.6, 59.1] | **83.3% [72.0, 90.7] not met** |
+| p95, at most 45 s | 24.8 s | 69.9 s | **52.1 s sequential, not met; 35.2 s parallel, met** |
+| S3 counts | 0, 0, 0 | 0, 0, 0 | **0, 0, 0 met** (adversarial handled 88.2%, best of any arm) |
+| Correct clarification (not a B8 threshold) | 67.5% | 0.0% | 67.5% |
+
+Latency is estimated, not measured: *sequential* waits for B, then runs A2; *parallel* starts both
+and keeps B's answer when B stops (`seconds_parallel` in the outputs). Parallel runs A2 on every
+question, so it trades compute for latency.
+
+**What is left on D3.** 53 wrong-answer units, all on questions B judged answerable and A2 then
+answered: 26 answerable answered wrongly, 17 unanswerable answered, 10 ambiguous answered with one
+reading. 25 unanswerable units not refused: 17 answered by A2, 8 sent back by B as a clarification
+(the scorer wants a refusal there).
+
+### The gate's cost on D1 and D2 (answerable questions only)
+
+| Dataset | B | A2 | T | Answerable units T did not answer |
+| --- | --- | --- | --- | --- |
+| D1 (n = 34) | 26.5% | 41.2% | 26.5% [14.6, 43.1] | 47.1% (B refuses them) |
+| D2 (n = 487, indicative) | 55.4% | 60.2% | 58.5% [54.1, 62.8] | 5.9% |
+
+On D1, B refuses nearly half the answerable questions, so the gate removes all of A2's gain. A
+gate is only as good as its refusal calibration on the schema in front of it: on D3, where B's
+model was hand-written, B leaves 3.8% of answerable units unanswered; on D1 it leaves 47.1%.
+
+### What it means (not a decision)
+
+- **Gate 2 is still not met**, so the decision record's verdicts stand and the record is unchanged.
+  T misses the wrong-answer threshold narrowly and the refusal threshold clearly.
+- **T is the first combination to meet accuracy and latency together** (with the parallel
+  estimate), and the first whose refusal interval reaches 90%. It confirms the record's main
+  observation: B's caution and A2's SQL combine without losing much of either on D3.
+- **The remaining gap is a sharper refusal decision**, not better SQL: 17 unanswerable units pass
+  B's gate. That points at opportunity 2 (refusal by missing catalog elements, plus value checks)
+  as the next increment, measured the same way.
+- **Caveats.** Offline routing assumes each engine decides the same inside the composite as alone.
+  D1's result says the gate needs a good semantic model; D3's says it works when it has one. A live
+  run is needed before any claim beyond "estimated".
+
+### For the owner
+
+1. Is the estimate strong enough to make "B gates, A2 writes" the direction for the next spike
+   increment, with opportunity 2 (a sharper refusal gate) as the next step?
+
