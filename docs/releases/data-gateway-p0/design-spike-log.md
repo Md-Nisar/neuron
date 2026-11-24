@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Follow-up, opportunity 1 (D24): estimated offline (section 11). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Follow-up, opportunity 1 (D24): estimated offline (section 11). Opportunity 2 (D25): value check, estimated offline with one new model call per question (section 12); upstream 1.3.0 release checked (section 13). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -181,6 +181,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D22 | 2026-11-24 | DG-00.07 reading rules (decision record): accuracy is read per question (right for every persona), with units beside it; "correct refusal" is the unanswerable questions; "wrong answers" counts every non-adversarial D3 unit; p95 is per question as measured (4 to 6 concurrent requests); only one model exists here, so "best available model" is that model. | Claude (delegated) |
 | D23 | 2026-11-24 | The decision record (DG-00.07) is final, after a review of the whole spike: gate 2 of ADR 0016 is not met; the kill criterion is not triggered; Auto Ontology stays a conditional GO. The review corrected two statements (D2's uplift is +9.3, below the 10-point bar, on one dataset only; p95 counts 934 requests, not questions) and added how firm each verdict is. No verdict changed. | Owner, on Claude's review |
 | D24 | 2026-11-24 | Owner: "Accepted with your recommendation, start opportunity 1" (the industry benchmark's "triage, then write"). Read as: estimate it offline from the saved DG-00.05 outputs, no model calls, scored by the unchanged scorer; the decision record stays final and unchanged (section 11) | Owner |
+| D25 | 2026-11-24 | Owner: "Accepted with your recommendation, start opportunity 2". Read as: build the sharper refusal gate as a value check (every leaked unanswerable D3 question names a value the data lacks), estimate it offline on top of arm T with one extraction call per question, score with the unchanged scorer, keep D2 as the holdout; decision record unchanged (section 12) | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -1168,4 +1169,117 @@ model was hand-written, B leaves 3.8% of answerable units unanswered; on D1 it l
 
 1. Is the estimate strong enough to make "B gates, A2 writes" the direction for the next spike
    increment, with opportunity 2 (a sharper refusal gate) as the next step?
+
+## 12. Follow-up: a value check in front of the writer (2026-11-24, D25)
+
+Opportunity 2 of the [industry benchmark](../../research/data-analytics/landscape/DATA_GATEWAY_P0_INDUSTRY_BENCHMARK.md),
+narrowed by the data: all 17 unanswerable D3 units that passed B's gate in arm T ask about a value
+that does not exist (Rust, CISSP, Jane Doe, Mexico, Quantum Router, John Smith, Spain), not about
+a missing table or column. So the check is about values. Built by `dg-p0/arms/valuegate.py`
+(spike `c91367a`):
+
+- **When B refuses or clarifies**, B's decision stands, as in T.
+- **Otherwise, one model call per question** (same model, temperature 0, B's semantic model and
+  physical schema) lists the named values the question depends on, with the table and column(s) for
+  each and, from v2, the value as the column stores it.
+- **The gateway, not the model, looks each value up**: one `SELECT 1 … ILIKE … LIMIT 1` through the
+  reference guard and the persona's read-only executor, the same path as every answer. No row
+  means refuse, naming the value. A lookup the guard rejects or that fails is inconclusive and
+  refuses nothing. Otherwise A2's decision.
+- **Persona scope still applies**: the value is looked up only in rows the persona may read.
+
+| Version | Lookup | Designed after seeing |
+| --- | --- | --- |
+| v1, arm T2 (spike `3edaaad`) | The value as the question words it, in one column | Nothing |
+| v2, arm T3 | Also the stored form, and the words without a plural "s" | D3 (v1 refused 24 answerable units on wording: "Team Leads", "SMB", `late_delivery`) |
+| v3, arm T4 | Same replies as v2, no new model calls. A value may span the listed columns (first and last name), and only text columns are searched | D2 (v2's misses below) |
+
+### D3 against B8
+
+| Threshold | T (D24) | T3 (v2) | **T4 (v3)** |
+| --- | --- | --- | --- |
+| Accuracy, at least 85% | 86.5% [81.1, 90.5] | 86.0% [80.5, 90.1] | **86.5% [81.1, 90.5] met** (point estimate) |
+| Wrong answers without refusal or clarification, at most 5% | 5.9% [4.5, 7.6] | 4.0% [2.9, 5.5] | **4.0% [2.9, 5.5] met** |
+| Correct refusal, at least 90% | 83.3% [72.0, 90.7] | 91.7% [81.9, 96.4] | **91.7% [81.9, 96.4] met** (point estimate) |
+| p95, at most 45 s (sequential; parallel) | 52.1 s; 35.2 s | 91.6 s; 57.8 s | **91.6 s; 57.8 s, not met** |
+| S3 counts | 0, 0, 0 | 0, 0, 0 | **0, 0, 0 met** |
+| Answerable units not answered | 5.2% | 5.7% | 5.2% |
+| Adversarial handled (not a B8 threshold) | 88.2% | 88.2% | 88.2% |
+
+- **The value check refuses 9 unanswerable questions in every persona** (K-U-018 to 021, K-U-029,
+  S-U-020 to 022, S-U-027) and, in v3, **no answerable one**. v2's 3 false refusals (K-A-056: the
+  model listed "current" as a value of the date column `left_on`) become inconclusive in v3.
+- **Accuracy, wrong answers and refusal are met together for the first time**, by point estimate.
+  The refusal interval's lower bound is 81.9%, so 60 unanswerable units cannot show it at 95%.
+- **Latency is the cost**: the extraction call took 13.3 s at the median and 59.5 s at p95 on the
+  free tier, so even started alongside B and A2 the p95 is 57.8 s.
+
+### The holdout: D2 (500 BIRD questions, all answerable, indicative)
+
+| | T (D24) | T3 (v2, holdout) | T4 (v3, after seeing D2) |
+| --- | --- | --- | --- |
+| Accuracy | 58.5% [54.1, 62.8] | 55.9% [51.4, 60.2] | 57.3% [52.9, 61.6] |
+| Answerable units not answered | 5.9% | 10.7% | 8.2% |
+| Value-check refusals (all false here) | n/a | 23, of which A2 had 13 right | 11, of which A2 had 6 right |
+
+v2's 23 false refusals on the holdout, by cause:
+
+| Cause | Units | Fixed in v3? |
+| --- | --- | --- |
+| A full name split across `first_name` and `last_name`, looked up in one column | 11 | Yes (lookup defect) |
+| A value named for a numeric column (`igg`) | 1 | Yes (inconclusive) |
+| The model picked the wrong column or kept a kind word: "POPLATEK …" is in `account.frequency`, not `trans.k_symbol` (4); "Alameda County" is stored "Alameda"; "Community" is a `users.displayname`, not a `posts.ownerdisplayname` | 6 | No (extraction errors) |
+| The value is negated: "events … that were not fundraisers", and the data has no fundraiser events, so the answer does not need it to exist | 1 | No (the check has no notion of negation) |
+| `'-'` in two laboratory text columns, read as a value | 2 | No |
+| BIRD's evidence names a value the data lacks: `disp.type = 'USER'` (data: OWNER, DISPONENT); "Portuguese (Brasil)" (data: "Brazil") | 2 | No; refusing is defensible, but the reference answer counts it wrong |
+
+One v3 attempt also dropped fragments without letters or digits; on D2 that refused 14 more
+units where the stored value is a symbol (`'+'`, `'-'`, `'='`, `'#'`), so it was reverted before
+these numbers. **On D1 the check refuses nothing** (B already refuses 47.1% there), so T3 and T4
+equal T.
+
+### What it means (not a decision)
+
+- **Gate 2 is still not met**, so the decision record stands unchanged. On D3, latency is now the
+  only B8 threshold missed by point estimate. All D3 numbers are optimistic: v2 was designed after
+  D3, and the 60 unanswerable D3 units are the only unanswerable questions in the spike.
+- **The idea holds; the cost is in false refusals off the home dataset.** On held-out D2, v2
+  refused 4.6% of units, all answerable, and cost 2.6 points of accuracy; 11 of the 23 refusals came
+  from one lookup defect. After the fix (no longer held out), 2.2% of units are refused, costing 1.2 points.
+  What is left are mostly extraction errors, plus negated values and BIRD's evidence naming values
+  the data lacks, so the check is only as good as the extraction.
+- **Refusals carry a checkable reason** ("No skills.certifications.name matches "CISSP" in the data
+  you can see"). The industry benchmark (G1) asks for this, and it is the only refusal in the spike
+  whose reason the gateway, not the model, verified.
+- **Latency points at a design choice, not a dead end**: extraction is a small, structured task.
+  A smaller model, B emitting the values in the same call, or a cache per question shape are each
+  testable; none was tried here.
+- **Caveats.** Offline composition assumes each engine decides the same inside the composite. Each
+  lookup reveals only whether a value exists in rows the persona may read, the same as a
+  `COUNT(*)` the persona could ask; this still needs a line in the safety review before it is built.
+
+### For the owner
+
+1. Should the next increment be **a live run of T4 on D3 and a fresh unanswerable set** (not D3's),
+   with the extraction folded into B's call to recover latency?
+
+## 13. Upstream check: Auto Ontology 1.3.0 release (2026-11-24)
+
+NVIDIA published the GitHub release "Auto Ontology 1.3.0" on 2026-11-24, tag `v1.3.0` at
+`25318762`. It is cut from a release branch: the spike's pin `7dac5ff7` ("Bump version to 1.3.0",
+#552, on `main`) is not its ancestor, and the release adds 18 commits up to 2026-11-23.
+
+| Area | Pin `7dac5ff7` against `v1.3.0` | Effect on the spike |
+| --- | --- | --- |
+| Text-to-SQL (`auto_ontology/retrieval`, ReAct agent, value anchors #549) | Identical; #549 was already in the pin | A1 and A2 results stand |
+| Connectors (read-only transaction) | Identical | Safety findings stand |
+| Ossie export | Unchanged | Round-trip findings stand |
+| PII values (#546): columns tagged `PII` are never sampled, probed, used in FK checks or embedded, and their values never reach a prompt; if tags cannot be read, nothing is sampled | New | **F9 is partly addressed**: values of untagged columns are still sampled and sent, so protection depends on PII tagging |
+| CSV export, dependency and Next.js security updates, DCO check | New | None |
+
+The release notes report first place on BEAVER and BIRD-Interact with Claude Opus 5.5, not the
+model every spike arm shares, so they do not change the comparison. Known issues listed: thrift
+0.24.0 DoS advisories and a certifi root under a critical advisory, both planned for the next
+release. **No re-run is needed.** For the ADR 0016 corrections, F9 becomes "stoppable for columns
+tagged PII" rather than "no setting stops it".
 
