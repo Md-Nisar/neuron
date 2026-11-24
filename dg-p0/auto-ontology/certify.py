@@ -29,7 +29,13 @@ def call(method: str, path: str, body=None):
         raise SystemExit(f"{method} {path} -> {e.code}: {e.read().decode()[:500]}") from None
 
 
-terms = {t["name"]: t for t in call("GET", "/api/terms?limit=100")["terms"]}
+if os.environ.get("AO_SCOPE_EXPORT"):
+    # D26: with several databases attached, names collide and the listing stops at 100, so take
+    # the terms of one database from its scoped admin export (export_model.py <url> <dir> d3).
+    scoped = yaml.safe_load(open(os.environ["AO_SCOPE_EXPORT"]))["semantic_layer"]["terms"]
+    terms = {t["name"]: call("GET", f"/api/terms/{t['id']}")["data"] for t in scoped}
+else:
+    terms = {t["name"]: t for t in call("GET", "/api/terms?limit=100")["terms"]}
 columns = []
 for name, t in sorted(terms.items()):
     for c in call("GET", f"/api/terms/{t['id']}/column-attributes?limit=100")["data"]:

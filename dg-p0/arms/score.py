@@ -35,6 +35,7 @@ from nl2data_ref.answer_checks import results_match  # noqa: E402
 from nl2data_ref.guard import Policy, Scope, validate  # noqa: E402
 
 DSN = os.environ["D3_DSN"]
+D3_QUESTIONS = os.environ.get("D3_QUESTIONS", "questions.jsonl")  # as engine.D3_QUESTIONS (D26)
 MAX_ROWS = Policy().max_rows
 TABLE = re.compile(r"\b(?:sales|skills)\.[a-z_]+\b")
 
@@ -164,7 +165,9 @@ def outcome(rec: dict, q: dict, scopes: dict) -> dict:
 def load_questions(dataset: str) -> dict:
     if dataset in ("d1", "d2"):
         return {q["id"]: q for q in map(json.loads, (DG / f"{dataset}/questions.jsonl").read_text().splitlines())}
-    qs = {q["id"]: q for q in map(json.loads, (DG / "d3/questions.jsonl").read_text().splitlines())}
+    qs = {q["id"]: q for q in map(json.loads, (DG / "d3" / D3_QUESTIONS).read_text().splitlines())}
+    if D3_QUESTIONS != "questions.jsonl":  # D26: a separate question file has no adversarial cases
+        return qs
     for a in map(json.loads, (DG / "d3/adversarial.jsonl").read_text().splitlines()):
         if "question" in a["input"]:
             qs[a["id"]] = {"id": a["id"], "category": "adversarial", "kind": a["kind"], "expected": a["expected"]}

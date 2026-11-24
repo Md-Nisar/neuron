@@ -23,6 +23,8 @@ import json
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
 from itertools import permutations
 from decimal import Decimal
@@ -70,8 +72,15 @@ def ask_model(prompt: str) -> str:
             "Content-Type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310 (fixed https endpoint)
-        text = json.load(resp)["choices"][0]["message"]["content"] or ""
+    for i in range(1, 9):  # D26: retry rate limits and server errors with backoff, as engine.call_model
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310 (fixed https endpoint)
+                text = json.load(resp)["choices"][0]["message"]["content"] or ""
+            break
+        except urllib.error.HTTPError as e:
+            if e.code != 429 and e.code < 500 or i == 8:
+                raise
+            time.sleep(min(120, 5 * 2 ** (i - 1)))
     return re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
 
 

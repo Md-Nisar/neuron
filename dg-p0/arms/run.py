@@ -28,8 +28,9 @@ def units(dataset: str, limit: int | None) -> list[dict]:
     """Every (question, persona) the arms must answer, in a fixed order."""
     out = []
     if dataset == "d3":
-        qs = [json.loads(line) for line in (engine.DG / "d3/questions.jsonl").read_text().splitlines()]
-        adv = [json.loads(line) for line in (engine.DG / "d3/adversarial.jsonl").read_text().splitlines()]
+        qs = [json.loads(line) for line in (engine.DG / "d3" / engine.D3_QUESTIONS).read_text().splitlines()]
+        adv = ([json.loads(line) for line in (engine.DG / "d3/adversarial.jsonl").read_text().splitlines()]
+               if engine.D3_QUESTIONS == "questions.jsonl" else [])
         if limit:  # a smoke run: the first N of each category, plus N adversarial questions
             qs = [q for cat in ("answerable", "unanswerable", "ambiguous")
                   for q in [x for x in qs if x["category"] == cat][:limit]]

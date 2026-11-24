@@ -23,6 +23,8 @@ import psycopg
 import yaml
 
 DG = pathlib.Path(__file__).resolve().parents[1]
+# D26: another D3 question file (d3/fresh.jsonl) can be run and scored; adversarial cases then stay out.
+D3_QUESTIONS = os.environ.get("D3_QUESTIONS", "questions.jsonl")
 TODAY = "2026-11-23"
 DATASETS = {
     # Arm B gets every model of the dataset, as arm C gets the whole database: no free routing.
