@@ -71,6 +71,7 @@ def ask(payload: dict, tok: str) -> dict:
                 a = ev.get("answer") or {}
                 rec["sql"] = (a.get("sql_code") or "").strip()
                 rec["response"] = str(a.get("response") or "")
+                rec["thoughts"] = str(a.get("thoughts") or "")[:1000]
             elif ev.get("type") == "error":
                 rec["error"] = str(ev.get("message"))[:500]
     return rec
@@ -84,6 +85,8 @@ def decide(rec: dict) -> dict:
         return {"action": "sql", "sql": rec["sql"].rstrip(";").strip()}
     if rec["error"] or not rec["response"].strip():  # an empty reply is a failed run, not a refusal
         return {"action": "unparsed"}
+    if rec["response"].startswith("I couldn't write a query") and not rec.get("thoughts", "").strip():
+        return {"action": "unparsed"}  # the agent never ran a step (model or connection error): retry
     text = rec["response"].strip()
     if ASKS_BACK.search(text):
         return {"action": "clarify", "text": text[:500]}
