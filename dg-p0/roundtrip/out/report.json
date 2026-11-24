@@ -1,0 +1,1557 @@
+{
+ "report": {
+  "ao_export_validates_as_exported": "failed: Semantic checks skipped until schema errors are fixed.",
+  "ao_export_validates_after_to03": "passed",
+  "hand_validates": "passed",
+  "hand_import_as_d3": "500: duplicate key uq_catalog_database_name (recorded, not retried)",
+  "relationships_not_importable": [
+   "assessments_to_assessor"
+  ],
+  "hand_import": {
+   "success": true,
+   "summary": {
+    "database_ids": [
+     "14a90512-dee7-40df-8d74-1a2fd268d5a5"
+    ],
+    "created": {
+     "databases": 0,
+     "schemas": 0,
+     "tables": 0,
+     "columns": 0,
+     "terms": 0,
+     "column_attributes": 0,
+     "sql_attributes": 0,
+     "custom_analyses": 0
+    },
+    "skipped": {
+     "databases": 1,
+     "schemas": 2,
+     "tables": 15,
+     "columns": 76,
+     "terms": 15,
+     "column_attributes": 75,
+     "sql_attributes": 2,
+     "custom_analyses": 3
+    },
+    "replace": true,
+    "terms": 15,
+    "column_attributes": 75,
+    "semantic_fks": 20,
+    "sql_attributes": 2,
+    "custom_analyses": 3,
+    "pending_embed": {
+     "data_rows": 0,
+     "semantic_rows": 0
+    },
+    "format": "ossie",
+    "embeddings": {
+     "skipped": false,
+     "data_rows": 0,
+     "semantic_rows": 0
+    }
+   }
+  },
+  "hand_back_validates": "passed",
+  "hand_certified_after_import": {
+   "terms": 15,
+   "terms_name_certified": 0,
+   "sql_attributes": 2,
+   "sql_attributes_certified": 0
+  },
+  "a2_import": {
+   "success": true,
+   "summary": {
+    "database_ids": [
+     "3548e520-b5ec-49c5-93f2-a2ab9e319949"
+    ],
+    "created": {
+     "databases": 0,
+     "schemas": 0,
+     "tables": 0,
+     "columns": 0,
+     "terms": 0,
+     "column_attributes": 0,
+     "sql_attributes": 0,
+     "custom_analyses": 0
+    },
+    "skipped": {
+     "databases": 1,
+     "schemas": 3,
+     "tables": 16,
+     "columns": 77,
+     "terms": 16,
+     "column_attributes": 51,
+     "sql_attributes": 13,
+     "custom_analyses": 0
+    },
+    "replace": true,
+    "terms": 16,
+    "column_attributes": 51,
+    "semantic_fks": 26,
+    "sql_attributes": 13,
+    "custom_analyses": 0,
+    "pending_embed": {
+     "data_rows": 0,
+     "semantic_rows": 0
+    },
+    "format": "ossie",
+    "embeddings": {
+     "skipped": false,
+     "data_rows": 0,
+     "semantic_rows": 0
+    }
+   }
+  },
+  "a2_back_validates": "passed",
+  "a2_certified_after_import": {
+   "terms": 16,
+   "terms_name_certified": 0,
+   "sql_attributes": 13,
+   "sql_attributes_certified": 0
+  },
+  "hand_roundtrip": {
+   "fields kept": 77,
+   "metrics kept": 3,
+   "metrics lost": 9
+  },
+  "ao_roundtrip": {
+   "fields kept": 90
+  }
+ },
+ "hand": [
+  {
+   "kind": "field",
+   "table": "sales.countries",
+   "name": "country_code",
+   "outcome": "kept",
+   "expression": "country_code",
+   "back": "country_code"
+  },
+  {
+   "kind": "field",
+   "table": "sales.countries",
+   "name": "country_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.countries",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "country_code",
+   "outcome": "kept",
+   "expression": "country_code",
+   "back": "country_code"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "created_on",
+   "outcome": "kept",
+   "expression": "created_on",
+   "back": "created_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "customer_id",
+   "outcome": "kept",
+   "expression": "customer_id",
+   "back": "customer_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "customer_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "segment",
+   "outcome": "kept",
+   "expression": "segment",
+   "back": "segment"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "discount_pct",
+   "outcome": "kept",
+   "expression": "discount_pct",
+   "back": "discount_pct"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "line_no",
+   "outcome": "kept",
+   "expression": "line_no",
+   "back": "line_no"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "net_amount",
+   "outcome": "kept",
+   "expression": "quantity * unit_price *(1 - discount_pct / 100)",
+   "back": "quantity * unit_price *(1 - discount_pct / 100)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "order_id",
+   "outcome": "kept",
+   "expression": "order_id",
+   "back": "order_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "product_id",
+   "outcome": "kept",
+   "expression": "product_id",
+   "back": "product_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "quantity",
+   "outcome": "kept",
+   "expression": "quantity",
+   "back": "quantity"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "unit_price",
+   "outcome": "kept",
+   "expression": "unit_price",
+   "back": "unit_price"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "customer_id",
+   "outcome": "kept",
+   "expression": "customer_id",
+   "back": "customer_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "order_id",
+   "outcome": "kept",
+   "expression": "order_id",
+   "back": "order_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "ordered_on",
+   "outcome": "kept",
+   "expression": "ordered_on",
+   "back": "ordered_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "rep_id",
+   "outcome": "kept",
+   "expression": "rep_id",
+   "back": "rep_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "status",
+   "outcome": "kept",
+   "expression": "status",
+   "back": "status"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "category",
+   "outcome": "kept",
+   "expression": "category",
+   "back": "category"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "list_price",
+   "outcome": "kept",
+   "expression": "list_price",
+   "back": "list_price"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "product_id",
+   "outcome": "kept",
+   "expression": "product_id",
+   "back": "product_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "product_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.regions",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.regions",
+   "name": "region_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "line_no",
+   "outcome": "kept",
+   "expression": "line_no",
+   "back": "line_no"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "order_id",
+   "outcome": "kept",
+   "expression": "order_id",
+   "back": "order_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "reason",
+   "outcome": "kept",
+   "expression": "reason",
+   "back": "reason"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "return_id",
+   "outcome": "kept",
+   "expression": "return_id",
+   "back": "return_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "returned_on",
+   "outcome": "kept",
+   "expression": "returned_on",
+   "back": "returned_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "returned_quantity",
+   "outcome": "kept",
+   "expression": "quantity",
+   "back": "quantity"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "hired_on",
+   "outcome": "kept",
+   "expression": "hired_on",
+   "back": "hired_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "rep_id",
+   "outcome": "kept",
+   "expression": "rep_id",
+   "back": "rep_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "rep_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "cycle_id",
+   "outcome": "kept",
+   "expression": "cycle_id",
+   "back": "cycle_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "cycle_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "ends_on",
+   "outcome": "kept",
+   "expression": "ends_on",
+   "back": "ends_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "starts_on",
+   "outcome": "kept",
+   "expression": "starts_on",
+   "back": "starts_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "assessed_on",
+   "outcome": "kept",
+   "expression": "assessed_on",
+   "back": "assessed_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "assessment_id",
+   "outcome": "kept",
+   "expression": "assessment_id",
+   "back": "assessment_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "assessor_id",
+   "outcome": "kept",
+   "expression": "assessor_id",
+   "back": "assessor_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "cycle_id",
+   "outcome": "kept",
+   "expression": "cycle_id",
+   "back": "cycle_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "employee_id",
+   "outcome": "kept",
+   "expression": "employee_id",
+   "back": "employee_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "score",
+   "outcome": "kept",
+   "expression": "score",
+   "back": "score"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "skill_id",
+   "outcome": "kept",
+   "expression": "skill_id",
+   "back": "skill_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "certification_id",
+   "outcome": "kept",
+   "expression": "certification_id",
+   "back": "certification_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "certification_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "employee_id",
+   "outcome": "kept",
+   "expression": "employee_id",
+   "back": "employee_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "expires_on",
+   "outcome": "kept",
+   "expression": "expires_on",
+   "back": "expires_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "issued_on",
+   "outcome": "kept",
+   "expression": "issued_on",
+   "back": "issued_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.departments",
+   "name": "department_id",
+   "outcome": "kept",
+   "expression": "department_id",
+   "back": "department_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.departments",
+   "name": "department_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.departments",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "department_id",
+   "outcome": "kept",
+   "expression": "department_id",
+   "back": "department_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "employee_id",
+   "outcome": "kept",
+   "expression": "employee_id",
+   "back": "employee_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "employee_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "hired_on",
+   "outcome": "kept",
+   "expression": "hired_on",
+   "back": "hired_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "is_current",
+   "outcome": "kept",
+   "expression": "left_on is null",
+   "back": "left_on is null"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "job_title",
+   "outcome": "kept",
+   "expression": "job_title",
+   "back": "job_title"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "left_on",
+   "outcome": "kept",
+   "expression": "left_on",
+   "back": "left_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "level",
+   "outcome": "kept",
+   "expression": "level",
+   "back": "level"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "manager_id",
+   "outcome": "kept",
+   "expression": "manager_id",
+   "back": "manager_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.role_targets",
+   "name": "job_title",
+   "outcome": "kept",
+   "expression": "job_title",
+   "back": "job_title"
+  },
+  {
+   "kind": "field",
+   "table": "skills.role_targets",
+   "name": "skill_id",
+   "outcome": "kept",
+   "expression": "skill_id",
+   "back": "skill_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.role_targets",
+   "name": "target_score",
+   "outcome": "kept",
+   "expression": "target_score",
+   "back": "target_score"
+  },
+  {
+   "kind": "field",
+   "table": "skills.skills",
+   "name": "skill_category",
+   "outcome": "kept",
+   "expression": "category",
+   "back": "category"
+  },
+  {
+   "kind": "field",
+   "table": "skills.skills",
+   "name": "skill_id",
+   "outcome": "kept",
+   "expression": "skill_id",
+   "back": "skill_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.skills",
+   "name": "skill_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "metric",
+   "table": "(model)",
+   "name": "average_order_value",
+   "outcome": "kept",
+   "expression": "sum(order_lines.net_amount)filter(where orders.status = 'completed')/ count(distinct orders.order_id)filter(where orders.status = 'completed')",
+   "back": "sum(order_lines.net_amount)filter(where orders.status = 'completed')/ count(distinct orders.order_id)filter(where orders.status = 'completed')"
+  },
+  {
+   "kind": "metric",
+   "table": "(model)",
+   "name": "revenue",
+   "outcome": "kept",
+   "expression": "sum(order_lines.net_amount)filter(where orders.status = 'completed')",
+   "back": "sum(order_lines.net_amount)filter(where orders.status = 'completed')"
+  },
+  {
+   "kind": "metric",
+   "table": "(model)",
+   "name": "units_sold",
+   "outcome": "kept",
+   "expression": "sum(order_lines.quantity)filter(where orders.status = 'completed')",
+   "back": "sum(order_lines.quantity)filter(where orders.status = 'completed')"
+  },
+  {
+   "kind": "metric",
+   "table": "sales.customers",
+   "name": "customer_count",
+   "outcome": "lost",
+   "expression": "count(customer_id)",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "sales.orders",
+   "name": "completed_order_count",
+   "outcome": "lost",
+   "expression": "count(order_id)filter(where status = 'completed')",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "sales.orders",
+   "name": "order_count",
+   "outcome": "lost",
+   "expression": "count(order_id)",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "sales.returns",
+   "name": "returned_units",
+   "outcome": "lost",
+   "expression": "sum(returned_quantity)",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "skills.assessments",
+   "name": "assessment_count",
+   "outcome": "lost",
+   "expression": "count(assessment_id)",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "skills.assessments",
+   "name": "average_score",
+   "outcome": "lost",
+   "expression": "avg(score)",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "skills.certifications",
+   "name": "certification_count",
+   "outcome": "lost",
+   "expression": "count(certification_id)",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "skills.employees",
+   "name": "headcount",
+   "outcome": "lost",
+   "expression": "count(employee_id)filter(where is_current)",
+   "back": ""
+  },
+  {
+   "kind": "metric",
+   "table": "skills.employees",
+   "name": "leavers",
+   "outcome": "lost",
+   "expression": "count(employee_id)filter(where not is_current)",
+   "back": ""
+  }
+ ],
+ "ao": [
+  {
+   "kind": "field",
+   "table": "app.role_regions",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "app.role_regions",
+   "name": "role_name",
+   "outcome": "kept",
+   "expression": "role_name",
+   "back": "role_name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.countries",
+   "name": "country_code",
+   "outcome": "kept",
+   "expression": "country_code",
+   "back": "country_code"
+  },
+  {
+   "kind": "field",
+   "table": "sales.countries",
+   "name": "country_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.countries",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "country_code",
+   "outcome": "kept",
+   "expression": "country_code",
+   "back": "country_code"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "created_on",
+   "outcome": "kept",
+   "expression": "created_on",
+   "back": "created_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "customer_count",
+   "outcome": "kept",
+   "expression": "count(c.customer_id)",
+   "back": "count(c.customer_id)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "customer_id",
+   "outcome": "kept",
+   "expression": "customer_id",
+   "back": "customer_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.customers",
+   "name": "segment",
+   "outcome": "kept",
+   "expression": "segment",
+   "back": "segment"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "discount_percentage",
+   "outcome": "kept",
+   "expression": "discount_pct",
+   "back": "discount_pct"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "line_number",
+   "outcome": "kept",
+   "expression": "line_no",
+   "back": "line_no"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "net_amount",
+   "outcome": "kept",
+   "expression": "l.quantity * l.unit_price *(1 - l.discount_pct / 100)",
+   "back": "l.quantity * l.unit_price *(1 - l.discount_pct / 100)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "order_id",
+   "outcome": "kept",
+   "expression": "order_id",
+   "back": "order_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "product_id",
+   "outcome": "kept",
+   "expression": "product_id",
+   "back": "product_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "quantity",
+   "outcome": "kept",
+   "expression": "quantity",
+   "back": "quantity"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "unit_price",
+   "outcome": "kept",
+   "expression": "unit_price",
+   "back": "unit_price"
+  },
+  {
+   "kind": "field",
+   "table": "sales.order_lines",
+   "name": "units_sold",
+   "outcome": "kept",
+   "expression": "sum(l.quantity)",
+   "back": "sum(l.quantity)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "average_order_value",
+   "outcome": "kept",
+   "expression": "sum(l.quantity * l.unit_price *(1 - l.discount_pct / 100))/ count(distinct o.order_id)",
+   "back": "sum(l.quantity * l.unit_price *(1 - l.discount_pct / 100))/ count(distinct o.order_id)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "completed_order_count",
+   "outcome": "kept",
+   "expression": "count(o.order_id)",
+   "back": "count(o.order_id)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "customer_id",
+   "outcome": "kept",
+   "expression": "customer_id",
+   "back": "customer_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "order_count",
+   "outcome": "kept",
+   "expression": "count(o.order_id)",
+   "back": "count(o.order_id)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "order_id",
+   "outcome": "kept",
+   "expression": "order_id",
+   "back": "order_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "ordered_on",
+   "outcome": "kept",
+   "expression": "ordered_on",
+   "back": "ordered_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "rep_id",
+   "outcome": "kept",
+   "expression": "rep_id",
+   "back": "rep_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "revenue",
+   "outcome": "kept",
+   "expression": "sum(l.quantity * l.unit_price *(1 - l.discount_pct / 100))",
+   "back": "sum(l.quantity * l.unit_price *(1 - l.discount_pct / 100))"
+  },
+  {
+   "kind": "field",
+   "table": "sales.orders",
+   "name": "status",
+   "outcome": "kept",
+   "expression": "status",
+   "back": "status"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "category",
+   "outcome": "kept",
+   "expression": "category",
+   "back": "category"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "list_price",
+   "outcome": "kept",
+   "expression": "list_price",
+   "back": "list_price"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.products",
+   "name": "product_id",
+   "outcome": "kept",
+   "expression": "product_id",
+   "back": "product_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.regions",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.regions",
+   "name": "region_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "line_no",
+   "outcome": "kept",
+   "expression": "line_no",
+   "back": "line_no"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "order_id",
+   "outcome": "kept",
+   "expression": "order_id",
+   "back": "order_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "quantity",
+   "outcome": "kept",
+   "expression": "quantity",
+   "back": "quantity"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "reason",
+   "outcome": "kept",
+   "expression": "reason",
+   "back": "reason"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "return_id",
+   "outcome": "kept",
+   "expression": "return_id",
+   "back": "return_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "returned_on",
+   "outcome": "kept",
+   "expression": "returned_on",
+   "back": "returned_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.returns",
+   "name": "returned_units",
+   "outcome": "kept",
+   "expression": "sum(r.quantity)",
+   "back": "sum(r.quantity)"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "hired_on",
+   "outcome": "kept",
+   "expression": "hired_on",
+   "back": "hired_on"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "sales.sales_reps",
+   "name": "rep_id",
+   "outcome": "kept",
+   "expression": "rep_id",
+   "back": "rep_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "cycle_id",
+   "outcome": "kept",
+   "expression": "cycle_id",
+   "back": "cycle_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "ends_on",
+   "outcome": "kept",
+   "expression": "ends_on",
+   "back": "ends_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessment_cycles",
+   "name": "starts_on",
+   "outcome": "kept",
+   "expression": "starts_on",
+   "back": "starts_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "assessed_on",
+   "outcome": "kept",
+   "expression": "assessed_on",
+   "back": "assessed_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "assessment_count",
+   "outcome": "kept",
+   "expression": "count(a.assessment_id)",
+   "back": "count(a.assessment_id)"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "assessment_id",
+   "outcome": "kept",
+   "expression": "assessment_id",
+   "back": "assessment_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "assessor_id",
+   "outcome": "kept",
+   "expression": "assessor_id",
+   "back": "assessor_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "average_score",
+   "outcome": "kept",
+   "expression": "avg(a.score)",
+   "back": "avg(a.score)"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "cycle_id",
+   "outcome": "kept",
+   "expression": "cycle_id",
+   "back": "cycle_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "employee_id",
+   "outcome": "kept",
+   "expression": "employee_id",
+   "back": "employee_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "score",
+   "outcome": "kept",
+   "expression": "score",
+   "back": "score"
+  },
+  {
+   "kind": "field",
+   "table": "skills.assessments",
+   "name": "skill_id",
+   "outcome": "kept",
+   "expression": "skill_id",
+   "back": "skill_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "certification_count",
+   "outcome": "kept",
+   "expression": "count(c.certification_id)",
+   "back": "count(c.certification_id)"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "certification_id",
+   "outcome": "kept",
+   "expression": "certification_id",
+   "back": "certification_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "employee_id",
+   "outcome": "kept",
+   "expression": "employee_id",
+   "back": "employee_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "expires_on",
+   "outcome": "kept",
+   "expression": "expires_on",
+   "back": "expires_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "issued_on",
+   "outcome": "kept",
+   "expression": "issued_on",
+   "back": "issued_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.certifications",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.departments",
+   "name": "department_id",
+   "outcome": "kept",
+   "expression": "department_id",
+   "back": "department_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.departments",
+   "name": "department_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.departments",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "department_id",
+   "outcome": "kept",
+   "expression": "department_id",
+   "back": "department_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "employee_id",
+   "outcome": "kept",
+   "expression": "employee_id",
+   "back": "employee_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "headcount",
+   "outcome": "kept",
+   "expression": "count(e.employee_id)",
+   "back": "count(e.employee_id)"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "hired_on",
+   "outcome": "kept",
+   "expression": "hired_on",
+   "back": "hired_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "job_title",
+   "outcome": "kept",
+   "expression": "job_title",
+   "back": "job_title"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "leavers",
+   "outcome": "kept",
+   "expression": "count(e.employee_id)",
+   "back": "count(e.employee_id)"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "left_on",
+   "outcome": "kept",
+   "expression": "left_on",
+   "back": "left_on"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "level",
+   "outcome": "kept",
+   "expression": "level",
+   "back": "level"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "manager_id",
+   "outcome": "kept",
+   "expression": "manager_id",
+   "back": "manager_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  },
+  {
+   "kind": "field",
+   "table": "skills.employees",
+   "name": "region_id",
+   "outcome": "kept",
+   "expression": "region_id",
+   "back": "region_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.role_targets",
+   "name": "job_title",
+   "outcome": "kept",
+   "expression": "job_title",
+   "back": "job_title"
+  },
+  {
+   "kind": "field",
+   "table": "skills.role_targets",
+   "name": "skill_id",
+   "outcome": "kept",
+   "expression": "skill_id",
+   "back": "skill_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.role_targets",
+   "name": "target_score",
+   "outcome": "kept",
+   "expression": "target_score",
+   "back": "target_score"
+  },
+  {
+   "kind": "field",
+   "table": "skills.skills",
+   "name": "skill_category",
+   "outcome": "kept",
+   "expression": "category",
+   "back": "category"
+  },
+  {
+   "kind": "field",
+   "table": "skills.skills",
+   "name": "skill_id",
+   "outcome": "kept",
+   "expression": "skill_id",
+   "back": "skill_id"
+  },
+  {
+   "kind": "field",
+   "table": "skills.skills",
+   "name": "skill_name",
+   "outcome": "kept",
+   "expression": "name",
+   "back": "name"
+  }
+ ]
+}

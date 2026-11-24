@@ -1,0 +1,2744 @@
+version: 0.3.0.dev0
+name: d3
+datasets:
+- name: assessment
+  source: d3.skills.assessments
+  description: An evaluation or appraisal with a numerical score and date.
+  fields:
+  - name: assessed_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: assessed_on
+    datatype: Date
+    description: Records the calendar date when the assessment was conducted, formatted
+      as YYYY-MM-DD.
+  - name: assessment_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: assessment_id
+    datatype: Integer
+    description: Uniquely identifies each assessment evaluation record.
+  - name: score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: score
+    datatype: Integer
+    description: Represents the numerical rating assigned to an assessment on a 1
+      to 5 scale.
+  - name: assessment_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(a.assessment_id)
+    description: Number of assessments.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: c341f426-5dfb-43fa-8c4f-e14a9273a5e0
+        ossie_expression: COUNT(a.assessment_id)
+        sql: SELECT COUNT(a.assessment_id) FROM skills.assessments a
+        sql_column_is:
+        - b2777083-4aff-4eb3-96e6-d1f6f541ef9e
+        sql_source: manual
+        term_id: 8a91aa16-3d58-4758-a1c9-1e45b87e7bbb
+  - name: average_score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: AVG(a.score)
+    description: Mean assessment score on the 1 to 5 scale.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 617303cd-8d0d-479b-8288-0e9a6bf330f0
+        ossie_expression: AVG(a.score)
+        sql: SELECT AVG(a.score) FROM skills.assessments a
+        sql_column_is:
+        - ce2dccc1-e9f1-43f5-a429-f4af8d82206e
+        sql_source: manual
+        term_id: 8a91aa16-3d58-4758-a1c9-1e45b87e7bbb
+  - name: skill_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: skill_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: assessor_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: assessor_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: employee_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: employee_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: cycle_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cycle_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: assessment_cycle
+  source: d3.skills.assessment_cycles
+  unique_keys:
+  - - cycle_id
+  fields:
+  - name: cycle_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cycle_id
+    datatype: Integer
+    description: Uniquely identifies each assessment cycle and links to associated
+      assessments.
+  - name: ends_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ends_on
+    datatype: Date
+    description: Records the official end date of the cycle in YYYY-MM-DD format.
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Provides the cycle's display label in year-half-year format such
+      as 2024-H1.
+  - name: starts_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: starts_on
+    datatype: Date
+    description: Records the official start date of the cycle in YYYY-MM-DD format.
+- name: certification
+  source: d3.skills.certifications
+  description: Professional certification records.
+  fields:
+  - name: expires_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: expires_on
+    datatype: Date
+    description: Date the certification becomes invalid and requires renewal, formatted
+      as YYYY-MM-DD.
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Official title of the professional certification held by an individual.
+  - name: certification_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: certification_id
+    datatype: Integer
+    description: Unique identifier assigned to each professional certification record.
+  - name: issued_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: issued_on
+    datatype: Date
+    description: Date the certification was granted to the holder, formatted as YYYY-MM-DD.
+  - name: certification_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(c.certification_id)
+    description: Number of certifications, valid or expired.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 64c4ce8e-bfa1-4b8d-8495-6f492029f6f3
+        ossie_expression: COUNT(c.certification_id)
+        sql: SELECT COUNT(c.certification_id) FROM skills.certifications c
+        sql_column_is:
+        - c3499e76-9b62-43af-8f4f-57cbf759407a
+        sql_source: manual
+        term_id: bccc8386-3a5e-4271-aa2c-959aaa55f918
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: employee_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: employee_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: country
+  source: d3.sales.countries
+  unique_keys:
+  - - country_code
+  fields:
+  - name: country_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: country_code
+    datatype: String
+    description: Unique ISO country code (2-3 characters) identifying each nation,
+      used to link customers to their country.
+  - name: country_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Full official country name in text format, such as Germany or United
+      Arab Emirates.
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: customer
+  source: d3.sales.customers
+  unique_keys:
+  - - customer_id
+  fields:
+  - name: created_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: created_on
+    datatype: Date
+    description: Date the customer record was first created in the system, formatted
+      as YYYY-MM-DD.
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Full legal or display name of the customer, such as Atlas Analytics
+      SA or Nova Motors SA.
+  - name: segment
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: segment
+    datatype: String
+    description: Categorization label grouping customers by shared business characteristics
+      like value tier or behavior, e.g., SMB, Consumer, Enterprise.
+  - name: customer_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: customer_id
+    datatype: Integer
+    description: Unique integer identifier for each customer, used to link orders
+      to the customer who placed them.
+  - name: customer_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(c.customer_id)
+    description: Number of customer accounts.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 505512e2-a964-4431-a2d8-267eb7017d52
+        ossie_expression: COUNT(c.customer_id)
+        sql: SELECT COUNT(c.customer_id) FROM sales.customers c
+        sql_column_is:
+        - 4b11e723-cffa-4f35-a2b8-75448c05e895
+        sql_source: manual
+        term_id: 08c27a41-be24-41f9-bf03-7ad5802ad8a3
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: country_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: country_code
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: department
+  source: d3.skills.departments
+  unique_keys:
+  - - department_id
+  fields:
+  - name: department_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Department name combined with its geographic region, such as Engineering
+      EMEA or Support APAC.
+  - name: department_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: department_id
+    datatype: Integer
+    description: Unique identifier for each department, referenced by employees to
+      indicate their assigned department.
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: employee
+  source: d3.skills.employees
+  unique_keys:
+  - - employee_id
+  fields:
+  - name: level
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: level
+    datatype: Integer
+    description: Numeric grade representing the employee's seniority level within
+      the career framework.
+  - name: hired_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: hired_on
+    datatype: Date
+    description: Date the employee was hired, formatted as YYYY-MM-DD.
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Full legal name of the employee as recorded in HR systems.
+  - name: left_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: left_on
+    datatype: Date
+    description: Date the employee left the organization, if applicable, formatted
+      as YYYY-MM-DD.
+  - name: employee_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: employee_id
+    datatype: Integer
+    description: Unique identifier for each employee, used to link assessments, certifications,
+      and reporting relationships.
+  - name: job_title
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: job_title
+    datatype: String
+    description: Current role or position held by the employee within the organization.
+  - name: headcount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(e.employee_id)
+    description: Number of current employees (left_on is empty).
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: aad9eac8-d984-4bf6-99ad-0e320516d8f0
+        ossie_expression: COUNT(e.employee_id)
+        sql: SELECT COUNT(e.employee_id) FROM skills.employees e WHERE e.left_on IS
+          NULL
+        sql_column_is:
+        - 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+        - 29c89ad3-53cb-4a98-bb87-ec4791dcee91
+        sql_source: manual
+        term_id: d187c347-0739-404e-855e-babe1f0b3be6
+  - name: leavers
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(e.employee_id)
+    description: Number of employees who have left (left_on is set).
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 929f3aac-8e17-4aef-b812-03fdeb35c2c2
+        ossie_expression: COUNT(e.employee_id)
+        sql: SELECT COUNT(e.employee_id) FROM skills.employees e WHERE e.left_on IS
+          NOT NULL
+        sql_column_is:
+        - 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+        - 29c89ad3-53cb-4a98-bb87-ec4791dcee91
+        sql_source: manual
+        term_id: d187c347-0739-404e-855e-babe1f0b3be6
+  - name: manager_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: manager_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: department_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: department_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: order
+  source: d3.sales.orders
+  unique_keys:
+  - - order_id
+  fields:
+  - name: ordered_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ordered_on
+    datatype: Date
+    description: Records the date the customer placed the order in YYYY-MM-DD format.
+  - name: order_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: order_id
+    datatype: Integer
+    description: Uniquely identifies each customer order and links to its line items
+      and return records.
+  - name: status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: status
+    datatype: String
+    description: Indicates the order's current processing state, such as pending,
+      completed, or cancelled.
+  - name: average_order_value
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) /
+          COUNT(DISTINCT o.order_id)
+    description: Revenue divided by the number of completed orders (AOV).
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 73215f6e-80e7-4283-9534-40846d157bae
+        ossie_expression: SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100))
+          / COUNT(DISTINCT o.order_id)
+        sql: SELECT SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) /
+          COUNT(DISTINCT o.order_id) FROM sales.order_lines l JOIN sales.orders o
+          ON o.order_id = l.order_id WHERE o.status = 'completed'
+        sql_column_is:
+        - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+        - 818370ee-6806-46ad-a011-e6afeca3786e
+        - afd964ef-8b14-4d90-b46b-9d166a846676
+        - 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+        - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+        - 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+        sql_source: manual
+        term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+  - name: completed_order_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(o.order_id)
+    description: Number of completed orders.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: f2e5bb65-a332-4e7b-8412-2e5abed9a6ae
+        ossie_expression: COUNT(o.order_id)
+        sql: SELECT COUNT(o.order_id) FROM sales.orders o WHERE o.status = 'completed'
+        sql_column_is:
+        - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+        - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+        sql_source: manual
+        term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+  - name: order_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(o.order_id)
+    description: Number of orders of any status.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 1010fbec-78e8-4a5d-bb41-d00807250863
+        ossie_expression: COUNT(o.order_id)
+        sql: SELECT COUNT(o.order_id) FROM sales.orders o
+        sql_column_is:
+        - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+        sql_source: manual
+        term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+  - name: revenue
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100))
+    description: 'Net revenue in USD: net line amounts of completed orders. Returns
+      are not deducted. Also called sales, net sales, turnover.'
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 8d25f855-af47-4817-8fa7-6e1f3d97a6ee
+        ossie_expression: SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100))
+        sql: SELECT SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100)) FROM
+          sales.order_lines l JOIN sales.orders o ON o.order_id = l.order_id WHERE
+          o.status = 'completed'
+        sql_column_is:
+        - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+        - 818370ee-6806-46ad-a011-e6afeca3786e
+        - afd964ef-8b14-4d90-b46b-9d166a846676
+        - 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+        - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+        - 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+        sql_source: manual
+        term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+  - name: rep_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: rep_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: customer_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: customer_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: order_line
+  source: d3.sales.order_lines
+  description: Represents a single line item within a sales order or invoice.
+  fields:
+  - name: unit_price
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: unit_price
+    datatype: Decimal
+    description: Numeric standard price per single unit before any discounts are applied.
+  - name: quantity
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: quantity
+    datatype: Integer
+    description: Integer count of product units ordered or sold on this specific line.
+  - name: line_number
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: line_no
+    datatype: Integer
+    description: Sequential integer identifying each line item within an order, referenced
+      by returns to link returned items.
+  - name: discount_percentage
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: discount_pct
+    datatype: Decimal
+    description: Numeric percentage discount applied to the line item's unit price.
+  - name: net_amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: l.quantity * l.unit_price * (1 - l.discount_pct / 100)
+    description: 'Net amount of an order line in USD: quantity * unit_price * (1 -
+      discount_pct / 100).'
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: b7d1b621-e0c4-434f-992b-d731fec10113
+        ossie_expression: l.quantity * l.unit_price * (1 - l.discount_pct / 100)
+        sql: SELECT l.quantity * l.unit_price * (1 - l.discount_pct / 100) FROM sales.order_lines
+          l
+        sql_column_is:
+        - 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+        - 818370ee-6806-46ad-a011-e6afeca3786e
+        - afd964ef-8b14-4d90-b46b-9d166a846676
+        sql_source: manual
+        term_id: 7e241284-4659-42b4-b851-9385d7acd8fa
+  - name: units_sold
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(l.quantity)
+    description: Units on completed orders.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 8477a03a-c30c-4104-bc8c-67888e1721c8
+        ossie_expression: SUM(l.quantity)
+        sql: SELECT SUM(l.quantity) FROM sales.order_lines l JOIN sales.orders o ON
+          o.order_id = l.order_id WHERE o.status = 'completed'
+        sql_column_is:
+        - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+        - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+        - 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+        - afd964ef-8b14-4d90-b46b-9d166a846676
+        sql_source: manual
+        term_id: 7e241284-4659-42b4-b851-9385d7acd8fa
+  - name: product_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: product_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: order_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: order_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: product
+  source: d3.sales.products
+  unique_keys:
+  - - product_id
+  fields:
+  - name: product_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: product_id
+    datatype: Integer
+    description: Uniquely identifies each product in the catalog and links to order
+      lines showing where the product appears in customer orders.
+  - name: list_price
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: list_price
+    datatype: Decimal
+    description: States the standard retail price of the product, expressed as a decimal
+      number with two decimal places.
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Provides the customer-facing product name used in catalogs and sales
+      communications.
+  - name: category
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: category
+    datatype: String
+    description: Groups products into business categories such as Hardware, Software,
+      Services, or Accessories for reporting and navigation.
+- name: region
+  source: d3.sales.regions
+  unique_keys:
+  - - region_id
+  fields:
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    description: A unique text code (e.g., EMEA, APAC, AMER) that identifies a geographic
+      region and is referenced by assessments, certifications, countries, customers,
+      departments, and other entities.
+  - name: region_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: The human-readable name of the geographic region, such as Europe,
+      Middle East and Africa, Asia Pacific, or Americas.
+- name: return
+  source: d3.sales.returns
+  description: A return transaction representing items sent back by a customer.
+  fields:
+  - name: reason
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: reason
+    datatype: String
+    description: Captures the customer's stated reason for returning the item.
+  - name: quantity
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: quantity
+    datatype: Integer
+    description: Indicates the number of items returned in the transaction.
+  - name: returned_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: returned_on
+    datatype: Date
+    description: Records the date the return was processed or received in YYYY-MM-DD
+      format.
+  - name: return_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: return_id
+    datatype: Integer
+    description: Uniquely identifies each return transaction with a numeric code.
+  - name: returned_units
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(r.quantity)
+    description: Units returned.
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: sql_attribute
+        id: 66cd5b4f-2cbb-4072-9154-12c6b39bf666
+        ossie_expression: SUM(r.quantity)
+        sql: SELECT SUM(r.quantity) FROM sales.returns r
+        sql_column_is:
+        - 27fc54da-bda4-4493-81c1-2f22e18b0dd5
+        sql_source: manual
+        term_id: b6362e65-ef44-49df-b802-a51d24ab18f2
+  - name: order_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: order_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: line_no
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: line_no
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: role_region
+  source: d3.app.role_regions
+  description: Represents the association between a role and a region.
+  fields:
+  - name: role_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: role_name
+    datatype: Opaque
+    description: Identifies the role, such as a job title or access level, associated
+      with a region.
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: role_target
+  source: d3.skills.role_targets
+  fields:
+  - name: target_score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: target_score
+    datatype: Integer
+    description: Specifies the performance rating goal for a role on a 2-to-5 scale,
+      such as 4 or 5.
+  - name: job_title
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: job_title
+    datatype: String
+    description: Identifies the specific role or position name, such as Team Lead
+      or Engineer, associated with performance targets.
+  - name: skill_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: skill_id
+    datatype: Integer
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: sales_rep
+  source: d3.sales.sales_reps
+  unique_keys:
+  - - rep_id
+  fields:
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Records the full legal or preferred name of the sales representative.
+  - name: rep_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: rep_id
+    datatype: Integer
+    description: Uniquely identifies each sales representative and links to the orders
+      they manage.
+  - name: hired_on
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: hired_on
+    datatype: Date
+    description: Indicates the date the sales representative was hired, formatted
+      as YYYY-MM-DD.
+  - name: region_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: region_id
+    datatype: String
+    nonportable_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data:
+        entity: key_column
+- name: skill
+  source: d3.skills.skills
+  description: A distinct capability, technology, methodology, or competency tracked
+    in the system.
+  unique_keys:
+  - - skill_id
+  fields:
+  - name: skill_category
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: category
+    datatype: String
+    description: Functional grouping that classifies the skill by professional domain
+      or type, such as Technical or Leadership.
+  - name: skill_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: skill_id
+    datatype: Integer
+    description: Unique numeric identifier for a skill, used to link assessments and
+      role targets to the specific capability.
+  - name: skill_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Descriptive title of the skill, such as a technology, methodology,
+      or competency (e.g., Python, SQL).
+relationships:
+- name: employee_manager_id_to_employee
+  from: employee
+  to: employee
+  from_columns:
+  - manager_id
+  to_columns:
+  - employee_id
+- name: assessment_skill_id_to_skill
+  from: assessment
+  to: skill
+  from_columns:
+  - skill_id
+  to_columns:
+  - skill_id
+- name: order_line_product_id_to_product
+  from: order_line
+  to: product
+  from_columns:
+  - product_id
+  to_columns:
+  - product_id
+- name: order_rep_id_to_sales_rep
+  from: order
+  to: sales_rep
+  from_columns:
+  - rep_id
+  to_columns:
+  - rep_id
+- name: certification_region_id_to_region
+  from: certification
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: country_region_id_to_region
+  from: country
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: return_order_id_line_no_to_order_line
+  from: return
+  to: order_line
+  from_columns:
+  - order_id
+  - line_no
+  to_columns:
+  - order_id
+  - line_number
+- name: employee_department_id_to_department
+  from: employee
+  to: department
+  from_columns:
+  - department_id
+  to_columns:
+  - department_id
+- name: assessment_region_id_to_region
+  from: assessment
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: order_line_order_id_to_order
+  from: order_line
+  to: order
+  from_columns:
+  - order_id
+  to_columns:
+  - order_id
+- name: employee_region_id_to_region
+  from: employee
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: sales_rep_region_id_to_region
+  from: sales_rep
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: assessment_assessor_id_to_employee
+  from: assessment
+  to: employee
+  from_columns:
+  - assessor_id
+  to_columns:
+  - employee_id
+- name: assessment_employee_id_to_employee
+  from: assessment
+  to: employee
+  from_columns:
+  - employee_id
+  to_columns:
+  - employee_id
+- name: role_region_region_id_to_region
+  from: role_region
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: department_region_id_to_region
+  from: department
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: order_customer_id_to_customer
+  from: order
+  to: customer
+  from_columns:
+  - customer_id
+  to_columns:
+  - customer_id
+- name: return_region_id_to_region
+  from: return
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: customer_region_id_to_region
+  from: customer
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: customer_country_code_to_country
+  from: customer
+  to: country
+  from_columns:
+  - country_code
+  to_columns:
+  - country_code
+- name: role_target_skill_id_to_skill
+  from: role_target
+  to: skill
+  from_columns:
+  - skill_id
+  to_columns:
+  - skill_id
+- name: order_line_region_id_to_region
+  from: order_line
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: certification_employee_id_to_employee
+  from: certification
+  to: employee
+  from_columns:
+  - employee_id
+  to_columns:
+  - employee_id
+- name: assessment_cycle_id_to_assessment_cycle
+  from: assessment
+  to: assessment_cycle
+  from_columns:
+  - cycle_id
+  to_columns:
+  - cycle_id
+- name: order_region_id_to_region
+  from: order
+  to: region
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: return_order_id_to_order
+  from: return
+  to: order
+  from_columns:
+  - order_id
+  to_columns:
+  - order_id
+nonportable_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data:
+    model_name: d3
+    native_document:
+      data_layer:
+        databases:
+        - dialect: postgres
+          id: 3548e520-b5ec-49c5-93f2-a2ab9e319949
+          schemas:
+          - database_name: d3
+            id: 0682c8d5-1f9d-45e7-8bad-ffea84d55a29
+            name: app
+            tables:
+            - columns:
+              - description: The role_name column stores the descriptive name of a
+                  role, such as a job title or access level, used to identify user
+                  permissions or organizational positions.
+                id: 2f010c9a-49a9-444b-a935-789d46baeb85
+                is_nullable: false
+                is_unique: false
+                name: role_name
+                sample_values:
+                - d3_ao_reader
+                type: name
+              - description: ''
+                id: 7bbb054b-db4d-4145-96ab-e939e3ded68b
+                is_nullable: false
+                is_unique: true
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              description: ''
+              id: f60b7e4a-5dd4-4670-af2d-1ee573820f91
+              name: role_regions
+              pk: []
+              type: base table
+          - database_name: d3
+            id: 8da5e360-6992-4a80-a906-679402df0b09
+            name: sales
+            tables:
+            - columns:
+              - description: A standardized text code uniquely identifying a country,
+                  such as an ISO 3166-1 alpha-2 or alpha-3 code.
+                id: 83818519-da21-4cd8-a6ce-c43f9bb58382
+                is_nullable: false
+                is_unique: true
+                name: country_code
+                sample_values:
+                - DE
+                - FR
+                - GB
+                - AE
+                - JP
+                type: text
+              - description: The official or commonly used full name of the country
+                  in text format.
+                id: 0ee1328a-9a6a-41b9-9c17-534f4ac81c12
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - Germany
+                - France
+                - United Kingdom
+                - United Arab Emirates
+                - Japan
+                type: text
+              - description: ''
+                id: 22d61360-7657-4f3b-ad2d-b40a3684bdde
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              description: ''
+              id: dadd719e-ab73-4204-b143-3ac2ce80ae81
+              name: countries
+              pk: []
+              type: base table
+            - columns:
+              - description: Unique identifier assigned to each customer in the system.
+                id: 4b11e723-cffa-4f35-a2b8-75448c05e895
+                is_nullable: false
+                is_unique: true
+                name: customer_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: Full legal or display name of the customer.
+                id: 514d144e-4d4b-446f-9373-312cc95ebc94
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - Atlas Analytics SA
+                - Nova Motors SA
+                - Bright Studios Inc
+                - Maple Partners Pty
+                - North Foods Co
+                type: text
+              - description: Categorization label grouping customers by shared business
+                  characteristics such as value tier or behavior.
+                id: 14b1baec-97c0-4f32-86a0-d99d93a06fc9
+                is_nullable: false
+                is_unique: false
+                name: segment
+                sample_values:
+                - SMB
+                - Consumer
+                - Enterprise
+                type: text
+              - description: ''
+                id: e2f762aa-b352-4162-b9b5-ed54242833be
+                is_nullable: false
+                is_unique: false
+                name: country_code
+                sample_values:
+                - CA
+                - IN
+                - BR
+                - FR
+                - AE
+                type: text
+              - description: ''
+                id: d94da79f-9259-4877-94e8-e7bb7a4886f3
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              - description: Date when the customer record was first created in the
+                  system.
+                id: b1b397f4-04de-4be7-a658-2b8f14ab0d22
+                is_nullable: false
+                is_unique: false
+                name: created_on
+                sample_values: []
+                type: date
+              description: ''
+              id: d8add2ba-8f89-4494-a15f-14c4895e4965
+              name: customers
+              pk: []
+              type: base table
+            - columns:
+              - description: ''
+                id: 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+                is_nullable: false
+                is_unique: false
+                name: order_id
+                sample_values:
+                - 5
+                - 6
+                - 24
+                - 26
+                - 34
+                type: integer
+              - description: Sequential identifier for each line item within a sales
+                  order or invoice.
+                id: 47e099da-9d99-40ca-aaea-c86ede33bfb6
+                is_nullable: false
+                is_unique: false
+                name: line_no
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                type: integer
+              - description: ''
+                id: 14a79909-4484-490a-a2d5-c69a8a3a96fb
+                is_nullable: false
+                is_unique: false
+                name: product_id
+                sample_values:
+                - 35
+                - 11
+                - 3
+                - 6
+                - 13
+                type: integer
+              - description: ''
+                id: f27eed7e-a3b5-4ef8-981b-eea23e4faa03
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              - description: Number of units of a product ordered or sold on a specific
+                  line.
+                id: afd964ef-8b14-4d90-b46b-9d166a846676
+                is_nullable: false
+                is_unique: false
+                name: quantity
+                sample_values:
+                - 8
+                - 5
+                - 9
+                - 13
+                - 17
+                type: integer
+              - description: Standard price per single unit of the product before
+                  any discounts are applied.
+                id: 818370ee-6806-46ad-a011-e6afeca3786e
+                is_nullable: false
+                is_unique: true
+                name: unit_price
+                sample_values:
+                - 259.2
+                - 150.74
+                - 3704.31
+                - 3296.85
+                - 158.95
+                type: numeric
+              - description: Percentage discount applied to the line item's unit price.
+                id: 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+                is_nullable: false
+                is_unique: false
+                name: discount_pct
+                sample_values:
+                - 0
+                - 10
+                - 15
+                - 5
+                type: numeric
+              description: ''
+              id: d8abb83e-6ff3-431f-8651-4ee45d78c780
+              name: order_lines
+              pk: []
+              type: base table
+            - columns:
+              - description: A unique integer identifier assigned to each customer
+                  order.
+                id: 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+                is_nullable: false
+                is_unique: true
+                name: order_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: ''
+                id: 927f4d4a-fcce-4f56-8091-733ec80a03e3
+                is_nullable: false
+                is_unique: false
+                name: customer_id
+                sample_values:
+                - 227
+                - 164
+                - 219
+                - 242
+                - 129
+                type: integer
+              - description: ''
+                id: 17300347-97be-456e-878e-779604abd798
+                is_nullable: false
+                is_unique: false
+                name: rep_id
+                sample_values:
+                - 8
+                - 5
+                - 10
+                - 15
+                - 1
+                type: integer
+              - description: ''
+                id: fa192cec-2fde-42e5-82b4-e8ac5bbc3d51
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              - description: The calendar date on which the order was placed by the
+                  customer.
+                id: b5e420e4-59cd-4daf-b662-442f39a8643c
+                is_nullable: false
+                is_unique: false
+                name: ordered_on
+                sample_values: []
+                type: date
+              - description: The current processing state of the order, represented
+                  as a text value such as 'pending', 'shipped', or 'delivered'.
+                id: 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+                is_nullable: false
+                is_unique: false
+                name: status
+                sample_values:
+                - completed
+                - cancelled
+                - pending
+                type: text
+              description: ''
+              id: 328f4b53-fd79-48c0-85dd-51c7199dfa1e
+              name: orders
+              pk: []
+              type: base table
+            - columns:
+              - description: A unique integer identifier assigned to each product
+                  in the catalog.
+                id: 28961d86-0294-4c67-9bb3-2a2d5370261a
+                is_nullable: false
+                is_unique: true
+                name: product_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: The descriptive name or title of the product as displayed
+                  to customers.
+                id: fa388fee-8b47-4a9b-bcb7-7451bff6b499
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - Edge Server
+                - Storage Array
+                - Network Switch
+                - Rack Unit
+                - Workstation
+                type: text
+              - description: The classification group to which the product belongs,
+                  such as electronics or apparel.
+                id: 2be01763-0284-4356-9462-5338e0c1169f
+                is_nullable: false
+                is_unique: false
+                name: category
+                sample_values:
+                - Hardware
+                - Software
+                - Services
+                - Accessories
+                type: text
+              - description: The standard retail price at which the product is offered
+                  for sale.
+                id: 049367ba-11e9-4ae6-a6c5-ec4b9b7aa83a
+                is_nullable: false
+                is_unique: true
+                name: list_price
+                sample_values:
+                - 9254.29
+                - 10851.79
+                - 8135.8
+                - 2591.02
+                - 9903.71
+                type: numeric
+              description: ''
+              id: a293b308-b078-4cf3-8ab0-21fd6ef1489b
+              name: products
+              pk: []
+              type: base table
+            - columns:
+              - description: A unique text identifier for a geographic region.
+                id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+                is_nullable: false
+                is_unique: true
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              - description: The human-readable name of the geographic region.
+                id: a6feb1d5-de9e-449c-834a-185aeb228612
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - Europe, Middle East and Africa
+                - Asia Pacific
+                - Americas
+                type: text
+              description: ''
+              id: e7f58640-5a69-4821-aa30-90b7521681bb
+              name: regions
+              pk: []
+              type: base table
+            - columns:
+              - description: A unique identifier for each return transaction.
+                id: 13d352d2-a734-45b3-9fc2-b8027d7ef816
+                is_nullable: false
+                is_unique: true
+                name: return_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: ''
+                id: 2591b74c-fe1f-4bc5-b0ba-9a68947b1981
+                is_nullable: false
+                is_unique: false
+                name: order_id
+                sample_values:
+                - 125
+                - 410
+                - 892
+                - 947
+                - 1211
+                type: integer
+              - description: ''
+                id: a6fde309-a9b5-43a5-9d27-73ba68d1dc75
+                is_nullable: false
+                is_unique: false
+                name: line_no
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                type: integer
+              - description: ''
+                id: 96415f4a-aa57-46d1-8660-26b228e16dbf
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              - description: The date on which the return was processed or received.
+                id: cf9d5159-3d2c-4c12-849e-f514c99a1468
+                is_nullable: false
+                is_unique: false
+                name: returned_on
+                sample_values: []
+                type: date
+              - description: The number of items included in the return.
+                id: 27fc54da-bda4-4493-81c1-2f22e18b0dd5
+                is_nullable: false
+                is_unique: false
+                name: quantity
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 5
+                - 4
+                type: integer
+              - description: The stated cause or justification for the return.
+                id: af65f0b4-3cac-4781-adf3-847aac35425f
+                is_nullable: false
+                is_unique: false
+                name: reason
+                sample_values:
+                - not_needed
+                - wrong_item
+                - late_delivery
+                - damaged
+                type: text
+              description: ''
+              id: 2175e1eb-5bd0-4a61-9444-5e2d0d020046
+              name: returns
+              pk: []
+              type: base table
+            - columns:
+              - description: A unique integer identifier assigned to each sales representative
+                  for tracking and referencing purposes.
+                id: 46ba8fb1-86e8-4a04-96f6-f01a908724ce
+                is_nullable: false
+                is_unique: true
+                name: rep_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: The full legal or preferred name of the sales representative
+                  as recorded in the system.
+                id: a378e580-c4c5-4c31-baa3-2304d7730dc6
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - Sam Okafor
+                - Mei Tan
+                - Alex Kowalski
+                - Lena Fischer
+                - Casey Iyer
+                type: text
+              - description: ''
+                id: 6d16a096-434b-4b9a-8fdb-57e853f7406c
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              - description: The calendar date on which the sales representative was
+                  officially hired by the organization.
+                id: 020c86f1-7ee2-4142-a958-e52ad7855083
+                is_nullable: false
+                is_unique: true
+                name: hired_on
+                sample_values: []
+                type: date
+              description: ''
+              id: afd0217d-bfea-42e1-9830-5bccb3a59f26
+              name: sales_reps
+              pk: []
+              type: base table
+          - database_name: d3
+            id: 8b74a1dc-6f36-4722-9c97-a0d21246de24
+            name: skills
+            tables:
+            - columns:
+              - description: A unique numeric identifier assigned to each planning
+                  cycle for system referencing and joins.
+                id: 76d48aef-000d-4784-a0d0-43658ed02bc2
+                is_nullable: false
+                is_unique: true
+                name: cycle_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                type: integer
+              - description: The human-readable label for the cycle, formatted as
+                  year and half-year period (e.g., 2024-H1).
+                id: bb546eda-3e7b-47e9-9079-4bf905e2503c
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - 2024-H1
+                - 2024-H2
+                - 2025-H1
+                - 2025-H2
+                type: text
+              - description: The calendar date on which the planning cycle officially
+                  begins.
+                id: 3111006c-14df-4a97-ae40-aa6c3b9808ec
+                is_nullable: false
+                is_unique: true
+                name: starts_on
+                sample_values: []
+                type: date
+              - description: The calendar date on which the planning cycle officially
+                  concludes.
+                id: a61157a0-615f-4671-b1ca-c5d533ef1f33
+                is_nullable: false
+                is_unique: true
+                name: ends_on
+                sample_values: []
+                type: date
+              description: ''
+              id: a5334040-23e4-4f65-ab4b-ea1e2bb8a98b
+              name: assessment_cycles
+              pk: []
+              type: base table
+            - columns:
+              - description: Unique identifier for an assessment record.
+                id: b2777083-4aff-4eb3-96e6-d1f6f541ef9e
+                is_nullable: false
+                is_unique: true
+                name: assessment_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: ''
+                id: 893f38e1-51a6-49fe-ba07-ffda92d47d67
+                is_nullable: false
+                is_unique: false
+                name: employee_id
+                sample_values:
+                - 19
+                - 23
+                - 39
+                - 16
+                - 10
+                type: integer
+              - description: ''
+                id: 134cbc65-8d63-49d3-80c0-3efbdfe42985
+                is_nullable: false
+                is_unique: false
+                name: skill_id
+                sample_values:
+                - 4
+                - 2
+                - 18
+                - 6
+                - 5
+                type: integer
+              - description: ''
+                id: f9494c29-a5a6-4917-8183-f2b2b6d3efdc
+                is_nullable: false
+                is_unique: false
+                name: cycle_id
+                sample_values:
+                - 2
+                - 3
+                - 1
+                - 4
+                type: integer
+              - description: ''
+                id: 6d8833f7-288e-4fbd-bd2b-defc6125b5d2
+                is_nullable: false
+                is_unique: false
+                name: assessor_id
+                sample_values:
+                - 19
+                - 1
+                type: integer
+              - description: ''
+                id: 3eeed19f-0a36-4944-acc7-c6014710ae73
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              - description: Numerical score assigned to an assessment, typically
+                  on a 1 to 5 scale.
+                id: ce2dccc1-e9f1-43f5-a429-f4af8d82206e
+                is_nullable: false
+                is_unique: false
+                name: score
+                sample_values:
+                - 4
+                - 3
+                - 5
+                - 2
+                - 1
+                type: integer
+              - description: Date on which the assessment was performed.
+                id: fdba0e47-1faa-4191-b7c9-a15f328036db
+                is_nullable: false
+                is_unique: false
+                name: assessed_on
+                sample_values: []
+                type: date
+              description: ''
+              id: 73223895-77ed-44e4-b559-f1a04ad7e6e7
+              name: assessments
+              pk: []
+              type: base table
+            - columns:
+              - description: Unique identifier for each certification record.
+                id: c3499e76-9b62-43af-8f4f-57cbf759407a
+                is_nullable: false
+                is_unique: true
+                name: certification_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: ''
+                id: f2a36346-f6d0-416d-b54f-1a37a733cd88
+                is_nullable: false
+                is_unique: false
+                name: employee_id
+                sample_values:
+                - 4
+                - 15
+                - 18
+                - 61
+                - 66
+                type: integer
+              - description: ''
+                id: 17d833d2-b7d7-4a59-a172-1c23d75a04bc
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - APAC
+                - AMER
+                - EMEA
+                type: text
+              - description: Name of the professional certification.
+                id: 15151497-26cb-4e41-97d4-248b81e99b04
+                is_nullable: false
+                is_unique: false
+                name: name
+                sample_values:
+                - Kubernetes Administrator
+                - ITIL Foundation
+                - Solutions Architect
+                - Cloud Practitioner
+                - Security+
+                type: text
+              - description: Date when the certification was issued to the holder.
+                id: cb6c930a-e10c-4352-a971-e2d0be788806
+                is_nullable: false
+                is_unique: false
+                name: issued_on
+                sample_values: []
+                type: date
+              - description: Date when the certification expires and requires renewal.
+                id: 94054586-ecab-49ba-8899-5807a16692ae
+                is_nullable: true
+                is_unique: true
+                name: expires_on
+                sample_values: []
+                type: date
+              description: ''
+              id: 8ee61b0c-25da-4da7-8578-5ba2a0cb40d3
+              name: certifications
+              pk: []
+              type: base table
+            - columns:
+              - description: Unique identifier for each department.
+                id: fa0e11eb-5bbc-40ff-b901-e3c7126a2c8f
+                is_nullable: false
+                is_unique: true
+                name: department_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: Name of the department including its geographic region.
+                id: 5bd49c7a-8927-40cb-bb77-38aa37cf9ba7
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - Engineering EMEA
+                - Data EMEA
+                - Consulting EMEA
+                - Support EMEA
+                - Engineering APAC
+                type: text
+              - description: ''
+                id: 8e046bb6-858d-439a-8870-10a1515fdcc4
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - EMEA
+                - APAC
+                - AMER
+                type: text
+              description: ''
+              id: d4334c42-cb76-4798-8934-c93ff3a0613f
+              name: departments
+              pk: []
+              type: base table
+            - columns:
+              - description: Unique identifier assigned to each employee.
+                id: 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+                is_nullable: false
+                is_unique: true
+                name: employee_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 6
+                type: integer
+              - description: Full name of the employee.
+                id: da657397-b4f0-4f50-9035-d92295cfe186
+                is_nullable: false
+                is_unique: false
+                name: name
+                sample_values:
+                - Marco Petrov
+                - Yusuf Schmidt
+                - Chen Lund
+                - Zoe Schmidt
+                - Gabe Yilmaz
+                type: text
+              - description: ''
+                id: 2f802ece-20ba-4089-87d5-61e7e58be726
+                is_nullable: false
+                is_unique: false
+                name: department_id
+                sample_values:
+                - 6
+                - 11
+                - 2
+                - 7
+                - 12
+                type: integer
+              - description: ''
+                id: 65f4265a-586e-4c61-9d83-906d87e493c4
+                is_nullable: false
+                is_unique: false
+                name: region_id
+                sample_values:
+                - AMER
+                - APAC
+                - EMEA
+                type: text
+              - description: The employee's role or position within the organization.
+                id: a764d21d-1ba6-4be4-a166-ad41c40729b2
+                is_nullable: false
+                is_unique: false
+                name: job_title
+                sample_values:
+                - Engineer
+                - Consultant
+                - Analyst
+                - Manager
+                - Team Lead
+                type: text
+              - description: Numeric rank indicating the employee's seniority or grade.
+                id: 6d6d7ac1-0091-4d92-89a0-6a0f83f72b56
+                is_nullable: false
+                is_unique: false
+                name: level
+                sample_values:
+                - 4
+                - 3
+                - 5
+                - 2
+                - 1
+                type: integer
+              - description: ''
+                id: 00f78d2c-f30d-4886-9fb1-f5319ef36e12
+                is_nullable: true
+                is_unique: false
+                name: manager_id
+                sample_values:
+                - 96.0
+                - 199.0
+                - 19.0
+                - 119.0
+                - 222.0
+                type: integer
+              - description: Date on which the employee was hired.
+                id: e53719e4-0a47-4232-bbad-b68b4509e861
+                is_nullable: false
+                is_unique: false
+                name: hired_on
+                sample_values: []
+                type: date
+              - description: Date on which the employee left the organization, if
+                  applicable.
+                id: 29c89ad3-53cb-4a98-bb87-ec4791dcee91
+                is_nullable: true
+                is_unique: true
+                name: left_on
+                sample_values: []
+                type: date
+              description: ''
+              id: 72e5a1f8-5270-4d30-862a-dd45396f18b9
+              name: employees
+              pk: []
+              type: base table
+            - columns:
+              - description: The job title or role name associated with a position,
+                  such as Team Lead or Engineer.
+                id: 8ae12bca-1d60-418a-ad9b-b7b8fa26fd94
+                is_nullable: false
+                is_unique: false
+                name: job_title
+                sample_values:
+                - Team Lead
+                - Manager
+                - Consultant
+                - Engineer
+                - Analyst
+                type: text
+              - description: ''
+                id: e4c5a6be-c688-461e-9e21-bc1da0901a5a
+                is_nullable: false
+                is_unique: false
+                name: skill_id
+                sample_values:
+                - 6
+                - 2
+                - 4
+                - 18
+                - 5
+                type: integer
+              - description: The target performance score or rating goal set for a
+                  role, on a scale from 2 to 5.
+                id: 431e1387-924c-4cb0-8cea-c64567704f59
+                is_nullable: false
+                is_unique: false
+                name: target_score
+                sample_values:
+                - 4
+                - 5
+                - 3
+                - 2
+                type: integer
+              description: ''
+              id: bd4874b3-981e-4bd8-8bae-abf7df8ae23d
+              name: role_targets
+              pk: []
+              type: base table
+            - columns:
+              - description: A unique numeric identifier assigned to each skill in
+                  the system.
+                id: 6c3716a1-dfb6-4ca5-a4ff-aa5e46547790
+                is_nullable: false
+                is_unique: true
+                name: skill_id
+                sample_values:
+                - 1
+                - 2
+                - 3
+                - 4
+                - 5
+                type: integer
+              - description: The descriptive title of the skill, such as a technology,
+                  methodology, or competency.
+                id: 8ea1ce39-8634-470f-8b1f-cd2c97525be6
+                is_nullable: false
+                is_unique: true
+                name: name
+                sample_values:
+                - Python
+                - SQL
+                - Cloud Architecture
+                - Networking
+                - Security Engineering
+                type: text
+              - description: The functional grouping that classifies the skill by
+                  its professional domain or type.
+                id: de0a25ef-2126-456a-9ab0-0f4199d97d21
+                is_nullable: false
+                is_unique: false
+                name: category
+                sample_values:
+                - Domain
+                - Technical
+                - Leadership
+                - Communication
+                type: text
+              description: ''
+              id: 23eccb7d-40c5-44c9-ae72-21240f0e0f76
+              name: skills
+              pk: []
+              type: base table
+        foreign_keys:
+        - source_column_id: 00f78d2c-f30d-4886-9fb1-f5319ef36e12
+          target_column_id: 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+        - source_column_id: 134cbc65-8d63-49d3-80c0-3efbdfe42985
+          target_column_id: 6c3716a1-dfb6-4ca5-a4ff-aa5e46547790
+        - source_column_id: 14a79909-4484-490a-a2d5-c69a8a3a96fb
+          target_column_id: 28961d86-0294-4c67-9bb3-2a2d5370261a
+        - source_column_id: 17300347-97be-456e-878e-779604abd798
+          target_column_id: 46ba8fb1-86e8-4a04-96f6-f01a908724ce
+        - source_column_id: 17d833d2-b7d7-4a59-a172-1c23d75a04bc
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: 22d61360-7657-4f3b-ad2d-b40a3684bdde
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: 2591b74c-fe1f-4bc5-b0ba-9a68947b1981
+          target_column_id: 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+        - source_column_id: 2f802ece-20ba-4089-87d5-61e7e58be726
+          target_column_id: fa0e11eb-5bbc-40ff-b901-e3c7126a2c8f
+        - source_column_id: 3eeed19f-0a36-4944-acc7-c6014710ae73
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+          target_column_id: 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+        - source_column_id: 65f4265a-586e-4c61-9d83-906d87e493c4
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: 6d16a096-434b-4b9a-8fdb-57e853f7406c
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: 6d8833f7-288e-4fbd-bd2b-defc6125b5d2
+          target_column_id: 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+        - source_column_id: 7bbb054b-db4d-4145-96ab-e939e3ded68b
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: 893f38e1-51a6-49fe-ba07-ffda92d47d67
+          target_column_id: 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+        - source_column_id: 8e046bb6-858d-439a-8870-10a1515fdcc4
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: 927f4d4a-fcce-4f56-8091-733ec80a03e3
+          target_column_id: 4b11e723-cffa-4f35-a2b8-75448c05e895
+        - source_column_id: 96415f4a-aa57-46d1-8660-26b228e16dbf
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: a6fde309-a9b5-43a5-9d27-73ba68d1dc75
+          target_column_id: 47e099da-9d99-40ca-aaea-c86ede33bfb6
+        - source_column_id: d94da79f-9259-4877-94e8-e7bb7a4886f3
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: e2f762aa-b352-4162-b9b5-ed54242833be
+          target_column_id: 83818519-da21-4cd8-a6ce-c43f9bb58382
+        - source_column_id: e4c5a6be-c688-461e-9e21-bc1da0901a5a
+          target_column_id: 6c3716a1-dfb6-4ca5-a4ff-aa5e46547790
+        - source_column_id: f27eed7e-a3b5-4ef8-981b-eea23e4faa03
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        - source_column_id: f2a36346-f6d0-416d-b54f-1a37a733cd88
+          target_column_id: 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+        - source_column_id: f9494c29-a5a6-4917-8183-f2b2b6d3efdc
+          target_column_id: 76d48aef-000d-4784-a0d0-43658ed02bc2
+        - source_column_id: fa192cec-2fde-42e5-82b4-e8ac5bbc3d51
+          target_column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+        joins: []
+      semantic_layer:
+        custom_analyses: []
+        semantic_fks:
+        - column_attribute_id: 987bd336-9252-4922-a47b-996838442d24
+          column_id: 00f78d2c-f30d-4886-9fb1-f5319ef36e12
+          use_in_join_paths: true
+        - column_attribute_id: 41154923-9bd0-4f3d-b411-5d6fb6ba2c7c
+          column_id: 134cbc65-8d63-49d3-80c0-3efbdfe42985
+          use_in_join_paths: true
+        - column_attribute_id: 1e02b98d-a419-4932-8bd9-24579acae776
+          column_id: 14a79909-4484-490a-a2d5-c69a8a3a96fb
+          use_in_join_paths: true
+        - column_attribute_id: 7d0fee00-3e57-445a-9407-77cdf3d2f5d2
+          column_id: 17300347-97be-456e-878e-779604abd798
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 17d833d2-b7d7-4a59-a172-1c23d75a04bc
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 22d61360-7657-4f3b-ad2d-b40a3684bdde
+          use_in_join_paths: true
+        - column_attribute_id: 942a3fd5-88d0-4a92-a816-48f2c858aa89
+          column_id: 2591b74c-fe1f-4bc5-b0ba-9a68947b1981
+          use_in_join_paths: true
+        - column_attribute_id: a5001b54-c944-4f81-9614-e7d4c115eb6b
+          column_id: 2f802ece-20ba-4089-87d5-61e7e58be726
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 3eeed19f-0a36-4944-acc7-c6014710ae73
+          use_in_join_paths: true
+        - column_attribute_id: 942a3fd5-88d0-4a92-a816-48f2c858aa89
+          column_id: 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 65f4265a-586e-4c61-9d83-906d87e493c4
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 6d16a096-434b-4b9a-8fdb-57e853f7406c
+          use_in_join_paths: true
+        - column_attribute_id: 987bd336-9252-4922-a47b-996838442d24
+          column_id: 6d8833f7-288e-4fbd-bd2b-defc6125b5d2
+          use_in_join_paths: false
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 7bbb054b-db4d-4145-96ab-e939e3ded68b
+          use_in_join_paths: true
+        - column_attribute_id: 987bd336-9252-4922-a47b-996838442d24
+          column_id: 893f38e1-51a6-49fe-ba07-ffda92d47d67
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 8e046bb6-858d-439a-8870-10a1515fdcc4
+          use_in_join_paths: true
+        - column_attribute_id: b3f00ce7-acd1-48e5-ae41-139dbeb70250
+          column_id: 927f4d4a-fcce-4f56-8091-733ec80a03e3
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: 96415f4a-aa57-46d1-8660-26b228e16dbf
+          use_in_join_paths: true
+        - column_attribute_id: 45c440a2-690b-45d2-8160-e2ebc8056630
+          column_id: a6fde309-a9b5-43a5-9d27-73ba68d1dc75
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: d94da79f-9259-4877-94e8-e7bb7a4886f3
+          use_in_join_paths: true
+        - column_attribute_id: 75921e33-6932-4979-91a4-c15210dabec1
+          column_id: e2f762aa-b352-4162-b9b5-ed54242833be
+          use_in_join_paths: true
+        - column_attribute_id: 41154923-9bd0-4f3d-b411-5d6fb6ba2c7c
+          column_id: e4c5a6be-c688-461e-9e21-bc1da0901a5a
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: f27eed7e-a3b5-4ef8-981b-eea23e4faa03
+          use_in_join_paths: true
+        - column_attribute_id: 987bd336-9252-4922-a47b-996838442d24
+          column_id: f2a36346-f6d0-416d-b54f-1a37a733cd88
+          use_in_join_paths: true
+        - column_attribute_id: 2cacb916-6b94-432f-af0a-f09399991681
+          column_id: f9494c29-a5a6-4917-8183-f2b2b6d3efdc
+          use_in_join_paths: true
+        - column_attribute_id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+          column_id: fa192cec-2fde-42e5-82b4-e8ac5bbc3d51
+          use_in_join_paths: true
+        sql_attributes:
+          bridge_table: []
+          manual:
+          - description: Number of assessments.
+            id: c341f426-5dfb-43fa-8c4f-e14a9273a5e0
+            name: Assessment Count
+            sql: SELECT COUNT(a.assessment_id) FROM skills.assessments a
+            sql_column_is:
+            - b2777083-4aff-4eb3-96e6-d1f6f541ef9e
+            term_id: 8a91aa16-3d58-4758-a1c9-1e45b87e7bbb
+          - description: Revenue divided by the number of completed orders (AOV).
+            id: 73215f6e-80e7-4283-9534-40846d157bae
+            name: Average Order Value
+            sql: SELECT SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100))
+              / COUNT(DISTINCT o.order_id) FROM sales.order_lines l JOIN sales.orders
+              o ON o.order_id = l.order_id WHERE o.status = 'completed'
+            sql_column_is:
+            - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+            - 818370ee-6806-46ad-a011-e6afeca3786e
+            - afd964ef-8b14-4d90-b46b-9d166a846676
+            - 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+            - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+            - 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+            term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+          - description: Mean assessment score on the 1 to 5 scale.
+            id: 617303cd-8d0d-479b-8288-0e9a6bf330f0
+            name: Average Score
+            sql: SELECT AVG(a.score) FROM skills.assessments a
+            sql_column_is:
+            - ce2dccc1-e9f1-43f5-a429-f4af8d82206e
+            term_id: 8a91aa16-3d58-4758-a1c9-1e45b87e7bbb
+          - description: Number of certifications, valid or expired.
+            id: 64c4ce8e-bfa1-4b8d-8495-6f492029f6f3
+            name: Certification Count
+            sql: SELECT COUNT(c.certification_id) FROM skills.certifications c
+            sql_column_is:
+            - c3499e76-9b62-43af-8f4f-57cbf759407a
+            term_id: bccc8386-3a5e-4271-aa2c-959aaa55f918
+          - description: Number of completed orders.
+            id: f2e5bb65-a332-4e7b-8412-2e5abed9a6ae
+            name: Completed Order Count
+            sql: SELECT COUNT(o.order_id) FROM sales.orders o WHERE o.status = 'completed'
+            sql_column_is:
+            - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+            - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+            term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+          - description: Number of customer accounts.
+            id: 505512e2-a964-4431-a2d8-267eb7017d52
+            name: Customer Count
+            sql: SELECT COUNT(c.customer_id) FROM sales.customers c
+            sql_column_is:
+            - 4b11e723-cffa-4f35-a2b8-75448c05e895
+            term_id: 08c27a41-be24-41f9-bf03-7ad5802ad8a3
+          - description: Number of current employees (left_on is empty).
+            id: aad9eac8-d984-4bf6-99ad-0e320516d8f0
+            name: Headcount
+            sql: SELECT COUNT(e.employee_id) FROM skills.employees e WHERE e.left_on
+              IS NULL
+            sql_column_is:
+            - 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+            - 29c89ad3-53cb-4a98-bb87-ec4791dcee91
+            term_id: d187c347-0739-404e-855e-babe1f0b3be6
+          - description: Number of employees who have left (left_on is set).
+            id: 929f3aac-8e17-4aef-b812-03fdeb35c2c2
+            name: Leavers
+            sql: SELECT COUNT(e.employee_id) FROM skills.employees e WHERE e.left_on
+              IS NOT NULL
+            sql_column_is:
+            - 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+            - 29c89ad3-53cb-4a98-bb87-ec4791dcee91
+            term_id: d187c347-0739-404e-855e-babe1f0b3be6
+          - description: 'Net amount of an order line in USD: quantity * unit_price
+              * (1 - discount_pct / 100).'
+            id: b7d1b621-e0c4-434f-992b-d731fec10113
+            name: Net Amount
+            sql: SELECT l.quantity * l.unit_price * (1 - l.discount_pct / 100) FROM
+              sales.order_lines l
+            sql_column_is:
+            - 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+            - 818370ee-6806-46ad-a011-e6afeca3786e
+            - afd964ef-8b14-4d90-b46b-9d166a846676
+            term_id: 7e241284-4659-42b4-b851-9385d7acd8fa
+          - description: Number of orders of any status.
+            id: 1010fbec-78e8-4a5d-bb41-d00807250863
+            name: Order Count
+            sql: SELECT COUNT(o.order_id) FROM sales.orders o
+            sql_column_is:
+            - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+            term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+          - description: Units returned.
+            id: 66cd5b4f-2cbb-4072-9154-12c6b39bf666
+            name: Returned Units
+            sql: SELECT SUM(r.quantity) FROM sales.returns r
+            sql_column_is:
+            - 27fc54da-bda4-4493-81c1-2f22e18b0dd5
+            term_id: b6362e65-ef44-49df-b802-a51d24ab18f2
+          - description: 'Net revenue in USD: net line amounts of completed orders.
+              Returns are not deducted. Also called sales, net sales, turnover.'
+            id: 8d25f855-af47-4817-8fa7-6e1f3d97a6ee
+            name: Revenue
+            sql: SELECT SUM(l.quantity * l.unit_price * (1 - l.discount_pct / 100))
+              FROM sales.order_lines l JOIN sales.orders o ON o.order_id = l.order_id
+              WHERE o.status = 'completed'
+            sql_column_is:
+            - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+            - 818370ee-6806-46ad-a011-e6afeca3786e
+            - afd964ef-8b14-4d90-b46b-9d166a846676
+            - 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+            - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+            - 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+            term_id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+          - description: Units on completed orders.
+            id: 8477a03a-c30c-4104-bc8c-67888e1721c8
+            name: Units Sold
+            sql: SELECT SUM(l.quantity) FROM sales.order_lines l JOIN sales.orders
+              o ON o.order_id = l.order_id WHERE o.status = 'completed'
+            sql_column_is:
+            - 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+            - 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+            - 51007bc8-1a47-45c6-8d09-e9a8c2d4599a
+            - afd964ef-8b14-4d90-b46b-9d166a846676
+            term_id: 7e241284-4659-42b4-b851-9385d7acd8fa
+          sql: []
+          table: []
+        terms:
+        - columns_attributes:
+          - column_id: fdba0e47-1faa-4191-b7c9-a15f328036db
+            description: Records the calendar date when the assessment was conducted,
+              formatted as YYYY-MM-DD.
+            id: 365ef034-f9cb-4749-8cca-da76ca3f7595
+            name: Assessed On
+          - column_id: b2777083-4aff-4eb3-96e6-d1f6f541ef9e
+            description: Uniquely identifies each assessment evaluation record.
+            id: 3d5a2cec-8936-4f5d-89ba-2dd90ec92ec8
+            name: Assessment ID
+          - column_id: ce2dccc1-e9f1-43f5-a429-f4af8d82206e
+            description: Represents the numerical rating assigned to an assessment
+              on a 1 to 5 scale.
+            id: be2309cb-04bb-4e26-9d74-f23fef7f5121
+            name: Score
+          description: An evaluation or appraisal with a numerical score and date.
+          id: 8a91aa16-3d58-4758-a1c9-1e45b87e7bbb
+          name: Assessment
+          represents:
+          - 73223895-77ed-44e4-b559-f1a04ad7e6e7
+        - columns_attributes:
+          - column_id: 76d48aef-000d-4784-a0d0-43658ed02bc2
+            description: Uniquely identifies each assessment cycle and links to associated
+              assessments.
+            id: 2cacb916-6b94-432f-af0a-f09399991681
+            name: Cycle ID
+          - column_id: a61157a0-615f-4671-b1ca-c5d533ef1f33
+            description: Records the official end date of the cycle in YYYY-MM-DD
+              format.
+            id: 7a5614cc-c7ea-4d22-9403-96acc1aebf99
+            name: Ends On
+          - column_id: bb546eda-3e7b-47e9-9079-4bf905e2503c
+            description: Provides the cycle's display label in year-half-year format
+              such as 2024-H1.
+            id: 9bab6ffe-bff6-43a0-9c8c-bfe2b7eff9be
+            name: Name
+          - column_id: 3111006c-14df-4a97-ae40-aa6c3b9808ec
+            description: Records the official start date of the cycle in YYYY-MM-DD
+              format.
+            id: f1fddf09-97a5-4c92-bec3-2d32378f6c76
+            name: Starts On
+          description: ''
+          id: 9b403d9c-8203-4427-a6bb-6bb68e84689c
+          name: Assessment Cycle
+          represents:
+          - a5334040-23e4-4f65-ab4b-ea1e2bb8a98b
+        - columns_attributes:
+          - column_id: 94054586-ecab-49ba-8899-5807a16692ae
+            description: Date the certification becomes invalid and requires renewal,
+              formatted as YYYY-MM-DD.
+            id: 57faa99f-5386-44e6-8f20-ff90b417aac3
+            name: Expires On
+          - column_id: 15151497-26cb-4e41-97d4-248b81e99b04
+            description: Official title of the professional certification held by
+              an individual.
+            id: 88c77eaf-14c0-4ac0-8c5a-f1b430de57fd
+            name: Name
+          - column_id: c3499e76-9b62-43af-8f4f-57cbf759407a
+            description: Unique identifier assigned to each professional certification
+              record.
+            id: bf39c0f8-77b7-4095-b318-7a94a6d2480d
+            name: Certification ID
+          - column_id: cb6c930a-e10c-4352-a971-e2d0be788806
+            description: Date the certification was granted to the holder, formatted
+              as YYYY-MM-DD.
+            id: d0f79e8c-6382-4ada-82fd-0eec0808aa2e
+            name: Issued On
+          description: Professional certification records.
+          id: bccc8386-3a5e-4271-aa2c-959aaa55f918
+          name: Certification
+          represents:
+          - 8ee61b0c-25da-4da7-8578-5ba2a0cb40d3
+        - columns_attributes:
+          - column_id: 83818519-da21-4cd8-a6ce-c43f9bb58382
+            description: Unique ISO country code (2-3 characters) identifying each
+              nation, used to link customers to their country.
+            id: 75921e33-6932-4979-91a4-c15210dabec1
+            name: Country Code
+          - column_id: 0ee1328a-9a6a-41b9-9c17-534f4ac81c12
+            description: Full official country name in text format, such as Germany
+              or United Arab Emirates.
+            id: a4de6660-34a4-4300-91e7-017923572ced
+            name: Country Name
+          description: ''
+          id: bc1eb364-cc18-4389-b342-f4157dfb883d
+          name: Country
+          represents:
+          - dadd719e-ab73-4204-b143-3ac2ce80ae81
+        - columns_attributes:
+          - column_id: b1b397f4-04de-4be7-a658-2b8f14ab0d22
+            description: Date the customer record was first created in the system,
+              formatted as YYYY-MM-DD.
+            id: 25817cdd-05f2-4438-a5c3-21726639ad2c
+            name: Created On
+          - column_id: 514d144e-4d4b-446f-9373-312cc95ebc94
+            description: Full legal or display name of the customer, such as Atlas
+              Analytics SA or Nova Motors SA.
+            id: 95b1e71e-6215-4c07-a0a2-9a03b56735a4
+            name: Name
+          - column_id: 14b1baec-97c0-4f32-86a0-d99d93a06fc9
+            description: Categorization label grouping customers by shared business
+              characteristics like value tier or behavior, e.g., SMB, Consumer, Enterprise.
+            id: 9d879695-f5fd-4038-af76-174ca1da0410
+            name: Segment
+          - column_id: 4b11e723-cffa-4f35-a2b8-75448c05e895
+            description: Unique integer identifier for each customer, used to link
+              orders to the customer who placed them.
+            id: b3f00ce7-acd1-48e5-ae41-139dbeb70250
+            name: Customer ID
+          description: ''
+          id: 08c27a41-be24-41f9-bf03-7ad5802ad8a3
+          name: Customer
+          represents:
+          - d8add2ba-8f89-4494-a15f-14c4895e4965
+        - columns_attributes:
+          - column_id: 5bd49c7a-8927-40cb-bb77-38aa37cf9ba7
+            description: Department name combined with its geographic region, such
+              as Engineering EMEA or Support APAC.
+            id: 91e219d2-012a-4581-bae8-d2ed0a81cb7f
+            name: Department Name
+          - column_id: fa0e11eb-5bbc-40ff-b901-e3c7126a2c8f
+            description: Unique identifier for each department, referenced by employees
+              to indicate their assigned department.
+            id: a5001b54-c944-4f81-9614-e7d4c115eb6b
+            name: Department ID
+          description: ''
+          id: 945ad8f0-fe15-47e6-8c16-4e2a242f0870
+          name: Department
+          represents:
+          - d4334c42-cb76-4798-8934-c93ff3a0613f
+        - columns_attributes:
+          - column_id: 6d6d7ac1-0091-4d92-89a0-6a0f83f72b56
+            description: Numeric grade representing the employee's seniority level
+              within the career framework.
+            id: 3544633b-70a9-4815-ae04-da8a8fd6a839
+            name: Level
+          - column_id: e53719e4-0a47-4232-bbad-b68b4509e861
+            description: Date the employee was hired, formatted as YYYY-MM-DD.
+            id: 503fec2b-6654-4440-b50f-bbef7f7a5dec
+            name: Hired On
+          - column_id: da657397-b4f0-4f50-9035-d92295cfe186
+            description: Full legal name of the employee as recorded in HR systems.
+            id: 66e89749-9e15-488c-b969-4b2893275e23
+            name: Name
+          - column_id: 29c89ad3-53cb-4a98-bb87-ec4791dcee91
+            description: Date the employee left the organization, if applicable, formatted
+              as YYYY-MM-DD.
+            id: 851cf74d-1705-4bef-b9eb-54cff432ff04
+            name: Left On
+          - column_id: 66f04e39-0b2d-4199-ac0b-6b8a15cf52cd
+            description: Unique identifier for each employee, used to link assessments,
+              certifications, and reporting relationships.
+            id: 987bd336-9252-4922-a47b-996838442d24
+            name: Employee ID
+          - column_id: a764d21d-1ba6-4be4-a166-ad41c40729b2
+            description: Current role or position held by the employee within the
+              organization.
+            id: d9697cc3-3fa4-45d3-bc6c-2b9dadbb5836
+            name: Job Title
+          description: ''
+          id: d187c347-0739-404e-855e-babe1f0b3be6
+          name: Employee
+          represents:
+          - 72e5a1f8-5270-4d30-862a-dd45396f18b9
+        - columns_attributes:
+          - column_id: b5e420e4-59cd-4daf-b662-442f39a8643c
+            description: Records the date the customer placed the order in YYYY-MM-DD
+              format.
+            id: 8049c954-21e8-462e-aff9-ca994d12b618
+            name: Ordered On
+          - column_id: 6f6ce9b5-dfb8-44e7-92e1-925c5477f409
+            description: Uniquely identifies each customer order and links to its
+              line items and return records.
+            id: 942a3fd5-88d0-4a92-a816-48f2c858aa89
+            name: Order ID
+          - column_id: 87b1ff3b-2b77-401a-b26c-79a928f1ebac
+            description: Indicates the order's current processing state, such as pending,
+              completed, or cancelled.
+            id: 955213a3-24f3-4b4f-a36e-cbcbdd44da1e
+            name: Status
+          description: ''
+          id: 24c9ce76-3358-4f4e-be2c-5f8347687b52
+          name: Order
+          represents:
+          - 328f4b53-fd79-48c0-85dd-51c7199dfa1e
+        - columns_attributes:
+          - column_id: 818370ee-6806-46ad-a011-e6afeca3786e
+            description: Numeric standard price per single unit before any discounts
+              are applied.
+            id: 162fd6c7-852a-4763-b206-3c5b0a537abe
+            name: Unit Price
+          - column_id: afd964ef-8b14-4d90-b46b-9d166a846676
+            description: Integer count of product units ordered or sold on this specific
+              line.
+            id: 34f413a0-de38-4523-9137-b6d2be399e8d
+            name: Quantity
+          - column_id: 47e099da-9d99-40ca-aaea-c86ede33bfb6
+            description: Sequential integer identifying each line item within an order,
+              referenced by returns to link returned items.
+            id: 45c440a2-690b-45d2-8160-e2ebc8056630
+            name: Line Number
+          - column_id: 982d7a62-8dee-41a1-8ba6-e82bf313df6f
+            description: Numeric percentage discount applied to the line item's unit
+              price.
+            id: dc664723-790a-450c-94e8-c3483a7d5e8d
+            name: Discount Percentage
+          description: Represents a single line item within a sales order or invoice.
+          id: 7e241284-4659-42b4-b851-9385d7acd8fa
+          name: Order Line
+          represents:
+          - d8abb83e-6ff3-431f-8651-4ee45d78c780
+        - columns_attributes:
+          - column_id: 28961d86-0294-4c67-9bb3-2a2d5370261a
+            description: Uniquely identifies each product in the catalog and links
+              to order lines showing where the product appears in customer orders.
+            id: 1e02b98d-a419-4932-8bd9-24579acae776
+            name: Product ID
+          - column_id: 049367ba-11e9-4ae6-a6c5-ec4b9b7aa83a
+            description: States the standard retail price of the product, expressed
+              as a decimal number with two decimal places.
+            id: 69991958-5321-47b9-bd59-90718a0dbefa
+            name: List Price
+          - column_id: fa388fee-8b47-4a9b-bcb7-7451bff6b499
+            description: Provides the customer-facing product name used in catalogs
+              and sales communications.
+            id: bb5507da-43c0-4b47-96e2-f5c90a8516d3
+            name: Name
+          - column_id: 2be01763-0284-4356-9462-5338e0c1169f
+            description: Groups products into business categories such as Hardware,
+              Software, Services, or Accessories for reporting and navigation.
+            id: d8c7a883-742d-47de-bc8c-05977e0e0198
+            name: Category
+          description: ''
+          id: dd61142f-161f-47cd-a545-b31898be88e8
+          name: Product
+          represents:
+          - a293b308-b078-4cf3-8ab0-21fd6ef1489b
+        - columns_attributes:
+          - column_id: 7526e24a-72ea-45e5-bd95-5fe24c86bd13
+            description: A unique text code (e.g., EMEA, APAC, AMER) that identifies
+              a geographic region and is referenced by assessments, certifications,
+              countries, customers, departments, and other entities.
+            id: 02da7bf4-9e49-4934-bac4-199bf21af87c
+            name: Region ID
+          - column_id: a6feb1d5-de9e-449c-834a-185aeb228612
+            description: The human-readable name of the geographic region, such as
+              Europe, Middle East and Africa, Asia Pacific, or Americas.
+            id: 89c22531-79b9-42b6-957e-5f758ebd7c2c
+            name: Region Name
+          description: ''
+          id: 4fa05bcb-ea79-4287-b4d3-90c57aa2969d
+          name: Region
+          represents:
+          - e7f58640-5a69-4821-aa30-90b7521681bb
+        - columns_attributes:
+          - column_id: af65f0b4-3cac-4781-adf3-847aac35425f
+            description: Captures the customer's stated reason for returning the item.
+            id: 1cfe72be-af2d-4b61-9a08-9041d7f0fe81
+            name: Reason
+          - column_id: 27fc54da-bda4-4493-81c1-2f22e18b0dd5
+            description: Indicates the number of items returned in the transaction.
+            id: 2abb1dc2-7e6e-4d1e-82fb-53ebe8a3f2fc
+            name: Quantity
+          - column_id: cf9d5159-3d2c-4c12-849e-f514c99a1468
+            description: Records the date the return was processed or received in
+              YYYY-MM-DD format.
+            id: 51947f4d-c84c-491e-ab62-5015b340b36c
+            name: Returned On
+          - column_id: 13d352d2-a734-45b3-9fc2-b8027d7ef816
+            description: Uniquely identifies each return transaction with a numeric
+              code.
+            id: 96554556-41b8-4e24-8d4a-7b9469c9795b
+            name: Return ID
+          description: A return transaction representing items sent back by a customer.
+          id: b6362e65-ef44-49df-b802-a51d24ab18f2
+          name: Return
+          represents:
+          - 2175e1eb-5bd0-4a61-9444-5e2d0d020046
+        - columns_attributes:
+          - column_id: 2f010c9a-49a9-444b-a935-789d46baeb85
+            description: Identifies the role, such as a job title or access level,
+              associated with a region.
+            id: 26752d7e-a2f0-4a41-9bc0-bd6b4b86524d
+            name: Role Name
+          description: Represents the association between a role and a region.
+          id: e3c4fd38-0a37-4af9-b2ab-65ecdb167ac6
+          name: Role Region
+          represents:
+          - f60b7e4a-5dd4-4670-af2d-1ee573820f91
+        - columns_attributes:
+          - column_id: 431e1387-924c-4cb0-8cea-c64567704f59
+            description: Specifies the performance rating goal for a role on a 2-to-5
+              scale, such as 4 or 5.
+            id: 4c265128-a54c-48cb-9208-801881ffd0e3
+            name: Target Score
+          - column_id: 8ae12bca-1d60-418a-ad9b-b7b8fa26fd94
+            description: Identifies the specific role or position name, such as Team
+              Lead or Engineer, associated with performance targets.
+            id: 6a1e7f0b-54d6-4be7-8c51-3400b48294e4
+            name: Job Title
+          description: ''
+          id: c7859c1f-8082-424b-a46f-91297542acb8
+          name: Role Target
+          represents:
+          - bd4874b3-981e-4bd8-8bae-abf7df8ae23d
+        - columns_attributes:
+          - column_id: a378e580-c4c5-4c31-baa3-2304d7730dc6
+            description: Records the full legal or preferred name of the sales representative.
+            id: 5ef1a213-9b79-414a-85cb-c1b67651c801
+            name: Name
+          - column_id: 46ba8fb1-86e8-4a04-96f6-f01a908724ce
+            description: Uniquely identifies each sales representative and links to
+              the orders they manage.
+            id: 7d0fee00-3e57-445a-9407-77cdf3d2f5d2
+            name: Rep ID
+          - column_id: 020c86f1-7ee2-4142-a958-e52ad7855083
+            description: Indicates the date the sales representative was hired, formatted
+              as YYYY-MM-DD.
+            id: a318184f-ba57-44d1-b9c1-52f91a06a917
+            name: Hired On
+          description: ''
+          id: 748ca44a-3da3-47fc-897b-95684193f868
+          name: Sales Rep
+          represents:
+          - afd0217d-bfea-42e1-9830-5bccb3a59f26
+        - columns_attributes:
+          - column_id: de0a25ef-2126-456a-9ab0-0f4199d97d21
+            description: Functional grouping that classifies the skill by professional
+              domain or type, such as Technical or Leadership.
+            id: 3683da84-73b9-4fab-b468-ac06917ecf84
+            name: Skill Category
+          - column_id: 6c3716a1-dfb6-4ca5-a4ff-aa5e46547790
+            description: Unique numeric identifier for a skill, used to link assessments
+              and role targets to the specific capability.
+            id: 41154923-9bd0-4f3d-b411-5d6fb6ba2c7c
+            name: Skill ID
+          - column_id: 8ea1ce39-8634-470f-8b1f-cd2c97525be6
+            description: Descriptive title of the skill, such as a technology, methodology,
+              or competency (e.g., Python, SQL).
+            id: aef31007-9492-45be-a066-434899ec0746
+            name: Skill Name
+          description: A distinct capability, technology, methodology, or competency
+            tracked in the system.
+          id: d76398c1-d27a-419f-a819-b260873ef67a
+          name: Skill
+          represents:
+          - 23eccb7d-40c5-44c9-ae72-21240f0e0f76
+      zones: []

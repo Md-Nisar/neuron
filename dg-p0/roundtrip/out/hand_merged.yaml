@@ -1,0 +1,720 @@
+version: 0.3.0.dev0
+name: d3
+description: D3 hand-written models (sales and skills), merged.
+datasets:
+- name: regions
+  source: sales.regions
+  primary_key:
+  - region_id
+  description: Sales regions.
+  fields:
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: region_name
+    expression:
+      sql: name
+    datatype: String
+    ai_context:
+      synonyms:
+      - region
+- name: countries
+  source: sales.countries
+  primary_key:
+  - country_code
+  description: Countries and the sales region each belongs to.
+  fields:
+  - name: country_code
+    expression:
+      sql: country_code
+    datatype: String
+    description: ISO 3166-1 alpha-2 code.
+  - name: country_name
+    expression:
+      sql: name
+    datatype: String
+    ai_context:
+      synonyms:
+      - country
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+- name: customers
+  source: sales.customers
+  primary_key:
+  - customer_id
+  description: Customers, one row per customer account.
+  ai_context:
+    synonyms:
+    - clients
+    - accounts
+  fields:
+  - name: customer_id
+    expression:
+      sql: customer_id
+    datatype: Integer
+  - name: customer_name
+    expression:
+      sql: name
+    datatype: String
+  - name: segment
+    expression:
+      sql: segment
+    datatype: String
+    description: Enterprise, SMB (small and medium business) or Consumer.
+  - name: country_code
+    expression:
+      sql: country_code
+    datatype: String
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: created_on
+    expression:
+      sql: created_on
+    datatype: Date
+    dimension:
+      is_time: true
+    description: Date the customer account was opened.
+  metrics:
+  - name: customer_count
+    expression:
+      sql: COUNT(customer_id)
+    datatype: Integer
+    description: Number of customer accounts.
+- name: products
+  source: sales.products
+  primary_key:
+  - product_id
+  description: Product catalogue.
+  fields:
+  - name: product_id
+    expression:
+      sql: product_id
+    datatype: Integer
+  - name: product_name
+    expression:
+      sql: name
+    datatype: String
+  - name: category
+    expression:
+      sql: category
+    datatype: String
+    description: Hardware, Software, Services or Accessories.
+  - name: list_price
+    expression:
+      sql: list_price
+    datatype: Decimal
+    description: Catalogue price per unit in USD, before discounts.
+- name: sales_reps
+  source: sales.sales_reps
+  primary_key:
+  - rep_id
+  description: Sales representatives; each works in one region.
+  ai_context:
+    synonyms:
+    - reps
+    - salespeople
+    - account managers
+  fields:
+  - name: rep_id
+    expression:
+      sql: rep_id
+    datatype: Integer
+  - name: rep_name
+    expression:
+      sql: name
+    datatype: String
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: hired_on
+    expression:
+      sql: hired_on
+    datatype: Date
+    dimension:
+      is_time: true
+- name: orders
+  source: sales.orders
+  primary_key:
+  - order_id
+  description: Sales orders. Only completed orders count as revenue.
+  fields:
+  - name: order_id
+    expression:
+      sql: order_id
+    datatype: Integer
+  - name: customer_id
+    expression:
+      sql: customer_id
+    datatype: Integer
+  - name: rep_id
+    expression:
+      sql: rep_id
+    datatype: Integer
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+    description: Region of the customer, copied from the customer.
+  - name: ordered_on
+    expression:
+      sql: ordered_on
+    datatype: Date
+    dimension:
+      is_time: true
+    ai_context:
+      synonyms:
+      - order date
+  - name: status
+    expression:
+      sql: status
+    datatype: String
+    description: completed, cancelled or pending. Cancelled and pending orders are
+      not revenue.
+  metrics:
+  - name: order_count
+    expression:
+      sql: COUNT(order_id)
+    datatype: Integer
+    description: Number of orders of any status.
+  - name: completed_order_count
+    expression:
+      sql: COUNT(order_id) FILTER (WHERE status = 'completed')
+    datatype: Integer
+    description: Number of completed orders.
+- name: order_lines
+  source: sales.order_lines
+  primary_key:
+  - order_id
+  - line_no
+  description: Order lines.
+  fields:
+  - name: order_id
+    expression:
+      sql: order_id
+    datatype: Integer
+  - name: line_no
+    expression:
+      sql: line_no
+    datatype: Integer
+  - name: product_id
+    expression:
+      sql: product_id
+    datatype: Integer
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: quantity
+    expression:
+      sql: quantity
+    datatype: Integer
+    ai_context:
+      synonyms:
+      - units
+  - name: unit_price
+    expression:
+      sql: unit_price
+    datatype: Decimal
+    description: Agreed price per unit in USD, before the line discount.
+  - name: discount_pct
+    expression:
+      sql: discount_pct
+    datatype: Decimal
+    description: Line discount in percent (0 to 100).
+  - name: net_amount
+    expression:
+      sql: quantity * unit_price * (1 - discount_pct / 100)
+    datatype: Decimal
+    description: Net line amount in USD after the line discount.
+- name: returns
+  source: sales.returns
+  primary_key:
+  - return_id
+  description: Returned units against an order line.
+  fields:
+  - name: return_id
+    expression:
+      sql: return_id
+    datatype: Integer
+  - name: order_id
+    expression:
+      sql: order_id
+    datatype: Integer
+  - name: line_no
+    expression:
+      sql: line_no
+    datatype: Integer
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: returned_on
+    expression:
+      sql: returned_on
+    datatype: Date
+    dimension:
+      is_time: true
+  - name: returned_quantity
+    expression:
+      sql: quantity
+    datatype: Integer
+  - name: reason
+    expression:
+      sql: reason
+    datatype: String
+    description: damaged, wrong_item, not_needed or late_delivery.
+  metrics:
+  - name: returned_units
+    expression:
+      sql: SUM(returned_quantity)
+    datatype: Integer
+    description: Units returned.
+- name: departments
+  source: skills.departments
+  primary_key:
+  - department_id
+  description: Departments; each sits in one region.
+  fields:
+  - name: department_id
+    expression:
+      sql: department_id
+    datatype: Integer
+  - name: department_name
+    expression:
+      sql: name
+    datatype: String
+    ai_context:
+      synonyms:
+      - department
+      - team
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+- name: employees
+  source: skills.employees
+  primary_key:
+  - employee_id
+  description: Employees, current and former.
+  ai_context:
+    synonyms:
+    - staff
+    - people
+    - workforce
+  fields:
+  - name: employee_id
+    expression:
+      sql: employee_id
+    datatype: Integer
+  - name: employee_name
+    expression:
+      sql: name
+    datatype: String
+  - name: department_id
+    expression:
+      sql: department_id
+    datatype: Integer
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: job_title
+    expression:
+      sql: job_title
+    datatype: String
+    description: Engineer, Analyst, Consultant, Team Lead or Manager.
+    ai_context:
+      synonyms:
+      - role
+  - name: level
+    expression:
+      sql: level
+    datatype: Integer
+    description: Career level from 1 (junior) to 5 (principal).
+  - name: manager_id
+    expression:
+      sql: manager_id
+    datatype: Integer
+    description: Line manager; empty for department heads.
+  - name: hired_on
+    expression:
+      sql: hired_on
+    datatype: Date
+    dimension:
+      is_time: true
+  - name: left_on
+    expression:
+      sql: left_on
+    datatype: Date
+    dimension:
+      is_time: true
+    description: Date the employee left; empty means still employed.
+  - name: is_current
+    expression:
+      sql: left_on IS NULL
+    datatype: Boolean
+    description: True for people still employed.
+  metrics:
+  - name: headcount
+    expression:
+      sql: COUNT(employee_id) FILTER (WHERE is_current)
+    datatype: Integer
+    description: Number of current employees.
+  - name: leavers
+    expression:
+      sql: COUNT(employee_id) FILTER (WHERE NOT is_current)
+    datatype: Integer
+    description: Number of employees who have left.
+- name: skills
+  source: skills.skills
+  primary_key:
+  - skill_id
+  unique_keys:
+  - - skill_name
+  description: Skills that employees are assessed on.
+  fields:
+  - name: skill_id
+    expression:
+      sql: skill_id
+    datatype: Integer
+  - name: skill_name
+    expression:
+      sql: name
+    datatype: String
+  - name: skill_category
+    expression:
+      sql: category
+    datatype: String
+    description: Technical, Leadership, Communication or Domain.
+- name: assessment_cycles
+  source: skills.assessment_cycles
+  primary_key:
+  - cycle_id
+  unique_keys:
+  - - cycle_name
+  description: Half-year assessment cycles, for example 2024-H1.
+  fields:
+  - name: cycle_id
+    expression:
+      sql: cycle_id
+    datatype: Integer
+  - name: cycle_name
+    expression:
+      sql: name
+    datatype: String
+    ai_context:
+      synonyms:
+      - cycle
+      - review period
+      - half
+  - name: starts_on
+    expression:
+      sql: starts_on
+    datatype: Date
+    dimension:
+      is_time: true
+  - name: ends_on
+    expression:
+      sql: ends_on
+    datatype: Date
+    dimension:
+      is_time: true
+- name: assessments
+  source: skills.assessments
+  primary_key:
+  - assessment_id
+  unique_keys:
+  - - employee_id
+    - skill_id
+    - cycle_id
+  description: One score per employee, skill and cycle, given by an assessor (usually
+    the line manager).
+  ai_context:
+    synonyms:
+    - ratings
+    - evaluations
+    - scores
+  fields:
+  - name: assessment_id
+    expression:
+      sql: assessment_id
+    datatype: Integer
+  - name: employee_id
+    expression:
+      sql: employee_id
+    datatype: Integer
+  - name: skill_id
+    expression:
+      sql: skill_id
+    datatype: Integer
+  - name: cycle_id
+    expression:
+      sql: cycle_id
+    datatype: Integer
+  - name: assessor_id
+    expression:
+      sql: assessor_id
+    datatype: Integer
+    description: Employee who gave the score.
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: score
+    expression:
+      sql: score
+    datatype: Integer
+    description: 1 = novice, 2 = developing, 3 = proficient, 4 = advanced, 5 = expert.
+  - name: assessed_on
+    expression:
+      sql: assessed_on
+    datatype: Date
+    dimension:
+      is_time: true
+  metrics:
+  - name: assessment_count
+    expression:
+      sql: COUNT(assessment_id)
+    datatype: Integer
+    description: Number of assessments.
+  - name: average_score
+    expression:
+      sql: AVG(score)
+    datatype: Decimal
+    description: Mean score on the 1 to 5 scale.
+- name: role_targets
+  source: skills.role_targets
+  primary_key:
+  - job_title
+  - skill_id
+  description: Expected score per job title and skill.
+  fields:
+  - name: job_title
+    expression:
+      sql: job_title
+    datatype: String
+  - name: skill_id
+    expression:
+      sql: skill_id
+    datatype: Integer
+  - name: target_score
+    expression:
+      sql: target_score
+    datatype: Integer
+    description: Score expected for the job title, 1 to 5.
+- name: certifications
+  source: skills.certifications
+  primary_key:
+  - certification_id
+  description: Professional certifications held by employees.
+  fields:
+  - name: certification_id
+    expression:
+      sql: certification_id
+    datatype: Integer
+  - name: employee_id
+    expression:
+      sql: employee_id
+    datatype: Integer
+  - name: region_id
+    expression:
+      sql: region_id
+    datatype: String
+  - name: certification_name
+    expression:
+      sql: name
+    datatype: String
+  - name: issued_on
+    expression:
+      sql: issued_on
+    datatype: Date
+    dimension:
+      is_time: true
+  - name: expires_on
+    expression:
+      sql: expires_on
+    datatype: Date
+    dimension:
+      is_time: true
+    description: Expiry date; empty means it does not expire.
+  metrics:
+  - name: certification_count
+    expression:
+      sql: COUNT(certification_id)
+    datatype: Integer
+    description: Number of certifications, valid or expired.
+relationships:
+- name: countries_to_regions
+  from: countries
+  to: regions
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: customers_to_countries
+  from: customers
+  to: countries
+  from_columns:
+  - country_code
+  to_columns:
+  - country_code
+- name: customers_to_regions
+  from: customers
+  to: regions
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: sales_reps_to_regions
+  from: sales_reps
+  to: regions
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: orders_to_customers
+  from: orders
+  to: customers
+  from_columns:
+  - customer_id
+  to_columns:
+  - customer_id
+- name: orders_to_sales_reps
+  from: orders
+  to: sales_reps
+  from_columns:
+  - rep_id
+  to_columns:
+  - rep_id
+- name: orders_to_regions
+  from: orders
+  to: regions
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: order_lines_to_orders
+  from: order_lines
+  to: orders
+  from_columns:
+  - order_id
+  to_columns:
+  - order_id
+- name: order_lines_to_products
+  from: order_lines
+  to: products
+  from_columns:
+  - product_id
+  to_columns:
+  - product_id
+- name: returns_to_order_lines
+  from: returns
+  to: order_lines
+  from_columns:
+  - order_id
+  - line_no
+  to_columns:
+  - order_id
+  - line_no
+- name: departments_to_regions
+  from: departments
+  to: regions
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: employees_to_departments
+  from: employees
+  to: departments
+  from_columns:
+  - department_id
+  to_columns:
+  - department_id
+- name: employees_to_regions
+  from: employees
+  to: regions
+  from_columns:
+  - region_id
+  to_columns:
+  - region_id
+- name: employees_to_manager
+  from: employees
+  to: employees
+  from_columns:
+  - manager_id
+  to_columns:
+  - employee_id
+- name: assessments_to_employees
+  from: assessments
+  to: employees
+  from_columns:
+  - employee_id
+  to_columns:
+  - employee_id
+- name: assessments_to_assessor
+  from: assessments
+  to: employees
+  from_columns:
+  - assessor_id
+  to_columns:
+  - employee_id
+- name: assessments_to_skills
+  from: assessments
+  to: skills
+  from_columns:
+  - skill_id
+  to_columns:
+  - skill_id
+- name: assessments_to_cycles
+  from: assessments
+  to: assessment_cycles
+  from_columns:
+  - cycle_id
+  to_columns:
+  - cycle_id
+- name: role_targets_to_skills
+  from: role_targets
+  to: skills
+  from_columns:
+  - skill_id
+  to_columns:
+  - skill_id
+- name: certifications_to_employees
+  from: certifications
+  to: employees
+  from_columns:
+  - employee_id
+  to_columns:
+  - employee_id
+metrics:
+- name: revenue
+  expression:
+    sql: SUM(order_lines.net_amount) FILTER (WHERE orders.status = 'completed')
+  datatype: Decimal
+  description: Net revenue in USD - net line amounts of completed orders. Returns
+    are not deducted.
+  ai_context:
+    synonyms:
+    - sales
+    - net sales
+    - turnover
+- name: units_sold
+  expression:
+    sql: SUM(order_lines.quantity) FILTER (WHERE orders.status = 'completed')
+  datatype: Integer
+  description: Units on completed orders.
+- name: average_order_value
+  expression:
+    sql: SUM(order_lines.net_amount) FILTER (WHERE orders.status = 'completed') /
+      COUNT(DISTINCT orders.order_id) FILTER (WHERE orders.status = 'completed')
+  datatype: Decimal
+  description: Revenue divided by the number of completed orders.
+  ai_context:
+    synonyms:
+    - AOV

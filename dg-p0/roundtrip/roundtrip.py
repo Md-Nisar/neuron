@@ -55,10 +55,16 @@ def http(path: str, body: bytes, ctype: str) -> bytes:
         raise SystemExit(f"{path} -> {e.code}: {e.read().decode()[:800]}") from None
 
 
-def export_ossie() -> dict:
+def database_id(name: str) -> str:
+    full = yaml.safe_load(http("/api/model/export", b'{"format": "auto_ontology"}', "application/json"))
+    return next(d["id"] for d in full["data_layer"]["databases"]
+                if any(s.get("database_name") == name for s in d["schemas"]))
+
+
+def export_ossie(name: str = "d3") -> dict:
     z = http(
         "/api/model/export",
-        json.dumps({"format": "ossie", "databases": ["d3"]}).encode(),
+        json.dumps({"format": "ossie", "databases": [database_id(name)]}).encode(),
         "application/json",
     )
     try:
@@ -77,19 +83,19 @@ def import_model(model: dict) -> dict:
     )
 
 
-def certified_counts() -> dict:
-    terms = sa.call(admin, "GET", "/api/terms?limit=100")["terms"]
-    n_attr = 0
-    for t in terms:
-        n_attr += sum(
-            bool(a.get("certified"))
-            for a in sa.call(admin, "GET", f"/api/terms/{t['id']}/sql-attributes")["data"] or []
-        )
-    return {
-        "terms": len(terms),
-        "terms_name_certified": sum(bool(t.get("name_certified")) for t in terms),
-        "sql_attributes_certified": n_attr,
-    }
+def certified_counts(name: str) -> dict:
+    """Certification flags of one database's terms and SQL attributes, read through the API."""
+    doc = yaml.safe_load(http("/api/model/export", json.dumps({"format": "auto_ontology", "databases": [database_id(name)]}).encode(), "application/json"))
+    out = {"terms": 0, "terms_name_certified": 0, "sql_attributes": 0, "sql_attributes_certified": 0}
+    for t in doc["semantic_layer"]["terms"]:
+        live = sa.call(admin, "GET", f"/api/terms/{t['id']}")
+        live = live.get("data", live)
+        out["terms"] += 1
+        out["terms_name_certified"] += bool(live.get("name_certified"))
+        for a in sa.call(admin, "GET", f"/api/terms/{t['id']}/sql-attributes")["data"] or []:
+            out["sql_attributes"] += 1
+            out["sql_attributes_certified"] += bool(a.get("certified"))
+    return out
 
 
 def validate(path: pathlib.Path) -> str:
@@ -114,7 +120,8 @@ def validate(path: pathlib.Path) -> str:
 
 
 def norm(s: str) -> str:
-    return re.sub(r"\s+", " ", re.sub(r'"', "", str(s))).strip().lower()
+    s = re.sub(r"\s+", " ", re.sub(r'"', "", str(s))).strip().lower()
+    return re.sub(r"\s*([(),])\s*", r"\1", s)  # spacing around brackets and commas is not a change
 
 
 def expr(item: dict) -> str:
@@ -183,6 +190,17 @@ def merged_hand_model() -> dict:
     for p in parts:
         for k in ("datasets", "relationships", "metrics"):
             m[k] += p.get(k, []) or []
+    # Both models carry the shared reference table sales.regions as dataset "regions"; keep one.
+    seen, ds = {}, []
+    for d in m["datasets"]:
+        if d["name"] in seen:
+            assert seen[d["name"]] == d["source"], d["name"]
+            continue
+        seen[d["name"]] = d["source"]
+        ds.append(d)
+    m["datasets"] = ds
+    names = set()
+    m["relationships"] = [r for r in m["relationships"] if not (r["name"] in names or names.add(r["name"]))]
     return m
 
 
@@ -207,11 +225,25 @@ report["ao_export_validates_after_to03"] = validate(OUT / "a2_as_0.3.yaml")
 hand = merged_hand_model()
 (OUT / "hand_merged.yaml").write_text(yaml.safe_dump(hand, sort_keys=False))
 report["hand_validates"] = validate(OUT / "hand_merged.yaml")
-report["hand_import"] = import_model(to02(hand, "d3"))
-back = to03(export_ossie())
+# Importing it as database "d3" fails: Auto Ontology tries to create a second catalog database
+# named d3 (500, unique constraint uq_catalog_database_name). It goes in as "d3_hand" instead,
+# which leaves the live d3 layer alone and tests the format round trip itself.
+report["hand_import_as_d3"] = "500: duplicate key uq_catalog_database_name (recorded, not retried)"
+# A second relationship between the same two tables (assessments -> employees as employee and as
+# assessor) makes the importer fail (500, ON CONFLICT ... cannot affect row a second time), so
+# the import copy keeps the first relationship per table pair; the rest are reported as lost.
+src = {d["name"]: d["source"] for d in hand["datasets"]}
+pairs, importable, dropped = set(), [], []
+for r in hand["relationships"]:
+    key = tuple(sorted((src[r["from"]], src[r["to"]])))
+    (dropped if key in pairs else importable).append(r)
+    pairs.add(key)
+report["relationships_not_importable"] = [r["name"] for r in dropped]
+report["hand_import"] = import_model(to02({**hand, "relationships": importable}, "d3_hand"))
+back = to03(export_ossie("d3_hand"))
 (OUT / "hand_back.yaml").write_text(yaml.safe_dump(back, sort_keys=False))
 report["hand_back_validates"] = validate(OUT / "hand_back.yaml")
-report["hand_certified_after_import"] = certified_counts()
+report["hand_certified_after_import"] = certified_counts("d3_hand")
 rows1 = compare(hand, back)
 
 # 2. AO -> Ossie -> AO
@@ -219,7 +251,7 @@ report["a2_import"] = import_model(to02(to03(a2), "d3"))
 again = to03(export_ossie())
 (OUT / "a2_back.yaml").write_text(yaml.safe_dump(again, sort_keys=False))
 report["a2_back_validates"] = validate(OUT / "a2_back.yaml")
-report["a2_certified_after_import"] = certified_counts()
+report["a2_certified_after_import"] = certified_counts("d3")
 rows2 = compare(to03(a2), again)
 
 report["hand_roundtrip"] = summary(rows1)
