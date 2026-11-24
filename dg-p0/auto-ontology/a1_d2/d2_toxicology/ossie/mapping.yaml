@@ -1,0 +1,21 @@
+version: 0.2.0.dev0
+name: d2_toxicology_mapping
+description: Maps the d2_toxicology_ontology onto the d2_toxicology semantic model
+ontology_ref:
+  name: d2_toxicology_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_toxicology
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: Molecule
+  object_mappings:
+  - expression: molecule.molecule_id
+  link_mappings:
+  - object_mapping:
+      expression: molecule.molecule_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: molecule.experimental_outcome
+      relationship: experimental_outcome

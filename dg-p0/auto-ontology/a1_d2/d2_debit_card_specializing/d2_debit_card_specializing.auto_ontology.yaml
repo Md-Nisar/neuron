@@ -1,0 +1,420 @@
+data_layer:
+  databases:
+  - id: c3dc4683-bf17-4ae2-8174-444695a02e36
+    dialect: postgres
+    schemas:
+    - id: 07d691a4-7f57-47b9-b843-d4476b5b56ab
+      name: public
+      database_name: d2_debit_card_specializing
+      tables:
+      - id: fefc3a1f-4a32-445d-a0fa-2b20385d9267
+        name: customers
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: c4f91d96-bf80-459a-863a-fc1053a0758e
+          name: customerid
+          description: Unique identifier for each customer in the system.
+          type: bigint
+          sample_values:
+          - 3
+          - 5
+          - 6
+          - 7
+          - 9
+          is_nullable: false
+          is_unique: true
+        - id: 1d1c0ac5-25b6-45a1-9404-d06baf353027
+          name: segment
+          description: Classification of the customer into a business segment such
+            as SME, LAM, or KAM.
+          type: text
+          sample_values:
+          - SME
+          - LAM
+          - KAM
+          is_nullable: true
+          is_unique: false
+        - id: ef1bfc47-046f-4d4e-bb7a-9984ad107842
+          name: currency
+          description: The currency code associated with the customer, such as CZK
+            or EUR.
+          type: text
+          sample_values:
+          - CZK
+          - EUR
+          is_nullable: true
+          is_unique: false
+      - id: 4ad41776-ae9a-418c-92ee-d9306f20369c
+        name: gasstations
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: ee55a533-4f8d-4d8a-a0cd-8fc6a097e222
+          name: gasstationid
+          description: Unique identifier for a gas station.
+          type: bigint
+          sample_values:
+          - 44
+          - 45
+          - 46
+          - 47
+          - 48
+          is_nullable: false
+          is_unique: true
+        - id: de6dee95-4edf-4ddb-815b-0dbbb9404223
+          name: chainid
+          description: The chainid column holds a unique bigint identifier for a chain,
+            as evidenced by sample values 1, 2, 3, 4, and 33.
+          type: bigint
+          sample_values:
+          - 2
+          - 33
+          - 1
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: 03f6b98b-98cc-4144-83c7-b3d1ba78a23a
+          name: country
+          description: ISO country code indicating the country where the gas station
+            operates.
+          type: text
+          sample_values:
+          - CZE
+          - SVK
+          is_nullable: true
+          is_unique: false
+        - id: 2669f63c-70b8-4ec8-beef-be254aabebba
+          name: segment
+          description: Classification of the gas station's brand or pricing segment.
+          type: text
+          sample_values:
+          - Premium
+          - Other
+          - Noname
+          - Value for money
+          - Discount
+          is_nullable: true
+          is_unique: false
+      - id: 216ede55-0858-48cf-8865-b79a92f1e073
+        name: products
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 13316e6f-68d6-43bf-a4af-b769f4bb9ed5
+          name: productid
+          description: Unique numeric identifier assigned to each product in the catalog.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 29b31806-35be-4211-b40e-23e8dc296b1a
+          name: description
+          description: Textual label categorizing the product type, such as food,
+            service fee, returnable packaging, catalyst, or other goods.
+          type: text
+          sample_values:
+          - Ostatni zbozi
+          - "Servisn\xED poplatek"
+          - Potraviny
+          - "Vratn\xE9 obaly"
+          - "Katalyz\xE1tor"
+          is_nullable: true
+          is_unique: false
+      - id: e808da07-2fe3-43d8-8394-dc7102d171ff
+        name: transactions_1k
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 86345ede-d26c-434f-89f6-31e2697cd5a9
+          name: transactionid
+          description: Unique identifier for each transaction record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: ad76c12c-1e5f-44d3-83f5-955e27f33cef
+          name: date
+          description: Calendar date on which the transaction occurred.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 554b4264-7787-4c04-888c-f2f199c43d74
+          name: time
+          description: Time of day when the transaction was recorded, in HH:MM:SS
+            format.
+          type: text
+          sample_values:
+          - 08:57:00
+          - '11:55:00'
+          - '16:04:00'
+          - '15:23:00'
+          - 09:50:00
+          is_nullable: true
+          is_unique: false
+        - id: ccbe9a25-fbf5-4b29-8e1c-5806978b20e2
+          name: customerid
+          description: Unique identifier assigned to each customer in the system.
+          type: bigint
+          sample_values:
+          - 19182
+          - 31543
+          - 7626
+          - 33094
+          - 30895
+          is_nullable: true
+          is_unique: false
+        - id: 8e097379-f138-4435-8c29-d364d5d43d08
+          name: cardid
+          description: Unique identifier assigned to each payment or loyalty card
+            associated with a customer.
+          type: bigint
+          sample_values:
+          - 568944
+          - 732572
+          - 680551
+          - 519534
+          - 585106
+          is_nullable: true
+          is_unique: false
+        - id: 09aba590-f412-487a-bcd5-a3698da3d0b0
+          name: gasstationid
+          description: ''
+          type: bigint
+          sample_values:
+          - 1155
+          - 448
+          - 48
+          - 636
+          - 3621
+          is_nullable: true
+          is_unique: false
+        - id: a983a164-db00-4a5a-82da-fbadbc9f826f
+          name: productid
+          description: ''
+          type: bigint
+          sample_values:
+          - 2
+          - 5
+          - 317
+          - 15
+          - 9
+          is_nullable: true
+          is_unique: false
+        - id: 0282b9e4-6d78-48a5-983c-927d6362096c
+          name: amount
+          description: Quantity of items associated with the transaction.
+          type: bigint
+          sample_values:
+          - 0
+          - 5
+          - 25
+          - 1
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: c1545e72-7fe1-4302-9b21-80159fafac01
+          name: price
+          description: Monetary value of the transaction, expressed in decimal currency
+            units.
+          type: real
+          sample_values:
+          - 123.91
+          - 43.56
+          - 53.29
+          - 72.76
+          - 38.69
+          is_nullable: true
+          is_unique: false
+      - id: 2d291d68-1984-4447-b631-011b65bb12dd
+        name: yearmonth
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 99b98a0a-f39e-4e0d-88e4-482e651dc314
+          name: customerid
+          description: ''
+          type: bigint
+          sample_values:
+          - 39
+          - 44
+          - 52
+          - 96
+          - 128
+          is_nullable: true
+          is_unique: false
+        - id: 3478223c-5917-489d-8a6a-48d0c12a726e
+          name: date
+          description: The date column stores the reporting period in YYYYMM format
+            as text.
+          type: text
+          sample_values:
+          - '201306'
+          - '201307'
+          - '201303'
+          - '201304'
+          - '201305'
+          is_nullable: true
+          is_unique: false
+        - id: d87d275d-1b86-443d-b9f2-eb3cbaaba692
+          name: consumption
+          description: The consumption column records the numeric consumption value
+            for the corresponding period.
+          type: real
+          sample_values:
+          - 23.27
+          - 60.99
+          - 59.33
+          - 55.72
+          - 43.45
+          is_nullable: true
+          is_unique: true
+  foreign_keys: []
+  joins: []
+semantic_layer:
+  terms:
+  - id: 0344c0a2-d296-4a20-b8ca-a620f7bdf31d
+    name: Customer (d2_debit_card_specializing.public.customers)
+    description: ''
+    represents:
+    - fefc3a1f-4a32-445d-a0fa-2b20385d9267
+    columns_attributes:
+    - id: 56b30485-8c84-45ce-bad9-95241332cb72
+      name: Segment
+      description: Classifies the customer into a business segment such as SME, LAM,
+        or KAM.
+      column_id: 1d1c0ac5-25b6-45a1-9404-d06baf353027
+    - id: bcb77b21-e30d-48f3-ae48-fa734385200b
+      name: Currency
+      description: Indicates the currency code associated with the customer, using
+        standard codes like CZK or EUR.
+      column_id: ef1bfc47-046f-4d4e-bb7a-9984ad107842
+    - id: d6f33275-c685-4ab2-a3eb-ca290e866ca9
+      name: Customer ID
+      description: Unique identifier for each customer, used to link customer records
+        to monthly performance data.
+      column_id: c4f91d96-bf80-459a-863a-fc1053a0758e
+  - id: 937089b2-0b2a-4be5-813c-8a6c95a97f0b
+    name: Gas Station
+    description: ''
+    represents:
+    - 4ad41776-ae9a-418c-92ee-d9306f20369c
+    columns_attributes:
+    - id: 16266a0b-1734-4dfd-8da2-89b8af96a051
+      name: Segment
+      description: Categorizes the gas station by brand or pricing tier such as Premium
+        or Discount.
+      column_id: 2669f63c-70b8-4ec8-beef-be254aabebba
+    - id: 27dbbbac-2cab-458d-8eb7-ff2fa1cd50d2
+      name: chainid
+      description: Identifies the fuel chain to which the gas station belongs.
+      column_id: de6dee95-4edf-4ddb-815b-0dbbb9404223
+    - id: 7dff2f73-d082-446e-a665-7a0332d918e7
+      name: Gas Station ID
+      description: Unique identifier for a gas station, used to link transactions
+        to the specific station.
+      column_id: ee55a533-4f8d-4d8a-a0cd-8fc6a097e222
+    - id: ae56c4b5-9d20-47d6-b904-e1c25d5aa6e2
+      name: Country
+      description: ISO country code specifying the country where the gas station operates.
+      column_id: 03f6b98b-98cc-4144-83c7-b3d1ba78a23a
+  - id: a79e2cf0-d76f-4cc4-be1e-38c6adf5fe9a
+    name: Product (d2_debit_card_specializing.public.products)
+    description: ''
+    represents:
+    - 216ede55-0858-48cf-8865-b79a92f1e073
+    columns_attributes:
+    - id: b7e3b345-ee8f-4520-9a2a-11f4a9875f20
+      name: Description
+      description: Textual category label classifying the product type, such as food
+        or service fee.
+      column_id: 29b31806-35be-4211-b40e-23e8dc296b1a
+    - id: cb6364fc-2402-4e77-b4cd-6c3305b603bb
+      name: Product ID
+      description: Unique numeric identifier for each product, used to link products
+        to transactions.
+      column_id: 13316e6f-68d6-43bf-a4af-b769f4bb9ed5
+  - id: 4f8a50bd-306c-4894-9338-78ddcc04e658
+    name: Transaction
+    description: A single transaction record.
+    represents:
+    - e808da07-2fe3-43d8-8394-dc7102d171ff
+    columns_attributes:
+    - id: 017938dc-d891-4fd7-b2e5-e4251f2763e2
+      name: Transaction ID
+      description: Uniquely identifies each transaction record.
+      column_id: 86345ede-d26c-434f-89f6-31e2697cd5a9
+    - id: 2c337e78-056e-429f-b805-e8784cac5c91
+      name: cardid
+      description: Identifies the payment or loyalty card used for the transaction.
+      column_id: 8e097379-f138-4435-8c29-d364d5d43d08
+    - id: 5bbed368-e1e5-4dac-ac89-0b4d966ec274
+      name: Date
+      description: Records the calendar date of the transaction in YYYY-MM-DD format.
+      column_id: ad76c12c-1e5f-44d3-83f5-955e27f33cef
+    - id: 94f1f932-0faf-4e1c-8f5a-0cc14eea44cc
+      name: Price
+      description: Records the monetary value of the transaction in decimal currency
+        units.
+      column_id: c1545e72-7fe1-4302-9b21-80159fafac01
+    - id: a9d9cbff-fdf3-4bfd-9b70-669a977d1350
+      name: customerid
+      description: Identifies the customer who made the transaction.
+      column_id: ccbe9a25-fbf5-4b29-8e1c-5806978b20e2
+    - id: bfb07dd4-04e1-4819-ac3f-75df70745720
+      name: Time
+      description: Captures the time of day the transaction was recorded in HH:MM:SS
+        format.
+      column_id: 554b4264-7787-4c04-888c-f2f199c43d74
+    - id: ffa2d390-d40c-477f-bce4-3feaa45f1c7c
+      name: Quantity
+      description: Represents the quantity of items in the transaction.
+      column_id: 0282b9e4-6d78-48a5-983c-927d6362096c
+  - id: 84394367-c3b9-49ba-aeec-f7f5b43e6909
+    name: Year Month
+    description: A reporting period with its associated consumption value.
+    represents:
+    - 2d291d68-1984-4447-b631-011b65bb12dd
+    columns_attributes:
+    - id: 8e25cb43-d423-4632-b33e-2681468e1c12
+      name: Consumption
+      description: Records the consumption amount for the reporting period.
+      column_id: d87d275d-1b86-443d-b9f2-eb3cbaaba692
+    - id: df6ae673-5131-4d98-87dd-854b72dd4a26
+      name: Period
+      description: Represents the reporting period in YYYYMM text format.
+      column_id: 3478223c-5917-489d-8a6a-48d0c12a726e
+  semantic_fks:
+  - column_attribute_id: 7dff2f73-d082-446e-a665-7a0332d918e7
+    column_id: 09aba590-f412-487a-bcd5-a3698da3d0b0
+    use_in_join_paths: true
+  - column_attribute_id: d6f33275-c685-4ab2-a3eb-ca290e866ca9
+    column_id: 99b98a0a-f39e-4e0d-88e4-482e651dc314
+    use_in_join_paths: true
+  - column_attribute_id: cb6364fc-2402-4e77-b4cd-6c3305b603bb
+    column_id: a983a164-db00-4a5a-82da-fbadbc9f826f
+    use_in_join_paths: true
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table: []
+  custom_analyses: []
+zones: []

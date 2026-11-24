@@ -1,0 +1,30 @@
+kind	term	object	outcome	description_or_sql
+term	Alignment Record	public.alignment	certified	alignment.
+column	Alignment Record	public.alignment.alignment	certified	the alignment of the superhero. Values: commonsense evidence: Alignment refers to a character's moral and ethical stance and can be used to describe the overall attitude or behavior of a superhero. Some common alignments for superheroes include: Good: These superheroes are typically kind, selfless, and dedicated to protecting others and upholding justice. Examples of good alignments include Superman, Wonder Woman, and Spider-Man. Neutral: These superheroes may not always prioritize the greater good, but they are not necessarily evil either. They may act in their own self-interest or make decisions based on their own moral code. Examples of neutral alignments include the Hulk and Deadpool.  Bad: These superheroes are typically selfish, manipulative, and willing to harm others in pursuit of their own goals. Examples of evil alignments include Lex Luthor and the Joker.
+column	Alignment Record	public.alignment.id	certified	the unique identifier of the alignment
+term	Attribute	public.attribute	certified	attribute.
+column	Attribute	public.attribute.attribute_name	certified	the attribute. Values: commonsense evidence: A superhero's attribute is a characteristic or quality that defines who they are and what they are capable of. This could be a physical trait, such as superhuman strength or the ability to fly, or a personal trait, such as extraordinary intelligence or exceptional bravery.
+column	Attribute	public.attribute.id	certified	the unique identifier of the attribute
+term	Colour	public.colour	certified	colour.
+column	Colour	public.colour.id	certified	the unique identifier of the color
+column	Colour	public.colour.colour	certified	the color of the superhero's skin/eye/hair/etc
+term	Gender	public.gender	certified	gender.
+column	Gender	public.gender.id	certified	the unique identifier of the gender
+column	Gender	public.gender.gender	certified	the gender of the superhero
+term	Hero Attribute	public.hero_attribute	certified	hero_attribute.
+column	Hero Attribute	public.hero_attribute.attribute_value	certified	the attribute value. Values: commonsense evidence: If a superhero has a higher attribute value on a particular attribute, it means that they are more skilled or powerful in that area compared to other superheroes. For example, if a superhero has a higher attribute value for strength, they may be able to lift heavier objects or deliver more powerful punches than other superheroes.
+term	Publisher	public.publisher	certified	publisher.
+column	Publisher	public.publisher.publisher_name	certified	the name of the publisher
+column	Publisher	public.publisher.id	certified	the unique identifier of the publisher
+term	Race (d2_superhero.public.race)	public.race	certified	race.
+column	Race (d2_superhero.public.race)	public.race.id	certified	the unique identifier of the race
+column	Race (d2_superhero.public.race)	public.race.race	certified	the race of the superhero. Values: commonsense evidence: In the context of superheroes, a superhero's race would refer to the particular group of people that the superhero belongs to base on these physical characteristics
+term	Superhero	public.superhero	certified	superhero.
+column	Superhero	public.superhero.superhero_name	certified	the name of the superhero
+column	Superhero	public.superhero.height_cm	certified	the height of the superhero. Values: commonsense evidence: The unit of height is centimeter. If the height_cm is NULL or 0, it means the height of the superhero is missing.
+column	Superhero	public.superhero.id	certified	the unique identifier of the superhero
+column	Superhero	public.superhero.full_name	certified	the full name of the superhero. Values: commonsense evidence: The full name of a person typically consists of their given name, also known as their first name or personal name, and their surname, also known as their last name or family name. For example, if someone's given name is "John" and their surname is "Smith," their full name would be "John Smith."
+column	Superhero	public.superhero.weight_kg	certified	the weight of the superhero. Values: commonsense evidence: The unit of weight is kilogram. If the weight_kg is NULL or 0, it means the weight of the superhero is missing.
+term	Superpower	public.superpower	certified	superpower.
+column	Superpower	public.superpower.id	certified	the unique identifier of the superpower
+column	Superpower	public.superpower.power_name	certified	the superpower name

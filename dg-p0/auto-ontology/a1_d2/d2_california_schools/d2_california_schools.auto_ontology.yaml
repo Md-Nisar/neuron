@@ -1,0 +1,1511 @@
+data_layer:
+  databases:
+  - id: 269dc4fd-fc53-4d1c-bcf8-7a91e7218c19
+    dialect: postgres
+    schemas:
+    - id: 960a7c24-a139-4d6e-b378-17ea0d1f7d31
+      name: public
+      database_name: d2_california_schools
+      tables:
+      - id: ad8af6a9-84bf-42e6-9883-a7248cab50b1
+        name: frpm
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 45b155ea-daf1-4561-8e2a-668ae449ee21
+          name: cdscode
+          description: ''
+          type: text
+          sample_values:
+          - 01100170109835
+          - '01100170112607'
+          - 01100170118489
+          - 01100170123968
+          - '01100170124172'
+          is_nullable: true
+          is_unique: true
+        - id: 7572eb5d-b290-4d0c-b0be-ea9b780043d1
+          name: Academic Year
+          description: ''
+          type: text
+          sample_values:
+          - 2014-2015
+          is_nullable: true
+          is_unique: false
+        - id: 2f70f507-3b21-4095-a6e4-d70a8d6db919
+          name: County Code
+          description: ''
+          type: text
+          sample_values:
+          - '01'
+          - '07'
+          - '10'
+          - '04'
+          - 09
+          is_nullable: true
+          is_unique: false
+        - id: 8d505c62-2b28-4c9b-9bc3-420d5a7867d3
+          name: District Code
+          description: ''
+          type: bigint
+          sample_values:
+          - 61259
+          - 61796
+          - 61754
+          - 62117
+          - 61176
+          is_nullable: true
+          is_unique: false
+        - id: 0d1c56c0-a831-49b2-8818-bee70659a0f3
+          name: School Code
+          description: ''
+          type: text
+          sample_values:
+          - '0000000'
+          - 0109835
+          - '0112607'
+          - 0118489
+          - 0123968
+          is_nullable: true
+          is_unique: true
+        - id: cca6c9f2-b535-40bd-8bfb-1b5c14e2bb96
+          name: County Name
+          description: ''
+          type: text
+          sample_values:
+          - Alameda
+          - Contra Costa
+          - Fresno
+          - Butte
+          - El Dorado
+          is_nullable: true
+          is_unique: false
+        - id: 5fa1cc79-2b35-4fc6-a992-75a9758dd5d4
+          name: District Name
+          description: ''
+          type: text
+          sample_values:
+          - Oakland Unified
+          - West Contra Costa Unified
+          - Mt. Diablo Unified
+          - Clovis Unified
+          - Fremont Unified
+          is_nullable: true
+          is_unique: false
+        - id: 2e1ad2e7-7596-4351-bdc1-7b4f1e7d41d0
+          name: School Name
+          description: ''
+          type: text
+          sample_values:
+          - District Office
+          - Lincoln Elementary
+          - Pioneer Elementary
+          - Jefferson Elementary
+          - Washington Elementary
+          is_nullable: true
+          is_unique: true
+        - id: a687eeb5-7bd7-473c-98b8-5035edc2ea8b
+          name: District Type
+          description: ''
+          type: text
+          sample_values:
+          - Unified School District
+          - Elementary School District
+          - High School District
+          - State Special Schools
+          is_nullable: true
+          is_unique: false
+        - id: 6a7396b0-dc1d-427e-8211-a271c6e837b0
+          name: School Type
+          description: ''
+          type: text
+          sample_values:
+          - Elementary Schools (Public)
+          - High Schools (Public)
+          - Continuation High Schools
+          - Alternative Schools of Choice
+          is_nullable: true
+          is_unique: false
+        - id: 11612ac3-b504-44e2-8c27-b9bc8e05341e
+          name: Educational Option Type
+          description: ''
+          type: text
+          sample_values:
+          - Traditional
+          - Continuation School
+          - Alternative School of Choice
+          - Community Day School
+          - Special Education School
+          is_nullable: true
+          is_unique: false
+        - id: 402cdb62-62cd-479f-be96-1c423028d660
+          name: NSLP Provision Status
+          description: ''
+          type: text
+          sample_values:
+          - Provision 2
+          - CEP
+          - Breakfast Provision 2
+          - Lunch Provision 2
+          - Provision 1
+          - Provision 3
+          - Multiple Provision Types
+          is_nullable: true
+          is_unique: false
+        - id: 1b23a995-b698-4ee6-85eb-96f27dd59302
+          name: Charter School (Y/N)
+          description: ''
+          type: bigint
+          sample_values:
+          - 0.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 8b01a960-bec8-4ccb-befa-974fa9aed5f8
+          name: Charter School Number
+          description: ''
+          type: text
+          sample_values:
+          - 0728
+          - 0811
+          - '1049'
+          - '1284'
+          - '1296'
+          is_nullable: true
+          is_unique: true
+        - id: 4eaee6c8-c98a-4989-9c56-0ea47ac3d660
+          name: Charter Funding Type
+          description: ''
+          type: text
+          sample_values:
+          - Directly funded
+          - Locally funded
+          - Not in CS funding model
+          is_nullable: true
+          is_unique: false
+        - id: 0abc4f05-afdc-4989-8e5c-39652c3ba07e
+          name: irc
+          description: ''
+          type: bigint
+          sample_values:
+          - 0.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: be935f63-4d0e-45b4-9712-d2a53c4e2693
+          name: Low Grade
+          description: ''
+          type: text
+          sample_values:
+          - K
+          - '9'
+          - '6'
+          - '7'
+          - P
+          is_nullable: true
+          is_unique: false
+        - id: 880313ca-a3eb-48e3-9d28-e725ae9dbf56
+          name: High Grade
+          description: ''
+          type: text
+          sample_values:
+          - '12'
+          - '5'
+          - '8'
+          - '6'
+          - '3'
+          is_nullable: true
+          is_unique: false
+        - id: b12a54b1-f606-4422-aaac-54dcba37fcb8
+          name: Enrollment (K-12)
+          description: ''
+          type: real
+          sample_values:
+          - 19.0
+          - 1.0
+          - 546.0
+          - 430.0
+          - 410.0
+          is_nullable: true
+          is_unique: false
+        - id: 4d51ca5d-4fd6-412c-8065-74cd03c547a7
+          name: Free Meal Count (K-12)
+          description: ''
+          type: real
+          sample_values:
+          - 12.0
+          - 6.0
+          - 1.0
+          - 11.0
+          - 30.0
+          is_nullable: true
+          is_unique: false
+        - id: 5a987808-07ce-4835-8088-0f19ba7df67b
+          name: Percent (%) Eligible Free (K-12)
+          description: ''
+          type: real
+          sample_values:
+          - 1.0
+          - 0.75
+          - 0.78571427
+          - 0.8
+          - 0.6666667
+          is_nullable: true
+          is_unique: false
+        - id: 0a5b649b-4b3c-4e78-9bf4-129c6e5cf036
+          name: FRPM Count (K-12)
+          description: ''
+          type: real
+          sample_values:
+          - 6.0
+          - 1.0
+          - 34.0
+          - 17.0
+          - 9.0
+          is_nullable: true
+          is_unique: false
+        - id: 3e841f28-f1fb-4a90-8315-6fffdde7e857
+          name: Percent (%) Eligible FRPM (K-12)
+          description: ''
+          type: real
+          sample_values:
+          - 1.0
+          - 0.75
+          - 0.8
+          - 0.9230769
+          - 0.53846157
+          is_nullable: true
+          is_unique: true
+        - id: b65c580f-4823-490c-a13a-e546c3c0249c
+          name: Enrollment (Ages 5-17)
+          description: ''
+          type: real
+          sample_values:
+          - 1.0
+          - 142.0
+          - 112.0
+          - 504.0
+          - 432.0
+          is_nullable: true
+          is_unique: false
+        - id: 83a3632b-6639-47ec-9593-0d7584075adb
+          name: Free Meal Count (Ages 5-17)
+          description: ''
+          type: real
+          sample_values:
+          - 6.0
+          - 1.0
+          - 5.0
+          - 12.0
+          - 11.0
+          is_nullable: true
+          is_unique: false
+        - id: 3f1b9267-49f3-4c6b-82b1-e6a0f8e3fe17
+          name: Percent (%) Eligible Free (Ages 5-17)
+          description: ''
+          type: real
+          sample_values:
+          - 1.0
+          - 0.75
+          - 0.85714287
+          - 0.625
+          - 0.5
+          is_nullable: true
+          is_unique: true
+        - id: 72bcca73-5bd6-4489-814b-a5efa33cf6f6
+          name: FRPM Count (Ages 5-17)
+          description: ''
+          type: real
+          sample_values:
+          - 6.0
+          - 14.0
+          - 17.0
+          - 9.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 584af54e-f6b9-4dce-ba15-18b516fbc50d
+          name: Percent (%) Eligible FRPM (Ages 5-17)
+          description: ''
+          type: real
+          sample_values:
+          - 1.0
+          - 0.75
+          - 0.85714287
+          - 0.6666667
+          - 0.4
+          is_nullable: true
+          is_unique: false
+        - id: bfd1e11c-a67b-471c-9bdf-1a03bbb88d50
+          name: 2013-14 CALPADS Fall 1 Certification Status
+          description: This column stores the certification status code for the CALPADS
+            Fall 1 submission in the 2013-14 school year, where a value of 1 indicates
+            the submission has been certified.
+          type: bigint
+          sample_values:
+          - 1
+          is_nullable: true
+          is_unique: false
+      - id: 43563f95-1069-4d7b-9009-d70e93434603
+        name: satscores
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 0a3cbfef-f419-4df4-ab86-03818095d8be
+          name: cds
+          description: ''
+          type: text
+          sample_values:
+          - '01100170000000'
+          - 01100170109835
+          - '01100170112607'
+          - 01100170118489
+          - 01611190000000
+          is_nullable: false
+          is_unique: true
+        - id: 85245975-2345-43dc-925d-a2d28e23efa6
+          name: rtype
+          description: Indicates the record level, with 'S' representing school-level
+            records and 'D' representing district-level aggregate records.
+          type: text
+          sample_values:
+          - S
+          - D
+          is_nullable: true
+          is_unique: false
+        - id: 81dba415-fd2f-451b-818c-178be1e07b38
+          name: sname
+          description: Name of the school.
+          type: text
+          sample_values:
+          - Liberty High
+          - John F. Kennedy High
+          - Washington High
+          - Arroyo High
+          - Foothill High
+          is_nullable: true
+          is_unique: true
+        - id: 53176b5c-1d5a-4014-b3f9-d80aff8fcc4c
+          name: dname
+          description: Name of the school district.
+          type: text
+          sample_values:
+          - Los Angeles Unified
+          - Oakland Unified
+          - Kern High
+          - Fresno Unified
+          - Antelope Valley Union High
+          is_nullable: true
+          is_unique: false
+        - id: 600ff65a-301e-4176-92fe-5682db9c7ff8
+          name: cname
+          description: Name of the county.
+          type: text
+          sample_values:
+          - Los Angeles
+          - Alameda
+          - Fresno
+          - Contra Costa
+          - Kern
+          is_nullable: true
+          is_unique: false
+        - id: ef2145fe-35ea-4cf4-a160-6602596b25b6
+          name: enroll12
+          description: Number of students enrolled in 12th grade.
+          type: bigint
+          sample_values:
+          - 47
+          - 17
+          - 19
+          - 55
+          - 38
+          is_nullable: true
+          is_unique: false
+        - id: aa075fa3-b8d1-46a5-ba51-0ac63a2d5ed3
+          name: numtsttakr
+          description: Number of 12th-grade students who took the SAT exam.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 4
+          - 3
+          is_nullable: true
+          is_unique: false
+        - id: e35d0c80-a3db-48be-8901-80547b73e74c
+          name: avgscrread
+          description: Average SAT reading score among test takers.
+          type: bigint
+          sample_values:
+          - 517.0
+          - 451.0
+          - 433.0
+          - 464.0
+          - 434.0
+          is_nullable: true
+          is_unique: false
+        - id: 3733a8e8-f491-431d-b8d9-381935c8397e
+          name: avgscrmath
+          description: Average SAT math score among test takers.
+          type: bigint
+          sample_values:
+          - 451.0
+          - 462.0
+          - 471.0
+          - 429.0
+          - 436.0
+          is_nullable: true
+          is_unique: false
+        - id: 3aa14328-4ecc-4b20-88f4-781bfee5dc11
+          name: avgscrwrite
+          description: Average SAT writing score among test takers.
+          type: bigint
+          sample_values:
+          - 446.0
+          - 464.0
+          - 442.0
+          - 425.0
+          - 449.0
+          is_nullable: true
+          is_unique: false
+        - id: fdf01a89-1fbf-47f8-b532-98a27fb54511
+          name: numge1500
+          description: Number of test takers with a combined SAT score of 1500 or
+            higher.
+          type: bigint
+          sample_values:
+          - 6.0
+          - 3.0
+          - 4.0
+          - 1.0
+          - 15.0
+          is_nullable: true
+          is_unique: false
+      - id: efbbf8b9-0053-4538-9e03-0973a33fe83d
+        name: schools
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 764ea7ad-57ea-4a1a-9207-d45e3db42631
+          name: cdscode
+          description: A unique 14-digit code identifying a California school or district
+            within the state's official education data system.
+          type: text
+          sample_values:
+          - '01100170000000'
+          - 01100170109835
+          - '01100170112607'
+          - 01100170118489
+          - 01100170123968
+          is_nullable: true
+          is_unique: true
+        - id: 163bdb1d-e4dd-4341-acb3-1ece39188d52
+          name: ncesdist
+          description: The National Center for Education Statistics (NCES) assigned
+            district identification number.
+          type: text
+          sample_values:
+          - 0628050
+          - '0616740'
+          - '0614400'
+          - 0608370
+          - 0691051
+          is_nullable: true
+          is_unique: false
+        - id: 6976802e-0d2f-4e15-add2-8d1558b2a272
+          name: ncesschool
+          description: The National Center for Education Statistics (NCES) assigned
+            school identification number.
+          type: text
+          sample_values:
+          - '00042'
+          - 09283
+          - 06929
+          - 09275
+          - 09284
+          is_nullable: true
+          is_unique: true
+        - id: d4e457f5-589a-4396-8aef-80de6725a265
+          name: statustype
+          description: The current operational status of the school or district, such
+            as Active, Closed, Merged, or Pending.
+          type: text
+          sample_values:
+          - Active
+          - Closed
+          - Merged
+          - Pending
+          is_nullable: true
+          is_unique: false
+        - id: 70a3d4e8-8c2c-4e84-b429-4e62c09dab2b
+          name: county
+          description: The California county in which the school or district is geographically
+            located.
+          type: text
+          sample_values:
+          - Alameda
+          - Butte
+          - Amador
+          - Alpine
+          - Los Angeles
+          is_nullable: true
+          is_unique: false
+        - id: ec3100be-48c5-47d2-8983-4ee8b0d5bc12
+          name: district
+          description: The official name of the school district or county office of
+            education governing the school.
+          type: text
+          sample_values:
+          - Oakland Unified
+          - Hayward Unified
+          - Fremont Unified
+          - Chico Unified
+          is_nullable: true
+          is_unique: false
+        - id: db5499ee-b47a-4e5e-99eb-75170c3af3af
+          name: school
+          description: The official name of the school site.
+          type: text
+          sample_values:
+          - Washington Elementary
+          - Franklin Elementary
+          - Jefferson Elementary
+          - Linda Vista Elementary
+          - Burbank Elementary
+          is_nullable: true
+          is_unique: false
+        - id: 7dca755c-c516-4004-b177-26d3132aadf3
+          name: street
+          description: The physical street address of the school or district office.
+          type: text
+          sample_values:
+          - 4610 Foothill Boulevard
+          - 2607 Myrtle Street
+          - 217 Rex Avenue
+          - PO Box 219
+          - 8251 Fontaine Street
+          is_nullable: true
+          is_unique: false
+        - id: 014135fb-bca8-48fc-8e85-8e2f98394c8d
+          name: streetabr
+          description: The abbreviated form of the physical street address, using
+            standard postal abbreviations.
+          type: text
+          sample_values:
+          - 4610 Foothill Blvd.
+          - 2607 Myrtle St.
+          - 217 Rex Ave.
+          - PO Box 219
+          - 8251 Fontaine St.
+          is_nullable: true
+          is_unique: false
+        - id: cfbee483-ea0b-4d9d-8339-2e96fd444b5e
+          name: city
+          description: The city where the school or district office is physically
+            located.
+          type: text
+          sample_values:
+          - Oakland
+          - Hayward
+          - Fremont
+          - Oroville
+          - Chico
+          is_nullable: true
+          is_unique: false
+        - id: eda65ffb-0c24-471e-89ba-5896e0299783
+          name: zip
+          description: The ZIP code for the physical address of the school or district
+            office.
+          type: text
+          sample_values:
+          - '94566'
+          - '94607'
+          - '95965'
+          - '94541'
+          - '94560'
+          is_nullable: true
+          is_unique: false
+        - id: 4af47bce-3686-4e12-ae0c-4325261d158e
+          name: state
+          description: The U.S. state abbreviation for the school or district location,
+            consistently CA for California.
+          type: text
+          sample_values:
+          - CA
+          is_nullable: true
+          is_unique: false
+        - id: 06d1ec3f-26eb-4ee6-b708-43008d7e37fb
+          name: mailstreet
+          description: The mailing street address for the school or district, which
+            may differ from the physical address.
+          type: text
+          sample_values:
+          - PO Box 5000
+          - 217 Rex Avenue
+          - PO Box 2146
+          - 14735 Juniper Street
+          - 1859 Bird Street
+          is_nullable: true
+          is_unique: false
+        - id: 2df19f98-2e13-48d8-9e94-39488cfb4a3a
+          name: mailstrabr
+          description: The abbreviated form of the mailing street address, using standard
+            postal abbreviations.
+          type: text
+          sample_values:
+          - PO Box 5000
+          - 217 Rex Ave.
+          - PO Box 2146
+          - 14735 Juniper St.
+          - 1859 Bird St.
+          is_nullable: true
+          is_unique: false
+        - id: e1a215fe-cd76-441e-9ac9-01c1ea3ea600
+          name: mailcity
+          description: The city used for mailing correspondence to the school or district.
+          type: text
+          sample_values:
+          - Oakland
+          - Hayward
+          - Fremont
+          - Oroville
+          - Chico
+          is_nullable: true
+          is_unique: false
+        - id: c01cb672-de32-40f9-b046-e85c1b5e20ad
+          name: mailzip
+          description: The ZIP code of the mailing address for the school or agency.
+          type: text
+          sample_values:
+          - '94546'
+          - '95965'
+          - '94606'
+          - '94566'
+          - '94560'
+          is_nullable: true
+          is_unique: false
+        - id: 52bbdd0d-18c6-4fcb-b234-f2f211e6af5f
+          name: mailstate
+          description: The two-letter state abbreviation of the mailing address for
+            the school or agency.
+          type: text
+          sample_values:
+          - CA
+          is_nullable: true
+          is_unique: false
+        - id: aaf9f3a9-c9ec-498a-9f7f-3e2d11e77d32
+          name: phone
+          description: The primary telephone number of the school or agency, including
+            area code.
+          type: text
+          sample_values:
+          - (530) 891-3092
+          - (510) 537-3000
+          - (510) 893-8701
+          - (510) 273-2300
+          - (530) 694-2230
+          is_nullable: true
+          is_unique: false
+        - id: c01797fb-9a72-4fa7-a392-39aa3aaf6980
+          name: ext
+          description: The phone extension associated with the primary telephone number.
+          type: text
+          sample_values:
+          - '221'
+          - '130'
+          - '1240'
+          - '1200'
+          - '1311'
+          is_nullable: true
+          is_unique: false
+        - id: 69c6ee66-3447-4036-b6dd-c6840d103a22
+          name: website
+          description: The official website URL of the school or agency.
+          type: text
+          sample_values:
+          - www.newarkunified.org
+          - www.dublinusd.org
+          - www.aspirepublicschools.org
+          - www.bcoe.org
+          - www.acoe.org
+          is_nullable: true
+          is_unique: false
+        - id: 435c5b38-a007-4c61-af24-af6f1c86ae93
+          name: opendate
+          description: The date on which the school or agency began operations.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 3de3026d-44ee-4c10-91f7-189f3629c3d3
+          name: closeddate
+          description: The date on which the school or agency ceased operations.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: d702f802-4523-4374-b5ff-fbffe2d2214a
+          name: charter
+          description: A flag indicating whether the school operates as a charter
+            school (1) or not (0).
+          type: bigint
+          sample_values:
+          - 0.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: b6281c8d-105c-4fb0-a789-8d06e1be9b69
+          name: charternum
+          description: The unique charter school identification number assigned to
+            the school.
+          type: text
+          sample_values:
+          - 0728
+          - 0811
+          - '1049'
+          - '1284'
+          - '1296'
+          is_nullable: true
+          is_unique: true
+        - id: 94ce2154-6b2c-4635-bda9-587af534109e
+          name: fundingtype
+          description: The funding model classification for the school, such as directly
+            funded or locally funded.
+          type: text
+          sample_values:
+          - Directly funded
+          - Locally funded
+          - Not in CS funding model
+          is_nullable: true
+          is_unique: false
+        - id: 21de52b7-1905-4121-87ad-5b60ce5bda36
+          name: doc
+          description: A numeric code representing the district or organizational
+            identifier.
+          type: text
+          sample_values:
+          - '54'
+          - '00'
+          - '52'
+          - '56'
+          - '98'
+          is_nullable: true
+          is_unique: false
+        - id: 525499c4-c179-40ee-bec9-64a0caa6f92a
+          name: doctype
+          description: The type of educational organization, such as Unified School
+            District or County Office of Education.
+          type: text
+          sample_values:
+          - Unified School District
+          - Elementary School District
+          - High School District
+          is_nullable: true
+          is_unique: false
+        - id: d0f61fd4-2952-4814-b469-98c2ad219147
+          name: soc
+          description: A numeric school organization code used for classification.
+          type: text
+          sample_values:
+          - '60'
+          - '66'
+          - '62'
+          - '70'
+          - '68'
+          is_nullable: true
+          is_unique: false
+        - id: 931e6567-5579-490d-bc4d-d9a8f9158541
+          name: soctype
+          description: The descriptive category of the school organization, such as
+            Elementary Schools or High Schools.
+          type: text
+          sample_values:
+          - Elementary Schools (Public)
+          - High Schools (Public)
+          - Adult Education Centers
+          - Continuation High Schools
+          is_nullable: true
+          is_unique: false
+        - id: 601e61b1-f46b-4f36-9e0a-ddc6e03715ca
+          name: edopscode
+          description: The educational operation code indicating the school's operational
+            model, such as TRAD for traditional.
+          type: text
+          sample_values:
+          - TRAD
+          - CON
+          - COMMDAY
+          - SPEC
+          - ALTSOC
+          is_nullable: true
+          is_unique: false
+        - id: a0a49a72-472a-41f4-8db7-3da806f5d9c8
+          name: edopsname
+          description: The educational operation type or school model name, such as
+            Traditional or Continuation School.
+          type: text
+          sample_values:
+          - Traditional
+          - Continuation School
+          - Community Day School
+          - Special Education School
+          - Alternative School of Choice
+          is_nullable: true
+          is_unique: false
+        - id: d3ee6636-29a7-43fa-9c72-b0143601aa4c
+          name: eilcode
+          description: A coded abbreviation representing the school's instructional
+            level, such as ELEM for Elementary.
+          type: text
+          sample_values:
+          - ELEM
+          - HS
+          - UG
+          - INTMIDJR
+          - ELEMHIGH
+          is_nullable: true
+          is_unique: false
+        - id: 06c37efe-af2d-4826-9a28-c4f5db1561b0
+          name: eilname
+          description: The full descriptive name of the school's instructional level
+            corresponding to the eilcode.
+          type: text
+          sample_values:
+          - Elementary
+          - High School
+          - Ungraded
+          - Elementary-High Combination
+          is_nullable: true
+          is_unique: false
+        - id: 9cf28396-3d10-4555-8e7f-e23636ddb3a9
+          name: gsoffered
+          description: The range of grade levels the school is authorized to offer.
+          type: text
+          sample_values:
+          - K-5
+          - 9-12
+          - K-6
+          - 6-8
+          - K-8
+          is_nullable: true
+          is_unique: false
+        - id: 6bc852fa-9d9d-4eac-80f8-104bc745b74a
+          name: gsserved
+          description: The range of grade levels the school currently serves.
+          type: text
+          sample_values:
+          - K-5
+          - 9-12
+          - K-6
+          - 6-8
+          - K-8
+          is_nullable: true
+          is_unique: false
+        - id: 5a1ea8cb-bea8-45ab-9047-72668ca46fec
+          name: virtual
+          description: An indicator of the school's virtual instruction status using
+            codes such as N, P, or F.
+          type: text
+          sample_values:
+          - N
+          - P
+          - F
+          is_nullable: true
+          is_unique: false
+        - id: 9fbebfe8-920a-4b83-ac9a-2d7210dd7e38
+          name: magnet
+          description: A binary flag indicating whether the school is designated as
+            a magnet school (1) or not (0).
+          type: bigint
+          sample_values:
+          - 0.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 42365dfe-ab3f-4083-bd27-a57bd450d64a
+          name: latitude
+          description: The geographic latitude coordinate of the school's physical
+            location.
+          type: real
+          sample_values:
+          - 38.766193
+          - 38.352665
+          - 37.65821
+          - 37.773785
+          - 39.41499
+          is_nullable: true
+          is_unique: false
+        - id: 2eca1a05-031c-4748-95ec-af668a08078f
+          name: longitude
+          description: The geographic longitude coordinate of the school's physical
+            location.
+          type: real
+          sample_values:
+          - -119.80692
+          - -120.77703
+          - -122.09713
+          - -122.20992
+          - -121.7038
+          is_nullable: true
+          is_unique: false
+        - id: d84df005-bdb8-4dfe-be2e-f68206aa9e5b
+          name: admfname1
+          description: The first name of the primary school administrator.
+          type: text
+          sample_values:
+          - Michael
+          - Jessica
+          - John
+          - Susan
+          - Laura
+          is_nullable: true
+          is_unique: false
+        - id: 7ee224b7-923d-4079-a93a-0e92051055dd
+          name: admlname1
+          description: The last name of the primary school administrator.
+          type: text
+          sample_values:
+          - Williams
+          - Taylor
+          - Garcia
+          - Thompson
+          - King
+          is_nullable: true
+          is_unique: false
+        - id: ea352851-f804-4aab-9fcd-5091a6a623d9
+          name: admemail1
+          description: The email address of the primary school administrator.
+          type: text
+          sample_values:
+          - eehmann@cv.k12.ca.us
+          - mlopes@newarkunified.org
+          - akotzin@slzusd.org
+          - ssmith@alpinecoe.k12.ca.us
+          is_nullable: true
+          is_unique: false
+        - id: c9447211-d9cf-4739-b82e-d1e3c3c04e55
+          name: admfname2
+          description: The first name of the secondary school administrator.
+          type: text
+          sample_values:
+          - Sau-Lim (Lance)
+          - Jennifer
+          - Brandon
+          - Ryan
+          - Susan
+          is_nullable: true
+          is_unique: false
+        - id: 4149eab4-82e6-4d86-af41-967504a3ad39
+          name: admlname2
+          description: The last name of the secondary school administrator.
+          type: text
+          sample_values:
+          - Tsang
+          - Paige
+          - Gaston
+          - Koelling
+          - Moore
+          is_nullable: true
+          is_unique: false
+        - id: bb4162ed-1caf-46e3-8c59-26b49a539b2d
+          name: admemail2
+          description: The email address of the secondary school administrator.
+          type: text
+          sample_values:
+          - stsang@unityhigh.org
+          - sgaston@puesd.org
+          - jkoelling@efcps.net
+          - annalisa.moore@neaclc.org
+          is_nullable: true
+          is_unique: false
+        - id: a5fced17-3f00-4cf6-87ff-a12bdeabe2c2
+          name: admfname3
+          description: The first name of the third administrator associated with the
+            record.
+          type: text
+          sample_values:
+          - Drew
+          - Irma
+          - Vickie
+          - Barbara
+          - Kelly
+          is_nullable: true
+          is_unique: true
+        - id: 7465bfc7-3003-4fe0-a761-aea819a21cb9
+          name: admlname3
+          description: The last name of the third administrator associated with the
+            record.
+          type: text
+          sample_values:
+          - Sarratore
+          - Munoz
+          - Chang
+          - Mandelbaum
+          - Kriss
+          is_nullable: true
+          is_unique: true
+        - id: 3ca023c0-469c-4b04-82fa-719ed34b3b2c
+          name: admemail3
+          description: The email address of the third administrator associated with
+            the record.
+          type: text
+          sample_values:
+          - dsarratore@vincentacademy.org
+          - gmunoz@piedmont.k12.ca.us
+          - vickiechang@acoe.org
+          - bmandelbaum@bcoe.org
+          - kkriss@pusdk12.org
+          is_nullable: true
+          is_unique: true
+        - id: 703fcef5-5fe3-4364-8e11-b0cf8baabb11
+          name: lastupdate
+          description: The date on which the record was last updated.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+  foreign_keys:
+  - source_column_id: 0a3cbfef-f419-4df4-ab86-03818095d8be
+    target_column_id: 764ea7ad-57ea-4a1a-9207-d45e3db42631
+  - source_column_id: 45b155ea-daf1-4561-8e2a-668ae449ee21
+    target_column_id: 764ea7ad-57ea-4a1a-9207-d45e3db42631
+  joins: []
+semantic_layer:
+  terms:
+  - id: 33b3c7cb-f90b-40d8-8461-d4db5ce9484f
+    name: Frpm
+    description: Business entity represented by table frpm
+    represents:
+    - ad8af6a9-84bf-42e6-9883-a7248cab50b1
+    columns_attributes:
+    - id: 14b9bfb9-a508-4673-808c-cf525a406d5c
+      name: schoolType
+      description: The category of school based on grade levels served and program
+        focus.
+      column_id: 6a7396b0-dc1d-427e-8211-a271c6e837b0
+    - id: 174018f8-51da-499a-b9cd-7e152857981a
+      name: schoolName
+      description: The official name of the school or district office.
+      column_id: 2e1ad2e7-7596-4351-bdc1-7b4f1e7d41d0
+    - id: 228451bd-9439-473a-854c-881965a7bebb
+      name: charterFundingType
+      description: The funding mechanism for the charter school, indicating direct
+        state funding, local district funding, or exclusion from charter funding model.
+      column_id: 4eaee6c8-c98a-4989-9c56-0ea47ac3d660
+    - id: 235cf87a-bff1-4ff9-b86a-934bd1a204da
+      name: frpmCount(ages5-17)
+      description: Count of students aged 5 through 17 eligible for free or reduced-price
+        meals, stored as a real number.
+      column_id: 72bcca73-5bd6-4489-814b-a5efa33cf6f6
+    - id: 32477e90-d69e-4c23-934c-8500fd19815a
+      name: districtName
+      description: The official name of the school district.
+      column_id: 5fa1cc79-2b35-4fc6-a992-75a9758dd5d4
+    - id: 33ecaf16-4c77-4911-bfa1-06b916d2eb44
+      name: districtCode
+      description: The unique numeric identifier for the school district.
+      column_id: 8d505c62-2b28-4c9b-9bc3-420d5a7867d3
+    - id: 36cc9348-1054-4e64-bca8-489133309a83
+      name: percent(%)EligibleFree(k-12)
+      description: Proportion of K-12 students eligible for free meals, expressed
+        as a decimal between 0 and 1.
+      column_id: 5a987808-07ce-4835-8088-0f19ba7df67b
+    - id: 4b5d8a4f-43f8-4922-9071-df22bcff40de
+      name: charterSchoolNumber
+      description: The unique four-digit identifier assigned to the charter school.
+      column_id: 8b01a960-bec8-4ccb-befa-974fa9aed5f8
+    - id: 4c01076c-440d-4824-89ba-0d9c86530d01
+      name: academicYear
+      description: The school year period for which FRPM data is reported, formatted
+        as YYYY-YYYY.
+      column_id: 7572eb5d-b290-4d0c-b0be-ea9b780043d1
+    - id: 4c9746b5-43a0-4e23-b380-b8c9472b9006
+      name: enrollment(ages5-17)
+      description: Total enrollment count for students aged 5 through 17, stored as
+        a real number.
+      column_id: b65c580f-4823-490c-a13a-e546c3c0249c
+    - id: 4caf5b69-fe8f-4a56-8220-908c0d83b6d1
+      name: highGrade
+      description: Highest grade level offered by the school, represented as a numeric
+        value up to 12.
+      column_id: 880313ca-a3eb-48e3-9d28-e725ae9dbf56
+    - id: 4fb0eb3c-c542-49f1-9248-18f205bde707
+      name: freeMealCount(ages5-17)
+      description: Number of students aged 5 through 17 eligible for free meals, stored
+        as a real number.
+      column_id: 83a3632b-6639-47ec-9593-0d7584075adb
+    - id: 5f3ea793-64e1-4371-8da1-3097a44b5071
+      name: charterSchool(y/n)
+      description: Indicates whether the school is a charter school, with 1.0 for
+        yes and 0.0 for no.
+      column_id: 1b23a995-b698-4ee6-85eb-96f27dd59302
+    - id: 645f1eca-d9ac-49ab-8a8b-15cf61f7581b
+      name: lowGrade
+      description: Lowest grade level offered by the school, using codes such as K
+        for kindergarten and P for pre-kindergarten.
+      column_id: be935f63-4d0e-45b4-9712-d2a53c4e2693
+    - id: 7a06651b-7009-46cf-b43e-ee5866763d94
+      name: 2013-14CalpadsFall1CertificationStatus
+      description: Certification status code for the 2013-14 CALPADS Fall 1 submission,
+        where 1 indicates certified, stored as a bigint.
+      column_id: bfd1e11c-a67b-471c-9bdf-1a03bbb88d50
+    - id: 80db327f-7795-41c9-98c7-920c95cbf41c
+      name: schoolCode
+      description: The seven-digit code uniquely identifying the school within the
+        state.
+      column_id: 0d1c56c0-a831-49b2-8818-bee70659a0f3
+    - id: 8903e765-52c1-4e17-ae9f-ff372cd0f1a4
+      name: irc
+      description: Indicates whether the school is an Independent Reporting Charter,
+        with 1.0 for yes and 0.0 for no.
+      column_id: 0abc4f05-afdc-4989-8e5c-39652c3ba07e
+    - id: 891bf0e9-7387-4691-bdc3-3bea13c1ec4e
+      name: freeMealCount(k-12)
+      description: Number of kindergarten through 12th grade students eligible for
+        free meals, stored as a real number.
+      column_id: 4d51ca5d-4fd6-412c-8065-74cd03c547a7
+    - id: 90b41f6f-3536-41dd-8f04-a370b70f84f7
+      name: districtType
+      description: The classification of the district by grade span and governance
+        type.
+      column_id: a687eeb5-7bd7-473c-98b8-5035edc2ea8b
+    - id: b4d69d21-10b3-4cae-8759-ad8457e6cc75
+      name: enrollment(k-12)
+      description: Total student enrollment count for kindergarten through 12th grade,
+        stored as a real number.
+      column_id: b12a54b1-f606-4422-aaac-54dcba37fcb8
+    - id: b80f97f1-60c3-4b2c-a23e-d599a025603c
+      name: percent(%)EligibleFrpm(k-12)
+      description: Proportion of K-12 students eligible for free or reduced-price
+        meals, expressed as a decimal between 0 and 1.
+      column_id: 3e841f28-f1fb-4a90-8315-6fffdde7e857
+    - id: beefe382-37e8-4a40-8b75-71a1e507daf1
+      name: countyName
+      description: The name of the county where the school or district operates.
+      column_id: cca6c9f2-b535-40bd-8bfb-1b5c14e2bb96
+    - id: cd45b463-61e9-4d54-93e8-4c03d28838ac
+      name: percent(%)EligibleFree(ages5-17)
+      description: Proportion of students aged 5 through 17 eligible for free meals,
+        expressed as a decimal between 0 and 1.
+      column_id: 3f1b9267-49f3-4c6b-82b1-e6a0f8e3fe17
+    - id: e147a131-91e1-4e57-ad9d-f31f83dfc7a7
+      name: countyCode
+      description: The two-digit code identifying the county where the school or district
+        is located.
+      column_id: 2f70f507-3b21-4095-a6e4-d70a8d6db919
+    - id: e34578fd-1d51-4b09-9b10-b20101dbf429
+      name: percent(%)EligibleFrpm(ages5-17)
+      description: Proportion of students aged 5 through 17 eligible for free or reduced-price
+        meals, expressed as a decimal between 0 and 1.
+      column_id: 584af54e-f6b9-4dce-ba15-18b516fbc50d
+    - id: f7ce0fe4-296a-48f9-bc05-0105036bdca1
+      name: nslpProvisionStatus
+      description: The National School Lunch Program provision under which the school
+        operates for meal reimbursement.
+      column_id: 402cdb62-62cd-479f-be96-1c423028d660
+    - id: fbb940b6-9182-47bf-ac25-ff1f0b10ab97
+      name: frpmCount(k-12)
+      description: Count of kindergarten through 12th grade students eligible for
+        free or reduced-price meals, stored as a real number.
+      column_id: 0a5b649b-4b3c-4e78-9bf4-129c6e5cf036
+    - id: ff9d6934-70c9-4f4d-b391-69163640a5fd
+      name: educationalOptionType
+      description: The specific educational program model offered at the school.
+      column_id: 11612ac3-b504-44e2-8c27-b9bc8e05341e
+  - id: da8a83c9-94cd-4525-8730-745bf2518bf9
+    name: SAT Scores
+    description: SAT exam performance and participation data for schools and districts.
+    represents:
+    - 43563f95-1069-4d7b-9009-d70e93434603
+    columns_attributes:
+    - id: 08342caa-d49f-4e11-92ab-446706c7a905
+      name: Number Of Test Takers
+      description: Counts the 12th-grade students who took the SAT exam.
+      column_id: aa075fa3-b8d1-46a5-ba51-0ac63a2d5ed3
+    - id: 0edd22fe-cbfd-4355-853d-ec66b4e937c9
+      name: numge1500
+      description: Counts test takers with a combined SAT score of 1500 or higher.
+      column_id: fdf01a89-1fbf-47f8-b532-98a27fb54511
+    - id: 12d93902-4382-4328-9a3a-16c0db946287
+      name: Record Type
+      description: Indicates whether the record represents a school ('S') or district
+        aggregate ('D').
+      column_id: 85245975-2345-43dc-925d-a2d28e23efa6
+    - id: 204146b2-7de9-45b5-9f97-acb4d9a04c72
+      name: Average Math Score
+      description: Reports the average SAT math score among test takers.
+      column_id: 3733a8e8-f491-431d-b8d9-381935c8397e
+    - id: 4a6683d8-2b5f-404f-81af-7b5a00884e55
+      name: Average Writing Score
+      description: Reports the average SAT writing score among test takers.
+      column_id: 3aa14328-4ecc-4b20-88f4-781bfee5dc11
+    - id: 6669f3bc-a18b-4888-97ff-a188224bd73a
+      name: County Name
+      description: Identifies the county by its official name.
+      column_id: 600ff65a-301e-4176-92fe-5682db9c7ff8
+    - id: 9497bdf5-ea8e-477d-9173-986bdad7766a
+      name: School Name
+      description: Identifies the school by its official name.
+      column_id: 81dba415-fd2f-451b-818c-178be1e07b38
+    - id: a3a70401-01b5-47a5-90f8-98d2905d8c06
+      name: District Name
+      description: Identifies the school district by its official name.
+      column_id: 53176b5c-1d5a-4014-b3f9-d80aff8fcc4c
+    - id: a8de4720-d747-4227-831d-3188ea5406e4
+      name: enroll12
+      description: Counts the number of students enrolled in 12th grade.
+      column_id: ef2145fe-35ea-4cf4-a160-6602596b25b6
+    - id: f8af5c67-b497-4344-8eb2-e5ac5994660d
+      name: Average Reading Score
+      description: Reports the average SAT reading score among test takers.
+      column_id: e35d0c80-a3db-48be-8901-80547b73e74c
+  - id: 2dbdf728-17b1-46f0-ad60-d9b4a2c64508
+    name: School
+    description: A California school or district entity with identifying codes, location,
+      contact, operational, and organizational attributes.
+    represents:
+    - efbbf8b9-0053-4538-9e03-0973a33fe83d
+    columns_attributes:
+    - id: 0a22d07e-11b4-452b-b930-d06f94fcd6ca
+      name: Longitude
+      description: Records the geographic longitude coordinate of the school's physical
+        location.
+      column_id: 2eca1a05-031c-4748-95ec-af668a08078f
+    - id: 0d5d0de6-e751-4744-852e-19f75c90908d
+      name: Phone Number
+      description: The school's primary telephone number including area code, formatted
+        as (XXX) XXX-XXXX.
+      column_id: aaf9f3a9-c9ec-498a-9f7f-3e2d11e77d32
+    - id: 102a3d26-f478-4658-b23c-aa1faa7b8452
+      name: Educational Operation Name
+      description: Identifies the school's educational operation type or model, such
+        as Traditional or Continuation School.
+      column_id: a0a49a72-472a-41f4-8db7-3da806f5d9c8
+    - id: 151e5572-49a7-409b-80b0-d99402972297
+      name: NCES District ID
+      description: The National Center for Education Statistics district identifier
+        for the school's governing district.
+      column_id: 163bdb1d-e4dd-4341-acb3-1ece39188d52
+    - id: 1718bfdc-20f2-4ca6-ac30-53e72531098e
+      name: Charter Flag
+      description: A flag indicating whether the school operates as a charter school
+        (1) or not (0).
+      column_id: d702f802-4523-4374-b5ff-fbffe2d2214a
+    - id: 1922b50f-c07e-416d-8891-d30b28bef0e3
+      name: Instructional Level Name
+      description: Gives the full descriptive name of the school's instructional level
+        matching the eilcode.
+      column_id: 06c37efe-af2d-4826-9a28-c4f5db1561b0
+    - id: 1d57284d-3bd0-4d0c-b79f-64127344840c
+      name: Educational Operation Code
+      description: The educational operation code indicating the school's operational
+        model, such as TRAD for traditional.
+      column_id: 601e61b1-f46b-4f36-9e0a-ddc6e03715ca
+    - id: 1e88b38b-8a70-4b8c-97d2-df99f3668a15
+      name: admfname2
+      description: Stores the first name of the secondary school administrator.
+      column_id: c9447211-d9cf-4739-b82e-d1e3c3c04e55
+    - id: 29c71653-6e33-4c63-8256-b668a83b272a
+      name: Grades Offered
+      description: Specifies the grade range the school is authorized to offer, formatted
+        as K-5 or 9-12.
+      column_id: 9cf28396-3d10-4555-8e7f-e23636ddb3a9
+    - id: 29f33d76-142a-4533-a272-49211227f68f
+      name: Mailing City
+      description: The city used for mailing correspondence to the school or district.
+      column_id: e1a215fe-cd76-441e-9ac9-01c1ea3ea600
+    - id: 2fe4fa39-6273-409d-8f50-ee5a48ce1cee
+      name: Phone Extension
+      description: The phone extension associated with the school's primary telephone
+        number.
+      column_id: c01797fb-9a72-4fa7-a392-39aa3aaf6980
+    - id: 34f06946-1ffe-4d3e-b2d8-2ae82447635b
+      name: School Name
+      description: The official name of the school site.
+      column_id: db5499ee-b47a-4e5e-99eb-75170c3af3af
+    - id: 3a1a398d-4c1b-4b50-b5bc-2fe14ffa4155
+      name: Open Date
+      description: The date the school or agency began operations, in YYYY-MM-DD format.
+      column_id: 435c5b38-a007-4c61-af24-af6f1c86ae93
+    - id: 3edbe29c-a320-49b8-a533-cb89e0434e16
+      name: Funding Type
+      description: The funding model classification for the school, such as directly
+        funded or locally funded.
+      column_id: 94ce2154-6b2c-4635-bda9-587af534109e
+    - id: 42100331-2192-48b1-ae77-25536e7bb784
+      name: District Name
+      description: The official name of the school district or county office of education
+        that governs the school.
+      column_id: ec3100be-48c5-47d2-8983-4ee8b0d5bc12
+    - id: 4442c670-a63e-4c95-a497-a30788f6fec3
+      name: admemail1
+      description: Provides the email address of the primary school administrator.
+      column_id: ea352851-f804-4aab-9fcd-5091a6a623d9
+    - id: 49b98fdc-629e-4d1e-81dd-6b2a9f859b67
+      name: admemail3
+      description: The email address of the third administrator linked to the school.
+      column_id: 3ca023c0-469c-4b04-82fa-719ed34b3b2c
+    - id: 4a6f42f3-b8d5-4620-b158-7bbae803cc1e
+      name: ZIP Code
+      description: The ZIP code for the physical address of the school or district
+        office.
+      column_id: eda65ffb-0c24-471e-89ba-5896e0299783
+    - id: 557e2058-58e8-4d86-850e-3ce51d0d6990
+      name: City
+      description: The city where the school or district office is physically located.
+      column_id: cfbee483-ea0b-4d9d-8339-2e96fd444b5e
+    - id: 596233dd-47ed-4973-a064-08b55da9e0fd
+      name: Website URL
+      description: The official website URL of the school or agency.
+      column_id: 69c6ee66-3447-4036-b6dd-c6840d103a22
+    - id: 5ddd823d-2057-4714-a4e3-ca855e1b43c7
+      name: State
+      description: The U.S. state abbreviation for the school or district location,
+        always CA.
+      column_id: 4af47bce-3686-4e12-ae0c-4325261d158e
+    - id: 5f76455e-b048-4f9d-89b6-fdfb2702844e
+      name: Instructional Level Code
+      description: Provides the coded abbreviation for the school's instructional
+        level, like ELEM for Elementary.
+      column_id: d3ee6636-29a7-43fa-9c72-b0143601aa4c
+    - id: 643bea1a-db4f-4a3d-ace6-bed0dead5986
+      name: lastupdate
+      description: The date the school record was last updated, in YYYY-MM-DD format.
+      column_id: 703fcef5-5fe3-4364-8e11-b0cf8baabb11
+    - id: 688d5eeb-e87d-4d36-97c7-b2afa5d39d73
+      name: District Organization Code
+      description: A numeric code representing the district or organizational identifier
+        for the school.
+      column_id: 21de52b7-1905-4121-87ad-5b60ce5bda36
+    - id: 6a8a7e66-4f34-4da0-a264-1089883fe2a4
+      name: admemail2
+      description: Provides the email address of the secondary school administrator.
+      column_id: bb4162ed-1caf-46e3-8c59-26b49a539b2d
+    - id: 7345b53f-31e4-4049-8ef9-d930cc6518ab
+      name: County
+      description: The California county where the school or district is geographically
+        located.
+      column_id: 70a3d4e8-8c2c-4e84-b429-4e62c09dab2b
+    - id: 7587b45e-86fb-4796-8c29-ae8d0f75d053
+      name: Closed Date
+      description: The date the school or agency ceased operations, in YYYY-MM-DD
+        format.
+      column_id: 3de3026d-44ee-4c10-91f7-189f3629c3d3
+    - id: 7b6f520d-2c92-429b-8ab9-415adc2f2ac6
+      name: Mailing Street Address
+      description: The mailing street address for the school or district, which may
+        differ from the physical address.
+      column_id: 06d1ec3f-26eb-4ee6-b708-43008d7e37fb
+    - id: 7cb5d733-aab8-4b54-ace6-3909c08ad7e6
+      name: Status Type
+      description: The operational status of the school or district, such as Active,
+        Closed, Merged, or Pending.
+      column_id: d4e457f5-589a-4396-8aef-80de6725a265
+    - id: 87106f75-7cf2-462c-b9c3-5707c1429f03
+      name: Organization Type
+      description: The type of educational organization, such as Unified School District
+        or County Office of Education.
+      column_id: 525499c4-c179-40ee-bec9-64a0caa6f92a
+    - id: 885fb108-d97a-4754-880a-7d42ae476971
+      name: admlname2
+      description: Stores the last name of the secondary school administrator.
+      column_id: 4149eab4-82e6-4d86-af41-967504a3ad39
+    - id: 8d9cbcb2-778c-4d5c-9faa-97f4c006ce91
+      name: Charter Number
+      description: The unique charter school identification number assigned to the
+        school.
+      column_id: b6281c8d-105c-4fb0-a789-8d06e1be9b69
+    - id: a74b80a3-5334-418b-a59d-c9fa54ba3aa9
+      name: admfname3
+      description: The first name of the third administrator linked to the school.
+      column_id: a5fced17-3f00-4cf6-87ff-a12bdeabe2c2
+    - id: bbe2f560-efeb-4285-9d81-9b05ac6b85da
+      name: CDS Code
+      description: A unique 14-digit identifier for a California school or district
+        used across state education data systems.
+      column_id: 764ea7ad-57ea-4a1a-9207-d45e3db42631
+    - id: bd56ae8b-4bcd-4880-9d83-56b7e1dd43c8
+      name: Virtual Instruction Status
+      description: Shows the school's virtual instruction status using codes N, P,
+        or F.
+      column_id: 5a1ea8cb-bea8-45ab-9047-72668ca46fec
+    - id: bed0ade2-61a8-42f7-bdae-7f7e78ddff8d
+      name: admlname1
+      description: Stores the last name of the primary school administrator.
+      column_id: 7ee224b7-923d-4079-a93a-0e92051055dd
+    - id: c26a3a8f-5d1b-4b36-a474-656683d59347
+      name: Latitude
+      description: Records the geographic latitude coordinate of the school's physical
+        location.
+      column_id: 42365dfe-ab3f-4083-bd27-a57bd450d64a
+    - id: c5d64985-99b6-4ba9-9052-3415c147b4fd
+      name: School Organization Type
+      description: The descriptive category of the school organization, such as Elementary
+        Schools or High Schools.
+      column_id: 931e6567-5579-490d-bc4d-d9a8f9158541
+    - id: ca5fa9ed-4a01-4042-8db2-a369a0459ee3
+      name: Mailing State
+      description: The two-letter state abbreviation for the school's mailing address,
+        such as CA.
+      column_id: 52bbdd0d-18c6-4fcb-b234-f2f211e6af5f
+    - id: d046fdd9-168e-429c-a37a-f10aafaa86c5
+      name: Mailing ZIP Code
+      description: The ZIP code of the school's mailing address, in standard five-digit
+        format.
+      column_id: c01cb672-de32-40f9-b046-e85c1b5e20ad
+    - id: d82efb6c-da50-4fe3-9a27-ecc11f4a0fda
+      name: NCES School ID
+      description: The National Center for Education Statistics school identifier
+        for the specific school site.
+      column_id: 6976802e-0d2f-4e15-add2-8d1558b2a272
+    - id: dad01a9a-8d8a-43ab-99fd-0027fbcead7a
+      name: School Organization Code
+      description: A numeric school organization code used for classification purposes.
+      column_id: d0f61fd4-2952-4814-b469-98c2ad219147
+    - id: df1ead03-b22f-421f-97b2-788366f7e844
+      name: Magnet Flag
+      description: Flags whether the school is a magnet school (1) or not (0).
+      column_id: 9fbebfe8-920a-4b83-ac9a-2d7210dd7e38
+    - id: e9827a15-90ed-4897-b0e3-97508f1cf241
+      name: Administrator First Name
+      description: Stores the first name of the primary school administrator.
+      column_id: d84df005-bdb8-4dfe-be2e-f68206aa9e5b
+    - id: e9b1ba5e-c258-490b-a440-1914ef194a1c
+      name: Street Address Abbreviation
+      description: The abbreviated physical street address using standard postal abbreviations.
+      column_id: 014135fb-bca8-48fc-8e85-8e2f98394c8d
+    - id: ea911fbe-e992-4ca1-9977-0310b4891fb7
+      name: admlname3
+      description: The last name of the third administrator linked to the school.
+      column_id: 7465bfc7-3003-4fe0-a761-aea819a21cb9
+    - id: f247f907-440c-40bd-aa79-a12d3e9fc979
+      name: Grades Served
+      description: Indicates the grade range the school currently serves, formatted
+        as K-5 or 9-12.
+      column_id: 6bc852fa-9d9d-4eac-80f8-104bc745b74a
+    - id: f402b1e6-7125-456f-a0e1-907150fade86
+      name: Street Address
+      description: The physical street address of the school or district office.
+      column_id: 7dca755c-c516-4004-b177-26d3132aadf3
+    - id: f4ebc3ca-f207-4d37-81fa-842598d85da5
+      name: Mailing Street Abbreviation
+      description: The abbreviated mailing street address using standard postal abbreviations.
+      column_id: 2df19f98-2e13-48d8-9e94-39488cfb4a3a
+  semantic_fks:
+  - column_attribute_id: bbe2f560-efeb-4285-9d81-9b05ac6b85da
+    column_id: 0a3cbfef-f419-4df4-ab86-03818095d8be
+    use_in_join_paths: true
+  - column_attribute_id: bbe2f560-efeb-4285-9d81-9b05ac6b85da
+    column_id: 45b155ea-daf1-4561-8e2a-668ae449ee21
+    use_in_join_paths: true
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table: []
+  custom_analyses: []
+zones: []

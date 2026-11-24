@@ -1,0 +1,1031 @@
+version: 0.2.0.dev0
+name: d2_california_schools
+datasets:
+- name: frpm
+  source: d2_california_schools.public.frpm
+  description: Business entity represented by table frpm
+  fields:
+  - name: school_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: School Type
+    datatype: String
+    description: The category of school based on grade levels served and program focus.
+  - name: school_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: School Name
+    datatype: String
+    description: The official name of the school or district office.
+  - name: charter_funding_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Charter Funding Type
+    datatype: String
+    description: The funding mechanism for the charter school, indicating direct state
+      funding, local district funding, or exclusion from charter funding model.
+  - name: frpm_count_ages5_17
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: FRPM Count (Ages 5-17)
+    datatype: Float
+    description: Count of students aged 5 through 17 eligible for free or reduced-price
+      meals, stored as a real number.
+    ai_context:
+      synonyms:
+      - frpmCount(ages5-17)
+  - name: district_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: District Name
+    datatype: String
+    description: The official name of the school district.
+  - name: district_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: District Code
+    datatype: Integer
+    description: The unique numeric identifier for the school district.
+  - name: percent_eligible_free_k_12
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Percent (%) Eligible Free (K-12)
+    datatype: Float
+    description: Proportion of K-12 students eligible for free meals, expressed as
+      a decimal between 0 and 1.
+    ai_context:
+      synonyms:
+      - percent(%)EligibleFree(k-12)
+  - name: charter_school_number
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Charter School Number
+    datatype: String
+    description: The unique four-digit identifier assigned to the charter school.
+  - name: academic_year
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Academic Year
+    datatype: String
+    description: The school year period for which FRPM data is reported, formatted
+      as YYYY-YYYY.
+  - name: enrollment_ages5_17
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Enrollment (Ages 5-17)
+    datatype: Float
+    description: Total enrollment count for students aged 5 through 17, stored as
+      a real number.
+    ai_context:
+      synonyms:
+      - enrollment(ages5-17)
+  - name: high_grade
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: High Grade
+    datatype: String
+    description: Highest grade level offered by the school, represented as a numeric
+      value up to 12.
+  - name: free_meal_count_ages5_17
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Free Meal Count (Ages 5-17)
+    datatype: Float
+    description: Number of students aged 5 through 17 eligible for free meals, stored
+      as a real number.
+    ai_context:
+      synonyms:
+      - freeMealCount(ages5-17)
+  - name: charter_school_y_n
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Charter School (Y/N)
+    datatype: Integer
+    description: Indicates whether the school is a charter school, with 1.0 for yes
+      and 0.0 for no.
+    ai_context:
+      synonyms:
+      - charterSchool(y/n)
+  - name: low_grade
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Low Grade
+    datatype: String
+    description: Lowest grade level offered by the school, using codes such as K for
+      kindergarten and P for pre-kindergarten.
+  - name: field_2013_14_calpads_fall1_certification_status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: 2013-14 CALPADS Fall 1 Certification Status
+    datatype: Integer
+    description: Certification status code for the 2013-14 CALPADS Fall 1 submission,
+      where 1 indicates certified, stored as a bigint.
+    ai_context:
+      synonyms:
+      - 2013-14CalpadsFall1CertificationStatus
+  - name: school_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: School Code
+    datatype: String
+    description: The seven-digit code uniquely identifying the school within the state.
+  - name: irc
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: irc
+    datatype: Integer
+    description: Indicates whether the school is an Independent Reporting Charter,
+      with 1.0 for yes and 0.0 for no.
+  - name: free_meal_count_k_12
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Free Meal Count (K-12)
+    datatype: Float
+    description: Number of kindergarten through 12th grade students eligible for free
+      meals, stored as a real number.
+    ai_context:
+      synonyms:
+      - freeMealCount(k-12)
+  - name: district_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: District Type
+    datatype: String
+    description: The classification of the district by grade span and governance type.
+  - name: enrollment_k_12
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Enrollment (K-12)
+    datatype: Float
+    description: Total student enrollment count for kindergarten through 12th grade,
+      stored as a real number.
+    ai_context:
+      synonyms:
+      - enrollment(k-12)
+  - name: percent_eligible_frpm_k_12
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Percent (%) Eligible FRPM (K-12)
+    datatype: Float
+    description: Proportion of K-12 students eligible for free or reduced-price meals,
+      expressed as a decimal between 0 and 1.
+    ai_context:
+      synonyms:
+      - percent(%)EligibleFrpm(k-12)
+  - name: county_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: County Name
+    datatype: String
+    description: The name of the county where the school or district operates.
+  - name: percent_eligible_free_ages5_17
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Percent (%) Eligible Free (Ages 5-17)
+    datatype: Float
+    description: Proportion of students aged 5 through 17 eligible for free meals,
+      expressed as a decimal between 0 and 1.
+    ai_context:
+      synonyms:
+      - percent(%)EligibleFree(ages5-17)
+  - name: county_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: County Code
+    datatype: String
+    description: The two-digit code identifying the county where the school or district
+      is located.
+  - name: percent_eligible_frpm_ages5_17
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Percent (%) Eligible FRPM (Ages 5-17)
+    datatype: Float
+    description: Proportion of students aged 5 through 17 eligible for free or reduced-price
+      meals, expressed as a decimal between 0 and 1.
+    ai_context:
+      synonyms:
+      - percent(%)EligibleFrpm(ages5-17)
+  - name: nslp_provision_status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: NSLP Provision Status
+    datatype: String
+    description: The National School Lunch Program provision under which the school
+      operates for meal reimbursement.
+  - name: frpm_count_k_12
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: FRPM Count (K-12)
+    datatype: Float
+    description: Count of kindergarten through 12th grade students eligible for free
+      or reduced-price meals, stored as a real number.
+    ai_context:
+      synonyms:
+      - frpmCount(k-12)
+  - name: educational_option_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: Educational Option Type
+    datatype: String
+    description: The specific educational program model offered at the school.
+  - name: cdscode
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cdscode
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: sat_scores
+  source: d2_california_schools.public.satscores
+  description: SAT exam performance and participation data for schools and districts.
+  fields:
+  - name: number_of_test_takers
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: numtsttakr
+    datatype: Integer
+    description: Counts the 12th-grade students who took the SAT exam.
+  - name: numge1500
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: numge1500
+    datatype: Integer
+    description: Counts test takers with a combined SAT score of 1500 or higher.
+  - name: record_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: rtype
+    datatype: String
+    description: Indicates whether the record represents a school ('S') or district
+      aggregate ('D').
+  - name: average_math_score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: avgscrmath
+    datatype: Integer
+    description: Reports the average SAT math score among test takers.
+  - name: average_writing_score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: avgscrwrite
+    datatype: Integer
+    description: Reports the average SAT writing score among test takers.
+  - name: county_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cname
+    datatype: String
+    description: Identifies the county by its official name.
+  - name: school_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: sname
+    datatype: String
+    description: Identifies the school by its official name.
+  - name: district_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: dname
+    datatype: String
+    description: Identifies the school district by its official name.
+  - name: enroll12
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: enroll12
+    datatype: Integer
+    description: Counts the number of students enrolled in 12th grade.
+  - name: average_reading_score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: avgscrread
+    datatype: Integer
+    description: Reports the average SAT reading score among test takers.
+  - name: cds
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cds
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: school
+  source: d2_california_schools.public.schools
+  description: A California school or district entity with identifying codes, location,
+    contact, operational, and organizational attributes.
+  unique_keys:
+  - - cds_code
+  fields:
+  - name: longitude
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: longitude
+    datatype: Float
+    description: Records the geographic longitude coordinate of the school's physical
+      location.
+  - name: phone_number
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: phone
+    datatype: String
+    description: The school's primary telephone number including area code, formatted
+      as (XXX) XXX-XXXX.
+  - name: educational_operation_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: edopsname
+    datatype: String
+    description: Identifies the school's educational operation type or model, such
+      as Traditional or Continuation School.
+  - name: nces_district_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ncesdist
+    datatype: String
+    description: The National Center for Education Statistics district identifier
+      for the school's governing district.
+  - name: charter_flag
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: charter
+    datatype: Integer
+    description: A flag indicating whether the school operates as a charter school
+      (1) or not (0).
+  - name: instructional_level_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: eilname
+    datatype: String
+    description: Gives the full descriptive name of the school's instructional level
+      matching the eilcode.
+  - name: educational_operation_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: edopscode
+    datatype: String
+    description: The educational operation code indicating the school's operational
+      model, such as TRAD for traditional.
+  - name: admfname2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admfname2
+    datatype: String
+    description: Stores the first name of the secondary school administrator.
+  - name: grades_offered
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gsoffered
+    datatype: String
+    description: Specifies the grade range the school is authorized to offer, formatted
+      as K-5 or 9-12.
+  - name: mailing_city
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mailcity
+    datatype: String
+    description: The city used for mailing correspondence to the school or district.
+  - name: phone_extension
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ext
+    datatype: String
+    description: The phone extension associated with the school's primary telephone
+      number.
+  - name: school_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: school
+    datatype: String
+    description: The official name of the school site.
+  - name: open_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: opendate
+    datatype: Date
+    description: The date the school or agency began operations, in YYYY-MM-DD format.
+  - name: funding_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: fundingtype
+    datatype: String
+    description: The funding model classification for the school, such as directly
+      funded or locally funded.
+  - name: district_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: district
+    datatype: String
+    description: The official name of the school district or county office of education
+      that governs the school.
+  - name: admemail1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admemail1
+    datatype: String
+    description: Provides the email address of the primary school administrator.
+  - name: admemail3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admemail3
+    datatype: String
+    description: The email address of the third administrator linked to the school.
+  - name: zip_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: zip
+    datatype: String
+    description: The ZIP code for the physical address of the school or district office.
+  - name: city
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: city
+    datatype: String
+    description: The city where the school or district office is physically located.
+  - name: website_url
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: website
+    datatype: String
+    description: The official website URL of the school or agency.
+  - name: state
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: state
+    datatype: String
+    description: The U.S. state abbreviation for the school or district location,
+      always CA.
+  - name: instructional_level_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: eilcode
+    datatype: String
+    description: Provides the coded abbreviation for the school's instructional level,
+      like ELEM for Elementary.
+  - name: lastupdate
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lastupdate
+    datatype: Date
+    description: The date the school record was last updated, in YYYY-MM-DD format.
+  - name: district_organization_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: doc
+    datatype: String
+    description: A numeric code representing the district or organizational identifier
+      for the school.
+  - name: admemail2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admemail2
+    datatype: String
+    description: Provides the email address of the secondary school administrator.
+  - name: county
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: county
+    datatype: String
+    description: The California county where the school or district is geographically
+      located.
+  - name: closed_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: closeddate
+    datatype: Date
+    description: The date the school or agency ceased operations, in YYYY-MM-DD format.
+  - name: mailing_street_address
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mailstreet
+    datatype: String
+    description: The mailing street address for the school or district, which may
+      differ from the physical address.
+  - name: status_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: statustype
+    datatype: String
+    description: The operational status of the school or district, such as Active,
+      Closed, Merged, or Pending.
+  - name: organization_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: doctype
+    datatype: String
+    description: The type of educational organization, such as Unified School District
+      or County Office of Education.
+  - name: admlname2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admlname2
+    datatype: String
+    description: Stores the last name of the secondary school administrator.
+  - name: charter_number
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: charternum
+    datatype: String
+    description: The unique charter school identification number assigned to the school.
+  - name: admfname3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admfname3
+    datatype: String
+    description: The first name of the third administrator linked to the school.
+  - name: cds_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cdscode
+    datatype: String
+    description: A unique 14-digit identifier for a California school or district
+      used across state education data systems.
+  - name: virtual_instruction_status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: virtual
+    datatype: String
+    description: Shows the school's virtual instruction status using codes N, P, or
+      F.
+  - name: admlname1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admlname1
+    datatype: String
+    description: Stores the last name of the primary school administrator.
+  - name: latitude
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: latitude
+    datatype: Float
+    description: Records the geographic latitude coordinate of the school's physical
+      location.
+  - name: school_organization_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: soctype
+    datatype: String
+    description: The descriptive category of the school organization, such as Elementary
+      Schools or High Schools.
+  - name: mailing_state
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mailstate
+    datatype: String
+    description: The two-letter state abbreviation for the school's mailing address,
+      such as CA.
+  - name: mailing_zip_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mailzip
+    datatype: String
+    description: The ZIP code of the school's mailing address, in standard five-digit
+      format.
+  - name: nces_school_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ncesschool
+    datatype: String
+    description: The National Center for Education Statistics school identifier for
+      the specific school site.
+  - name: school_organization_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: soc
+    datatype: String
+    description: A numeric school organization code used for classification purposes.
+  - name: magnet_flag
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: magnet
+    datatype: Integer
+    description: Flags whether the school is a magnet school (1) or not (0).
+  - name: administrator_first_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admfname1
+    datatype: String
+    description: Stores the first name of the primary school administrator.
+  - name: street_address_abbreviation
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: streetabr
+    datatype: String
+    description: The abbreviated physical street address using standard postal abbreviations.
+  - name: admlname3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: admlname3
+    datatype: String
+    description: The last name of the third administrator linked to the school.
+  - name: grades_served
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gsserved
+    datatype: String
+    description: Indicates the grade range the school currently serves, formatted
+      as K-5 or 9-12.
+  - name: street_address
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: street
+    datatype: String
+    description: The physical street address of the school or district office.
+  - name: mailing_street_abbreviation
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mailstrabr
+    datatype: String
+    description: The abbreviated mailing street address using standard postal abbreviations.
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_california_schools","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"269dc4fd-fc53-4d1c-bcf8-7a91e7218c19","schemas":[{"database_name":"d2_california_schools","id":"960a7c24-a139-4d6e-b378-17ea0d1f7d31","name":"public","tables":[{"columns":[{"description":"","id":"45b155ea-daf1-4561-8e2a-668ae449ee21","is_nullable":true,"is_unique":true,"name":"cdscode","sample_values":["01100170109835","01100170112607","01100170118489","01100170123968","01100170124172"],"type":"text"},{"description":"","id":"7572eb5d-b290-4d0c-b0be-ea9b780043d1","is_nullable":true,"is_unique":false,"name":"Academic
+    Year","sample_values":["2014-2015"],"type":"text"},{"description":"","id":"2f70f507-3b21-4095-a6e4-d70a8d6db919","is_nullable":true,"is_unique":false,"name":"County
+    Code","sample_values":["01","07","10","04","09"],"type":"text"},{"description":"","id":"8d505c62-2b28-4c9b-9bc3-420d5a7867d3","is_nullable":true,"is_unique":false,"name":"District
+    Code","sample_values":[61259,61796,61754,62117,61176],"type":"bigint"},{"description":"","id":"0d1c56c0-a831-49b2-8818-bee70659a0f3","is_nullable":true,"is_unique":true,"name":"School
+    Code","sample_values":["0000000","0109835","0112607","0118489","0123968"],"type":"text"},{"description":"","id":"cca6c9f2-b535-40bd-8bfb-1b5c14e2bb96","is_nullable":true,"is_unique":false,"name":"County
+    Name","sample_values":["Alameda","Contra Costa","Fresno","Butte","El Dorado"],"type":"text"},{"description":"","id":"5fa1cc79-2b35-4fc6-a992-75a9758dd5d4","is_nullable":true,"is_unique":false,"name":"District
+    Name","sample_values":["Oakland Unified","West Contra Costa Unified","Mt. Diablo
+    Unified","Clovis Unified","Fremont Unified"],"type":"text"},{"description":"","id":"2e1ad2e7-7596-4351-bdc1-7b4f1e7d41d0","is_nullable":true,"is_unique":true,"name":"School
+    Name","sample_values":["District Office","Lincoln Elementary","Pioneer Elementary","Jefferson
+    Elementary","Washington Elementary"],"type":"text"},{"description":"","id":"a687eeb5-7bd7-473c-98b8-5035edc2ea8b","is_nullable":true,"is_unique":false,"name":"District
+    Type","sample_values":["Unified School District","Elementary School District","High
+    School District","State Special Schools"],"type":"text"},{"description":"","id":"6a7396b0-dc1d-427e-8211-a271c6e837b0","is_nullable":true,"is_unique":false,"name":"School
+    Type","sample_values":["Elementary Schools (Public)","High Schools (Public)","Continuation
+    High Schools","Alternative Schools of Choice"],"type":"text"},{"description":"","id":"11612ac3-b504-44e2-8c27-b9bc8e05341e","is_nullable":true,"is_unique":false,"name":"Educational
+    Option Type","sample_values":["Traditional","Continuation School","Alternative
+    School of Choice","Community Day School","Special Education School"],"type":"text"},{"description":"","id":"402cdb62-62cd-479f-be96-1c423028d660","is_nullable":true,"is_unique":false,"name":"NSLP
+    Provision Status","sample_values":["Provision 2","CEP","Breakfast Provision 2","Lunch
+    Provision 2","Provision 1","Provision 3","Multiple Provision Types"],"type":"text"},{"description":"","id":"1b23a995-b698-4ee6-85eb-96f27dd59302","is_nullable":true,"is_unique":false,"name":"Charter
+    School (Y/N)","sample_values":[0.0,1.0],"type":"bigint"},{"description":"","id":"8b01a960-bec8-4ccb-befa-974fa9aed5f8","is_nullable":true,"is_unique":true,"name":"Charter
+    School Number","sample_values":["0728","0811","1049","1284","1296"],"type":"text"},{"description":"","id":"4eaee6c8-c98a-4989-9c56-0ea47ac3d660","is_nullable":true,"is_unique":false,"name":"Charter
+    Funding Type","sample_values":["Directly funded","Locally funded","Not in CS funding
+    model"],"type":"text"},{"description":"","id":"0abc4f05-afdc-4989-8e5c-39652c3ba07e","is_nullable":true,"is_unique":false,"name":"irc","sample_values":[0.0,1.0],"type":"bigint"},{"description":"","id":"be935f63-4d0e-45b4-9712-d2a53c4e2693","is_nullable":true,"is_unique":false,"name":"Low
+    Grade","sample_values":["K","9","6","7","P"],"type":"text"},{"description":"","id":"880313ca-a3eb-48e3-9d28-e725ae9dbf56","is_nullable":true,"is_unique":false,"name":"High
+    Grade","sample_values":["12","5","8","6","3"],"type":"text"},{"description":"","id":"b12a54b1-f606-4422-aaac-54dcba37fcb8","is_nullable":true,"is_unique":false,"name":"Enrollment
+    (K-12)","sample_values":[19.0,1.0,546.0,430.0,410.0],"type":"real"},{"description":"","id":"4d51ca5d-4fd6-412c-8065-74cd03c547a7","is_nullable":true,"is_unique":false,"name":"Free
+    Meal Count (K-12)","sample_values":[12.0,6.0,1.0,11.0,30.0],"type":"real"},{"description":"","id":"5a987808-07ce-4835-8088-0f19ba7df67b","is_nullable":true,"is_unique":false,"name":"Percent
+    (%) Eligible Free (K-12)","sample_values":[1.0,0.75,0.78571427,0.8,0.6666667],"type":"real"},{"description":"","id":"0a5b649b-4b3c-4e78-9bf4-129c6e5cf036","is_nullable":true,"is_unique":false,"name":"FRPM
+    Count (K-12)","sample_values":[6.0,1.0,34.0,17.0,9.0],"type":"real"},{"description":"","id":"3e841f28-f1fb-4a90-8315-6fffdde7e857","is_nullable":true,"is_unique":true,"name":"Percent
+    (%) Eligible FRPM (K-12)","sample_values":[1.0,0.75,0.8,0.9230769,0.53846157],"type":"real"},{"description":"","id":"b65c580f-4823-490c-a13a-e546c3c0249c","is_nullable":true,"is_unique":false,"name":"Enrollment
+    (Ages 5-17)","sample_values":[1.0,142.0,112.0,504.0,432.0],"type":"real"},{"description":"","id":"83a3632b-6639-47ec-9593-0d7584075adb","is_nullable":true,"is_unique":false,"name":"Free
+    Meal Count (Ages 5-17)","sample_values":[6.0,1.0,5.0,12.0,11.0],"type":"real"},{"description":"","id":"3f1b9267-49f3-4c6b-82b1-e6a0f8e3fe17","is_nullable":true,"is_unique":true,"name":"Percent
+    (%) Eligible Free (Ages 5-17)","sample_values":[1.0,0.75,0.85714287,0.625,0.5],"type":"real"},{"description":"","id":"72bcca73-5bd6-4489-814b-a5efa33cf6f6","is_nullable":true,"is_unique":false,"name":"FRPM
+    Count (Ages 5-17)","sample_values":[6.0,14.0,17.0,9.0,1.0],"type":"real"},{"description":"","id":"584af54e-f6b9-4dce-ba15-18b516fbc50d","is_nullable":true,"is_unique":false,"name":"Percent
+    (%) Eligible FRPM (Ages 5-17)","sample_values":[1.0,0.75,0.85714287,0.6666667,0.4],"type":"real"},{"description":"This
+    column stores the certification status code for the CALPADS Fall 1 submission
+    in the 2013-14 school year, where a value of 1 indicates the submission has been
+    certified.","id":"bfd1e11c-a67b-471c-9bdf-1a03bbb88d50","is_nullable":true,"is_unique":false,"name":"2013-14
+    CALPADS Fall 1 Certification Status","sample_values":[1],"type":"bigint"}],"description":"","id":"ad8af6a9-84bf-42e6-9883-a7248cab50b1","name":"frpm","pk":[],"type":"base
+    table"},{"columns":[{"description":"","id":"0a3cbfef-f419-4df4-ab86-03818095d8be","is_nullable":false,"is_unique":true,"name":"cds","sample_values":["01100170000000","01100170109835","01100170112607","01100170118489","01611190000000"],"type":"text"},{"description":"Indicates
+    the record level, with ''S'' representing school-level records and ''D'' representing
+    district-level aggregate records.","id":"85245975-2345-43dc-925d-a2d28e23efa6","is_nullable":true,"is_unique":false,"name":"rtype","sample_values":["S","D"],"type":"text"},{"description":"Name
+    of the school.","id":"81dba415-fd2f-451b-818c-178be1e07b38","is_nullable":true,"is_unique":true,"name":"sname","sample_values":["Liberty
+    High","John F. Kennedy High","Washington High","Arroyo High","Foothill High"],"type":"text"},{"description":"Name
+    of the school district.","id":"53176b5c-1d5a-4014-b3f9-d80aff8fcc4c","is_nullable":true,"is_unique":false,"name":"dname","sample_values":["Los
+    Angeles Unified","Oakland Unified","Kern High","Fresno Unified","Antelope Valley
+    Union High"],"type":"text"},{"description":"Name of the county.","id":"600ff65a-301e-4176-92fe-5682db9c7ff8","is_nullable":true,"is_unique":false,"name":"cname","sample_values":["Los
+    Angeles","Alameda","Fresno","Contra Costa","Kern"],"type":"text"},{"description":"Number
+    of students enrolled in 12th grade.","id":"ef2145fe-35ea-4cf4-a160-6602596b25b6","is_nullable":true,"is_unique":false,"name":"enroll12","sample_values":[47,17,19,55,38],"type":"bigint"},{"description":"Number
+    of 12th-grade students who took the SAT exam.","id":"aa075fa3-b8d1-46a5-ba51-0ac63a2d5ed3","is_nullable":true,"is_unique":false,"name":"numtsttakr","sample_values":[0,1,2,4,3],"type":"bigint"},{"description":"Average
+    SAT reading score among test takers.","id":"e35d0c80-a3db-48be-8901-80547b73e74c","is_nullable":true,"is_unique":false,"name":"avgscrread","sample_values":[517.0,451.0,433.0,464.0,434.0],"type":"bigint"},{"description":"Average
+    SAT math score among test takers.","id":"3733a8e8-f491-431d-b8d9-381935c8397e","is_nullable":true,"is_unique":false,"name":"avgscrmath","sample_values":[451.0,462.0,471.0,429.0,436.0],"type":"bigint"},{"description":"Average
+    SAT writing score among test takers.","id":"3aa14328-4ecc-4b20-88f4-781bfee5dc11","is_nullable":true,"is_unique":false,"name":"avgscrwrite","sample_values":[446.0,464.0,442.0,425.0,449.0],"type":"bigint"},{"description":"Number
+    of test takers with a combined SAT score of 1500 or higher.","id":"fdf01a89-1fbf-47f8-b532-98a27fb54511","is_nullable":true,"is_unique":false,"name":"numge1500","sample_values":[6.0,3.0,4.0,1.0,15.0],"type":"bigint"}],"description":"","id":"43563f95-1069-4d7b-9009-d70e93434603","name":"satscores","pk":[],"type":"base
+    table"},{"columns":[{"description":"A unique 14-digit code identifying a California
+    school or district within the state''s official education data system.","id":"764ea7ad-57ea-4a1a-9207-d45e3db42631","is_nullable":true,"is_unique":true,"name":"cdscode","sample_values":["01100170000000","01100170109835","01100170112607","01100170118489","01100170123968"],"type":"text"},{"description":"The
+    National Center for Education Statistics (NCES) assigned district identification
+    number.","id":"163bdb1d-e4dd-4341-acb3-1ece39188d52","is_nullable":true,"is_unique":false,"name":"ncesdist","sample_values":["0628050","0616740","0614400","0608370","0691051"],"type":"text"},{"description":"The
+    National Center for Education Statistics (NCES) assigned school identification
+    number.","id":"6976802e-0d2f-4e15-add2-8d1558b2a272","is_nullable":true,"is_unique":true,"name":"ncesschool","sample_values":["00042","09283","06929","09275","09284"],"type":"text"},{"description":"The
+    current operational status of the school or district, such as Active, Closed,
+    Merged, or Pending.","id":"d4e457f5-589a-4396-8aef-80de6725a265","is_nullable":true,"is_unique":false,"name":"statustype","sample_values":["Active","Closed","Merged","Pending"],"type":"text"},{"description":"The
+    California county in which the school or district is geographically located.","id":"70a3d4e8-8c2c-4e84-b429-4e62c09dab2b","is_nullable":true,"is_unique":false,"name":"county","sample_values":["Alameda","Butte","Amador","Alpine","Los
+    Angeles"],"type":"text"},{"description":"The official name of the school district
+    or county office of education governing the school.","id":"ec3100be-48c5-47d2-8983-4ee8b0d5bc12","is_nullable":true,"is_unique":false,"name":"district","sample_values":["Oakland
+    Unified","Hayward Unified","Fremont Unified","Chico Unified"],"type":"text"},{"description":"The
+    official name of the school site.","id":"db5499ee-b47a-4e5e-99eb-75170c3af3af","is_nullable":true,"is_unique":false,"name":"school","sample_values":["Washington
+    Elementary","Franklin Elementary","Jefferson Elementary","Linda Vista Elementary","Burbank
+    Elementary"],"type":"text"},{"description":"The physical street address of the
+    school or district office.","id":"7dca755c-c516-4004-b177-26d3132aadf3","is_nullable":true,"is_unique":false,"name":"street","sample_values":["4610
+    Foothill Boulevard","2607 Myrtle Street","217 Rex Avenue","PO Box 219","8251 Fontaine
+    Street"],"type":"text"},{"description":"The abbreviated form of the physical street
+    address, using standard postal abbreviations.","id":"014135fb-bca8-48fc-8e85-8e2f98394c8d","is_nullable":true,"is_unique":false,"name":"streetabr","sample_values":["4610
+    Foothill Blvd.","2607 Myrtle St.","217 Rex Ave.","PO Box 219","8251 Fontaine St."],"type":"text"},{"description":"The
+    city where the school or district office is physically located.","id":"cfbee483-ea0b-4d9d-8339-2e96fd444b5e","is_nullable":true,"is_unique":false,"name":"city","sample_values":["Oakland","Hayward","Fremont","Oroville","Chico"],"type":"text"},{"description":"The
+    ZIP code for the physical address of the school or district office.","id":"eda65ffb-0c24-471e-89ba-5896e0299783","is_nullable":true,"is_unique":false,"name":"zip","sample_values":["94566","94607","95965","94541","94560"],"type":"text"},{"description":"The
+    U.S. state abbreviation for the school or district location, consistently CA for
+    California.","id":"4af47bce-3686-4e12-ae0c-4325261d158e","is_nullable":true,"is_unique":false,"name":"state","sample_values":["CA"],"type":"text"},{"description":"The
+    mailing street address for the school or district, which may differ from the physical
+    address.","id":"06d1ec3f-26eb-4ee6-b708-43008d7e37fb","is_nullable":true,"is_unique":false,"name":"mailstreet","sample_values":["PO
+    Box 5000","217 Rex Avenue","PO Box 2146","14735 Juniper Street","1859 Bird Street"],"type":"text"},{"description":"The
+    abbreviated form of the mailing street address, using standard postal abbreviations.","id":"2df19f98-2e13-48d8-9e94-39488cfb4a3a","is_nullable":true,"is_unique":false,"name":"mailstrabr","sample_values":["PO
+    Box 5000","217 Rex Ave.","PO Box 2146","14735 Juniper St.","1859 Bird St."],"type":"text"},{"description":"The
+    city used for mailing correspondence to the school or district.","id":"e1a215fe-cd76-441e-9ac9-01c1ea3ea600","is_nullable":true,"is_unique":false,"name":"mailcity","sample_values":["Oakland","Hayward","Fremont","Oroville","Chico"],"type":"text"},{"description":"The
+    ZIP code of the mailing address for the school or agency.","id":"c01cb672-de32-40f9-b046-e85c1b5e20ad","is_nullable":true,"is_unique":false,"name":"mailzip","sample_values":["94546","95965","94606","94566","94560"],"type":"text"},{"description":"The
+    two-letter state abbreviation of the mailing address for the school or agency.","id":"52bbdd0d-18c6-4fcb-b234-f2f211e6af5f","is_nullable":true,"is_unique":false,"name":"mailstate","sample_values":["CA"],"type":"text"},{"description":"The
+    primary telephone number of the school or agency, including area code.","id":"aaf9f3a9-c9ec-498a-9f7f-3e2d11e77d32","is_nullable":true,"is_unique":false,"name":"phone","sample_values":["(530)
+    891-3092","(510) 537-3000","(510) 893-8701","(510) 273-2300","(530) 694-2230"],"type":"text"},{"description":"The
+    phone extension associated with the primary telephone number.","id":"c01797fb-9a72-4fa7-a392-39aa3aaf6980","is_nullable":true,"is_unique":false,"name":"ext","sample_values":["221","130","1240","1200","1311"],"type":"text"},{"description":"The
+    official website URL of the school or agency.","id":"69c6ee66-3447-4036-b6dd-c6840d103a22","is_nullable":true,"is_unique":false,"name":"website","sample_values":["www.newarkunified.org","www.dublinusd.org","www.aspirepublicschools.org","www.bcoe.org","www.acoe.org"],"type":"text"},{"description":"The
+    date on which the school or agency began operations.","id":"435c5b38-a007-4c61-af24-af6f1c86ae93","is_nullable":true,"is_unique":false,"name":"opendate","sample_values":[],"type":"date"},{"description":"The
+    date on which the school or agency ceased operations.","id":"3de3026d-44ee-4c10-91f7-189f3629c3d3","is_nullable":true,"is_unique":false,"name":"closeddate","sample_values":[],"type":"date"},{"description":"A
+    flag indicating whether the school operates as a charter school (1) or not (0).","id":"d702f802-4523-4374-b5ff-fbffe2d2214a","is_nullable":true,"is_unique":false,"name":"charter","sample_values":[0.0,1.0],"type":"bigint"},{"description":"The
+    unique charter school identification number assigned to the school.","id":"b6281c8d-105c-4fb0-a789-8d06e1be9b69","is_nullable":true,"is_unique":true,"name":"charternum","sample_values":["0728","0811","1049","1284","1296"],"type":"text"},{"description":"The
+    funding model classification for the school, such as directly funded or locally
+    funded.","id":"94ce2154-6b2c-4635-bda9-587af534109e","is_nullable":true,"is_unique":false,"name":"fundingtype","sample_values":["Directly
+    funded","Locally funded","Not in CS funding model"],"type":"text"},{"description":"A
+    numeric code representing the district or organizational identifier.","id":"21de52b7-1905-4121-87ad-5b60ce5bda36","is_nullable":true,"is_unique":false,"name":"doc","sample_values":["54","00","52","56","98"],"type":"text"},{"description":"The
+    type of educational organization, such as Unified School District or County Office
+    of Education.","id":"525499c4-c179-40ee-bec9-64a0caa6f92a","is_nullable":true,"is_unique":false,"name":"doctype","sample_values":["Unified
+    School District","Elementary School District","High School District"],"type":"text"},{"description":"A
+    numeric school organization code used for classification.","id":"d0f61fd4-2952-4814-b469-98c2ad219147","is_nullable":true,"is_unique":false,"name":"soc","sample_values":["60","66","62","70","68"],"type":"text"},{"description":"The
+    descriptive category of the school organization, such as Elementary Schools or
+    High Schools.","id":"931e6567-5579-490d-bc4d-d9a8f9158541","is_nullable":true,"is_unique":false,"name":"soctype","sample_values":["Elementary
+    Schools (Public)","High Schools (Public)","Adult Education Centers","Continuation
+    High Schools"],"type":"text"},{"description":"The educational operation code indicating
+    the school''s operational model, such as TRAD for traditional.","id":"601e61b1-f46b-4f36-9e0a-ddc6e03715ca","is_nullable":true,"is_unique":false,"name":"edopscode","sample_values":["TRAD","CON","COMMDAY","SPEC","ALTSOC"],"type":"text"},{"description":"The
+    educational operation type or school model name, such as Traditional or Continuation
+    School.","id":"a0a49a72-472a-41f4-8db7-3da806f5d9c8","is_nullable":true,"is_unique":false,"name":"edopsname","sample_values":["Traditional","Continuation
+    School","Community Day School","Special Education School","Alternative School
+    of Choice"],"type":"text"},{"description":"A coded abbreviation representing the
+    school''s instructional level, such as ELEM for Elementary.","id":"d3ee6636-29a7-43fa-9c72-b0143601aa4c","is_nullable":true,"is_unique":false,"name":"eilcode","sample_values":["ELEM","HS","UG","INTMIDJR","ELEMHIGH"],"type":"text"},{"description":"The
+    full descriptive name of the school''s instructional level corresponding to the
+    eilcode.","id":"06c37efe-af2d-4826-9a28-c4f5db1561b0","is_nullable":true,"is_unique":false,"name":"eilname","sample_values":["Elementary","High
+    School","Ungraded","Elementary-High Combination"],"type":"text"},{"description":"The
+    range of grade levels the school is authorized to offer.","id":"9cf28396-3d10-4555-8e7f-e23636ddb3a9","is_nullable":true,"is_unique":false,"name":"gsoffered","sample_values":["K-5","9-12","K-6","6-8","K-8"],"type":"text"},{"description":"The
+    range of grade levels the school currently serves.","id":"6bc852fa-9d9d-4eac-80f8-104bc745b74a","is_nullable":true,"is_unique":false,"name":"gsserved","sample_values":["K-5","9-12","K-6","6-8","K-8"],"type":"text"},{"description":"An
+    indicator of the school''s virtual instruction status using codes such as N, P,
+    or F.","id":"5a1ea8cb-bea8-45ab-9047-72668ca46fec","is_nullable":true,"is_unique":false,"name":"virtual","sample_values":["N","P","F"],"type":"text"},{"description":"A
+    binary flag indicating whether the school is designated as a magnet school (1)
+    or not (0).","id":"9fbebfe8-920a-4b83-ac9a-2d7210dd7e38","is_nullable":true,"is_unique":false,"name":"magnet","sample_values":[0.0,1.0],"type":"bigint"},{"description":"The
+    geographic latitude coordinate of the school''s physical location.","id":"42365dfe-ab3f-4083-bd27-a57bd450d64a","is_nullable":true,"is_unique":false,"name":"latitude","sample_values":[38.766193,38.352665,37.65821,37.773785,39.41499],"type":"real"},{"description":"The
+    geographic longitude coordinate of the school''s physical location.","id":"2eca1a05-031c-4748-95ec-af668a08078f","is_nullable":true,"is_unique":false,"name":"longitude","sample_values":[-119.80692,-120.77703,-122.09713,-122.20992,-121.7038],"type":"real"},{"description":"The
+    first name of the primary school administrator.","id":"d84df005-bdb8-4dfe-be2e-f68206aa9e5b","is_nullable":true,"is_unique":false,"name":"admfname1","sample_values":["Michael","Jessica","John","Susan","Laura"],"type":"text"},{"description":"The
+    last name of the primary school administrator.","id":"7ee224b7-923d-4079-a93a-0e92051055dd","is_nullable":true,"is_unique":false,"name":"admlname1","sample_values":["Williams","Taylor","Garcia","Thompson","King"],"type":"text"},{"description":"The
+    email address of the primary school administrator.","id":"ea352851-f804-4aab-9fcd-5091a6a623d9","is_nullable":true,"is_unique":false,"name":"admemail1","sample_values":["eehmann@cv.k12.ca.us","mlopes@newarkunified.org","akotzin@slzusd.org","ssmith@alpinecoe.k12.ca.us"],"type":"text"},{"description":"The
+    first name of the secondary school administrator.","id":"c9447211-d9cf-4739-b82e-d1e3c3c04e55","is_nullable":true,"is_unique":false,"name":"admfname2","sample_values":["Sau-Lim
+    (Lance)","Jennifer","Brandon","Ryan","Susan"],"type":"text"},{"description":"The
+    last name of the secondary school administrator.","id":"4149eab4-82e6-4d86-af41-967504a3ad39","is_nullable":true,"is_unique":false,"name":"admlname2","sample_values":["Tsang","Paige","Gaston","Koelling","Moore"],"type":"text"},{"description":"The
+    email address of the secondary school administrator.","id":"bb4162ed-1caf-46e3-8c59-26b49a539b2d","is_nullable":true,"is_unique":false,"name":"admemail2","sample_values":["stsang@unityhigh.org","sgaston@puesd.org","jkoelling@efcps.net","annalisa.moore@neaclc.org"],"type":"text"},{"description":"The
+    first name of the third administrator associated with the record.","id":"a5fced17-3f00-4cf6-87ff-a12bdeabe2c2","is_nullable":true,"is_unique":true,"name":"admfname3","sample_values":["Drew","Irma","Vickie","Barbara","Kelly"],"type":"text"},{"description":"The
+    last name of the third administrator associated with the record.","id":"7465bfc7-3003-4fe0-a761-aea819a21cb9","is_nullable":true,"is_unique":true,"name":"admlname3","sample_values":["Sarratore","Munoz","Chang","Mandelbaum","Kriss"],"type":"text"},{"description":"The
+    email address of the third administrator associated with the record.","id":"3ca023c0-469c-4b04-82fa-719ed34b3b2c","is_nullable":true,"is_unique":true,"name":"admemail3","sample_values":["dsarratore@vincentacademy.org","gmunoz@piedmont.k12.ca.us","vickiechang@acoe.org","bmandelbaum@bcoe.org","kkriss@pusdk12.org"],"type":"text"},{"description":"The
+    date on which the record was last updated.","id":"703fcef5-5fe3-4364-8e11-b0cf8baabb11","is_nullable":true,"is_unique":false,"name":"lastupdate","sample_values":[],"type":"date"}],"description":"","id":"efbbf8b9-0053-4538-9e03-0973a33fe83d","name":"schools","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[{"source_column_id":"0a3cbfef-f419-4df4-ab86-03818095d8be","target_column_id":"764ea7ad-57ea-4a1a-9207-d45e3db42631"},{"source_column_id":"45b155ea-daf1-4561-8e2a-668ae449ee21","target_column_id":"764ea7ad-57ea-4a1a-9207-d45e3db42631"}],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"bbe2f560-efeb-4285-9d81-9b05ac6b85da","column_id":"0a3cbfef-f419-4df4-ab86-03818095d8be","use_in_join_paths":true},{"column_attribute_id":"bbe2f560-efeb-4285-9d81-9b05ac6b85da","column_id":"45b155ea-daf1-4561-8e2a-668ae449ee21","use_in_join_paths":true}],"sql_attributes":{"bridge_table":[],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"6a7396b0-dc1d-427e-8211-a271c6e837b0","description":"The
+    category of school based on grade levels served and program focus.","id":"14b9bfb9-a508-4673-808c-cf525a406d5c","name":"schoolType"},{"column_id":"2e1ad2e7-7596-4351-bdc1-7b4f1e7d41d0","description":"The
+    official name of the school or district office.","id":"174018f8-51da-499a-b9cd-7e152857981a","name":"schoolName"},{"column_id":"4eaee6c8-c98a-4989-9c56-0ea47ac3d660","description":"The
+    funding mechanism for the charter school, indicating direct state funding, local
+    district funding, or exclusion from charter funding model.","id":"228451bd-9439-473a-854c-881965a7bebb","name":"charterFundingType"},{"column_id":"72bcca73-5bd6-4489-814b-a5efa33cf6f6","description":"Count
+    of students aged 5 through 17 eligible for free or reduced-price meals, stored
+    as a real number.","id":"235cf87a-bff1-4ff9-b86a-934bd1a204da","name":"frpmCount(ages5-17)"},{"column_id":"5fa1cc79-2b35-4fc6-a992-75a9758dd5d4","description":"The
+    official name of the school district.","id":"32477e90-d69e-4c23-934c-8500fd19815a","name":"districtName"},{"column_id":"8d505c62-2b28-4c9b-9bc3-420d5a7867d3","description":"The
+    unique numeric identifier for the school district.","id":"33ecaf16-4c77-4911-bfa1-06b916d2eb44","name":"districtCode"},{"column_id":"5a987808-07ce-4835-8088-0f19ba7df67b","description":"Proportion
+    of K-12 students eligible for free meals, expressed as a decimal between 0 and
+    1.","id":"36cc9348-1054-4e64-bca8-489133309a83","name":"percent(%)EligibleFree(k-12)"},{"column_id":"8b01a960-bec8-4ccb-befa-974fa9aed5f8","description":"The
+    unique four-digit identifier assigned to the charter school.","id":"4b5d8a4f-43f8-4922-9071-df22bcff40de","name":"charterSchoolNumber"},{"column_id":"7572eb5d-b290-4d0c-b0be-ea9b780043d1","description":"The
+    school year period for which FRPM data is reported, formatted as YYYY-YYYY.","id":"4c01076c-440d-4824-89ba-0d9c86530d01","name":"academicYear"},{"column_id":"b65c580f-4823-490c-a13a-e546c3c0249c","description":"Total
+    enrollment count for students aged 5 through 17, stored as a real number.","id":"4c9746b5-43a0-4e23-b380-b8c9472b9006","name":"enrollment(ages5-17)"},{"column_id":"880313ca-a3eb-48e3-9d28-e725ae9dbf56","description":"Highest
+    grade level offered by the school, represented as a numeric value up to 12.","id":"4caf5b69-fe8f-4a56-8220-908c0d83b6d1","name":"highGrade"},{"column_id":"83a3632b-6639-47ec-9593-0d7584075adb","description":"Number
+    of students aged 5 through 17 eligible for free meals, stored as a real number.","id":"4fb0eb3c-c542-49f1-9248-18f205bde707","name":"freeMealCount(ages5-17)"},{"column_id":"1b23a995-b698-4ee6-85eb-96f27dd59302","description":"Indicates
+    whether the school is a charter school, with 1.0 for yes and 0.0 for no.","id":"5f3ea793-64e1-4371-8da1-3097a44b5071","name":"charterSchool(y/n)"},{"column_id":"be935f63-4d0e-45b4-9712-d2a53c4e2693","description":"Lowest
+    grade level offered by the school, using codes such as K for kindergarten and
+    P for pre-kindergarten.","id":"645f1eca-d9ac-49ab-8a8b-15cf61f7581b","name":"lowGrade"},{"column_id":"bfd1e11c-a67b-471c-9bdf-1a03bbb88d50","description":"Certification
+    status code for the 2013-14 CALPADS Fall 1 submission, where 1 indicates certified,
+    stored as a bigint.","id":"7a06651b-7009-46cf-b43e-ee5866763d94","name":"2013-14CalpadsFall1CertificationStatus"},{"column_id":"0d1c56c0-a831-49b2-8818-bee70659a0f3","description":"The
+    seven-digit code uniquely identifying the school within the state.","id":"80db327f-7795-41c9-98c7-920c95cbf41c","name":"schoolCode"},{"column_id":"0abc4f05-afdc-4989-8e5c-39652c3ba07e","description":"Indicates
+    whether the school is an Independent Reporting Charter, with 1.0 for yes and 0.0
+    for no.","id":"8903e765-52c1-4e17-ae9f-ff372cd0f1a4","name":"irc"},{"column_id":"4d51ca5d-4fd6-412c-8065-74cd03c547a7","description":"Number
+    of kindergarten through 12th grade students eligible for free meals, stored as
+    a real number.","id":"891bf0e9-7387-4691-bdc3-3bea13c1ec4e","name":"freeMealCount(k-12)"},{"column_id":"a687eeb5-7bd7-473c-98b8-5035edc2ea8b","description":"The
+    classification of the district by grade span and governance type.","id":"90b41f6f-3536-41dd-8f04-a370b70f84f7","name":"districtType"},{"column_id":"b12a54b1-f606-4422-aaac-54dcba37fcb8","description":"Total
+    student enrollment count for kindergarten through 12th grade, stored as a real
+    number.","id":"b4d69d21-10b3-4cae-8759-ad8457e6cc75","name":"enrollment(k-12)"},{"column_id":"3e841f28-f1fb-4a90-8315-6fffdde7e857","description":"Proportion
+    of K-12 students eligible for free or reduced-price meals, expressed as a decimal
+    between 0 and 1.","id":"b80f97f1-60c3-4b2c-a23e-d599a025603c","name":"percent(%)EligibleFrpm(k-12)"},{"column_id":"cca6c9f2-b535-40bd-8bfb-1b5c14e2bb96","description":"The
+    name of the county where the school or district operates.","id":"beefe382-37e8-4a40-8b75-71a1e507daf1","name":"countyName"},{"column_id":"3f1b9267-49f3-4c6b-82b1-e6a0f8e3fe17","description":"Proportion
+    of students aged 5 through 17 eligible for free meals, expressed as a decimal
+    between 0 and 1.","id":"cd45b463-61e9-4d54-93e8-4c03d28838ac","name":"percent(%)EligibleFree(ages5-17)"},{"column_id":"2f70f507-3b21-4095-a6e4-d70a8d6db919","description":"The
+    two-digit code identifying the county where the school or district is located.","id":"e147a131-91e1-4e57-ad9d-f31f83dfc7a7","name":"countyCode"},{"column_id":"584af54e-f6b9-4dce-ba15-18b516fbc50d","description":"Proportion
+    of students aged 5 through 17 eligible for free or reduced-price meals, expressed
+    as a decimal between 0 and 1.","id":"e34578fd-1d51-4b09-9b10-b20101dbf429","name":"percent(%)EligibleFrpm(ages5-17)"},{"column_id":"402cdb62-62cd-479f-be96-1c423028d660","description":"The
+    National School Lunch Program provision under which the school operates for meal
+    reimbursement.","id":"f7ce0fe4-296a-48f9-bc05-0105036bdca1","name":"nslpProvisionStatus"},{"column_id":"0a5b649b-4b3c-4e78-9bf4-129c6e5cf036","description":"Count
+    of kindergarten through 12th grade students eligible for free or reduced-price
+    meals, stored as a real number.","id":"fbb940b6-9182-47bf-ac25-ff1f0b10ab97","name":"frpmCount(k-12)"},{"column_id":"11612ac3-b504-44e2-8c27-b9bc8e05341e","description":"The
+    specific educational program model offered at the school.","id":"ff9d6934-70c9-4f4d-b391-69163640a5fd","name":"educationalOptionType"}],"description":"Business
+    entity represented by table frpm","id":"33b3c7cb-f90b-40d8-8461-d4db5ce9484f","name":"Frpm","represents":["ad8af6a9-84bf-42e6-9883-a7248cab50b1"]},{"columns_attributes":[{"column_id":"aa075fa3-b8d1-46a5-ba51-0ac63a2d5ed3","description":"Counts
+    the 12th-grade students who took the SAT exam.","id":"08342caa-d49f-4e11-92ab-446706c7a905","name":"Number
+    Of Test Takers"},{"column_id":"fdf01a89-1fbf-47f8-b532-98a27fb54511","description":"Counts
+    test takers with a combined SAT score of 1500 or higher.","id":"0edd22fe-cbfd-4355-853d-ec66b4e937c9","name":"numge1500"},{"column_id":"85245975-2345-43dc-925d-a2d28e23efa6","description":"Indicates
+    whether the record represents a school (''S'') or district aggregate (''D'').","id":"12d93902-4382-4328-9a3a-16c0db946287","name":"Record
+    Type"},{"column_id":"3733a8e8-f491-431d-b8d9-381935c8397e","description":"Reports
+    the average SAT math score among test takers.","id":"204146b2-7de9-45b5-9f97-acb4d9a04c72","name":"Average
+    Math Score"},{"column_id":"3aa14328-4ecc-4b20-88f4-781bfee5dc11","description":"Reports
+    the average SAT writing score among test takers.","id":"4a6683d8-2b5f-404f-81af-7b5a00884e55","name":"Average
+    Writing Score"},{"column_id":"600ff65a-301e-4176-92fe-5682db9c7ff8","description":"Identifies
+    the county by its official name.","id":"6669f3bc-a18b-4888-97ff-a188224bd73a","name":"County
+    Name"},{"column_id":"81dba415-fd2f-451b-818c-178be1e07b38","description":"Identifies
+    the school by its official name.","id":"9497bdf5-ea8e-477d-9173-986bdad7766a","name":"School
+    Name"},{"column_id":"53176b5c-1d5a-4014-b3f9-d80aff8fcc4c","description":"Identifies
+    the school district by its official name.","id":"a3a70401-01b5-47a5-90f8-98d2905d8c06","name":"District
+    Name"},{"column_id":"ef2145fe-35ea-4cf4-a160-6602596b25b6","description":"Counts
+    the number of students enrolled in 12th grade.","id":"a8de4720-d747-4227-831d-3188ea5406e4","name":"enroll12"},{"column_id":"e35d0c80-a3db-48be-8901-80547b73e74c","description":"Reports
+    the average SAT reading score among test takers.","id":"f8af5c67-b497-4344-8eb2-e5ac5994660d","name":"Average
+    Reading Score"}],"description":"SAT exam performance and participation data for
+    schools and districts.","id":"da8a83c9-94cd-4525-8730-745bf2518bf9","name":"SAT
+    Scores","represents":["43563f95-1069-4d7b-9009-d70e93434603"]},{"columns_attributes":[{"column_id":"2eca1a05-031c-4748-95ec-af668a08078f","description":"Records
+    the geographic longitude coordinate of the school''s physical location.","id":"0a22d07e-11b4-452b-b930-d06f94fcd6ca","name":"Longitude"},{"column_id":"aaf9f3a9-c9ec-498a-9f7f-3e2d11e77d32","description":"The
+    school''s primary telephone number including area code, formatted as (XXX) XXX-XXXX.","id":"0d5d0de6-e751-4744-852e-19f75c90908d","name":"Phone
+    Number"},{"column_id":"a0a49a72-472a-41f4-8db7-3da806f5d9c8","description":"Identifies
+    the school''s educational operation type or model, such as Traditional or Continuation
+    School.","id":"102a3d26-f478-4658-b23c-aa1faa7b8452","name":"Educational Operation
+    Name"},{"column_id":"163bdb1d-e4dd-4341-acb3-1ece39188d52","description":"The
+    National Center for Education Statistics district identifier for the school''s
+    governing district.","id":"151e5572-49a7-409b-80b0-d99402972297","name":"NCES
+    District ID"},{"column_id":"d702f802-4523-4374-b5ff-fbffe2d2214a","description":"A
+    flag indicating whether the school operates as a charter school (1) or not (0).","id":"1718bfdc-20f2-4ca6-ac30-53e72531098e","name":"Charter
+    Flag"},{"column_id":"06c37efe-af2d-4826-9a28-c4f5db1561b0","description":"Gives
+    the full descriptive name of the school''s instructional level matching the eilcode.","id":"1922b50f-c07e-416d-8891-d30b28bef0e3","name":"Instructional
+    Level Name"},{"column_id":"601e61b1-f46b-4f36-9e0a-ddc6e03715ca","description":"The
+    educational operation code indicating the school''s operational model, such as
+    TRAD for traditional.","id":"1d57284d-3bd0-4d0c-b79f-64127344840c","name":"Educational
+    Operation Code"},{"column_id":"c9447211-d9cf-4739-b82e-d1e3c3c04e55","description":"Stores
+    the first name of the secondary school administrator.","id":"1e88b38b-8a70-4b8c-97d2-df99f3668a15","name":"admfname2"},{"column_id":"9cf28396-3d10-4555-8e7f-e23636ddb3a9","description":"Specifies
+    the grade range the school is authorized to offer, formatted as K-5 or 9-12.","id":"29c71653-6e33-4c63-8256-b668a83b272a","name":"Grades
+    Offered"},{"column_id":"e1a215fe-cd76-441e-9ac9-01c1ea3ea600","description":"The
+    city used for mailing correspondence to the school or district.","id":"29f33d76-142a-4533-a272-49211227f68f","name":"Mailing
+    City"},{"column_id":"c01797fb-9a72-4fa7-a392-39aa3aaf6980","description":"The
+    phone extension associated with the school''s primary telephone number.","id":"2fe4fa39-6273-409d-8f50-ee5a48ce1cee","name":"Phone
+    Extension"},{"column_id":"db5499ee-b47a-4e5e-99eb-75170c3af3af","description":"The
+    official name of the school site.","id":"34f06946-1ffe-4d3e-b2d8-2ae82447635b","name":"School
+    Name"},{"column_id":"435c5b38-a007-4c61-af24-af6f1c86ae93","description":"The
+    date the school or agency began operations, in YYYY-MM-DD format.","id":"3a1a398d-4c1b-4b50-b5bc-2fe14ffa4155","name":"Open
+    Date"},{"column_id":"94ce2154-6b2c-4635-bda9-587af534109e","description":"The
+    funding model classification for the school, such as directly funded or locally
+    funded.","id":"3edbe29c-a320-49b8-a533-cb89e0434e16","name":"Funding Type"},{"column_id":"ec3100be-48c5-47d2-8983-4ee8b0d5bc12","description":"The
+    official name of the school district or county office of education that governs
+    the school.","id":"42100331-2192-48b1-ae77-25536e7bb784","name":"District Name"},{"column_id":"ea352851-f804-4aab-9fcd-5091a6a623d9","description":"Provides
+    the email address of the primary school administrator.","id":"4442c670-a63e-4c95-a497-a30788f6fec3","name":"admemail1"},{"column_id":"3ca023c0-469c-4b04-82fa-719ed34b3b2c","description":"The
+    email address of the third administrator linked to the school.","id":"49b98fdc-629e-4d1e-81dd-6b2a9f859b67","name":"admemail3"},{"column_id":"eda65ffb-0c24-471e-89ba-5896e0299783","description":"The
+    ZIP code for the physical address of the school or district office.","id":"4a6f42f3-b8d5-4620-b158-7bbae803cc1e","name":"ZIP
+    Code"},{"column_id":"cfbee483-ea0b-4d9d-8339-2e96fd444b5e","description":"The
+    city where the school or district office is physically located.","id":"557e2058-58e8-4d86-850e-3ce51d0d6990","name":"City"},{"column_id":"69c6ee66-3447-4036-b6dd-c6840d103a22","description":"The
+    official website URL of the school or agency.","id":"596233dd-47ed-4973-a064-08b55da9e0fd","name":"Website
+    URL"},{"column_id":"4af47bce-3686-4e12-ae0c-4325261d158e","description":"The U.S.
+    state abbreviation for the school or district location, always CA.","id":"5ddd823d-2057-4714-a4e3-ca855e1b43c7","name":"State"},{"column_id":"d3ee6636-29a7-43fa-9c72-b0143601aa4c","description":"Provides
+    the coded abbreviation for the school''s instructional level, like ELEM for Elementary.","id":"5f76455e-b048-4f9d-89b6-fdfb2702844e","name":"Instructional
+    Level Code"},{"column_id":"703fcef5-5fe3-4364-8e11-b0cf8baabb11","description":"The
+    date the school record was last updated, in YYYY-MM-DD format.","id":"643bea1a-db4f-4a3d-ace6-bed0dead5986","name":"lastupdate"},{"column_id":"21de52b7-1905-4121-87ad-5b60ce5bda36","description":"A
+    numeric code representing the district or organizational identifier for the school.","id":"688d5eeb-e87d-4d36-97c7-b2afa5d39d73","name":"District
+    Organization Code"},{"column_id":"bb4162ed-1caf-46e3-8c59-26b49a539b2d","description":"Provides
+    the email address of the secondary school administrator.","id":"6a8a7e66-4f34-4da0-a264-1089883fe2a4","name":"admemail2"},{"column_id":"70a3d4e8-8c2c-4e84-b429-4e62c09dab2b","description":"The
+    California county where the school or district is geographically located.","id":"7345b53f-31e4-4049-8ef9-d930cc6518ab","name":"County"},{"column_id":"3de3026d-44ee-4c10-91f7-189f3629c3d3","description":"The
+    date the school or agency ceased operations, in YYYY-MM-DD format.","id":"7587b45e-86fb-4796-8c29-ae8d0f75d053","name":"Closed
+    Date"},{"column_id":"06d1ec3f-26eb-4ee6-b708-43008d7e37fb","description":"The
+    mailing street address for the school or district, which may differ from the physical
+    address.","id":"7b6f520d-2c92-429b-8ab9-415adc2f2ac6","name":"Mailing Street Address"},{"column_id":"d4e457f5-589a-4396-8aef-80de6725a265","description":"The
+    operational status of the school or district, such as Active, Closed, Merged,
+    or Pending.","id":"7cb5d733-aab8-4b54-ace6-3909c08ad7e6","name":"Status Type"},{"column_id":"525499c4-c179-40ee-bec9-64a0caa6f92a","description":"The
+    type of educational organization, such as Unified School District or County Office
+    of Education.","id":"87106f75-7cf2-462c-b9c3-5707c1429f03","name":"Organization
+    Type"},{"column_id":"4149eab4-82e6-4d86-af41-967504a3ad39","description":"Stores
+    the last name of the secondary school administrator.","id":"885fb108-d97a-4754-880a-7d42ae476971","name":"admlname2"},{"column_id":"b6281c8d-105c-4fb0-a789-8d06e1be9b69","description":"The
+    unique charter school identification number assigned to the school.","id":"8d9cbcb2-778c-4d5c-9faa-97f4c006ce91","name":"Charter
+    Number"},{"column_id":"a5fced17-3f00-4cf6-87ff-a12bdeabe2c2","description":"The
+    first name of the third administrator linked to the school.","id":"a74b80a3-5334-418b-a59d-c9fa54ba3aa9","name":"admfname3"},{"column_id":"764ea7ad-57ea-4a1a-9207-d45e3db42631","description":"A
+    unique 14-digit identifier for a California school or district used across state
+    education data systems.","id":"bbe2f560-efeb-4285-9d81-9b05ac6b85da","name":"CDS
+    Code"},{"column_id":"5a1ea8cb-bea8-45ab-9047-72668ca46fec","description":"Shows
+    the school''s virtual instruction status using codes N, P, or F.","id":"bd56ae8b-4bcd-4880-9d83-56b7e1dd43c8","name":"Virtual
+    Instruction Status"},{"column_id":"7ee224b7-923d-4079-a93a-0e92051055dd","description":"Stores
+    the last name of the primary school administrator.","id":"bed0ade2-61a8-42f7-bdae-7f7e78ddff8d","name":"admlname1"},{"column_id":"42365dfe-ab3f-4083-bd27-a57bd450d64a","description":"Records
+    the geographic latitude coordinate of the school''s physical location.","id":"c26a3a8f-5d1b-4b36-a474-656683d59347","name":"Latitude"},{"column_id":"931e6567-5579-490d-bc4d-d9a8f9158541","description":"The
+    descriptive category of the school organization, such as Elementary Schools or
+    High Schools.","id":"c5d64985-99b6-4ba9-9052-3415c147b4fd","name":"School Organization
+    Type"},{"column_id":"52bbdd0d-18c6-4fcb-b234-f2f211e6af5f","description":"The
+    two-letter state abbreviation for the school''s mailing address, such as CA.","id":"ca5fa9ed-4a01-4042-8db2-a369a0459ee3","name":"Mailing
+    State"},{"column_id":"c01cb672-de32-40f9-b046-e85c1b5e20ad","description":"The
+    ZIP code of the school''s mailing address, in standard five-digit format.","id":"d046fdd9-168e-429c-a37a-f10aafaa86c5","name":"Mailing
+    ZIP Code"},{"column_id":"6976802e-0d2f-4e15-add2-8d1558b2a272","description":"The
+    National Center for Education Statistics school identifier for the specific school
+    site.","id":"d82efb6c-da50-4fe3-9a27-ecc11f4a0fda","name":"NCES School ID"},{"column_id":"d0f61fd4-2952-4814-b469-98c2ad219147","description":"A
+    numeric school organization code used for classification purposes.","id":"dad01a9a-8d8a-43ab-99fd-0027fbcead7a","name":"School
+    Organization Code"},{"column_id":"9fbebfe8-920a-4b83-ac9a-2d7210dd7e38","description":"Flags
+    whether the school is a magnet school (1) or not (0).","id":"df1ead03-b22f-421f-97b2-788366f7e844","name":"Magnet
+    Flag"},{"column_id":"d84df005-bdb8-4dfe-be2e-f68206aa9e5b","description":"Stores
+    the first name of the primary school administrator.","id":"e9827a15-90ed-4897-b0e3-97508f1cf241","name":"Administrator
+    First Name"},{"column_id":"014135fb-bca8-48fc-8e85-8e2f98394c8d","description":"The
+    abbreviated physical street address using standard postal abbreviations.","id":"e9b1ba5e-c258-490b-a440-1914ef194a1c","name":"Street
+    Address Abbreviation"},{"column_id":"7465bfc7-3003-4fe0-a761-aea819a21cb9","description":"The
+    last name of the third administrator linked to the school.","id":"ea911fbe-e992-4ca1-9977-0310b4891fb7","name":"admlname3"},{"column_id":"6bc852fa-9d9d-4eac-80f8-104bc745b74a","description":"Indicates
+    the grade range the school currently serves, formatted as K-5 or 9-12.","id":"f247f907-440c-40bd-aa79-a12d3e9fc979","name":"Grades
+    Served"},{"column_id":"7dca755c-c516-4004-b177-26d3132aadf3","description":"The
+    physical street address of the school or district office.","id":"f402b1e6-7125-456f-a0e1-907150fade86","name":"Street
+    Address"},{"column_id":"2df19f98-2e13-48d8-9e94-39488cfb4a3a","description":"The
+    abbreviated mailing street address using standard postal abbreviations.","id":"f4ebc3ca-f207-4d37-81fa-842598d85da5","name":"Mailing
+    Street Abbreviation"}],"description":"A California school or district entity with
+    identifying codes, location, contact, operational, and organizational attributes.","id":"2dbdf728-17b1-46f0-ad60-d9b4a2c64508","name":"School","represents":["efbbf8b9-0053-4538-9e03-0973a33fe83d"]}]},"zones":[]}}'
+relationships:
+- name: sat_scores_cds_to_school
+  from: sat_scores
+  to: school
+  from_columns:
+  - cds
+  to_columns:
+  - cds_code
+- name: frpm_cdscode_to_school
+  from: frpm
+  to: school
+  from_columns:
+  - cdscode
+  to_columns:
+  - cds_code

@@ -1,0 +1,157 @@
+version: 0.2.0.dev0
+name: d2_codebase_community_mapping
+description: Maps the d2_codebase_community_ontology onto the d2_codebase_community
+  semantic model
+ontology_ref:
+  name: d2_codebase_community_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_codebase_community
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: Post
+  object_mappings:
+  - expression: post.post_id
+  link_mappings:
+  - object_mapping:
+      expression: post.post_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: post.body
+      relationship: body
+    - object_mapping:
+        concept: Integer
+        expression: post.favorite_count
+      relationship: favorite_count
+    - object_mapping:
+        concept: Integer
+        expression: post.score
+      relationship: score
+    - object_mapping:
+        concept: DateTime
+        expression: post.closed_date
+      relationship: closed_date
+    - object_mapping:
+        concept: Integer
+        expression: post.answer_count
+      relationship: answer_count
+    - object_mapping:
+        concept: DateTime
+        expression: post.last_edit_date
+      relationship: last_edit_date
+    - object_mapping:
+        concept: String
+        expression: post.last_editor_display_name
+      relationship: last_editor_display_name
+    - object_mapping:
+        concept: String
+        expression: post.tags
+      relationship: tags
+    - object_mapping:
+        concept: String
+        expression: post.owner_display_name
+      relationship: owner_display_name
+    - object_mapping:
+        concept: Integer
+        expression: post.view_count
+      relationship: view_count
+    - object_mapping:
+        concept: DateTime
+        expression: post.last_activity_date
+      relationship: last_activity_date
+    - object_mapping:
+        concept: Integer
+        expression: post.posttypeid
+      relationship: posttypeid
+    - object_mapping:
+        concept: DateTime
+        expression: post.creation_date
+      relationship: creation_date
+    - object_mapping:
+        concept: DateTime
+        expression: post.community_owned_date
+      relationship: community_owned_date
+    - object_mapping:
+        concept: Integer
+        expression: post.comment_count
+      relationship: comment_count
+    - object_mapping:
+        concept: String
+        expression: post.title
+      relationship: title
+    - object_mapping:
+        concept: UserAccount
+        expression: post.owneruserid
+      relationship: owneruserid
+    - object_mapping:
+        concept: UserAccount
+        expression: post.lasteditoruserid
+      relationship: lasteditoruserid
+    - object_mapping:
+        concept: Post
+        expression: post.acceptedanswerid
+      relationship: acceptedanswerid
+    - object_mapping:
+        concept: Post
+        expression: post.parentid
+      relationship: parentid
+- concept: UserAccount
+  object_mappings:
+  - expression: user_account.user_id
+  link_mappings:
+  - object_mapping:
+      expression: user_account.user_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: user_account.website_url
+      relationship: website_url
+    - object_mapping:
+        concept: Integer
+        expression: user_account.upvotes_received
+      relationship: upvotes_received
+    - object_mapping:
+        concept: DateTime
+        expression: user_account.last_access_date
+      relationship: last_access_date
+    - object_mapping:
+        concept: Integer
+        expression: user_account.profile_views
+      relationship: profile_views
+    - object_mapping:
+        concept: String
+        expression: user_account.location
+      relationship: location
+    - object_mapping:
+        concept: Integer
+        expression: user_account.downvotes_received
+      relationship: downvotes_received
+    - object_mapping:
+        concept: String
+        expression: user_account.about_me
+      relationship: about_me
+    - object_mapping:
+        concept: String
+        expression: user_account.profile_image_url
+      relationship: profile_image_url
+    - object_mapping:
+        concept: String
+        expression: user_account.display_name
+      relationship: display_name
+    - object_mapping:
+        concept: DateTime
+        expression: user_account.creation_date
+      relationship: creation_date
+    - object_mapping:
+        concept: Integer
+        expression: user_account.reputation_score
+      relationship: reputation_score
+    - object_mapping:
+        concept: Integer
+        expression: user_account.accountid
+      relationship: accountid
+    - object_mapping:
+        concept: Integer
+        expression: user_account.age
+      relationship: age

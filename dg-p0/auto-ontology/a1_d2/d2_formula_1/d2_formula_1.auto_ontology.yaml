@@ -1,0 +1,1729 @@
+data_layer:
+  databases:
+  - id: b1277c83-1c34-438c-95af-05b9bc94a860
+    dialect: postgres
+    schemas:
+    - id: eaf41547-44c4-411f-9d39-48f81fa6b7fe
+      name: public
+      database_name: d2_formula_1
+      tables:
+      - id: b3b33ac7-b297-4e0e-a70c-560e9450c887
+        name: circuits
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 124fa83a-07e7-4b52-a377-e7ca9d6f61b5
+          name: circuitid
+          description: A unique numeric identifier assigned to each racing circuit
+            in the system.
+          type: bigint
+          sample_values:
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          is_nullable: false
+          is_unique: true
+        - id: eff58ddb-9a76-45fe-a007-e9cd410fd042
+          name: circuitref
+          description: A short, standardized reference code used to identify the circuit
+            in URLs or internal systems.
+          type: text
+          sample_values:
+          - sepang
+          - bahrain
+          - catalunya
+          - istanbul
+          - monaco
+          is_nullable: true
+          is_unique: true
+        - id: a82cf756-7919-4b1b-bb6e-82d2a62fb1f3
+          name: name
+          description: The official full name of the racing circuit as recognized
+            in Formula 1.
+          type: text
+          sample_values:
+          - Sepang International Circuit
+          - Bahrain International Circuit
+          - Circuit de Barcelona-Catalunya
+          - Istanbul Park
+          - Circuit de Monaco
+          is_nullable: true
+          is_unique: true
+        - id: 5b8b0649-bf96-4e61-bbc0-ae2b032aa484
+          name: location
+          description: The city or geographic region where the racing circuit is physically
+            situated.
+          type: text
+          sample_values:
+          - Spielburg
+          - California
+          - Barcelona
+          - Kuala Lumpur
+          - Sakhir
+          is_nullable: true
+          is_unique: true
+        - id: 97913b1d-5d26-47b4-86bc-b00f1195e878
+          name: country
+          description: The sovereign nation in which the racing circuit is located.
+          type: text
+          sample_values:
+          - USA
+          - France
+          - Spain
+          - UK
+          - Canada
+          is_nullable: true
+          is_unique: false
+        - id: 82616995-e43e-433f-8731-af6549469f1a
+          name: lat
+          description: The geographic latitude coordinate of the circuit's location
+            in decimal degrees.
+          type: real
+          sample_values:
+          - 47.2197
+          - 2.76083
+          - 26.0325
+          - 41.57
+          - 40.9517
+          is_nullable: true
+          is_unique: true
+        - id: d50a3f6f-635d-4fcf-b7be-e701fe4beb3e
+          name: lng
+          description: The geographic longitude coordinate of the circuit's location
+            in decimal degrees.
+          type: real
+          sample_values:
+          - 14.7647
+          - 101.738
+          - 50.5106
+          - 2.26111
+          - 29.405
+          is_nullable: true
+          is_unique: true
+        - id: 228e6a6b-ba84-4324-94c0-b67e7ae8a6bd
+          name: alt
+          description: The elevation of the circuit above sea level, measured in meters.
+          type: bigint
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 6981cf03-1b0d-4130-a07b-bf0b95c598fa
+          name: url
+          description: A hyperlink to the circuit's Wikipedia page for additional
+            reference information.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+      - id: cfb0b004-45d1-4b15-8e5d-fed9d9a17d13
+        name: constructorresults
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: f5f0152b-e3f6-47cc-82d4-54344bfd1214
+          name: constructorresultsid
+          description: Unique identifier for a constructor's race result.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 7b909419-0b3c-4664-9f92-cb8555f8c7e0
+          name: raceid
+          description: ''
+          type: bigint
+          sample_values:
+          - 18
+          - 19
+          - 20
+          - 21
+          - 36
+          is_nullable: true
+          is_unique: false
+        - id: 479cc768-e330-407f-85ac-4256b8eed9d8
+          name: constructorid
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 3
+          - 6
+          - 4
+          - 7
+          is_nullable: true
+          is_unique: false
+        - id: 782ec90c-a766-40f2-8885-ae651a15cb89
+          name: points
+          description: Points earned by a constructor in a race.
+          type: real
+          sample_values:
+          - 0.0
+          - 1.0
+          - 5.0
+          - 3.0
+          - 2.0
+          is_nullable: true
+          is_unique: false
+        - id: 858717b6-be77-4b96-897d-bdd3265843ac
+          name: status
+          description: Status code indicating the outcome of a constructor's race
+            participation.
+          type: text
+          sample_values:
+          - D
+          is_nullable: true
+          is_unique: false
+      - id: d54bc2a9-c2ba-4065-b5e9-0ca4cbb140ef
+        name: constructors
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 3b799fdb-ea36-45b7-b26f-456f6a46c4fd
+          name: constructorid
+          description: Unique numeric identifier assigned to each constructor in the
+            dataset.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 76455147-e981-49c5-8ff9-25ede9cb67e8
+          name: constructorref
+          description: Lowercase, underscore-separated reference code used to uniquely
+            identify a constructor in system contexts.
+          type: text
+          sample_values:
+          - mclaren
+          - bmw_sauber
+          - williams
+          - renault
+          - toro_rosso
+          is_nullable: true
+          is_unique: true
+        - id: e1d6f906-e620-454d-96be-3eab929af3dd
+          name: name
+          description: Official display name of the constructor as recognized in Formula
+            1.
+          type: text
+          sample_values:
+          - McLaren
+          - BMW Sauber
+          - Williams
+          - Renault
+          - Toro Rosso
+          is_nullable: true
+          is_unique: true
+        - id: abf096a9-f9f4-4965-8fb2-b8299624fe2a
+          name: nationality
+          description: Nationality or country of origin associated with the constructor.
+          type: text
+          sample_values:
+          - British
+          - American
+          - Italian
+          - French
+          - German
+          is_nullable: true
+          is_unique: false
+        - id: 35078595-83da-44cf-a833-08a41fa8e6a4
+          name: url
+          description: Hyperlink to the constructor's Wikipedia page for additional
+            reference information.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+      - id: 9dc723e8-d43f-4bfc-bede-f9558c62b2fd
+        name: constructorstandings
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 562907a4-fbd4-4469-ac88-1e3e7c82a4be
+          name: constructorstandingsid
+          description: Unique identifier for each constructor standing record in the
+            championship.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 7a0779e5-a96c-45cd-b7c4-7bcd117a09d0
+          name: raceid
+          description: ''
+          type: bigint
+          sample_values:
+          - 292
+          - 293
+          - 294
+          - 295
+          - 296
+          is_nullable: true
+          is_unique: false
+        - id: 9cf58670-163e-4da2-8a51-272a60c441b2
+          name: constructorid
+          description: ''
+          type: bigint
+          sample_values:
+          - 3
+          - 1
+          - 6
+          - 17
+          - 18
+          is_nullable: true
+          is_unique: false
+        - id: e8f4a46f-f550-43df-a2a7-e90442367395
+          name: points
+          description: Total championship points earned by the constructor over the
+            season.
+          type: real
+          sample_values:
+          - 0.0
+          - 1.0
+          - 3.0
+          - 7.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: c9702950-a935-4dd7-8d8b-48de84b19568
+          name: position
+          description: Numerical rank of the constructor in the final championship
+            standings.
+          type: bigint
+          sample_values:
+          - 1
+          - 3
+          - 2
+          - 5
+          - 6
+          is_nullable: true
+          is_unique: false
+        - id: c71f5e88-0370-439a-ab66-9763cc3259b6
+          name: positiontext
+          description: Textual display of the constructor's championship position.
+          type: text
+          sample_values:
+          - '1'
+          - '3'
+          - '2'
+          - '5'
+          - '6'
+          is_nullable: true
+          is_unique: false
+        - id: e609f4e6-ca73-430d-a5f6-e185c9284624
+          name: wins
+          description: Count of race victories secured by the constructor during the
+            season.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 5
+          - 7
+          - 2
+          is_nullable: true
+          is_unique: false
+      - id: 79b75bbc-6747-4e6a-99a7-d17f4fcdd478
+        name: drivers
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 9bc54148-14fc-4271-aa81-401b5d287dd1
+          name: driverid
+          description: Unique identifier for each driver in the system.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 8991a6c7-42f2-4a5e-bda0-2a7fa263f5f3
+          name: driverref
+          description: Lowercase reference name used as a system-friendly identifier
+            for the driver.
+          type: text
+          sample_values:
+          - hamilton
+          - heidfeld
+          - rosberg
+          - alonso
+          - kovalainen
+          is_nullable: true
+          is_unique: true
+        - id: f17cae23-9850-4b1d-ae4c-4153f5dd88d4
+          name: number
+          description: Permanent racing number assigned to the driver for competition.
+          type: bigint
+          sample_values:
+          - 44.0
+          - 6.0
+          - 14.0
+          - 7.0
+          - 19.0
+          is_nullable: true
+          is_unique: true
+        - id: 89909ca3-0ea0-4c34-a8dd-de16b06897f0
+          name: code
+          description: Three-letter abbreviation representing the driver in official
+            timing and results.
+          type: text
+          sample_values:
+          - MAG
+          - BIA
+          - VER
+          - HAM
+          - HEI
+          is_nullable: true
+          is_unique: true
+        - id: 001eb873-9168-4e4d-a05c-49698a2b67f2
+          name: forename
+          description: Driver's given first name.
+          type: text
+          sample_values:
+          - John
+          - Mike
+          - Peter
+          - Tony
+          - Bill
+          is_nullable: true
+          is_unique: false
+        - id: a9628c3b-a3a8-46e8-8ba3-f494182700c4
+          name: surname
+          description: Driver's family name or last name.
+          type: text
+          sample_values:
+          - Taylor
+          - Wilson
+          - Winkelhock
+          - Hill
+          - Brabham
+          is_nullable: true
+          is_unique: false
+        - id: fbfe9afe-0290-4b39-bae2-0e63afe45df3
+          name: dob
+          description: Driver's date of birth.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: cab4a246-7137-4be2-a341-d4b2d573736f
+          name: nationality
+          description: Country the driver represents or holds citizenship for.
+          type: text
+          sample_values:
+          - British
+          - American
+          - Italian
+          - French
+          - German
+          is_nullable: true
+          is_unique: false
+        - id: 6f9b2a66-14ca-42da-90a2-6bafdc2fdf79
+          name: url
+          description: Link to the driver's Wikipedia page for additional biographical
+            information.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+      - id: 7d318b53-bc10-4297-85d2-8393530a4464
+        name: driverstandings
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 1ffed77f-a4b6-46cb-a32c-50ea7f7f0364
+          name: driverstandingsid
+          description: Unique identifier for each driver standings record in the championship.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: b16e3cf2-2b2f-4d00-986f-7a5ca691f5c5
+          name: raceid
+          description: ''
+          type: bigint
+          sample_values:
+          - 85
+          - 86
+          - 87
+          - 88
+          - 89
+          is_nullable: true
+          is_unique: false
+        - id: ef1c7100-98ee-45a4-b7e7-362444d9f464
+          name: driverid
+          description: ''
+          type: bigint
+          sample_values:
+          - 2
+          - 21
+          - 22
+          - 15
+          - 14
+          is_nullable: true
+          is_unique: false
+        - id: fe7ef596-bd21-4601-83e1-cd9db9a6f829
+          name: points
+          description: Total championship points accumulated by the driver.
+          type: real
+          sample_values:
+          - 0.0
+          - 6.0
+          - 3.0
+          - 5.0
+          - 4.0
+          is_nullable: true
+          is_unique: false
+        - id: 14945d29-7bef-45b4-bf82-93a71a84bca7
+          name: position
+          description: Numerical ranking position of the driver in the championship
+            standings.
+          type: bigint
+          sample_values:
+          - 1
+          - 4
+          - 5
+          - 6
+          - 7
+          is_nullable: true
+          is_unique: false
+        - id: 0ea27d5c-5703-4abc-85fb-122baec199a1
+          name: positiontext
+          description: Textual representation of the driver's championship position
+            for display purposes.
+          type: text
+          sample_values:
+          - '1'
+          - '4'
+          - '5'
+          - '6'
+          - '7'
+          is_nullable: true
+          is_unique: false
+        - id: c813def5-b090-49bb-8798-8ef0a0b90b79
+          name: wins
+          description: Number of race victories achieved by the driver during the
+            season.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+      - id: 6ee1e54c-b578-441c-9ed6-15cc62f33c99
+        name: laptimes
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 357df7a5-1520-417b-9c18-b32b16cd9d9c
+          name: raceid
+          description: ''
+          type: bigint
+          sample_values:
+          - 2
+          - 3
+          is_nullable: false
+          is_unique: false
+        - id: a55afd12-db4f-47af-bfbf-c016f2a99a1c
+          name: driverid
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 4
+          - 7
+          - 8
+          is_nullable: false
+          is_unique: false
+        - id: 5374edf2-8483-4ba1-9bdf-b32ffed35e12
+          name: lap
+          description: The sequential lap number completed by a participant in a timed
+            racing event.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: false
+        - id: d077fbea-7675-4c81-80b1-a0ed415510f9
+          name: position
+          description: The participant's ranking position at the completion of each
+            lap.
+          type: bigint
+          sample_values:
+          - 11
+          - 12
+          - 9
+          - 13
+          - 8
+          is_nullable: true
+          is_unique: false
+        - id: 932cd237-78ef-4763-81fa-e591eac543ea
+          name: time
+          description: The formatted lap time displayed as minutes:seconds.milliseconds
+            for human-readable reporting.
+          type: text
+          sample_values:
+          - '1:39.460'
+          - '1:39.752'
+          - '1:40.049'
+          - '1:39.655'
+          - '1:37.689'
+          is_nullable: true
+          is_unique: true
+        - id: db619439-15f6-4def-848a-26b672c41963
+          name: milliseconds
+          description: The precise lap duration expressed in total milliseconds for
+            accurate timing calculations and comparisons.
+          type: bigint
+          sample_values:
+          - 99460
+          - 99752
+          - 100049
+          - 99655
+          - 97689
+          is_nullable: true
+          is_unique: true
+      - id: 9f3b64a5-e742-4f26-9cdd-07e580319691
+        name: pitstops
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: dabd59da-e56b-407d-9903-61efd82cc921
+          name: raceid
+          description: ''
+          type: bigint
+          sample_values:
+          - 851
+          - 844
+          - 845
+          - 847
+          - 854
+          is_nullable: false
+          is_unique: false
+        - id: 3e5bee46-7abc-48b5-97b7-98e24af27c48
+          name: driverid
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 13
+          - 17
+          - 4
+          - 18
+          is_nullable: false
+          is_unique: false
+        - id: 16991426-7425-49f6-9a48-5db17ad252f6
+          name: stop
+          description: Sequential identifier for each pit stop or segment in the session.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: false
+        - id: 4ebfb4b9-1539-4600-ad92-0205f72403c9
+          name: lap
+          description: Lap number completed during the session.
+          type: bigint
+          sample_values:
+          - 16
+          - 11
+          - 13
+          - 12
+          - 10
+          is_nullable: true
+          is_unique: false
+        - id: 0c8b2c27-505d-4fe9-9121-8ed6de95949a
+          name: time
+          description: Clock time when the lap was recorded, in HH:MM:SS format.
+          type: text
+          sample_values:
+          - '16:30:37'
+          - '16:14:27'
+          - '15:30:01'
+          - '15:28:00'
+          - '16:11:49'
+          is_nullable: true
+          is_unique: true
+        - id: 59bf50fc-bc61-40da-bccb-08673426dbf3
+          name: duration
+          description: Lap duration expressed in seconds as a text value.
+          type: text
+          sample_values:
+          - '22.419'
+          - '20.567'
+          - '21.168'
+          - '21.964'
+          - '22.552'
+          is_nullable: true
+          is_unique: false
+        - id: 64543a06-3dbf-4ec7-8dbb-3fab5986cdf9
+          name: milliseconds
+          description: Lap duration expressed in milliseconds as an integer.
+          type: bigint
+          sample_values:
+          - 22419
+          - 20567
+          - 21168
+          - 21964
+          - 22552
+          is_nullable: true
+          is_unique: false
+      - id: 52b3283f-432a-4b42-886d-a445d34028ab
+        name: qualifying
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 898e3b21-f521-4270-a808-69dd9f64dad3
+          name: qualifyid
+          description: Unique identifier for each qualifying session result record.
+          type: bigint
+          sample_values:
+          - 23
+          - 24
+          - 25
+          - 26
+          - 27
+          is_nullable: false
+          is_unique: true
+        - id: c0f9c7d0-6e37-4e77-899e-233646d7f964
+          name: raceid
+          description: ''
+          type: bigint
+          sample_values:
+          - 19
+          - 20
+          - 21
+          - 37
+          - 38
+          is_nullable: true
+          is_unique: false
+        - id: 914510fa-f764-421c-a391-c2be7b6761ed
+          name: driverid
+          description: ''
+          type: bigint
+          sample_values:
+          - 13
+          - 8
+          - 15
+          - 2
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: 7a6e8825-ffc5-4692-899f-d2cf2cd2d1de
+          name: constructorid
+          description: ''
+          type: bigint
+          sample_values:
+          - 6
+          - 1
+          - 7
+          - 2
+          - 9
+          is_nullable: true
+          is_unique: false
+        - id: fc9f1e36-15aa-4630-8f9c-8874cc145daf
+          name: number
+          description: Car number assigned to the driver for the qualifying session.
+          type: bigint
+          sample_values:
+          - 12
+          - 2
+          - 1
+          - 11
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: 8c4a813d-e019-4d60-9d82-fc6600736694
+          name: position
+          description: Final qualifying position achieved by the driver in the session.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: true
+          is_unique: false
+        - id: 389ad346-3589-4b1a-8b82-511cefe5a389
+          name: q1
+          description: Lap time recorded by the driver in the first qualifying segment
+            (Q1) in minutes:seconds.milliseconds format.
+          type: text
+          sample_values:
+          - '1:35.983'
+          - '1:32.793'
+          - '1:26.614'
+          - '1:16.306'
+          - '1:16.259'
+          is_nullable: true
+          is_unique: true
+        - id: 7c7db24e-d43d-440c-a1de-4f5a265c37d6
+          name: q2
+          description: Lap time recorded by the driver in the second qualifying segment
+            (Q2) in minutes:seconds.milliseconds format.
+          type: text
+          sample_values:
+          - '1:32.915'
+          - '1:20.597'
+          - '1:21.349'
+          - '1:15.483'
+          - '1:14.747'
+          is_nullable: true
+          is_unique: true
+        - id: ff1690c7-113d-497b-b358-4731aca37640
+          name: q3
+          description: Lap time recorded by the driver in the third qualifying segment
+            (Q3) in minutes:seconds.milliseconds format.
+          type: text
+          sample_values:
+          - '1:15.493'
+          - '1:15.885'
+          - '1:35.748'
+          - '1:36.230'
+          - '1:36.613'
+          is_nullable: true
+          is_unique: true
+      - id: 98e97d97-deff-4cf1-9556-ac5bc7c21ce1
+        name: races
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: cc1e4a8a-d6c3-4ddf-8b83-6288d5165095
+          name: raceid
+          description: Unique identifier for each race.
+          type: bigint
+          sample_values:
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          is_nullable: false
+          is_unique: true
+        - id: 1ea24478-0af2-475d-b673-d93893da4bb5
+          name: year
+          description: ''
+          type: bigint
+          sample_values:
+          - 2016
+          - 2012
+          - 2017
+          - 2005
+          - 2010
+          is_nullable: true
+          is_unique: false
+        - id: eb3a68a0-b7af-453c-a87d-584e82a04d82
+          name: round
+          description: Sequential round number of the race within a season.
+          type: bigint
+          sample_values:
+          - 4
+          - 5
+          - 6
+          - 7
+          - 2
+          is_nullable: true
+          is_unique: false
+        - id: 1feae45e-20b0-4447-be0d-7cb19609233a
+          name: circuitid
+          description: ''
+          type: bigint
+          sample_values:
+          - 14
+          - 6
+          - 9
+          - 13
+          - 20
+          is_nullable: true
+          is_unique: false
+        - id: 6c031397-2ef5-4ab4-8776-075e8a4fdc4c
+          name: name
+          description: Official name of the Grand Prix event.
+          type: text
+          sample_values:
+          - British Grand Prix
+          - Italian Grand Prix
+          - Monaco Grand Prix
+          - German Grand Prix
+          - Belgian Grand Prix
+          is_nullable: true
+          is_unique: false
+        - id: 9bf827b0-528f-45ce-8201-afd22eff752b
+          name: date
+          description: Calendar date on which the race takes place.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: cd735d5e-827d-43f8-a743-f6ece39bb679
+          name: time
+          description: Scheduled start time of the race in HH:MM:SS format.
+          type: text
+          sample_values:
+          - '12:00:00'
+          - '14:00:00'
+          - 06:00:00
+          - 07:00:00
+          - '16:00:00'
+          is_nullable: true
+          is_unique: false
+        - id: 2e97d1bc-0b54-484a-8aba-d039a0f58763
+          name: url
+          description: Web link to the race's Wikipedia page.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+      - id: 6d103fff-992a-431c-a230-1651401b6dcd
+        name: results
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 1218988f-3b7c-4bb0-864b-191b2c8550f2
+          name: resultid
+          description: Unique identifier for each race result record.
+          type: bigint
+          sample_values:
+          - 23
+          - 24
+          - 25
+          - 26
+          - 27
+          is_nullable: false
+          is_unique: true
+        - id: 04a6ae43-22a6-4678-9f7f-b9da56b1655b
+          name: raceid
+          description: ''
+          type: bigint
+          sample_values:
+          - 19
+          - 20
+          - 21
+          - 64
+          - 37
+          is_nullable: true
+          is_unique: false
+        - id: 5dbc8328-b75b-48dc-8259-1967b9deaf7b
+          name: driverid
+          description: ''
+          type: bigint
+          sample_values:
+          - 8
+          - 15
+          - 2
+          - 17
+          - 14
+          is_nullable: true
+          is_unique: false
+        - id: 74444426-ddf7-4635-84c9-6cc013011d16
+          name: constructorid
+          description: ''
+          type: bigint
+          sample_values:
+          - 6
+          - 2
+          - 7
+          - 9
+          - 11
+          is_nullable: true
+          is_unique: false
+        - id: 8d4eae63-614d-42dd-bbdf-c8af3233db6c
+          name: number
+          description: Driver's assigned car number for the race.
+          type: bigint
+          sample_values:
+          - 11
+          - 22
+          - 3
+          - 5
+          - 9
+          is_nullable: true
+          is_unique: false
+        - id: 54253ae0-dd5a-4a5c-a1fe-8e0afb5f2be3
+          name: grid
+          description: Starting grid position the driver began the race from.
+          type: bigint
+          sample_values:
+          - 2
+          - 4
+          - 8
+          - 3
+          - 9
+          is_nullable: true
+          is_unique: false
+        - id: f55e8c10-5295-41db-bffc-73ec10546d3d
+          name: position
+          description: Numeric finishing position of the driver in the race.
+          type: bigint
+          sample_values:
+          - 1.0
+          - 2.0
+          - 3.0
+          - 4.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: d660988e-5657-4a13-b352-674a84f253ae
+          name: positiontext
+          description: Textual representation of finishing position, including 'R'
+            for retired drivers.
+          type: text
+          sample_values:
+          - R
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          is_nullable: true
+          is_unique: false
+        - id: dfb9c824-cc6b-4123-83b5-c8f17fdcc2d8
+          name: positionorder
+          description: Sequential order of finishers used for ranking and sorting
+            results.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: true
+          is_unique: false
+        - id: d6ea677c-6f97-4df4-a33d-bfd4bd5826d3
+          name: points
+          description: Championship points awarded to the driver for this race result.
+          type: real
+          sample_values:
+          - 0.0
+          - 10.0
+          - 8.0
+          - 6.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: 74661216-e6c6-4a74-a3f4-6eff251ca1b3
+          name: laps
+          description: Total number of laps completed by the driver during the race.
+          type: bigint
+          sample_values:
+          - 70
+          - 56
+          - 57
+          - 67
+          - 69
+          is_nullable: true
+          is_unique: false
+        - id: c9de0287-e791-4578-a308-20ad9f8b058e
+          name: time
+          description: Total race time for the winner or time gap behind the winner
+            for other drivers.
+          type: text
+          sample_values:
+          - '+54.120'
+          - '+8.155'
+          - '1:31:18.555'
+          - '+19.570'
+          - '+38.450'
+          is_nullable: true
+          is_unique: true
+        - id: c2978424-986f-4b48-953a-6c8ad2908d76
+          name: milliseconds
+          description: Precise total race time recorded in milliseconds.
+          type: bigint
+          sample_values:
+          - 5478555.0
+          - 5498125.0
+          - 5517005.0
+          - 5524387.0
+          - 5525103.0
+          is_nullable: true
+          is_unique: true
+        - id: aeb6d443-4697-4c8f-a921-901c412a6ec3
+          name: fastestlap
+          description: Lap number on which the driver achieved their fastest lap time.
+          type: bigint
+          sample_values:
+          - 19.0
+          - 55.0
+          - 56.0
+          - 21.0
+          - 53.0
+          is_nullable: true
+          is_unique: false
+        - id: 1ec8a914-e67e-43ab-bd9e-b14c9b5ef67d
+          name: rank
+          description: Ranking of the driver's fastest lap time compared to all other
+            drivers' fastest laps.
+          type: bigint
+          sample_values:
+          - 2.0
+          - 6.0
+          - 7.0
+          - 8.0
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: ce17d18c-15c7-4955-9a21-9c1baa08f8ba
+          name: fastestlaptime
+          description: The actual lap time of the driver's fastest lap during the
+            race.
+          type: text
+          sample_values:
+          - '1:18.510'
+          - '1:17.869'
+          - '1:18.462'
+          - '1:33.376'
+          - '1:16.495'
+          is_nullable: true
+          is_unique: true
+        - id: 06e70945-d643-4db3-9818-30d4b64498a1
+          name: fastestlapspeed
+          description: Average speed in km/h during the driver's fastest lap.
+          type: text
+          sample_values:
+          - '204.721'
+          - '213.935'
+          - '191.409'
+          - '206.564'
+          - '201.366'
+          is_nullable: true
+          is_unique: true
+        - id: 26684fd2-591d-49ce-b420-d912c219c26d
+          name: statusid
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 11
+          - 3
+          - 4
+          - 12
+          is_nullable: true
+          is_unique: false
+      - id: dbd1c4de-2f68-4ec9-9ca6-97c417f0a0ca
+        name: seasons
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: d67e4041-0972-428b-8e4d-ca63f5f2348b
+          name: year
+          description: The calendar year of the Formula One season.
+          type: bigint
+          sample_values:
+          - 1950
+          - 1951
+          - 1952
+          - 1953
+          - 1954
+          is_nullable: false
+          is_unique: true
+        - id: 7f52e970-0b7c-416c-9a52-db34c7a08dc9
+          name: url
+          description: The Wikipedia URL for the corresponding Formula One season.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+      - id: cab057d9-aa8d-4eef-9d6e-74f8557f3c5c
+        name: status
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: b3241758-3fca-4a4d-896d-b09071b48fe3
+          name: statusid
+          description: A unique numeric identifier representing a specific race or
+            session status type.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 9fad9793-dd89-470c-ac55-622c37659ecb
+          name: status
+          description: The textual description of a race or session outcome, such
+            as Finished, Disqualified, or mechanical failure reason.
+          type: text
+          sample_values:
+          - Finished
+          - Disqualified
+          - Accident
+          - Collision
+          - Engine
+          is_nullable: true
+          is_unique: true
+  foreign_keys:
+  - source_column_id: 04a6ae43-22a6-4678-9f7f-b9da56b1655b
+    target_column_id: cc1e4a8a-d6c3-4ddf-8b83-6288d5165095
+  - source_column_id: 1ea24478-0af2-475d-b673-d93893da4bb5
+    target_column_id: d67e4041-0972-428b-8e4d-ca63f5f2348b
+  - source_column_id: 1feae45e-20b0-4447-be0d-7cb19609233a
+    target_column_id: 124fa83a-07e7-4b52-a377-e7ca9d6f61b5
+  - source_column_id: 26684fd2-591d-49ce-b420-d912c219c26d
+    target_column_id: b3241758-3fca-4a4d-896d-b09071b48fe3
+  - source_column_id: 357df7a5-1520-417b-9c18-b32b16cd9d9c
+    target_column_id: cc1e4a8a-d6c3-4ddf-8b83-6288d5165095
+  - source_column_id: 3e5bee46-7abc-48b5-97b7-98e24af27c48
+    target_column_id: 9bc54148-14fc-4271-aa81-401b5d287dd1
+  - source_column_id: 479cc768-e330-407f-85ac-4256b8eed9d8
+    target_column_id: 3b799fdb-ea36-45b7-b26f-456f6a46c4fd
+  - source_column_id: 5dbc8328-b75b-48dc-8259-1967b9deaf7b
+    target_column_id: 9bc54148-14fc-4271-aa81-401b5d287dd1
+  - source_column_id: 74444426-ddf7-4635-84c9-6cc013011d16
+    target_column_id: 3b799fdb-ea36-45b7-b26f-456f6a46c4fd
+  - source_column_id: 7a6e8825-ffc5-4692-899f-d2cf2cd2d1de
+    target_column_id: 3b799fdb-ea36-45b7-b26f-456f6a46c4fd
+  - source_column_id: 914510fa-f764-421c-a391-c2be7b6761ed
+    target_column_id: 9bc54148-14fc-4271-aa81-401b5d287dd1
+  - source_column_id: 9cf58670-163e-4da2-8a51-272a60c441b2
+    target_column_id: 3b799fdb-ea36-45b7-b26f-456f6a46c4fd
+  - source_column_id: a55afd12-db4f-47af-bfbf-c016f2a99a1c
+    target_column_id: 9bc54148-14fc-4271-aa81-401b5d287dd1
+  - source_column_id: c0f9c7d0-6e37-4e77-899e-233646d7f964
+    target_column_id: cc1e4a8a-d6c3-4ddf-8b83-6288d5165095
+  - source_column_id: dabd59da-e56b-407d-9903-61efd82cc921
+    target_column_id: cc1e4a8a-d6c3-4ddf-8b83-6288d5165095
+  - source_column_id: ef1c7100-98ee-45a4-b7e7-362444d9f464
+    target_column_id: 9bc54148-14fc-4271-aa81-401b5d287dd1
+  joins: []
+semantic_layer:
+  terms:
+  - id: c5105fe5-1899-44b2-ab09-fd514424b3e9
+    name: Constructor
+    description: A Formula 1 constructor (team) that designs and builds racing cars.
+    represents:
+    - d54bc2a9-c2ba-4065-b5e9-0ca4cbb140ef
+    columns_attributes:
+    - id: 0e847665-1c61-43fd-841c-12452c6bbab0
+      name: Nationality
+      description: Country of origin associated with the constructor, such as British,
+        Italian, or German.
+      column_id: abf096a9-f9f4-4965-8fb2-b8299624fe2a
+    - id: 169ee794-2da6-4e3b-9de4-6eba2620954a
+      name: Wikipedia URL
+      description: Hyperlink to the constructor's Wikipedia page providing additional
+        reference information.
+      column_id: 35078595-83da-44cf-a833-08a41fa8e6a4
+    - id: 558a4c45-a2f4-4126-825b-9ce8a33ded01
+      name: Constructor ID
+      description: Unique numeric identifier for each Formula 1 constructor, used
+        to link constructor performance and standings across race data.
+      column_id: 3b799fdb-ea36-45b7-b26f-456f6a46c4fd
+    - id: 703253e1-e3c3-40a3-b709-aebc8d1a3cb4
+      name: Constructor Reference
+      description: Lowercase, underscore-separated system code uniquely identifying
+        each constructor for internal reference.
+      column_id: 76455147-e981-49c5-8ff9-25ede9cb67e8
+    - id: fb4af790-d6bd-4838-a630-c5f4d7fdea61
+      name: Name
+      description: Official display name of the Formula 1 constructor as recognized
+        in championship records.
+      column_id: e1d6f906-e620-454d-96be-3eab929af3dd
+  - id: b069c3ef-db07-4cee-b091-548b1a20931a
+    name: Constructor Result
+    description: ''
+    represents:
+    - cfb0b004-45d1-4b15-8e5d-fed9d9a17d13
+    columns_attributes:
+    - id: 0393490b-214f-4181-a7aa-f604a91e3de3
+      name: Constructor Result ID
+      description: Uniquely identifies each constructor race result record with a
+        numeric identifier.
+      column_id: f5f0152b-e3f6-47cc-82d4-54344bfd1214
+    - id: c3bf3c92-61ba-465f-bc12-e13253916322
+      name: Points
+      description: Records the championship points awarded to a constructor for a
+        specific race as a decimal value.
+      column_id: 782ec90c-a766-40f2-8885-ae651a15cb89
+    - id: e7598188-ab3a-4a80-b956-6ab40da4c3de
+      name: Status
+      description: Indicates the constructor's race outcome using a single-character
+        status code.
+      column_id: 858717b6-be77-4b96-897d-bdd3265843ac
+  - id: 771f6501-aedd-422f-888c-451fa50eec3b
+    name: Constructor Standing
+    description: Represents a constructor's final standing in a championship season.
+    represents:
+    - 9dc723e8-d43f-4bfc-bede-f9558c62b2fd
+    columns_attributes:
+    - id: 44f96ae1-4acc-45ef-9bb3-02a214db3924
+      name: Position
+      description: Numerical rank of the constructor in the final championship standings.
+      column_id: c9702950-a935-4dd7-8d8b-48de84b19568
+    - id: 710e6e99-569a-4232-8894-b3ecd8050dff
+      name: Wins
+      description: Number of race victories achieved by the constructor during the
+        championship season.
+      column_id: e609f4e6-ca73-430d-a5f6-e185c9284624
+    - id: aabb53c6-bcb2-4163-9bbe-a12db6abe7a2
+      name: Constructor Standing ID
+      description: Unique identifier for each constructor's championship standing
+        record.
+      column_id: 562907a4-fbd4-4469-ac88-1e3e7c82a4be
+    - id: b32ec0b3-9ad5-4027-89e5-aa60dd91938a
+      name: Total Points
+      description: Total championship points earned by the constructor during the
+        season, stored as a real number.
+      column_id: e8f4a46f-f550-43df-a2a7-e90442367395
+    - id: dd30544b-665e-4578-91dd-ca41be15c72d
+      name: Position Text
+      description: Textual representation of the constructor's championship position
+        for display purposes.
+      column_id: c71f5e88-0370-439a-ab66-9763cc3259b6
+  - id: 553abdd1-a7c0-4a0f-a8a1-9b24fd52c98f
+    name: Driver
+    description: A racing driver with their personal details, racing identifiers,
+      and biographical information.
+    represents:
+    - 79b75bbc-6747-4e6a-99a7-d17f4fcdd478
+    columns_attributes:
+    - id: 09534dae-3499-4048-932d-0ec4e9cd8cab
+      name: Nationality
+      description: nationality indicates the country the driver represents or holds
+        citizenship for.
+      column_id: cab4a246-7137-4be2-a341-d4b2d573736f
+    - id: 36a970ae-6932-4576-b230-684ef680933d
+      name: Date Of Birth
+      description: dob captures the driver's date of birth in YYYY-MM-DD format.
+      column_id: fbfe9afe-0290-4b39-bae2-0e63afe45df3
+    - id: 4185e287-3f28-48d4-8e8f-eeed52260920
+      name: Driver ID
+      description: driverid identifies the driver uniquely across standings, lap times,
+        pit stops, qualifying, and results.
+      column_id: 9bc54148-14fc-4271-aa81-401b5d287dd1
+    - id: 5b6a4c3a-66ce-4173-a1e8-8942ec460b1e
+      name: Racing Number
+      description: number stores the driver's permanent racing number used in competition.
+      column_id: f17cae23-9850-4b1d-ae4c-4153f5dd88d4
+    - id: 6d092152-c7f6-4239-a4f7-ad7396d3c0db
+      name: Last Name
+      description: surname records the driver's family name.
+      column_id: a9628c3b-a3a8-46e8-8ba3-f494182700c4
+    - id: 77f4e454-0571-4721-a067-f4ab7891f48b
+      name: Driver Reference
+      description: driverref provides a lowercase system-friendly identifier for the
+        driver.
+      column_id: 8991a6c7-42f2-4a5e-bda0-2a7fa263f5f3
+    - id: 7844f686-598d-40b8-a4a2-d9a641092124
+      name: First Name
+      description: forename records the driver's given first name.
+      column_id: 001eb873-9168-4e4d-a05c-49698a2b67f2
+    - id: a62c18da-578e-49a6-9fa4-c5036e65b9ee
+      name: Driver Code
+      description: code holds the three-letter abbreviation used for the driver in
+        official timing and results.
+      column_id: 89909ca3-0ea0-4c34-a8dd-de16b06897f0
+    - id: f182d974-448b-4b58-a2ab-84edf0f39342
+      name: Wikipedia URL
+      description: url provides a link to the driver's Wikipedia page for further
+        biographical details.
+      column_id: 6f9b2a66-14ca-42da-90a2-6bafdc2fdf79
+  - id: ef9d86f3-ee7d-48a6-be03-12a4662ff5ee
+    name: Driver Standing
+    description: Represents a driver's championship standing including points, position,
+      and wins.
+    represents:
+    - 7d318b53-bc10-4297-85d2-8393530a4464
+    columns_attributes:
+    - id: 05330847-4f43-4dd9-a14b-f25734b7218f
+      name: Position Text
+      description: Provides the driver's championship position as text for display.
+      column_id: 0ea27d5c-5703-4abc-85fb-122baec199a1
+    - id: 07c561ca-6ace-4f05-8a65-4a631341ea17
+      name: Position
+      description: Indicates the driver's numerical rank in the championship standings.
+      column_id: 14945d29-7bef-45b4-bf82-93a71a84bca7
+    - id: b2854b2f-5c24-4b58-a75f-437f56127b9c
+      name: Driver Standing ID
+      description: Uniquely identifies each driver's championship standing record.
+      column_id: 1ffed77f-a4b6-46cb-a32c-50ea7f7f0364
+    - id: d16ab6c0-4fbd-4b6f-acf2-d0006b553c0f
+      name: Total Points
+      description: Records the total championship points accumulated by the driver.
+      column_id: fe7ef596-bd21-4601-83e1-cd9db9a6f829
+    - id: ee967040-235c-45c9-bd49-cdb22dfa10bb
+      name: Wins
+      description: Counts the number of race victories the driver achieved this season.
+      column_id: c813def5-b090-49bb-8798-8ef0a0b90b79
+  - id: 210e1c55-f795-4858-8cf2-24206e2fd6ad
+    name: Lap Time
+    description: ''
+    represents:
+    - 6ee1e54c-b578-441c-9ed6-15cc62f33c99
+    columns_attributes:
+    - id: 0a7a7ecf-92cf-49f7-b781-5fa5df82fe81
+      name: Lap Number
+      description: Identifies the sequential lap number completed by a driver during
+        a race session.
+      column_id: 5374edf2-8483-4ba1-9bdf-b32ffed35e12
+    - id: 1efb2522-8547-4ba3-9fb1-685b2ef9bcd9
+      name: Milliseconds
+      description: Records the exact lap duration in total milliseconds for precise
+        timing analysis.
+      column_id: db619439-15f6-4def-848a-26b672c41963
+    - id: cc21574d-2bb5-451b-9e02-6af1e4129523
+      name: Formatted Time
+      description: Displays the human-readable lap time in minutes:seconds.milliseconds
+        format for reporting.
+      column_id: 932cd237-78ef-4763-81fa-e591eac543ea
+    - id: f85daae9-5e67-46a2-be6b-3b1b6617e515
+      name: Position
+      description: Shows the driver's race position after completing each lap.
+      column_id: d077fbea-7675-4c81-80b1-a0ed415510f9
+  - id: 04bccf72-8395-4ed1-8283-4a8b5edcd762
+    name: Pit Stop
+    description: ''
+    represents:
+    - 9f3b64a5-e742-4f26-9cdd-07e580319691
+    columns_attributes:
+    - id: 6e38df85-6d42-4242-bfb4-df18ce9b087f
+      name: Stop Number
+      description: Identifies the sequential number of a pit stop within a race session.
+      column_id: 16991426-7425-49f6-9a48-5db17ad252f6
+    - id: 9b7ee9c7-301e-420e-aa8d-9aeee75a5a22
+      name: duration
+      description: Captures the pit stop duration in seconds as a text value.
+      column_id: 59bf50fc-bc61-40da-bccb-08673426dbf3
+    - id: b0a2f7e2-e923-46a7-9dd9-a861d7eaeabb
+      name: milliseconds
+      description: Provides the pit stop duration in milliseconds as an integer.
+      column_id: 64543a06-3dbf-4ec7-8dbb-3fab5986cdf9
+    - id: d5fe9621-d615-44e2-b56e-e9a9e704c843
+      name: Clock Time
+      description: Records the clock time of the pit stop in HH:MM:SS format.
+      column_id: 0c8b2c27-505d-4fe9-9121-8ed6de95949a
+    - id: eab90657-5f58-4664-b412-2cc792437b3b
+      name: Lap Number
+      description: Indicates the lap number on which the pit stop occurred.
+      column_id: 4ebfb4b9-1539-4600-ad92-0205f72403c9
+  - id: 07a08c45-6560-4b1c-87d9-6620af9c897a
+    name: Qualifying Result
+    description: Represents a driver's qualifying session result including car number,
+      final position, and segment lap times.
+    represents:
+    - 52b3283f-432a-4b42-886d-a445d34028ab
+    columns_attributes:
+    - id: 3aa2b600-5801-47c0-8b1c-ad07f2baa0a9
+      name: Q3 Lap Time
+      description: Records the driver's lap time in the third qualifying segment (Q3)
+        in minutes:seconds.milliseconds format.
+      column_id: ff1690c7-113d-497b-b358-4731aca37640
+    - id: 49ac9c22-8970-4fac-b609-15404c52d23e
+      name: Car Number
+      description: Indicates the car number assigned to the driver for that qualifying
+        session.
+      column_id: fc9f1e36-15aa-4630-8f9c-8874cc145daf
+    - id: 52ce587b-3552-420a-9f2e-6a67d9250013
+      name: Q1 Lap Time
+      description: Records the driver's lap time in the first qualifying segment (Q1)
+        in minutes:seconds.milliseconds format.
+      column_id: 389ad346-3589-4b1a-8b82-511cefe5a389
+    - id: 7703fae5-a65e-4e05-b896-f298eac94bec
+      name: Qualifying Position
+      description: Shows the final grid position the driver achieved in the qualifying
+        session.
+      column_id: 8c4a813d-e019-4d60-9d82-fc6600736694
+    - id: 83155812-c9ce-4d55-889f-4d94698f85f4
+      name: Q2 Lap Time
+      description: Records the driver's lap time in the second qualifying segment
+        (Q2) in minutes:seconds.milliseconds format.
+      column_id: 7c7db24e-d43d-440c-a1de-4f5a265c37d6
+    - id: ed934b24-a8ad-471d-a71b-dd2e9bc16bb2
+      name: Qualifying Result ID
+      description: Uniquely identifies each qualifying session result record.
+      column_id: 898e3b21-f521-4270-a808-69dd9f64dad3
+  - id: 06c48098-e731-456c-82c8-a4b41505d555
+    name: Race
+    description: A Grand Prix racing event in a Formula 1 season.
+    represents:
+    - 98e97d97-deff-4cf1-9556-ac5bc7c21ce1
+    columns_attributes:
+    - id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+      name: Race ID
+      description: Unique identifier for each Grand Prix race, used to link results,
+        standings, and session data.
+      column_id: cc1e4a8a-d6c3-4ddf-8b83-6288d5165095
+    - id: 7d028a61-95e1-4ea1-8552-3c689a67c503
+      name: Race Time
+      description: Scheduled start time of the race in HH:MM:SS format.
+      column_id: cd735d5e-827d-43f8-a743-f6ece39bb679
+    - id: af802578-d044-4cee-92a4-dc261f8f40c9
+      name: Round Number
+      description: Sequential round number indicating the race's position within a
+        Formula 1 season.
+      column_id: eb3a68a0-b7af-453c-a87d-584e82a04d82
+    - id: f6148486-8775-473c-952f-6b8937ba8b3d
+      name: Race URL
+      description: Web link to the race's Wikipedia page for reference.
+      column_id: 2e97d1bc-0b54-484a-8aba-d039a0f58763
+    - id: f832304b-24b5-4737-9757-4fd9d4e05aa2
+      name: Race Name
+      description: Official name of the Grand Prix event, such as 'British Grand Prix'.
+      column_id: 6c031397-2ef5-4ab4-8776-075e8a4fdc4c
+    - id: fa87f8b6-4eaa-4bfb-a2d0-4d32fd66a3ba
+      name: Race Date
+      description: Calendar date on which the race takes place in YYYY-MM-DD format.
+      column_id: 9bf827b0-528f-45ce-8201-afd22eff752b
+  - id: 4a61e84b-2e06-48b1-b3d3-95826394d411
+    name: Race Result
+    description: Represents a single driver's result in a race, including starting
+      position, finishing position, laps completed, points earned, and fastest lap
+      details.
+    represents:
+    - 6d103fff-992a-431c-a230-1651401b6dcd
+    columns_attributes:
+    - id: 10bc63ad-322e-43fc-9ec0-7d89172cfe59
+      name: Grid Position
+      description: Indicates the driver's starting grid position for the race.
+      column_id: 54253ae0-dd5a-4a5c-a1fe-8e0afb5f2be3
+    - id: 13443cb3-b9df-49ca-8de4-19bb8698289c
+      name: Fastest Lap Number
+      description: Indicates the lap number where the driver set their fastest lap.
+      column_id: aeb6d443-4697-4c8f-a921-901c412a6ec3
+    - id: 18b598eb-b2ed-4ff4-aea9-e6935c0705a2
+      name: Race Time
+      description: Captures the winner's total race time or the time gap behind the
+        winner.
+      column_id: c9de0287-e791-4578-a308-20ad9f8b058e
+    - id: 21f46a27-2db0-4b9e-80d5-4b06fdcb6d8e
+      name: Car Number
+      description: Identifies the car number assigned to the driver for the race.
+      column_id: 8d4eae63-614d-42dd-bbdf-c8af3233db6c
+    - id: 4106b4d1-de82-469b-bd70-0278a1c922d2
+      name: Fastest Lap Speed
+      description: Provides the average speed in km/h during the driver's fastest
+        lap.
+      column_id: 06e70945-d643-4db3-9818-30d4b64498a1
+    - id: 41c2e532-af74-4e13-8025-353e2f2a19f9
+      name: Result ID
+      description: Uniquely identifies each race result record.
+      column_id: 1218988f-3b7c-4bb0-864b-191b2c8550f2
+    - id: 557e1120-986b-4100-a519-5e6d4875e6e3
+      name: Finishing Position
+      description: Shows the driver's numeric finishing position in the race.
+      column_id: f55e8c10-5295-41db-bffc-73ec10546d3d
+    - id: 70f2d2de-3921-432e-aaac-b2f154390078
+      name: Position Order
+      description: Defines the sequential ranking order used to sort race results.
+      column_id: dfb9c824-cc6b-4123-83b5-c8f17fdcc2d8
+    - id: 81df8416-ba44-4bbf-aee3-381bd3a416d1
+      name: Position Text
+      description: Provides the finishing position as text, using 'R' for retired
+        drivers.
+      column_id: d660988e-5657-4a13-b352-674a84f253ae
+    - id: 883b83e7-498a-4375-91cb-30efca2d5917
+      name: Fastest Lap Time
+      description: Records the driver's fastest lap time in minutes:seconds.milliseconds
+        format.
+      column_id: ce17d18c-15c7-4955-9a21-9c1baa08f8ba
+    - id: b6aad7e4-7058-42ee-9cc7-06424fb26729
+      name: Race Time Milliseconds
+      description: Stores the exact race time in milliseconds for precise measurement.
+      column_id: c2978424-986f-4b48-953a-6c8ad2908d76
+    - id: c21dac6d-aab1-43ad-a4d0-1ba40bf4290e
+      name: Fastest Lap Rank
+      description: Ranks the driver's fastest lap time against all other drivers'
+        fastest laps.
+      column_id: 1ec8a914-e67e-43ab-bd9e-b14c9b5ef67d
+    - id: ddda0b65-1130-41ec-82c2-ae3e94e2c7ce
+      name: Championship Points
+      description: Records the championship points earned by the driver in this race.
+      column_id: d6ea677c-6f97-4df4-a33d-bfd4bd5826d3
+    - id: e327bbbf-ef58-4f3a-9e91-035a122c4bfa
+      name: Laps Completed
+      description: Counts the total laps completed by the driver during the race.
+      column_id: 74661216-e6c6-4a74-a3f4-6eff251ca1b3
+  - id: 9cea8aa6-d007-401b-ad14-cdc5f1e29f85
+    name: Race Session Status
+    description: A unique status type for a race or session, such as Finished, Disqualified,
+      or a mechanical failure reason.
+    represents:
+    - cab057d9-aa8d-4eef-9d6e-74f8557f3c5c
+    columns_attributes:
+    - id: ca447b3d-5d8b-4802-b86b-b4125fb2382a
+      name: Status Description
+      description: The descriptive label for a race or session result, such as Finished,
+        Disqualified, Accident, Collision, or Engine failure.
+      column_id: 9fad9793-dd89-470c-ac55-622c37659ecb
+    - id: f7d47e3d-1911-4d23-b35b-00c57fb5528c
+      name: Status ID
+      description: A unique numeric code that identifies each race or session outcome
+        type, such as Finished or Disqualified.
+      column_id: b3241758-3fca-4a4d-896d-b09071b48fe3
+  - id: dace5274-b081-4294-a2b3-c5daa28184e7
+    name: Racing Circuit
+    description: ''
+    represents:
+    - b3b33ac7-b297-4e0e-a70c-560e9450c887
+    columns_attributes:
+    - id: 358050ff-143c-4255-b90c-7a80d7b20a14
+      name: Longitude
+      description: Records the circuit's geographic longitude in decimal degrees.
+      column_id: d50a3f6f-635d-4fcf-b7be-e701fe4beb3e
+    - id: 4dd11302-0bc3-4b30-bfe5-6fdbc9c09aae
+      name: Name
+      description: States the official full name of the racing circuit as recognized
+        by Formula 1.
+      column_id: a82cf756-7919-4b1b-bb6e-82d2a62fb1f3
+    - id: 66963f6c-c1dd-4370-8561-7778c0773030
+      name: Circuit Reference
+      description: Provides a standardized short code for identifying the circuit
+        in URLs and internal systems.
+      column_id: eff58ddb-9a76-45fe-a007-e9cd410fd042
+    - id: 7e0d5c3a-4539-4eec-9683-d6e89a4714e4
+      name: Altitude
+      description: Measures the circuit's elevation above sea level in meters.
+      column_id: 228e6a6b-ba84-4324-94c0-b67e7ae8a6bd
+    - id: a1ab1848-f4c3-4626-a56a-fc9d4a61c4e4
+      name: Circuit ID
+      description: Uniquely identifies each racing circuit and links to associated
+        races.
+      column_id: 124fa83a-07e7-4b52-a377-e7ca9d6f61b5
+    - id: aada2691-8896-449a-a376-3b672681ff7f
+      name: Location
+      description: Indicates the city or geographic region where the racing circuit
+        is physically located.
+      column_id: 5b8b0649-bf96-4e61-bbc0-ae2b032aa484
+    - id: b584f3c7-ddf2-4cad-ad5f-35ea67997c61
+      name: Country
+      description: Specifies the sovereign country in which the racing circuit is
+        located.
+      column_id: 97913b1d-5d26-47b4-86bc-b00f1195e878
+    - id: d0b6c11e-8b61-4753-b67c-31550a413a5a
+      name: URL
+      description: Provides a hyperlink to the circuit's Wikipedia page for reference.
+      column_id: 6981cf03-1b0d-4130-a07b-bf0b95c598fa
+    - id: d47e0b66-b5ec-43d4-a980-e001c17501da
+      name: Latitude
+      description: Records the circuit's geographic latitude in decimal degrees.
+      column_id: 82616995-e43e-433f-8731-af6549469f1a
+  - id: 1e806872-5565-44b0-9d67-ad558507ea8f
+    name: Season
+    description: ''
+    represents:
+    - dbd1c4de-2f68-4ec9-9ca6-97c417f0a0ca
+    columns_attributes:
+    - id: 934cc60d-96bd-48e6-937c-1631ac3d8e04
+      name: Wikipedia URL
+      description: Provides the Wikipedia web address for the Formula One season.
+      column_id: 7f52e970-0b7c-416c-9a52-db34c7a08dc9
+    - id: 9d16c14b-8e63-4866-92d6-e1e2ca4003fc
+      name: Year
+      description: Identifies the four-digit calendar year of the Formula One season,
+        linking races to their respective season.
+      column_id: d67e4041-0972-428b-8e4d-ca63f5f2348b
+  semantic_fks:
+  - column_attribute_id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+    column_id: 04a6ae43-22a6-4678-9f7f-b9da56b1655b
+    use_in_join_paths: true
+  - column_attribute_id: 9d16c14b-8e63-4866-92d6-e1e2ca4003fc
+    column_id: 1ea24478-0af2-475d-b673-d93893da4bb5
+    use_in_join_paths: true
+  - column_attribute_id: a1ab1848-f4c3-4626-a56a-fc9d4a61c4e4
+    column_id: 1feae45e-20b0-4447-be0d-7cb19609233a
+    use_in_join_paths: true
+  - column_attribute_id: f7d47e3d-1911-4d23-b35b-00c57fb5528c
+    column_id: 26684fd2-591d-49ce-b420-d912c219c26d
+    use_in_join_paths: true
+  - column_attribute_id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+    column_id: 357df7a5-1520-417b-9c18-b32b16cd9d9c
+    use_in_join_paths: true
+  - column_attribute_id: 4185e287-3f28-48d4-8e8f-eeed52260920
+    column_id: 3e5bee46-7abc-48b5-97b7-98e24af27c48
+    use_in_join_paths: true
+  - column_attribute_id: 558a4c45-a2f4-4126-825b-9ce8a33ded01
+    column_id: 479cc768-e330-407f-85ac-4256b8eed9d8
+    use_in_join_paths: true
+  - column_attribute_id: 4185e287-3f28-48d4-8e8f-eeed52260920
+    column_id: 5dbc8328-b75b-48dc-8259-1967b9deaf7b
+    use_in_join_paths: true
+  - column_attribute_id: 558a4c45-a2f4-4126-825b-9ce8a33ded01
+    column_id: 74444426-ddf7-4635-84c9-6cc013011d16
+    use_in_join_paths: true
+  - column_attribute_id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+    column_id: 7a0779e5-a96c-45cd-b7c4-7bcd117a09d0
+    use_in_join_paths: true
+  - column_attribute_id: 558a4c45-a2f4-4126-825b-9ce8a33ded01
+    column_id: 7a6e8825-ffc5-4692-899f-d2cf2cd2d1de
+    use_in_join_paths: true
+  - column_attribute_id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+    column_id: 7b909419-0b3c-4664-9f92-cb8555f8c7e0
+    use_in_join_paths: true
+  - column_attribute_id: 4185e287-3f28-48d4-8e8f-eeed52260920
+    column_id: 914510fa-f764-421c-a391-c2be7b6761ed
+    use_in_join_paths: true
+  - column_attribute_id: 558a4c45-a2f4-4126-825b-9ce8a33ded01
+    column_id: 9cf58670-163e-4da2-8a51-272a60c441b2
+    use_in_join_paths: true
+  - column_attribute_id: 4185e287-3f28-48d4-8e8f-eeed52260920
+    column_id: a55afd12-db4f-47af-bfbf-c016f2a99a1c
+    use_in_join_paths: true
+  - column_attribute_id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+    column_id: b16e3cf2-2b2f-4d00-986f-7a5ca691f5c5
+    use_in_join_paths: true
+  - column_attribute_id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+    column_id: c0f9c7d0-6e37-4e77-899e-233646d7f964
+    use_in_join_paths: true
+  - column_attribute_id: 1956ddb6-e3eb-42c9-8b0e-041a2bd08c3e
+    column_id: dabd59da-e56b-407d-9903-61efd82cc921
+    use_in_join_paths: true
+  - column_attribute_id: 4185e287-3f28-48d4-8e8f-eeed52260920
+    column_id: ef1c7100-98ee-45a4-b7e7-362444d9f464
+    use_in_join_paths: true
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table: []
+  custom_analyses: []
+zones: []

@@ -1,0 +1,42 @@
+version: 0.2.0.dev0
+name: d2_thrombosis_prediction_mapping
+description: Maps the d2_thrombosis_prediction_ontology onto the d2_thrombosis_prediction
+  semantic model
+ontology_ref:
+  name: d2_thrombosis_prediction_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_thrombosis_prediction
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: Patient
+  object_mappings:
+  - expression: patient.patient_id
+  link_mappings:
+  - object_mapping:
+      expression: patient.patient_id
+    children:
+    - object_mapping:
+        concept: Date
+        expression: patient.first_encounter_date
+      relationship: first_encounter_date
+    - object_mapping:
+        concept: Date
+        expression: patient.date_of_birth
+      relationship: date_of_birth
+    - object_mapping:
+        concept: Date
+        expression: patient.description_date
+      relationship: description_date
+    - object_mapping:
+        concept: String
+        expression: patient.diagnosis
+      relationship: diagnosis
+    - object_mapping:
+        concept: String
+        expression: patient.biological_sex
+      relationship: biological_sex
+    - object_mapping:
+        concept: String
+        expression: patient.admission_status
+      relationship: admission_status

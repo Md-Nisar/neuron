@@ -1,0 +1,56 @@
+kind	term	object	outcome	description_or_sql
+term	Account	public.account	certified	account.
+column	Account	public.account.account_id	certified	the id of the account
+column	Account	public.account.date	certified	the creation date of the account. Values: in the form YYMMDD
+column	Account	public.account.frequency	certified	frequency of the acount
+term	Card (d2_financial.public.card)	public.card	certified	card.
+column	Card (d2_financial.public.card)	public.card.card_id	certified	id number of credit card
+column	Card (d2_financial.public.card)	public.card.type	certified	type of credit card. Values: "junior": junior class of credit card; "classic": standard class of credit card; "gold": high-level credit card
+column	Card (d2_financial.public.card)	public.card.issued	certified	the date when the credit card issued. Values: in the form YYMMDD
+term	Client	public.client	certified	client.
+column	Client	public.client.client_id	certified	the unique number
+column	Client	public.client.birth_date	certified	birth date
+column	Client	public.client.gender	certified	. Values: F：female M：male
+term	Disposition	public.disp	certified	disp.
+column	Disposition	public.disp.disp_id	certified	unique number of identifying this row of record
+column	Disposition	public.disp.type	certified	type of disposition. Values: "OWNER" : "USER" : "DISPONENT" commonsense evidence: the account can only have the right to issue permanent orders or apply for loans
+term	District	public.district	certified	district.
+column	District	public.district.district_id	certified	location of branch
+column	District	public.district.a15	certified	no. of committed crimes 1995
+column	District	public.district.a5	certified	municipality < district < region
+column	District	public.district.a9	certified	. Values: not useful
+column	District	public.district.a2	certified	district_name
+column	District	public.district.a11	certified	average salary
+column	District	public.district.a7	certified	municipality < district < region
+column	District	public.district.a4	certified	number of inhabitants
+column	District	public.district.a13	certified	unemployment rate 1996
+column	District	public.district.a8	certified	municipality < district < region
+column	District	public.district.a6	certified	municipality < district < region
+column	District	public.district.a16	certified	no. of committed crimes 1996
+column	District	public.district.a14	certified	no. of entrepreneurs per 1000 inhabitants
+column	District	public.district.a10	certified	ratio of urban inhabitants
+column	District	public.district.a12	certified	unemployment rate 1995
+column	District	public.district.a3	certified	region
+term	Loan	public.loan	certified	loan.
+column	Loan	public.loan.date	certified	the date when the loan is approved
+column	Loan	public.loan.status	certified	repayment status. Values: 'A' stands for contract finished, no problems; 'B' stands for contract finished, loan not paid; 'C' stands for running contract, OK so far; 'D' stands for running contract, client in debt
+column	Loan	public.loan.loan_id	certified	the id number identifying the loan data
+column	Loan	public.loan.payments	certified	monthly payments. Values: unit：month
+column	Loan	public.loan.duration	certified	loan duration. Values: unit：month
+column	Loan	public.loan.amount	certified	approved amount. Values: unit：US dollar
+term	Order (d2_financial.public.order)	public.order	certified	order.
+column	Order (d2_financial.public.order)	public.order.bank_to	certified	bank of the recipient
+column	Order (d2_financial.public.order)	public.order.order_id	certified	identifying the unique order
+column	Order (d2_financial.public.order)	public.order.k_symbol	certified	purpose of the payment. Values: "POJISTNE" stands for insurance payment "SIPO" stands for household payment "LEASING" stands for leasing "UVER" stands for loan payment
+column	Order (d2_financial.public.order)	public.order.account_to	certified	account of the recipient. Values: each bank has unique two-letter code
+column	Order (d2_financial.public.order)	public.order.amount	certified	debited amount
+term	Transaction (d2_financial.public.trans)	public.trans	certified	trans.
+column	Transaction (d2_financial.public.trans)	public.trans.account	certified	account of the partner
+column	Transaction (d2_financial.public.trans)	public.trans.k_symbol	certified	characterization of the transaction. Values: "POJISTNE": stands for insurrance payment "SLUZBY": stands for payment for statement "UROK": stands for interest credited "SANKC. UROK": sanction interest if negative balance "SIPO": stands for household "DUCHOD": stands for old-age pension "UVER": stands for loan payment
+column	Transaction (d2_financial.public.trans)	public.trans.operation	certified	mode of transaction. Values: "VYBER KARTOU": credit card withdrawal "VKLAD": credit in cash "PREVOD Z UCTU" :collection from another bank "VYBER": withdrawal in cash "PREVOD NA UCET": remittance to another bank
+column	Transaction (d2_financial.public.trans)	public.trans.trans_id	certified	transaction id
+column	Transaction (d2_financial.public.trans)	public.trans.amount	certified	amount of money. Values: Unit：USD
+column	Transaction (d2_financial.public.trans)	public.trans.bank	certified	bank of the partner. Values: each bank has unique two-letter code
+column	Transaction (d2_financial.public.trans)	public.trans.date	certified	date of transaction
+column	Transaction (d2_financial.public.trans)	public.trans.balance	certified	balance after transaction. Values: Unit：USD
+column	Transaction (d2_financial.public.trans)	public.trans.type	certified	+/- transaction. Values: "PRIJEM" stands for credit "VYDAJ" stands for withdrawal

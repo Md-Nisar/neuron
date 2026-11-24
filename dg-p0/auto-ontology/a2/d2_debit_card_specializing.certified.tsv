@@ -1,0 +1,24 @@
+kind	term	object	outcome	description_or_sql
+term	Customer (d2_debit_card_specializing.public.customers)	public.customers	certified	customers.
+column	Customer (d2_debit_card_specializing.public.customers)	public.customers.segment	certified	client segment
+column	Customer (d2_debit_card_specializing.public.customers)	public.customers.currency	certified	Currency
+column	Customer (d2_debit_card_specializing.public.customers)	public.customers.customerid	certified	identification of the customer
+term	Gas Station	public.gasstations	certified	gasstations.
+column	Gas Station	public.gasstations.segment	certified	chain segment
+column	Gas Station	public.gasstations.chainid	certified	Chain ID
+column	Gas Station	public.gasstations.gasstationid	certified	Gas Station ID
+column	Gas Station	public.gasstations.country	certified	(generated kept)
+term	Product (d2_debit_card_specializing.public.products)	public.products	certified	products.
+column	Product (d2_debit_card_specializing.public.products)	public.products.description	certified	Description
+column	Product (d2_debit_card_specializing.public.products)	public.products.productid	certified	Product ID
+term	Transaction	public.transactions_1k	certified	transactions_1k.
+column	Transaction	public.transactions_1k.transactionid	certified	Transaction ID
+column	Transaction	public.transactions_1k.cardid	certified	Card ID
+column	Transaction	public.transactions_1k.date	certified	Date
+column	Transaction	public.transactions_1k.price	certified	Price. Values: commonsense evidence: total price = Amount x Price
+column	Transaction	public.transactions_1k.customerid	certified	Customer ID
+column	Transaction	public.transactions_1k.time	certified	Time
+column	Transaction	public.transactions_1k.amount	certified	Amount
+term	Year Month	public.yearmonth	certified	yearmonth.
+column	Year Month	public.yearmonth.consumption	certified	consumption
+column	Year Month	public.yearmonth.date	certified	Date

@@ -1,0 +1,1331 @@
+version: 0.2.0.dev0
+name: d2_card_games
+datasets:
+- name: card
+  source: d2_card_games.public.cards
+  description: 'Represents a Magic: The Gathering card with all its attributes, printing
+    details, and gameplay characteristics.'
+  unique_keys:
+  - - uuid
+  fields:
+  - name: hasnonfoil
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: hasnonfoil
+    datatype: Integer
+    description: The non-foil availability flag indicates whether a non-foil printed
+      version of the card exists (1 = available, 0 = not available).
+  - name: is_full_art
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isfullart
+    datatype: Integer
+    description: The full-art flag indicates whether the card features a full-art
+      illustration extending to the card borders (1 = yes, 0 = no).
+  - name: hand_modifier
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: hand
+    datatype: String
+    description: The hand modifier adjusts the player's hand size by a positive, negative,
+      or zero integer value.
+  - name: is_oversized
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isoversized
+    datatype: Integer
+    description: The oversized flag marks whether the card is produced in an oversized
+      physical format (1 = yes, 0 = no).
+  - name: mcmmetaid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mcmmetaid
+    datatype: String
+    description: Holds the Cardmarket metadata identifier for the card's printing.
+  - name: scryfallillustrationid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: scryfallillustrationid
+    datatype: String
+    description: Unique Scryfall identifier for the card's illustration.
+  - name: is_starter
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isstarter
+    datatype: Integer
+    description: Identifies if the card comes from a starter product (1 = yes, 0 =
+      no).
+  - name: has_alternative_deck_limit
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: hasalternativedecklimit
+    datatype: Integer
+    description: The alternative deck limit flag indicates whether the card exempts
+      the standard deck construction limit (1 = yes, 0 = no).
+  - name: leadership_skills
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: leadershipskills
+    datatype: String
+    description: Specifies the card's commander eligibility for Brawl, Commander,
+      and Oathbreaker formats.
+  - name: power
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: power
+    datatype: String
+    description: Specifies the power value of a creature card for combat damage as
+      text.
+  - name: is_textless
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: istextless
+    datatype: Integer
+    description: Indicates if the card is a textless promotional version (1 = yes,
+      0 = no).
+  - name: flavor_text
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: flavortext
+    datatype: String
+    description: The flavor text provides a narrative quotation printed on the card
+      to convey lore or storytelling context.
+  - name: side
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: side
+    datatype: String
+    description: Designates the face of a double-faced or multi-faced card (e.g.,
+      a, b).
+  - name: mtgarenaid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mtgarenaid
+    datatype: String
+    description: Contains the MTG Arena internal identifier for the card.
+  - name: converted_mana_cost
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: convertedmanacost
+    datatype: Float
+    description: Represents the total converted mana cost of the card as a numeric
+      value.
+  - name: life_modifier
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: life
+    datatype: String
+    description: Provides the life total modifier for Vanguard or Plane cards as a
+      negative number.
+  - name: keywords
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: keywords
+    datatype: String
+    description: Lists the keyword abilities on the card, such as Flying or Trample.
+  - name: artist
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: artist
+    datatype: String
+    description: Identifies the artist who illustrated the Magic card.
+  - name: layout
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: layout
+    datatype: String
+    description: Defines the physical card layout or frame type, like normal, split,
+      or modal double-faced.
+  - name: edhrec_rank
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: edhrecrank
+    datatype: Integer
+    description: Shows the card's popularity rank on EDHREC, with lower numbers meaning
+      higher Commander usage.
+  - name: card_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: 'Uniquely identifies each Magic: The Gathering card record in the
+      dataset.'
+  - name: border_color
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bordercolor
+    datatype: String
+    description: Specifies the border color or style of the card, such as black or
+      borderless.
+  - name: is_promo
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ispromo
+    datatype: Integer
+    description: The promo flag indicates whether the card was released as a promotional
+      product (1 = yes, 0 = no).
+  - name: otherfaceids
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: otherfaceids
+    datatype: String
+    description: Lists identifiers for the other faces of a double-faced or meld card.
+  - name: mtgoid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mtgoid
+    datatype: String
+    description: Identifies the non-foil version of a card on Magic Online using a
+      numeric text code.
+  - name: setcode
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: setcode
+    datatype: String
+    description: Abbreviated code identifying the Magic set the card belongs to (e.g.,
+      10E).
+  - name: has_foil
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: hasfoil
+    datatype: Integer
+    description: The foil availability flag indicates whether a foil-printed version
+      of the card exists (1 = available, 0 = not available).
+  - name: mcmid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mcmid
+    datatype: String
+    description: Stores the Cardmarket identifier for the card.
+  - name: text
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: text
+    datatype: String
+    description: Contains the rules text or abilities printed on the card (e.g., Flying).
+  - name: originalreleasedate
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: originalreleasedate
+    datatype: String
+    description: Records the original release date of the card's first printing as
+      text.
+  - name: scryfalloracleid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: scryfalloracleid
+    datatype: String
+    description: Unique Scryfall identifier for the card's oracle text.
+  - name: multiverseid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: multiverseid
+    datatype: String
+    description: Identifies the card in Wizards of the Coast's Multiverse database
+      using a numeric text code.
+  - name: watermark
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: watermark
+    datatype: String
+    description: Identifies the faction or organization symbol printed on the card.
+  - name: color_identity
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: coloridentity
+    datatype: String
+    description: Defines the card's color identity using single-letter codes for Commander
+      format legality.
+  - name: is_online_only
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isonlineonly
+    datatype: Integer
+    description: The online-only flag specifies whether the card is exclusively available
+      on the digital platform Magic Online (1 = digital-only, 0 = physical exists).
+  - name: is_reserved
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isreserved
+    datatype: Integer
+    description: Flags whether the card is on the Reserved List (1 = yes, 0 = no),
+      meaning it will never be reprinted.
+  - name: mtgjsonv4id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mtgjsonv4id
+    datatype: String
+    description: Keeps the MTGJSON v4 unique identifier for the card.
+  - name: type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: Full card type line including types and subtypes as printed (e.g.,
+      Enchantment — Aura).
+  - name: has_content_warning
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: hascontentwarning
+    datatype: Integer
+    description: The content warning flag signals whether the card carries a content
+      advisory for sensitive material (1 = yes, 0 = no).
+  - name: toughness
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: toughness
+    datatype: String
+    description: Represents the creature's toughness value as printed (e.g., 1, 2,
+      3).
+  - name: face_converted_mana_cost
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: faceconvertedmanacost
+    datatype: Float
+    description: Provides the converted mana cost for a specific face of a double-faced
+      card.
+  - name: originaltype
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: originaltype
+    datatype: String
+    description: Shows the original card type line as printed on the card's first
+      release.
+  - name: number
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: number
+    datatype: String
+    description: Indicates the collector number of the card within its set as text.
+  - name: frame_version
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: frameversion
+    datatype: String
+    description: The frame version identifies the card's frame design era using a
+      year format (YYYY) or special designation like 'future'.
+  - name: card_kingdom_foil_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cardkingdomfoilid
+    datatype: String
+    description: Identifies the Card Kingdom product ID for the foil version of the
+      card.
+  - name: originaltext
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: originaltext
+    datatype: String
+    description: Contains the original rules text printed on the card at its first
+      release.
+  - name: card_kingdom_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cardkingdomid
+    datatype: String
+    description: Identifies the Card Kingdom product ID for the non-foil version of
+      the card.
+  - name: rarity
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: rarity
+    datatype: String
+    description: Classifies the rarity level of the card in its set as common, uncommon,
+      rare, or mythic.
+  - name: supertypes
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: supertypes
+    datatype: String
+    description: Indicates special supertypes like Basic, Legendary, or Snow (e.g.,
+      Basic, Legendary).
+  - name: ascii_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: asciiname
+    datatype: String
+    description: Provides an ASCII-only version of the card name for systems lacking
+      Unicode support.
+  - name: uuid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: uuid
+    datatype: String
+    description: Universally unique identifier for the card instance, referenced by
+      foreign data and rulings.
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: 'States the official name of the Magic: The Gathering card.'
+  - name: loyalty
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: loyalty
+    datatype: String
+    description: Gives the starting loyalty value for planeswalker cards.
+  - name: flavor_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: flavorname
+    datatype: String
+    description: The flavor name provides a thematic or lore-based title for the card,
+      such as character designations from crossover franchises.
+  - name: printings
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: printings
+    datatype: String
+    description: Enumerates the set codes in which the card has been printed.
+  - name: mtgofoilid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mtgofoilid
+    datatype: String
+    description: Identifies the foil version of a card on Magic Online using a numeric
+      text code.
+  - name: manacost
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: manacost
+    datatype: String
+    description: Displays the card's mana cost in symbolic notation, e.g., {W} or
+      {2}{R}.
+  - name: tcgplayerproductid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: tcgplayerproductid
+    datatype: String
+    description: Product identifier for the card on the TCGplayer marketplace (e.g.,
+      15032).
+  - name: colors
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: colors
+    datatype: String
+    description: Lists the card's colors derived from its mana cost using single-letter
+      codes.
+  - name: face_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: facename
+    datatype: String
+    description: Gives the name of a specific face of a double-faced card.
+  - name: duel_deck
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: dueldeck
+    datatype: String
+    description: Identifies the Duel Deck product and side (a or b) the card belongs
+      to.
+  - name: types
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: types
+    datatype: String
+    description: Primary card types such as Creature, Instant, or Enchantment (e.g.,
+      Creature, Instant).
+  - name: purchaseurls
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: purchaseurls
+    datatype: String
+    description: Provides URLs for purchasing the card from various online retailers.
+  - name: color_indicator
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: colorindicator
+    datatype: String
+    description: Indicates the card's color via color indicator using single-letter
+      codes when not defined by mana cost.
+  - name: is_reprint
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isreprint
+    datatype: Integer
+    description: The reprint flag shows whether the card is a reissue of a previously
+      printed card (1 = reprint, 0 = original printing).
+  - name: availability
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: availability
+    datatype: String
+    description: Lists the platforms where the card is available as a comma-separated
+      value.
+  - name: variations
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: variations
+    datatype: String
+    description: List of UUIDs for alternate versions or printings of the same card.
+  - name: is_story_spotlight
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isstoryspotlight
+    datatype: Integer
+    description: Marks if the card is a Story Spotlight card (1 = yes, 0 = no).
+  - name: promotypes
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: promotypes
+    datatype: String
+    description: Describes the types of promotional releases associated with the card.
+  - name: is_timeshifted
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: istimeshifted
+    datatype: Integer
+    description: Shows whether the card is a timeshifted reprint (1 = yes, 0 = no).
+  - name: subtypes
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: subtypes
+    datatype: String
+    description: Lists creature, enchantment, or other subtypes associated with the
+      card (e.g., Aura, Human).
+  - name: scryfallid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: scryfallid
+    datatype: String
+    description: 'Identifies the card on Scryfall, a Magic: The Gathering database.'
+  - name: frame_effects
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: frameeffects
+    datatype: String
+    description: The frame effect indicates special visual frame treatments applied
+      to the card, such as legendary styling.
+  - name: is_alternative
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isalternative
+    datatype: Integer
+    description: The alternative version flag identifies whether the card is an alternate
+      version, such as alternate art or borderless treatment (1 = yes, 0 = no).
+- name: card_legality
+  source: d2_card_games.public.legalities
+  fields:
+  - name: game_format
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: format
+    datatype: String
+    description: 'Specifies the Magic: The Gathering game format, such as Commander
+      or Modern, governing the card''s legality.'
+  - name: id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each card legality record with a sequential numeric
+      key.
+  - name: global_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: uuid
+    datatype: String
+    description: Provides a globally unique identifier for cross-system referencing
+      of the card legality record.
+  - name: legality_status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: status
+    datatype: String
+    description: Indicates the card's legal standing in the format, with values Legal,
+      Banned, or Restricted.
+- name: localized_card_data
+  source: d2_card_games.public.foreign_data
+  description: Localized card information including name, rules text, flavor text,
+    and type for a specific language.
+  fields:
+  - name: language
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: language
+    datatype: String
+    description: Language of the localized card name, rules text, and flavor text.
+  - name: multiverseid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: multiverseid
+    datatype: Integer
+    description: 'Identifies the Magic: The Gathering card in the Multiverse database.'
+  - name: record_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Unique identifier for each localized card data record.
+  - name: rules_text
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: text
+    datatype: String
+    description: Localized rules text describing the card's abilities in the specified
+      language.
+  - name: card_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: Localized card type classification in the specified language.
+  - name: name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Localized name of the card in the specified language.
+  - name: flavor_text
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: flavortext
+    datatype: String
+    description: Localized flavor text for the card in the specified language.
+  - name: uuid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: uuid
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: magic_set
+  source: d2_card_games.public.sets
+  unique_keys:
+  - - set_code
+  fields:
+  - name: mtgo_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mtgocode
+    datatype: String
+    description: 'Specifies the set code used on Magic: The Gathering Online for digital
+      representation and redemption.'
+  - name: set_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: code
+    datatype: String
+    description: Represents the official three- to four-character abbreviated set
+      code used in translations and parent set references.
+  - name: set_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: The classification of the Magic product, such as expansion, promo,
+      memorabilia, box, or duel deck.
+  - name: is_non_foil_only
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isnonfoilonly
+    datatype: Integer
+    description: Flags whether the set contains only non-foil cards (1) or includes
+      foil cards (0).
+  - name: is_foreign_only
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isforeignonly
+    datatype: Integer
+    description: Indicates whether the set is printed exclusively in non-English languages
+      (1) or not (0).
+  - name: block
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: block
+    datatype: String
+    description: Categorizes the set by product line, block, or promotional category
+      such as Core Set or Commander.
+  - name: release_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: releasedate
+    datatype: Date
+    description: The official release date of the Magic set, formatted as YYYY-MM-DD.
+  - name: mcm_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mcmname
+    datatype: String
+    description: States the set name as listed on the Cardmarket marketplace for identification
+      and search.
+  - name: is_partial_preview
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ispartialpreview
+    datatype: Integer
+    description: Flags whether the set is a partial preview release (1) or a full
+      release (0).
+  - name: total_set_size
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: totalsetsize
+    datatype: Integer
+    description: The total count of cards included in the Magic set.
+  - name: base_set_size
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: basesetsize
+    datatype: Integer
+    description: Indicates the base count of distinct cards in the set, excluding
+      foil, promo, and variant cards.
+  - name: is_foil_only
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isfoilonly
+    datatype: Integer
+    description: Flags whether the set contains only foil cards (1) or includes non-foil
+      cards (0).
+  - name: mcmid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mcmid
+    datatype: Integer
+    description: Identifies the set's product listing on the Cardmarket marketplace
+      with a unique numeric identifier.
+  - name: booster_configuration
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: booster
+    datatype: String
+    description: Defines the booster pack configuration as a JSON structure detailing
+      card slots, weights, and sheet distributions.
+  - name: set_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: 'Uniquely identifies each Magic: The Gathering set or product with
+      a numeric identifier.'
+  - name: tcgplayergroupid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: tcgplayergroupid
+    datatype: Integer
+    description: A TCGPlayer grouping identifier that categorizes related product
+      printings and conditions under a single product group.
+  - name: set_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: 'The official full name identifying a Magic: The Gathering set, such
+      as ''Tenth Edition'' or ''Double Masters''.'
+  - name: mcmidextras
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: mcmidextras
+    datatype: Integer
+    description: Provides a supplementary Cardmarket identifier to distinguish variant
+      or additional product entries for the set.
+  - name: is_online_only
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: isonlineonly
+    datatype: Integer
+    description: 'Indicates whether the set is exclusive to Magic: The Gathering Online
+      (1) or also available physically (0).'
+  - name: keyrune_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: keyrunecode
+    datatype: String
+    description: Provides an internal system code for set identification on platforms
+      using Keyrune or symbol encoding.
+  - name: parentcode
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: parentcode
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: ruling
+  source: d2_card_games.public.rulings
+  description: 'A Magic: The Gathering rule or card ruling entry.'
+  fields:
+  - name: effective_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: Date
+    description: Effective date of the ruling in YYYY-MM-DD format indicating when
+      the rule becomes applicable.
+  - name: ruling_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: 'Unique numeric identifier assigned to each Magic: The Gathering
+      rule or card ruling entry.'
+  - name: ruling_text
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: text
+    datatype: String
+    description: 'Complete textual content of the Magic: The Gathering rule or card
+      ruling providing official interpretation.'
+  - name: uuid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: uuid
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: set_translation
+  source: d2_card_games.public.set_translations
+  description: 'A localized name for a Magic: The Gathering set in a specific language.'
+  fields:
+  - name: language
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: language
+    datatype: String
+    description: Specifies the language and regional variant for the localized set
+      name.
+  - name: translated_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: translation
+    datatype: String
+    description: 'Provides the translated Magic: The Gathering set name in the specified
+      language.'
+  - name: translation_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each set translation record.
+  - name: setcode
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: setcode
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_card_games","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"3e857448-166a-45e0-9504-99e3259c225a","schemas":[{"database_name":"d2_card_games","id":"85f2f820-b69f-496d-b771-eb7227b8d41d","name":"public","tables":[{"columns":[{"description":"Unique
+    identifier for each card record in the dataset.","id":"d0db4622-db3b-4602-84d7-b332b90d9b69","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Name
+    of the artist who illustrated the card.","id":"0660e1a2-14dd-4f0d-b6a1-a5df9fa9edb5","is_nullable":true,"is_unique":false,"name":"artist","sample_values":["Dan
+    Frazier","Douglas Shuler","Kev Walker","Anson Maddocks","Mark Poole"],"type":"text"},{"description":"ASCII-only
+    representation of the card name for compatibility with systems that do not support
+    Unicode characters.","id":"31ea1d2e-3a90-4382-b2e3-a7e9990e2733","is_nullable":true,"is_unique":false,"name":"asciiname","sample_values":[],"type":"text"},{"description":"Comma-separated
+    list of platforms or formats where the card is available, such as MTGO, paper,
+    Arena, Dreamcast, or Shandalar.","id":"3cef6b6e-cc42-480f-9a8f-a276b7410a64","is_nullable":true,"is_unique":false,"name":"availability","sample_values":["mtgo,paper","paper","arena","mtgo","dreamcast","arena,mtgo","arena,paper","shandalar","arena,mtgo,paper"],"type":"text"},{"description":"Color
+    or style of the card''s border, such as black, white, borderless, silver, or gold.","id":"c2825615-39cf-4f35-b346-ca583924b656","is_nullable":true,"is_unique":false,"name":"bordercolor","sample_values":["black","white","borderless","silver","gold"],"type":"text"},{"description":"Card
+    Kingdom product identifier for the foil version of the card.","id":"f3dd57b3-fb3d-4a28-957a-3429505f034c","is_nullable":true,"is_unique":true,"name":"cardkingdomfoilid","sample_values":["123094","123095","123096","123097","123098"],"type":"text"},{"description":"Card
+    Kingdom product identifier for the non-foil version of the card.","id":"a4d7e0c3-1cf8-4d28-93c2-f246780df139","is_nullable":true,"is_unique":true,"name":"cardkingdomid","sample_values":["122719","122720","122725","122726","122727"],"type":"text"},{"description":"Color
+    identity of the card using single-letter codes (W, U, B, R, G) for Commander format
+    legality.","id":"fc5e9e63-8059-4608-b91d-ca0a797764c1","is_nullable":true,"is_unique":false,"name":"coloridentity","sample_values":["W","U","R","B","G"],"type":"text"},{"description":"Color
+    indicator of the card using single-letter codes, representing its color when not
+    defined by mana cost.","id":"5a7805ac-e94b-47d7-bd52-792e65f0a08f","is_nullable":true,"is_unique":false,"name":"colorindicator","sample_values":["B","B,G","B,R,U","G","G,R","G,R,W","R","U","W"],"type":"text"},{"description":"Colors
+    of the card as defined by its mana cost, represented by single-letter codes (W,
+    U, B, R, G).","id":"c01f3560-8d57-4e09-8d46-ab90f8492281","is_nullable":true,"is_unique":false,"name":"colors","sample_values":["W","U","R","B","G"],"type":"text"},{"description":"Total
+    converted mana cost of the card, calculated as the sum of all mana symbols in
+    its cost.","id":"ae530abc-e46c-4c17-af71-6abfb83afdc2","is_nullable":true,"is_unique":false,"name":"convertedmanacost","sample_values":[3.0,1.0,2.0,4.0,5.0],"type":"real"},{"description":"Identifier
+    for the Duel Deck product the card belongs to, if any (e.g., ''a'' or ''b'' for
+    the two decks in a set).","id":"6de2bad1-a05b-4175-b48c-8451aeb989d3","is_nullable":true,"is_unique":false,"name":"dueldeck","sample_values":["b","a"],"type":"text"},{"description":"Popularity
+    rank of the card on EDHREC, where a lower number indicates higher usage in Commander
+    decks.","id":"991ad1ac-fc97-4b71-927c-cd37e5434008","is_nullable":true,"is_unique":false,"name":"edhrecrank","sample_values":[11535.0,9891.0,4659.0,11649.0,17950.0],"type":"bigint"},{"description":"Converted
+    mana cost of a specific face of a double-faced card.","id":"89ae6b4e-f74e-4478-bbec-61140727d631","is_nullable":true,"is_unique":false,"name":"faceconvertedmanacost","sample_values":[],"type":"real"},{"description":"Name
+    of a specific face of a double-faced card.","id":"95efa61c-ce1b-4d16-bdb6-ccb9800dc92f","is_nullable":true,"is_unique":false,"name":"facename","sample_values":[],"type":"text"},{"description":"The
+    flavorname column stores the thematic or lore-based name of a card, such as character
+    titles from the Godzilla franchise crossover.","id":"beddfb40-a2cf-4ed4-9612-cdf83084b8b1","is_nullable":true,"is_unique":false,"name":"flavorname","sample_values":["Anguirus,
+    Armored Killer","Babygodzilla, Ruin Reborn","Battra, Dark Destroyer","Bio-Quartz
+    Spacegodzilla","Biollante, Plant Beast Form","Destoroyah, Perfect Lifeform","Dorat,
+    the Perfect Pet","Ghidorah, King of the Cosmos","Gigan, Cyberclaw Terror","Godzilla,
+    Doom Inevitable","Godzilla, King of the Monsters","Godzilla, Primeval Champion","King
+    Caesar, Ancient Guardian","King Caesar, Awoken Titan","Mechagodzilla, Battle Fortress","Mechagodzilla,
+    the Weapon","Mothra''s Great Cocoon","Mothra, Supersonic Queen","Rodan, Titan
+    of Winged Fury","Spacegodzilla, Death Corona","Spacegodzilla, Void Invader"],"type":"text"},{"description":"The
+    flavortext column contains the narrative quotation printed on a card to provide
+    lore context or storytelling flavor.","id":"d2d80843-33e5-4204-a091-c6dda84a466c","is_nullable":true,"is_unique":false,"name":"flavortext","sample_values":[],"type":"text"},{"description":"The
+    frameeffects column identifies special visual frame treatments applied to a card,
+    such as the legendary frame style.","id":"9d4946f9-a566-4db7-bb6d-75f22e50830f","is_nullable":true,"is_unique":false,"name":"frameeffects","sample_values":["legendary"],"type":"text"},{"description":"The
+    frameversion column denotes the card frame design era or version, indicated by
+    year labels or special designations like \"future\".","id":"063a6f7c-f53f-4bee-9cb7-fc1216182029","is_nullable":true,"is_unique":false,"name":"frameversion","sample_values":["2003","1993","2015","future","1997"],"type":"text"},{"description":"The
+    hand column records the hand size modifier associated with a card, represented
+    as positive, negative, or zero integer values.","id":"4536aacb-dfa7-4e64-baae-c6390a7cbbb9","is_nullable":true,"is_unique":false,"name":"hand","sample_values":["-1","-2","-3","-4","0","1","2","3"],"type":"text"},{"description":"The
+    hasalternativedecklimit column is a binary flag indicating whether a card exempts
+    the standard deck construction limit (1 = yes, 0 = no).","id":"ec1bfa34-7f10-4d14-aa41-7b3170167fd4","is_nullable":true,"is_unique":false,"name":"hasalternativedecklimit","sample_values":[0,1],"type":"bigint"},{"description":"The
+    hascontentwarning column is a binary flag signaling whether a card carries a content
+    advisory for sensitive material (1 = yes, 0 = no).","id":"376f30e4-8314-4112-ae02-3cb683165b8c","is_nullable":true,"is_unique":false,"name":"hascontentwarning","sample_values":[0,1],"type":"bigint"},{"description":"The
+    hasfoil column is a binary flag denoting the existence of a foil-printed version
+    of the card (1 = available, 0 = not available).","id":"5039cfcf-d47d-44d9-abb4-4e03727e173d","is_nullable":true,"is_unique":false,"name":"hasfoil","sample_values":[1,0],"type":"bigint"},{"description":"The
+    hasnonfoil column is a binary flag denoting the existence of a non-foil printed
+    version of the card (1 = available, 0 = not available).","id":"f3a6d5fc-5dfc-449c-b282-9c4a9518ef13","is_nullable":true,"is_unique":false,"name":"hasnonfoil","sample_values":[1,0],"type":"bigint"},{"description":"The
+    isalternative column is a binary flag identifying whether a card is an alternate
+    version, such as alternate art or borderless treatment (1 = yes, 0 = no).","id":"bedbf841-6959-4a2d-b0c8-75344d359b11","is_nullable":true,"is_unique":false,"name":"isalternative","sample_values":[0,1],"type":"bigint"},{"description":"The
+    isfullart column is a binary flag indicating whether a card features full-art
+    illustration extending to the card borders (1 = yes, 0 = no).","id":"c8782995-8ed9-44a6-9de3-71830119e305","is_nullable":true,"is_unique":false,"name":"isfullart","sample_values":[0],"type":"bigint"},{"description":"The
+    isonlineonly column is a binary flag specifying whether a card is exclusively
+    available on the digital platform Magic Online (1 = digital-only, 0 = physical
+    exists).","id":"de846506-2fe2-411b-82e6-1dc8683349f5","is_nullable":true,"is_unique":false,"name":"isonlineonly","sample_values":[0,1],"type":"bigint"},{"description":"The
+    isoversized column is a binary flag marking whether a card is produced in an oversized
+    physical format (1 = yes, 0 = no).","id":"870b4113-a1ec-4c9c-8e88-76a3e18127ad","is_nullable":true,"is_unique":false,"name":"isoversized","sample_values":[0],"type":"bigint"},{"description":"The
+    ispromo column is a binary flag indicating whether a card was released as a promotional
+    product (1 = yes, 0 = no).","id":"0972291f-dad6-49fd-af40-cc365b5231f1","is_nullable":true,"is_unique":false,"name":"ispromo","sample_values":[0],"type":"bigint"},{"description":"The
+    isreprint column is a binary flag showing whether a card is a reissue of a previously
+    printed card (1 = reprint, 0 = original printing).","id":"1c6b22e7-a783-4189-849b-bec588655f5f","is_nullable":true,"is_unique":false,"name":"isreprint","sample_values":[1],"type":"bigint"},{"description":"Indicates
+    whether the card is on the Reserved List (1) or not (0).","id":"c5b8d59f-5d6e-4f7c-ad3f-0f77e9f5457f","is_nullable":true,"is_unique":false,"name":"isreserved","sample_values":[0,1],"type":"bigint"},{"description":"Indicates
+    whether the card is from a starter product (1) or not (0).","id":"658d77d5-e41f-4156-a987-8023232da97b","is_nullable":true,"is_unique":false,"name":"isstarter","sample_values":[0,1],"type":"bigint"},{"description":"Indicates
+    whether the card is a Story Spotlight card (1) or not (0).","id":"acf51406-502f-4e6e-a0c0-0b07a50f4706","is_nullable":true,"is_unique":false,"name":"isstoryspotlight","sample_values":[0],"type":"bigint"},{"description":"Indicates
+    whether the card is a textless promotional version (1) or not (0).","id":"a2e27740-aad9-43b8-bfb3-d31cd9bd488c","is_nullable":true,"is_unique":false,"name":"istextless","sample_values":[0],"type":"bigint"},{"description":"Indicates
+    whether the card is a timeshifted reprint (1) or not (0).","id":"b3677c6c-decc-4c94-858d-7b54bec599b5","is_nullable":true,"is_unique":false,"name":"istimeshifted","sample_values":[0],"type":"bigint"},{"description":"Lists
+    the keyword abilities present on the card.","id":"cb193d26-e154-4765-8a34-d3d5249d5355","is_nullable":true,"is_unique":false,"name":"keywords","sample_values":["Flying","Enchant","First
+    strike","Haste","Trample"],"type":"text"},{"description":"Specifies the physical
+    layout or card frame type of the card.","id":"91c5a213-8714-4845-b64c-ad81046fe332","is_nullable":true,"is_unique":false,"name":"layout","sample_values":["normal","planar","split","saga","modal_dfc","transform","scheme","adventure","meld","augment","leveler","aftermath","host","flip","vanguard"],"type":"text"},{"description":"Indicates
+    the card''s eligibility as a commander in Brawl, Commander, and Oathbreaker formats.","id":"445f8910-1fbb-4d26-8902-c3db465bf9d8","is_nullable":true,"is_unique":false,"name":"leadershipskills","sample_values":[],"type":"text"},{"description":"Represents
+    the life total modifier for Vanguard or Plane cards.","id":"f414b978-9d8b-40e1-a419-8109b6488425","is_nullable":true,"is_unique":false,"name":"life","sample_values":["-1","-2","-3","-4","-5","-6","-7","-8","0","1","10","12","15","18","2","3","30","4","5","6","7","8","9"],"type":"text"},{"description":"Indicates
+    the starting loyalty of a planeswalker card.","id":"6f196a04-f26a-4009-aac2-06160730427d","is_nullable":true,"is_unique":true,"name":"loyalty","sample_values":["6","3"],"type":"text"},{"description":"Represents
+    the mana cost of the card in symbolic notation.","id":"72f641de-62b3-4084-9262-e571a7a05970","is_nullable":true,"is_unique":false,"name":"manacost","sample_values":["{W}","{2}{R}","{2}{W}","{R}","{1}{W}"],"type":"text"},{"description":"Stores
+    the Cardmarket (formerly MagicCardMarket) identifier for the card.","id":"13dc0bcc-6d74-42fe-a97e-245c6cce67cb","is_nullable":true,"is_unique":false,"name":"mcmid","sample_values":["16165","16166","16171","16175","16296"],"type":"text"},{"description":"Stores
+    the Cardmarket metadata identifier for the card''s printing.","id":"185b1dfe-dc74-401f-945c-7b1d6454b96d","is_nullable":true,"is_unique":false,"name":"mcmmetaid","sample_values":["4251","2923","3743","2177","5739"],"type":"text"},{"description":"Stores
+    the MTG Arena internal identifier for the card.","id":"0a32034a-401b-47fa-969f-b997d3f56494","is_nullable":true,"is_unique":true,"name":"mtgarenaid","sample_values":["74078","75465","75466","75467"],"type":"text"},{"description":"Stores
+    the MTGJSON v4 unique identifier for the card.","id":"02d4dd97-1073-4845-9266-2f33d4e398ca","is_nullable":true,"is_unique":true,"name":"mtgjsonv4id","sample_values":[],"type":"text"},{"description":"Unique
+    identifier for the foil version of a card on Magic Online.","id":"6ed9a81a-c3c5-476d-b04a-fb4f1a96fca9","is_nullable":true,"is_unique":true,"name":"mtgofoilid","sample_values":["27501","26993","27473","27327","27095"],"type":"text"},{"description":"Unique
+    identifier for the non-foil version of a card on Magic Online.","id":"949906cf-e195-4a71-9fb5-46ba239bb53b","is_nullable":true,"is_unique":true,"name":"mtgoid","sample_values":["27500","26992","27472","27326","27094"],"type":"text"},{"description":"Unique
+    identifier assigned to a card in the Multiverse database used by Wizards of the
+    Coast.","id":"7663084b-53c1-4cbc-aea3-ea5dadc2a01b","is_nullable":true,"is_unique":true,"name":"multiverseid","sample_values":["130550","129465","129470","129477","132106"],"type":"text"},{"description":"Official
+    name of the Magic: The Gathering card.","id":"ff5a2930-5d71-4fd3-b751-8c624f67b5dd","is_nullable":true,"is_unique":false,"name":"name","sample_values":["Plains","Island","Mountain","Forest","Swamp"],"type":"text"},{"description":"Collector
+    number of the card within its set.","id":"7508f42b-9fbc-49ec-945a-fcef5b4b8140","is_nullable":true,"is_unique":false,"name":"number","sample_values":["24","25","23","38","63"],"type":"text"},{"description":"Original
+    release date of the card''s first printing.","id":"9950deae-87c3-46ae-86e7-7dca6f57f8c1","is_nullable":true,"is_unique":false,"name":"originalreleasedate","sample_values":[],"type":"text"},{"description":"Original
+    rules text printed on the card at its first release.","id":"f21bdc43-41f0-4958-84a5-26d71fae59ff","is_nullable":true,"is_unique":false,"name":"originaltext","sample_values":["Flying","W","U","R"],"type":"text"},{"description":"Original
+    card type line as printed on the card''s first release.","id":"aed29887-d4b7-497b-813f-0f0683758371","is_nullable":true,"is_unique":false,"name":"originaltype","sample_values":["Sorcery","Instant","Enchantment","Land","Enchant
+    Creature"],"type":"text"},{"description":"Identifiers for the other faces of a
+    double-faced or meld card.","id":"2976eed2-b92e-4b5c-a37f-1a3e25489dc3","is_nullable":true,"is_unique":false,"name":"otherfaceids","sample_values":[],"type":"text"},{"description":"Power
+    value of a creature card, indicating its combat damage.","id":"76c1b052-f538-492a-89a2-b6012a3608f9","is_nullable":true,"is_unique":false,"name":"power","sample_values":["2","1","3","4","0"],"type":"text"},{"description":"List
+    of set codes in which the card has been printed.","id":"21ab6a5e-4276-4cbe-8639-833240fc901c","is_nullable":true,"is_unique":false,"name":"printings","sample_values":[],"type":"text"},{"description":"Types
+    of promotional releases associated with the card.","id":"23724847-ba03-4eda-b157-b815535976bd","is_nullable":true,"is_unique":false,"name":"promotypes","sample_values":[],"type":"text"},{"description":"URLs
+    for purchasing the card from various online retailers.","id":"e7cbcfdd-1b4a-40f6-8228-aee3bcbca8d4","is_nullable":true,"is_unique":true,"name":"purchaseurls","sample_values":[],"type":"text"},{"description":"Rarity
+    level of the card in its set, such as common, uncommon, rare, or mythic.","id":"516a99df-d06e-4591-a08e-78f9a43e1267","is_nullable":true,"is_unique":false,"name":"rarity","sample_values":["common","rare","uncommon","mythic"],"type":"text"},{"description":"Unique
+    identifier for the card on Scryfall, a Magic: The Gathering database.","id":"fb940ce1-9f88-482e-85cc-a4ee961d0e18","is_nullable":true,"is_unique":true,"name":"scryfallid","sample_values":[],"type":"text"},{"description":"Unique
+    identifier for the card''s illustration on Scryfall.","id":"490445cd-b526-4415-9301-e0da5974d7aa","is_nullable":true,"is_unique":false,"name":"scryfallillustrationid","sample_values":[],"type":"text"},{"description":"Unique
+    identifier for the card''s oracle text on Scryfall.","id":"7611c4ae-b881-4548-bec4-502a43ea8969","is_nullable":true,"is_unique":false,"name":"scryfalloracleid","sample_values":[],"type":"text"},{"description":"Abbreviated
+    code representing the Magic: The Gathering set the card belongs to.","id":"e4dee980-69d7-4984-9cab-66ed4e921d09","is_nullable":true,"is_unique":false,"name":"setcode","sample_values":["10E","2ED","2XM","4BB","3ED"],"type":"text"},{"description":"Designates
+    the face or side of a double-faced or multi-faced card.","id":"6462f44c-8c2f-4f1e-9b99-d989faa5f443","is_nullable":true,"is_unique":false,"name":"side","sample_values":["a","b","c","d","e"],"type":"text"},{"description":"Lists
+    the creature types, enchantment types, or other subtypes associated with the card.","id":"15abe71d-692b-437a-976d-a02fa141fade","is_nullable":true,"is_unique":false,"name":"subtypes","sample_values":["Aura","Elemental","Human,Wizard","Wall","Angel"],"type":"text"},{"description":"Indicates
+    special card supertypes such as Basic, Legendary, or Snow.","id":"dbec8685-4b66-4394-b596-56a065abd272","is_nullable":true,"is_unique":false,"name":"supertypes","sample_values":["Basic","Legendary","World","Host","Basic,Snow","Snow","Ongoing","Legendary,Snow"],"type":"text"},{"description":"Product
+    identifier for the card on TCGplayer marketplace.","id":"47ff199b-f27d-49ae-9574-a3b450d36f3f","is_nullable":true,"is_unique":false,"name":"tcgplayerproductid","sample_values":["15032","15033","15045","15054","15084"],"type":"text"},{"description":"Contains
+    the rules text or abilities printed on the card.","id":"b2ff83ff-aa6a-4ef7-ac82-e024b019e382","is_nullable":true,"is_unique":false,"name":"text","sample_values":["Flying","({T}:
+    Add {W}.)","({T}: Add {U}.)","({T}: Add {R}.)"],"type":"text"},{"description":"Represents
+    the creature''s toughness value as printed on the card.","id":"3893de33-42bd-449a-9eda-a369b84efc60","is_nullable":true,"is_unique":false,"name":"toughness","sample_values":["1","2","3","4","5"],"type":"text"},{"description":"Full
+    card type line including types and subtypes as printed.","id":"d558d076-62d0-4329-9441-040175af2279","is_nullable":true,"is_unique":false,"name":"type","sample_values":["Instant","Sorcery","Enchantment
+    \u2014 Aura","Enchantment","Artifact"],"type":"text"},{"description":"Primary
+    card types such as Creature, Instant, or Enchantment.","id":"dea13a65-2ea1-4326-82b0-ea165d3a0393","is_nullable":true,"is_unique":false,"name":"types","sample_values":["Creature","Enchantment","Instant","Sorcery","Artifact"],"type":"text"},{"description":"Universally
+    unique identifier for the card instance in the dataset.","id":"bbfd9a8b-525d-4d46-8872-9ef3f8bc47c1","is_nullable":true,"is_unique":true,"name":"uuid","sample_values":[],"type":"text"},{"description":"List
+    of UUIDs for alternate versions or printings of the same card.","id":"9eb443f6-112c-4ba4-af35-2493c53db1df","is_nullable":true,"is_unique":true,"name":"variations","sample_values":[],"type":"text"},{"description":"Identifies
+    the faction or organization symbol printed on the card.","id":"3b59a17a-7026-412a-b204-c24c6ea5ecd7","is_nullable":true,"is_unique":false,"name":"watermark","sample_values":[],"type":"text"}],"description":"","id":"d13c5514-c0fa-49e1-abc9-06a40e091656","name":"cards","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each card record.","id":"653a0cda-496f-4d9a-a056-dc82f9e82b8a","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Localized
+    flavor text for the card in the given language.","id":"621792ec-2868-46a2-958b-cebfd3d36c62","is_nullable":true,"is_unique":false,"name":"flavortext","sample_values":[""],"type":"text"},{"description":"Language
+    in which the card''s name, text, and flavor text are presented.","id":"0b69e36b-8809-44cf-9950-30865637a19b","is_nullable":true,"is_unique":false,"name":"language","sample_values":["French","Italian","German","Spanish","Chinese
+    Simplified"],"type":"text"},{"description":"A unique identifier for a Magic: The
+    Gathering card in the Multiverse database.","id":"c7545fad-0305-4a7d-9ece-44018bf705ee","is_nullable":true,"is_unique":true,"name":"multiverseid","sample_values":[148411.0,150317.0,149934.0,148794.0,148028.0],"type":"bigint"},{"description":"Localized
+    name of the card.","id":"901aab10-8680-4eda-91bc-709499763b03","is_nullable":true,"is_unique":true,"name":"name","sample_values":["Nekrataal","Clone","Pacifismo","Paria","Condenar"],"type":"text"},{"description":"Localized
+    rules text describing the card''s abilities.","id":"0af7b775-0805-4661-86b3-87c4e8f89323","is_nullable":true,"is_unique":false,"name":"text","sample_values":[""],"type":"text"},{"description":"Localized
+    card type classification.","id":"b7253e94-7a98-40fe-8993-12aa121fe5e7","is_nullable":true,"is_unique":false,"name":"type","sample_values":["Spontanzauber","Instant\u00e1neo","\u00c9ph\u00e9m\u00e8re","Istantaneo","\u30a4\u30f3\u30b9\u30bf\u30f3\u30c8"],"type":"text"},{"description":"","id":"8edfcbe2-ca68-4df8-add1-488db6580272","is_nullable":true,"is_unique":false,"name":"uuid","sample_values":[],"type":"text"}],"description":"","id":"7111be64-f4fd-4191-88d9-5a62ffb9fde5","name":"foreign_data","pk":[],"type":"base
+    table"},{"columns":[{"description":"A unique numeric identifier for each record
+    in the table.","id":"b4f9218c-cf04-4ee8-b7f8-f991a214effb","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"The
+    Magic: The Gathering game format to which the card legality applies.","id":"dc9f9c80-698b-4cf8-9422-b9f2c3764aef","is_nullable":true,"is_unique":false,"name":"format","sample_values":["commander","duel","legacy","modern","vintage"],"type":"text"},{"description":"The
+    legality status of a card within a specific format, such as Legal, Banned, or
+    Restricted.","id":"558d1be7-c1e8-4ed5-9366-9a82ca60bf62","is_nullable":true,"is_unique":false,"name":"status","sample_values":["Legal","Banned","Restricted"],"type":"text"},{"description":"A
+    globally unique identifier assigned to each record for cross-system reference.","id":"4b74c801-c8e8-4396-9724-66f018172250","is_nullable":true,"is_unique":false,"name":"uuid","sample_values":[],"type":"text"}],"description":"","id":"05fbdf4d-62fe-4651-8218-5bd38c65523a","name":"legalities","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique numeric identifier for each rule entry.","id":"c0110ffd-45c9-4593-bad9-29fd15db3b9f","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Effective
+    date associated with the rule entry.","id":"024d5d9b-6133-48ac-9560-c6d132834599","is_nullable":true,"is_unique":false,"name":"date","sample_values":[],"type":"date"},{"description":"Full
+    textual content of the Magic: The Gathering rule or card ruling.","id":"2d9349cd-84c0-4b8c-a1c1-5c2d3d60d7e4","is_nullable":true,"is_unique":false,"name":"text","sample_values":[],"type":"text"},{"description":"","id":"9b06bf20-27b9-4353-8d47-7f07106b8597","is_nullable":true,"is_unique":false,"name":"uuid","sample_values":[],"type":"text"}],"description":"","id":"b09db84d-2f5d-420c-ba95-f690ba361f08","name":"rulings","pk":[],"type":"base
+    table"},{"columns":[{"description":"A unique numeric identifier for each Magic:
+    The Gathering set or product in the system.","id":"90549733-95af-4faf-bfea-2cb843e4c26b","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"The
+    base number of distinct cards in the set, excluding foils, promos, and other variants.","id":"d5177c22-aa32-428e-b807-5516a99a9b1c","is_nullable":true,"is_unique":false,"name":"basesetsize","sample_values":[5,1,2,6,12],"type":"bigint"},{"description":"The
+    product line, block, or promotional category to which the set belongs, such as
+    Core Set or Commander.","id":"5f372df8-006b-4d01-ab4c-20fb1084dd07","is_nullable":true,"is_unique":false,"name":"block","sample_values":["Core
+    Set","Commander","Judge Gift Cards","Friday Night Magic","Theros"],"type":"text"},{"description":"A
+    JSON structure defining the booster pack configuration, including card slot contents,
+    weights, and sheet distributions for the set.","id":"28e84c20-9939-4545-999b-cbf7419b5ce1","is_nullable":true,"is_unique":false,"name":"booster","sample_values":[],"type":"text"},{"description":"The
+    official three- to four-character abbreviated set code used in Magic: The Gathering
+    (e.g., 10E for Tenth Edition).","id":"ac9fd140-0ac1-4fe4-a8d2-0915a1e82ce2","is_nullable":true,"is_unique":true,"name":"code","sample_values":["10E","2ED","2XM","3ED","4BB"],"type":"text"},{"description":"A
+    binary flag indicating whether the set consists exclusively of foil cards (1)
+    or not (0).","id":"8ac59cd3-f820-4bf6-883f-7d959fd97a1c","is_nullable":true,"is_unique":false,"name":"isfoilonly","sample_values":[0,1],"type":"bigint"},{"description":"A
+    binary flag indicating whether the set is only printed in non-English languages
+    (1) or not (0).","id":"1f894008-5b7a-4f0b-98a3-4e6d57c40382","is_nullable":true,"is_unique":false,"name":"isforeignonly","sample_values":[0,1],"type":"bigint"},{"description":"A
+    binary flag indicating whether the set contains only non-foil cards (1) or not
+    (0).","id":"073c0469-31b0-4a1b-9430-06af972d5733","is_nullable":true,"is_unique":false,"name":"isnonfoilonly","sample_values":[0,1],"type":"bigint"},{"description":"A
+    binary flag indicating whether the set is exclusive to Magic: The Gathering Online
+    (1) or not (0).","id":"886d8f33-45ec-4002-bdff-9e620e0db4a1","is_nullable":true,"is_unique":false,"name":"isonlineonly","sample_values":[0,1],"type":"bigint"},{"description":"A
+    binary flag indicating whether the set is a partial preview release (1) or a full
+    release (0).","id":"d8f709a6-66db-4020-baca-3d30cfc608b2","is_nullable":true,"is_unique":false,"name":"ispartialpreview","sample_values":[0,1],"type":"bigint"},{"description":"An
+    internal system code, likely related to Keyrune or set symbol encoding, used to
+    identify the set in specific platforms.","id":"2e9e10a9-9f7a-4193-82cc-01391caaf706","is_nullable":true,"is_unique":false,"name":"keyrunecode","sample_values":["PMEI","DEFAULT","DCI","PARL","ZNR"],"type":"text"},{"description":"Unique
+    identifier for a product or card listing on the Cardmarket (formerly MagicCardMarket)
+    marketplace.","id":"07179606-28ff-4012-9d49-8f537471641c","is_nullable":true,"is_unique":true,"name":"mcmid","sample_values":[74.0,3204.0,10.0,47.0,23.0],"type":"bigint"},{"description":"Supplementary
+    identifier on Cardmarket used to distinguish variant or additional product entries
+    related to a primary listing.","id":"5103e304-07ee-45c6-a366-5f739741c3f4","is_nullable":true,"is_unique":true,"name":"mcmidextras","sample_values":[3209.0,3459.0,2587.0,2371.0,3113.0],"type":"bigint"},{"description":"The
+    set name as listed on MagicCardMarket (MCM), the European marketplace for Magic
+    cards.","id":"c628d5b5-b909-493e-b7f1-0161d3b981be","is_nullable":true,"is_unique":true,"name":"mcmname","sample_values":["Tenth
+    Edition","Double Masters","Fourth Edition","Fifth Dawn","Fifth Edition"],"type":"text"},{"description":"The
+    set code used on Magic: The Gathering Online (MTGO) for digital representation
+    and redemption.","id":"3f214e38-1cdc-4d47-8a63-075fa8c48719","is_nullable":true,"is_unique":true,"name":"mtgocode","sample_values":["10E","2XM","5DN","7E","8ED"],"type":"text"},{"description":"The
+    official full name of the Magic: The Gathering set (e.g., Tenth Edition, Double
+    Masters).","id":"39612df8-435e-4853-b6e4-fb018f07abff","is_nullable":true,"is_unique":true,"name":"name","sample_values":["Tenth
+    Edition","Unlimited Edition","Double Masters","Revised Edition"],"type":"text"},{"description":"","id":"808f89da-df15-4c61-9cb0-bf31af2d3441","is_nullable":true,"is_unique":false,"name":"parentcode","sample_values":["ZNR","M15","FRF","BFZ","M19"],"type":"text"},{"description":"The
+    official release date of the Magic: The Gathering set.","id":"d64e19f3-002c-4f12-a4ac-ef5f3f875b12","is_nullable":true,"is_unique":false,"name":"releasedate","sample_values":[],"type":"date"},{"description":"Grouping
+    identifier on TCGPlayer that categorizes related products, such as printings or
+    conditions, under a single product group.","id":"2d8d749f-a033-4950-ad4d-624ef8b94c26","is_nullable":true,"is_unique":false,"name":"tcgplayergroupid","sample_values":[62.0,33.0,2359.0,1.0,115.0],"type":"bigint"},{"description":"The
+    total number of cards in the set.","id":"d6300139-491d-4af9-a0b6-c2786b31e47e","is_nullable":true,"is_unique":false,"name":"totalsetsize","sample_values":[5,1,2,6,12],"type":"bigint"},{"description":"The
+    classification of the set or product, such as promo, expansion, memorabilia, box,
+    or duel deck.","id":"9ff72002-9644-4c6f-b8ea-ccfcc0bfdb93","is_nullable":true,"is_unique":false,"name":"type","sample_values":["promo","expansion","memorabilia","box","duel_deck"],"type":"text"}],"description":"","id":"39db932f-641e-4fa7-ad82-701d5a0c7e99","name":"sets","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each translation record.","id":"3b39b1b1-78d7-4b01-b944-f3a57ab0eb88","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"The
+    target language for the translation, including regional variants such as Chinese
+    Simplified and Chinese Traditional.","id":"4d3e8dc2-6060-4a60-9a28-585d5a89aa99","is_nullable":true,"is_unique":false,"name":"language","sample_values":["Chinese
+    Simplified","Chinese Traditional","French","German","Italian"],"type":"text"},{"description":"","id":"3413a637-eaad-4d26-8246-20bc38b4b975","is_nullable":true,"is_unique":false,"name":"setcode","sample_values":["10E","4ED","5DN","5ED","6ED"],"type":"text"},{"description":"The
+    localized name of a Magic: The Gathering product or set in the corresponding language.","id":"f0205fb4-ba09-4384-80f0-2697e3ae2b6c","is_nullable":true,"is_unique":false,"name":"translation","sample_values":["Archenemy","Battle
+    Royale","Beatdown","Commander (2013 Edition)","Commander (2014 Edition)"],"type":"text"}],"description":"","id":"86e86ab2-de3b-42c4-959a-dca24a0d49ec","name":"set_translations","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[{"source_column_id":"3413a637-eaad-4d26-8246-20bc38b4b975","target_column_id":"ac9fd140-0ac1-4fe4-a8d2-0915a1e82ce2"},{"source_column_id":"9b06bf20-27b9-4353-8d47-7f07106b8597","target_column_id":"bbfd9a8b-525d-4d46-8872-9ef3f8bc47c1"}],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"13487876-6ff2-415c-b95e-f32755fd491b","column_id":"3413a637-eaad-4d26-8246-20bc38b4b975","use_in_join_paths":true},{"column_attribute_id":"13487876-6ff2-415c-b95e-f32755fd491b","column_id":"808f89da-df15-4c61-9cb0-bf31af2d3441","use_in_join_paths":true},{"column_attribute_id":"bb9bd8a1-d489-4b36-b1dc-816e469e8926","column_id":"8edfcbe2-ca68-4df8-add1-488db6580272","use_in_join_paths":true},{"column_attribute_id":"bb9bd8a1-d489-4b36-b1dc-816e469e8926","column_id":"9b06bf20-27b9-4353-8d47-7f07106b8597","use_in_join_paths":true}],"sql_attributes":{"bridge_table":[],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"f3a6d5fc-5dfc-449c-b282-9c4a9518ef13","description":"The
+    non-foil availability flag indicates whether a non-foil printed version of the
+    card exists (1 = available, 0 = not available).","id":"011fcdfa-6af6-4f5e-a5c5-e023e6eb5899","name":"hasnonfoil"},{"column_id":"c8782995-8ed9-44a6-9de3-71830119e305","description":"The
+    full-art flag indicates whether the card features a full-art illustration extending
+    to the card borders (1 = yes, 0 = no).","id":"028f7567-ee96-493c-a2fd-0c5fb76a9eb4","name":"Is
+    Full Art"},{"column_id":"4536aacb-dfa7-4e64-baae-c6390a7cbbb9","description":"The
+    hand modifier adjusts the player''s hand size by a positive, negative, or zero
+    integer value.","id":"08e14368-9e45-449b-8ce4-2020764d9b4d","name":"Hand Modifier"},{"column_id":"870b4113-a1ec-4c9c-8e88-76a3e18127ad","description":"The
+    oversized flag marks whether the card is produced in an oversized physical format
+    (1 = yes, 0 = no).","id":"0cf2cb9a-9766-476c-8364-cc1d88919919","name":"Is Oversized"},{"column_id":"185b1dfe-dc74-401f-945c-7b1d6454b96d","description":"Holds
+    the Cardmarket metadata identifier for the card''s printing.","id":"10a68e11-06bd-4d99-a17d-b253cfff5909","name":"mcmmetaid"},{"column_id":"490445cd-b526-4415-9301-e0da5974d7aa","description":"Unique
+    Scryfall identifier for the card''s illustration.","id":"19f05576-3739-4bde-a6ac-1f31e2a772f9","name":"scryfallillustrationid"},{"column_id":"658d77d5-e41f-4156-a987-8023232da97b","description":"Identifies
+    if the card comes from a starter product (1 = yes, 0 = no).","id":"205c4d3d-5d95-4900-a8c7-d86a45b4227f","name":"Is
+    Starter"},{"column_id":"ec1bfa34-7f10-4d14-aa41-7b3170167fd4","description":"The
+    alternative deck limit flag indicates whether the card exempts the standard deck
+    construction limit (1 = yes, 0 = no).","id":"2081d068-cd85-4a3d-b740-0932cfb6cdf3","name":"Has
+    Alternative Deck Limit"},{"column_id":"445f8910-1fbb-4d26-8902-c3db465bf9d8","description":"Specifies
+    the card''s commander eligibility for Brawl, Commander, and Oathbreaker formats.","id":"22eb5171-7efe-4b53-9713-f9e605853411","name":"Leadership
+    Skills"},{"column_id":"76c1b052-f538-492a-89a2-b6012a3608f9","description":"Specifies
+    the power value of a creature card for combat damage as text.","id":"264bdc44-bfd8-47e1-9df3-476ab549c682","name":"power"},{"column_id":"a2e27740-aad9-43b8-bfb3-d31cd9bd488c","description":"Indicates
+    if the card is a textless promotional version (1 = yes, 0 = no).","id":"2afbea5a-09a2-414c-974c-419be2178568","name":"Is
+    Textless"},{"column_id":"d2d80843-33e5-4204-a091-c6dda84a466c","description":"The
+    flavor text provides a narrative quotation printed on the card to convey lore
+    or storytelling context.","id":"2ddb0e13-9b5f-4d10-bed1-2504a92f060a","name":"Flavor
+    Text"},{"column_id":"6462f44c-8c2f-4f1e-9b99-d989faa5f443","description":"Designates
+    the face of a double-faced or multi-faced card (e.g., a, b).","id":"30cfdaff-531c-4b29-9085-d1176f262077","name":"side"},{"column_id":"0a32034a-401b-47fa-969f-b997d3f56494","description":"Contains
+    the MTG Arena internal identifier for the card.","id":"3244410c-c616-41fe-abeb-bf0d5d245fad","name":"mtgarenaid"},{"column_id":"ae530abc-e46c-4c17-af71-6abfb83afdc2","description":"Represents
+    the total converted mana cost of the card as a numeric value.","id":"371b29cc-c3e4-4f2a-b379-a638e7991732","name":"Converted
+    Mana Cost"},{"column_id":"f414b978-9d8b-40e1-a419-8109b6488425","description":"Provides
+    the life total modifier for Vanguard or Plane cards as a negative number.","id":"3a738259-f675-44d0-8de1-cc7602f913ae","name":"Life
+    Modifier"},{"column_id":"cb193d26-e154-4765-8a34-d3d5249d5355","description":"Lists
+    the keyword abilities on the card, such as Flying or Trample.","id":"41501b6e-64da-47b9-8785-52e2158c7165","name":"Keywords"},{"column_id":"0660e1a2-14dd-4f0d-b6a1-a5df9fa9edb5","description":"Identifies
+    the artist who illustrated the Magic card.","id":"42f80706-3a44-43b2-b143-f4caf4198991","name":"Artist"},{"column_id":"91c5a213-8714-4845-b64c-ad81046fe332","description":"Defines
+    the physical card layout or frame type, like normal, split, or modal double-faced.","id":"45fcf2a5-6210-47e2-b4de-65d740c122ca","name":"Layout"},{"column_id":"991ad1ac-fc97-4b71-927c-cd37e5434008","description":"Shows
+    the card''s popularity rank on EDHREC, with lower numbers meaning higher Commander
+    usage.","id":"49e9816b-9b3a-4ec9-becc-f0b7e6f5f5d7","name":"EDHREC Rank"},{"column_id":"d0db4622-db3b-4602-84d7-b332b90d9b69","description":"Uniquely
+    identifies each Magic: The Gathering card record in the dataset.","id":"4c086f05-6f9a-4293-9232-dbe95dc49309","name":"Card
+    ID"},{"column_id":"c2825615-39cf-4f35-b346-ca583924b656","description":"Specifies
+    the border color or style of the card, such as black or borderless.","id":"5001b68d-d20b-4532-b30a-eebd922c09ff","name":"Border
+    Color"},{"column_id":"0972291f-dad6-49fd-af40-cc365b5231f1","description":"The
+    promo flag indicates whether the card was released as a promotional product (1
+    = yes, 0 = no).","id":"58489885-92d3-4fc9-9989-bfc685a079eb","name":"Is Promo"},{"column_id":"2976eed2-b92e-4b5c-a37f-1a3e25489dc3","description":"Lists
+    identifiers for the other faces of a double-faced or meld card.","id":"5c3f2348-ca7e-416e-a8e4-ad963c12427f","name":"otherfaceids"},{"column_id":"949906cf-e195-4a71-9fb5-46ba239bb53b","description":"Identifies
+    the non-foil version of a card on Magic Online using a numeric text code.","id":"5cc28743-dfef-43fc-ae2f-3ba4ea1b4cbf","name":"mtgoid"},{"column_id":"e4dee980-69d7-4984-9cab-66ed4e921d09","description":"Abbreviated
+    code identifying the Magic set the card belongs to (e.g., 10E).","id":"5e270c74-c4ea-4b6f-92e0-b68adf550b29","name":"setcode"},{"column_id":"5039cfcf-d47d-44d9-abb4-4e03727e173d","description":"The
+    foil availability flag indicates whether a foil-printed version of the card exists
+    (1 = available, 0 = not available).","id":"60725333-aef3-425d-a542-ef2344f13717","name":"Has
+    Foil"},{"column_id":"13dc0bcc-6d74-42fe-a97e-245c6cce67cb","description":"Stores
+    the Cardmarket identifier for the card.","id":"60bdd588-bd5c-4c6e-a675-fb6be0a7ed41","name":"mcmid"},{"column_id":"b2ff83ff-aa6a-4ef7-ac82-e024b019e382","description":"Contains
+    the rules text or abilities printed on the card (e.g., Flying).","id":"64a7d0c7-4300-4236-b76e-08e72e6d4d1b","name":"text"},{"column_id":"9950deae-87c3-46ae-86e7-7dca6f57f8c1","description":"Records
+    the original release date of the card''s first printing as text.","id":"67066cf7-9fd9-4172-9473-cf774cbddd12","name":"originalreleasedate"},{"column_id":"7611c4ae-b881-4548-bec4-502a43ea8969","description":"Unique
+    Scryfall identifier for the card''s oracle text.","id":"6740d024-e9da-46d6-81ca-45e9d685e9e3","name":"scryfalloracleid"},{"column_id":"7663084b-53c1-4cbc-aea3-ea5dadc2a01b","description":"Identifies
+    the card in Wizards of the Coast''s Multiverse database using a numeric text code.","id":"6d821a4e-c808-4e2c-95bc-d9d6d0ebe995","name":"multiverseid"},{"column_id":"3b59a17a-7026-412a-b204-c24c6ea5ecd7","description":"Identifies
+    the faction or organization symbol printed on the card.","id":"6eea1196-fad7-4524-b83f-1d2aeb012b2f","name":"watermark"},{"column_id":"fc5e9e63-8059-4608-b91d-ca0a797764c1","description":"Defines
+    the card''s color identity using single-letter codes for Commander format legality.","id":"75c59ed5-48ec-405b-aa3c-f866588b8eec","name":"Color
+    Identity"},{"column_id":"de846506-2fe2-411b-82e6-1dc8683349f5","description":"The
+    online-only flag specifies whether the card is exclusively available on the digital
+    platform Magic Online (1 = digital-only, 0 = physical exists).","id":"7b93c6b1-2db2-4304-b3ac-e7fdd0a1d703","name":"Is
+    Online Only"},{"column_id":"c5b8d59f-5d6e-4f7c-ad3f-0f77e9f5457f","description":"Flags
+    whether the card is on the Reserved List (1 = yes, 0 = no), meaning it will never
+    be reprinted.","id":"7e1d9a97-6553-42db-9b6c-33ad1173feff","name":"Is Reserved"},{"column_id":"02d4dd97-1073-4845-9266-2f33d4e398ca","description":"Keeps
+    the MTGJSON v4 unique identifier for the card.","id":"80a3f135-d87f-40be-bf10-548753679f13","name":"mtgjsonv4id"},{"column_id":"d558d076-62d0-4329-9441-040175af2279","description":"Full
+    card type line including types and subtypes as printed (e.g., Enchantment \u2014
+    Aura).","id":"94fa3b38-3680-421a-b8da-7322a6d5e898","name":"type"},{"column_id":"376f30e4-8314-4112-ae02-3cb683165b8c","description":"The
+    content warning flag signals whether the card carries a content advisory for sensitive
+    material (1 = yes, 0 = no).","id":"9be197ad-3806-472f-ae82-83de6e69b806","name":"Has
+    Content Warning"},{"column_id":"3893de33-42bd-449a-9eda-a369b84efc60","description":"Represents
+    the creature''s toughness value as printed (e.g., 1, 2, 3).","id":"9d176767-23f4-4900-9207-ce9c68c20995","name":"toughness"},{"column_id":"89ae6b4e-f74e-4478-bbec-61140727d631","description":"Provides
+    the converted mana cost for a specific face of a double-faced card.","id":"9fa2d5b0-ed2b-498d-baab-6f834cc20909","name":"Face
+    Converted Mana Cost"},{"column_id":"aed29887-d4b7-497b-813f-0f0683758371","description":"Shows
+    the original card type line as printed on the card''s first release.","id":"a508a9bc-953a-4b8a-b016-bff421d7a188","name":"originaltype"},{"column_id":"7508f42b-9fbc-49ec-945a-fcef5b4b8140","description":"Indicates
+    the collector number of the card within its set as text.","id":"aad56c85-c6a8-42a5-bb63-53f6c9c8284e","name":"number"},{"column_id":"063a6f7c-f53f-4bee-9cb7-fc1216182029","description":"The
+    frame version identifies the card''s frame design era using a year format (YYYY)
+    or special designation like ''future''.","id":"afc5de58-4e03-4b5c-a747-b64859e5fad8","name":"Frame
+    Version"},{"column_id":"f3dd57b3-fb3d-4a28-957a-3429505f034c","description":"Identifies
+    the Card Kingdom product ID for the foil version of the card.","id":"b0bd0f5e-dbdd-4de4-ac0d-6fa4c8e1dc0f","name":"Card
+    Kingdom Foil ID"},{"column_id":"f21bdc43-41f0-4958-84a5-26d71fae59ff","description":"Contains
+    the original rules text printed on the card at its first release.","id":"b15b86b8-87cd-4b21-a3c5-37e968fca82b","name":"originaltext"},{"column_id":"a4d7e0c3-1cf8-4d28-93c2-f246780df139","description":"Identifies
+    the Card Kingdom product ID for the non-foil version of the card.","id":"b1c79650-cf67-4cdf-8527-35f78ddf625a","name":"Card
+    Kingdom ID"},{"column_id":"516a99df-d06e-4591-a08e-78f9a43e1267","description":"Classifies
+    the rarity level of the card in its set as common, uncommon, rare, or mythic.","id":"b4fbd69f-3512-4420-8641-38d258402d96","name":"rarity"},{"column_id":"dbec8685-4b66-4394-b596-56a065abd272","description":"Indicates
+    special supertypes like Basic, Legendary, or Snow (e.g., Basic, Legendary).","id":"b5576338-b39b-495e-b90b-629ca1138a15","name":"supertypes"},{"column_id":"31ea1d2e-3a90-4382-b2e3-a7e9990e2733","description":"Provides
+    an ASCII-only version of the card name for systems lacking Unicode support.","id":"b9bbd9e7-8c45-470a-96ab-377e5b4b925d","name":"ASCII
+    Name"},{"column_id":"bbfd9a8b-525d-4d46-8872-9ef3f8bc47c1","description":"Universally
+    unique identifier for the card instance, referenced by foreign data and rulings.","id":"bb9bd8a1-d489-4b36-b1dc-816e469e8926","name":"uuid"},{"column_id":"ff5a2930-5d71-4fd3-b751-8c624f67b5dd","description":"States
+    the official name of the Magic: The Gathering card.","id":"beb12d27-ada1-4169-82ed-e9e8360f6f3b","name":"name"},{"column_id":"6f196a04-f26a-4009-aac2-06160730427d","description":"Gives
+    the starting loyalty value for planeswalker cards.","id":"bef3daec-cd87-43a1-bc6a-cd78e171c881","name":"Loyalty"},{"column_id":"beddfb40-a2cf-4ed4-9612-cdf83084b8b1","description":"The
+    flavor name provides a thematic or lore-based title for the card, such as character
+    designations from crossover franchises.","id":"c2dfe0b4-5ef8-4969-8258-f9507ef5d774","name":"Flavor
+    Name"},{"column_id":"21ab6a5e-4276-4cbe-8639-833240fc901c","description":"Enumerates
+    the set codes in which the card has been printed.","id":"c77f11c0-f45c-412c-abe5-df71779235c7","name":"printings"},{"column_id":"6ed9a81a-c3c5-476d-b04a-fb4f1a96fca9","description":"Identifies
+    the foil version of a card on Magic Online using a numeric text code.","id":"cb7e6b1b-d628-4e40-b066-85dc00fb926c","name":"mtgofoilid"},{"column_id":"72f641de-62b3-4084-9262-e571a7a05970","description":"Displays
+    the card''s mana cost in symbolic notation, e.g., {W} or {2}{R}.","id":"cb99f5bc-386c-43f3-a5bb-00859c8f2c7b","name":"manacost"},{"column_id":"47ff199b-f27d-49ae-9574-a3b450d36f3f","description":"Product
+    identifier for the card on the TCGplayer marketplace (e.g., 15032).","id":"cc2dd50e-48e0-4730-82eb-813df9c5a253","name":"tcgplayerproductid"},{"column_id":"c01f3560-8d57-4e09-8d46-ab90f8492281","description":"Lists
+    the card''s colors derived from its mana cost using single-letter codes.","id":"cc948d1d-74cf-4754-bd7e-75a98be5e64d","name":"Colors"},{"column_id":"95efa61c-ce1b-4d16-bdb6-ccb9800dc92f","description":"Gives
+    the name of a specific face of a double-faced card.","id":"d1a34855-e9aa-48fa-878f-e44110d15705","name":"Face
+    Name"},{"column_id":"6de2bad1-a05b-4175-b48c-8451aeb989d3","description":"Identifies
+    the Duel Deck product and side (a or b) the card belongs to.","id":"d271a049-3e64-4237-9b8f-175227e2b9df","name":"Duel
+    Deck"},{"column_id":"dea13a65-2ea1-4326-82b0-ea165d3a0393","description":"Primary
+    card types such as Creature, Instant, or Enchantment (e.g., Creature, Instant).","id":"d285c380-5d89-4494-b4ae-0567e9c752a2","name":"types"},{"column_id":"e7cbcfdd-1b4a-40f6-8228-aee3bcbca8d4","description":"Provides
+    URLs for purchasing the card from various online retailers.","id":"d37c6ad1-cd84-4b7a-85d2-9c777ccc4a5c","name":"purchaseurls"},{"column_id":"5a7805ac-e94b-47d7-bd52-792e65f0a08f","description":"Indicates
+    the card''s color via color indicator using single-letter codes when not defined
+    by mana cost.","id":"d8b32877-2639-4b06-9575-2f086f484c1f","name":"Color Indicator"},{"column_id":"1c6b22e7-a783-4189-849b-bec588655f5f","description":"The
+    reprint flag shows whether the card is a reissue of a previously printed card
+    (1 = reprint, 0 = original printing).","id":"d9821477-5f76-4cf4-a4fb-c088fcb01b3e","name":"Is
+    Reprint"},{"column_id":"3cef6b6e-cc42-480f-9a8f-a276b7410a64","description":"Lists
+    the platforms where the card is available as a comma-separated value.","id":"e282baf5-fb6e-4dcc-8d62-19a5ccad929c","name":"Availability"},{"column_id":"9eb443f6-112c-4ba4-af35-2493c53db1df","description":"List
+    of UUIDs for alternate versions or printings of the same card.","id":"e496ba62-1235-4762-bfe6-1f21bd29da27","name":"variations"},{"column_id":"acf51406-502f-4e6e-a0c0-0b07a50f4706","description":"Marks
+    if the card is a Story Spotlight card (1 = yes, 0 = no).","id":"f08567e0-905c-420e-88b3-193fa65a8f4b","name":"Is
+    Story Spotlight"},{"column_id":"23724847-ba03-4eda-b157-b815535976bd","description":"Describes
+    the types of promotional releases associated with the card.","id":"f092a53a-cf13-4b03-9178-ddbb819c7fe9","name":"promotypes"},{"column_id":"b3677c6c-decc-4c94-858d-7b54bec599b5","description":"Shows
+    whether the card is a timeshifted reprint (1 = yes, 0 = no).","id":"f1d67e36-561c-49b1-bb5d-9c4ed880a3e0","name":"Is
+    Timeshifted"},{"column_id":"15abe71d-692b-437a-976d-a02fa141fade","description":"Lists
+    creature, enchantment, or other subtypes associated with the card (e.g., Aura,
+    Human).","id":"f7b293a1-0f59-471a-b074-639dd5e9db07","name":"subtypes"},{"column_id":"fb940ce1-9f88-482e-85cc-a4ee961d0e18","description":"Identifies
+    the card on Scryfall, a Magic: The Gathering database.","id":"fa815754-f2a5-482d-a8fa-b1e7dc02255a","name":"scryfallid"},{"column_id":"9d4946f9-a566-4db7-bb6d-75f22e50830f","description":"The
+    frame effect indicates special visual frame treatments applied to the card, such
+    as legendary styling.","id":"ff4416ae-388f-4a33-8f84-b0b4014a12fe","name":"Frame
+    Effects"},{"column_id":"bedbf841-6959-4a2d-b0c8-75344d359b11","description":"The
+    alternative version flag identifies whether the card is an alternate version,
+    such as alternate art or borderless treatment (1 = yes, 0 = no).","id":"ff55cc4b-51fd-4184-b3ea-ea5285bc114f","name":"Is
+    Alternative"}],"description":"Represents a Magic: The Gathering card with all
+    its attributes, printing details, and gameplay characteristics.","id":"736206a4-dc72-46be-96f6-b612db7c8f8f","name":"Card","represents":["d13c5514-c0fa-49e1-abc9-06a40e091656"]},{"columns_attributes":[{"column_id":"dc9f9c80-698b-4cf8-9422-b9f2c3764aef","description":"Specifies
+    the Magic: The Gathering game format, such as Commander or Modern, governing the
+    card''s legality.","id":"59520b12-3303-4911-9685-eb5536b0580a","name":"Game Format"},{"column_id":"b4f9218c-cf04-4ee8-b7f8-f991a214effb","description":"Uniquely
+    identifies each card legality record with a sequential numeric key.","id":"64fdb65c-84ef-4d2d-9a54-63e9d9b039a2","name":"ID"},{"column_id":"4b74c801-c8e8-4396-9724-66f018172250","description":"Provides
+    a globally unique identifier for cross-system referencing of the card legality
+    record.","id":"7dfc07fb-4555-45ed-990f-95d27c3790d9","name":"Global ID"},{"column_id":"558d1be7-c1e8-4ed5-9366-9a82ca60bf62","description":"Indicates
+    the card''s legal standing in the format, with values Legal, Banned, or Restricted.","id":"971da37d-0a96-4722-ba79-c602c24ab182","name":"Legality
+    Status"}],"description":"","id":"b0707dc3-e672-4304-857d-834037d8b337","name":"Card
+    Legality","represents":["05fbdf4d-62fe-4651-8218-5bd38c65523a"]},{"columns_attributes":[{"column_id":"0b69e36b-8809-44cf-9950-30865637a19b","description":"Language
+    of the localized card name, rules text, and flavor text.","id":"1de6fb40-5124-455a-a296-a589a97b803d","name":"Language"},{"column_id":"c7545fad-0305-4a7d-9ece-44018bf705ee","description":"Identifies
+    the Magic: The Gathering card in the Multiverse database.","id":"62bb122c-f91b-41df-8f96-5d5eb14605cd","name":"multiverseid"},{"column_id":"653a0cda-496f-4d9a-a056-dc82f9e82b8a","description":"Unique
+    identifier for each localized card data record.","id":"8fbb3baa-a526-4eb1-bf05-e3de2e1dc30c","name":"Record
+    ID"},{"column_id":"0af7b775-0805-4661-86b3-87c4e8f89323","description":"Localized
+    rules text describing the card''s abilities in the specified language.","id":"9da0b33c-65e3-4f0b-996c-eb179e3f36bb","name":"Rules
+    Text"},{"column_id":"b7253e94-7a98-40fe-8993-12aa121fe5e7","description":"Localized
+    card type classification in the specified language.","id":"a8e39073-374d-4599-88a1-58146f24eaa4","name":"Card
+    Type"},{"column_id":"901aab10-8680-4eda-91bc-709499763b03","description":"Localized
+    name of the card in the specified language.","id":"f0d0c471-bc12-4ebe-b642-9ae48ff9bb21","name":"Name"},{"column_id":"621792ec-2868-46a2-958b-cebfd3d36c62","description":"Localized
+    flavor text for the card in the specified language.","id":"fcd2d75d-3bec-4473-ab26-8ed056fd023a","name":"Flavor
+    Text"}],"description":"Localized card information including name, rules text,
+    flavor text, and type for a specific language.","id":"e0fdd63e-ab97-421e-b1b3-9ad8a9370b02","name":"Localized
+    Card Data","represents":["7111be64-f4fd-4191-88d9-5a62ffb9fde5"]},{"columns_attributes":[{"column_id":"3f214e38-1cdc-4d47-8a63-075fa8c48719","description":"Specifies
+    the set code used on Magic: The Gathering Online for digital representation and
+    redemption.","id":"11f67b43-d0cf-46ff-9ee3-f377fc0b9a31","name":"MTGO Code"},{"column_id":"ac9fd140-0ac1-4fe4-a8d2-0915a1e82ce2","description":"Represents
+    the official three- to four-character abbreviated set code used in translations
+    and parent set references.","id":"13487876-6ff2-415c-b95e-f32755fd491b","name":"Set
+    Code"},{"column_id":"9ff72002-9644-4c6f-b8ea-ccfcc0bfdb93","description":"The
+    classification of the Magic product, such as expansion, promo, memorabilia, box,
+    or duel deck.","id":"21b121f3-905e-4d82-89b1-6f1dcfa0c725","name":"Set Type"},{"column_id":"073c0469-31b0-4a1b-9430-06af972d5733","description":"Flags
+    whether the set contains only non-foil cards (1) or includes foil cards (0).","id":"2668c03b-6982-40f2-b2d2-9811cdb29c18","name":"Is
+    Non Foil Only"},{"column_id":"1f894008-5b7a-4f0b-98a3-4e6d57c40382","description":"Indicates
+    whether the set is printed exclusively in non-English languages (1) or not (0).","id":"3efd953a-c41d-4a11-9638-10a143148727","name":"Is
+    Foreign Only"},{"column_id":"5f372df8-006b-4d01-ab4c-20fb1084dd07","description":"Categorizes
+    the set by product line, block, or promotional category such as Core Set or Commander.","id":"3f11d5fa-7ab4-4b4d-af10-eae3af8ec847","name":"Block"},{"column_id":"d64e19f3-002c-4f12-a4ac-ef5f3f875b12","description":"The
+    official release date of the Magic set, formatted as YYYY-MM-DD.","id":"49323633-35ec-41bc-9c1f-351a97db54f4","name":"Release
+    Date"},{"column_id":"c628d5b5-b909-493e-b7f1-0161d3b981be","description":"States
+    the set name as listed on the Cardmarket marketplace for identification and search.","id":"498d11c4-e9b7-479f-afed-4a12dfb3f9df","name":"MCM
+    Name"},{"column_id":"d8f709a6-66db-4020-baca-3d30cfc608b2","description":"Flags
+    whether the set is a partial preview release (1) or a full release (0).","id":"4d6cd6bc-1ecd-4874-9672-c6c6f38076a5","name":"Is
+    Partial Preview"},{"column_id":"d6300139-491d-4af9-a0b6-c2786b31e47e","description":"The
+    total count of cards included in the Magic set.","id":"76164317-273e-4207-aa01-ac182509e2c7","name":"Total
+    Set Size"},{"column_id":"d5177c22-aa32-428e-b807-5516a99a9b1c","description":"Indicates
+    the base count of distinct cards in the set, excluding foil, promo, and variant
+    cards.","id":"79a1ccec-654f-4ffc-8208-0d4b06ebb55f","name":"Base Set Size"},{"column_id":"8ac59cd3-f820-4bf6-883f-7d959fd97a1c","description":"Flags
+    whether the set contains only foil cards (1) or includes non-foil cards (0).","id":"8d3215ac-5e03-4fdd-aac3-9bc67d256aee","name":"Is
+    Foil Only"},{"column_id":"07179606-28ff-4012-9d49-8f537471641c","description":"Identifies
+    the set''s product listing on the Cardmarket marketplace with a unique numeric
+    identifier.","id":"b3047159-43f9-4785-ba12-df5bb32e2934","name":"mcmid"},{"column_id":"28e84c20-9939-4545-999b-cbf7419b5ce1","description":"Defines
+    the booster pack configuration as a JSON structure detailing card slots, weights,
+    and sheet distributions.","id":"c232dc03-c4f7-4b7a-885a-12cb0f364ec9","name":"Booster
+    Configuration"},{"column_id":"90549733-95af-4faf-bfea-2cb843e4c26b","description":"Uniquely
+    identifies each Magic: The Gathering set or product with a numeric identifier.","id":"c63b8d12-c12c-4bdb-98f9-f093b4a64a7f","name":"Set
+    ID"},{"column_id":"2d8d749f-a033-4950-ad4d-624ef8b94c26","description":"A TCGPlayer
+    grouping identifier that categorizes related product printings and conditions
+    under a single product group.","id":"d8d538c2-1445-4cd0-b750-c0a88065b71b","name":"tcgplayergroupid"},{"column_id":"39612df8-435e-4853-b6e4-fb018f07abff","description":"The
+    official full name identifying a Magic: The Gathering set, such as ''Tenth Edition''
+    or ''Double Masters''.","id":"e170d12a-3c40-4df8-8b2f-36d3c97925f7","name":"Set
+    Name"},{"column_id":"5103e304-07ee-45c6-a366-5f739741c3f4","description":"Provides
+    a supplementary Cardmarket identifier to distinguish variant or additional product
+    entries for the set.","id":"e27c3d6f-8267-43fc-b275-d67ced8f72ad","name":"mcmidextras"},{"column_id":"886d8f33-45ec-4002-bdff-9e620e0db4a1","description":"Indicates
+    whether the set is exclusive to Magic: The Gathering Online (1) or also available
+    physically (0).","id":"f2456e9b-29fb-441a-b52a-e3eded1991f4","name":"Is Online
+    Only"},{"column_id":"2e9e10a9-9f7a-4193-82cc-01391caaf706","description":"Provides
+    an internal system code for set identification on platforms using Keyrune or symbol
+    encoding.","id":"fc3be8eb-48ea-47f8-b57e-e3e8caa5bf2a","name":"Keyrune Code"}],"description":"","id":"bdd75aa5-6ca8-4243-ab38-7ac5c6d9d70d","name":"Magic
+    Set","represents":["39db932f-641e-4fa7-ad82-701d5a0c7e99"]},{"columns_attributes":[{"column_id":"024d5d9b-6133-48ac-9560-c6d132834599","description":"Effective
+    date of the ruling in YYYY-MM-DD format indicating when the rule becomes applicable.","id":"0a565f5e-9022-4e3d-b8dd-5a91084797a4","name":"Effective
+    Date"},{"column_id":"c0110ffd-45c9-4593-bad9-29fd15db3b9f","description":"Unique
+    numeric identifier assigned to each Magic: The Gathering rule or card ruling entry.","id":"f3a34bed-44f6-4fe7-8b49-87014bf19ffa","name":"Ruling
+    ID"},{"column_id":"2d9349cd-84c0-4b8c-a1c1-5c2d3d60d7e4","description":"Complete
+    textual content of the Magic: The Gathering rule or card ruling providing official
+    interpretation.","id":"f85bef3f-7b26-47a5-a55c-c9ed80002da0","name":"Ruling Text"}],"description":"A
+    Magic: The Gathering rule or card ruling entry.","id":"a68cc24e-9ba9-448f-8309-d98adc708d2c","name":"Ruling","represents":["b09db84d-2f5d-420c-ba95-f690ba361f08"]},{"columns_attributes":[{"column_id":"4d3e8dc2-6060-4a60-9a28-585d5a89aa99","description":"Specifies
+    the language and regional variant for the localized set name.","id":"1776c8ec-869d-4694-b27c-9fcf05ab9913","name":"Language"},{"column_id":"f0205fb4-ba09-4384-80f0-2697e3ae2b6c","description":"Provides
+    the translated Magic: The Gathering set name in the specified language.","id":"3f96e831-95a3-4f41-a7bb-c98edfaf6e56","name":"Translated
+    Name"},{"column_id":"3b39b1b1-78d7-4b01-b944-f3a57ab0eb88","description":"Uniquely
+    identifies each set translation record.","id":"9197989a-d59b-436b-94ea-36cf17bb9c17","name":"Translation
+    ID"}],"description":"A localized name for a Magic: The Gathering set in a specific
+    language.","id":"20bd4160-f5f0-4bb2-83f3-1528f225a838","name":"Set Translation","represents":["86e86ab2-de3b-42c4-959a-dca24a0d49ec"]}]},"zones":[]}}'
+relationships:
+- name: set_translation_setcode_to_magic_set
+  from: set_translation
+  to: magic_set
+  from_columns:
+  - setcode
+  to_columns:
+  - set_code
+- name: ruling_uuid_to_card
+  from: ruling
+  to: card
+  from_columns:
+  - uuid
+  to_columns:
+  - uuid
+- name: magic_set_parentcode_to_magic_set
+  from: magic_set
+  to: magic_set
+  from_columns:
+  - parentcode
+  to_columns:
+  - set_code
+- name: localized_card_data_uuid_to_card
+  from: localized_card_data
+  to: card
+  from_columns:
+  - uuid
+  to_columns:
+  - uuid

@@ -1,0 +1,127 @@
+version: 0.2.0.dev0
+name: d2_superhero_mapping
+description: Maps the d2_superhero_ontology onto the d2_superhero semantic model
+ontology_ref:
+  name: d2_superhero_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_superhero
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: AlignmentRecord
+  object_mappings:
+  - expression: alignment_record.record_id
+  link_mappings:
+  - object_mapping:
+      expression: alignment_record.record_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: alignment_record.alignment_status
+      relationship: alignment_status
+- concept: Attribute
+  object_mappings:
+  - expression: attribute.attribute_id
+  link_mappings:
+  - object_mapping:
+      expression: attribute.attribute_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: attribute.attribute_name
+      relationship: attribute_name
+- concept: Colour
+  object_mappings:
+  - expression: colour.id
+  link_mappings:
+  - object_mapping:
+      expression: colour.id
+    children:
+    - object_mapping:
+        concept: String
+        expression: colour.colour
+      relationship: colour
+- concept: Gender
+  object_mappings:
+  - expression: gender.gender_id
+  link_mappings:
+  - object_mapping:
+      expression: gender.gender_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: gender.gender
+      relationship: gender
+- concept: Publisher
+  object_mappings:
+  - expression: publisher.id
+  link_mappings:
+  - object_mapping:
+      expression: publisher.id
+    children:
+    - object_mapping:
+        concept: String
+        expression: publisher.publisher_name
+      relationship: publisher_name
+- concept: Race
+  object_mappings:
+  - expression: race.race_id
+  link_mappings:
+  - object_mapping:
+      expression: race.race_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: race.race_name
+      relationship: race_name
+- concept: Superhero
+  object_mappings:
+  - expression: superhero.superhero_id
+  link_mappings:
+  - object_mapping:
+      expression: superhero.superhero_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: superhero.superhero_name
+      relationship: superhero_name
+    - object_mapping:
+        concept: Integer
+        expression: superhero.height_cm
+      relationship: height_cm
+    - object_mapping:
+        concept: String
+        expression: superhero.full_name
+      relationship: full_name
+    - object_mapping:
+        concept: Integer
+        expression: superhero.weight_kg
+      relationship: weight_kg
+    - object_mapping:
+        concept: Colour
+        expression: superhero.skin_colour_id
+      relationship: skin_colour_id
+    - object_mapping:
+        concept: Colour
+        expression: superhero.eye_colour_id
+      relationship: eye_colour_id
+    - object_mapping:
+        concept: Colour
+        expression: superhero.hair_colour_id
+      relationship: hair_colour_id
+    - object_mapping:
+        concept: Gender
+        expression: superhero.gender_id
+      relationship: gender
+    - object_mapping:
+        concept: Publisher
+        expression: superhero.publisher_id
+      relationship: publisher
+    - object_mapping:
+        concept: AlignmentRecord
+        expression: superhero.alignment_id
+      relationship: alignment_record
+    - object_mapping:
+        concept: Race
+        expression: superhero.race_id
+      relationship: race

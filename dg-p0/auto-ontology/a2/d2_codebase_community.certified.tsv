@@ -1,0 +1,67 @@
+kind	term	object	outcome	description_or_sql
+term	Badge	public.badges	certified	badges.
+column	Badge	public.badges.name	certified	the badge name the user obtained
+column	Badge	public.badges.id	certified	the badge id
+column	Badge	public.badges.date	certified	the date that the user obtained the badge
+term	Comment	public.comments	certified	comments.
+column	Comment	public.comments.text	certified	the detailed content of the comment
+column	Comment	public.comments.userdisplayname	certified	user's display name
+column	Comment	public.comments.creationdate	certified	the creation date of the comment
+column	Comment	public.comments.score	certified	rating score. Values: commonsense evidence: The score is from 0 to 100. The score more than 60 refers that the comment is a positive comment. The score less than 60 refers that the comment is a negative comment.
+column	Comment	public.comments.id	certified	the comment Id
+term	Post	public.posts	certified	posts.
+column	Post	public.posts.body	certified	the body of the post
+column	Post	public.posts.favoritecount	certified	the total number of favorites of the post. Values: commonsense evidence: more favorite count refers to more valuable posts.
+column	Post	public.posts.score	certified	the score of the post
+column	Post	public.posts.closeddate	certified	the closed date of the post. Values: commonsense evidence: if ClosedDate is null or empty, it means this post is not well-finished if CloseDate is not null or empty, it means this post has well-finished.
+column	Post	public.posts.answercount	certified	the total number of answers of the post
+column	Post	public.posts.lasteditdate	certified	the last edit date
+column	Post	public.posts.lasteditordisplayname	certified	the display name of the last editor
+column	Post	public.posts.tags	certified	the tag of the post
+column	Post	public.posts.ownerdisplayname	certified	the display name of the post owner
+column	Post	public.posts.viewcount	certified	the view count of the post. Values: commonsense evidence: Higher view count means the post has higher popularity
+column	Post	public.posts.lasactivitydate	certified	the last activity date
+column	Post	public.posts.posttypeid	certified	the id of the post type
+column	Post	public.posts.creaiondate	certified	the creation date of the post
+column	Post	public.posts.communityowneddate	certified	the community owned date
+column	Post	public.posts.id	certified	the post id
+column	Post	public.posts.commentcount	certified	the total number of comments of the post
+column	Post	public.posts.title	certified	the title of the post
+term	Post Link	public.postlinks	certified	postLinks.
+column	Post Link	public.postlinks.creationdate	certified	the creation date of the post link
+column	Post Link	public.postlinks.linktypeid	certified	the id of the link type
+column	Post Link	public.postlinks.id	certified	the post link id
+term	Post Revision	public.posthistory	certified	postHistory.
+column	Post Revision	public.posthistory.posthistorytypeid	certified	the id of the post history type
+column	Post Revision	public.posthistory.userdisplayname	certified	user's display name
+column	Post Revision	public.posthistory.comment	certified	comments of the post
+column	Post Revision	public.posthistory.creationdate	certified	the creation date of the post
+column	Post Revision	public.posthistory.revisionguid	certified	the revision globally unique id of the post
+column	Post Revision	public.posthistory.text	certified	the detailed content of the post
+column	Post Revision	public.posthistory.id	certified	the post history id
+term	Tag	public.tags	certified	tags.
+column	Tag	public.tags.id	certified	the tag id
+column	Tag	public.tags.excerptpostid	certified	the excerpt post id of the tag
+column	Tag	public.tags.count	certified	the count of posts that contain this tag. Values: more counts --> this tag is more popular
+column	Tag	public.tags.tagname	certified	the name of the tag
+column	Tag	public.tags.wikipostid	certified	the wiki post id of the tag
+term	User Account	public.users	certified	users.
+column	User Account	public.users.websiteurl	certified	the website url of the user account
+column	User Account	public.users.upvotes	certified	the number of upvotes
+column	User Account	public.users.lastaccessdate	certified	the last access date of the user account
+column	User Account	public.users.views	certified	the number of views
+column	User Account	public.users.location	certified	user's location
+column	User Account	public.users.downvotes	certified	the number of downvotes
+column	User Account	public.users.aboutme	certified	the self introduction of the user
+column	User Account	public.users.profileimageurl	certified	the profile image url
+column	User Account	public.users.displayname	certified	the user's display name
+column	User Account	public.users.creationdate	certified	the creation date of the user account
+column	User Account	public.users.reputation	certified	the user's reputation. Values: commonsense evidence: The user with higher reputation has more influence.
+column	User Account	public.users.accountid	certified	the unique id of the account
+column	User Account	public.users.id	certified	the user id
+column	User Account	public.users.age	certified	user's age. Values:  teenager: 13-18  adult: 19-65  elder: > 65
+term	Vote	public.votes	certified	votes.
+column	Vote	public.votes.bountyamount	certified	the amount of bounty
+column	Vote	public.votes.id	certified	the vote id
+column	Vote	public.votes.creationdate	certified	the creation date of the vote
+column	Vote	public.votes.votetypeid	certified	the id of the vote type

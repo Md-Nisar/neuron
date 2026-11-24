@@ -1,0 +1,180 @@
+version: 0.2.0.dev0
+name: d2_debit_card_specializing_ontology
+description: Business concepts of the d2_debit_card_specializing semantic model
+ontology:
+- concept: Customer
+  type: EntityType
+  identify_by:
+  - customer_id
+  relationships:
+  - name: segment
+    description: Classifies the customer into a business segment such as SME, LAM,
+      or KAM.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has segment {String}'
+  - name: currency
+    description: Indicates the currency code associated with the customer, using standard
+      codes like CZK or EUR.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Customer} has currency {String}'
+  - name: customer_id
+    description: Unique identifier for each customer, used to link customer records
+      to monthly performance data.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Customer} is identified by customer id {Integer}'
+- concept: GasStation
+  type: EntityType
+  identify_by:
+  - gas_station_id
+  relationships:
+  - name: segment
+    description: Categorizes the gas station by brand or pricing tier such as Premium
+      or Discount.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{GasStation} has segment {String}'
+  - name: chainid
+    description: Identifies the fuel chain to which the gas station belongs.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{GasStation} has chainid {Integer}'
+  - name: gas_station_id
+    description: Unique identifier for a gas station, used to link transactions to
+      the specific station.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{GasStation} is identified by gas station id {Integer}'
+  - name: country
+    description: ISO country code specifying the country where the gas station operates.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{GasStation} has country {String}'
+- concept: Product
+  type: EntityType
+  identify_by:
+  - product_id
+  relationships:
+  - name: description
+    description: Textual category label classifying the product type, such as food
+      or service fee.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Product} has description {String}'
+  - name: product_id
+    description: Unique numeric identifier for each product, used to link products
+      to transactions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Product} is identified by product id {Integer}'
+- concept: Transaction
+  type: EntityType
+  description: A single transaction record.
+  relationships:
+  - name: transaction_id
+    description: Uniquely identifies each transaction record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has transaction id {Integer}'
+  - name: cardid
+    description: Identifies the payment or loyalty card used for the transaction.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has cardid {Integer}'
+  - name: date
+    description: Records the calendar date of the transaction in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has date {Date}'
+  - name: price
+    description: Records the monetary value of the transaction in decimal currency
+      units.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has price {Float}'
+  - name: customerid
+    description: Identifies the customer who made the transaction.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has customerid {Integer}'
+  - name: time
+    description: Captures the time of day the transaction was recorded in HH:MM:SS
+      format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has time {String}'
+  - name: quantity
+    description: Represents the quantity of items in the transaction.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has quantity {Integer}'
+  - name: gas_station
+    roles:
+    - concept: GasStation
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has {GasStation}'
+  - name: product
+    roles:
+    - concept: Product
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has {Product}'
+- concept: YearMonth
+  type: EntityType
+  description: A reporting period with its associated consumption value.
+  relationships:
+  - name: consumption
+    description: Records the consumption amount for the reporting period.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{YearMonth} has consumption {Float}'
+  - name: period
+    description: Represents the reporting period in YYYYMM text format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{YearMonth} has period {String}'
+  - name: customer
+    roles:
+    - concept: Customer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{YearMonth} has {Customer}'

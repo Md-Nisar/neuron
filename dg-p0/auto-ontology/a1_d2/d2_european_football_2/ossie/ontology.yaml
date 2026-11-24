@@ -1,0 +1,1510 @@
+version: 0.2.0.dev0
+name: d2_european_football_2_ontology
+description: Business concepts of the d2_european_football_2 semantic model
+ontology:
+- concept: Country
+  type: EntityType
+  description: A country reference entity.
+  identify_by:
+  - country_id
+  relationships:
+  - name: country_id
+    description: A unique numeric identifier for each country, referenced by leagues
+      and matches to indicate the country they belong to.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Country} is identified by country id {Integer}'
+  - name: country_name
+    description: The official name of the country, such as Belgium, England, or Germany.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Country} has country name {String}'
+- concept: FootballLeague
+  type: EntityType
+  description: A football league entity with its identifier and official name.
+  identify_by:
+  - league_id
+  relationships:
+  - name: league_name
+    description: Official league name combining country and competition title, e.g.,
+      England Premier League.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{FootballLeague} has league name {String}'
+  - name: league_id
+    description: Unique numeric identifier for a football league, used to link matches
+      to their league.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{FootballLeague} is identified by league id {Integer}'
+  - name: country
+    roles:
+    - concept: Country
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{FootballLeague} has {Country}'
+- concept: Match
+  type: EntityType
+  description: A football match with its metadata, scores, and player lineup/position
+    data.
+  relationships:
+  - name: away_player_x6
+    description: Captures the x-coordinate of the away team's sixth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x6 {Integer}'
+  - name: home_player_y3
+    description: Records the vertical field coordinate of the home team's third player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y3 {Integer}'
+  - name: home_team_goals
+    description: Number of goals scored by the home team.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home team goals {Integer}'
+  - name: away_player_x2
+    description: Captures the x-coordinate of the away team's second player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x2 {Integer}'
+  - name: match_date
+    description: Date and time of the match in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has match date {String}'
+  - name: home_player_x5
+    description: Player identifier for the home team's starting lineup position 5.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x5 {Integer}'
+  - name: psh
+    description: Indicates the decimal odds offered by Pinnacle Sports for a home
+      team win in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has psh {Float}'
+  - name: whh
+    description: Indicates the decimal odds offered by William Hill for a home team
+      win in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has whh {Float}'
+  - name: vcd
+    description: Stores the draw betting odds from bookmaker VC as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has vcd {Float}'
+  - name: away_player_y3
+    description: Records the vertical field coordinate of the away team's third player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y3 {Integer}'
+  - name: away_player_x11
+    description: Captures the x-coordinate of the away team's eleventh player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x11 {Integer}'
+  - name: home_player_x3
+    description: Player identifier for the home team's starting lineup position 3.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x3 {Integer}'
+  - name: bwh
+    description: Indicates the decimal odds offered by Bet&Win for a home team win
+      in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has bwh {Float}'
+  - name: possession
+    description: Textual details of possession statistics or events during the match.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has possession {String}'
+  - name: shoton
+    description: Textual details of shots on target including player, minute, and
+      outcome.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has shoton {String}'
+  - name: vca
+    description: Stores the away team win betting odds from bookmaker VC as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has vca {Float}'
+  - name: home_player_x8
+    description: Player identifier for the home team's starting lineup position 8.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x8 {Integer}'
+  - name: bwa
+    description: Indicates the decimal odds offered by Bet&Win for an away team win
+      in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has bwa {Float}'
+  - name: whd
+    description: Stores the draw betting odds from bookmaker WH as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has whd {Float}'
+  - name: corner
+    description: Textual details of corner kick events including team, minute, and
+      outcome.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has corner {String}'
+  - name: bsh
+    description: Stores the home team win betting odds from bookmaker BS as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has bsh {Float}'
+  - name: home_player_y6
+    description: Records the vertical field coordinate of the home team's sixth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y6 {Integer}'
+  - name: shotoff
+    description: Textual details of shots off target including player, minute, and
+      outcome.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has shotoff {String}'
+  - name: card
+    description: Textual details of card events including player, card type, and minute.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has card {String}'
+  - name: gbd
+    description: Stores the draw betting odds from bookmaker GB as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has gbd {Float}'
+  - name: away_player_x8
+    description: Captures the x-coordinate of the away team's eighth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x8 {Integer}'
+  - name: home_player_y10
+    description: Records the vertical field coordinate of the home team's tenth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y10 {Integer}'
+  - name: goal
+    description: Textual details of goal events including scorer, minute, and goal
+      type.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has goal {String}'
+  - name: away_player_x5
+    description: Captures the x-coordinate of the away team's fifth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x5 {Integer}'
+  - name: home_player_y9
+    description: Records the vertical field coordinate of the home team's ninth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y9 {Integer}'
+  - name: b365d
+    description: Indicates the decimal odds offered by Bet365 for a draw outcome in
+      the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has b365d {Float}'
+  - name: iwh
+    description: Indicates the decimal odds offered by Interwetten for a home team
+      win in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has iwh {Float}'
+  - name: home_player_y4
+    description: Records the vertical field coordinate of the home team's fourth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y4 {Integer}'
+  - name: home_player_y1
+    description: Captures the y-coordinate of the home team's first player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y1 {Integer}'
+  - name: away_player_x9
+    description: Captures the x-coordinate of the away team's ninth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x9 {Integer}'
+  - name: gbh
+    description: Stores the home team win betting odds from bookmaker GB as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has gbh {Float}'
+  - name: psd
+    description: Indicates the decimal odds offered by Pinnacle Sports for a draw
+      outcome in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has psd {Float}'
+  - name: away_player_x7
+    description: Captures the x-coordinate of the away team's seventh player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x7 {Integer}'
+  - name: home_player_x6
+    description: Player identifier for the home team's starting lineup position 6.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x6 {Integer}'
+  - name: away_player_y10
+    description: Jersey number of the tenth away team player in the match lineup.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y10 {Integer}'
+  - name: lba
+    description: Indicates the decimal odds offered by Ladbrokes for an away team
+      win in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has lba {Float}'
+  - name: away_player_x1
+    description: Captures the x-coordinate of the away team's first player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x1 {Integer}'
+  - name: home_player_y11
+    description: Records the vertical field coordinate of the home team's eleventh
+      player in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y11 {Integer}'
+  - name: home_player_x10
+    description: Captures the x-coordinate of the home team's tenth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x10 {Integer}'
+  - name: psa
+    description: Indicates the decimal odds offered by Pinnacle Sports for an away
+      team win in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has psa {Float}'
+  - name: match_id
+    description: Unique identifier for the match record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has match id {Integer}'
+  - name: iwa
+    description: Indicates the decimal odds offered by Interwetten for an away team
+      win in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has iwa {Float}'
+  - name: b365h
+    description: Bet365 decimal odds for the home team to win the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has b365h {Float}'
+  - name: bsa
+    description: Stores the away team win betting odds from bookmaker BS as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has bsa {Float}'
+  - name: lbd
+    description: Indicates the decimal odds offered by Ladbrokes for a draw outcome
+      in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has lbd {Float}'
+  - name: cross
+    description: Textual details of cross events including player, minute, and outcome.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has cross  {String}'
+  - name: bsd
+    description: Stores the draw betting odds from bookmaker BS as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has bsd {Float}'
+  - name: b365a
+    description: Indicates the decimal odds offered by Bet365 for an away team win
+      in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has b365a {Float}'
+  - name: match_api_id
+    description: External API identifier linking the match to external football data
+      sources.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has match api id {Integer}'
+  - name: stage
+    description: Matchday or round number within the season.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has stage {Integer}'
+  - name: away_player_y1
+    description: Records the vertical field coordinate of the away team's first player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y1 {Integer}'
+  - name: home_player_x9
+    description: Captures the x-coordinate of the home team's ninth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x9 {Integer}'
+  - name: away_player_y6
+    description: Jersey number of the sixth away team player in the match lineup.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y6 {Integer}'
+  - name: away_player_y8
+    description: Jersey number of the eighth away team player in the match lineup.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y8 {Integer}'
+  - name: home_player_y5
+    description: Records the vertical field coordinate of the home team's fifth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y5 {Integer}'
+  - name: home_player_x1
+    description: Player identifier for the home team's starting lineup position 1.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x1 {Integer}'
+  - name: lbh
+    description: Indicates the decimal odds offered by Ladbrokes for a home team win
+      in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has lbh {Float}'
+  - name: home_player_x11
+    description: Captures the x-coordinate of the home team's eleventh player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x11 {Integer}'
+  - name: away_player_y7
+    description: Jersey number of the seventh away team player in the match lineup.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y7 {Integer}'
+  - name: iwd
+    description: Indicates the decimal odds offered by Interwetten for a draw outcome
+      in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has iwd {Float}'
+  - name: away_player_x10
+    description: Captures the x-coordinate of the away team's tenth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x10 {Integer}'
+  - name: home_player_x7
+    description: Player identifier for the home team's starting lineup position 7.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x7 {Integer}'
+  - name: away_player_y4
+    description: Records the vertical field coordinate of the away team's fourth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y4 {Integer}'
+  - name: home_player_y2
+    description: Records the vertical field coordinate of the home team's second player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y2 {Integer}'
+  - name: away_team_goals
+    description: Number of goals scored by the away team.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away team goals {Integer}'
+  - name: away_player_y2
+    description: Records the vertical field coordinate of the away team's second player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y2 {Integer}'
+  - name: vch
+    description: Stores the home team win betting odds from bookmaker VC as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has vch {Float}'
+  - name: home_player_x2
+    description: Player identifier for the home team's starting lineup position 2.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x2 {Integer}'
+  - name: away_player_y9
+    description: Jersey number of the ninth away team player in the match lineup.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y9 {Integer}'
+  - name: away_player_x4
+    description: Captures the x-coordinate of the away team's fourth player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x4 {Integer}'
+  - name: home_player_y8
+    description: Records the vertical field coordinate of the home team's eighth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y8 {Integer}'
+  - name: wha
+    description: Stores the away team win betting odds from bookmaker WH as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has wha {Float}'
+  - name: gba
+    description: Stores the away team win betting odds from bookmaker GB as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has gba {Float}'
+  - name: home_player_x4
+    description: Player identifier for the home team's starting lineup position 4.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player x4 {Integer}'
+  - name: sjd
+    description: Stores the draw betting odds from bookmaker SJ as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has sjd {Float}'
+  - name: away_player_x3
+    description: Captures the x-coordinate of the away team's third player on the
+      field during the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player x3 {Integer}'
+  - name: foulcommit
+    description: Textual details of fouls committed including player, minute, and
+      location.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has foulcommit {String}'
+  - name: away_player_y11
+    description: Jersey number of the eleventh away team player in the match lineup.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y11 {Integer}'
+  - name: sja
+    description: Stores the away team win betting odds from bookmaker SJ as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has sja {Float}'
+  - name: season
+    description: Football season when the match was played, formatted as YYYY/YYYY.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has season {String}'
+  - name: home_player_y7
+    description: Records the vertical field coordinate of the home team's seventh
+      player in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has home player y7 {Integer}'
+  - name: sjh
+    description: Stores the home team win betting odds from bookmaker SJ as a real
+      number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has sjh {Float}'
+  - name: bwd
+    description: Indicates the decimal odds offered by Bet&Win for a draw outcome
+      in the match.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has bwd {Float}'
+  - name: away_player_y5
+    description: Records the vertical field coordinate of the away team's fifth player
+      in the match.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has away player y5 {Integer}'
+  - name: home_player_1
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_5
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_6
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_3
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_8
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_10
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_11
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_4
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_7
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_4
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_10
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_9
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_3
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_9
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_2
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_11
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_1
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_6
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_2
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_8
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: away_player_5
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_player_7
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Player}'
+  - name: home_team_api_id
+    roles:
+    - concept: Team
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Team}'
+  - name: away_team_api_id
+    roles:
+    - concept: Team
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Team}'
+  - name: football_league
+    roles:
+    - concept: FootballLeague
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {FootballLeague}'
+  - name: country
+    roles:
+    - concept: Country
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Match} has {Country}'
+- concept: Player
+  type: EntityType
+  identify_by:
+  - player_id
+  relationships:
+  - name: player_name
+    description: Full legal name of the player as recorded.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Player} has player name {String}'
+  - name: player_fifa_api_id
+    description: FIFA system identifier used to associate player attribute data.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Player} has player fifa api id {Integer}'
+  - name: height
+    description: Player's height measured in centimeters.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Player} has height {Integer}'
+  - name: weight
+    description: Player's weight measurement as recorded.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Player} has weight {Integer}'
+  - name: birthday
+    description: Date of birth of the player in YYYY-MM-DD HH:MM:SS format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Player} has birthday {String}'
+  - name: player_id
+    description: Unique internal identifier for each player record.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Player} is identified by player id {Integer}'
+  - name: player_api_id
+    description: External API identifier linking the player to match lineup records.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Player} has player api id {Integer}'
+- concept: PlayerAttribute
+  type: EntityType
+  relationships:
+  - name: vision
+    description: Measures a player's anticipation and passing accuracy to teammates
+      in advantageous positions on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has vision {Integer}'
+  - name: marking
+    description: Assesses a player's effectiveness in tracking and closely defending
+      an assigned opponent during play on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has marking {Integer}'
+  - name: long_passing
+    description: Rates the player's long passing ability as an integer score (e.g.,
+      53).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has long passing {Integer}'
+  - name: stamina
+    description: Rates the player's stamina as an integer score (e.g., 79).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has stamina {Integer}'
+  - name: sprint_speed
+    description: Rates the player's sprint speed as an integer score (e.g., 78).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has sprint speed {Integer}'
+  - name: defensive_work_rate
+    description: Qualitatively rates the player's defensive contribution and tracking
+      back behavior.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has defensive work rate {String}'
+  - name: agility
+    description: Rates the player's agility as an integer score (e.g., 74).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has agility {Integer}'
+  - name: jumping
+    description: Rates the player's jumping ability as an integer score (e.g., 71).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has jumping {Integer}'
+  - name: gk_kicking
+    description: Reflects a goalkeeper's accuracy and distance when distributing the
+      ball via goal kicks or punts on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has gk kicking {Integer}'
+  - name: gk_diving
+    description: Measures a goalkeeper's agility and reach when diving to make saves
+      across the goal on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has gk diving {Integer}'
+  - name: overall_rating
+    description: Represents the player's overall ability level as a composite numerical
+      score.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has overall rating {Integer}'
+  - name: date
+    description: Records the timestamp when the player's attributes were captured,
+      formatted as YYYY-MM-DD HH:MM:SS.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has date {String}'
+  - name: balance
+    description: Rates the player's balance as an integer score (e.g., 72).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has balance {Integer}'
+  - name: acceleration
+    description: Rates the player's acceleration as an integer score (e.g., 69).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has acceleration {Integer}'
+  - name: ball_control
+    description: Rates the player's ball control skill as an integer score (e.g.,
+      73).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has ball control {Integer}'
+  - name: attacking_work_rate
+    description: Qualitatively rates the player's offensive effort and positioning
+      tendency.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has attacking work rate {String}'
+  - name: reactions
+    description: Rates the player's reactions as an integer score (e.g., 70).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has reactions {Integer}'
+  - name: interceptions
+    description: Rates the player's interceptions ability as an integer score (e.g.,
+      66).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has interceptions {Integer}'
+  - name: positioning
+    description: Rates the player's positioning ability as an integer score (e.g.,
+      68).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has positioning {Integer}'
+  - name: finishing
+    description: Evaluates the player's accuracy and composure when shooting at goal
+      from close range.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has finishing {Integer}'
+  - name: standing_tackle
+    description: Evaluates a player's skill in cleanly winning the ball via standing
+      tackle without fouling on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has standing tackle {Integer}'
+  - name: long_shots
+    description: Rates the player's long shots ability as an integer score (e.g.,
+      74).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has long shots {Integer}'
+  - name: curve
+    description: Assesses the player's ability to apply spin on the ball for curved
+      passes or shots.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has curve {Integer}'
+  - name: short_passing
+    description: Assesses the player's accuracy and speed in completing short-distance
+      passes.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has short passing {Integer}'
+  - name: free_kick_accuracy
+    description: Measures the player's precision in placing direct free kicks on target.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has free kick accuracy {Integer}'
+  - name: heading_accuracy
+    description: Measures the player's precision and effectiveness in heading the
+      ball.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has heading accuracy {Integer}'
+  - name: shot_power
+    description: Rates the player's shot power as an integer score (e.g., 71).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has shot power {Integer}'
+  - name: preferred_foot
+    description: Specifies the foot the player prefers for kicking and ball control.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has preferred foot {String}'
+  - name: sliding_tackle
+    description: Rates a player's ability to execute sliding tackles to dispossess
+      opponents while minimizing foul risk on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has sliding tackle {Integer}'
+  - name: gk_reflexes
+    description: Measures a goalkeeper's reaction speed for instinctive saves on close-range
+      or deflected shots on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has gk reflexes {Integer}'
+  - name: strength
+    description: Rates the player's physical strength as an integer score (e.g., 71).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has strength {Integer}'
+  - name: gk_positioning
+    description: Represents a goalkeeper's sense of optimal placement relative to
+      ball and goal to reduce scoring angles on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has gk positioning {Integer}'
+  - name: crossing
+    description: Assesses the player's ability to deliver accurate crosses from wide
+      areas into the penalty box.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has crossing {Integer}'
+  - name: gk_handling
+    description: Indicates a goalkeeper's ability to securely catch and hold shots
+      rather than parry on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has gk handling {Integer}'
+  - name: id
+    description: Uniquely identifies each player attribute snapshot in the dataset.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has id {Integer}'
+  - name: penalties
+    description: Quantifies a player's penalty kick proficiency, including accuracy
+      and composure under pressure, on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has penalties {Integer}'
+  - name: potential
+    description: Indicates the projected maximum overall rating the player can achieve
+      in their career.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has potential {Integer}'
+  - name: dribbling
+    description: Measures the player's close ball control and ability to maneuver
+      past opponents while running.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has dribbling {Integer}'
+  - name: volleys
+    description: Evaluates the player's skill in striking the ball cleanly while it
+      is airborne.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has volleys {Integer}'
+  - name: aggression
+    description: Rates the player's aggression as an integer score (e.g., 59).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has aggression {Integer}'
+  - name: player_api_id
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has {Player}'
+  - name: player_fifa_api_id
+    roles:
+    - concept: Player
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PlayerAttribute} has {Player}'
+- concept: Team
+  type: EntityType
+  identify_by:
+  - team_api_id
+  relationships:
+  - name: team_long_name
+    description: Full official competition name of the football team.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Team} has team long name {String}'
+  - name: team_fifa_api_id
+    description: FIFA-assigned identifier connecting the team to official FIFA data
+      and attribute records.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Team} has team fifa api id {Integer}'
+  - name: team_short_name
+    description: Abbreviated display code used to identify the team.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Team} has team short name {String}'
+  - name: team_api_id
+    description: External API identifier linking the team to matches and attribute
+      records in third-party systems.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Team} is identified by team api id {Integer}'
+  - name: id
+    description: Internal unique identifier for each team record in the system.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Team} has id {Integer}'
+- concept: TeamTacticalProfile
+  type: EntityType
+  description: A tactical profile record for a team capturing buildup play, chance
+    creation, and defensive attributes.
+  relationships:
+  - name: buildup_play_speed
+    description: Rates the team's buildup play speed on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has buildup play speed {Integer}'
+  - name: defence_team_width_class
+    description: The defensive formation width categorized as Normal, Wide, or Narrow
+      based on the numerical width indicator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has defence team width class {String}'
+  - name: buildup_play_passing
+    description: Rates the team's passing style during buildup play on a numeric scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has buildup play passing {Integer}'
+  - name: buildup_play_positioning_class
+    description: Classifies the team's buildup positioning as Organised or Free Form.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has buildup play positioning class {String}'
+  - name: buildup_play_dribbling
+    description: Rates the team's dribbling tendency during buildup play on a numeric
+      scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has buildup play dribbling {Integer}'
+  - name: chance_creation_shooting_class
+    description: Classifies the team's chance creation shooting tendency as Normal,
+      Lots, or Little.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has chance creation shooting class {String}'
+  - name: profile_date
+    description: Records the timestamp when the tactical profile was captured in YYYY-MM-DD
+      HH:MM:SS format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has profile date {String}'
+  - name: chance_creation_shooting
+    description: Rates the team's shooting tendency during chance creation on a numeric
+      scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has chance creation shooting {Integer}'
+  - name: buildup_play_dribbling_class
+    description: Classifies the team's buildup dribbling tendency as Little, Normal,
+      or Lots.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has buildup play dribbling class {String}'
+  - name: defence_pressure_class
+    description: The defensive pressure intensity categorized as Medium, Deep, or
+      High based on the numerical pressure rating.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has defence pressure class {String}'
+  - name: buildup_play_speed_class
+    description: Classifies the team's buildup play speed as Balanced, Fast, or Slow.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has buildup play speed class {String}'
+  - name: chance_creation_crossing_class
+    description: Classifies the team's chance creation crossing frequency as Normal,
+      Lots, or Little.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has chance creation crossing class {String}'
+  - name: chance_creation_positioning_class
+    description: The tactical positioning approach a team uses when creating scoring
+      opportunities, classified as Organised or Free Form.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has chance creation positioning class {String}'
+  - name: buildup_play_passing_class
+    description: Classifies the team's buildup passing style as Mixed, Short, or Long.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has buildup play passing class {String}'
+  - name: profile_id
+    description: Uniquely identifies each team tactical profile record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has profile id {Integer}'
+  - name: chance_creation_crossing
+    description: Rates the team's crossing frequency during chance creation on a numeric
+      scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has chance creation crossing {Integer}'
+  - name: chance_creation_passing
+    description: Rates the team's passing approach during chance creation on a numeric
+      scale.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has chance creation passing {Integer}'
+  - name: defence_team_width
+    description: A numerical indicator of the horizontal spread of a team's defensive
+      unit on the pitch, expressed as an integer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has defence team width {Integer}'
+  - name: defence_pressure
+    description: A numerical rating measuring the intensity of defensive pressure
+      a team applies, expressed as an integer value.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has defence pressure {Integer}'
+  - name: chance_creation_passing_class
+    description: Classifies the team's chance creation passing as Normal, Risky, or
+      Safe.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has chance creation passing class {String}'
+  - name: defence_aggression
+    description: A numerical score quantifying how aggressively a team's defense engages
+      opposing attackers, expressed as an integer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has defence aggression {Integer}'
+  - name: defence_defender_line_class
+    description: The defensive line strategy employed by a team, classified as either
+      Cover or Offside Trap.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has defence defender line class {String}'
+  - name: defence_aggression_class
+    description: The defensive aggression style classified as Press, Double, or Contain
+      based on the numerical aggression rating.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has defence aggression class {String}'
+  - name: team_api_id
+    roles:
+    - concept: Team
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has {Team}'
+  - name: team_fifa_api_id
+    roles:
+    - concept: Team
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{TeamTacticalProfile} has {Team}'

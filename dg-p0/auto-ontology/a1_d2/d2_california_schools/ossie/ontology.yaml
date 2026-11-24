@@ -1,0 +1,686 @@
+version: 0.2.0.dev0
+name: d2_california_schools_ontology
+description: Business concepts of the d2_california_schools semantic model
+ontology:
+- concept: Frpm
+  type: EntityType
+  description: Business entity represented by table frpm
+  relationships:
+  - name: school_type
+    description: The category of school based on grade levels served and program focus.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has school type {String}'
+  - name: school_name
+    description: The official name of the school or district office.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has school name {String}'
+  - name: charter_funding_type
+    description: The funding mechanism for the charter school, indicating direct state
+      funding, local district funding, or exclusion from charter funding model.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has charter funding type {String}'
+  - name: frpm_count_ages5_17
+    description: Count of students aged 5 through 17 eligible for free or reduced-price
+      meals, stored as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has frpm count ages5 17 {Float}'
+  - name: district_name
+    description: The official name of the school district.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has district name {String}'
+  - name: district_code
+    description: The unique numeric identifier for the school district.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has district code {Integer}'
+  - name: percent_eligible_free_k_12
+    description: Proportion of K-12 students eligible for free meals, expressed as
+      a decimal between 0 and 1.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has percent eligible free k 12 {Float}'
+  - name: charter_school_number
+    description: The unique four-digit identifier assigned to the charter school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has charter school number {String}'
+  - name: academic_year
+    description: The school year period for which FRPM data is reported, formatted
+      as YYYY-YYYY.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has academic year {String}'
+  - name: enrollment_ages5_17
+    description: Total enrollment count for students aged 5 through 17, stored as
+      a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has enrollment ages5 17 {Float}'
+  - name: high_grade
+    description: Highest grade level offered by the school, represented as a numeric
+      value up to 12.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has high grade {String}'
+  - name: free_meal_count_ages5_17
+    description: Number of students aged 5 through 17 eligible for free meals, stored
+      as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has free meal count ages5 17 {Float}'
+  - name: charter_school_y_n
+    description: Indicates whether the school is a charter school, with 1.0 for yes
+      and 0.0 for no.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has charter school y n {Integer}'
+  - name: low_grade
+    description: Lowest grade level offered by the school, using codes such as K for
+      kindergarten and P for pre-kindergarten.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has low grade {String}'
+  - name: field_2013_14_calpads_fall1_certification_status
+    description: Certification status code for the 2013-14 CALPADS Fall 1 submission,
+      where 1 indicates certified, stored as a bigint.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has field 2013 14 calpads fall1 certification status {Integer}'
+  - name: school_code
+    description: The seven-digit code uniquely identifying the school within the state.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has school code {String}'
+  - name: irc
+    description: Indicates whether the school is an Independent Reporting Charter,
+      with 1.0 for yes and 0.0 for no.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has irc {Integer}'
+  - name: free_meal_count_k_12
+    description: Number of kindergarten through 12th grade students eligible for free
+      meals, stored as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has free meal count k 12 {Float}'
+  - name: district_type
+    description: The classification of the district by grade span and governance type.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has district type {String}'
+  - name: enrollment_k_12
+    description: Total student enrollment count for kindergarten through 12th grade,
+      stored as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has enrollment k 12 {Float}'
+  - name: percent_eligible_frpm_k_12
+    description: Proportion of K-12 students eligible for free or reduced-price meals,
+      expressed as a decimal between 0 and 1.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has percent eligible frpm k 12 {Float}'
+  - name: county_name
+    description: The name of the county where the school or district operates.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has county name {String}'
+  - name: percent_eligible_free_ages5_17
+    description: Proportion of students aged 5 through 17 eligible for free meals,
+      expressed as a decimal between 0 and 1.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has percent eligible free ages5 17 {Float}'
+  - name: county_code
+    description: The two-digit code identifying the county where the school or district
+      is located.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has county code {String}'
+  - name: percent_eligible_frpm_ages5_17
+    description: Proportion of students aged 5 through 17 eligible for free or reduced-price
+      meals, expressed as a decimal between 0 and 1.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has percent eligible frpm ages5 17 {Float}'
+  - name: nslp_provision_status
+    description: The National School Lunch Program provision under which the school
+      operates for meal reimbursement.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has nslp provision status {String}'
+  - name: frpm_count_k_12
+    description: Count of kindergarten through 12th grade students eligible for free
+      or reduced-price meals, stored as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has frpm count k 12 {Float}'
+  - name: educational_option_type
+    description: The specific educational program model offered at the school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has educational option type {String}'
+  - name: school
+    roles:
+    - concept: School
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Frpm} has {School}'
+- concept: SatScores
+  type: EntityType
+  description: SAT exam performance and participation data for schools and districts.
+  relationships:
+  - name: number_of_test_takers
+    description: Counts the 12th-grade students who took the SAT exam.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has number of test takers {Integer}'
+  - name: numge1500
+    description: Counts test takers with a combined SAT score of 1500 or higher.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has numge1500 {Integer}'
+  - name: record_type
+    description: Indicates whether the record represents a school ('S') or district
+      aggregate ('D').
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has record type {String}'
+  - name: average_math_score
+    description: Reports the average SAT math score among test takers.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has average math score {Integer}'
+  - name: average_writing_score
+    description: Reports the average SAT writing score among test takers.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has average writing score {Integer}'
+  - name: county_name
+    description: Identifies the county by its official name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has county name {String}'
+  - name: school_name
+    description: Identifies the school by its official name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has school name {String}'
+  - name: district_name
+    description: Identifies the school district by its official name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has district name {String}'
+  - name: enroll12
+    description: Counts the number of students enrolled in 12th grade.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has enroll12 {Integer}'
+  - name: average_reading_score
+    description: Reports the average SAT reading score among test takers.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has average reading score {Integer}'
+  - name: school
+    roles:
+    - concept: School
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SatScores} has {School}'
+- concept: School
+  type: EntityType
+  description: A California school or district entity with identifying codes, location,
+    contact, operational, and organizational attributes.
+  identify_by:
+  - cds_code
+  relationships:
+  - name: longitude
+    description: Records the geographic longitude coordinate of the school's physical
+      location.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has longitude {Float}'
+  - name: phone_number
+    description: The school's primary telephone number including area code, formatted
+      as (XXX) XXX-XXXX.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has phone number {String}'
+  - name: educational_operation_name
+    description: Identifies the school's educational operation type or model, such
+      as Traditional or Continuation School.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has educational operation name {String}'
+  - name: nces_district_id
+    description: The National Center for Education Statistics district identifier
+      for the school's governing district.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has nces district id {String}'
+  - name: charter_flag
+    description: A flag indicating whether the school operates as a charter school
+      (1) or not (0).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has charter flag {Integer}'
+  - name: instructional_level_name
+    description: Gives the full descriptive name of the school's instructional level
+      matching the eilcode.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has instructional level name {String}'
+  - name: educational_operation_code
+    description: The educational operation code indicating the school's operational
+      model, such as TRAD for traditional.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has educational operation code {String}'
+  - name: admfname2
+    description: Stores the first name of the secondary school administrator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admfname2 {String}'
+  - name: grades_offered
+    description: Specifies the grade range the school is authorized to offer, formatted
+      as K-5 or 9-12.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has grades offered {String}'
+  - name: mailing_city
+    description: The city used for mailing correspondence to the school or district.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has mailing city {String}'
+  - name: phone_extension
+    description: The phone extension associated with the school's primary telephone
+      number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has phone extension {String}'
+  - name: school_name
+    description: The official name of the school site.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has school name {String}'
+  - name: open_date
+    description: The date the school or agency began operations, in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has open date {Date}'
+  - name: funding_type
+    description: The funding model classification for the school, such as directly
+      funded or locally funded.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has funding type {String}'
+  - name: district_name
+    description: The official name of the school district or county office of education
+      that governs the school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has district name {String}'
+  - name: admemail1
+    description: Provides the email address of the primary school administrator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admemail1 {String}'
+  - name: admemail3
+    description: The email address of the third administrator linked to the school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admemail3 {String}'
+  - name: zip_code
+    description: The ZIP code for the physical address of the school or district office.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has zip code {String}'
+  - name: city
+    description: The city where the school or district office is physically located.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has city {String}'
+  - name: website_url
+    description: The official website URL of the school or agency.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has website url {String}'
+  - name: state
+    description: The U.S. state abbreviation for the school or district location,
+      always CA.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has state {String}'
+  - name: instructional_level_code
+    description: Provides the coded abbreviation for the school's instructional level,
+      like ELEM for Elementary.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has instructional level code {String}'
+  - name: lastupdate
+    description: The date the school record was last updated, in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has lastupdate {Date}'
+  - name: district_organization_code
+    description: A numeric code representing the district or organizational identifier
+      for the school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has district organization code {String}'
+  - name: admemail2
+    description: Provides the email address of the secondary school administrator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admemail2 {String}'
+  - name: county
+    description: The California county where the school or district is geographically
+      located.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has county {String}'
+  - name: closed_date
+    description: The date the school or agency ceased operations, in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has closed date {Date}'
+  - name: mailing_street_address
+    description: The mailing street address for the school or district, which may
+      differ from the physical address.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has mailing street address {String}'
+  - name: status_type
+    description: The operational status of the school or district, such as Active,
+      Closed, Merged, or Pending.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has status type {String}'
+  - name: organization_type
+    description: The type of educational organization, such as Unified School District
+      or County Office of Education.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has organization type {String}'
+  - name: admlname2
+    description: Stores the last name of the secondary school administrator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admlname2 {String}'
+  - name: charter_number
+    description: The unique charter school identification number assigned to the school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has charter number {String}'
+  - name: admfname3
+    description: The first name of the third administrator linked to the school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admfname3 {String}'
+  - name: cds_code
+    description: A unique 14-digit identifier for a California school or district
+      used across state education data systems.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{School} is identified by cds code {String}'
+  - name: virtual_instruction_status
+    description: Shows the school's virtual instruction status using codes N, P, or
+      F.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has virtual instruction status {String}'
+  - name: admlname1
+    description: Stores the last name of the primary school administrator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admlname1 {String}'
+  - name: latitude
+    description: Records the geographic latitude coordinate of the school's physical
+      location.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has latitude {Float}'
+  - name: school_organization_type
+    description: The descriptive category of the school organization, such as Elementary
+      Schools or High Schools.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has school organization type {String}'
+  - name: mailing_state
+    description: The two-letter state abbreviation for the school's mailing address,
+      such as CA.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has mailing state {String}'
+  - name: mailing_zip_code
+    description: The ZIP code of the school's mailing address, in standard five-digit
+      format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has mailing zip code {String}'
+  - name: nces_school_id
+    description: The National Center for Education Statistics school identifier for
+      the specific school site.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has nces school id {String}'
+  - name: school_organization_code
+    description: A numeric school organization code used for classification purposes.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has school organization code {String}'
+  - name: magnet_flag
+    description: Flags whether the school is a magnet school (1) or not (0).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has magnet flag {Integer}'
+  - name: administrator_first_name
+    description: Stores the first name of the primary school administrator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has administrator first name {String}'
+  - name: street_address_abbreviation
+    description: The abbreviated physical street address using standard postal abbreviations.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has street address abbreviation {String}'
+  - name: admlname3
+    description: The last name of the third administrator linked to the school.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has admlname3 {String}'
+  - name: grades_served
+    description: Indicates the grade range the school currently serves, formatted
+      as K-5 or 9-12.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has grades served {String}'
+  - name: street_address
+    description: The physical street address of the school or district office.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has street address {String}'
+  - name: mailing_street_abbreviation
+    description: The abbreviated mailing street address using standard postal abbreviations.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{School} has mailing street abbreviation {String}'

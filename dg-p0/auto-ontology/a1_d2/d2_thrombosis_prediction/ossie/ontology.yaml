@@ -1,0 +1,519 @@
+version: 0.2.0.dev0
+name: d2_thrombosis_prediction_ontology
+description: Business concepts of the d2_thrombosis_prediction semantic model
+ontology:
+- concept: ClinicalExamination
+  type: EntityType
+  relationships:
+  - name: anticardiolipin_ig_m_level
+    description: aCL IgM measures the quantitative level of anticardiolipin IgM antibody
+      in the patient's blood sample.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has anticardiolipin ig m level {Float}'
+  - name: ana_titer
+    description: ana captures the antinuclear antibody titer as an integer dilution
+      factor.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has ana titer {Integer}'
+  - name: ana_pattern
+    description: ANA Pattern records the fluorescence pattern codes observed in the
+      antinuclear antibody test as a comma-separated string.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has ana pattern {String}'
+  - name: thrombosis_count
+    description: thrombosis records the count or severity score of thrombotic events
+      experienced by the patient as an integer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has thrombosis count {Integer}'
+  - name: kaolin_clotting_time_result
+    description: kct indicates the presence (+) or absence (-) of lupus anticoagulant
+      activity via the kaolin clotting time test.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has kaolin clotting time result {String}'
+  - name: rvvt
+    description: rvvt indicates the presence (+) or absence (-) of lupus anticoagulant
+      activity via the Russell's viper venom time test.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has rvvt {String}'
+  - name: anticardiolipin_ig_g_level
+    description: aCL IgG measures the quantitative level of anticardiolipin IgG antibody
+      in the patient's blood sample.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has anticardiolipin ig g level {Float}'
+  - name: lupus_anticoagulant_result
+    description: lac indicates the presence (+) or absence (-) of lupus anticoagulant
+      based on the lupus anticoagulant test.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has lupus anticoagulant result {String}'
+  - name: symptoms
+    description: symptoms lists the clinical symptoms or disease manifestations reported
+      for the patient as a comma-separated list.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has symptoms {String}'
+  - name: anticardiolipin_ig_a_level
+    description: aCL IgA records the quantitative level of anticardiolipin IgA antibody
+      in the patient's blood as an integer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has anticardiolipin ig a level {Integer}'
+  - name: diagnosis
+    description: diagnosis stores the confirmed clinical diagnosis assigned to the
+      patient, such as systemic lupus erythematosus or antiphospholipid syndrome.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has diagnosis {String}'
+  - name: examination_date
+    description: Examination Date records the calendar date when the clinical examination
+      or laboratory test was performed, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has examination date {Date}'
+  - name: patient
+    roles:
+    - concept: Patient
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ClinicalExamination} has {Patient}'
+- concept: LaboratoryTest
+  type: EntityType
+  description: A comprehensive laboratory test panel containing liver function, kidney
+    function, lipid profile, complete blood count, coagulation studies, immunoglobulins,
+    inflammatory markers, complement levels, and autoantibody results.
+  relationships:
+  - name: rnp
+    description: Flags the presence (1) or absence (0) of anti‑RNP antibodies using
+      a text indicator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has rnp {String}'
+  - name: triglycerides
+    description: Captures triglyceride concentration in blood in milligrams per deciliter.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has triglycerides {Integer}'
+  - name: rheumatoid_factor
+    description: Stores the rheumatoid factor level as a text string that may include
+      inequality signs.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has rheumatoid factor {String}'
+  - name: hematocrit
+    description: The patient's hematocrit as a percentage of blood volume, indicating
+      red blood cell proportion.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has hematocrit {Float}'
+  - name: ig_m
+    description: The patient's immunoglobulin M concentration in milligrams per deciliter,
+      showing early immune response magnitude.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has ig m {Integer}'
+  - name: aptt
+    description: The patient's activated partial thromboplastin time in seconds, measuring
+      clotting pathway efficiency.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has aptt {Integer}'
+  - name: glucose
+    description: Records blood glucose concentration in milligrams per deciliter.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has glucose {Integer}'
+  - name: complement_c3
+    description: Holds the complement component 3 concentration as a whole‑number
+      integer value.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has complement c3 {Integer}'
+  - name: centromea
+    description: Shows anti‑centromere antibody result as text indicating negative
+      or absent.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has centromea {String}'
+  - name: fibrinogen
+    description: The patient's fibrinogen level in milligrams per deciliter, indicating
+      clotting factor availability.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has fibrinogen {Float}'
+  - name: total_bilirubin
+    description: Measures total bilirubin concentration in blood in milligrams per
+      deciliter.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has total bilirubin {Float}'
+  - name: crp
+    description: Records the C‑reactive protein result as qualitative or semi‑quantitative
+      text such as negative, positive, or graded levels.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has crp {String}'
+  - name: dna
+    description: Stores the anti‑double‑stranded DNA antibody level as a text numeric
+      value.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has dna {String}'
+  - name: total_protein
+    description: Records total protein concentration in blood in grams per deciliter.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has total protein {Float}'
+  - name: complement_c4
+    description: Holds the complement component 4 concentration as a whole‑number
+      integer value.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has complement c4 {Integer}'
+  - name: white_blood_cell_count
+    description: The patient's white blood cell count in billions per liter, indicating
+      immune system activity.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has white blood cell count {Float}'
+  - name: albumin
+    description: Captures albumin concentration in blood in grams per deciliter.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has albumin {Float}'
+  - name: ig_a
+    description: The patient's immunoglobulin A concentration in milligrams per deciliter,
+      indicating mucosal immunity level.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has ig a {Integer}'
+  - name: alt_level
+    description: Records the alanine aminotransferase (ALT) liver enzyme level in
+      units per liter.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has alt level {Integer}'
+  - name: creatinine
+    description: Captures serum creatinine concentration in milligrams per deciliter.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has creatinine {Float}'
+  - name: protein_c_activity
+    description: The patient's protein C activity or concentration measurement, assessing
+      anticoagulation regulation.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has protein c activity {Integer}'
+  - name: sm
+    description: Flags the presence (1) or absence (0) of anti‑Sm antibodies using
+      a text indicator.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has sm {String}'
+  - name: urine_protein
+    description: The qualitative urine protein dipstick result using categories 0,
+      -, TR, 1, 2 to indicate proteinuria severity.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has urine protein {String}'
+  - name: dna_ii
+    description: Holds a second anti‑DNA antibody measurement as a whole‑number integer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has dna ii {Integer}'
+  - name: hemoglobin
+    description: The patient's hemoglobin level in grams per deciliter, showing blood's
+      oxygen transport ability.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has hemoglobin {Float}'
+  - name: test_date
+    description: Records the calendar date when the laboratory test panel was conducted,
+      formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has test date {Date}'
+  - name: ssb
+    description: Indicates anti‑SSB antibody status as a text flag, currently observed
+      only as negative (0).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has ssb {String}'
+  - name: tat2
+    description: A secondary thrombin-antithrombin complex measurement in micrograms
+      per liter, providing additional coagulation insight.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has tat2 {Integer}'
+  - name: sc170
+    description: Records the anti‑Scl‑70 antibody result as text that can be numeric
+      or qualitative such as negative.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has sc170 {String}'
+  - name: platelet_count
+    description: The patient's platelet count in billions per liter, assessing clotting
+      function.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has platelet count {Integer}'
+  - name: ast_level
+    description: Captures the aspartate aminotransferase (AST) liver enzyme level
+      in units per liter.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has ast level {Integer}'
+  - name: ssa
+    description: Indicates anti‑SSA antibody status as a text flag, currently observed
+      only as negative (0).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has ssa {String}'
+  - name: prothrombin_time
+    description: The patient's prothrombin time in seconds, evaluating blood clotting
+      speed.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has prothrombin time {Float}'
+  - name: tat
+    description: The patient's thrombin-antithrombin complex level in micrograms per
+      liter, reflecting thrombin generation.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has tat {Integer}'
+  - name: rheumatoid_arthritis_factor
+    description: Captures the rheumatoid arthritis factor outcome as qualitative text
+      indicators like positive, negative, or graded symbols.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has rheumatoid arthritis factor {String}'
+  - name: alp_level
+    description: Tracks the alkaline phosphatase (ALP) enzyme level in units per liter
+      related to liver and bone metabolism.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has alp level {Integer}'
+  - name: red_blood_cell_count
+    description: The patient's red blood cell count in trillions per liter, reflecting
+      oxygen-carrying capacity.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has red blood cell count {Float}'
+  - name: ig_g
+    description: The patient's immunoglobulin G concentration in milligrams per deciliter,
+      reflecting humoral immunity status.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has ig g {Integer}'
+  - name: uric_acid
+    description: Measures uric acid concentration in blood in milligrams per deciliter.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has uric acid {Float}'
+  - name: ldh_level
+    description: Measures the lactate dehydrogenase (LDH) enzyme level in units per
+      liter as an indicator of tissue damage.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has ldh level {Integer}'
+  - name: cpk_level
+    description: Measures creatine phosphokinase (CPK) enzyme level in units per liter
+      as an indicator of muscle damage.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has cpk level {Integer}'
+  - name: total_cholesterol
+    description: Records total cholesterol concentration in blood in milligrams per
+      deciliter.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has total cholesterol {Integer}'
+  - name: bun_level
+    description: Records blood urea nitrogen (BUN) level in milligrams per deciliter.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has bun level {Integer}'
+  - name: patient
+    roles:
+    - concept: Patient
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LaboratoryTest} has {Patient}'
+- concept: Patient
+  type: EntityType
+  description: Core patient demographic and clinical information.
+  identify_by:
+  - patient_id
+  relationships:
+  - name: first_encounter_date
+    description: Date of the patient's first recorded clinical encounter or diagnosis
+      in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Patient} has first encounter date {Date}'
+  - name: date_of_birth
+    description: Patient's date of birth in YYYY-MM-DD format, used for age calculation
+      and demographic analysis.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Patient} has date of birth {Date}'
+  - name: description_date
+    description: Date of a clinical note or documentation event in YYYY-MM-DD format,
+      despite the field name 'description'.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Patient} has description date {Date}'
+  - name: diagnosis
+    description: Primary clinical diagnosis recorded as standardized abbreviations
+      such as SLE, RA, or BEHCET.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Patient} has diagnosis {String}'
+  - name: patient_id
+    description: Unique identifier for the patient, linking clinical records to examinations
+      and laboratory results.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Patient} is identified by patient id {Integer}'
+  - name: biological_sex
+    description: Biological sex of the patient, recorded as F for female, M for male,
+      or blank when unknown.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Patient} has biological sex {String}'
+  - name: admission_status
+    description: Admission status indicator using symbolic codes like '-', '+', or
+      '+(' for classification, with blank for unknown.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Patient} has admission status {String}'

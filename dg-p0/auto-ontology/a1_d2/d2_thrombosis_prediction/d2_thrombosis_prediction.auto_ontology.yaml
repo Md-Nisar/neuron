@@ -1,0 +1,1111 @@
+data_layer:
+  databases:
+  - id: db301840-4a99-4b3d-a41f-4166408138db
+    dialect: postgres
+    schemas:
+    - id: b576bee5-9b18-4fba-a1d0-8b8b30dd055f
+      name: public
+      database_name: d2_thrombosis_prediction
+      tables:
+      - id: a88f3acd-f17d-4fda-9800-47d0fbfae304
+        name: examination
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 0ab0e950-887f-487d-ba6b-762f07d8b088
+          name: id
+          description: ''
+          type: bigint
+          sample_values:
+          - 5524440.0
+          - 14872.0
+          - 48473.0
+          - 102490.0
+          - 108788.0
+          is_nullable: true
+          is_unique: true
+        - id: 1a62b56c-2909-4a5b-83cf-8c2cf8b3bd01
+          name: Examination Date
+          description: The date on which the patient's clinical examination or laboratory
+            testing was performed.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: d2f361a1-270b-413f-a685-03cb902608cf
+          name: aCL IgG
+          description: The quantitative level of anticardiolipin IgG antibody measured
+            in the patient's blood sample.
+          type: real
+          sample_values:
+          - 0.0
+          - 1.0
+          - 0.8
+          - 1.1
+          - 0.6
+          is_nullable: true
+          is_unique: false
+        - id: f9ff4b6c-9037-491d-a518-a83c05621131
+          name: aCL IgM
+          description: The quantitative level of anticardiolipin IgM antibody measured
+            in the patient's blood sample.
+          type: real
+          sample_values:
+          - 0.0
+          - 1.8
+          - 2.0
+          - 1.7
+          - 2.4
+          is_nullable: true
+          is_unique: false
+        - id: 91dbc9c4-90cc-480d-9bbf-4c5ba05acf3c
+          name: ana
+          description: The titer value of the antinuclear antibody (ANA) test expressed
+            as an integer dilution factor.
+          type: bigint
+          sample_values:
+          - 0.0
+          - 16.0
+          - 64.0
+          - 256.0
+          - 4.0
+          is_nullable: true
+          is_unique: false
+        - id: e9b9086c-4e0d-4f47-b85e-d2b66b240a2d
+          name: ANA Pattern
+          description: The fluorescence pattern(s) observed in the antinuclear antibody
+            test, recorded as a comma-separated string of pattern codes.
+          type: text
+          sample_values:
+          - S
+          - P
+          - P,S
+          - D,P,S
+          - S,D
+          is_nullable: true
+          is_unique: false
+        - id: 014643ff-8df0-4258-877b-a026d9c0a05a
+          name: aCL IgA
+          description: The quantitative level of anticardiolipin IgA antibody measured
+            in the patient's blood sample, reported as an integer.
+          type: bigint
+          sample_values:
+          - 0
+          - 2
+          - 3
+          - 9
+          - 7
+          is_nullable: true
+          is_unique: false
+        - id: 67ab6c89-d7dc-451f-8b70-3fc1b3518569
+          name: diagnosis
+          description: The confirmed clinical diagnosis assigned to the patient, such
+            as systemic lupus erythematosus or antiphospholipid syndrome.
+          type: text
+          sample_values:
+          - SLE
+          - SjS
+          - Behcet
+          - RA
+          - APS
+          is_nullable: true
+          is_unique: false
+        - id: 1f31335c-8c4b-4025-a953-e5c2e8edf884
+          name: kct
+          description: The result of the kaolin clotting time test indicating presence
+            (+) or absence (-) of lupus anticoagulant activity.
+          type: text
+          sample_values:
+          - '-'
+          - +
+          is_nullable: true
+          is_unique: false
+        - id: 13199d98-b303-4947-95e7-2883432d4a42
+          name: rvvt
+          description: The result of the Russell's viper venom time test indicating
+            presence (+) or absence (-) of lupus anticoagulant activity.
+          type: text
+          sample_values:
+          - '-'
+          - +
+          is_nullable: true
+          is_unique: false
+        - id: ebf4de8f-5b9c-49af-be4e-f413877313ec
+          name: lac
+          description: The result of the lupus anticoagulant test indicating presence
+            (+) or absence (-) of lupus anticoagulant.
+          type: text
+          sample_values:
+          - '-'
+          - +
+          is_nullable: true
+          is_unique: false
+        - id: e34d89c3-a147-46aa-9149-f90bb385e072
+          name: symptoms
+          description: The clinical symptoms or disease manifestations reported for
+            the patient, recorded as a comma-separated list.
+          type: text
+          sample_values:
+          - CNS lupus
+          - Apo
+          - AMI
+          - thrombophlebitis
+          - thrombocytopenia
+          is_nullable: true
+          is_unique: false
+        - id: d8b44d44-6c4a-46b0-9cf9-658985fe5f2b
+          name: thrombosis
+          description: The count or severity score of thrombotic events experienced
+            by the patient, represented as an integer value.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 3
+          is_nullable: true
+          is_unique: false
+      - id: 531da8cb-eada-404d-84b5-04959beb2d32
+        name: laboratory
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: d0ab4c44-48be-4fe0-b2d8-e8a60829e0fa
+          name: id
+          description: ''
+          type: bigint
+          sample_values:
+          - 130312
+          - 283032
+          - 81043
+          - 57266
+          - 48473
+          is_nullable: true
+          is_unique: false
+        - id: ff85abcc-d50d-41cb-88dc-65a7de911763
+          name: date
+          description: The calendar date on which the laboratory test panel was performed.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 78f7875c-38b1-476f-9ef0-862f05b2777a
+          name: got
+          description: Aspartate aminotransferase (AST) level, a liver enzyme measured
+            in units per liter.
+          type: bigint
+          sample_values:
+          - 22.0
+          - 17.0
+          - 16.0
+          - 23.0
+          - 21.0
+          is_nullable: true
+          is_unique: false
+        - id: 65ba8efc-e7cb-4a73-afa5-36ae93e749ae
+          name: gpt
+          description: Alanine aminotransferase (ALT) level, a liver enzyme measured
+            in units per liter.
+          type: bigint
+          sample_values:
+          - 16.0
+          - 15.0
+          - 18.0
+          - 13.0
+          - 19.0
+          is_nullable: true
+          is_unique: false
+        - id: 7552fcf6-df41-4a2d-8fea-3e718c33775e
+          name: ldh
+          description: Lactate dehydrogenase (LDH) level, an enzyme indicating tissue
+            damage, measured in units per liter.
+          type: bigint
+          sample_values:
+          - 124.0
+          - 142.0
+          - 129.0
+          - 133.0
+          - 125.0
+          is_nullable: true
+          is_unique: false
+        - id: cd22913f-e6c6-49cc-8540-d049ca0c8ea7
+          name: alp
+          description: Alkaline phosphatase (ALP) level, an enzyme related to liver
+            and bone metabolism, measured in units per liter.
+          type: bigint
+          sample_values:
+          - 63.0
+          - 76.0
+          - 40.0
+          - 66.0
+          - 67.0
+          is_nullable: true
+          is_unique: false
+        - id: 83201611-37a7-4284-b50a-ffb31407cfb7
+          name: tp
+          description: Total protein concentration in blood, measured in grams per
+            deciliter.
+          type: real
+          sample_values:
+          - 7.2
+          - 7.6
+          - 7.3
+          - 7.4
+          - 7.5
+          is_nullable: true
+          is_unique: false
+        - id: e430af78-ecc1-44f1-98de-d16f96da6ab8
+          name: alb
+          description: Albumin concentration in blood, measured in grams per deciliter.
+          type: real
+          sample_values:
+          - 4.3
+          - 4.1
+          - 4.4
+          - 4.5
+          - 4.2
+          is_nullable: true
+          is_unique: false
+        - id: 3e2191bf-0267-4286-b6a9-f2a01380eaf2
+          name: ua
+          description: Uric acid concentration in blood, measured in milligrams per
+            deciliter.
+          type: real
+          sample_values:
+          - 4.2
+          - 3.9
+          - 4.4
+          - 4.1
+          - 4.3
+          is_nullable: true
+          is_unique: false
+        - id: 43e3cfc3-3dc6-46c6-b371-5cc11f84d992
+          name: un
+          description: Blood urea nitrogen (BUN) level, measured in milligrams per
+            deciliter.
+          type: bigint
+          sample_values:
+          - 14.0
+          - 13.0
+          - 12.0
+          - 15.0
+          - 16.0
+          is_nullable: true
+          is_unique: false
+        - id: 09d3aeec-9cd1-40ad-8add-7a37bd5029ac
+          name: cre
+          description: Serum creatinine concentration, measured in milligrams per
+            deciliter.
+          type: real
+          sample_values:
+          - 0.9
+          - 0.8
+          - 0.7
+          - 1.0
+          - 0.6
+          is_nullable: true
+          is_unique: false
+        - id: d45b801a-8591-4620-bf81-058b60b0b43b
+          name: T-BIL
+          description: Total bilirubin concentration in blood, measured in milligrams
+            per deciliter.
+          type: real
+          sample_values:
+          - 0.4
+          - 0.5
+          - 0.6
+          - 0.3
+          - 0.7
+          is_nullable: true
+          is_unique: false
+        - id: 78d90d89-20f3-4417-9109-7a57df729c5b
+          name: T-CHO
+          description: Total cholesterol concentration in blood, measured in milligrams
+            per deciliter.
+          type: bigint
+          sample_values:
+          - 150.0
+          - 172.0
+          - 165.0
+          - 185.0
+          - 169.0
+          is_nullable: true
+          is_unique: false
+        - id: efc23b06-11ba-4787-b141-f65a72aa5c7f
+          name: tg
+          description: Triglyceride concentration in blood, measured in milligrams
+            per deciliter.
+          type: bigint
+          sample_values:
+          - 111.0
+          - 70.0
+          - 59.0
+          - 128.0
+          - 146.0
+          is_nullable: true
+          is_unique: false
+        - id: a673021b-67e6-483c-9ab6-10f33dd39beb
+          name: cpk
+          description: Creatine phosphokinase (CPK) level, an enzyme indicating muscle
+            damage, measured in units per liter.
+          type: bigint
+          sample_values:
+          - 21.0
+          - 26.0
+          - 18.0
+          - 17.0
+          - 14.0
+          is_nullable: true
+          is_unique: false
+        - id: 8f5dbcc1-1276-406d-8440-cc2f4cf37a31
+          name: glu
+          description: Blood glucose concentration, measured in milligrams per deciliter.
+          type: bigint
+          sample_values:
+          - 84.0
+          - 169.0
+          - 160.0
+          - 101.0
+          - 82.0
+          is_nullable: true
+          is_unique: false
+        - id: e1578de4-8a22-49f4-a13a-74b513ccfc32
+          name: wbc
+          description: wbc represents the patient's white blood cell count measured
+            in billions per liter.
+          type: real
+          sample_values:
+          - 5.3
+          - 5.2
+          - 3.6
+          - 5.1
+          - 3.9
+          is_nullable: true
+          is_unique: false
+        - id: 986f9ef4-845e-4e56-9025-54436e24e86d
+          name: rbc
+          description: rbc represents the patient's red blood cell count measured
+            in trillions per liter.
+          type: real
+          sample_values:
+          - 4.4
+          - 4.5
+          - 4.6
+          - 4.3
+          - 4.7
+          is_nullable: true
+          is_unique: false
+        - id: 9132c70d-aa20-488a-9e6c-54a7a972bb02
+          name: hgb
+          description: hgb represents the patient's hemoglobin concentration measured
+            in grams per deciliter.
+          type: real
+          sample_values:
+          - 11.8
+          - 12.5
+          - 13.0
+          - 12.4
+          - 12.2
+          is_nullable: true
+          is_unique: false
+        - id: e51d4c4d-afe6-4ffe-98a0-22546e0dd61b
+          name: hct
+          description: hct represents the patient's hematocrit value measured as a
+            percentage of blood volume.
+          type: real
+          sample_values:
+          - 36.2
+          - 40.4
+          - 38.2
+          - 40.0
+          - 37.7
+          is_nullable: true
+          is_unique: false
+        - id: b44d40e8-edc8-4e55-843f-049927cbae03
+          name: plt
+          description: plt represents the patient's platelet count measured in billions
+            per liter.
+          type: bigint
+          sample_values:
+          - 249.0
+          - 272.0
+          - 212.0
+          - 283.0
+          - 289.0
+          is_nullable: true
+          is_unique: false
+        - id: 869c471e-447b-46ab-83e7-1092c05fb375
+          name: pt
+          description: pt represents the patient's prothrombin time measured in seconds.
+          type: real
+          sample_values:
+          - 11.3
+          - 12.0
+          - 11.8
+          - 12.6
+          - 12.2
+          is_nullable: true
+          is_unique: false
+        - id: 85fecfa6-5bfa-4941-863d-6083a6b6dbf2
+          name: aptt
+          description: aptt represents the patient's activated partial thromboplastin
+            time measured in seconds.
+          type: bigint
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 51e0c5fa-123a-4e5d-a5cf-0f7efdd6d013
+          name: fg
+          description: fg represents the patient's fibrinogen level measured in milligrams
+            per deciliter.
+          type: real
+          sample_values:
+          - 27.0
+          is_nullable: true
+          is_unique: true
+        - id: 0f39b8a0-5362-4e8a-838c-867401b454e8
+          name: pic
+          description: pic represents a laboratory measurement related to protein
+            C activity or concentration.
+          type: bigint
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: b90d4433-dc0c-46f1-b215-f427cd6aedbf
+          name: tat
+          description: tat represents the patient's thrombin-antithrombin complex
+            level measured in micrograms per liter.
+          type: bigint
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: abb60d82-d9b2-4014-8347-0f58af03ccb6
+          name: tat2
+          description: tat2 represents a secondary measurement of thrombin-antithrombin
+            complex levels.
+          type: bigint
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 421bdfd0-b4f5-4286-ac70-8730668b79bb
+          name: U-PRO
+          description: U-PRO represents the qualitative urine protein dipstick result
+            with categories such as negative, trace, and graded positives.
+          type: text
+          sample_values:
+          - '0'
+          - '-'
+          - TR
+          - '1'
+          - '2'
+          is_nullable: true
+          is_unique: false
+        - id: a1eede97-34ab-46f8-8186-d12b5bc33b49
+          name: igg
+          description: igg represents the patient's immunoglobulin G concentration
+            measured in milligrams per deciliter.
+          type: bigint
+          sample_values:
+          - 1360.0
+          - 1248.0
+          - 2323.0
+          - 1640.0
+          - 1600.0
+          is_nullable: true
+          is_unique: true
+        - id: 43e60b37-efd3-45b1-ad36-0948714fd6d3
+          name: iga
+          description: iga represents the patient's immunoglobulin A concentration
+            measured in milligrams per deciliter.
+          type: bigint
+          sample_values:
+          - 300.0
+          - 243.0
+          - 412.0
+          - 236.0
+          - 264.0
+          is_nullable: true
+          is_unique: false
+        - id: 2e6a11f8-d3d6-4d9e-b7a5-a472fc3c85b8
+          name: igm
+          description: igm represents the patient's immunoglobulin M concentration
+            measured in milligrams per deciliter.
+          type: bigint
+          sample_values:
+          - 187.0
+          - 132.0
+          - 56.0
+          - 124.0
+          - 143.0
+          is_nullable: true
+          is_unique: false
+        - id: 48d50a42-ea89-4bea-9abd-d554f74db8dc
+          name: crp
+          description: "crp records the C\u2011reactive protein test result expressed\
+            \ as a qualitative or semi\u2011quantitative text value."
+          type: text
+          sample_values:
+          - '-'
+          - +
+          - 2+
+          - <0.002
+          - 3+
+          is_nullable: true
+          is_unique: false
+        - id: d1cf11b6-9f37-4573-a217-3d3301e7da4d
+          name: ra
+          description: ra records the rheumatoid arthritis factor test result expressed
+            as a qualitative text value.
+          type: text
+          sample_values:
+          - +
+          - '-'
+          - 2+
+          - +-
+          - 7-
+          is_nullable: true
+          is_unique: false
+        - id: dd5d40ed-2e60-40b7-b803-0320a2408bd3
+          name: rf
+          description: rf records the rheumatoid factor level reported as a text string,
+            often including inequality signs.
+          type: text
+          sample_values:
+          - <40
+          - '40'
+          - '160'
+          - '80'
+          - '320'
+          is_nullable: true
+          is_unique: false
+        - id: 188086ef-0f9a-48ff-9d94-611e1b8e6d5f
+          name: c3
+          description: c3 stores the complement component 3 concentration as a numeric
+            integer value.
+          type: bigint
+          sample_values:
+          - 82.0
+          - 53.0
+          - 87.0
+          - 93.0
+          - 55.0
+          is_nullable: true
+          is_unique: false
+        - id: f579649a-9144-40ab-af0c-f86167f5621e
+          name: c4
+          description: c4 stores the complement component 4 concentration as a numeric
+            integer value.
+          type: bigint
+          sample_values:
+          - 17.0
+          - 18.0
+          - 16.0
+          - 14.0
+          - 15.0
+          is_nullable: true
+          is_unique: false
+        - id: 693f1b6c-9e0d-4210-8663-1778e2f40d29
+          name: rnp
+          description: "rnp indicates the presence (1) or absence (0) of anti\u2011\
+            RNP antibodies as a text flag."
+          type: text
+          sample_values:
+          - '0'
+          - '1'
+          is_nullable: true
+          is_unique: true
+        - id: 90e6ba1c-5d4a-476b-a681-299d941fe736
+          name: sm
+          description: "sm indicates the presence (1) or absence (0) of anti\u2011\
+            Sm antibodies as a text flag."
+          type: text
+          sample_values:
+          - '0'
+          - '1'
+          is_nullable: true
+          is_unique: true
+        - id: 276c4807-ff32-4662-b854-8a39cb32d8d9
+          name: sc170
+          description: "sc170 records the anti\u2011Scl\u201170 (topoisomerase I)\
+            \ antibody result as a text value that may be numeric or qualitative."
+          type: text
+          sample_values:
+          - '0'
+          - '1'
+          - '16'
+          - '4'
+          - negative
+          is_nullable: true
+          is_unique: false
+        - id: 5887ff36-6a87-4e47-b029-f3c308503d1a
+          name: ssa
+          description: "ssa records the anti\u2011SSA (Ro) antibody result as a text\
+            \ flag, currently observed only as negative (0)."
+          type: text
+          sample_values:
+          - '0'
+          is_nullable: true
+          is_unique: true
+        - id: cc483690-f643-4305-9f8a-eb76b26d6f62
+          name: ssb
+          description: "ssb records the anti\u2011SSB (La) antibody result as a text\
+            \ flag, currently observed only as negative (0)."
+          type: text
+          sample_values:
+          - '0'
+          is_nullable: true
+          is_unique: true
+        - id: 7220b0f3-5d6d-44c5-8ff2-19c2d6150720
+          name: centromea
+          description: "centromea records the anti\u2011centromere antibody result\
+            \ as a text value indicating negative or absent."
+          type: text
+          sample_values:
+          - '0'
+          - negative
+          is_nullable: true
+          is_unique: false
+        - id: 947a2ac9-407d-45d2-b5dd-94cd16b43d39
+          name: dna
+          description: "dna stores the anti\u2011double\u2011stranded DNA antibody\
+            \ level reported as a text numeric value."
+          type: text
+          sample_values:
+          - '41.9'
+          - '18'
+          is_nullable: true
+          is_unique: true
+        - id: 6eef6805-fd63-461a-a2e3-9b81d94b0533
+          name: DNA-II
+          description: "DNA-II stores the second anti\u2011DNA antibody measurement\
+            \ as a numeric integer value."
+          type: bigint
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+      - id: cff5c1cc-31c7-4583-ae6b-41f2c6239e9f
+        name: patient
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 7d72c735-ddd2-4279-9c9c-0d208b265f52
+          name: id
+          description: Unique identifier for each patient record in the clinical dataset.
+          type: bigint
+          sample_values:
+          - 2110
+          - 11408
+          - 12052
+          - 14872
+          - 27654
+          is_nullable: false
+          is_unique: true
+        - id: 84c9b759-2f3c-463d-bde4-8e3984f8ed70
+          name: sex
+          description: Biological sex of the patient, recorded as F for female, M
+            for male, or blank for unknown.
+          type: text
+          sample_values:
+          - F
+          - M
+          - ''
+          is_nullable: true
+          is_unique: false
+        - id: a26b7d65-8922-4084-a7a0-333dcc068ebf
+          name: birthday
+          description: Patient's date of birth used for age calculation and demographic
+            analysis.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: e85066ff-cf51-4934-8771-37e2340f984c
+          name: description
+          description: Date field labeled as description, potentially indicating the
+            date of a clinical note or documentation event.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 0dfa387a-e209-4adf-b95a-ef03bc8af3c3
+          name: First Date
+          description: Date of the patient's first recorded clinical encounter or
+            diagnosis in the system.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 1f9eab24-44bc-4a9c-b360-2b3b6b6f5bc1
+          name: admission
+          description: Admission status or type indicator using symbolic codes such
+            as -, +, or +( for classification.
+          type: text
+          sample_values:
+          - '-'
+          - +
+          - ''
+          - +(
+          is_nullable: true
+          is_unique: false
+        - id: 7aeeb4c4-df9d-43c9-b765-fccfc961b46a
+          name: diagnosis
+          description: Primary clinical diagnosis for the patient, coded as standardized
+            abbreviations like SLE, RA, or BEHCET.
+          type: text
+          sample_values:
+          - SLE
+          - SJS
+          - RA
+          - BEHCET
+          - PSS
+          is_nullable: true
+          is_unique: false
+  foreign_keys:
+  - source_column_id: 0ab0e950-887f-487d-ba6b-762f07d8b088
+    target_column_id: 7d72c735-ddd2-4279-9c9c-0d208b265f52
+  - source_column_id: d0ab4c44-48be-4fe0-b2d8-e8a60829e0fa
+    target_column_id: 7d72c735-ddd2-4279-9c9c-0d208b265f52
+  joins: []
+semantic_layer:
+  terms:
+  - id: f85ca249-a4aa-47dd-b932-e7eefd75667f
+    name: Clinical Examination
+    description: ''
+    represents:
+    - a88f3acd-f17d-4fda-9800-47d0fbfae304
+    columns_attributes:
+    - id: 029d5002-7ab5-436c-8494-c11701beaef1
+      name: Anticardiolipin Ig M Level
+      description: aCL IgM measures the quantitative level of anticardiolipin IgM
+        antibody in the patient's blood sample.
+      column_id: f9ff4b6c-9037-491d-a518-a83c05621131
+    - id: 03362862-5c94-4f99-94be-14013384a1dc
+      name: ANA Titer
+      description: ana captures the antinuclear antibody titer as an integer dilution
+        factor.
+      column_id: 91dbc9c4-90cc-480d-9bbf-4c5ba05acf3c
+    - id: 486ce546-a08b-43fa-94d4-4e1a3f8ce48a
+      name: ANA Pattern
+      description: ANA Pattern records the fluorescence pattern codes observed in
+        the antinuclear antibody test as a comma-separated string.
+      column_id: e9b9086c-4e0d-4f47-b85e-d2b66b240a2d
+    - id: 4b9dc43c-b3b5-4196-a73e-57b9c02ed137
+      name: Thrombosis Count
+      description: thrombosis records the count or severity score of thrombotic events
+        experienced by the patient as an integer.
+      column_id: d8b44d44-6c4a-46b0-9cf9-658985fe5f2b
+    - id: 6025b7fc-edc8-4e0c-8b41-264a31a08c69
+      name: Kaolin Clotting Time Result
+      description: kct indicates the presence (+) or absence (-) of lupus anticoagulant
+        activity via the kaolin clotting time test.
+      column_id: 1f31335c-8c4b-4025-a953-e5c2e8edf884
+    - id: 6232338f-0044-422e-b907-9bade7744169
+      name: rvvt
+      description: rvvt indicates the presence (+) or absence (-) of lupus anticoagulant
+        activity via the Russell's viper venom time test.
+      column_id: 13199d98-b303-4947-95e7-2883432d4a42
+    - id: 8c395309-ec45-407b-bd11-a9b3611a10e9
+      name: Anticardiolipin Ig G Level
+      description: aCL IgG measures the quantitative level of anticardiolipin IgG
+        antibody in the patient's blood sample.
+      column_id: d2f361a1-270b-413f-a685-03cb902608cf
+    - id: a1bc1563-22a5-42ba-8006-bde4f9a8ee09
+      name: Lupus Anticoagulant Result
+      description: lac indicates the presence (+) or absence (-) of lupus anticoagulant
+        based on the lupus anticoagulant test.
+      column_id: ebf4de8f-5b9c-49af-be4e-f413877313ec
+    - id: bf4fd49c-0f97-4e83-b4bd-35ab0d7134d3
+      name: Symptoms
+      description: symptoms lists the clinical symptoms or disease manifestations
+        reported for the patient as a comma-separated list.
+      column_id: e34d89c3-a147-46aa-9149-f90bb385e072
+    - id: cc0f0891-506b-4d80-9edf-c4da5743dd62
+      name: Anticardiolipin Ig A Level
+      description: aCL IgA records the quantitative level of anticardiolipin IgA antibody
+        in the patient's blood as an integer.
+      column_id: 014643ff-8df0-4258-877b-a026d9c0a05a
+    - id: e983b591-14ec-4192-808d-e277435e0834
+      name: Diagnosis
+      description: diagnosis stores the confirmed clinical diagnosis assigned to the
+        patient, such as systemic lupus erythematosus or antiphospholipid syndrome.
+      column_id: 67ab6c89-d7dc-451f-8b70-3fc1b3518569
+    - id: f9540441-f226-437b-ab68-d6a3e2349807
+      name: Examination Date
+      description: Examination Date records the calendar date when the clinical examination
+        or laboratory test was performed, formatted as YYYY-MM-DD.
+      column_id: 1a62b56c-2909-4a5b-83cf-8c2cf8b3bd01
+  - id: d73d3506-68c4-4b45-918f-3d7c14d42338
+    name: Laboratory Test
+    description: A comprehensive laboratory test panel containing liver function,
+      kidney function, lipid profile, complete blood count, coagulation studies, immunoglobulins,
+      inflammatory markers, complement levels, and autoantibody results.
+    represents:
+    - 531da8cb-eada-404d-84b5-04959beb2d32
+    columns_attributes:
+    - id: 0f332cbd-dbbb-44e3-8c79-1840d9ba3618
+      name: rnp
+      description: "Flags the presence (1) or absence (0) of anti\u2011RNP antibodies\
+        \ using a text indicator."
+      column_id: 693f1b6c-9e0d-4210-8663-1778e2f40d29
+    - id: 1b2ea2ac-5ea8-4474-bd4e-93f95ffb859b
+      name: Triglycerides
+      description: Captures triglyceride concentration in blood in milligrams per
+        deciliter.
+      column_id: efc23b06-11ba-4787-b141-f65a72aa5c7f
+    - id: 1decea5c-c71c-44e1-bd20-7cd8998c4d54
+      name: Rheumatoid Factor
+      description: Stores the rheumatoid factor level as a text string that may include
+        inequality signs.
+      column_id: dd5d40ed-2e60-40b7-b803-0320a2408bd3
+    - id: 1e6f0fbf-7ce8-4025-adfe-377bc3d9d413
+      name: Hematocrit
+      description: The patient's hematocrit as a percentage of blood volume, indicating
+        red blood cell proportion.
+      column_id: e51d4c4d-afe6-4ffe-98a0-22546e0dd61b
+    - id: 1fa07345-d436-4cd7-8078-45980b5d1b48
+      name: Ig M
+      description: The patient's immunoglobulin M concentration in milligrams per
+        deciliter, showing early immune response magnitude.
+      column_id: 2e6a11f8-d3d6-4d9e-b7a5-a472fc3c85b8
+    - id: 21ea119e-bd6c-4e79-87cf-455b182aaadb
+      name: APTT
+      description: The patient's activated partial thromboplastin time in seconds,
+        measuring clotting pathway efficiency.
+      column_id: 85fecfa6-5bfa-4941-863d-6083a6b6dbf2
+    - id: 242efa93-b9fa-4d48-a023-b783a172e7ba
+      name: Glucose
+      description: Records blood glucose concentration in milligrams per deciliter.
+      column_id: 8f5dbcc1-1276-406d-8440-cc2f4cf37a31
+    - id: 24c53b90-4893-4a5b-ba09-5c6c1aeb6ab5
+      name: Complement C3
+      description: "Holds the complement component 3 concentration as a whole\u2011\
+        number integer value."
+      column_id: 188086ef-0f9a-48ff-9d94-611e1b8e6d5f
+    - id: 2b9d5932-fe3d-4ff9-9a9e-a27da50f0cb3
+      name: centromea
+      description: "Shows anti\u2011centromere antibody result as text indicating\
+        \ negative or absent."
+      column_id: 7220b0f3-5d6d-44c5-8ff2-19c2d6150720
+    - id: 3038dbc2-489b-4ecc-9487-5532ac5ec1ae
+      name: Fibrinogen
+      description: The patient's fibrinogen level in milligrams per deciliter, indicating
+        clotting factor availability.
+      column_id: 51e0c5fa-123a-4e5d-a5cf-0f7efdd6d013
+    - id: 3d60f7ca-a058-4eb5-af09-2fab263d3271
+      name: Total Bilirubin
+      description: Measures total bilirubin concentration in blood in milligrams per
+        deciliter.
+      column_id: d45b801a-8591-4620-bf81-058b60b0b43b
+    - id: 45b6f675-932e-4d01-9af3-8e88b491ae25
+      name: CRP
+      description: "Records the C\u2011reactive protein result as qualitative or semi\u2011\
+        quantitative text such as negative, positive, or graded levels."
+      column_id: 48d50a42-ea89-4bea-9abd-d554f74db8dc
+    - id: 51e58840-e97f-4984-992c-4bdda14caa13
+      name: dna
+      description: "Stores the anti\u2011double\u2011stranded DNA antibody level as\
+        \ a text numeric value."
+      column_id: 947a2ac9-407d-45d2-b5dd-94cd16b43d39
+    - id: 5c4c7d43-6799-475c-a38d-f8333691d081
+      name: Total Protein
+      description: Records total protein concentration in blood in grams per deciliter.
+      column_id: 83201611-37a7-4284-b50a-ffb31407cfb7
+    - id: 5ff2c3bf-fe76-422d-984f-bf1282078005
+      name: Complement C4
+      description: "Holds the complement component 4 concentration as a whole\u2011\
+        number integer value."
+      column_id: f579649a-9144-40ab-af0c-f86167f5621e
+    - id: 6098eefb-afb2-4670-93e3-251c5ecc181a
+      name: White Blood Cell Count
+      description: The patient's white blood cell count in billions per liter, indicating
+        immune system activity.
+      column_id: e1578de4-8a22-49f4-a13a-74b513ccfc32
+    - id: 6a4e296a-ed21-4048-9fe5-ee900f2c47ca
+      name: Albumin
+      description: Captures albumin concentration in blood in grams per deciliter.
+      column_id: e430af78-ecc1-44f1-98de-d16f96da6ab8
+    - id: 7cce5588-acae-4464-b407-3402b6a35896
+      name: Ig A
+      description: The patient's immunoglobulin A concentration in milligrams per
+        deciliter, indicating mucosal immunity level.
+      column_id: 43e60b37-efd3-45b1-ad36-0948714fd6d3
+    - id: 7f36ece9-78d1-4995-b58f-3977e06b8cef
+      name: ALT Level
+      description: Records the alanine aminotransferase (ALT) liver enzyme level in
+        units per liter.
+      column_id: 65ba8efc-e7cb-4a73-afa5-36ae93e749ae
+    - id: 7f963174-f1a0-40c1-babb-4db595e10c42
+      name: Creatinine
+      description: Captures serum creatinine concentration in milligrams per deciliter.
+      column_id: 09d3aeec-9cd1-40ad-8add-7a37bd5029ac
+    - id: 8524a255-8885-4f44-966c-cd1be31854cf
+      name: Protein C Activity
+      description: The patient's protein C activity or concentration measurement,
+        assessing anticoagulation regulation.
+      column_id: 0f39b8a0-5362-4e8a-838c-867401b454e8
+    - id: 90f352eb-a55e-4bd8-8be3-0230cc9660cb
+      name: sm
+      description: "Flags the presence (1) or absence (0) of anti\u2011Sm antibodies\
+        \ using a text indicator."
+      column_id: 90e6ba1c-5d4a-476b-a681-299d941fe736
+    - id: 98a8b018-c0d8-4711-9473-8d8fc4771f40
+      name: Urine Protein
+      description: The qualitative urine protein dipstick result using categories
+        0, -, TR, 1, 2 to indicate proteinuria severity.
+      column_id: 421bdfd0-b4f5-4286-ac70-8730668b79bb
+    - id: a0a2fe20-c4a0-4557-bfad-9c83bef2e9b0
+      name: dna-ii
+      description: "Holds a second anti\u2011DNA antibody measurement as a whole\u2011\
+        number integer."
+      column_id: 6eef6805-fd63-461a-a2e3-9b81d94b0533
+    - id: a141310b-5e10-4627-8e1c-07c9211965ce
+      name: Hemoglobin
+      description: The patient's hemoglobin level in grams per deciliter, showing
+        blood's oxygen transport ability.
+      column_id: 9132c70d-aa20-488a-9e6c-54a7a972bb02
+    - id: a212a970-a0e0-4b9e-88e7-b74766c6cc26
+      name: Test Date
+      description: Records the calendar date when the laboratory test panel was conducted,
+        formatted as YYYY-MM-DD.
+      column_id: ff85abcc-d50d-41cb-88dc-65a7de911763
+    - id: a382578d-c6e1-48ea-af98-ef08a86148b4
+      name: ssb
+      description: "Indicates anti\u2011SSB antibody status as a text flag, currently\
+        \ observed only as negative (0)."
+      column_id: cc483690-f643-4305-9f8a-eb76b26d6f62
+    - id: a385ad15-0fb6-482d-9834-7c1473e3869d
+      name: tat2
+      description: A secondary thrombin-antithrombin complex measurement in micrograms
+        per liter, providing additional coagulation insight.
+      column_id: abb60d82-d9b2-4014-8347-0f58af03ccb6
+    - id: a5219f12-4a2f-4cd9-a241-01e48ce38393
+      name: sc170
+      description: "Records the anti\u2011Scl\u201170 antibody result as text that\
+        \ can be numeric or qualitative such as negative."
+      column_id: 276c4807-ff32-4662-b854-8a39cb32d8d9
+    - id: a80728c7-e8f1-4207-aaaf-14a2275bfcfb
+      name: Platelet Count
+      description: The patient's platelet count in billions per liter, assessing clotting
+        function.
+      column_id: b44d40e8-edc8-4e55-843f-049927cbae03
+    - id: a9240d75-d420-4333-bf02-75f44e4163b0
+      name: AST Level
+      description: Captures the aspartate aminotransferase (AST) liver enzyme level
+        in units per liter.
+      column_id: 78f7875c-38b1-476f-9ef0-862f05b2777a
+    - id: acd17a9f-5e28-4805-be63-bc1e507a2380
+      name: ssa
+      description: "Indicates anti\u2011SSA antibody status as a text flag, currently\
+        \ observed only as negative (0)."
+      column_id: 5887ff36-6a87-4e47-b029-f3c308503d1a
+    - id: ae2f684d-01a1-446e-8847-6b1b6e3d600c
+      name: Prothrombin Time
+      description: The patient's prothrombin time in seconds, evaluating blood clotting
+        speed.
+      column_id: 869c471e-447b-46ab-83e7-1092c05fb375
+    - id: ba91763f-2150-4e1b-8878-ed87e409b86e
+      name: tat
+      description: The patient's thrombin-antithrombin complex level in micrograms
+        per liter, reflecting thrombin generation.
+      column_id: b90d4433-dc0c-46f1-b215-f427cd6aedbf
+    - id: c08203d1-744c-4ab4-80a8-2eb8e54e786b
+      name: Rheumatoid Arthritis Factor
+      description: Captures the rheumatoid arthritis factor outcome as qualitative
+        text indicators like positive, negative, or graded symbols.
+      column_id: d1cf11b6-9f37-4573-a217-3d3301e7da4d
+    - id: c455f09d-1642-48eb-9399-27c1460cb327
+      name: ALP Level
+      description: Tracks the alkaline phosphatase (ALP) enzyme level in units per
+        liter related to liver and bone metabolism.
+      column_id: cd22913f-e6c6-49cc-8540-d049ca0c8ea7
+    - id: cd4e373b-fc61-4753-9045-1fe7d525b5bd
+      name: Red Blood Cell Count
+      description: The patient's red blood cell count in trillions per liter, reflecting
+        oxygen-carrying capacity.
+      column_id: 986f9ef4-845e-4e56-9025-54436e24e86d
+    - id: d147cb7a-dc33-4bac-a7e2-41f1e5871021
+      name: Ig G
+      description: The patient's immunoglobulin G concentration in milligrams per
+        deciliter, reflecting humoral immunity status.
+      column_id: a1eede97-34ab-46f8-8186-d12b5bc33b49
+    - id: d2a228bf-3dc0-4715-9803-77cf8bdfe9fa
+      name: Uric Acid
+      description: Measures uric acid concentration in blood in milligrams per deciliter.
+      column_id: 3e2191bf-0267-4286-b6a9-f2a01380eaf2
+    - id: dc280cea-fc1f-4e42-b560-5cf2b0e3ded8
+      name: LDH Level
+      description: Measures the lactate dehydrogenase (LDH) enzyme level in units
+        per liter as an indicator of tissue damage.
+      column_id: 7552fcf6-df41-4a2d-8fea-3e718c33775e
+    - id: de12a3ad-675c-4bbc-8d2e-23acc4a94324
+      name: CPK Level
+      description: Measures creatine phosphokinase (CPK) enzyme level in units per
+        liter as an indicator of muscle damage.
+      column_id: a673021b-67e6-483c-9ab6-10f33dd39beb
+    - id: f255decc-3d6c-4ab1-b31e-e4f753f40d0c
+      name: Total Cholesterol
+      description: Records total cholesterol concentration in blood in milligrams
+        per deciliter.
+      column_id: 78d90d89-20f3-4417-9109-7a57df729c5b
+    - id: fe25b518-ca35-40a1-8d00-3b867b563e52
+      name: BUN Level
+      description: Records blood urea nitrogen (BUN) level in milligrams per deciliter.
+      column_id: 43e3cfc3-3dc6-46c6-b371-5cc11f84d992
+  - id: 4b4c9a44-55c4-453e-8111-fb5fdd967f13
+    name: Patient
+    description: Core patient demographic and clinical information.
+    represents:
+    - cff5c1cc-31c7-4583-ae6b-41f2c6239e9f
+    columns_attributes:
+    - id: 090ba2d2-d967-42de-a0ff-c02e3de918c2
+      name: First Encounter Date
+      description: Date of the patient's first recorded clinical encounter or diagnosis
+        in YYYY-MM-DD format.
+      column_id: 0dfa387a-e209-4adf-b95a-ef03bc8af3c3
+    - id: 0eaa1b02-a855-481c-8585-663d203a1c3c
+      name: Date Of Birth
+      description: Patient's date of birth in YYYY-MM-DD format, used for age calculation
+        and demographic analysis.
+      column_id: a26b7d65-8922-4084-a7a0-333dcc068ebf
+    - id: 18ae5561-ffad-45ce-8af6-91eb34b6bb30
+      name: Description Date
+      description: Date of a clinical note or documentation event in YYYY-MM-DD format,
+        despite the field name 'description'.
+      column_id: e85066ff-cf51-4934-8771-37e2340f984c
+    - id: 39fb80ae-3c07-43d8-961b-67ed4cb3ec95
+      name: Diagnosis
+      description: Primary clinical diagnosis recorded as standardized abbreviations
+        such as SLE, RA, or BEHCET.
+      column_id: 7aeeb4c4-df9d-43c9-b765-fccfc961b46a
+    - id: 62d47bf9-ed55-4649-b070-df2895acf62f
+      name: Patient ID
+      description: Unique identifier for the patient, linking clinical records to
+        examinations and laboratory results.
+      column_id: 7d72c735-ddd2-4279-9c9c-0d208b265f52
+    - id: 6c894685-0460-4b58-adb1-b8a42b5287c1
+      name: Biological Sex
+      description: Biological sex of the patient, recorded as F for female, M for
+        male, or blank when unknown.
+      column_id: 84c9b759-2f3c-463d-bde4-8e3984f8ed70
+    - id: d36eb743-4b70-407f-98e4-818b18d6e0b0
+      name: Admission Status
+      description: Admission status indicator using symbolic codes like '-', '+',
+        or '+(' for classification, with blank for unknown.
+      column_id: 1f9eab24-44bc-4a9c-b360-2b3b6b6f5bc1
+  semantic_fks:
+  - column_attribute_id: 62d47bf9-ed55-4649-b070-df2895acf62f
+    column_id: 0ab0e950-887f-487d-ba6b-762f07d8b088
+    use_in_join_paths: true
+  - column_attribute_id: 62d47bf9-ed55-4649-b070-df2895acf62f
+    column_id: d0ab4c44-48be-4fe0-b2d8-e8a60829e0fa
+    use_in_join_paths: true
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table: []
+  custom_analyses: []
+zones: []

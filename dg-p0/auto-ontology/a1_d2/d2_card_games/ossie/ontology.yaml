@@ -1,0 +1,914 @@
+version: 0.2.0.dev0
+name: d2_card_games_ontology
+description: Business concepts of the d2_card_games semantic model
+ontology:
+- concept: Card
+  type: EntityType
+  description: 'Represents a Magic: The Gathering card with all its attributes, printing
+    details, and gameplay characteristics.'
+  identify_by:
+  - uuid
+  relationships:
+  - name: hasnonfoil
+    description: The non-foil availability flag indicates whether a non-foil printed
+      version of the card exists (1 = available, 0 = not available).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has hasnonfoil {Integer}'
+  - name: is_full_art
+    description: The full-art flag indicates whether the card features a full-art
+      illustration extending to the card borders (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is full art {Integer}'
+  - name: hand_modifier
+    description: The hand modifier adjusts the player's hand size by a positive, negative,
+      or zero integer value.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has hand modifier {String}'
+  - name: is_oversized
+    description: The oversized flag marks whether the card is produced in an oversized
+      physical format (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is oversized {Integer}'
+  - name: mcmmetaid
+    description: Holds the Cardmarket metadata identifier for the card's printing.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has mcmmetaid {String}'
+  - name: scryfallillustrationid
+    description: Unique Scryfall identifier for the card's illustration.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has scryfallillustrationid {String}'
+  - name: is_starter
+    description: Identifies if the card comes from a starter product (1 = yes, 0 =
+      no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is starter {Integer}'
+  - name: has_alternative_deck_limit
+    description: The alternative deck limit flag indicates whether the card exempts
+      the standard deck construction limit (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has has alternative deck limit {Integer}'
+  - name: leadership_skills
+    description: Specifies the card's commander eligibility for Brawl, Commander,
+      and Oathbreaker formats.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has leadership skills {String}'
+  - name: power
+    description: Specifies the power value of a creature card for combat damage as
+      text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has power {String}'
+  - name: is_textless
+    description: Indicates if the card is a textless promotional version (1 = yes,
+      0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is textless {Integer}'
+  - name: flavor_text
+    description: The flavor text provides a narrative quotation printed on the card
+      to convey lore or storytelling context.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has flavor text {String}'
+  - name: side
+    description: Designates the face of a double-faced or multi-faced card (e.g.,
+      a, b).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has side {String}'
+  - name: mtgarenaid
+    description: Contains the MTG Arena internal identifier for the card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has mtgarenaid {String}'
+  - name: converted_mana_cost
+    description: Represents the total converted mana cost of the card as a numeric
+      value.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has converted mana cost {Float}'
+  - name: life_modifier
+    description: Provides the life total modifier for Vanguard or Plane cards as a
+      negative number.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has life modifier {String}'
+  - name: keywords
+    description: Lists the keyword abilities on the card, such as Flying or Trample.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has keywords {String}'
+  - name: artist
+    description: Identifies the artist who illustrated the Magic card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has artist {String}'
+  - name: layout
+    description: Defines the physical card layout or frame type, like normal, split,
+      or modal double-faced.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has layout {String}'
+  - name: edhrec_rank
+    description: Shows the card's popularity rank on EDHREC, with lower numbers meaning
+      higher Commander usage.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has edhrec rank {Integer}'
+  - name: card_id
+    description: 'Uniquely identifies each Magic: The Gathering card record in the
+      dataset.'
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has card id {Integer}'
+  - name: border_color
+    description: Specifies the border color or style of the card, such as black or
+      borderless.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has border color {String}'
+  - name: is_promo
+    description: The promo flag indicates whether the card was released as a promotional
+      product (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is promo {Integer}'
+  - name: otherfaceids
+    description: Lists identifiers for the other faces of a double-faced or meld card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has otherfaceids {String}'
+  - name: mtgoid
+    description: Identifies the non-foil version of a card on Magic Online using a
+      numeric text code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has mtgoid {String}'
+  - name: setcode
+    description: Abbreviated code identifying the Magic set the card belongs to (e.g.,
+      10E).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has setcode {String}'
+  - name: has_foil
+    description: The foil availability flag indicates whether a foil-printed version
+      of the card exists (1 = available, 0 = not available).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has has foil {Integer}'
+  - name: mcmid
+    description: Stores the Cardmarket identifier for the card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has mcmid {String}'
+  - name: text
+    description: Contains the rules text or abilities printed on the card (e.g., Flying).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has text {String}'
+  - name: originalreleasedate
+    description: Records the original release date of the card's first printing as
+      text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has originalreleasedate {String}'
+  - name: scryfalloracleid
+    description: Unique Scryfall identifier for the card's oracle text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has scryfalloracleid {String}'
+  - name: multiverseid
+    description: Identifies the card in Wizards of the Coast's Multiverse database
+      using a numeric text code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has multiverseid {String}'
+  - name: watermark
+    description: Identifies the faction or organization symbol printed on the card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has watermark {String}'
+  - name: color_identity
+    description: Defines the card's color identity using single-letter codes for Commander
+      format legality.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has color identity {String}'
+  - name: is_online_only
+    description: The online-only flag specifies whether the card is exclusively available
+      on the digital platform Magic Online (1 = digital-only, 0 = physical exists).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is online only {Integer}'
+  - name: is_reserved
+    description: Flags whether the card is on the Reserved List (1 = yes, 0 = no),
+      meaning it will never be reprinted.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is reserved {Integer}'
+  - name: mtgjsonv4id
+    description: Keeps the MTGJSON v4 unique identifier for the card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has mtgjsonv4id {String}'
+  - name: type
+    description: Full card type line including types and subtypes as printed (e.g.,
+      Enchantment — Aura).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has type {String}'
+  - name: has_content_warning
+    description: The content warning flag signals whether the card carries a content
+      advisory for sensitive material (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has has content warning {Integer}'
+  - name: toughness
+    description: Represents the creature's toughness value as printed (e.g., 1, 2,
+      3).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has toughness {String}'
+  - name: face_converted_mana_cost
+    description: Provides the converted mana cost for a specific face of a double-faced
+      card.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has face converted mana cost {Float}'
+  - name: originaltype
+    description: Shows the original card type line as printed on the card's first
+      release.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has originaltype {String}'
+  - name: number
+    description: Indicates the collector number of the card within its set as text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has number {String}'
+  - name: frame_version
+    description: The frame version identifies the card's frame design era using a
+      year format (YYYY) or special designation like 'future'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has frame version {String}'
+  - name: card_kingdom_foil_id
+    description: Identifies the Card Kingdom product ID for the foil version of the
+      card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has card kingdom foil id {String}'
+  - name: originaltext
+    description: Contains the original rules text printed on the card at its first
+      release.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has originaltext {String}'
+  - name: card_kingdom_id
+    description: Identifies the Card Kingdom product ID for the non-foil version of
+      the card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has card kingdom id {String}'
+  - name: rarity
+    description: Classifies the rarity level of the card in its set as common, uncommon,
+      rare, or mythic.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has rarity {String}'
+  - name: supertypes
+    description: Indicates special supertypes like Basic, Legendary, or Snow (e.g.,
+      Basic, Legendary).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has supertypes {String}'
+  - name: ascii_name
+    description: Provides an ASCII-only version of the card name for systems lacking
+      Unicode support.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has ascii name {String}'
+  - name: uuid
+    description: Universally unique identifier for the card instance, referenced by
+      foreign data and rulings.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Card} is identified by uuid {String}'
+  - name: name
+    description: 'States the official name of the Magic: The Gathering card.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has name {String}'
+  - name: loyalty
+    description: Gives the starting loyalty value for planeswalker cards.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has loyalty {String}'
+  - name: flavor_name
+    description: The flavor name provides a thematic or lore-based title for the card,
+      such as character designations from crossover franchises.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has flavor name {String}'
+  - name: printings
+    description: Enumerates the set codes in which the card has been printed.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has printings {String}'
+  - name: mtgofoilid
+    description: Identifies the foil version of a card on Magic Online using a numeric
+      text code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has mtgofoilid {String}'
+  - name: manacost
+    description: Displays the card's mana cost in symbolic notation, e.g., {W} or
+      {2}{R}.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has manacost {String}'
+  - name: tcgplayerproductid
+    description: Product identifier for the card on the TCGplayer marketplace (e.g.,
+      15032).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has tcgplayerproductid {String}'
+  - name: colors
+    description: Lists the card's colors derived from its mana cost using single-letter
+      codes.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has colors {String}'
+  - name: face_name
+    description: Gives the name of a specific face of a double-faced card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has face name {String}'
+  - name: duel_deck
+    description: Identifies the Duel Deck product and side (a or b) the card belongs
+      to.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has duel deck {String}'
+  - name: types
+    description: Primary card types such as Creature, Instant, or Enchantment (e.g.,
+      Creature, Instant).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has types {String}'
+  - name: purchaseurls
+    description: Provides URLs for purchasing the card from various online retailers.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has purchaseurls {String}'
+  - name: color_indicator
+    description: Indicates the card's color via color indicator using single-letter
+      codes when not defined by mana cost.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has color indicator {String}'
+  - name: is_reprint
+    description: The reprint flag shows whether the card is a reissue of a previously
+      printed card (1 = reprint, 0 = original printing).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is reprint {Integer}'
+  - name: availability
+    description: Lists the platforms where the card is available as a comma-separated
+      value.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has availability {String}'
+  - name: variations
+    description: List of UUIDs for alternate versions or printings of the same card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has variations {String}'
+  - name: is_story_spotlight
+    description: Marks if the card is a Story Spotlight card (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is story spotlight {Integer}'
+  - name: promotypes
+    description: Describes the types of promotional releases associated with the card.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has promotypes {String}'
+  - name: is_timeshifted
+    description: Shows whether the card is a timeshifted reprint (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is timeshifted {Integer}'
+  - name: subtypes
+    description: Lists creature, enchantment, or other subtypes associated with the
+      card (e.g., Aura, Human).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has subtypes {String}'
+  - name: scryfallid
+    description: 'Identifies the card on Scryfall, a Magic: The Gathering database.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has scryfallid {String}'
+  - name: frame_effects
+    description: The frame effect indicates special visual frame treatments applied
+      to the card, such as legendary styling.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has frame effects {String}'
+  - name: is_alternative
+    description: The alternative version flag identifies whether the card is an alternate
+      version, such as alternate art or borderless treatment (1 = yes, 0 = no).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has is alternative {Integer}'
+- concept: CardLegality
+  type: EntityType
+  relationships:
+  - name: game_format
+    description: 'Specifies the Magic: The Gathering game format, such as Commander
+      or Modern, governing the card''s legality.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CardLegality} has game format {String}'
+  - name: id
+    description: Uniquely identifies each card legality record with a sequential numeric
+      key.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CardLegality} has id {Integer}'
+  - name: global_id
+    description: Provides a globally unique identifier for cross-system referencing
+      of the card legality record.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CardLegality} has global id {String}'
+  - name: legality_status
+    description: Indicates the card's legal standing in the format, with values Legal,
+      Banned, or Restricted.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{CardLegality} has legality status {String}'
+- concept: LocalizedCardData
+  type: EntityType
+  description: Localized card information including name, rules text, flavor text,
+    and type for a specific language.
+  relationships:
+  - name: language
+    description: Language of the localized card name, rules text, and flavor text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has language {String}'
+  - name: multiverseid
+    description: 'Identifies the Magic: The Gathering card in the Multiverse database.'
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has multiverseid {Integer}'
+  - name: record_id
+    description: Unique identifier for each localized card data record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has record id {Integer}'
+  - name: rules_text
+    description: Localized rules text describing the card's abilities in the specified
+      language.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has rules text {String}'
+  - name: card_type
+    description: Localized card type classification in the specified language.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has card type {String}'
+  - name: name
+    description: Localized name of the card in the specified language.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has name {String}'
+  - name: flavor_text
+    description: Localized flavor text for the card in the specified language.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has flavor text {String}'
+  - name: card
+    roles:
+    - concept: Card
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LocalizedCardData} has {Card}'
+- concept: MagicSet
+  type: EntityType
+  identify_by:
+  - set_code
+  relationships:
+  - name: mtgo_code
+    description: 'Specifies the set code used on Magic: The Gathering Online for digital
+      representation and redemption.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has mtgo code {String}'
+  - name: set_code
+    description: Represents the official three- to four-character abbreviated set
+      code used in translations and parent set references.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{MagicSet} is identified by set code {String}'
+  - name: set_type
+    description: The classification of the Magic product, such as expansion, promo,
+      memorabilia, box, or duel deck.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has set type {String}'
+  - name: is_non_foil_only
+    description: Flags whether the set contains only non-foil cards (1) or includes
+      foil cards (0).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has is non foil only {Integer}'
+  - name: is_foreign_only
+    description: Indicates whether the set is printed exclusively in non-English languages
+      (1) or not (0).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has is foreign only {Integer}'
+  - name: block
+    description: Categorizes the set by product line, block, or promotional category
+      such as Core Set or Commander.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has block {String}'
+  - name: release_date
+    description: The official release date of the Magic set, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has release date {Date}'
+  - name: mcm_name
+    description: States the set name as listed on the Cardmarket marketplace for identification
+      and search.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has mcm name {String}'
+  - name: is_partial_preview
+    description: Flags whether the set is a partial preview release (1) or a full
+      release (0).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has is partial preview {Integer}'
+  - name: total_set_size
+    description: The total count of cards included in the Magic set.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has total set size {Integer}'
+  - name: base_set_size
+    description: Indicates the base count of distinct cards in the set, excluding
+      foil, promo, and variant cards.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has base set size {Integer}'
+  - name: is_foil_only
+    description: Flags whether the set contains only foil cards (1) or includes non-foil
+      cards (0).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has is foil only {Integer}'
+  - name: mcmid
+    description: Identifies the set's product listing on the Cardmarket marketplace
+      with a unique numeric identifier.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has mcmid {Integer}'
+  - name: booster_configuration
+    description: Defines the booster pack configuration as a JSON structure detailing
+      card slots, weights, and sheet distributions.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has booster configuration {String}'
+  - name: set_id
+    description: 'Uniquely identifies each Magic: The Gathering set or product with
+      a numeric identifier.'
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has set id {Integer}'
+  - name: tcgplayergroupid
+    description: A TCGPlayer grouping identifier that categorizes related product
+      printings and conditions under a single product group.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has tcgplayergroupid {Integer}'
+  - name: set_name
+    description: 'The official full name identifying a Magic: The Gathering set, such
+      as ''Tenth Edition'' or ''Double Masters''.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has set name {String}'
+  - name: mcmidextras
+    description: Provides a supplementary Cardmarket identifier to distinguish variant
+      or additional product entries for the set.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has mcmidextras {Integer}'
+  - name: is_online_only
+    description: 'Indicates whether the set is exclusive to Magic: The Gathering Online
+      (1) or also available physically (0).'
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has is online only {Integer}'
+  - name: keyrune_code
+    description: Provides an internal system code for set identification on platforms
+      using Keyrune or symbol encoding.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has keyrune code {String}'
+  - name: magic_set
+    roles:
+    - concept: MagicSet
+      name: magic_set
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{MagicSet} has {MagicSet:magic_set}'
+- concept: Ruling
+  type: EntityType
+  description: 'A Magic: The Gathering rule or card ruling entry.'
+  relationships:
+  - name: effective_date
+    description: Effective date of the ruling in YYYY-MM-DD format indicating when
+      the rule becomes applicable.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Ruling} has effective date {Date}'
+  - name: ruling_id
+    description: 'Unique numeric identifier assigned to each Magic: The Gathering
+      rule or card ruling entry.'
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Ruling} has ruling id {Integer}'
+  - name: ruling_text
+    description: 'Complete textual content of the Magic: The Gathering rule or card
+      ruling providing official interpretation.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Ruling} has ruling text {String}'
+  - name: card
+    roles:
+    - concept: Card
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Ruling} has {Card}'
+- concept: SetTranslation
+  type: EntityType
+  description: 'A localized name for a Magic: The Gathering set in a specific language.'
+  relationships:
+  - name: language
+    description: Specifies the language and regional variant for the localized set
+      name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SetTranslation} has language {String}'
+  - name: translated_name
+    description: 'Provides the translated Magic: The Gathering set name in the specified
+      language.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SetTranslation} has translated name {String}'
+  - name: translation_id
+    description: Uniquely identifies each set translation record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SetTranslation} has translation id {Integer}'
+  - name: magic_set
+    roles:
+    - concept: MagicSet
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{SetTranslation} has {MagicSet}'

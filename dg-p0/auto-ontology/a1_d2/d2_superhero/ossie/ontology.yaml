@@ -1,0 +1,263 @@
+version: 0.2.0.dev0
+name: d2_superhero_ontology
+description: Business concepts of the d2_superhero semantic model
+ontology:
+- concept: AlignmentRecord
+  type: EntityType
+  identify_by:
+  - record_id
+  relationships:
+  - name: alignment_status
+    description: Categorical status indicating moral or ethical alignment quality,
+      with values Good, Bad, Neutral, or N/A.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{AlignmentRecord} has alignment status {String}'
+  - name: record_id
+    description: Unique identifier for each alignment record, linking superheroes
+      to their alignment classification.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{AlignmentRecord} is identified by record id {Integer}'
+- concept: Attribute
+  type: EntityType
+  description: A quantifiable characteristic or trait that can be assigned to an entity,
+    such as Intelligence or Strength.
+  identify_by:
+  - attribute_id
+  relationships:
+  - name: attribute_name
+    description: The descriptive name of a quantifiable characteristic, such as Intelligence
+      or Strength.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Attribute} has attribute name {String}'
+  - name: attribute_id
+    description: A unique numeric identifier for each attribute, referenced by hero
+      attributes to link heroes to their attributes.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Attribute} is identified by attribute id {Integer}'
+- concept: Colour
+  type: EntityType
+  description: A colour reference used to describe product colour attributes, including
+    solid colours and multi-colour combinations.
+  identify_by:
+  - id
+  relationships:
+  - name: id
+    description: Unique identifier for a colour reference, used to link superhero
+      eye, hair, and skin colour attributes.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Colour} is identified by id {Integer}'
+  - name: colour
+    description: Text value representing a product colour, including solid colours
+      and multi-colour combinations such as 'Black/Blue'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Colour} has colour {String}'
+- concept: Gender
+  type: EntityType
+  description: Gender classification reference data.
+  identify_by:
+  - gender_id
+  relationships:
+  - name: gender_id
+    description: Unique numeric identifier for each gender classification, used to
+      link superheroes to their gender.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Gender} is identified by gender id {Integer}'
+  - name: gender
+    description: 'Text value representing the gender classification: Male, Female,
+      or N/A for not applicable.'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Gender} has gender {String}'
+- concept: HeroAttribute
+  type: EntityType
+  relationships:
+  - name: attribute_value
+    description: 'attribute_value: The numeric score or measurement for a hero attribute,
+      stored as a large integer.'
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{HeroAttribute} has attribute value {Integer}'
+  - name: attribute
+    roles:
+    - concept: Attribute
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{HeroAttribute} has {Attribute}'
+  - name: superhero
+    roles:
+    - concept: Superhero
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{HeroAttribute} has {Superhero}'
+- concept: Publisher
+  type: EntityType
+  identify_by:
+  - id
+  relationships:
+  - name: publisher_name
+    description: Records the publisher's name, such as DC Comics or Dark Horse Comics,
+      which may be blank.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Publisher} has publisher name {String}'
+  - name: id
+    description: Identifies each publisher uniquely and links superheroes to their
+      publishing company.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Publisher} is identified by id {Integer}'
+- concept: Race
+  type: EntityType
+  identify_by:
+  - race_id
+  relationships:
+  - name: race_id
+    description: Unique numeric identifier for each race, referenced by superheroes
+      to indicate their race.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Race} is identified by race id {Integer}'
+  - name: race_name
+    description: Textual name categorizing a race or species, using a dash for unknown
+      values.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has race name {String}'
+- concept: Superhero
+  type: EntityType
+  identify_by:
+  - superhero_id
+  relationships:
+  - name: superhero_name
+    description: The public or code name by which the superhero is known.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has superhero name {String}'
+  - name: height_cm
+    description: The superhero's height in centimeters, where 0.0 denotes missing
+      or unknown data.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has height cm {Integer}'
+  - name: superhero_id
+    description: Identifies the superhero and links to their attributes and powers.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Superhero} is identified by superhero id {Integer}'
+  - name: full_name
+    description: The civilian or legal name of the superhero, with a hyphen indicating
+      unknown.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has full name {String}'
+  - name: weight_kg
+    description: The superhero's weight in kilograms, where 0.0 denotes missing or
+      unknown data.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has weight kg {Integer}'
+  - name: skin_colour_id
+    roles:
+    - concept: Colour
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has {Colour}'
+  - name: eye_colour_id
+    roles:
+    - concept: Colour
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has {Colour}'
+  - name: hair_colour_id
+    roles:
+    - concept: Colour
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has {Colour}'
+  - name: gender
+    roles:
+    - concept: Gender
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has {Gender}'
+  - name: publisher
+    roles:
+    - concept: Publisher
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has {Publisher}'
+  - name: alignment_record
+    roles:
+    - concept: AlignmentRecord
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has {AlignmentRecord}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superhero} has {Race}'
+- concept: Superpower
+  type: EntityType
+  description: A distinct superpower or ability record.
+  relationships:
+  - name: superpower_id
+    description: Unique numeric identifier for each superpower, used to link heroes
+      to their powers.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superpower} has superpower id {Integer}'
+  - name: power_name
+    description: Descriptive name of the superpower ability, such as Agility or Lantern
+      Power Ring.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Superpower} has power name {String}'

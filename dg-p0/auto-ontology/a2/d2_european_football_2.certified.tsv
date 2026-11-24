@@ -1,0 +1,176 @@
+kind	term	object	outcome	description_or_sql
+term	Country (d2_european_football_2.public.country)	public.country	certified	Country.
+column	Country (d2_european_football_2.public.country)	public.country.id	certified	the unique id for countries
+column	Country (d2_european_football_2.public.country)	public.country.name	certified	country name
+term	Football League	public.league	certified	League.
+column	Football League	public.league.name	certified	league name
+column	Football League	public.league.id	certified	the unique id for leagues
+term	Match	public.match	certified	Match.
+column	Match	public.match.away_player_x6	certified	(generated kept)
+column	Match	public.match.home_player_y3	certified	(generated kept)
+column	Match	public.match.home_team_goal	certified	the goal of the home team
+column	Match	public.match.away_player_x2	certified	(generated kept)
+column	Match	public.match.date	certified	the date of the match. Values: e.g. 2008-08-17 00:00:00
+column	Match	public.match.home_player_x5	certified	(generated kept)
+column	Match	public.match.psh	certified	(generated kept)
+column	Match	public.match.whh	certified	(generated kept)
+column	Match	public.match.vcd	certified	(generated kept)
+column	Match	public.match.away_player_y3	certified	(generated kept)
+column	Match	public.match.away_player_x11	certified	(generated kept)
+column	Match	public.match.home_player_x3	certified	(generated kept)
+column	Match	public.match.bwh	certified	(generated kept)
+column	Match	public.match.possession	certified	The duration from a player taking over the ball in the match
+column	Match	public.match.shoton	certified	the shot on goal of the match. Values: commonsense reasoning: A shot on goal is a shot that enters the goal or would have entered the goal if it had not been blocked by the goalkeeper or another defensive player.
+column	Match	public.match.vca	certified	(generated kept)
+column	Match	public.match.home_player_x8	certified	(generated kept)
+column	Match	public.match.bwa	certified	(generated kept)
+column	Match	public.match.whd	certified	(generated kept)
+column	Match	public.match.corner	certified	Ball goes out of play for a corner kick in the match
+column	Match	public.match.bsh	certified	(generated kept)
+column	Match	public.match.home_player_y6	certified	(generated kept)
+column	Match	public.match.shotoff	certified	the shot off goal of the match, which is the opposite of shot on
+column	Match	public.match.card	certified	the cards given in the match
+column	Match	public.match.gbd	certified	(generated kept)
+column	Match	public.match.away_player_x8	certified	(generated kept)
+column	Match	public.match.home_player_y10	certified	(generated kept)
+column	Match	public.match.goal	certified	the goal of the match
+column	Match	public.match.away_player_x5	certified	(generated kept)
+column	Match	public.match.home_player_y9	certified	(generated kept)
+column	Match	public.match.b365d	certified	(generated kept)
+column	Match	public.match.iwh	certified	(generated kept)
+column	Match	public.match.home_player_y4	certified	(generated kept)
+column	Match	public.match.home_player_y1	certified	(generated kept)
+column	Match	public.match.away_player_x9	certified	(generated kept)
+column	Match	public.match.gbh	certified	(generated kept)
+column	Match	public.match.psd	certified	(generated kept)
+column	Match	public.match.away_player_x7	certified	(generated kept)
+column	Match	public.match.home_player_x6	certified	(generated kept)
+column	Match	public.match.away_player_y10	certified	(generated kept)
+column	Match	public.match.lba	certified	(generated kept)
+column	Match	public.match.away_player_x1	certified	(generated kept)
+column	Match	public.match.home_player_y11	certified	(generated kept)
+column	Match	public.match.home_player_x10	certified	(generated kept)
+column	Match	public.match.psa	certified	(generated kept)
+column	Match	public.match.id	certified	the unique id for matches
+column	Match	public.match.iwa	certified	(generated kept)
+column	Match	public.match.b365h	certified	(generated kept)
+column	Match	public.match.bsa	certified	(generated kept)
+column	Match	public.match.lbd	certified	(generated kept)
+column	Match	public.match.cross	certified	Balls sent into the opposition team's area from a wide position in the match
+column	Match	public.match.bsd	certified	(generated kept)
+column	Match	public.match.b365a	certified	(generated kept)
+column	Match	public.match.match_api_id	certified	the id of the match api
+column	Match	public.match.stage	certified	the stage of the match
+column	Match	public.match.away_player_y1	certified	(generated kept)
+column	Match	public.match.home_player_x9	certified	(generated kept)
+column	Match	public.match.away_player_y6	certified	(generated kept)
+column	Match	public.match.away_player_y8	certified	(generated kept)
+column	Match	public.match.home_player_y5	certified	(generated kept)
+column	Match	public.match.home_player_x1	certified	(generated kept)
+column	Match	public.match.lbh	certified	(generated kept)
+column	Match	public.match.home_player_x11	certified	(generated kept)
+column	Match	public.match.away_player_y7	certified	(generated kept)
+column	Match	public.match.iwd	certified	(generated kept)
+column	Match	public.match.away_player_x10	certified	(generated kept)
+column	Match	public.match.home_player_x7	certified	(generated kept)
+column	Match	public.match.away_player_y4	certified	(generated kept)
+column	Match	public.match.home_player_y2	certified	(generated kept)
+column	Match	public.match.away_team_goal	certified	the goal of the away team
+column	Match	public.match.away_player_y2	certified	(generated kept)
+column	Match	public.match.vch	certified	(generated kept)
+column	Match	public.match.home_player_x2	certified	(generated kept)
+column	Match	public.match.away_player_y9	certified	(generated kept)
+column	Match	public.match.away_player_x4	certified	(generated kept)
+column	Match	public.match.home_player_y8	certified	(generated kept)
+column	Match	public.match.wha	certified	(generated kept)
+column	Match	public.match.gba	certified	(generated kept)
+column	Match	public.match.home_player_x4	certified	(generated kept)
+column	Match	public.match.sjd	certified	(generated kept)
+column	Match	public.match.away_player_x3	certified	(generated kept)
+column	Match	public.match.foulcommit	certified	the fouls occurred in the match
+column	Match	public.match.away_player_y11	certified	(generated kept)
+column	Match	public.match.sja	certified	(generated kept)
+column	Match	public.match.season	certified	the season of the match
+column	Match	public.match.home_player_y7	certified	(generated kept)
+column	Match	public.match.sjh	certified	(generated kept)
+column	Match	public.match.bwd	certified	(generated kept)
+column	Match	public.match.away_player_y5	certified	(generated kept)
+term	Player	public.player	certified	Player.
+column	Player	public.player.player_name	certified	player name
+column	Player	public.player.player_fifa_api_id	certified	the id of the player fifa api
+column	Player	public.player.height	certified	the player's height
+column	Player	public.player.weight	certified	the player's weight
+column	Player	public.player.birthday	certified	the player's birthday. Values: e.g. 1992-02-29 00:00:00 commonsense reasoning: Player A is older than player B means that A's birthday is earlier than B's
+column	Player	public.player.id	certified	the unique id for players
+column	Player	public.player.player_api_id	certified	the id of the player api
+term	Player Attribute	public.player_attributes	certified	Player_Attributes.
+column	Player Attribute	public.player_attributes.vision	certified	the player's vision score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.marking	certified	the player's markingscore. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.long_passing	certified	the player's long passing score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.stamina	certified	the player's stamina score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.sprint_speed	certified	the player's sprint speed. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.defensive_work_rate	certified	the player's defensive work rate. Values: commonsense reasoning:  high: remain in his position and defense while the team attacks  medium: implies that the player will select the defensive actions he will join in  low: implies that the player is going to be in all of your attack moves instead of defensing
+column	Player Attribute	public.player_attributes.agility	certified	the player's agility. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.jumping	certified	the player's jumping score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.gk_kicking	certified	the player's goalkeep kicking score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.gk_diving	certified	the player's goalkeep diving score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.overall_rating	certified	the overall rating of the player. Values: commonsense reasoning: The rating is between 0-100 which is calculated by FIFA. Higher overall rating means the player has a stronger overall strength.
+column	Player Attribute	public.player_attributes.date	certified	date. Values: e.g. 2016-02-18 00:00:00
+column	Player Attribute	public.player_attributes.balance	certified	the player's balance score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.acceleration	certified	the player's acceleration score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.ball_control	certified	the player's ball control score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.attacking_work_rate	certified	the player's attacking work rate. Values: commonsense reasoning:  high: implies that the player is going to be in all of your attack moves  medium: implies that the player will select the attack actions he will join in  low: remain in his position while the team attacks
+column	Player Attribute	public.player_attributes.reactions	certified	the player's reactions score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.interceptions	certified	the player's interceptions score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.positioning	certified	the player's positioning score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.finishing	certified	the player's finishing rate. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.standing_tackle	certified	the player's standing tackle score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.long_shots	certified	the player's long shots score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.curve	certified	the player's curve score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.short_passing	certified	the player's short passing score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.free_kick_accuracy	certified	the player's free kick accuracy. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.heading_accuracy	certified	the player's heading accuracy. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.shot_power	certified	the player's shot power. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.preferred_foot	certified	the player's preferred foot when attacking. Values: right/ left
+column	Player Attribute	public.player_attributes.sliding_tackle	certified	the player's sliding tackle score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.gk_reflexes	certified	the player's goalkeep reflexes score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.strength	certified	the player's strength score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.gk_positioning	certified	the player's goalkeep positioning score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.crossing	certified	the player's crossing score. Values: commonsense reasoning: Cross is a long pass into the opponent's goal towards the header of sixth-yard teammate. The crossing score is between 0-100 which measures the tendency/frequency of crosses in the box. Higher potential score means that the player performs better in crossing actions.
+column	Player Attribute	public.player_attributes.gk_handling	certified	the player's goalkeep diving score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.id	certified	the unique id for players
+column	Player Attribute	public.player_attributes.penalties	certified	the player's penalties score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.potential	certified	potential of the player. Values: commonsense reasoning: The potential score is between 0-100 which is calculated by FIFA. Higher potential score means that the player has more potential
+column	Player Attribute	public.player_attributes.dribbling	certified	the player's dribbling score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.volleys	certified	the player's volley score. Values: 0-100 which is calculated by FIFA
+column	Player Attribute	public.player_attributes.aggression	certified	the player's aggression score. Values: 0-100 which is calculated by FIFA
+term	Team	public.team	certified	Team.
+column	Team	public.team.team_long_name	certified	the team's long name
+column	Team	public.team.team_fifa_api_id	certified	the id of the team fifa api
+column	Team	public.team.team_short_name	certified	the team's short name
+column	Team	public.team.team_api_id	certified	the id of the team api
+column	Team	public.team.id	certified	the unique id for teams
+term	Team Tactical Profile	public.team_attributes	certified	Team_Attributes.
+column	Team Tactical Profile	public.team_attributes.buildupplayspeed	certified	the speed in which attacks are put together. Values: the score which is between 1-00 to measure the team's attack speed
+column	Team Tactical Profile	public.team_attributes.defenceteamwidthclass	certified	the defence team width class. Values: commonsense reasoning:  Narrow: 1-33  Normal: 34-66  Wide: 66-100
+column	Team Tactical Profile	public.team_attributes.buildupplaypassing	certified	affects passing distance and support from teammates
+column	Team Tactical Profile	public.team_attributes.buildupplaypositioningclass	certified	A team's freedom of movement in the 1st two thirds of the pitch. Values: Organised / Free Form
+column	Team Tactical Profile	public.team_attributes.buildupplaydribbling	certified	the tendency/ frequency of dribbling
+column	Team Tactical Profile	public.team_attributes.chancecreationshootingclass	certified	the chance creation shooting class. Values: commonsense reasoning:  Little: 1-33  Normal: 34-66  Lots: 66-100
+column	Team Tactical Profile	public.team_attributes.date	certified	Date. Values: e.g. 2010-02-22 00:00:00
+column	Team Tactical Profile	public.team_attributes.chancecreationshooting	certified	The tendency / frequency of shots taken
+column	Team Tactical Profile	public.team_attributes.buildupplaydribblingclass	certified	the dribbling class. Values: commonsense reasoning:  Little: 1-33  Normal: 34-66  Lots: 66-100
+column	Team Tactical Profile	public.team_attributes.defencepressureclass	certified	the defence pressure class. Values: commonsense reasoning:  Deep: 1-33  Medium: 34-66  High: 66-100
+column	Team Tactical Profile	public.team_attributes.buildupplayspeedclass	certified	the speed class. Values: commonsense reasoning:  Slow: 1-33  Balanced: 34-66  Fast: 66-100
+column	Team Tactical Profile	public.team_attributes.chancecreationcrossingclass	certified	the chance creation crossing class. Values: commonsense reasoning:  Little: 1-33  Normal: 34-66  Lots: 66-100
+column	Team Tactical Profile	public.team_attributes.chancecreationpositioningclass	certified	A teams freedom of movement in the final third of the pitch. Values: Organised / Free Form
+column	Team Tactical Profile	public.team_attributes.buildupplaypassingclass	certified	the passing class. Values: commonsense reasoning:  Short: 1-33  Mixed: 34-66  Long: 66-100
+column	Team Tactical Profile	public.team_attributes.id	certified	the unique id for teams
+column	Team Tactical Profile	public.team_attributes.chancecreationcrossing	certified	The tendency / frequency of crosses into the box
+column	Team Tactical Profile	public.team_attributes.chancecreationpassing	certified	Amount of risk in pass decision and run support
+column	Team Tactical Profile	public.team_attributes.defenceteamwidth	certified	Affects how much the team will shift to the ball side
+column	Team Tactical Profile	public.team_attributes.defencepressure	certified	Affects how high up the pitch the team will start pressuring
+column	Team Tactical Profile	public.team_attributes.chancecreationpassingclass	certified	the chance creation passing class. Values: commonsense reasoning:  Safe: 1-33  Normal: 34-66  Risky: 66-100
+column	Team Tactical Profile	public.team_attributes.defenceaggression	certified	Affect the teams approach to tackling the ball possessor
+column	Team Tactical Profile	public.team_attributes.defencedefenderlineclass	certified	Affects the shape and strategy of the defence. Values: Cover/ Offside Trap
+column	Team Tactical Profile	public.team_attributes.defenceaggressionclass	certified	the defence aggression class. Values: commonsense reasoning:  Contain: 1-33  Press: 34-66  Double: 66-100

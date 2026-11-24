@@ -1,0 +1,6070 @@
+{
+ "arms": {
+  "A1": {
+   "accuracy_when_answered_units": {
+    "k": 301,
+    "n": 485,
+    "rate": 0.6206,
+    "wilson95": [
+     0.5766,
+     0.6627
+    ]
+   },
+   "answered_one_reading": 0,
+   "correct_refusals_units": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "exec_errors": 0,
+   "execution_accuracy_units": {
+    "k": 301,
+    "n": 487,
+    "rate": 0.6181,
+    "wilson95": [
+     0.5742,
+     0.6601
+    ]
+   },
+   "guard_rejected": 8,
+   "model_calls": null,
+   "no_access_refused": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "not_answered_units": {
+    "k": 2,
+    "n": 487,
+    "rate": 0.0041,
+    "wilson95": [
+     0.0011,
+     0.0148
+    ]
+   },
+   "p95_latency_s": 55.41,
+   "questions": {
+    "answerable": {
+     "k": 301,
+     "n": 487,
+     "rate": 0.6181,
+     "wilson95": [
+      0.5742,
+      0.6601
+     ]
+    }
+   },
+   "ref_comparator_units": {
+    "k": 124,
+    "n": 487,
+    "rate": 0.2546,
+    "wilson95": [
+     0.218,
+     0.2951
+    ]
+   },
+   "units": 500,
+   "unparsed": 0,
+   "unscorable": [
+    "B-151",
+    "B-167",
+    "B-299",
+    "B-347",
+    "B-351",
+    "B-364",
+    "B-367",
+    "B-396",
+    "B-440",
+    "B-443",
+    "B-444",
+    "B-447",
+    "B-490"
+   ],
+   "wrong_answers_without_refusal": {
+    "k": 176,
+    "n": 487,
+    "rate": 0.3614,
+    "wilson95": [
+     0.32,
+     0.405
+    ]
+   }
+  }
+ },
+ "dataset": "d2",
+ "models": [
+  "nvidia/nemotron-3-ultra-550b-a55b"
+ ],
+ "run": "ao-d2-a1",
+ "tables_changed": [],
+ "units": [
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-001"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-002"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-003"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-004"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-005"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-006"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-007"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-008"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-009"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-010"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-011"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-012"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-013"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-014"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-015"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-016"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-017"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-018"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-019"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-020"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-021"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-022"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-023"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-024"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-025"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-026"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-027"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-028"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-029"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-030"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-031"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-032"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-033"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-034"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-035"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-036"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-037"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-038"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-039"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-040"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-041"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-042"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-043"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-044"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-045"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-046"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-047"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-048"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-049"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-050"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-051"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-052"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-053"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-054"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-055"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-056"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-057"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-058"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-059"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-060"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-061"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-062"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-063"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-064"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-065"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-066"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-067"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-068"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-069"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-070"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-071"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-072"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-073"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-074"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-075"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-076"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-077"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-078"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-079"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-080"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-081"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-082"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-083"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-084"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-085"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-086"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-087"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-088"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-089"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-090"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-091"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-092"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-093"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-094"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-095"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-096"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-097"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-098"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-099"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-100"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-101"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-102"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-103"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-104"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-105"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-106"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-107"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-108"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-109"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-110"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-111"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-112"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-113"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-114"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-115"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-116"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-117"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-118"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-119"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-120"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-121"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-122"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-123"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-124"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-125"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-126"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-127"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-128"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-129"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-130"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-131"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-132"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-133"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-134"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-135"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-136"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-137"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-138"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-139"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-140"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-141"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-142"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-143"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-144"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-145"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-146"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-147"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-148"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-149"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-150"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1105 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-151"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-152"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-153"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-154"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-155"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-156"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-157"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-158"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-159"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-160"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-161"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-162"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-163"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-164"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-165"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-166"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 3339 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-167"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-168"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-169"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-170"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-171"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-172"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-173"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-174"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-175"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-176"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-177"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-178"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-179"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-180"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-181"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-182"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-183"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-184"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-185"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-186"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-187"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-188"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-189"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-190"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-191"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-192"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-193"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-194"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-195"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-196"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-197"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-198"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-199"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-200"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-201"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-202"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-203"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-204"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-205"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-206"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-207"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-208"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-209"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-210"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-211"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-212"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-213"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-214"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-215"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-216"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-217"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-218"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-219"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-220"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-221"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-222"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-223"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-224"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-225"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-226"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-227"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-228"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-229"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-230"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-231"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-232"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-233"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-234"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-235"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-236"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-237"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-238"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-239"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-240"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-241"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-242"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-243"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-244"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-245"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-246"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-247"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-248"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-249"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-250"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-251"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-252"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-253"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-254"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-255"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-256"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-257"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-258"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-259"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-260"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-261"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-262"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-263"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-264"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-265"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-266"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-267"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-268"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-269"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-270"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-271"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-272"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-273"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-274"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-275"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-276"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-277"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-278"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-279"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-280"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-281"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-282"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-283"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-284"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-285"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-286"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-287"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-288"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-289"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-290"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-291"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-292"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-293"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-294"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-295"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-296"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-297"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-298"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 4430 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-299"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-300"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-301"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-302"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-303"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-304"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-305"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-306"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-307"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-308"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-309"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-310"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-311"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-312"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-313"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-314"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-315"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-316"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-317"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-318"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-319"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-320"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-321"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-322"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-323"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-324"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-325"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-326"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-327"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-328"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-329"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-330"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-331"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-332"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-333"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-334"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-335"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-336"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-337"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-338"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-339"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-340"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-341"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-342"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-343"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-344"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-345"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-346"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 25061 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-347"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-348"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-349"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-350"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 29936 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-351"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-352"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-353"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-354"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-355"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-356"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-357"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-358"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-359"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-360"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-361"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-362"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-363"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 11446 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-364"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-365"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-366"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1693 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-367"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-368"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-369"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-370"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-371"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-372"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-373"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-374"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-375"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-376"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-377"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-378"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-379"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-380"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-381"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-382"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-383"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-384"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-385"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-386"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-387"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-388"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-389"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-390"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-391"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-392"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-393"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-394"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-395"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1664 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-396"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-397"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-398"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-399"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-400"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-401"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-402"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-403"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-404"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-405"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-406"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-407"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-408"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-409"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-410"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-411"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-412"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-413"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-414"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-415"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-416"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-417"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-418"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-419"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-420"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-421"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-422"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-423"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-424"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-425"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-426"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-427"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-428"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-429"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-430"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-431"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-432"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-433"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-434"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-435"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-436"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-437"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-438"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-439"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 7806 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-440"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-441"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-442"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1239 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-443"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1167 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-444"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-445"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-446"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 8574 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-447"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-448"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-449"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-450"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-451"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-452"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-453"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-454"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-455"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-456"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-457"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-458"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-459"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-460"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-461"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-462"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-463"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-464"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-465"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-466"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-467"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-468"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-469"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-470"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-471"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-472"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-473"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-474"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-475"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-476"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-477"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-478"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-479"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-480"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-481"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-482"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-483"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-484"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-485"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-486"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-487"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-488"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-489"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 4484 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "B-490"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-491"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-492"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-493"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-494"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-495"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-496"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "B-497"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-498"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "B-499"
+  },
+  {
+   "arm": "A1",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "B-500"
+  }
+ ]
+}

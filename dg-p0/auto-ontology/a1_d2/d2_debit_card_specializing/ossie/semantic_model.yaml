@@ -1,0 +1,268 @@
+version: 0.2.0.dev0
+name: d2_debit_card_specializing
+datasets:
+- name: customer
+  source: d2_debit_card_specializing.public.customers
+  unique_keys:
+  - - customer_id
+  fields:
+  - name: segment
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: segment
+    datatype: String
+    description: Classifies the customer into a business segment such as SME, LAM,
+      or KAM.
+  - name: currency
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: currency
+    datatype: String
+    description: Indicates the currency code associated with the customer, using standard
+      codes like CZK or EUR.
+  - name: customer_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: customerid
+    datatype: Integer
+    description: Unique identifier for each customer, used to link customer records
+      to monthly performance data.
+- name: gas_station
+  source: d2_debit_card_specializing.public.gasstations
+  unique_keys:
+  - - gas_station_id
+  fields:
+  - name: segment
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: segment
+    datatype: String
+    description: Categorizes the gas station by brand or pricing tier such as Premium
+      or Discount.
+  - name: chainid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chainid
+    datatype: Integer
+    description: Identifies the fuel chain to which the gas station belongs.
+  - name: gas_station_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gasstationid
+    datatype: Integer
+    description: Unique identifier for a gas station, used to link transactions to
+      the specific station.
+  - name: country
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: country
+    datatype: String
+    description: ISO country code specifying the country where the gas station operates.
+- name: product
+  source: d2_debit_card_specializing.public.products
+  unique_keys:
+  - - product_id
+  fields:
+  - name: description
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: description
+    datatype: String
+    description: Textual category label classifying the product type, such as food
+      or service fee.
+  - name: product_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: productid
+    datatype: Integer
+    description: Unique numeric identifier for each product, used to link products
+      to transactions.
+- name: transaction
+  source: d2_debit_card_specializing.public.transactions_1k
+  description: A single transaction record.
+  fields:
+  - name: transaction_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: transactionid
+    datatype: Integer
+    description: Uniquely identifies each transaction record.
+  - name: cardid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cardid
+    datatype: Integer
+    description: Identifies the payment or loyalty card used for the transaction.
+  - name: date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: Date
+    description: Records the calendar date of the transaction in YYYY-MM-DD format.
+  - name: price
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: price
+    datatype: Float
+    description: Records the monetary value of the transaction in decimal currency
+      units.
+  - name: customerid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: customerid
+    datatype: Integer
+    description: Identifies the customer who made the transaction.
+  - name: time
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: time
+    datatype: String
+    description: Captures the time of day the transaction was recorded in HH:MM:SS
+      format.
+  - name: quantity
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: amount
+    datatype: Integer
+    description: Represents the quantity of items in the transaction.
+  - name: gasstationid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gasstationid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: productid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: productid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: year_month
+  source: d2_debit_card_specializing.public.yearmonth
+  description: A reporting period with its associated consumption value.
+  fields:
+  - name: consumption
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: consumption
+    datatype: Float
+    description: Records the consumption amount for the reporting period.
+  - name: period
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: String
+    description: Represents the reporting period in YYYYMM text format.
+  - name: customerid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: customerid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_debit_card_specializing","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"c3dc4683-bf17-4ae2-8174-444695a02e36","schemas":[{"database_name":"d2_debit_card_specializing","id":"07d691a4-7f57-47b9-b843-d4476b5b56ab","name":"public","tables":[{"columns":[{"description":"Unique
+    identifier for each customer in the system.","id":"c4f91d96-bf80-459a-863a-fc1053a0758e","is_nullable":false,"is_unique":true,"name":"customerid","sample_values":[3,5,6,7,9],"type":"bigint"},{"description":"Classification
+    of the customer into a business segment such as SME, LAM, or KAM.","id":"1d1c0ac5-25b6-45a1-9404-d06baf353027","is_nullable":true,"is_unique":false,"name":"segment","sample_values":["SME","LAM","KAM"],"type":"text"},{"description":"The
+    currency code associated with the customer, such as CZK or EUR.","id":"ef1bfc47-046f-4d4e-bb7a-9984ad107842","is_nullable":true,"is_unique":false,"name":"currency","sample_values":["CZK","EUR"],"type":"text"}],"description":"","id":"fefc3a1f-4a32-445d-a0fa-2b20385d9267","name":"customers","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for a gas station.","id":"ee55a533-4f8d-4d8a-a0cd-8fc6a097e222","is_nullable":false,"is_unique":true,"name":"gasstationid","sample_values":[44,45,46,47,48],"type":"bigint"},{"description":"The
+    chainid column holds a unique bigint identifier for a chain, as evidenced by sample
+    values 1, 2, 3, 4, and 33.","id":"de6dee95-4edf-4ddb-815b-0dbbb9404223","is_nullable":true,"is_unique":false,"name":"chainid","sample_values":[2,33,1,3,4],"type":"bigint"},{"description":"ISO
+    country code indicating the country where the gas station operates.","id":"03f6b98b-98cc-4144-83c7-b3d1ba78a23a","is_nullable":true,"is_unique":false,"name":"country","sample_values":["CZE","SVK"],"type":"text"},{"description":"Classification
+    of the gas station''s brand or pricing segment.","id":"2669f63c-70b8-4ec8-beef-be254aabebba","is_nullable":true,"is_unique":false,"name":"segment","sample_values":["Premium","Other","Noname","Value
+    for money","Discount"],"type":"text"}],"description":"","id":"4ad41776-ae9a-418c-92ee-d9306f20369c","name":"gasstations","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique numeric identifier assigned to each
+    product in the catalog.","id":"13316e6f-68d6-43bf-a4af-b769f4bb9ed5","is_nullable":false,"is_unique":true,"name":"productid","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Textual
+    label categorizing the product type, such as food, service fee, returnable packaging,
+    catalyst, or other goods.","id":"29b31806-35be-4211-b40e-23e8dc296b1a","is_nullable":true,"is_unique":false,"name":"description","sample_values":["Ostatni
+    zbozi","Servisn\u00ed poplatek","Potraviny","Vratn\u00e9 obaly","Katalyz\u00e1tor"],"type":"text"}],"description":"","id":"216ede55-0858-48cf-8865-b79a92f1e073","name":"products","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each transaction record.","id":"86345ede-d26c-434f-89f6-31e2697cd5a9","is_nullable":false,"is_unique":true,"name":"transactionid","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Calendar
+    date on which the transaction occurred.","id":"ad76c12c-1e5f-44d3-83f5-955e27f33cef","is_nullable":true,"is_unique":false,"name":"date","sample_values":[],"type":"date"},{"description":"Time
+    of day when the transaction was recorded, in HH:MM:SS format.","id":"554b4264-7787-4c04-888c-f2f199c43d74","is_nullable":true,"is_unique":false,"name":"time","sample_values":["08:57:00","11:55:00","16:04:00","15:23:00","09:50:00"],"type":"text"},{"description":"Unique
+    identifier assigned to each customer in the system.","id":"ccbe9a25-fbf5-4b29-8e1c-5806978b20e2","is_nullable":true,"is_unique":false,"name":"customerid","sample_values":[19182,31543,7626,33094,30895],"type":"bigint"},{"description":"Unique
+    identifier assigned to each payment or loyalty card associated with a customer.","id":"8e097379-f138-4435-8c29-d364d5d43d08","is_nullable":true,"is_unique":false,"name":"cardid","sample_values":[568944,732572,680551,519534,585106],"type":"bigint"},{"description":"","id":"09aba590-f412-487a-bcd5-a3698da3d0b0","is_nullable":true,"is_unique":false,"name":"gasstationid","sample_values":[1155,448,48,636,3621],"type":"bigint"},{"description":"","id":"a983a164-db00-4a5a-82da-fbadbc9f826f","is_nullable":true,"is_unique":false,"name":"productid","sample_values":[2,5,317,15,9],"type":"bigint"},{"description":"Quantity
+    of items associated with the transaction.","id":"0282b9e4-6d78-48a5-983c-927d6362096c","is_nullable":true,"is_unique":false,"name":"amount","sample_values":[0,5,25,1,4],"type":"bigint"},{"description":"Monetary
+    value of the transaction, expressed in decimal currency units.","id":"c1545e72-7fe1-4302-9b21-80159fafac01","is_nullable":true,"is_unique":false,"name":"price","sample_values":[123.91,43.56,53.29,72.76,38.69],"type":"real"}],"description":"","id":"e808da07-2fe3-43d8-8394-dc7102d171ff","name":"transactions_1k","pk":[],"type":"base
+    table"},{"columns":[{"description":"","id":"99b98a0a-f39e-4e0d-88e4-482e651dc314","is_nullable":true,"is_unique":false,"name":"customerid","sample_values":[39,44,52,96,128],"type":"bigint"},{"description":"The
+    date column stores the reporting period in YYYYMM format as text.","id":"3478223c-5917-489d-8a6a-48d0c12a726e","is_nullable":true,"is_unique":false,"name":"date","sample_values":["201306","201307","201303","201304","201305"],"type":"text"},{"description":"The
+    consumption column records the numeric consumption value for the corresponding
+    period.","id":"d87d275d-1b86-443d-b9f2-eb3cbaaba692","is_nullable":true,"is_unique":true,"name":"consumption","sample_values":[23.27,60.99,59.33,55.72,43.45],"type":"real"}],"description":"","id":"2d291d68-1984-4447-b631-011b65bb12dd","name":"yearmonth","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"7dff2f73-d082-446e-a665-7a0332d918e7","column_id":"09aba590-f412-487a-bcd5-a3698da3d0b0","use_in_join_paths":true},{"column_attribute_id":"d6f33275-c685-4ab2-a3eb-ca290e866ca9","column_id":"99b98a0a-f39e-4e0d-88e4-482e651dc314","use_in_join_paths":true},{"column_attribute_id":"cb6364fc-2402-4e77-b4cd-6c3305b603bb","column_id":"a983a164-db00-4a5a-82da-fbadbc9f826f","use_in_join_paths":true}],"sql_attributes":{"bridge_table":[],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"1d1c0ac5-25b6-45a1-9404-d06baf353027","description":"Classifies
+    the customer into a business segment such as SME, LAM, or KAM.","id":"56b30485-8c84-45ce-bad9-95241332cb72","name":"Segment"},{"column_id":"ef1bfc47-046f-4d4e-bb7a-9984ad107842","description":"Indicates
+    the currency code associated with the customer, using standard codes like CZK
+    or EUR.","id":"bcb77b21-e30d-48f3-ae48-fa734385200b","name":"Currency"},{"column_id":"c4f91d96-bf80-459a-863a-fc1053a0758e","description":"Unique
+    identifier for each customer, used to link customer records to monthly performance
+    data.","id":"d6f33275-c685-4ab2-a3eb-ca290e866ca9","name":"Customer ID"}],"description":"","id":"0344c0a2-d296-4a20-b8ca-a620f7bdf31d","name":"Customer
+    (d2_debit_card_specializing.public.customers)","represents":["fefc3a1f-4a32-445d-a0fa-2b20385d9267"]},{"columns_attributes":[{"column_id":"2669f63c-70b8-4ec8-beef-be254aabebba","description":"Categorizes
+    the gas station by brand or pricing tier such as Premium or Discount.","id":"16266a0b-1734-4dfd-8da2-89b8af96a051","name":"Segment"},{"column_id":"de6dee95-4edf-4ddb-815b-0dbbb9404223","description":"Identifies
+    the fuel chain to which the gas station belongs.","id":"27dbbbac-2cab-458d-8eb7-ff2fa1cd50d2","name":"chainid"},{"column_id":"ee55a533-4f8d-4d8a-a0cd-8fc6a097e222","description":"Unique
+    identifier for a gas station, used to link transactions to the specific station.","id":"7dff2f73-d082-446e-a665-7a0332d918e7","name":"Gas
+    Station ID"},{"column_id":"03f6b98b-98cc-4144-83c7-b3d1ba78a23a","description":"ISO
+    country code specifying the country where the gas station operates.","id":"ae56c4b5-9d20-47d6-b904-e1c25d5aa6e2","name":"Country"}],"description":"","id":"937089b2-0b2a-4be5-813c-8a6c95a97f0b","name":"Gas
+    Station","represents":["4ad41776-ae9a-418c-92ee-d9306f20369c"]},{"columns_attributes":[{"column_id":"29b31806-35be-4211-b40e-23e8dc296b1a","description":"Textual
+    category label classifying the product type, such as food or service fee.","id":"b7e3b345-ee8f-4520-9a2a-11f4a9875f20","name":"Description"},{"column_id":"13316e6f-68d6-43bf-a4af-b769f4bb9ed5","description":"Unique
+    numeric identifier for each product, used to link products to transactions.","id":"cb6364fc-2402-4e77-b4cd-6c3305b603bb","name":"Product
+    ID"}],"description":"","id":"a79e2cf0-d76f-4cc4-be1e-38c6adf5fe9a","name":"Product
+    (d2_debit_card_specializing.public.products)","represents":["216ede55-0858-48cf-8865-b79a92f1e073"]},{"columns_attributes":[{"column_id":"86345ede-d26c-434f-89f6-31e2697cd5a9","description":"Uniquely
+    identifies each transaction record.","id":"017938dc-d891-4fd7-b2e5-e4251f2763e2","name":"Transaction
+    ID"},{"column_id":"8e097379-f138-4435-8c29-d364d5d43d08","description":"Identifies
+    the payment or loyalty card used for the transaction.","id":"2c337e78-056e-429f-b805-e8784cac5c91","name":"cardid"},{"column_id":"ad76c12c-1e5f-44d3-83f5-955e27f33cef","description":"Records
+    the calendar date of the transaction in YYYY-MM-DD format.","id":"5bbed368-e1e5-4dac-ac89-0b4d966ec274","name":"Date"},{"column_id":"c1545e72-7fe1-4302-9b21-80159fafac01","description":"Records
+    the monetary value of the transaction in decimal currency units.","id":"94f1f932-0faf-4e1c-8f5a-0cc14eea44cc","name":"Price"},{"column_id":"ccbe9a25-fbf5-4b29-8e1c-5806978b20e2","description":"Identifies
+    the customer who made the transaction.","id":"a9d9cbff-fdf3-4bfd-9b70-669a977d1350","name":"customerid"},{"column_id":"554b4264-7787-4c04-888c-f2f199c43d74","description":"Captures
+    the time of day the transaction was recorded in HH:MM:SS format.","id":"bfb07dd4-04e1-4819-ac3f-75df70745720","name":"Time"},{"column_id":"0282b9e4-6d78-48a5-983c-927d6362096c","description":"Represents
+    the quantity of items in the transaction.","id":"ffa2d390-d40c-477f-bce4-3feaa45f1c7c","name":"Quantity"}],"description":"A
+    single transaction record.","id":"4f8a50bd-306c-4894-9338-78ddcc04e658","name":"Transaction","represents":["e808da07-2fe3-43d8-8394-dc7102d171ff"]},{"columns_attributes":[{"column_id":"d87d275d-1b86-443d-b9f2-eb3cbaaba692","description":"Records
+    the consumption amount for the reporting period.","id":"8e25cb43-d423-4632-b33e-2681468e1c12","name":"Consumption"},{"column_id":"3478223c-5917-489d-8a6a-48d0c12a726e","description":"Represents
+    the reporting period in YYYYMM text format.","id":"df6ae673-5131-4d98-87dd-854b72dd4a26","name":"Period"}],"description":"A
+    reporting period with its associated consumption value.","id":"84394367-c3b9-49ba-aeec-f7f5b43e6909","name":"Year
+    Month","represents":["2d291d68-1984-4447-b631-011b65bb12dd"]}]},"zones":[]}}'
+relationships:
+- name: transaction_gasstationid_to_gas_station
+  from: transaction
+  to: gas_station
+  from_columns:
+  - gasstationid
+  to_columns:
+  - gas_station_id
+- name: year_month_customerid_to_customer
+  from: year_month
+  to: customer
+  from_columns:
+  - customerid
+  to_columns:
+  - customer_id
+- name: transaction_productid_to_product
+  from: transaction
+  to: product
+  from_columns:
+  - productid
+  to_columns:
+  - product_id

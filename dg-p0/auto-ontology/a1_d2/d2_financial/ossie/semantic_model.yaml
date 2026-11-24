@@ -1,0 +1,671 @@
+version: 0.2.0.dev0
+name: d2_financial
+datasets:
+- name: account
+  source: d2_financial.public.account
+  description: Customer account with payment frequency details.
+  unique_keys:
+  - - account_id
+  fields:
+  - name: account_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: account_id
+    datatype: Integer
+    description: Unique identifier for a customer account, linking to dispositions,
+      loans, orders, and transactions.
+  - name: frequency_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: Date
+    description: Calendar date of the account frequency entry, formatted as YYYY-MM-DD.
+  - name: frequency
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: frequency
+    datatype: String
+    description: 'Payment frequency category for the account, with values: monthly
+      (POPLATEK MESICNE), weekly (POPLATEK TYDNE), or per-transaction (POPLATEK PO
+      OBRATU).'
+  - name: district_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: district_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: card
+  source: d2_financial.public.card
+  description: Represents a payment card issued to a customer.
+  fields:
+  - name: card_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: card_id
+    datatype: Integer
+    description: Uniquely identifies each payment card issued to a customer.
+  - name: card_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: Categorizes the card by product tier such as classic, junior, or
+      gold.
+  - name: issue_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: issued
+    datatype: Date
+    description: Records the date the card was issued to the customer in YYYY-MM-DD
+      format.
+  - name: disp_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: disp_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: client
+  source: d2_financial.public.client
+  unique_keys:
+  - - client_id
+  fields:
+  - name: client_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: client_id
+    datatype: Integer
+    description: Unique identifier for each client, used by disposition records to
+      link transactions.
+  - name: birth_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: birth_date
+    datatype: Date
+    description: Client's date of birth, stored in YYYY-MM-DD format.
+  - name: gender
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gender
+    datatype: String
+    description: Client's gender, recorded as 'M' for male or 'F' for female.
+  - name: district_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: district_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: disposition
+  source: d2_financial.public.disp
+  unique_keys:
+  - - disposition_id
+  fields:
+  - name: disposition_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: disp_id
+    datatype: Integer
+    description: Unique identifier for the disposition linking an account to a client,
+      referenced by cards to associate them with the disposition.
+  - name: client_role
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: Role of the client in the disposition, either OWNER or DISPONENT,
+      indicating account ownership or authorized disposal rights.
+  - name: account_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: account_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: client_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: client_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: district
+  source: d2_financial.public.district
+  description: Geographic district with demographic and metric attributes.
+  unique_keys:
+  - - district_id
+  fields:
+  - name: district_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: district_id
+    datatype: Integer
+    description: Uniquely identifies a geographic district and links accounts and
+      clients to their respective district.
+  - name: a15
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a15
+    datatype: Integer
+    description: Stores a large district-level monetary amount or aggregate quantity
+      as a bigint, e.g., 2854.
+  - name: a5
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a5
+    datatype: String
+    description: Contains a district-level metric (percentage or count) stored as
+      text, e.g., '60'.
+  - name: a9
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a9
+    datatype: Integer
+    description: Represents a district-level code or categorical indicator as an integer,
+      e.g., 6.
+  - name: district_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a2
+    datatype: String
+    description: Stores the district's name, such as 'Hl.m. Praha' or 'Benesov'.
+  - name: a11
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a11
+    datatype: Integer
+    description: Counts district entities or events as a large integer, e.g., 8369.
+  - name: a7
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a7
+    datatype: String
+    description: Stores a small district-level count or code as text, e.g., '4'.
+  - name: population_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a4
+    datatype: String
+    description: Holds the district's population count stored as text, e.g., '1204953'.
+  - name: a13
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a13
+    datatype: Float
+    description: Provides a real-valued district metric like an average or index,
+      e.g., 3.6.
+  - name: a8
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a8
+    datatype: Integer
+    description: Represents a district-level code or categorical indicator as an integer,
+      e.g., 1.
+  - name: a6
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a6
+    datatype: String
+    description: Contains a district-level metric (percentage or count) stored as
+      text, e.g., '26'.
+  - name: a16
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a16
+    datatype: Integer
+    description: Unique numeric identifier for the district.
+  - name: a14
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a14
+    datatype: Integer
+    description: Counts district occurrences or units as an integer, e.g., 131.
+  - name: a10
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a10
+    datatype: Float
+    description: Provides a real-valued district metric like a rate or percentage,
+      e.g., 100.0.
+  - name: a12
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a12
+    datatype: Float
+    description: Provides a real-valued district metric like an average or index,
+      e.g., 3.3.
+  - name: region_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: a3
+    datatype: String
+    description: Records the region name where the district is located, like 'central
+      Bohemia'.
+- name: loan
+  source: d2_financial.public.loan
+  fields:
+  - name: loan_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: Date
+    description: Date when the loan was originated or disbursed, formatted as YYYY-MM-DD.
+  - name: loan_status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: status
+    datatype: String
+    description: Current status code indicating the loan's state.
+  - name: loan_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: loan_id
+    datatype: Integer
+    description: Unique identifier assigned to each loan.
+  - name: monthly_payment
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: payments
+    datatype: Float
+    description: Scheduled monthly payment amount for the loan.
+  - name: loan_duration
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: duration
+    datatype: Integer
+    description: Length of the loan term in months.
+  - name: loan_amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: amount
+    datatype: Integer
+    description: Principal loan amount expressed in the smallest currency unit.
+  - name: account_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: account_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: order
+  source: d2_financial.public.order
+  fields:
+  - name: destination_bank
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bank_to
+    datatype: String
+    description: Indicates the destination bank code for the financial transaction.
+  - name: order_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: order_id
+    datatype: Integer
+    description: Uniquely identifies each order transaction in the system.
+  - name: transaction_category
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: k_symbol
+    datatype: String
+    description: Classifies the transaction by payment purpose such as leasing or
+      insurance.
+  - name: account_to
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: account_to
+    datatype: Integer
+    description: Identifies the destination account receiving the funds.
+  - name: amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: amount
+    datatype: Float
+    description: Represents the monetary value of the transaction in local currency.
+  - name: account_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: account_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: transaction
+  source: d2_financial.public.trans
+  fields:
+  - name: counterparty_account
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: account
+    datatype: Integer
+    description: Provides the counterparty account number, with zero meaning internal
+      or unspecified.
+  - name: category_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: k_symbol
+    datatype: String
+    description: Indicates the transaction purpose using codes like salary, services,
+      pension, or loan.
+  - name: operation
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: operation
+    datatype: String
+    description: Describes the specific operation performed, such as cash withdrawal,
+      deposit, or transfer.
+  - name: transaction_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: trans_id
+    datatype: Integer
+    description: Identifies a specific financial transaction within the system.
+  - name: amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: amount
+    datatype: Integer
+    description: States the monetary value of the transaction in the account currency.
+  - name: bank
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bank
+    datatype: String
+    description: Identifies the financial institution involved in the transaction.
+  - name: transaction_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: Date
+    description: Records the processing date of the transaction in YYYY-MM-DD format.
+  - name: balance
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: balance
+    datatype: Integer
+    description: Shows the account balance after applying the transaction.
+  - name: transaction_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: Classifies the transaction as income, expense, or withdrawal.
+  - name: account_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: account_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_financial","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"a7fe78a1-49f6-4be4-b4e6-0e81f9200d7d","schemas":[{"database_name":"d2_financial","id":"b8438629-9282-4bcd-9e76-0619d4a15bcd","name":"public","tables":[{"columns":[{"description":"Unique
+    identifier for a customer account.","id":"22091cab-23f8-4b9d-bbd1-ac2a836bd999","is_nullable":false,"is_unique":true,"name":"account_id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"75f55796-5228-4614-b6e2-2c4d4aa31407","is_nullable":true,"is_unique":false,"name":"district_id","sample_values":[1,70,54,74,72],"type":"bigint"},{"description":"Specifies
+    the payment frequency category for the account, with values indicating monthly,
+    weekly, or per-transaction billing.","id":"3604744d-30c9-4898-bf66-f3c6e9b2e66a","is_nullable":true,"is_unique":false,"name":"frequency","sample_values":["POPLATEK
+    MESICNE","POPLATEK TYDNE","POPLATEK PO OBRATU"],"type":"text"},{"description":"Records
+    the calendar date associated with the account frequency entry.","id":"cc2d2bc5-a017-43a1-87bc-83dae51b10a8","is_nullable":true,"is_unique":false,"name":"date","sample_values":[],"type":"date"}],"description":"","id":"ad048274-3c3d-4611-ab25-39d0c4b82120","name":"account","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for a card.","id":"2fda7e85-6285-44eb-bf04-1b8ac271e728","is_nullable":false,"is_unique":true,"name":"card_id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"06fa416a-e474-46c2-8cbb-be1045c50e75","is_nullable":true,"is_unique":true,"name":"disp_id","sample_values":[9,19,41,42,51],"type":"bigint"},{"description":"Card
+    category indicating the product tier such as classic, junior, or gold.","id":"5a479d2e-c2b2-4255-a67c-0c60f22e69a6","is_nullable":true,"is_unique":false,"name":"type","sample_values":["classic","junior","gold"],"type":"text"},{"description":"Date
+    when the card was issued to the customer.","id":"9fdb9506-f391-4c16-b3e0-c954713fa28b","is_nullable":true,"is_unique":false,"name":"issued","sample_values":[],"type":"date"}],"description":"","id":"cb37de75-8132-495d-a9ad-955b1f6349ff","name":"card","pk":[],"type":"base
+    table"},{"columns":[{"description":"The client_id column uniquely identifies each
+    client.","id":"27853a20-cb05-45b6-8728-401e03600d01","is_nullable":false,"is_unique":true,"name":"client_id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"The
+    gender column indicates the client''s gender as ''M'' for male or ''F'' for female.","id":"5e22c007-2bb1-4406-a1dd-c552b29a6772","is_nullable":true,"is_unique":false,"name":"gender","sample_values":["M","F"],"type":"text"},{"description":"The
+    birth_date column records the client''s date of birth.","id":"5417517c-d35d-4850-96b2-31c212c7edc8","is_nullable":true,"is_unique":true,"name":"birth_date","sample_values":[],"type":"date"},{"description":"","id":"475177d8-aed7-4d50-b980-4240e9820e64","is_nullable":true,"is_unique":false,"name":"district_id","sample_values":[1,74,70,54,72],"type":"bigint"}],"description":"","id":"78d72226-a96e-46f9-8959-9634b4ce0df8","name":"client","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for a disposition record
+    linking an account to a client.","id":"141935fb-8969-4305-ba80-fea90f28289f","is_nullable":false,"is_unique":true,"name":"disp_id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"607d9d84-222d-4eb2-b9ea-56c8c68bc874","is_nullable":true,"is_unique":true,"name":"client_id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"10d9a09a-6877-4c71-9713-f8662b1b78d7","is_nullable":true,"is_unique":false,"name":"account_id","sample_values":[2,3,8,12,13],"type":"bigint"},{"description":"Role
+    of the client in the disposition, indicating whether they are the account owner
+    or an authorized disposent.","id":"59a2fa64-eb49-4f57-8236-09a0ffb886c5","is_nullable":true,"is_unique":false,"name":"type","sample_values":["OWNER","DISPONENT"],"type":"text"}],"description":"","id":"2d3545c5-a680-4d35-8e2c-9bfa2dbc715f","name":"disp","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each district.","id":"2b955290-bd1e-40c2-8fc5-3ba61192a6d1","is_nullable":false,"is_unique":true,"name":"district_id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Name
+    of the district, such as Hl.m. Praha or Benesov.","id":"92ff21cc-c540-4a26-b9ef-972b06c08bc9","is_nullable":true,"is_unique":true,"name":"a2","sample_values":["Hl.m.
+    Praha","Benesov","Beroun","Kladno","Kolin"],"type":"text"},{"description":"Name
+    of the region where the district is located, such as central Bohemia or south
+    Moravia.","id":"665cc21b-1e59-4277-afcc-1ab329b47924","is_nullable":true,"is_unique":false,"name":"a3","sample_values":["south
+    Moravia","central Bohemia","east Bohemia","north Moravia","west Bohemia"],"type":"text"},{"description":"Population
+    count of the district stored as text.","id":"e8dcabaa-1c57-4888-90b4-dea5a4a4265c","is_nullable":true,"is_unique":true,"name":"a4","sample_values":["1204953","88884","75232","149893","95616"],"type":"text"},{"description":"Numeric
+    value stored as text representing a district-level metric, such as a percentage
+    or count.","id":"f8300601-1b47-4f6b-86e7-7614764cb739","is_nullable":true,"is_unique":false,"name":"a5","sample_values":["0","60","38","55","65"],"type":"text"},{"description":"Numeric
+    value stored as text representing a district-level metric, such as a percentage
+    or count.","id":"42163da6-2b7b-4741-b6a1-3b9333488cea","is_nullable":true,"is_unique":false,"name":"a6","sample_values":["26","41","19","16","0"],"type":"text"},{"description":"Small
+    integer value stored as text representing a district-level count or code.","id":"83885861-0d6f-4369-805e-441e1854ede2","is_nullable":true,"is_unique":false,"name":"a7","sample_values":["4","6","7","5","10"],"type":"text"},{"description":"Integer
+    value representing a district-level code or categorical indicator.","id":"56501bb2-bef2-4243-95ff-796faefc5896","is_nullable":true,"is_unique":false,"name":"a8","sample_values":[1,2,3,0,4],"type":"bigint"},{"description":"Integer
+    value representing a district-level code or categorical indicator.","id":"648dca08-ac9b-4943-8bd3-e891578ed46c","is_nullable":true,"is_unique":false,"name":"a9","sample_values":[6,4,7,5,8],"type":"bigint"},{"description":"Real-valued
+    metric for the district, such as a rate or percentage.","id":"7c69cae7-c7dc-4a75-aa21-3181b531efaf","is_nullable":true,"is_unique":false,"name":"a10","sample_values":[100.0,46.7,51.9,89.9,53.5],"type":"real"},{"description":"Large
+    integer count for the district, such as number of entities or events.","id":"d05edcb7-e59d-463d-9492-f859a3c78896","is_nullable":true,"is_unique":true,"name":"a11","sample_values":[8369,12541,8507,8980,9753],"type":"bigint"},{"description":"Real-valued
+    metric for the district, such as an average or index.","id":"1cbb0b3a-0702-415a-a792-ec54fd3bdf27","is_nullable":true,"is_unique":false,"name":"a12","sample_values":[3.3,1.6,1.7,3.8,2.8],"type":"real"},{"description":"Real-valued
+    metric for the district, such as an average or index.","id":"4e76fe7c-e9ca-49ed-bf13-83c6a3951aa8","is_nullable":true,"is_unique":false,"name":"a13","sample_values":[3.6,2.01,4.48,2.31,0.43],"type":"real"},{"description":"Integer
+    count for the district, such as number of occurrences or units.","id":"814f693b-f63c-41ea-ab04-5e46a2f3c925","is_nullable":true,"is_unique":false,"name":"a14","sample_values":[131,100,111,109,123],"type":"bigint"},{"description":"Large
+    numeric value for the district, stored as bigint, likely representing a monetary
+    amount or aggregate quantity.","id":"cf40c2d5-d6d6-4c5a-9327-0690d08f3bf3","is_nullable":true,"is_unique":true,"name":"a15","sample_values":[2854.0,85677.0,2159.0,2824.0,5244.0],"type":"bigint"},{"description":"The
+    a16 column stores large integer values, likely serving as a numeric identifier
+    or quantitative measure in the dataset.","id":"fd1dc26f-3c29-4241-a6c4-f5c4f1810a75","is_nullable":true,"is_unique":true,"name":"a16","sample_values":[4505,99107,2674,2813,5892],"type":"bigint"}],"description":"","id":"5d27a914-050b-40d1-86c8-c4651764fe05","name":"district","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for a loan.","id":"9c141f1e-1946-4985-8186-f23ffa7dcbe3","is_nullable":false,"is_unique":true,"name":"loan_id","sample_values":[4959,4961,4962,4967,4968],"type":"bigint"},{"description":"","id":"3d6d0c96-5482-4f37-a616-b6a439a6643d","is_nullable":true,"is_unique":true,"name":"account_id","sample_values":[2,19,25,37,38],"type":"bigint"},{"description":"Date
+    the loan was originated or disbursed.","id":"8253c491-2885-431b-abf6-eeac3e4b1c50","is_nullable":true,"is_unique":false,"name":"date","sample_values":[],"type":"date"},{"description":"Principal
+    loan amount in the smallest currency unit.","id":"ce78b2aa-2964-4c4b-9445-f35a9e889a21","is_nullable":true,"is_unique":false,"name":"amount","sample_values":[30276,86184,80952,110736,165960],"type":"bigint"},{"description":"Loan
+    term duration in months.","id":"d9c7c24a-141d-4bdc-a1b5-3108db6b6712","is_nullable":true,"is_unique":false,"name":"duration","sample_values":[60,24,48,12,36],"type":"bigint"},{"description":"Scheduled
+    monthly payment amount for the loan.","id":"bc6b5434-f938-4a86-a227-278c90411f02","is_nullable":true,"is_unique":false,"name":"payments","sample_values":[2523.0,3151.0,2307.0,7370.0,3874.0],"type":"real"},{"description":"Current
+    status code of the loan.","id":"aee30f6b-3866-4714-a6d1-50be0689b3b3","is_nullable":true,"is_unique":false,"name":"status","sample_values":["C","A","D","B"],"type":"text"}],"description":"","id":"66080d5a-50db-4327-9314-16cfa2f88476","name":"loan","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each order transaction.","id":"b58a473e-4a5d-413f-99a8-1487809c6fc1","is_nullable":false,"is_unique":true,"name":"order_id","sample_values":[29401,29402,29403,29404,29405],"type":"bigint"},{"description":"","id":"13ec7bd3-09e1-4b15-996d-f2b597c574d8","is_nullable":true,"is_unique":false,"name":"account_id","sample_values":[96,97,173,311,365],"type":"bigint"},{"description":"Destination
+    bank code for the financial transaction.","id":"bb2119d5-c1e8-405d-b5ec-82cf7dd51bef","is_nullable":true,"is_unique":false,"name":"bank_to","sample_values":["KL","GH","IJ","WX","CD"],"type":"text"},{"description":"The
+    account_to column stores the unique identifier of the destination account involved
+    in a financial transaction.","id":"ddce2d4a-d5b9-46e7-8129-7c563798abf3","is_nullable":true,"is_unique":true,"name":"account_to","sample_values":[87144583,89597016,13943797,83084338,24485939],"type":"bigint"},{"description":"Monetary
+    value of the transaction in the local currency.","id":"70da4b3d-a1fd-4d61-9e77-a569585c9249","is_nullable":true,"is_unique":false,"name":"amount","sample_values":[2629.6,62.0,7370.2,1788.0,3509.0],"type":"real"},{"description":"Transaction
+    category code indicating the purpose of the payment, such as leasing, insurance,
+    or credit.","id":"47da1cfe-a64f-452f-b5e4-f43107aa8936","is_nullable":true,"is_unique":false,"name":"k_symbol","sample_values":["SIPO","","POJISTNE","LEASING","UVER"],"type":"text"}],"description":"","id":"6a4cfe35-0b5b-42e6-8255-42ce53d88736","name":"order","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each financial transaction.","id":"f00c7c15-58d4-497b-895a-d2e5c75644ba","is_nullable":false,"is_unique":true,"name":"trans_id","sample_values":[1,5,6,7,8],"type":"bigint"},{"description":"","id":"b78718e4-4d2e-4f43-94a9-f689597a3307","is_nullable":true,"is_unique":false,"name":"account_id","sample_values":[2,1,4,3,6],"type":"bigint"},{"description":"Calendar
+    date on which the transaction was processed.","id":"014fb660-7e5b-4c6c-b05b-42504bdfa17d","is_nullable":true,"is_unique":false,"name":"date","sample_values":[],"type":"date"},{"description":"High-level
+    classification of the transaction as income (PRIJEM), expense (VYDAJ), or withdrawal
+    (VYBER).","id":"b056369b-0bdc-4d75-b5f2-e3a87546cdc9","is_nullable":true,"is_unique":false,"name":"type","sample_values":["VYDAJ","PRIJEM","VYBER"],"type":"text"},{"description":"Specific
+    operational detail of the transaction such as cash withdrawal, deposit, or inter-account
+    transfer.","id":"0be81974-b4f7-461d-ac63-62a3c3c7d833","is_nullable":true,"is_unique":false,"name":"operation","sample_values":["VYBER","PREVOD
+    NA UCET","PREVOD Z UCTU","VKLAD","VYBER KARTOU"],"type":"text"},{"description":"Monetary
+    value of the transaction in the account''s currency.","id":"77a568d5-35de-408c-8e94-74f739cd4d2f","is_nullable":true,"is_unique":false,"name":"amount","sample_values":[15,7266,20236,6669,3679],"type":"bigint"},{"description":"Account
+    balance remaining after the transaction has been applied.","id":"0ab95ef4-7e29-4902-ae9b-284f5869dea7","is_nullable":true,"is_unique":true,"name":"balance","sample_values":[1000,28903,17979,15585,16725],"type":"bigint"},{"description":"Categorical
+    code representing the transaction purpose such as salary (SIPO), services (SLUZBY),
+    pension (DUCHOD), or loan (UVER).","id":"7ae770b8-39cd-400d-b8ea-f325a170cf7d","is_nullable":true,"is_unique":false,"name":"k_symbol","sample_values":["SIPO","SLUZBY","DUCHOD","
+    ","UVER"],"type":"text"},{"description":"Identifier of the financial institution
+    involved in the transaction.","id":"cd3f7689-3609-4437-9fcd-1c13524e3f91","is_nullable":true,"is_unique":false,"name":"bank","sample_values":["ST","UV","AB","QR","OP"],"type":"text"},{"description":"Counterparty
+    account number associated with the transaction, with zero indicating internal
+    or unspecified accounts.","id":"232f2221-8ad1-4521-a0b1-4f2ea40c68f6","is_nullable":true,"is_unique":false,"name":"account","sample_values":[66487163.0,13943797.0,150186.0,41403269.0,0.0],"type":"bigint"}],"description":"","id":"cdb6d20b-e875-409b-8012-2f9ec47b0e26","name":"trans","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[{"source_column_id":"06fa416a-e474-46c2-8cbb-be1045c50e75","target_column_id":"141935fb-8969-4305-ba80-fea90f28289f"},{"source_column_id":"10d9a09a-6877-4c71-9713-f8662b1b78d7","target_column_id":"22091cab-23f8-4b9d-bbd1-ac2a836bd999"},{"source_column_id":"13ec7bd3-09e1-4b15-996d-f2b597c574d8","target_column_id":"22091cab-23f8-4b9d-bbd1-ac2a836bd999"},{"source_column_id":"3d6d0c96-5482-4f37-a616-b6a439a6643d","target_column_id":"22091cab-23f8-4b9d-bbd1-ac2a836bd999"},{"source_column_id":"475177d8-aed7-4d50-b980-4240e9820e64","target_column_id":"2b955290-bd1e-40c2-8fc5-3ba61192a6d1"},{"source_column_id":"607d9d84-222d-4eb2-b9ea-56c8c68bc874","target_column_id":"27853a20-cb05-45b6-8728-401e03600d01"},{"source_column_id":"75f55796-5228-4614-b6e2-2c4d4aa31407","target_column_id":"2b955290-bd1e-40c2-8fc5-3ba61192a6d1"},{"source_column_id":"b78718e4-4d2e-4f43-94a9-f689597a3307","target_column_id":"22091cab-23f8-4b9d-bbd1-ac2a836bd999"}],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"705e5186-2160-49d7-b858-ab0971548136","column_id":"06fa416a-e474-46c2-8cbb-be1045c50e75","use_in_join_paths":true},{"column_attribute_id":"0eca0d3d-b5e4-46db-828a-ee50e8cd5a41","column_id":"10d9a09a-6877-4c71-9713-f8662b1b78d7","use_in_join_paths":true},{"column_attribute_id":"0eca0d3d-b5e4-46db-828a-ee50e8cd5a41","column_id":"13ec7bd3-09e1-4b15-996d-f2b597c574d8","use_in_join_paths":true},{"column_attribute_id":"0eca0d3d-b5e4-46db-828a-ee50e8cd5a41","column_id":"3d6d0c96-5482-4f37-a616-b6a439a6643d","use_in_join_paths":true},{"column_attribute_id":"14794b2c-0aa6-4eb9-8f41-1540a43c6eb3","column_id":"475177d8-aed7-4d50-b980-4240e9820e64","use_in_join_paths":true},{"column_attribute_id":"55f6715d-26ea-4207-901b-5c53a527a209","column_id":"607d9d84-222d-4eb2-b9ea-56c8c68bc874","use_in_join_paths":true},{"column_attribute_id":"14794b2c-0aa6-4eb9-8f41-1540a43c6eb3","column_id":"75f55796-5228-4614-b6e2-2c4d4aa31407","use_in_join_paths":true},{"column_attribute_id":"0eca0d3d-b5e4-46db-828a-ee50e8cd5a41","column_id":"b78718e4-4d2e-4f43-94a9-f689597a3307","use_in_join_paths":true}],"sql_attributes":{"bridge_table":[],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"22091cab-23f8-4b9d-bbd1-ac2a836bd999","description":"Unique
+    identifier for a customer account, linking to dispositions, loans, orders, and
+    transactions.","id":"0eca0d3d-b5e4-46db-828a-ee50e8cd5a41","name":"Account ID"},{"column_id":"cc2d2bc5-a017-43a1-87bc-83dae51b10a8","description":"Calendar
+    date of the account frequency entry, formatted as YYYY-MM-DD.","id":"400e98e3-b458-456e-83c6-4722fb6789ca","name":"Frequency
+    Date"},{"column_id":"3604744d-30c9-4898-bf66-f3c6e9b2e66a","description":"Payment
+    frequency category for the account, with values: monthly (POPLATEK MESICNE), weekly
+    (POPLATEK TYDNE), or per-transaction (POPLATEK PO OBRATU).","id":"e0e04677-cf0a-4cff-a31c-df842a61d215","name":"Frequency"}],"description":"Customer
+    account with payment frequency details.","id":"725458f7-4779-4e2e-8465-122ce2024e24","name":"Account","represents":["ad048274-3c3d-4611-ab25-39d0c4b82120"]},{"columns_attributes":[{"column_id":"2fda7e85-6285-44eb-bf04-1b8ac271e728","description":"Uniquely
+    identifies each payment card issued to a customer.","id":"3706626f-5ef3-412a-aad6-316488c490b0","name":"Card
+    ID"},{"column_id":"5a479d2e-c2b2-4255-a67c-0c60f22e69a6","description":"Categorizes
+    the card by product tier such as classic, junior, or gold.","id":"d9c23734-b2c1-44da-98b7-95af7842bff4","name":"Card
+    Type"},{"column_id":"9fdb9506-f391-4c16-b3e0-c954713fa28b","description":"Records
+    the date the card was issued to the customer in YYYY-MM-DD format.","id":"e97d8d96-e721-4a15-a3a4-a93ac0d5d44f","name":"Issue
+    Date"}],"description":"Represents a payment card issued to a customer.","id":"0b0654d1-67ae-4d3c-aef5-25717fbd7584","name":"Card
+    (d2_financial.public.card)","represents":["cb37de75-8132-495d-a9ad-955b1f6349ff"]},{"columns_attributes":[{"column_id":"27853a20-cb05-45b6-8728-401e03600d01","description":"Unique
+    identifier for each client, used by disposition records to link transactions.","id":"55f6715d-26ea-4207-901b-5c53a527a209","name":"Client
+    ID"},{"column_id":"5417517c-d35d-4850-96b2-31c212c7edc8","description":"Client''s
+    date of birth, stored in YYYY-MM-DD format.","id":"6f132b65-e2fc-495b-b36e-968259461181","name":"Birth
+    Date"},{"column_id":"5e22c007-2bb1-4406-a1dd-c552b29a6772","description":"Client''s
+    gender, recorded as ''M'' for male or ''F'' for female.","id":"74b50de0-0130-4b99-a39e-11446f6f2409","name":"Gender"}],"description":"","id":"9e19e241-842c-45de-9744-7d136743204a","name":"Client","represents":["78d72226-a96e-46f9-8959-9634b4ce0df8"]},{"columns_attributes":[{"column_id":"141935fb-8969-4305-ba80-fea90f28289f","description":"Unique
+    identifier for the disposition linking an account to a client, referenced by cards
+    to associate them with the disposition.","id":"705e5186-2160-49d7-b858-ab0971548136","name":"Disposition
+    ID"},{"column_id":"59a2fa64-eb49-4f57-8236-09a0ffb886c5","description":"Role of
+    the client in the disposition, either OWNER or DISPONENT, indicating account ownership
+    or authorized disposal rights.","id":"d59b8718-97b9-42fe-b50d-3489d49642eb","name":"Client
+    Role"}],"description":"","id":"0d60116b-409a-421f-b5fa-1679f3842fe7","name":"Disposition","represents":["2d3545c5-a680-4d35-8e2c-9bfa2dbc715f"]},{"columns_attributes":[{"column_id":"2b955290-bd1e-40c2-8fc5-3ba61192a6d1","description":"Uniquely
+    identifies a geographic district and links accounts and clients to their respective
+    district.","id":"14794b2c-0aa6-4eb9-8f41-1540a43c6eb3","name":"District ID"},{"column_id":"cf40c2d5-d6d6-4c5a-9327-0690d08f3bf3","description":"Stores
+    a large district-level monetary amount or aggregate quantity as a bigint, e.g.,
+    2854.","id":"16c34851-0d6b-4ef6-a1c8-1f227dfab111","name":"a15"},{"column_id":"f8300601-1b47-4f6b-86e7-7614764cb739","description":"Contains
+    a district-level metric (percentage or count) stored as text, e.g., ''60''.","id":"1ed5738a-4d8a-4970-905b-42395750123a","name":"a5"},{"column_id":"648dca08-ac9b-4943-8bd3-e891578ed46c","description":"Represents
+    a district-level code or categorical indicator as an integer, e.g., 6.","id":"2beaca11-3725-42ce-95a1-b8ceda2d4220","name":"a9"},{"column_id":"92ff21cc-c540-4a26-b9ef-972b06c08bc9","description":"Stores
+    the district''s name, such as ''Hl.m. Praha'' or ''Benesov''.","id":"4bb0224e-77c8-43e5-ba84-790761134a16","name":"District
+    Name"},{"column_id":"d05edcb7-e59d-463d-9492-f859a3c78896","description":"Counts
+    district entities or events as a large integer, e.g., 8369.","id":"4f1667e8-ffa7-45ce-bb6c-e2328f54d1d8","name":"a11"},{"column_id":"83885861-0d6f-4369-805e-441e1854ede2","description":"Stores
+    a small district-level count or code as text, e.g., ''4''.","id":"5e499e12-e0ea-45e7-aa70-3bed190577d3","name":"a7"},{"column_id":"e8dcabaa-1c57-4888-90b4-dea5a4a4265c","description":"Holds
+    the district''s population count stored as text, e.g., ''1204953''.","id":"64db3242-29bf-4446-abe3-9b4b7c7ecb40","name":"Population
+    Count"},{"column_id":"4e76fe7c-e9ca-49ed-bf13-83c6a3951aa8","description":"Provides
+    a real-valued district metric like an average or index, e.g., 3.6.","id":"69d232de-5798-496a-82e9-88530a51d48f","name":"a13"},{"column_id":"56501bb2-bef2-4243-95ff-796faefc5896","description":"Represents
+    a district-level code or categorical indicator as an integer, e.g., 1.","id":"6c6be366-ba8b-492e-824c-34d0fb31f1da","name":"a8"},{"column_id":"42163da6-2b7b-4741-b6a1-3b9333488cea","description":"Contains
+    a district-level metric (percentage or count) stored as text, e.g., ''26''.","id":"78c5c428-e239-45df-bb68-3ddb90fadffb","name":"a6"},{"column_id":"fd1dc26f-3c29-4241-a6c4-f5c4f1810a75","description":"Unique
+    numeric identifier for the district.","id":"99bc0dc3-8e38-4b0d-b781-a8f7a7814f4d","name":"a16"},{"column_id":"814f693b-f63c-41ea-ab04-5e46a2f3c925","description":"Counts
+    district occurrences or units as an integer, e.g., 131.","id":"a614bbc0-a06a-447c-88eb-63b5baebb996","name":"a14"},{"column_id":"7c69cae7-c7dc-4a75-aa21-3181b531efaf","description":"Provides
+    a real-valued district metric like a rate or percentage, e.g., 100.0.","id":"a9cc46e7-a36f-4528-9e83-ab661a683d79","name":"a10"},{"column_id":"1cbb0b3a-0702-415a-a792-ec54fd3bdf27","description":"Provides
+    a real-valued district metric like an average or index, e.g., 3.3.","id":"c4606796-d572-4d57-88f2-fffcd3a08556","name":"a12"},{"column_id":"665cc21b-1e59-4277-afcc-1ab329b47924","description":"Records
+    the region name where the district is located, like ''central Bohemia''.","id":"eaf44c01-f8a5-40f3-9a3d-7079b0312b7d","name":"Region
+    Name"}],"description":"Geographic district with demographic and metric attributes.","id":"f2f0e61b-5208-4a49-adc3-9465641d0c6e","name":"District","represents":["5d27a914-050b-40d1-86c8-c4651764fe05"]},{"columns_attributes":[{"column_id":"8253c491-2885-431b-abf6-eeac3e4b1c50","description":"Date
+    when the loan was originated or disbursed, formatted as YYYY-MM-DD.","id":"24203abd-a6f7-4917-b756-cfbac959cc0c","name":"Loan
+    Date"},{"column_id":"aee30f6b-3866-4714-a6d1-50be0689b3b3","description":"Current
+    status code indicating the loan''s state.","id":"64583a52-854e-417b-80f1-83c54da80dac","name":"Loan
+    Status"},{"column_id":"9c141f1e-1946-4985-8186-f23ffa7dcbe3","description":"Unique
+    identifier assigned to each loan.","id":"7629cd5d-cffb-459d-8313-fa9cea38a8b8","name":"Loan
+    ID"},{"column_id":"bc6b5434-f938-4a86-a227-278c90411f02","description":"Scheduled
+    monthly payment amount for the loan.","id":"789c4515-ce1c-47d6-828b-eafbfa3e2bfd","name":"Monthly
+    Payment"},{"column_id":"d9c7c24a-141d-4bdc-a1b5-3108db6b6712","description":"Length
+    of the loan term in months.","id":"7940875a-812d-40fb-a4c9-c83c7fc05288","name":"Loan
+    Duration"},{"column_id":"ce78b2aa-2964-4c4b-9445-f35a9e889a21","description":"Principal
+    loan amount expressed in the smallest currency unit.","id":"940bd26b-5ccd-4d09-8352-fc8886999cb1","name":"Loan
+    Amount"}],"description":"","id":"d68ae209-e0e1-43a2-a049-42a86b32bf6f","name":"Loan","represents":["66080d5a-50db-4327-9314-16cfa2f88476"]},{"columns_attributes":[{"column_id":"bb2119d5-c1e8-405d-b5ec-82cf7dd51bef","description":"Indicates
+    the destination bank code for the financial transaction.","id":"2b3df710-cf16-4ebb-bad0-fe6d96ce5cc9","name":"Destination
+    Bank"},{"column_id":"b58a473e-4a5d-413f-99a8-1487809c6fc1","description":"Uniquely
+    identifies each order transaction in the system.","id":"3ab7eebd-9b9c-4886-9a91-ba303235c81f","name":"Order
+    ID"},{"column_id":"47da1cfe-a64f-452f-b5e4-f43107aa8936","description":"Classifies
+    the transaction by payment purpose such as leasing or insurance.","id":"9b809d32-b051-4973-b57f-90ad44343eae","name":"Transaction
+    Category"},{"column_id":"ddce2d4a-d5b9-46e7-8129-7c563798abf3","description":"Identifies
+    the destination account receiving the funds.","id":"ab683c06-783b-441f-9eab-56c06e635e0b","name":"accountTo"},{"column_id":"70da4b3d-a1fd-4d61-9e77-a569585c9249","description":"Represents
+    the monetary value of the transaction in local currency.","id":"f92f55a2-3497-4c3a-8dd5-9e130ff27039","name":"Amount"}],"description":"","id":"57b19149-2212-4ebf-ab98-dee1d1777baf","name":"Order
+    (d2_financial.public.order)","represents":["6a4cfe35-0b5b-42e6-8255-42ce53d88736"]},{"columns_attributes":[{"column_id":"232f2221-8ad1-4521-a0b1-4f2ea40c68f6","description":"Provides
+    the counterparty account number, with zero meaning internal or unspecified.","id":"12b8aced-1adb-4125-8aa4-2fec57b9f899","name":"Counterparty
+    Account"},{"column_id":"7ae770b8-39cd-400d-b8ea-f325a170cf7d","description":"Indicates
+    the transaction purpose using codes like salary, services, pension, or loan.","id":"2daa8e62-766d-424c-8d91-5b4eaab17648","name":"Category
+    Code"},{"column_id":"0be81974-b4f7-461d-ac63-62a3c3c7d833","description":"Describes
+    the specific operation performed, such as cash withdrawal, deposit, or transfer.","id":"49095f06-5852-4940-b358-a205349f95ee","name":"Operation"},{"column_id":"f00c7c15-58d4-497b-895a-d2e5c75644ba","description":"Identifies
+    a specific financial transaction within the system.","id":"53aa6a47-7d42-4319-b867-d3b4dd141918","name":"Transaction
+    ID"},{"column_id":"77a568d5-35de-408c-8e94-74f739cd4d2f","description":"States
+    the monetary value of the transaction in the account currency.","id":"687e30ed-2082-49ff-8317-edfd89b4e7f1","name":"Amount"},{"column_id":"cd3f7689-3609-4437-9fcd-1c13524e3f91","description":"Identifies
+    the financial institution involved in the transaction.","id":"6e86256b-3d86-4625-89d9-8e73cae36cd5","name":"Bank"},{"column_id":"014fb660-7e5b-4c6c-b05b-42504bdfa17d","description":"Records
+    the processing date of the transaction in YYYY-MM-DD format.","id":"8672373d-42fe-4a11-9059-8c94cd66822b","name":"Transaction
+    Date"},{"column_id":"0ab95ef4-7e29-4902-ae9b-284f5869dea7","description":"Shows
+    the account balance after applying the transaction.","id":"bddab293-4d5c-44b3-91f1-6bffb1e5f85d","name":"Balance"},{"column_id":"b056369b-0bdc-4d75-b5f2-e3a87546cdc9","description":"Classifies
+    the transaction as income, expense, or withdrawal.","id":"c22c2bc7-454a-4ab0-b00a-a569d9295540","name":"Transaction
+    Type"}],"description":"","id":"2423e1ac-b789-4f36-babc-98e640e43443","name":"Transaction
+    (d2_financial.public.trans)","represents":["cdb6d20b-e875-409b-8012-2f9ec47b0e26"]}]},"zones":[]}}'
+relationships:
+- name: card_disp_id_to_disposition
+  from: card
+  to: disposition
+  from_columns:
+  - disp_id
+  to_columns:
+  - disposition_id
+- name: disposition_account_id_to_account
+  from: disposition
+  to: account
+  from_columns:
+  - account_id
+  to_columns:
+  - account_id
+- name: order_account_id_to_account
+  from: order
+  to: account
+  from_columns:
+  - account_id
+  to_columns:
+  - account_id
+- name: loan_account_id_to_account
+  from: loan
+  to: account
+  from_columns:
+  - account_id
+  to_columns:
+  - account_id
+- name: client_district_id_to_district
+  from: client
+  to: district
+  from_columns:
+  - district_id
+  to_columns:
+  - district_id
+- name: disposition_client_id_to_client
+  from: disposition
+  to: client
+  from_columns:
+  - client_id
+  to_columns:
+  - client_id
+- name: account_district_id_to_district
+  from: account
+  to: district
+  from_columns:
+  - district_id
+  to_columns:
+  - district_id
+- name: transaction_account_id_to_account
+  from: transaction
+  to: account
+  from_columns:
+  - account_id
+  to_columns:
+  - account_id

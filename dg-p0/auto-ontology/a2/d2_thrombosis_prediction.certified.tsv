@@ -1,0 +1,66 @@
+kind	term	object	outcome	description_or_sql
+term	Clinical Examination	public.examination	certified	Examination.
+column	Clinical Examination	public.examination.acl igm	certified	anti-Cardiolipin antibody (IgM) concentration
+column	Clinical Examination	public.examination.ana	certified	anti-nucleus antibody concentration
+column	Clinical Examination	public.examination.ana pattern	certified	pattern observed in the sheet of ANA examination
+column	Clinical Examination	public.examination.thrombosis	certified	degree of thrombosis. Values: 0: negative (no thrombosis) 1: positive (the most severe one) 2: positive (severe)3: positive (mild)
+column	Clinical Examination	public.examination.kct	certified	measure of degree of coagulation. Values: +: positive -: negative
+column	Clinical Examination	public.examination.rvvt	certified	measure of degree of coagulation. Values: +: positive -: negative
+column	Clinical Examination	public.examination.acl igg	certified	anti-Cardiolipin antibody (IgG) concentration
+column	Clinical Examination	public.examination.lac	certified	measure of degree of coagulation. Values: +: positive -: negative
+column	Clinical Examination	public.examination.symptoms	certified	other symptoms observed
+column	Clinical Examination	public.examination.acl iga	certified	anti-Cardiolipin antibody (IgA) concentration
+column	Clinical Examination	public.examination.diagnosis	certified	disease names
+column	Clinical Examination	public.examination.examination date	certified	Examination Date
+term	Laboratory Test	public.laboratory	certified	Laboratory.
+column	Laboratory Test	public.laboratory.rnp	certified	anti-ribonuclear protein. Values: Commonsense evidence: Normal range: N= -, +-
+column	Laboratory Test	public.laboratory.tg	certified	triglyceride. Values: Commonsense evidence: Normal range: N < 200
+column	Laboratory Test	public.laboratory.rf	certified	RAHA. Values: Commonsense evidence: Normal range: N < 20
+column	Laboratory Test	public.laboratory.hct	certified	Hematoclit. Values: Commonsense evidence: Normal range: 29 < N < 52
+column	Laboratory Test	public.laboratory.igm	certified	Ig M. Values: Commonsense evidence: Normal range: 40 < N < 400
+column	Laboratory Test	public.laboratory.aptt	certified	activated partial prothrombin time. Values: Commonsense evidence: Normal range: N < 45
+column	Laboratory Test	public.laboratory.glu	certified	blood glucose. Values: Commonsense evidence: Normal range: N < 180
+column	Laboratory Test	public.laboratory.c3	certified	complement 3. Values: Commonsense evidence: Normal range: N > 35
+column	Laboratory Test	public.laboratory.centromea	certified	anti-centromere. Values: Commonsense evidence: Normal range: N= -, +-
+column	Laboratory Test	public.laboratory.fg	certified	fibrinogen. Values: Commonsense evidence: Normal range: 150 < N < 450
+column	Laboratory Test	public.laboratory.t-bil	certified	total bilirubin. Values: Commonsense evidence: Normal range: N < 2.0
+column	Laboratory Test	public.laboratory.crp	certified	C-reactive protein. Values: Commonsense evidence: Normal range: N= -, +-, or N < 1.0
+column	Laboratory Test	public.laboratory.dna	certified	anti-DNA. Values: Commonsense evidence: Normal range: N < 8
+column	Laboratory Test	public.laboratory.tp	certified	total protein. Values: Commonsense evidence: Normal range: 6.0 < N < 8.5
+column	Laboratory Test	public.laboratory.c4	certified	complement 4. Values: Commonsense evidence: Normal range: N > 10
+column	Laboratory Test	public.laboratory.wbc	certified	White blood cell. Values: Commonsense evidence: Normal range: 3.5 < N < 9.0
+column	Laboratory Test	public.laboratory.alb	certified	albumin. Values: Commonsense evidence: Normal range: 3.5 < N < 5.5
+column	Laboratory Test	public.laboratory.iga	certified	Ig A. Values: Commonsense evidence: Normal range: 80 < N < 500
+column	Laboratory Test	public.laboratory.gpt	certified	ALT glutamic pyruvic transaminase. Values: Commonsense evidence: Normal range: N < 60
+column	Laboratory Test	public.laboratory.cre	certified	creatinine. Values: Commonsense evidence: Normal range: N < 1.5
+column	Laboratory Test	public.laboratory.pic	certified	(generated kept)
+column	Laboratory Test	public.laboratory.sm	certified	anti-SM. Values: Commonsense evidence: Normal range: N= -, +-
+column	Laboratory Test	public.laboratory.u-pro	certified	proteinuria. Values: Commonsense evidence: Normal range: 0 < N < 30
+column	Laboratory Test	public.laboratory.dna-ii	certified	anti-DNA. Values: Commonsense evidence: Normal range: N < 8
+column	Laboratory Test	public.laboratory.hgb	certified	Hemoglobin. Values: Commonsense evidence: Normal range: 10 < N < 17
+column	Laboratory Test	public.laboratory.date	certified	Date of the laboratory tests (YYMMDD)
+column	Laboratory Test	public.laboratory.ssb	certified	anti-SSB. Values: Commonsense evidence: Normal range: N= -, +-
+column	Laboratory Test	public.laboratory.tat2	certified	(generated kept)
+column	Laboratory Test	public.laboratory.sc170	certified	anti-scl70. Values: Commonsense evidence: Normal range: N= -, +-
+column	Laboratory Test	public.laboratory.plt	certified	platelet. Values: Commonsense evidence: Normal range: 100 < N < 400
+column	Laboratory Test	public.laboratory.got	certified	AST glutamic oxaloacetic transaminase. Values: Commonsense evidence: Normal range: N < 60
+column	Laboratory Test	public.laboratory.ssa	certified	anti-SSA. Values: Commonsense evidence: Normal range: N= -, +-
+column	Laboratory Test	public.laboratory.pt	certified	prothrombin time. Values: Commonsense evidence: Normal range: N < 14
+column	Laboratory Test	public.laboratory.tat	certified	(generated kept)
+column	Laboratory Test	public.laboratory.ra	certified	Rhuematoid Factor. Values: Commonsense evidence: Normal range: N= -, +-
+column	Laboratory Test	public.laboratory.alp	certified	alkaliphophatase. Values: Commonsense evidence: Normal range: N < 300
+column	Laboratory Test	public.laboratory.rbc	certified	Red blood cell. Values: Commonsense evidence: Normal range: 3.5 < N < 6.0
+column	Laboratory Test	public.laboratory.igg	certified	Ig G. Values: Commonsense evidence: Normal range: 900 < N < 2000
+column	Laboratory Test	public.laboratory.ua	certified	uric acid. Values: Commonsense evidence: Normal range: N > 8.0 (Male)N > 6.5 (Female)
+column	Laboratory Test	public.laboratory.ldh	certified	lactate dehydrogenase. Values: Commonsense evidence: Normal range: N < 500
+column	Laboratory Test	public.laboratory.cpk	certified	creatinine phosphokinase. Values: Commonsense evidence: Normal range: N < 250
+column	Laboratory Test	public.laboratory.t-cho	certified	total cholesterol. Values: Commonsense evidence: Normal range: N < 250
+column	Laboratory Test	public.laboratory.un	certified	urea nitrogen. Values: Commonsense evidence: Normal range: N < 30
+term	Patient	public.patient	certified	Patient.
+column	Patient	public.patient.first date	certified	the date when a patient came to the hospital
+column	Patient	public.patient.birthday	certified	Birthday
+column	Patient	public.patient.description	certified	the first date when a patient data was recorded. Values: null or empty: not recorded
+column	Patient	public.patient.diagnosis	certified	disease names
+column	Patient	public.patient.id	certified	identification of the patient
+column	Patient	public.patient.sex	certified	Sex. Values: F: female; M: male
+column	Patient	public.patient.admission	certified	patient was admitted to the hospital (+) or followed at the outpatient clinic (-). Values: patient was admitted to the hospital (+) or followed at the outpatient clinic (-)

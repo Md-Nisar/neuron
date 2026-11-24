@@ -1,0 +1,1942 @@
+data_layer:
+  databases:
+  - id: 3e857448-166a-45e0-9504-99e3259c225a
+    dialect: postgres
+    schemas:
+    - id: 85f2f820-b69f-496d-b771-eb7227b8d41d
+      name: public
+      database_name: d2_card_games
+      tables:
+      - id: d13c5514-c0fa-49e1-abc9-06a40e091656
+        name: cards
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: d0db4622-db3b-4602-84d7-b332b90d9b69
+          name: id
+          description: Unique identifier for each card record in the dataset.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 0660e1a2-14dd-4f0d-b6a1-a5df9fa9edb5
+          name: artist
+          description: Name of the artist who illustrated the card.
+          type: text
+          sample_values:
+          - Dan Frazier
+          - Douglas Shuler
+          - Kev Walker
+          - Anson Maddocks
+          - Mark Poole
+          is_nullable: true
+          is_unique: false
+        - id: 31ea1d2e-3a90-4382-b2e3-a7e9990e2733
+          name: asciiname
+          description: ASCII-only representation of the card name for compatibility
+            with systems that do not support Unicode characters.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 3cef6b6e-cc42-480f-9a8f-a276b7410a64
+          name: availability
+          description: Comma-separated list of platforms or formats where the card
+            is available, such as MTGO, paper, Arena, Dreamcast, or Shandalar.
+          type: text
+          sample_values:
+          - mtgo,paper
+          - paper
+          - arena
+          - mtgo
+          - dreamcast
+          - arena,mtgo
+          - arena,paper
+          - shandalar
+          - arena,mtgo,paper
+          is_nullable: true
+          is_unique: false
+        - id: c2825615-39cf-4f35-b346-ca583924b656
+          name: bordercolor
+          description: Color or style of the card's border, such as black, white,
+            borderless, silver, or gold.
+          type: text
+          sample_values:
+          - black
+          - white
+          - borderless
+          - silver
+          - gold
+          is_nullable: true
+          is_unique: false
+        - id: f3dd57b3-fb3d-4a28-957a-3429505f034c
+          name: cardkingdomfoilid
+          description: Card Kingdom product identifier for the foil version of the
+            card.
+          type: text
+          sample_values:
+          - '123094'
+          - '123095'
+          - '123096'
+          - '123097'
+          - '123098'
+          is_nullable: true
+          is_unique: true
+        - id: a4d7e0c3-1cf8-4d28-93c2-f246780df139
+          name: cardkingdomid
+          description: Card Kingdom product identifier for the non-foil version of
+            the card.
+          type: text
+          sample_values:
+          - '122719'
+          - '122720'
+          - '122725'
+          - '122726'
+          - '122727'
+          is_nullable: true
+          is_unique: true
+        - id: fc5e9e63-8059-4608-b91d-ca0a797764c1
+          name: coloridentity
+          description: Color identity of the card using single-letter codes (W, U,
+            B, R, G) for Commander format legality.
+          type: text
+          sample_values:
+          - W
+          - U
+          - R
+          - B
+          - G
+          is_nullable: true
+          is_unique: false
+        - id: 5a7805ac-e94b-47d7-bd52-792e65f0a08f
+          name: colorindicator
+          description: Color indicator of the card using single-letter codes, representing
+            its color when not defined by mana cost.
+          type: text
+          sample_values:
+          - B
+          - B,G
+          - B,R,U
+          - G
+          - G,R
+          - G,R,W
+          - R
+          - U
+          - W
+          is_nullable: true
+          is_unique: false
+        - id: c01f3560-8d57-4e09-8d46-ab90f8492281
+          name: colors
+          description: Colors of the card as defined by its mana cost, represented
+            by single-letter codes (W, U, B, R, G).
+          type: text
+          sample_values:
+          - W
+          - U
+          - R
+          - B
+          - G
+          is_nullable: true
+          is_unique: false
+        - id: ae530abc-e46c-4c17-af71-6abfb83afdc2
+          name: convertedmanacost
+          description: Total converted mana cost of the card, calculated as the sum
+            of all mana symbols in its cost.
+          type: real
+          sample_values:
+          - 3.0
+          - 1.0
+          - 2.0
+          - 4.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: 6de2bad1-a05b-4175-b48c-8451aeb989d3
+          name: dueldeck
+          description: Identifier for the Duel Deck product the card belongs to, if
+            any (e.g., 'a' or 'b' for the two decks in a set).
+          type: text
+          sample_values:
+          - b
+          - a
+          is_nullable: true
+          is_unique: false
+        - id: 991ad1ac-fc97-4b71-927c-cd37e5434008
+          name: edhrecrank
+          description: Popularity rank of the card on EDHREC, where a lower number
+            indicates higher usage in Commander decks.
+          type: bigint
+          sample_values:
+          - 11535.0
+          - 9891.0
+          - 4659.0
+          - 11649.0
+          - 17950.0
+          is_nullable: true
+          is_unique: false
+        - id: 89ae6b4e-f74e-4478-bbec-61140727d631
+          name: faceconvertedmanacost
+          description: Converted mana cost of a specific face of a double-faced card.
+          type: real
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 95efa61c-ce1b-4d16-bdb6-ccb9800dc92f
+          name: facename
+          description: Name of a specific face of a double-faced card.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: beddfb40-a2cf-4ed4-9612-cdf83084b8b1
+          name: flavorname
+          description: The flavorname column stores the thematic or lore-based name
+            of a card, such as character titles from the Godzilla franchise crossover.
+          type: text
+          sample_values:
+          - Anguirus, Armored Killer
+          - Babygodzilla, Ruin Reborn
+          - Battra, Dark Destroyer
+          - Bio-Quartz Spacegodzilla
+          - Biollante, Plant Beast Form
+          - Destoroyah, Perfect Lifeform
+          - Dorat, the Perfect Pet
+          - Ghidorah, King of the Cosmos
+          - Gigan, Cyberclaw Terror
+          - Godzilla, Doom Inevitable
+          - Godzilla, King of the Monsters
+          - Godzilla, Primeval Champion
+          - King Caesar, Ancient Guardian
+          - King Caesar, Awoken Titan
+          - Mechagodzilla, Battle Fortress
+          - Mechagodzilla, the Weapon
+          - Mothra's Great Cocoon
+          - Mothra, Supersonic Queen
+          - Rodan, Titan of Winged Fury
+          - Spacegodzilla, Death Corona
+          - Spacegodzilla, Void Invader
+          is_nullable: true
+          is_unique: false
+        - id: d2d80843-33e5-4204-a091-c6dda84a466c
+          name: flavortext
+          description: The flavortext column contains the narrative quotation printed
+            on a card to provide lore context or storytelling flavor.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 9d4946f9-a566-4db7-bb6d-75f22e50830f
+          name: frameeffects
+          description: The frameeffects column identifies special visual frame treatments
+            applied to a card, such as the legendary frame style.
+          type: text
+          sample_values:
+          - legendary
+          is_nullable: true
+          is_unique: false
+        - id: 063a6f7c-f53f-4bee-9cb7-fc1216182029
+          name: frameversion
+          description: The frameversion column denotes the card frame design era or
+            version, indicated by year labels or special designations like "future".
+          type: text
+          sample_values:
+          - '2003'
+          - '1993'
+          - '2015'
+          - future
+          - '1997'
+          is_nullable: true
+          is_unique: false
+        - id: 4536aacb-dfa7-4e64-baae-c6390a7cbbb9
+          name: hand
+          description: The hand column records the hand size modifier associated with
+            a card, represented as positive, negative, or zero integer values.
+          type: text
+          sample_values:
+          - '-1'
+          - '-2'
+          - '-3'
+          - '-4'
+          - '0'
+          - '1'
+          - '2'
+          - '3'
+          is_nullable: true
+          is_unique: false
+        - id: ec1bfa34-7f10-4d14-aa41-7b3170167fd4
+          name: hasalternativedecklimit
+          description: The hasalternativedecklimit column is a binary flag indicating
+            whether a card exempts the standard deck construction limit (1 = yes,
+            0 = no).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 376f30e4-8314-4112-ae02-3cb683165b8c
+          name: hascontentwarning
+          description: The hascontentwarning column is a binary flag signaling whether
+            a card carries a content advisory for sensitive material (1 = yes, 0 =
+            no).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 5039cfcf-d47d-44d9-abb4-4e03727e173d
+          name: hasfoil
+          description: The hasfoil column is a binary flag denoting the existence
+            of a foil-printed version of the card (1 = available, 0 = not available).
+          type: bigint
+          sample_values:
+          - 1
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: f3a6d5fc-5dfc-449c-b282-9c4a9518ef13
+          name: hasnonfoil
+          description: The hasnonfoil column is a binary flag denoting the existence
+            of a non-foil printed version of the card (1 = available, 0 = not available).
+          type: bigint
+          sample_values:
+          - 1
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: bedbf841-6959-4a2d-b0c8-75344d359b11
+          name: isalternative
+          description: The isalternative column is a binary flag identifying whether
+            a card is an alternate version, such as alternate art or borderless treatment
+            (1 = yes, 0 = no).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: c8782995-8ed9-44a6-9de3-71830119e305
+          name: isfullart
+          description: The isfullart column is a binary flag indicating whether a
+            card features full-art illustration extending to the card borders (1 =
+            yes, 0 = no).
+          type: bigint
+          sample_values:
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: de846506-2fe2-411b-82e6-1dc8683349f5
+          name: isonlineonly
+          description: The isonlineonly column is a binary flag specifying whether
+            a card is exclusively available on the digital platform Magic Online (1
+            = digital-only, 0 = physical exists).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 870b4113-a1ec-4c9c-8e88-76a3e18127ad
+          name: isoversized
+          description: The isoversized column is a binary flag marking whether a card
+            is produced in an oversized physical format (1 = yes, 0 = no).
+          type: bigint
+          sample_values:
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: 0972291f-dad6-49fd-af40-cc365b5231f1
+          name: ispromo
+          description: The ispromo column is a binary flag indicating whether a card
+            was released as a promotional product (1 = yes, 0 = no).
+          type: bigint
+          sample_values:
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: 1c6b22e7-a783-4189-849b-bec588655f5f
+          name: isreprint
+          description: The isreprint column is a binary flag showing whether a card
+            is a reissue of a previously printed card (1 = reprint, 0 = original printing).
+          type: bigint
+          sample_values:
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: c5b8d59f-5d6e-4f7c-ad3f-0f77e9f5457f
+          name: isreserved
+          description: Indicates whether the card is on the Reserved List (1) or not
+            (0).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 658d77d5-e41f-4156-a987-8023232da97b
+          name: isstarter
+          description: Indicates whether the card is from a starter product (1) or
+            not (0).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: acf51406-502f-4e6e-a0c0-0b07a50f4706
+          name: isstoryspotlight
+          description: Indicates whether the card is a Story Spotlight card (1) or
+            not (0).
+          type: bigint
+          sample_values:
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: a2e27740-aad9-43b8-bfb3-d31cd9bd488c
+          name: istextless
+          description: Indicates whether the card is a textless promotional version
+            (1) or not (0).
+          type: bigint
+          sample_values:
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: b3677c6c-decc-4c94-858d-7b54bec599b5
+          name: istimeshifted
+          description: Indicates whether the card is a timeshifted reprint (1) or
+            not (0).
+          type: bigint
+          sample_values:
+          - 0
+          is_nullable: true
+          is_unique: false
+        - id: cb193d26-e154-4765-8a34-d3d5249d5355
+          name: keywords
+          description: Lists the keyword abilities present on the card.
+          type: text
+          sample_values:
+          - Flying
+          - Enchant
+          - First strike
+          - Haste
+          - Trample
+          is_nullable: true
+          is_unique: false
+        - id: 91c5a213-8714-4845-b64c-ad81046fe332
+          name: layout
+          description: Specifies the physical layout or card frame type of the card.
+          type: text
+          sample_values:
+          - normal
+          - planar
+          - split
+          - saga
+          - modal_dfc
+          - transform
+          - scheme
+          - adventure
+          - meld
+          - augment
+          - leveler
+          - aftermath
+          - host
+          - flip
+          - vanguard
+          is_nullable: true
+          is_unique: false
+        - id: 445f8910-1fbb-4d26-8902-c3db465bf9d8
+          name: leadershipskills
+          description: Indicates the card's eligibility as a commander in Brawl, Commander,
+            and Oathbreaker formats.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: f414b978-9d8b-40e1-a419-8109b6488425
+          name: life
+          description: Represents the life total modifier for Vanguard or Plane cards.
+          type: text
+          sample_values:
+          - '-1'
+          - '-2'
+          - '-3'
+          - '-4'
+          - '-5'
+          - '-6'
+          - '-7'
+          - '-8'
+          - '0'
+          - '1'
+          - '10'
+          - '12'
+          - '15'
+          - '18'
+          - '2'
+          - '3'
+          - '30'
+          - '4'
+          - '5'
+          - '6'
+          - '7'
+          - '8'
+          - '9'
+          is_nullable: true
+          is_unique: false
+        - id: 6f196a04-f26a-4009-aac2-06160730427d
+          name: loyalty
+          description: Indicates the starting loyalty of a planeswalker card.
+          type: text
+          sample_values:
+          - '6'
+          - '3'
+          is_nullable: true
+          is_unique: true
+        - id: 72f641de-62b3-4084-9262-e571a7a05970
+          name: manacost
+          description: Represents the mana cost of the card in symbolic notation.
+          type: text
+          sample_values:
+          - '{W}'
+          - '{2}{R}'
+          - '{2}{W}'
+          - '{R}'
+          - '{1}{W}'
+          is_nullable: true
+          is_unique: false
+        - id: 13dc0bcc-6d74-42fe-a97e-245c6cce67cb
+          name: mcmid
+          description: Stores the Cardmarket (formerly MagicCardMarket) identifier
+            for the card.
+          type: text
+          sample_values:
+          - '16165'
+          - '16166'
+          - '16171'
+          - '16175'
+          - '16296'
+          is_nullable: true
+          is_unique: false
+        - id: 185b1dfe-dc74-401f-945c-7b1d6454b96d
+          name: mcmmetaid
+          description: Stores the Cardmarket metadata identifier for the card's printing.
+          type: text
+          sample_values:
+          - '4251'
+          - '2923'
+          - '3743'
+          - '2177'
+          - '5739'
+          is_nullable: true
+          is_unique: false
+        - id: 0a32034a-401b-47fa-969f-b997d3f56494
+          name: mtgarenaid
+          description: Stores the MTG Arena internal identifier for the card.
+          type: text
+          sample_values:
+          - '74078'
+          - '75465'
+          - '75466'
+          - '75467'
+          is_nullable: true
+          is_unique: true
+        - id: 02d4dd97-1073-4845-9266-2f33d4e398ca
+          name: mtgjsonv4id
+          description: Stores the MTGJSON v4 unique identifier for the card.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 6ed9a81a-c3c5-476d-b04a-fb4f1a96fca9
+          name: mtgofoilid
+          description: Unique identifier for the foil version of a card on Magic Online.
+          type: text
+          sample_values:
+          - '27501'
+          - '26993'
+          - '27473'
+          - '27327'
+          - '27095'
+          is_nullable: true
+          is_unique: true
+        - id: 949906cf-e195-4a71-9fb5-46ba239bb53b
+          name: mtgoid
+          description: Unique identifier for the non-foil version of a card on Magic
+            Online.
+          type: text
+          sample_values:
+          - '27500'
+          - '26992'
+          - '27472'
+          - '27326'
+          - '27094'
+          is_nullable: true
+          is_unique: true
+        - id: 7663084b-53c1-4cbc-aea3-ea5dadc2a01b
+          name: multiverseid
+          description: Unique identifier assigned to a card in the Multiverse database
+            used by Wizards of the Coast.
+          type: text
+          sample_values:
+          - '130550'
+          - '129465'
+          - '129470'
+          - '129477'
+          - '132106'
+          is_nullable: true
+          is_unique: true
+        - id: ff5a2930-5d71-4fd3-b751-8c624f67b5dd
+          name: name
+          description: 'Official name of the Magic: The Gathering card.'
+          type: text
+          sample_values:
+          - Plains
+          - Island
+          - Mountain
+          - Forest
+          - Swamp
+          is_nullable: true
+          is_unique: false
+        - id: 7508f42b-9fbc-49ec-945a-fcef5b4b8140
+          name: number
+          description: Collector number of the card within its set.
+          type: text
+          sample_values:
+          - '24'
+          - '25'
+          - '23'
+          - '38'
+          - '63'
+          is_nullable: true
+          is_unique: false
+        - id: 9950deae-87c3-46ae-86e7-7dca6f57f8c1
+          name: originalreleasedate
+          description: Original release date of the card's first printing.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: f21bdc43-41f0-4958-84a5-26d71fae59ff
+          name: originaltext
+          description: Original rules text printed on the card at its first release.
+          type: text
+          sample_values:
+          - Flying
+          - W
+          - U
+          - R
+          is_nullable: true
+          is_unique: false
+        - id: aed29887-d4b7-497b-813f-0f0683758371
+          name: originaltype
+          description: Original card type line as printed on the card's first release.
+          type: text
+          sample_values:
+          - Sorcery
+          - Instant
+          - Enchantment
+          - Land
+          - Enchant Creature
+          is_nullable: true
+          is_unique: false
+        - id: 2976eed2-b92e-4b5c-a37f-1a3e25489dc3
+          name: otherfaceids
+          description: Identifiers for the other faces of a double-faced or meld card.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 76c1b052-f538-492a-89a2-b6012a3608f9
+          name: power
+          description: Power value of a creature card, indicating its combat damage.
+          type: text
+          sample_values:
+          - '2'
+          - '1'
+          - '3'
+          - '4'
+          - '0'
+          is_nullable: true
+          is_unique: false
+        - id: 21ab6a5e-4276-4cbe-8639-833240fc901c
+          name: printings
+          description: List of set codes in which the card has been printed.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 23724847-ba03-4eda-b157-b815535976bd
+          name: promotypes
+          description: Types of promotional releases associated with the card.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: e7cbcfdd-1b4a-40f6-8228-aee3bcbca8d4
+          name: purchaseurls
+          description: URLs for purchasing the card from various online retailers.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 516a99df-d06e-4591-a08e-78f9a43e1267
+          name: rarity
+          description: Rarity level of the card in its set, such as common, uncommon,
+            rare, or mythic.
+          type: text
+          sample_values:
+          - common
+          - rare
+          - uncommon
+          - mythic
+          is_nullable: true
+          is_unique: false
+        - id: fb940ce1-9f88-482e-85cc-a4ee961d0e18
+          name: scryfallid
+          description: 'Unique identifier for the card on Scryfall, a Magic: The Gathering
+            database.'
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 490445cd-b526-4415-9301-e0da5974d7aa
+          name: scryfallillustrationid
+          description: Unique identifier for the card's illustration on Scryfall.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 7611c4ae-b881-4548-bec4-502a43ea8969
+          name: scryfalloracleid
+          description: Unique identifier for the card's oracle text on Scryfall.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: e4dee980-69d7-4984-9cab-66ed4e921d09
+          name: setcode
+          description: 'Abbreviated code representing the Magic: The Gathering set
+            the card belongs to.'
+          type: text
+          sample_values:
+          - 10E
+          - 2ED
+          - 2XM
+          - 4BB
+          - 3ED
+          is_nullable: true
+          is_unique: false
+        - id: 6462f44c-8c2f-4f1e-9b99-d989faa5f443
+          name: side
+          description: Designates the face or side of a double-faced or multi-faced
+            card.
+          type: text
+          sample_values:
+          - a
+          - b
+          - c
+          - d
+          - e
+          is_nullable: true
+          is_unique: false
+        - id: 15abe71d-692b-437a-976d-a02fa141fade
+          name: subtypes
+          description: Lists the creature types, enchantment types, or other subtypes
+            associated with the card.
+          type: text
+          sample_values:
+          - Aura
+          - Elemental
+          - Human,Wizard
+          - Wall
+          - Angel
+          is_nullable: true
+          is_unique: false
+        - id: dbec8685-4b66-4394-b596-56a065abd272
+          name: supertypes
+          description: Indicates special card supertypes such as Basic, Legendary,
+            or Snow.
+          type: text
+          sample_values:
+          - Basic
+          - Legendary
+          - World
+          - Host
+          - Basic,Snow
+          - Snow
+          - Ongoing
+          - Legendary,Snow
+          is_nullable: true
+          is_unique: false
+        - id: 47ff199b-f27d-49ae-9574-a3b450d36f3f
+          name: tcgplayerproductid
+          description: Product identifier for the card on TCGplayer marketplace.
+          type: text
+          sample_values:
+          - '15032'
+          - '15033'
+          - '15045'
+          - '15054'
+          - '15084'
+          is_nullable: true
+          is_unique: false
+        - id: b2ff83ff-aa6a-4ef7-ac82-e024b019e382
+          name: text
+          description: Contains the rules text or abilities printed on the card.
+          type: text
+          sample_values:
+          - Flying
+          - '({T}: Add {W}.)'
+          - '({T}: Add {U}.)'
+          - '({T}: Add {R}.)'
+          is_nullable: true
+          is_unique: false
+        - id: 3893de33-42bd-449a-9eda-a369b84efc60
+          name: toughness
+          description: Represents the creature's toughness value as printed on the
+            card.
+          type: text
+          sample_values:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+          is_nullable: true
+          is_unique: false
+        - id: d558d076-62d0-4329-9441-040175af2279
+          name: type
+          description: Full card type line including types and subtypes as printed.
+          type: text
+          sample_values:
+          - Instant
+          - Sorcery
+          - "Enchantment \u2014 Aura"
+          - Enchantment
+          - Artifact
+          is_nullable: true
+          is_unique: false
+        - id: dea13a65-2ea1-4326-82b0-ea165d3a0393
+          name: types
+          description: Primary card types such as Creature, Instant, or Enchantment.
+          type: text
+          sample_values:
+          - Creature
+          - Enchantment
+          - Instant
+          - Sorcery
+          - Artifact
+          is_nullable: true
+          is_unique: false
+        - id: bbfd9a8b-525d-4d46-8872-9ef3f8bc47c1
+          name: uuid
+          description: Universally unique identifier for the card instance in the
+            dataset.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 9eb443f6-112c-4ba4-af35-2493c53db1df
+          name: variations
+          description: List of UUIDs for alternate versions or printings of the same
+            card.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 3b59a17a-7026-412a-b204-c24c6ea5ecd7
+          name: watermark
+          description: Identifies the faction or organization symbol printed on the
+            card.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+      - id: 7111be64-f4fd-4191-88d9-5a62ffb9fde5
+        name: foreign_data
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 653a0cda-496f-4d9a-a056-dc82f9e82b8a
+          name: id
+          description: Unique identifier for each card record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 621792ec-2868-46a2-958b-cebfd3d36c62
+          name: flavortext
+          description: Localized flavor text for the card in the given language.
+          type: text
+          sample_values:
+          - ''
+          is_nullable: true
+          is_unique: false
+        - id: 0b69e36b-8809-44cf-9950-30865637a19b
+          name: language
+          description: Language in which the card's name, text, and flavor text are
+            presented.
+          type: text
+          sample_values:
+          - French
+          - Italian
+          - German
+          - Spanish
+          - Chinese Simplified
+          is_nullable: true
+          is_unique: false
+        - id: c7545fad-0305-4a7d-9ece-44018bf705ee
+          name: multiverseid
+          description: 'A unique identifier for a Magic: The Gathering card in the
+            Multiverse database.'
+          type: bigint
+          sample_values:
+          - 148411.0
+          - 150317.0
+          - 149934.0
+          - 148794.0
+          - 148028.0
+          is_nullable: true
+          is_unique: true
+        - id: 901aab10-8680-4eda-91bc-709499763b03
+          name: name
+          description: Localized name of the card.
+          type: text
+          sample_values:
+          - Nekrataal
+          - Clone
+          - Pacifismo
+          - Paria
+          - Condenar
+          is_nullable: true
+          is_unique: true
+        - id: 0af7b775-0805-4661-86b3-87c4e8f89323
+          name: text
+          description: Localized rules text describing the card's abilities.
+          type: text
+          sample_values:
+          - ''
+          is_nullable: true
+          is_unique: false
+        - id: b7253e94-7a98-40fe-8993-12aa121fe5e7
+          name: type
+          description: Localized card type classification.
+          type: text
+          sample_values:
+          - Spontanzauber
+          - "Instant\xE1neo"
+          - "\xC9ph\xE9m\xE8re"
+          - Istantaneo
+          - "\u30A4\u30F3\u30B9\u30BF\u30F3\u30C8"
+          is_nullable: true
+          is_unique: false
+        - id: 8edfcbe2-ca68-4df8-add1-488db6580272
+          name: uuid
+          description: ''
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+      - id: 05fbdf4d-62fe-4651-8218-5bd38c65523a
+        name: legalities
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: b4f9218c-cf04-4ee8-b7f8-f991a214effb
+          name: id
+          description: A unique numeric identifier for each record in the table.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: dc9f9c80-698b-4cf8-9422-b9f2c3764aef
+          name: format
+          description: 'The Magic: The Gathering game format to which the card legality
+            applies.'
+          type: text
+          sample_values:
+          - commander
+          - duel
+          - legacy
+          - modern
+          - vintage
+          is_nullable: true
+          is_unique: false
+        - id: 558d1be7-c1e8-4ed5-9366-9a82ca60bf62
+          name: status
+          description: The legality status of a card within a specific format, such
+            as Legal, Banned, or Restricted.
+          type: text
+          sample_values:
+          - Legal
+          - Banned
+          - Restricted
+          is_nullable: true
+          is_unique: false
+        - id: 4b74c801-c8e8-4396-9724-66f018172250
+          name: uuid
+          description: A globally unique identifier assigned to each record for cross-system
+            reference.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+      - id: b09db84d-2f5d-420c-ba95-f690ba361f08
+        name: rulings
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: c0110ffd-45c9-4593-bad9-29fd15db3b9f
+          name: id
+          description: Unique numeric identifier for each rule entry.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 024d5d9b-6133-48ac-9560-c6d132834599
+          name: date
+          description: Effective date associated with the rule entry.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 2d9349cd-84c0-4b8c-a1c1-5c2d3d60d7e4
+          name: text
+          description: 'Full textual content of the Magic: The Gathering rule or card
+            ruling.'
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 9b06bf20-27b9-4353-8d47-7f07106b8597
+          name: uuid
+          description: ''
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+      - id: 39db932f-641e-4fa7-ad82-701d5a0c7e99
+        name: sets
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 90549733-95af-4faf-bfea-2cb843e4c26b
+          name: id
+          description: 'A unique numeric identifier for each Magic: The Gathering
+            set or product in the system.'
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: d5177c22-aa32-428e-b807-5516a99a9b1c
+          name: basesetsize
+          description: The base number of distinct cards in the set, excluding foils,
+            promos, and other variants.
+          type: bigint
+          sample_values:
+          - 5
+          - 1
+          - 2
+          - 6
+          - 12
+          is_nullable: true
+          is_unique: false
+        - id: 5f372df8-006b-4d01-ab4c-20fb1084dd07
+          name: block
+          description: The product line, block, or promotional category to which the
+            set belongs, such as Core Set or Commander.
+          type: text
+          sample_values:
+          - Core Set
+          - Commander
+          - Judge Gift Cards
+          - Friday Night Magic
+          - Theros
+          is_nullable: true
+          is_unique: false
+        - id: 28e84c20-9939-4545-999b-cbf7419b5ce1
+          name: booster
+          description: A JSON structure defining the booster pack configuration, including
+            card slot contents, weights, and sheet distributions for the set.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: ac9fd140-0ac1-4fe4-a8d2-0915a1e82ce2
+          name: code
+          description: 'The official three- to four-character abbreviated set code
+            used in Magic: The Gathering (e.g., 10E for Tenth Edition).'
+          type: text
+          sample_values:
+          - 10E
+          - 2ED
+          - 2XM
+          - 3ED
+          - 4BB
+          is_nullable: true
+          is_unique: true
+        - id: 8ac59cd3-f820-4bf6-883f-7d959fd97a1c
+          name: isfoilonly
+          description: A binary flag indicating whether the set consists exclusively
+            of foil cards (1) or not (0).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 1f894008-5b7a-4f0b-98a3-4e6d57c40382
+          name: isforeignonly
+          description: A binary flag indicating whether the set is only printed in
+            non-English languages (1) or not (0).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 073c0469-31b0-4a1b-9430-06af972d5733
+          name: isnonfoilonly
+          description: A binary flag indicating whether the set contains only non-foil
+            cards (1) or not (0).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 886d8f33-45ec-4002-bdff-9e620e0db4a1
+          name: isonlineonly
+          description: 'A binary flag indicating whether the set is exclusive to Magic:
+            The Gathering Online (1) or not (0).'
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: d8f709a6-66db-4020-baca-3d30cfc608b2
+          name: ispartialpreview
+          description: A binary flag indicating whether the set is a partial preview
+            release (1) or a full release (0).
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 2e9e10a9-9f7a-4193-82cc-01391caaf706
+          name: keyrunecode
+          description: An internal system code, likely related to Keyrune or set symbol
+            encoding, used to identify the set in specific platforms.
+          type: text
+          sample_values:
+          - PMEI
+          - DEFAULT
+          - DCI
+          - PARL
+          - ZNR
+          is_nullable: true
+          is_unique: false
+        - id: 07179606-28ff-4012-9d49-8f537471641c
+          name: mcmid
+          description: Unique identifier for a product or card listing on the Cardmarket
+            (formerly MagicCardMarket) marketplace.
+          type: bigint
+          sample_values:
+          - 74.0
+          - 3204.0
+          - 10.0
+          - 47.0
+          - 23.0
+          is_nullable: true
+          is_unique: true
+        - id: 5103e304-07ee-45c6-a366-5f739741c3f4
+          name: mcmidextras
+          description: Supplementary identifier on Cardmarket used to distinguish
+            variant or additional product entries related to a primary listing.
+          type: bigint
+          sample_values:
+          - 3209.0
+          - 3459.0
+          - 2587.0
+          - 2371.0
+          - 3113.0
+          is_nullable: true
+          is_unique: true
+        - id: c628d5b5-b909-493e-b7f1-0161d3b981be
+          name: mcmname
+          description: The set name as listed on MagicCardMarket (MCM), the European
+            marketplace for Magic cards.
+          type: text
+          sample_values:
+          - Tenth Edition
+          - Double Masters
+          - Fourth Edition
+          - Fifth Dawn
+          - Fifth Edition
+          is_nullable: true
+          is_unique: true
+        - id: 3f214e38-1cdc-4d47-8a63-075fa8c48719
+          name: mtgocode
+          description: 'The set code used on Magic: The Gathering Online (MTGO) for
+            digital representation and redemption.'
+          type: text
+          sample_values:
+          - 10E
+          - 2XM
+          - 5DN
+          - 7E
+          - 8ED
+          is_nullable: true
+          is_unique: true
+        - id: 39612df8-435e-4853-b6e4-fb018f07abff
+          name: name
+          description: 'The official full name of the Magic: The Gathering set (e.g.,
+            Tenth Edition, Double Masters).'
+          type: text
+          sample_values:
+          - Tenth Edition
+          - Unlimited Edition
+          - Double Masters
+          - Revised Edition
+          is_nullable: true
+          is_unique: true
+        - id: 808f89da-df15-4c61-9cb0-bf31af2d3441
+          name: parentcode
+          description: ''
+          type: text
+          sample_values:
+          - ZNR
+          - M15
+          - FRF
+          - BFZ
+          - M19
+          is_nullable: true
+          is_unique: false
+        - id: d64e19f3-002c-4f12-a4ac-ef5f3f875b12
+          name: releasedate
+          description: 'The official release date of the Magic: The Gathering set.'
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 2d8d749f-a033-4950-ad4d-624ef8b94c26
+          name: tcgplayergroupid
+          description: Grouping identifier on TCGPlayer that categorizes related products,
+            such as printings or conditions, under a single product group.
+          type: bigint
+          sample_values:
+          - 62.0
+          - 33.0
+          - 2359.0
+          - 1.0
+          - 115.0
+          is_nullable: true
+          is_unique: false
+        - id: d6300139-491d-4af9-a0b6-c2786b31e47e
+          name: totalsetsize
+          description: The total number of cards in the set.
+          type: bigint
+          sample_values:
+          - 5
+          - 1
+          - 2
+          - 6
+          - 12
+          is_nullable: true
+          is_unique: false
+        - id: 9ff72002-9644-4c6f-b8ea-ccfcc0bfdb93
+          name: type
+          description: The classification of the set or product, such as promo, expansion,
+            memorabilia, box, or duel deck.
+          type: text
+          sample_values:
+          - promo
+          - expansion
+          - memorabilia
+          - box
+          - duel_deck
+          is_nullable: true
+          is_unique: false
+      - id: 86e86ab2-de3b-42c4-959a-dca24a0d49ec
+        name: set_translations
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 3b39b1b1-78d7-4b01-b944-f3a57ab0eb88
+          name: id
+          description: Unique identifier for each translation record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 4d3e8dc2-6060-4a60-9a28-585d5a89aa99
+          name: language
+          description: The target language for the translation, including regional
+            variants such as Chinese Simplified and Chinese Traditional.
+          type: text
+          sample_values:
+          - Chinese Simplified
+          - Chinese Traditional
+          - French
+          - German
+          - Italian
+          is_nullable: true
+          is_unique: false
+        - id: 3413a637-eaad-4d26-8246-20bc38b4b975
+          name: setcode
+          description: ''
+          type: text
+          sample_values:
+          - 10E
+          - 4ED
+          - 5DN
+          - 5ED
+          - 6ED
+          is_nullable: true
+          is_unique: false
+        - id: f0205fb4-ba09-4384-80f0-2697e3ae2b6c
+          name: translation
+          description: 'The localized name of a Magic: The Gathering product or set
+            in the corresponding language.'
+          type: text
+          sample_values:
+          - Archenemy
+          - Battle Royale
+          - Beatdown
+          - Commander (2013 Edition)
+          - Commander (2014 Edition)
+          is_nullable: true
+          is_unique: false
+  foreign_keys:
+  - source_column_id: 3413a637-eaad-4d26-8246-20bc38b4b975
+    target_column_id: ac9fd140-0ac1-4fe4-a8d2-0915a1e82ce2
+  - source_column_id: 9b06bf20-27b9-4353-8d47-7f07106b8597
+    target_column_id: bbfd9a8b-525d-4d46-8872-9ef3f8bc47c1
+  joins: []
+semantic_layer:
+  terms:
+  - id: 736206a4-dc72-46be-96f6-b612db7c8f8f
+    name: Card
+    description: 'Represents a Magic: The Gathering card with all its attributes,
+      printing details, and gameplay characteristics.'
+    represents:
+    - d13c5514-c0fa-49e1-abc9-06a40e091656
+    columns_attributes:
+    - id: 011fcdfa-6af6-4f5e-a5c5-e023e6eb5899
+      name: hasnonfoil
+      description: The non-foil availability flag indicates whether a non-foil printed
+        version of the card exists (1 = available, 0 = not available).
+      column_id: f3a6d5fc-5dfc-449c-b282-9c4a9518ef13
+    - id: 028f7567-ee96-493c-a2fd-0c5fb76a9eb4
+      name: Is Full Art
+      description: The full-art flag indicates whether the card features a full-art
+        illustration extending to the card borders (1 = yes, 0 = no).
+      column_id: c8782995-8ed9-44a6-9de3-71830119e305
+    - id: 08e14368-9e45-449b-8ce4-2020764d9b4d
+      name: Hand Modifier
+      description: The hand modifier adjusts the player's hand size by a positive,
+        negative, or zero integer value.
+      column_id: 4536aacb-dfa7-4e64-baae-c6390a7cbbb9
+    - id: 0cf2cb9a-9766-476c-8364-cc1d88919919
+      name: Is Oversized
+      description: The oversized flag marks whether the card is produced in an oversized
+        physical format (1 = yes, 0 = no).
+      column_id: 870b4113-a1ec-4c9c-8e88-76a3e18127ad
+    - id: 10a68e11-06bd-4d99-a17d-b253cfff5909
+      name: mcmmetaid
+      description: Holds the Cardmarket metadata identifier for the card's printing.
+      column_id: 185b1dfe-dc74-401f-945c-7b1d6454b96d
+    - id: 19f05576-3739-4bde-a6ac-1f31e2a772f9
+      name: scryfallillustrationid
+      description: Unique Scryfall identifier for the card's illustration.
+      column_id: 490445cd-b526-4415-9301-e0da5974d7aa
+    - id: 205c4d3d-5d95-4900-a8c7-d86a45b4227f
+      name: Is Starter
+      description: Identifies if the card comes from a starter product (1 = yes, 0
+        = no).
+      column_id: 658d77d5-e41f-4156-a987-8023232da97b
+    - id: 2081d068-cd85-4a3d-b740-0932cfb6cdf3
+      name: Has Alternative Deck Limit
+      description: The alternative deck limit flag indicates whether the card exempts
+        the standard deck construction limit (1 = yes, 0 = no).
+      column_id: ec1bfa34-7f10-4d14-aa41-7b3170167fd4
+    - id: 22eb5171-7efe-4b53-9713-f9e605853411
+      name: Leadership Skills
+      description: Specifies the card's commander eligibility for Brawl, Commander,
+        and Oathbreaker formats.
+      column_id: 445f8910-1fbb-4d26-8902-c3db465bf9d8
+    - id: 264bdc44-bfd8-47e1-9df3-476ab549c682
+      name: power
+      description: Specifies the power value of a creature card for combat damage
+        as text.
+      column_id: 76c1b052-f538-492a-89a2-b6012a3608f9
+    - id: 2afbea5a-09a2-414c-974c-419be2178568
+      name: Is Textless
+      description: Indicates if the card is a textless promotional version (1 = yes,
+        0 = no).
+      column_id: a2e27740-aad9-43b8-bfb3-d31cd9bd488c
+    - id: 2ddb0e13-9b5f-4d10-bed1-2504a92f060a
+      name: Flavor Text
+      description: The flavor text provides a narrative quotation printed on the card
+        to convey lore or storytelling context.
+      column_id: d2d80843-33e5-4204-a091-c6dda84a466c
+    - id: 30cfdaff-531c-4b29-9085-d1176f262077
+      name: side
+      description: Designates the face of a double-faced or multi-faced card (e.g.,
+        a, b).
+      column_id: 6462f44c-8c2f-4f1e-9b99-d989faa5f443
+    - id: 3244410c-c616-41fe-abeb-bf0d5d245fad
+      name: mtgarenaid
+      description: Contains the MTG Arena internal identifier for the card.
+      column_id: 0a32034a-401b-47fa-969f-b997d3f56494
+    - id: 371b29cc-c3e4-4f2a-b379-a638e7991732
+      name: Converted Mana Cost
+      description: Represents the total converted mana cost of the card as a numeric
+        value.
+      column_id: ae530abc-e46c-4c17-af71-6abfb83afdc2
+    - id: 3a738259-f675-44d0-8de1-cc7602f913ae
+      name: Life Modifier
+      description: Provides the life total modifier for Vanguard or Plane cards as
+        a negative number.
+      column_id: f414b978-9d8b-40e1-a419-8109b6488425
+    - id: 41501b6e-64da-47b9-8785-52e2158c7165
+      name: Keywords
+      description: Lists the keyword abilities on the card, such as Flying or Trample.
+      column_id: cb193d26-e154-4765-8a34-d3d5249d5355
+    - id: 42f80706-3a44-43b2-b143-f4caf4198991
+      name: Artist
+      description: Identifies the artist who illustrated the Magic card.
+      column_id: 0660e1a2-14dd-4f0d-b6a1-a5df9fa9edb5
+    - id: 45fcf2a5-6210-47e2-b4de-65d740c122ca
+      name: Layout
+      description: Defines the physical card layout or frame type, like normal, split,
+        or modal double-faced.
+      column_id: 91c5a213-8714-4845-b64c-ad81046fe332
+    - id: 49e9816b-9b3a-4ec9-becc-f0b7e6f5f5d7
+      name: EDHREC Rank
+      description: Shows the card's popularity rank on EDHREC, with lower numbers
+        meaning higher Commander usage.
+      column_id: 991ad1ac-fc97-4b71-927c-cd37e5434008
+    - id: 4c086f05-6f9a-4293-9232-dbe95dc49309
+      name: Card ID
+      description: 'Uniquely identifies each Magic: The Gathering card record in the
+        dataset.'
+      column_id: d0db4622-db3b-4602-84d7-b332b90d9b69
+    - id: 5001b68d-d20b-4532-b30a-eebd922c09ff
+      name: Border Color
+      description: Specifies the border color or style of the card, such as black
+        or borderless.
+      column_id: c2825615-39cf-4f35-b346-ca583924b656
+    - id: 58489885-92d3-4fc9-9989-bfc685a079eb
+      name: Is Promo
+      description: The promo flag indicates whether the card was released as a promotional
+        product (1 = yes, 0 = no).
+      column_id: 0972291f-dad6-49fd-af40-cc365b5231f1
+    - id: 5c3f2348-ca7e-416e-a8e4-ad963c12427f
+      name: otherfaceids
+      description: Lists identifiers for the other faces of a double-faced or meld
+        card.
+      column_id: 2976eed2-b92e-4b5c-a37f-1a3e25489dc3
+    - id: 5cc28743-dfef-43fc-ae2f-3ba4ea1b4cbf
+      name: mtgoid
+      description: Identifies the non-foil version of a card on Magic Online using
+        a numeric text code.
+      column_id: 949906cf-e195-4a71-9fb5-46ba239bb53b
+    - id: 5e270c74-c4ea-4b6f-92e0-b68adf550b29
+      name: setcode
+      description: Abbreviated code identifying the Magic set the card belongs to
+        (e.g., 10E).
+      column_id: e4dee980-69d7-4984-9cab-66ed4e921d09
+    - id: 60725333-aef3-425d-a542-ef2344f13717
+      name: Has Foil
+      description: The foil availability flag indicates whether a foil-printed version
+        of the card exists (1 = available, 0 = not available).
+      column_id: 5039cfcf-d47d-44d9-abb4-4e03727e173d
+    - id: 60bdd588-bd5c-4c6e-a675-fb6be0a7ed41
+      name: mcmid
+      description: Stores the Cardmarket identifier for the card.
+      column_id: 13dc0bcc-6d74-42fe-a97e-245c6cce67cb
+    - id: 64a7d0c7-4300-4236-b76e-08e72e6d4d1b
+      name: text
+      description: Contains the rules text or abilities printed on the card (e.g.,
+        Flying).
+      column_id: b2ff83ff-aa6a-4ef7-ac82-e024b019e382
+    - id: 67066cf7-9fd9-4172-9473-cf774cbddd12
+      name: originalreleasedate
+      description: Records the original release date of the card's first printing
+        as text.
+      column_id: 9950deae-87c3-46ae-86e7-7dca6f57f8c1
+    - id: 6740d024-e9da-46d6-81ca-45e9d685e9e3
+      name: scryfalloracleid
+      description: Unique Scryfall identifier for the card's oracle text.
+      column_id: 7611c4ae-b881-4548-bec4-502a43ea8969
+    - id: 6d821a4e-c808-4e2c-95bc-d9d6d0ebe995
+      name: multiverseid
+      description: Identifies the card in Wizards of the Coast's Multiverse database
+        using a numeric text code.
+      column_id: 7663084b-53c1-4cbc-aea3-ea5dadc2a01b
+    - id: 6eea1196-fad7-4524-b83f-1d2aeb012b2f
+      name: watermark
+      description: Identifies the faction or organization symbol printed on the card.
+      column_id: 3b59a17a-7026-412a-b204-c24c6ea5ecd7
+    - id: 75c59ed5-48ec-405b-aa3c-f866588b8eec
+      name: Color Identity
+      description: Defines the card's color identity using single-letter codes for
+        Commander format legality.
+      column_id: fc5e9e63-8059-4608-b91d-ca0a797764c1
+    - id: 7b93c6b1-2db2-4304-b3ac-e7fdd0a1d703
+      name: Is Online Only
+      description: The online-only flag specifies whether the card is exclusively
+        available on the digital platform Magic Online (1 = digital-only, 0 = physical
+        exists).
+      column_id: de846506-2fe2-411b-82e6-1dc8683349f5
+    - id: 7e1d9a97-6553-42db-9b6c-33ad1173feff
+      name: Is Reserved
+      description: Flags whether the card is on the Reserved List (1 = yes, 0 = no),
+        meaning it will never be reprinted.
+      column_id: c5b8d59f-5d6e-4f7c-ad3f-0f77e9f5457f
+    - id: 80a3f135-d87f-40be-bf10-548753679f13
+      name: mtgjsonv4id
+      description: Keeps the MTGJSON v4 unique identifier for the card.
+      column_id: 02d4dd97-1073-4845-9266-2f33d4e398ca
+    - id: 94fa3b38-3680-421a-b8da-7322a6d5e898
+      name: type
+      description: "Full card type line including types and subtypes as printed (e.g.,\
+        \ Enchantment \u2014 Aura)."
+      column_id: d558d076-62d0-4329-9441-040175af2279
+    - id: 9be197ad-3806-472f-ae82-83de6e69b806
+      name: Has Content Warning
+      description: The content warning flag signals whether the card carries a content
+        advisory for sensitive material (1 = yes, 0 = no).
+      column_id: 376f30e4-8314-4112-ae02-3cb683165b8c
+    - id: 9d176767-23f4-4900-9207-ce9c68c20995
+      name: toughness
+      description: Represents the creature's toughness value as printed (e.g., 1,
+        2, 3).
+      column_id: 3893de33-42bd-449a-9eda-a369b84efc60
+    - id: 9fa2d5b0-ed2b-498d-baab-6f834cc20909
+      name: Face Converted Mana Cost
+      description: Provides the converted mana cost for a specific face of a double-faced
+        card.
+      column_id: 89ae6b4e-f74e-4478-bbec-61140727d631
+    - id: a508a9bc-953a-4b8a-b016-bff421d7a188
+      name: originaltype
+      description: Shows the original card type line as printed on the card's first
+        release.
+      column_id: aed29887-d4b7-497b-813f-0f0683758371
+    - id: aad56c85-c6a8-42a5-bb63-53f6c9c8284e
+      name: number
+      description: Indicates the collector number of the card within its set as text.
+      column_id: 7508f42b-9fbc-49ec-945a-fcef5b4b8140
+    - id: afc5de58-4e03-4b5c-a747-b64859e5fad8
+      name: Frame Version
+      description: The frame version identifies the card's frame design era using
+        a year format (YYYY) or special designation like 'future'.
+      column_id: 063a6f7c-f53f-4bee-9cb7-fc1216182029
+    - id: b0bd0f5e-dbdd-4de4-ac0d-6fa4c8e1dc0f
+      name: Card Kingdom Foil ID
+      description: Identifies the Card Kingdom product ID for the foil version of
+        the card.
+      column_id: f3dd57b3-fb3d-4a28-957a-3429505f034c
+    - id: b15b86b8-87cd-4b21-a3c5-37e968fca82b
+      name: originaltext
+      description: Contains the original rules text printed on the card at its first
+        release.
+      column_id: f21bdc43-41f0-4958-84a5-26d71fae59ff
+    - id: b1c79650-cf67-4cdf-8527-35f78ddf625a
+      name: Card Kingdom ID
+      description: Identifies the Card Kingdom product ID for the non-foil version
+        of the card.
+      column_id: a4d7e0c3-1cf8-4d28-93c2-f246780df139
+    - id: b4fbd69f-3512-4420-8641-38d258402d96
+      name: rarity
+      description: Classifies the rarity level of the card in its set as common, uncommon,
+        rare, or mythic.
+      column_id: 516a99df-d06e-4591-a08e-78f9a43e1267
+    - id: b5576338-b39b-495e-b90b-629ca1138a15
+      name: supertypes
+      description: Indicates special supertypes like Basic, Legendary, or Snow (e.g.,
+        Basic, Legendary).
+      column_id: dbec8685-4b66-4394-b596-56a065abd272
+    - id: b9bbd9e7-8c45-470a-96ab-377e5b4b925d
+      name: ASCII Name
+      description: Provides an ASCII-only version of the card name for systems lacking
+        Unicode support.
+      column_id: 31ea1d2e-3a90-4382-b2e3-a7e9990e2733
+    - id: bb9bd8a1-d489-4b36-b1dc-816e469e8926
+      name: uuid
+      description: Universally unique identifier for the card instance, referenced
+        by foreign data and rulings.
+      column_id: bbfd9a8b-525d-4d46-8872-9ef3f8bc47c1
+    - id: beb12d27-ada1-4169-82ed-e9e8360f6f3b
+      name: name
+      description: 'States the official name of the Magic: The Gathering card.'
+      column_id: ff5a2930-5d71-4fd3-b751-8c624f67b5dd
+    - id: bef3daec-cd87-43a1-bc6a-cd78e171c881
+      name: Loyalty
+      description: Gives the starting loyalty value for planeswalker cards.
+      column_id: 6f196a04-f26a-4009-aac2-06160730427d
+    - id: c2dfe0b4-5ef8-4969-8258-f9507ef5d774
+      name: Flavor Name
+      description: The flavor name provides a thematic or lore-based title for the
+        card, such as character designations from crossover franchises.
+      column_id: beddfb40-a2cf-4ed4-9612-cdf83084b8b1
+    - id: c77f11c0-f45c-412c-abe5-df71779235c7
+      name: printings
+      description: Enumerates the set codes in which the card has been printed.
+      column_id: 21ab6a5e-4276-4cbe-8639-833240fc901c
+    - id: cb7e6b1b-d628-4e40-b066-85dc00fb926c
+      name: mtgofoilid
+      description: Identifies the foil version of a card on Magic Online using a numeric
+        text code.
+      column_id: 6ed9a81a-c3c5-476d-b04a-fb4f1a96fca9
+    - id: cb99f5bc-386c-43f3-a5bb-00859c8f2c7b
+      name: manacost
+      description: Displays the card's mana cost in symbolic notation, e.g., {W} or
+        {2}{R}.
+      column_id: 72f641de-62b3-4084-9262-e571a7a05970
+    - id: cc2dd50e-48e0-4730-82eb-813df9c5a253
+      name: tcgplayerproductid
+      description: Product identifier for the card on the TCGplayer marketplace (e.g.,
+        15032).
+      column_id: 47ff199b-f27d-49ae-9574-a3b450d36f3f
+    - id: cc948d1d-74cf-4754-bd7e-75a98be5e64d
+      name: Colors
+      description: Lists the card's colors derived from its mana cost using single-letter
+        codes.
+      column_id: c01f3560-8d57-4e09-8d46-ab90f8492281
+    - id: d1a34855-e9aa-48fa-878f-e44110d15705
+      name: Face Name
+      description: Gives the name of a specific face of a double-faced card.
+      column_id: 95efa61c-ce1b-4d16-bdb6-ccb9800dc92f
+    - id: d271a049-3e64-4237-9b8f-175227e2b9df
+      name: Duel Deck
+      description: Identifies the Duel Deck product and side (a or b) the card belongs
+        to.
+      column_id: 6de2bad1-a05b-4175-b48c-8451aeb989d3
+    - id: d285c380-5d89-4494-b4ae-0567e9c752a2
+      name: types
+      description: Primary card types such as Creature, Instant, or Enchantment (e.g.,
+        Creature, Instant).
+      column_id: dea13a65-2ea1-4326-82b0-ea165d3a0393
+    - id: d37c6ad1-cd84-4b7a-85d2-9c777ccc4a5c
+      name: purchaseurls
+      description: Provides URLs for purchasing the card from various online retailers.
+      column_id: e7cbcfdd-1b4a-40f6-8228-aee3bcbca8d4
+    - id: d8b32877-2639-4b06-9575-2f086f484c1f
+      name: Color Indicator
+      description: Indicates the card's color via color indicator using single-letter
+        codes when not defined by mana cost.
+      column_id: 5a7805ac-e94b-47d7-bd52-792e65f0a08f
+    - id: d9821477-5f76-4cf4-a4fb-c088fcb01b3e
+      name: Is Reprint
+      description: The reprint flag shows whether the card is a reissue of a previously
+        printed card (1 = reprint, 0 = original printing).
+      column_id: 1c6b22e7-a783-4189-849b-bec588655f5f
+    - id: e282baf5-fb6e-4dcc-8d62-19a5ccad929c
+      name: Availability
+      description: Lists the platforms where the card is available as a comma-separated
+        value.
+      column_id: 3cef6b6e-cc42-480f-9a8f-a276b7410a64
+    - id: e496ba62-1235-4762-bfe6-1f21bd29da27
+      name: variations
+      description: List of UUIDs for alternate versions or printings of the same card.
+      column_id: 9eb443f6-112c-4ba4-af35-2493c53db1df
+    - id: f08567e0-905c-420e-88b3-193fa65a8f4b
+      name: Is Story Spotlight
+      description: Marks if the card is a Story Spotlight card (1 = yes, 0 = no).
+      column_id: acf51406-502f-4e6e-a0c0-0b07a50f4706
+    - id: f092a53a-cf13-4b03-9178-ddbb819c7fe9
+      name: promotypes
+      description: Describes the types of promotional releases associated with the
+        card.
+      column_id: 23724847-ba03-4eda-b157-b815535976bd
+    - id: f1d67e36-561c-49b1-bb5d-9c4ed880a3e0
+      name: Is Timeshifted
+      description: Shows whether the card is a timeshifted reprint (1 = yes, 0 = no).
+      column_id: b3677c6c-decc-4c94-858d-7b54bec599b5
+    - id: f7b293a1-0f59-471a-b074-639dd5e9db07
+      name: subtypes
+      description: Lists creature, enchantment, or other subtypes associated with
+        the card (e.g., Aura, Human).
+      column_id: 15abe71d-692b-437a-976d-a02fa141fade
+    - id: fa815754-f2a5-482d-a8fa-b1e7dc02255a
+      name: scryfallid
+      description: 'Identifies the card on Scryfall, a Magic: The Gathering database.'
+      column_id: fb940ce1-9f88-482e-85cc-a4ee961d0e18
+    - id: ff4416ae-388f-4a33-8f84-b0b4014a12fe
+      name: Frame Effects
+      description: The frame effect indicates special visual frame treatments applied
+        to the card, such as legendary styling.
+      column_id: 9d4946f9-a566-4db7-bb6d-75f22e50830f
+    - id: ff55cc4b-51fd-4184-b3ea-ea5285bc114f
+      name: Is Alternative
+      description: The alternative version flag identifies whether the card is an
+        alternate version, such as alternate art or borderless treatment (1 = yes,
+        0 = no).
+      column_id: bedbf841-6959-4a2d-b0c8-75344d359b11
+  - id: b0707dc3-e672-4304-857d-834037d8b337
+    name: Card Legality
+    description: ''
+    represents:
+    - 05fbdf4d-62fe-4651-8218-5bd38c65523a
+    columns_attributes:
+    - id: 59520b12-3303-4911-9685-eb5536b0580a
+      name: Game Format
+      description: 'Specifies the Magic: The Gathering game format, such as Commander
+        or Modern, governing the card''s legality.'
+      column_id: dc9f9c80-698b-4cf8-9422-b9f2c3764aef
+    - id: 64fdb65c-84ef-4d2d-9a54-63e9d9b039a2
+      name: ID
+      description: Uniquely identifies each card legality record with a sequential
+        numeric key.
+      column_id: b4f9218c-cf04-4ee8-b7f8-f991a214effb
+    - id: 7dfc07fb-4555-45ed-990f-95d27c3790d9
+      name: Global ID
+      description: Provides a globally unique identifier for cross-system referencing
+        of the card legality record.
+      column_id: 4b74c801-c8e8-4396-9724-66f018172250
+    - id: 971da37d-0a96-4722-ba79-c602c24ab182
+      name: Legality Status
+      description: Indicates the card's legal standing in the format, with values
+        Legal, Banned, or Restricted.
+      column_id: 558d1be7-c1e8-4ed5-9366-9a82ca60bf62
+  - id: e0fdd63e-ab97-421e-b1b3-9ad8a9370b02
+    name: Localized Card Data
+    description: Localized card information including name, rules text, flavor text,
+      and type for a specific language.
+    represents:
+    - 7111be64-f4fd-4191-88d9-5a62ffb9fde5
+    columns_attributes:
+    - id: 1de6fb40-5124-455a-a296-a589a97b803d
+      name: Language
+      description: Language of the localized card name, rules text, and flavor text.
+      column_id: 0b69e36b-8809-44cf-9950-30865637a19b
+    - id: 62bb122c-f91b-41df-8f96-5d5eb14605cd
+      name: multiverseid
+      description: 'Identifies the Magic: The Gathering card in the Multiverse database.'
+      column_id: c7545fad-0305-4a7d-9ece-44018bf705ee
+    - id: 8fbb3baa-a526-4eb1-bf05-e3de2e1dc30c
+      name: Record ID
+      description: Unique identifier for each localized card data record.
+      column_id: 653a0cda-496f-4d9a-a056-dc82f9e82b8a
+    - id: 9da0b33c-65e3-4f0b-996c-eb179e3f36bb
+      name: Rules Text
+      description: Localized rules text describing the card's abilities in the specified
+        language.
+      column_id: 0af7b775-0805-4661-86b3-87c4e8f89323
+    - id: a8e39073-374d-4599-88a1-58146f24eaa4
+      name: Card Type
+      description: Localized card type classification in the specified language.
+      column_id: b7253e94-7a98-40fe-8993-12aa121fe5e7
+    - id: f0d0c471-bc12-4ebe-b642-9ae48ff9bb21
+      name: Name
+      description: Localized name of the card in the specified language.
+      column_id: 901aab10-8680-4eda-91bc-709499763b03
+    - id: fcd2d75d-3bec-4473-ab26-8ed056fd023a
+      name: Flavor Text
+      description: Localized flavor text for the card in the specified language.
+      column_id: 621792ec-2868-46a2-958b-cebfd3d36c62
+  - id: bdd75aa5-6ca8-4243-ab38-7ac5c6d9d70d
+    name: Magic Set
+    description: ''
+    represents:
+    - 39db932f-641e-4fa7-ad82-701d5a0c7e99
+    columns_attributes:
+    - id: 11f67b43-d0cf-46ff-9ee3-f377fc0b9a31
+      name: MTGO Code
+      description: 'Specifies the set code used on Magic: The Gathering Online for
+        digital representation and redemption.'
+      column_id: 3f214e38-1cdc-4d47-8a63-075fa8c48719
+    - id: 13487876-6ff2-415c-b95e-f32755fd491b
+      name: Set Code
+      description: Represents the official three- to four-character abbreviated set
+        code used in translations and parent set references.
+      column_id: ac9fd140-0ac1-4fe4-a8d2-0915a1e82ce2
+    - id: 21b121f3-905e-4d82-89b1-6f1dcfa0c725
+      name: Set Type
+      description: The classification of the Magic product, such as expansion, promo,
+        memorabilia, box, or duel deck.
+      column_id: 9ff72002-9644-4c6f-b8ea-ccfcc0bfdb93
+    - id: 2668c03b-6982-40f2-b2d2-9811cdb29c18
+      name: Is Non Foil Only
+      description: Flags whether the set contains only non-foil cards (1) or includes
+        foil cards (0).
+      column_id: 073c0469-31b0-4a1b-9430-06af972d5733
+    - id: 3efd953a-c41d-4a11-9638-10a143148727
+      name: Is Foreign Only
+      description: Indicates whether the set is printed exclusively in non-English
+        languages (1) or not (0).
+      column_id: 1f894008-5b7a-4f0b-98a3-4e6d57c40382
+    - id: 3f11d5fa-7ab4-4b4d-af10-eae3af8ec847
+      name: Block
+      description: Categorizes the set by product line, block, or promotional category
+        such as Core Set or Commander.
+      column_id: 5f372df8-006b-4d01-ab4c-20fb1084dd07
+    - id: 49323633-35ec-41bc-9c1f-351a97db54f4
+      name: Release Date
+      description: The official release date of the Magic set, formatted as YYYY-MM-DD.
+      column_id: d64e19f3-002c-4f12-a4ac-ef5f3f875b12
+    - id: 498d11c4-e9b7-479f-afed-4a12dfb3f9df
+      name: MCM Name
+      description: States the set name as listed on the Cardmarket marketplace for
+        identification and search.
+      column_id: c628d5b5-b909-493e-b7f1-0161d3b981be
+    - id: 4d6cd6bc-1ecd-4874-9672-c6c6f38076a5
+      name: Is Partial Preview
+      description: Flags whether the set is a partial preview release (1) or a full
+        release (0).
+      column_id: d8f709a6-66db-4020-baca-3d30cfc608b2
+    - id: 76164317-273e-4207-aa01-ac182509e2c7
+      name: Total Set Size
+      description: The total count of cards included in the Magic set.
+      column_id: d6300139-491d-4af9-a0b6-c2786b31e47e
+    - id: 79a1ccec-654f-4ffc-8208-0d4b06ebb55f
+      name: Base Set Size
+      description: Indicates the base count of distinct cards in the set, excluding
+        foil, promo, and variant cards.
+      column_id: d5177c22-aa32-428e-b807-5516a99a9b1c
+    - id: 8d3215ac-5e03-4fdd-aac3-9bc67d256aee
+      name: Is Foil Only
+      description: Flags whether the set contains only foil cards (1) or includes
+        non-foil cards (0).
+      column_id: 8ac59cd3-f820-4bf6-883f-7d959fd97a1c
+    - id: b3047159-43f9-4785-ba12-df5bb32e2934
+      name: mcmid
+      description: Identifies the set's product listing on the Cardmarket marketplace
+        with a unique numeric identifier.
+      column_id: 07179606-28ff-4012-9d49-8f537471641c
+    - id: c232dc03-c4f7-4b7a-885a-12cb0f364ec9
+      name: Booster Configuration
+      description: Defines the booster pack configuration as a JSON structure detailing
+        card slots, weights, and sheet distributions.
+      column_id: 28e84c20-9939-4545-999b-cbf7419b5ce1
+    - id: c63b8d12-c12c-4bdb-98f9-f093b4a64a7f
+      name: Set ID
+      description: 'Uniquely identifies each Magic: The Gathering set or product with
+        a numeric identifier.'
+      column_id: 90549733-95af-4faf-bfea-2cb843e4c26b
+    - id: d8d538c2-1445-4cd0-b750-c0a88065b71b
+      name: tcgplayergroupid
+      description: A TCGPlayer grouping identifier that categorizes related product
+        printings and conditions under a single product group.
+      column_id: 2d8d749f-a033-4950-ad4d-624ef8b94c26
+    - id: e170d12a-3c40-4df8-8b2f-36d3c97925f7
+      name: Set Name
+      description: 'The official full name identifying a Magic: The Gathering set,
+        such as ''Tenth Edition'' or ''Double Masters''.'
+      column_id: 39612df8-435e-4853-b6e4-fb018f07abff
+    - id: e27c3d6f-8267-43fc-b275-d67ced8f72ad
+      name: mcmidextras
+      description: Provides a supplementary Cardmarket identifier to distinguish variant
+        or additional product entries for the set.
+      column_id: 5103e304-07ee-45c6-a366-5f739741c3f4
+    - id: f2456e9b-29fb-441a-b52a-e3eded1991f4
+      name: Is Online Only
+      description: 'Indicates whether the set is exclusive to Magic: The Gathering
+        Online (1) or also available physically (0).'
+      column_id: 886d8f33-45ec-4002-bdff-9e620e0db4a1
+    - id: fc3be8eb-48ea-47f8-b57e-e3e8caa5bf2a
+      name: Keyrune Code
+      description: Provides an internal system code for set identification on platforms
+        using Keyrune or symbol encoding.
+      column_id: 2e9e10a9-9f7a-4193-82cc-01391caaf706
+  - id: a68cc24e-9ba9-448f-8309-d98adc708d2c
+    name: Ruling
+    description: 'A Magic: The Gathering rule or card ruling entry.'
+    represents:
+    - b09db84d-2f5d-420c-ba95-f690ba361f08
+    columns_attributes:
+    - id: 0a565f5e-9022-4e3d-b8dd-5a91084797a4
+      name: Effective Date
+      description: Effective date of the ruling in YYYY-MM-DD format indicating when
+        the rule becomes applicable.
+      column_id: 024d5d9b-6133-48ac-9560-c6d132834599
+    - id: f3a34bed-44f6-4fe7-8b49-87014bf19ffa
+      name: Ruling ID
+      description: 'Unique numeric identifier assigned to each Magic: The Gathering
+        rule or card ruling entry.'
+      column_id: c0110ffd-45c9-4593-bad9-29fd15db3b9f
+    - id: f85bef3f-7b26-47a5-a55c-c9ed80002da0
+      name: Ruling Text
+      description: 'Complete textual content of the Magic: The Gathering rule or card
+        ruling providing official interpretation.'
+      column_id: 2d9349cd-84c0-4b8c-a1c1-5c2d3d60d7e4
+  - id: 20bd4160-f5f0-4bb2-83f3-1528f225a838
+    name: Set Translation
+    description: 'A localized name for a Magic: The Gathering set in a specific language.'
+    represents:
+    - 86e86ab2-de3b-42c4-959a-dca24a0d49ec
+    columns_attributes:
+    - id: 1776c8ec-869d-4694-b27c-9fcf05ab9913
+      name: Language
+      description: Specifies the language and regional variant for the localized set
+        name.
+      column_id: 4d3e8dc2-6060-4a60-9a28-585d5a89aa99
+    - id: 3f96e831-95a3-4f41-a7bb-c98edfaf6e56
+      name: Translated Name
+      description: 'Provides the translated Magic: The Gathering set name in the specified
+        language.'
+      column_id: f0205fb4-ba09-4384-80f0-2697e3ae2b6c
+    - id: 9197989a-d59b-436b-94ea-36cf17bb9c17
+      name: Translation ID
+      description: Uniquely identifies each set translation record.
+      column_id: 3b39b1b1-78d7-4b01-b944-f3a57ab0eb88
+  semantic_fks:
+  - column_attribute_id: 13487876-6ff2-415c-b95e-f32755fd491b
+    column_id: 3413a637-eaad-4d26-8246-20bc38b4b975
+    use_in_join_paths: true
+  - column_attribute_id: 13487876-6ff2-415c-b95e-f32755fd491b
+    column_id: 808f89da-df15-4c61-9cb0-bf31af2d3441
+    use_in_join_paths: true
+  - column_attribute_id: bb9bd8a1-d489-4b36-b1dc-816e469e8926
+    column_id: 8edfcbe2-ca68-4df8-add1-488db6580272
+    use_in_join_paths: true
+  - column_attribute_id: bb9bd8a1-d489-4b36-b1dc-816e469e8926
+    column_id: 9b06bf20-27b9-4353-8d47-7f07106b8597
+    use_in_join_paths: true
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table: []
+  custom_analyses: []
+zones: []

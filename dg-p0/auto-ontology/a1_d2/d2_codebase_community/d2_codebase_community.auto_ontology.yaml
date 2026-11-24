@@ -1,0 +1,1199 @@
+data_layer:
+  databases:
+  - id: 33197a14-1fdb-4d06-badf-f2aaf6746f5a
+    dialect: postgres
+    schemas:
+    - id: 20fd4f51-a3c9-4fe4-871b-4977da037cab
+      name: public
+      database_name: d2_codebase_community
+      tables:
+      - id: 44331bc5-28fb-4162-b66d-50b9149677ee
+        name: badges
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 316e6dd1-c69f-43c5-b19d-cd161251d537
+          name: id
+          description: Unique identifier for each record in the table.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 347139f6-a340-4e40-a07e-4ce57b1e7999
+          name: userid
+          description: ''
+          type: bigint
+          sample_values:
+          - 5
+          - 159
+          - 190
+          - 223
+          - 8
+          is_nullable: true
+          is_unique: false
+        - id: f0757c44-9dd9-4487-8988-efb36dd0d6f1
+          name: name
+          description: The name of the role or badge assigned to a user.
+          type: text
+          sample_values:
+          - Supporter
+          - Autobiographer
+          - Teacher
+          - Student
+          - Editor
+          is_nullable: true
+          is_unique: false
+        - id: ca51cd52-061b-46d7-97a4-b332240a5b33
+          name: date
+          description: The date and time when the record was created or the role was
+            assigned, including time zone information.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+      - id: 997efe37-66c2-4268-abcb-3deab42baa87
+        name: comments
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: c0e900f7-c6b0-4dd5-a095-c293fdf01866
+          name: id
+          description: Unique identifier for the comment.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 56a7ad2a-8f36-4adc-9cbe-09a495857093
+          name: postid
+          description: ''
+          type: bigint
+          sample_values:
+          - 652
+          - 981
+          - 1094
+          - 1194
+          - 130
+          is_nullable: true
+          is_unique: false
+        - id: 3fee2dc0-ae21-4925-8631-a105da0a5c14
+          name: score
+          description: Numeric score indicating the community rating of the comment.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: 3cc60ba7-9f5b-4ab6-9213-f574bb080bf8
+          name: text
+          description: Text content of the comment posted by a user.
+          type: text
+          sample_values:
+          - Should be community wiki.
+          - Should be community wiki?
+          is_nullable: true
+          is_unique: true
+        - id: e2ffaa11-d4af-4743-b678-831e5d59c718
+          name: creationdate
+          description: Date and time when the comment was created, including time
+            zone.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 654da927-25ab-402d-bf9f-d5c1a0c84882
+          name: userid
+          description: ''
+          type: bigint
+          sample_values:
+          - 88.0
+          - 223.0
+          - 5.0
+          - 159.0
+          - 196.0
+          is_nullable: true
+          is_unique: false
+        - id: ec5cf048-f436-476e-8d3e-6f8bafe872ad
+          name: userdisplayname
+          description: Display name of the user who authored the comment.
+          type: text
+          sample_values:
+          - user28
+          - Pete
+          - anonymous
+          - Statprof
+          - jjgibaja
+          is_nullable: true
+          is_unique: false
+      - id: 84b50092-40aa-4afb-8d13-c54880be63a6
+        name: posthistory
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: ca56a21e-83a7-469c-b039-9cfe910fdda1
+          name: id
+          description: A unique numeric identifier assigned to each revision record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 05d03fef-712c-4d12-a0e9-4b0eb21a8d33
+          name: posthistorytypeid
+          description: The posthistorytypeid column identifies the type of historical
+            action performed on a post, such as initial creation, edits, or community
+            ownership.
+          type: bigint
+          sample_values:
+          - 2
+          - 3
+          - 1
+          - 5
+          - 16
+          is_nullable: true
+          is_unique: false
+        - id: c54a7ce7-587b-4d56-8341-98529cf2a5cf
+          name: postid
+          description: ''
+          type: bigint
+          sample_values:
+          - 134
+          - 130
+          - 2
+          - 3
+          - 8
+          is_nullable: true
+          is_unique: false
+        - id: 5005d9f1-8c0e-4e6f-b4ee-414d7013c0bb
+          name: revisionguid
+          description: A globally unique identifier (UUID) that distinguishes each
+            revision.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: f23d3eaa-7553-4cf5-929f-f3d4afbd91ad
+          name: creationdate
+          description: The date and time, with time zone, when the revision was created.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: a840c645-7fb3-496a-9d01-d89787268d4f
+          name: userid
+          description: ''
+          type: bigint
+          sample_values:
+          - -1.0
+          - 5.0
+          - 8.0
+          - 88.0
+          - 13.0
+          is_nullable: true
+          is_unique: false
+        - id: 477df08d-8b14-4ff7-ab34-1320d3b8ec99
+          name: text
+          description: The revision's content stored as tag markup such as <data-visualization>
+            or <hypothesis-testing><p-value><t-value>.
+          type: text
+          sample_values:
+          - ''
+          - <data-visualization>
+          - <statistical-significance>
+          - <r>
+          is_nullable: true
+          is_unique: false
+        - id: a8349964-abe0-4c14-909d-3acd50fb993f
+          name: comment
+          description: "A user\u2011provided note describing the nature of the edit,\
+            \ e.g., \"edited tags\" or \"Removed the word 'most'...\"."
+          type: text
+          sample_values:
+          - ''
+          - edited tags
+          - edited title
+          - added 12 characters in body
+          is_nullable: true
+          is_unique: false
+        - id: 6e1555ca-9539-445b-a984-c9d9a46dca31
+          name: userdisplayname
+          description: The display name of the user who performed the revision, such
+            as "user28".
+          type: text
+          sample_values:
+          - ''
+          - user28
+          - user209
+          is_nullable: true
+          is_unique: false
+      - id: f91d93d7-bc59-4fd9-8c64-3695424ae9c8
+        name: postlinks
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: e6a229ea-9550-469a-9165-8bf9eca3eb6c
+          name: id
+          description: A unique identifier assigned to each record for distinct referencing
+            in the system.
+          type: bigint
+          sample_values:
+          - 108
+          - 145
+          - 217
+          - 263
+          - 264
+          is_nullable: false
+          is_unique: true
+        - id: 4347c166-b414-4070-ab61-f18f63a58c78
+          name: creationdate
+          description: The date and time when the record was created, including time
+            zone information.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 5ec06b91-c6f6-42d6-b89d-2e9a10d8b1c3
+          name: postid
+          description: ''
+          type: bigint
+          sample_values:
+          - 13655
+          - 3201
+          - 10088
+          - 11232
+          - 15052
+          is_nullable: true
+          is_unique: false
+        - id: 27f0121b-f918-47ad-9d13-c33f8fbec106
+          name: relatedpostid
+          description: ''
+          type: bigint
+          sample_values:
+          - 6
+          - 577
+          - 1444
+          - 1576
+          - 2492
+          is_nullable: true
+          is_unique: false
+        - id: c1f4af70-9893-4a74-bd89-e49b059d7ada
+          name: linktypeid
+          description: A unique identifier representing the type of link or relationship
+            between entities.
+          type: bigint
+          sample_values:
+          - 1
+          is_nullable: true
+          is_unique: false
+      - id: 77ae701a-c39c-4264-b031-234d007911ab
+        name: posts
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 82a29c76-5d56-4f20-ad34-395de9858acd
+          name: id
+          description: Unique identifier for each question in the system.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 910fdfe9-9d2a-423a-b7a7-d5b8b9d11c65
+          name: posttypeid
+          description: Identifies the type of post, where 1 represents a question
+            and 2 represents an answer.
+          type: bigint
+          sample_values:
+          - 2
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 47f1a68a-54d8-4c7e-a92b-81cd7b003c92
+          name: acceptedanswerid
+          description: ''
+          type: bigint
+          sample_values:
+          - 15.0
+          - 59.0
+          - 5.0
+          - 135.0
+          - 18.0
+          is_nullable: true
+          is_unique: true
+        - id: e5143888-88a5-43d0-b569-56f45cf0ff84
+          name: creaiondate
+          description: Timestamp indicating when the question was originally created.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 69b06861-bc82-454a-8a7a-19a83050c2d7
+          name: score
+          description: Net vote score of the question, calculated as upvotes minus
+            downvotes.
+          type: bigint
+          sample_values:
+          - 3
+          - 2
+          - 4
+          - 1
+          - 5
+          is_nullable: true
+          is_unique: false
+        - id: f7652280-e163-4d94-8d9d-f0fe846d5975
+          name: viewcount
+          description: Total number of times the question has been viewed by users.
+          type: bigint
+          sample_values:
+          - 247.0
+          - 288.0
+          - 120.0
+          - 754.0
+          - 3293.0
+          is_nullable: true
+          is_unique: true
+        - id: d9f56b9b-74da-43ac-b657-4b3ff5fc7c56
+          name: body
+          description: Full textual content of the question, stored in HTML format.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 3b11c796-df3c-4195-ac96-6d8178ada33e
+          name: owneruserid
+          description: ''
+          type: bigint
+          sample_values:
+          - 88.0
+          - 5.0
+          - 215.0
+          - 159.0
+          - 251.0
+          is_nullable: true
+          is_unique: false
+        - id: 61a88e8f-d709-476e-8004-7e6689bbc842
+          name: lasactivitydate
+          description: Timestamp of the most recent activity on the question, such
+            as an edit, answer, or comment.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 0922b41f-f367-4265-b20b-7cc1c6900d5d
+          name: title
+          description: Headline or subject line summarizing the question.
+          type: text
+          sample_values:
+          - Eliciting priors from experts
+          - What is normality?
+          is_nullable: true
+          is_unique: true
+        - id: 48568f88-1c28-493d-b85b-b7e91938eea1
+          name: tags
+          description: Topic labels associated with the question, enclosed in angle
+            brackets.
+          type: text
+          sample_values:
+          - <hypothesis-testing>
+          - <r>
+          - <regression>
+          - <books>
+          - <machine-learning>
+          is_nullable: true
+          is_unique: false
+        - id: 29151ea7-ca2d-4f6d-a66b-f084f253b263
+          name: answercount
+          description: Number of answers submitted in response to the question.
+          type: bigint
+          sample_values:
+          - 2.0
+          - 1.0
+          - 3.0
+          - 4.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: c14e5898-af85-428d-990d-8c208fc15815
+          name: commentcount
+          description: Number of comments posted on the question.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: 2f0f436b-6d60-464e-a2e6-88354f68b7d5
+          name: favoritecount
+          description: Number of users who have bookmarked or favorited the question.
+          type: bigint
+          sample_values:
+          - 1.0
+          - 2.0
+          - 4.0
+          - 5.0
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 595a8316-5cda-4541-a2cf-7b264984329b
+          name: lasteditoruserid
+          description: ''
+          type: bigint
+          sample_values:
+          - 88.0
+          - 8.0
+          - 159.0
+          - 74.0
+          - 919.0
+          is_nullable: true
+          is_unique: false
+        - id: ce2db774-fdea-4d0b-9245-5ac50d65a314
+          name: lasteditdate
+          description: Timestamp of the most recent edit made to the question.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 770f2991-88c5-4dbd-9dc4-fee8c84cddb5
+          name: communityowneddate
+          description: Timestamp when the question was converted to community-owned
+            status.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: c8dd78e8-7189-4e4f-bd80-06831dec6374
+          name: parentid
+          description: ''
+          type: bigint
+          sample_values:
+          - 726.0
+          - 73.0
+          - 138.0
+          - 170.0
+          - 7.0
+          is_nullable: true
+          is_unique: false
+        - id: 770de055-49c6-493d-9590-817e1470b818
+          name: closeddate
+          description: Timestamp when the question was closed, if applicable.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 3f52bc87-6eba-4c84-9400-3ff02bfd7330
+          name: ownerdisplayname
+          description: Display name of the user who authored the question.
+          type: text
+          sample_values:
+          - user28
+          - Michael Bishop
+          - Tzippy
+          - sjcockell
+          - esco
+          is_nullable: true
+          is_unique: false
+        - id: 31a8f140-d45e-4510-b1a7-c9db123f3e3e
+          name: lasteditordisplayname
+          description: The display name of the user who most recently edited the record.
+          type: text
+          sample_values:
+          - user28
+          - user10525
+          - sjcockell
+          is_nullable: true
+          is_unique: false
+      - id: 294cfdb1-e749-479a-9424-179ab5ed6a86
+        name: tags
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: ef3d680d-6c07-4395-bd39-a69e32af1cc1
+          name: id
+          description: Unique identifier for each tag record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 81ee0e3a-4131-43b4-bc8d-6e78aeb76dfe
+          name: tagname
+          description: Textual label representing a statistical or methodological
+            concept.
+          type: text
+          sample_values:
+          - bayesian
+          - prior
+          - elicitation
+          - normality
+          - open-source
+          is_nullable: true
+          is_unique: true
+        - id: 036cc5a5-33b8-48d5-865c-e8b0d593b006
+          name: count
+          description: Number of occurrences or references associated with the tag.
+          type: bigint
+          sample_values:
+          - 2
+          - 3
+          - 1
+          - 4
+          - 5
+          is_nullable: true
+          is_unique: false
+        - id: 3b58c12b-0699-478f-a629-8ed0b9a45511
+          name: excerptpostid
+          description: Unique identifier for an excerpt post in the system.
+          type: bigint
+          sample_values:
+          - 20258.0
+          - 62158.0
+          - 67815.0
+          - 8046.0
+          - 9066.0
+          is_nullable: true
+          is_unique: true
+        - id: 1cd46460-cba8-421c-af3c-24883ac3cde8
+          name: wikipostid
+          description: Unique identifier for a wiki post in the system.
+          type: bigint
+          sample_values:
+          - 20257.0
+          - 62157.0
+          - 67814.0
+          - 8045.0
+          - 9065.0
+          is_nullable: true
+          is_unique: true
+      - id: c650397b-0de0-4bf4-b199-ece92e913e93
+        name: users
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+          name: id
+          description: Unique identifier for each user account, with -1 indicating
+            a system or anonymous user.
+          type: bigint
+          sample_values:
+          - -1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 6a170f1c-c6b7-4b32-b2cc-159372add994
+          name: reputation
+          description: User's reputation score reflecting community trust earned through
+            contributions.
+          type: bigint
+          sample_values:
+          - 101
+          - 111
+          - 1
+          - 121
+          - 31
+          is_nullable: true
+          is_unique: false
+        - id: c6124179-b40e-466d-a3f1-6df8225e1639
+          name: creationdate
+          description: Timestamp indicating when the user account was created.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: 7cf6886c-5be7-4523-ad77-6744135d2f82
+          name: displayname
+          description: Publicly displayed name chosen by the user for their profile.
+          type: text
+          sample_values:
+          - Mark
+          - Tom
+          - Tim
+          - julien
+          - David
+          is_nullable: true
+          is_unique: true
+        - id: 2ad4ca96-203f-4dd0-99b2-3e013a4a26a8
+          name: lastaccessdate
+          description: Timestamp of the user's most recent site access or login.
+          type: timestamp with time zone
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+        - id: d709ff37-eb2b-498f-adf7-1c8958629cfc
+          name: websiteurl
+          description: User-provided personal or professional website URL, with 'none'
+            indicating no URL provided.
+          type: text
+          sample_values:
+          - http://none
+          - http://stackoverflow.com
+          - http://None
+          - http://www.google.com
+          - http://meta.stackexchange.com/
+          is_nullable: true
+          is_unique: true
+        - id: 383b1908-86f7-4b8b-bde7-ef8b67998579
+          name: location
+          description: User's self-reported geographic location, such as country,
+            city, or region.
+          type: text
+          sample_values:
+          - United States
+          - United Kingdom
+          - New York, NY
+          - London, United Kingdom
+          - California
+          is_nullable: true
+          is_unique: false
+        - id: c7f8ad73-9929-4c22-aa11-209b23015508
+          name: aboutme
+          description: User-written profile biography in HTML format describing their
+            background or interests.
+          type: text
+          sample_values:
+          - '<p></p>
+
+            '
+          is_nullable: true
+          is_unique: true
+        - id: 5896a578-d498-4d3c-94e5-d20d3046a22d
+          name: views
+          description: Total number of times the user's profile page has been viewed
+            by others.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: faf2f0d3-f10c-45c1-856d-4b1f3e5bd70a
+          name: upvotes
+          description: Total count of upvotes received across all of the user's posts.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: cdc132bc-e869-4678-85b8-59a15c3ae4eb
+          name: downvotes
+          description: Total count of downvotes received across all of the user's
+            posts.
+          type: bigint
+          sample_values:
+          - 0
+          - 1
+          - 2
+          - 4
+          - 3
+          is_nullable: true
+          is_unique: false
+        - id: fc406dc8-3f6b-4bcd-9d03-a9cdc75e3872
+          name: accountid
+          description: The accountid column is a bigint identifier uniquely representing
+            an account, with sample values including -1 (likely a default or placeholder)
+            and positive integers such as 2, 3, 1998, and 54503.
+          type: bigint
+          sample_values:
+          - -1
+          - 2
+          - 3
+          - 1998
+          - 54503
+          is_nullable: true
+          is_unique: true
+        - id: e4ba16c1-7f6d-406c-aaa1-4e2d99510a2d
+          name: age
+          description: User's self-reported age in years.
+          type: bigint
+          sample_values:
+          - 29.0
+          - 33.0
+          - 32.0
+          - 36.0
+          - 31.0
+          is_nullable: true
+          is_unique: false
+        - id: 167021b5-c292-46ae-b5f8-212d35903f26
+          name: profileimageurl
+          description: URL pointing to the user's profile avatar image, hosted on
+            Stack Imgur or Gravatar.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: true
+      - id: ac592159-33bf-42e4-b979-f95a8b534a75
+        name: votes
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: ecb3524b-c578-45d6-805a-633fd28dd309
+          name: id
+          description: Unique identifier for each record in the table.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 7a6ec573-2420-4505-a7ec-9d2717ef49f1
+          name: postid
+          description: ''
+          type: bigint
+          sample_values:
+          - 5
+          - 22
+          - 3
+          - 6
+          - 7
+          is_nullable: true
+          is_unique: false
+        - id: 973031c5-90d1-4643-ab01-d6f64a7c4639
+          name: votetypeid
+          description: votetypeid is a foreign key identifier that categorizes the
+            type of vote cast, such as upvote, downvote, or acceptance.
+          type: bigint
+          sample_values:
+          - 2
+          - 5
+          - 3
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 7ff0c96f-b9cb-4ac6-91e5-422fd104c459
+          name: creationdate
+          description: Date when the record was created.
+          type: date
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: b1aa5543-8565-40dc-a670-6001453bee08
+          name: userid
+          description: ''
+          type: bigint
+          sample_values:
+          - 158.0
+          - 24.0
+          - 71.0
+          - 22.0
+          - 138.0
+          is_nullable: true
+          is_unique: false
+        - id: 69ec120b-0130-4f4f-8664-ca211bebd417
+          name: bountyamount
+          description: Monetary amount associated with a bounty.
+          type: bigint
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+  foreign_keys:
+  - source_column_id: 347139f6-a340-4e40-a07e-4ce57b1e7999
+    target_column_id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+  - source_column_id: 3b11c796-df3c-4195-ac96-6d8178ada33e
+    target_column_id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+  - source_column_id: 595a8316-5cda-4541-a2cf-7b264984329b
+    target_column_id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+  - source_column_id: 654da927-25ab-402d-bf9f-d5c1a0c84882
+    target_column_id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+  - source_column_id: 7a6ec573-2420-4505-a7ec-9d2717ef49f1
+    target_column_id: 82a29c76-5d56-4f20-ad34-395de9858acd
+  - source_column_id: a840c645-7fb3-496a-9d01-d89787268d4f
+    target_column_id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+  - source_column_id: b1aa5543-8565-40dc-a670-6001453bee08
+    target_column_id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+  joins: []
+semantic_layer:
+  terms:
+  - id: 2e6708cc-21f6-4d1d-a075-975f3d98ba13
+    name: Badge
+    description: A role or badge assigned to a user.
+    represents:
+    - 44331bc5-28fb-4162-b66d-50b9149677ee
+    columns_attributes:
+    - id: 1d9dcb26-8f88-45b7-b536-5306fea97312
+      name: Badge Name
+      description: Specifies the title of the badge or role granted to a user.
+      column_id: f0757c44-9dd9-4487-8988-efb36dd0d6f1
+    - id: 4d642b06-7414-4a33-a1b7-2ab4a2c6e3f9
+      name: Badge ID
+      description: Uniquely identifies each badge assignment record.
+      column_id: 316e6dd1-c69f-43c5-b19d-cd161251d537
+    - id: f687ae12-d98f-4dde-b38e-92f19a71dae3
+      name: Assigned Date
+      description: Records the timestamp with time zone when the badge was awarded.
+      column_id: ca51cd52-061b-46d7-97a4-b332240a5b33
+  - id: 9be085cd-f02c-4d0e-b7d2-517b09746a8d
+    name: Comment
+    description: A user-submitted comment with its score, text, creation timestamp,
+      and author display name.
+    represents:
+    - 997efe37-66c2-4268-abcb-3deab42baa87
+    columns_attributes:
+    - id: 5abe079e-66a1-45ea-922b-18c6627fbbe5
+      name: Text
+      description: Text content submitted by the comment author.
+      column_id: 3cc60ba7-9f5b-4ab6-9213-f574bb080bf8
+    - id: 5ae66867-868f-4e86-859a-32b8ab627f67
+      name: User Display Name
+      description: Display name of the comment's author.
+      column_id: ec5cf048-f436-476e-8d3e-6f8bafe872ad
+    - id: 63156ef4-e53e-4108-afa3-a6725b0e70ea
+      name: Creation Date
+      description: Timestamp with time zone when the comment was created.
+      column_id: e2ffaa11-d4af-4743-b678-831e5d59c718
+    - id: 9b78e3d0-0e42-4ade-9fee-493ee13f23c8
+      name: Score
+      description: Numeric community rating of the comment.
+      column_id: 3fee2dc0-ae21-4925-8631-a105da0a5c14
+    - id: d4ca2fc0-9eee-4aaa-b5ad-1464e9fc6bc8
+      name: Comment ID
+      description: Identifies each comment uniquely.
+      column_id: c0e900f7-c6b0-4dd5-a095-c293fdf01866
+  - id: eb966d0d-26e4-4966-a17f-e197fad8ec20
+    name: Post
+    description: ''
+    represents:
+    - 77ae701a-c39c-4264-b031-234d007911ab
+    columns_attributes:
+    - id: 09d68540-0b09-4b37-bc9e-46f866b93075
+      name: Body
+      description: Full textual content of the post stored in HTML format.
+      column_id: d9f56b9b-74da-43ac-b657-4b3ff5fc7c56
+    - id: 09fd8f61-5e86-4ac1-868a-736b72d98c60
+      name: Favorite Count
+      description: Number of users who have bookmarked the post.
+      column_id: 2f0f436b-6d60-464e-a2e6-88354f68b7d5
+    - id: 30d072ad-bc6d-453b-bcaf-6840d18e0ab1
+      name: Score
+      description: Net vote score of the post, calculated as upvotes minus downvotes.
+      column_id: 69b06861-bc82-454a-8a7a-19a83050c2d7
+    - id: 354f9e59-9503-4a0e-ab91-b69ca90e4e28
+      name: Closed Date
+      description: Timestamp when the question was closed, if applicable.
+      column_id: 770de055-49c6-493d-9590-817e1470b818
+    - id: 499b1245-e74a-46f2-b9de-5a146b38d7f6
+      name: Answer Count
+      description: Number of answers submitted for the question.
+      column_id: 29151ea7-ca2d-4f6d-a66b-f084f253b263
+    - id: 4e1e2251-2d51-4587-b4e5-d896c790fb1a
+      name: Last Edit Date
+      description: Timestamp of the most recent edit made to the post.
+      column_id: ce2db774-fdea-4d0b-9245-5ac50d65a314
+    - id: 51c6b907-0958-49af-8a7a-f0715df36853
+      name: Last Editor Display Name
+      description: lasteditordisplayname is the free-text display name of the user
+        who most recently edited the post.
+      column_id: 31a8f140-d45e-4510-b1a7-c9db123f3e3e
+    - id: 7388c9e8-e649-41a0-8055-28c5155eebf2
+      name: Tags
+      description: Topic labels associated with the question, enclosed in angle brackets.
+      column_id: 48568f88-1c28-493d-b85b-b7e91938eea1
+    - id: 76c68bdc-486c-4700-950e-5b6cde78ad8e
+      name: Owner Display Name
+      description: ownerdisplayname is the free-text display name of the user who
+        authored the post.
+      column_id: 3f52bc87-6eba-4c84-9400-3ff02bfd7330
+    - id: 86aa7cc4-76c7-418d-a8e0-ea7a511d9017
+      name: View Count
+      description: Total number of times the post has been viewed by users.
+      column_id: f7652280-e163-4d94-8d9d-f0fe846d5975
+    - id: 9867827f-5284-40b1-863c-b19681fd4124
+      name: Last Activity Date
+      description: Timestamp of the most recent activity on the post, such as edits,
+        answers, or comments.
+      column_id: 61a88e8f-d709-476e-8004-7e6689bbc842
+    - id: 9c179606-bb5e-4715-86bb-f3d98efa0c12
+      name: posttypeid
+      description: Indicates whether the post is a question (1) or an answer (2).
+      column_id: 910fdfe9-9d2a-423a-b7a7-d5b8b9d11c65
+    - id: cb200bf2-b4ba-4740-ae4d-563d849fc11c
+      name: Creation Date
+      description: Timestamp with time zone of when the post was originally created.
+      column_id: e5143888-88a5-43d0-b569-56f45cf0ff84
+    - id: d0f1f49f-5cc4-4854-9557-c84368a68015
+      name: Community Owned Date
+      description: Timestamp when the post was converted to community-owned status.
+      column_id: 770f2991-88c5-4dbd-9dc4-fee8c84cddb5
+    - id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+      name: Post ID
+      description: Unique numeric identifier for each post, used by comments, history,
+        links, and accepted answer references.
+      column_id: 82a29c76-5d56-4f20-ad34-395de9858acd
+    - id: f162401c-672d-4691-92cb-612ed9f48fc4
+      name: Comment Count
+      description: Number of comments posted on the post.
+      column_id: c14e5898-af85-428d-990d-8c208fc15815
+    - id: f34389b2-2959-4a41-a919-94148be3b7fa
+      name: Title
+      description: Headline summarizing the question post.
+      column_id: 0922b41f-f367-4265-b20b-7cc1c6900d5d
+  - id: c344f5d7-51dd-47ee-9e96-fd5149720c4b
+    name: Post Link
+    description: A link between two posts, such as a duplicate or related post reference.
+    represents:
+    - f91d93d7-bc59-4fd9-8c64-3695424ae9c8
+    columns_attributes:
+    - id: ad22f460-acfb-4c02-bf7c-12d8873c0ab7
+      name: Creation Date
+      description: Records the exact date and time with time zone when the post link
+        was created.
+      column_id: 4347c166-b414-4070-ab61-f18f63a58c78
+    - id: d90d800b-da8b-48eb-a042-836299bb57f3
+      name: linktypeid
+      description: Identifies the category of relationship between posts, such as
+        duplicate or related, using a numeric code like 1.
+      column_id: c1f4af70-9893-4a74-bd89-e49b059d7ada
+    - id: ff43778a-fb2e-4769-aa27-2591584b0995
+      name: Id
+      description: Uniquely identifies each post link record with a numeric key such
+        as 108 or 264.
+      column_id: e6a229ea-9550-469a-9165-8bf9eca3eb6c
+  - id: ce7ec3f0-9d93-45b9-8158-5dc02935a687
+    name: Post Revision
+    description: ''
+    represents:
+    - 84b50092-40aa-4afb-8d13-c54880be63a6
+    columns_attributes:
+    - id: 27034383-f227-43f8-ae96-a0932f9f8bd8
+      name: posthistorytypeid
+      description: Categorizes the revision by the type of historical action performed.
+      column_id: 05d03fef-712c-4d12-a0e9-4b0eb21a8d33
+    - id: 2faf4f32-7dfd-49fb-8071-e3eeb46997a8
+      name: Historical User Display Name
+      description: Identifies the revising user by their display name, e.g., user28.
+      column_id: 6e1555ca-9539-445b-a984-c9d9a46dca31
+    - id: 6f8638ec-f94e-4a07-b403-26c593368f49
+      name: Historical Comment
+      description: Captures the user's descriptive note explaining the nature of the
+        edit.
+      column_id: a8349964-abe0-4c14-909d-3acd50fb993f
+    - id: bb5b4a3a-131f-4180-bdc4-9bb5dc87f78e
+      name: Historical Creation Date
+      description: Records the timestamp with time zone when the revision was created.
+      column_id: f23d3eaa-7553-4cf5-929f-f3d4afbd91ad
+    - id: db5013c5-861b-4f50-9065-82dc572e0255
+      name: Historical Revision GUID
+      description: Provides a globally unique UUID reference for each revision.
+      column_id: 5005d9f1-8c0e-4e6f-b4ee-414d7013c0bb
+    - id: eb6f44f1-00d4-42a6-910a-04a82d6d4c2f
+      name: Historical Revision Text
+      description: Stores the revised content in tag markup format such as <data-visualization>.
+      column_id: 477df08d-8b14-4ff7-ab34-1320d3b8ec99
+    - id: ec606b3f-c347-4252-be64-0f2dd2d0d2dd
+      name: Historical Revision ID
+      description: Uniquely identifies each post revision with a sequential numeric
+        key.
+      column_id: ca56a21e-83a7-469c-b039-9cfe910fdda1
+  - id: 686a3775-8dcc-4024-840e-9616a9328e88
+    name: Tag
+    description: ''
+    represents:
+    - 294cfdb1-e749-479a-9424-179ab5ed6a86
+    columns_attributes:
+    - id: 2f9414d9-55cc-4544-a0e2-5bd09913fd89
+      name: Tag ID
+      description: Uniquely identifies each tag record in the system.
+      column_id: ef3d680d-6c07-4395-bd39-a69e32af1cc1
+    - id: 4bd3a097-749f-47e4-974c-634f002f26da
+      name: excerptpostid
+      description: Identifies the excerpt post associated with the tag.
+      column_id: 3b58c12b-0699-478f-a629-8ed0b9a45511
+    - id: 9e3ae3c8-4e8d-4671-85bf-8ff216e4acc6
+      name: Count
+      description: Indicates the number of occurrences or references linked to the
+        tag.
+      column_id: 036cc5a5-33b8-48d5-865c-e8b0d593b006
+    - id: a606c538-2827-4b06-8431-9e312f8aca59
+      name: Tag Name
+      description: Provides the textual label for a statistical or methodological
+        concept.
+      column_id: 81ee0e3a-4131-43b4-bc8d-6e78aeb76dfe
+    - id: e5622474-fc86-4b44-a2d9-5d40adb9a379
+      name: wikipostid
+      description: Identifies the wiki post associated with the tag.
+      column_id: 1cd46460-cba8-421c-af3c-24883ac3cde8
+  - id: 3a9e9af1-81e2-4d4f-93e4-70c41a74a732
+    name: User Account
+    description: Represents a user account in the system, including profile information,
+      activity metrics, and reputation.
+    represents:
+    - c650397b-0de0-4bf4-b199-ece92e913e93
+    columns_attributes:
+    - id: 011d55a0-3b8d-411f-98cf-ab3ca0298399
+      name: Website URL
+      description: User-provided website URL, with 'none' indicating no URL supplied.
+      column_id: d709ff37-eb2b-498f-adf7-1c8958629cfc
+    - id: 21726b4b-4c23-45df-acf0-99214fc9a7ea
+      name: Upvotes Received
+      description: Total number of upvotes received on the user's posts.
+      column_id: faf2f0d3-f10c-45c1-856d-4b1f3e5bd70a
+    - id: 25e80d6f-f600-4d8f-b5a7-cde10439be7a
+      name: Last Access Date
+      description: Timestamp with time zone of the user's most recent site access
+        or login.
+      column_id: 2ad4ca96-203f-4dd0-99b2-3e013a4a26a8
+    - id: 447d0811-e29c-4a3a-9e72-01234e6ff253
+      name: Profile Views
+      description: Total count of profile page views by other users.
+      column_id: 5896a578-d498-4d3c-94e5-d20d3046a22d
+    - id: 5f173a9a-906c-4e18-b876-82af36def7f3
+      name: Location
+      description: Self-reported geographic location such as country, city, or region.
+      column_id: 383b1908-86f7-4b8b-bde7-ef8b67998579
+    - id: 75e6c02c-31c7-4708-aad8-ae41f1dd4dc3
+      name: Downvotes Received
+      description: Total number of downvotes received on the user's posts.
+      column_id: cdc132bc-e869-4678-85b8-59a15c3ae4eb
+    - id: c7b00973-0d39-44ba-bfeb-2b1a503ffc7b
+      name: About Me
+      description: User-written profile biography in HTML format describing background
+        or interests.
+      column_id: c7f8ad73-9929-4c22-aa11-209b23015508
+    - id: c911d560-d5da-4685-8a33-9faad99ba633
+      name: Profile Image URL
+      description: URL of the user's profile avatar image hosted on Stack Imgur or
+        Gravatar.
+      column_id: 167021b5-c292-46ae-b5f8-212d35903f26
+    - id: dd30c10c-a1a3-41f1-95ff-5bc7f1293c2b
+      name: Display Name
+      description: Public display name chosen by the user for their profile.
+      column_id: 7cf6886c-5be7-4523-ad77-6744135d2f82
+    - id: e545b479-a790-4060-bedc-8a3a4215c083
+      name: Creation Date
+      description: Timestamp with time zone of when the user account was created.
+      column_id: c6124179-b40e-466d-a3f1-6df8225e1639
+    - id: e551a012-347b-47dd-9ce1-d095bc2802cb
+      name: Reputation Score
+      description: Reputation score indicating community trust earned from contributions.
+      column_id: 6a170f1c-c6b7-4b32-b2cc-159372add994
+    - id: ecb21a08-237f-4a23-a017-eb5989a51fe1
+      name: accountid
+      description: Unique account identifier, where -1 denotes a default or placeholder
+        account.
+      column_id: fc406dc8-3f6b-4bcd-9d03-a9cdc75e3872
+    - id: ef513b64-7cf5-4a7c-864a-c288f77b840a
+      name: User ID
+      description: Unique identifier for the user account, where -1 denotes a system
+        or anonymous user.
+      column_id: fcb489a5-525f-4b51-ae3b-9dde74f73494
+    - id: f38d1698-4d17-42b8-8d35-91f7d6cce695
+      name: Age
+      description: Self-reported age of the user in years.
+      column_id: e4ba16c1-7f6d-406c-aaa1-4e2d99510a2d
+  - id: 7793ff1c-4997-4d1f-950d-35e8327fa271
+    name: Vote
+    description: ''
+    represents:
+    - ac592159-33bf-42e4-b979-f95a8b534a75
+    columns_attributes:
+    - id: 3a0a7c8e-04b0-49b2-bacb-2d10b05a040d
+      name: Bounty Amount
+      description: Specifies the monetary bounty amount associated with the vote.
+      column_id: 69ec120b-0130-4f4f-8664-ca211bebd417
+    - id: 7632fb7d-3e2e-4f37-aadb-1093b8b87069
+      name: Vote ID
+      description: Uniquely identifies each vote record in the system.
+      column_id: ecb3524b-c578-45d6-805a-633fd28dd309
+    - id: a597d3f3-32b4-4bce-acfa-249b8587a995
+      name: Creation Date
+      description: Records the date the vote was cast in YYYY-MM-DD format.
+      column_id: 7ff0c96f-b9cb-4ac6-91e5-422fd104c459
+    - id: f4f28c04-7881-4871-aa0f-537fdd300e26
+      name: votetypeid
+      description: Identifies the category of vote cast, such as upvote, downvote,
+        or acceptance.
+      column_id: 973031c5-90d1-4643-ab01-d6f64a7c4639
+  semantic_fks:
+  - column_attribute_id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+    column_id: 27f0121b-f918-47ad-9d13-c33f8fbec106
+    use_in_join_paths: false
+  - column_attribute_id: ef513b64-7cf5-4a7c-864a-c288f77b840a
+    column_id: 347139f6-a340-4e40-a07e-4ce57b1e7999
+    use_in_join_paths: true
+  - column_attribute_id: ef513b64-7cf5-4a7c-864a-c288f77b840a
+    column_id: 3b11c796-df3c-4195-ac96-6d8178ada33e
+    use_in_join_paths: true
+  - column_attribute_id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+    column_id: 47f1a68a-54d8-4c7e-a92b-81cd7b003c92
+    use_in_join_paths: false
+  - column_attribute_id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+    column_id: 56a7ad2a-8f36-4adc-9cbe-09a495857093
+    use_in_join_paths: true
+  - column_attribute_id: ef513b64-7cf5-4a7c-864a-c288f77b840a
+    column_id: 595a8316-5cda-4541-a2cf-7b264984329b
+    use_in_join_paths: false
+  - column_attribute_id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+    column_id: 5ec06b91-c6f6-42d6-b89d-2e9a10d8b1c3
+    use_in_join_paths: true
+  - column_attribute_id: ef513b64-7cf5-4a7c-864a-c288f77b840a
+    column_id: 654da927-25ab-402d-bf9f-d5c1a0c84882
+    use_in_join_paths: true
+  - column_attribute_id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+    column_id: 7a6ec573-2420-4505-a7ec-9d2717ef49f1
+    use_in_join_paths: true
+  - column_attribute_id: ef513b64-7cf5-4a7c-864a-c288f77b840a
+    column_id: a840c645-7fb3-496a-9d01-d89787268d4f
+    use_in_join_paths: true
+  - column_attribute_id: ef513b64-7cf5-4a7c-864a-c288f77b840a
+    column_id: b1aa5543-8565-40dc-a670-6001453bee08
+    use_in_join_paths: true
+  - column_attribute_id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+    column_id: c54a7ce7-587b-4d56-8341-98529cf2a5cf
+    use_in_join_paths: true
+  - column_attribute_id: d4b2b172-662e-4a59-82c0-ac24d22a091b
+    column_id: c8dd78e8-7189-4e4f-bd80-06831dec6374
+    use_in_join_paths: true
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table: []
+  custom_analyses: []
+zones: []

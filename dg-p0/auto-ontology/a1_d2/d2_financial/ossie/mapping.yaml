@@ -1,0 +1,134 @@
+version: 0.2.0.dev0
+name: d2_financial_mapping
+description: Maps the d2_financial_ontology onto the d2_financial semantic model
+ontology_ref:
+  name: d2_financial_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_financial
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: Account
+  object_mappings:
+  - expression: account.account_id
+  link_mappings:
+  - object_mapping:
+      expression: account.account_id
+    children:
+    - object_mapping:
+        concept: Date
+        expression: account.frequency_date
+      relationship: frequency_date
+    - object_mapping:
+        concept: String
+        expression: account.frequency
+      relationship: frequency
+    - object_mapping:
+        concept: District
+        expression: account.district_id
+      relationship: district
+- concept: Client
+  object_mappings:
+  - expression: client.client_id
+  link_mappings:
+  - object_mapping:
+      expression: client.client_id
+    children:
+    - object_mapping:
+        concept: Date
+        expression: client.birth_date
+      relationship: birth_date
+    - object_mapping:
+        concept: String
+        expression: client.gender
+      relationship: gender
+    - object_mapping:
+        concept: District
+        expression: client.district_id
+      relationship: district
+- concept: Disposition
+  object_mappings:
+  - expression: disposition.disposition_id
+  link_mappings:
+  - object_mapping:
+      expression: disposition.disposition_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: disposition.client_role
+      relationship: client_role
+    - object_mapping:
+        concept: Account
+        expression: disposition.account_id
+      relationship: account
+    - object_mapping:
+        concept: Client
+        expression: disposition.client_id
+      relationship: client
+- concept: District
+  object_mappings:
+  - expression: district.district_id
+  link_mappings:
+  - object_mapping:
+      expression: district.district_id
+    children:
+    - object_mapping:
+        concept: Integer
+        expression: district.a15
+      relationship: a15
+    - object_mapping:
+        concept: String
+        expression: district.a5
+      relationship: a5
+    - object_mapping:
+        concept: Integer
+        expression: district.a9
+      relationship: a9
+    - object_mapping:
+        concept: String
+        expression: district.district_name
+      relationship: district_name
+    - object_mapping:
+        concept: Integer
+        expression: district.a11
+      relationship: a11
+    - object_mapping:
+        concept: String
+        expression: district.a7
+      relationship: a7
+    - object_mapping:
+        concept: String
+        expression: district.population_count
+      relationship: population_count
+    - object_mapping:
+        concept: Float
+        expression: district.a13
+      relationship: a13
+    - object_mapping:
+        concept: Integer
+        expression: district.a8
+      relationship: a8
+    - object_mapping:
+        concept: String
+        expression: district.a6
+      relationship: a6
+    - object_mapping:
+        concept: Integer
+        expression: district.a16
+      relationship: a16
+    - object_mapping:
+        concept: Integer
+        expression: district.a14
+      relationship: a14
+    - object_mapping:
+        concept: Float
+        expression: district.a10
+      relationship: a10
+    - object_mapping:
+        concept: Float
+        expression: district.a12
+      relationship: a12
+    - object_mapping:
+        concept: String
+        expression: district.region_name
+      relationship: region_name

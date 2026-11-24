@@ -1,0 +1,438 @@
+version: 0.2.0.dev0
+name: d2_financial_ontology
+description: Business concepts of the d2_financial semantic model
+ontology:
+- concept: Account
+  type: EntityType
+  description: Customer account with payment frequency details.
+  identify_by:
+  - account_id
+  relationships:
+  - name: account_id
+    description: Unique identifier for a customer account, linking to dispositions,
+      loans, orders, and transactions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Account} is identified by account id {Integer}'
+  - name: frequency_date
+    description: Calendar date of the account frequency entry, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Account} has frequency date {Date}'
+  - name: frequency
+    description: 'Payment frequency category for the account, with values: monthly
+      (POPLATEK MESICNE), weekly (POPLATEK TYDNE), or per-transaction (POPLATEK PO
+      OBRATU).'
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Account} has frequency {String}'
+  - name: district
+    roles:
+    - concept: District
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Account} has {District}'
+- concept: Card
+  type: EntityType
+  description: Represents a payment card issued to a customer.
+  relationships:
+  - name: card_id
+    description: Uniquely identifies each payment card issued to a customer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has card id {Integer}'
+  - name: card_type
+    description: Categorizes the card by product tier such as classic, junior, or
+      gold.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has card type {String}'
+  - name: issue_date
+    description: Records the date the card was issued to the customer in YYYY-MM-DD
+      format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has issue date {Date}'
+  - name: disposition
+    roles:
+    - concept: Disposition
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Card} has {Disposition}'
+- concept: Client
+  type: EntityType
+  identify_by:
+  - client_id
+  relationships:
+  - name: client_id
+    description: Unique identifier for each client, used by disposition records to
+      link transactions.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Client} is identified by client id {Integer}'
+  - name: birth_date
+    description: Client's date of birth, stored in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Client} has birth date {Date}'
+  - name: gender
+    description: Client's gender, recorded as 'M' for male or 'F' for female.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Client} has gender {String}'
+  - name: district
+    roles:
+    - concept: District
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Client} has {District}'
+- concept: Disposition
+  type: EntityType
+  identify_by:
+  - disposition_id
+  relationships:
+  - name: disposition_id
+    description: Unique identifier for the disposition linking an account to a client,
+      referenced by cards to associate them with the disposition.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Disposition} is identified by disposition id {Integer}'
+  - name: client_role
+    description: Role of the client in the disposition, either OWNER or DISPONENT,
+      indicating account ownership or authorized disposal rights.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Disposition} has client role {String}'
+  - name: account
+    roles:
+    - concept: Account
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Disposition} has {Account}'
+  - name: client
+    roles:
+    - concept: Client
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Disposition} has {Client}'
+- concept: District
+  type: EntityType
+  description: Geographic district with demographic and metric attributes.
+  identify_by:
+  - district_id
+  relationships:
+  - name: district_id
+    description: Uniquely identifies a geographic district and links accounts and
+      clients to their respective district.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{District} is identified by district id {Integer}'
+  - name: a15
+    description: Stores a large district-level monetary amount or aggregate quantity
+      as a bigint, e.g., 2854.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a15 {Integer}'
+  - name: a5
+    description: Contains a district-level metric (percentage or count) stored as
+      text, e.g., '60'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a5 {String}'
+  - name: a9
+    description: Represents a district-level code or categorical indicator as an integer,
+      e.g., 6.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a9 {Integer}'
+  - name: district_name
+    description: Stores the district's name, such as 'Hl.m. Praha' or 'Benesov'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has district name {String}'
+  - name: a11
+    description: Counts district entities or events as a large integer, e.g., 8369.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a11 {Integer}'
+  - name: a7
+    description: Stores a small district-level count or code as text, e.g., '4'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a7 {String}'
+  - name: population_count
+    description: Holds the district's population count stored as text, e.g., '1204953'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has population count {String}'
+  - name: a13
+    description: Provides a real-valued district metric like an average or index,
+      e.g., 3.6.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a13 {Float}'
+  - name: a8
+    description: Represents a district-level code or categorical indicator as an integer,
+      e.g., 1.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a8 {Integer}'
+  - name: a6
+    description: Contains a district-level metric (percentage or count) stored as
+      text, e.g., '26'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a6 {String}'
+  - name: a16
+    description: Unique numeric identifier for the district.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a16 {Integer}'
+  - name: a14
+    description: Counts district occurrences or units as an integer, e.g., 131.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a14 {Integer}'
+  - name: a10
+    description: Provides a real-valued district metric like a rate or percentage,
+      e.g., 100.0.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a10 {Float}'
+  - name: a12
+    description: Provides a real-valued district metric like an average or index,
+      e.g., 3.3.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has a12 {Float}'
+  - name: region_name
+    description: Records the region name where the district is located, like 'central
+      Bohemia'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{District} has region name {String}'
+- concept: Loan
+  type: EntityType
+  relationships:
+  - name: loan_date
+    description: Date when the loan was originated or disbursed, formatted as YYYY-MM-DD.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Loan} has loan date {Date}'
+  - name: loan_status
+    description: Current status code indicating the loan's state.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Loan} has loan status {String}'
+  - name: loan_id
+    description: Unique identifier assigned to each loan.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Loan} has loan id {Integer}'
+  - name: monthly_payment
+    description: Scheduled monthly payment amount for the loan.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Loan} has monthly payment {Float}'
+  - name: loan_duration
+    description: Length of the loan term in months.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Loan} has loan duration {Integer}'
+  - name: loan_amount
+    description: Principal loan amount expressed in the smallest currency unit.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Loan} has loan amount {Integer}'
+  - name: account
+    roles:
+    - concept: Account
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Loan} has {Account}'
+- concept: Order
+  type: EntityType
+  relationships:
+  - name: destination_bank
+    description: Indicates the destination bank code for the financial transaction.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has destination bank {String}'
+  - name: order_id
+    description: Uniquely identifies each order transaction in the system.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has order id {Integer}'
+  - name: transaction_category
+    description: Classifies the transaction by payment purpose such as leasing or
+      insurance.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has transaction category {String}'
+  - name: account_to
+    description: Identifies the destination account receiving the funds.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has account to {Integer}'
+  - name: amount
+    description: Represents the monetary value of the transaction in local currency.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has amount {Float}'
+  - name: account
+    roles:
+    - concept: Account
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Order} has {Account}'
+- concept: Transaction
+  type: EntityType
+  relationships:
+  - name: counterparty_account
+    description: Provides the counterparty account number, with zero meaning internal
+      or unspecified.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has counterparty account {Integer}'
+  - name: category_code
+    description: Indicates the transaction purpose using codes like salary, services,
+      pension, or loan.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has category code {String}'
+  - name: operation
+    description: Describes the specific operation performed, such as cash withdrawal,
+      deposit, or transfer.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has operation {String}'
+  - name: transaction_id
+    description: Identifies a specific financial transaction within the system.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has transaction id {Integer}'
+  - name: amount
+    description: States the monetary value of the transaction in the account currency.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has amount {Integer}'
+  - name: bank
+    description: Identifies the financial institution involved in the transaction.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has bank {String}'
+  - name: transaction_date
+    description: Records the processing date of the transaction in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has transaction date {Date}'
+  - name: balance
+    description: Shows the account balance after applying the transaction.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has balance {Integer}'
+  - name: transaction_type
+    description: Classifies the transaction as income, expense, or withdrawal.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has transaction type {String}'
+  - name: account
+    roles:
+    - concept: Account
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Transaction} has {Account}'

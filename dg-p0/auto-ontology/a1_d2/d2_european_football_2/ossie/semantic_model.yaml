@@ -1,0 +1,2297 @@
+version: 0.2.0.dev0
+name: d2_european_football_2
+datasets:
+- name: country
+  source: d2_european_football_2.public.country
+  description: A country reference entity.
+  unique_keys:
+  - - country_id
+  fields:
+  - name: country_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: A unique numeric identifier for each country, referenced by leagues
+      and matches to indicate the country they belong to.
+  - name: country_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: The official name of the country, such as Belgium, England, or Germany.
+- name: football_league
+  source: d2_european_football_2.public.league
+  description: A football league entity with its identifier and official name.
+  unique_keys:
+  - - league_id
+  fields:
+  - name: league_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Official league name combining country and competition title, e.g.,
+      England Premier League.
+  - name: league_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Unique numeric identifier for a football league, used to link matches
+      to their league.
+  - name: country_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: country_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: match
+  source: d2_european_football_2.public.match
+  description: A football match with its metadata, scores, and player lineup/position
+    data.
+  fields:
+  - name: away_player_x6
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x6
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's sixth player on the
+      field during the match.
+  - name: home_player_y3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y3
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's third player
+      in the match.
+  - name: home_team_goals
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_team_goal
+    datatype: Integer
+    description: Number of goals scored by the home team.
+  - name: away_player_x2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x2
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's second player on the
+      field during the match.
+  - name: match_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: String
+    description: Date and time of the match in YYYY-MM-DD HH:MM:SS format.
+  - name: home_player_x5
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x5
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 5.
+  - name: psh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: psh
+    datatype: Float
+    description: Indicates the decimal odds offered by Pinnacle Sports for a home
+      team win in the match.
+  - name: whh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: whh
+    datatype: Float
+    description: Indicates the decimal odds offered by William Hill for a home team
+      win in the match.
+  - name: vcd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: vcd
+    datatype: Float
+    description: Stores the draw betting odds from bookmaker VC as a real number.
+  - name: away_player_y3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y3
+    datatype: Integer
+    description: Records the vertical field coordinate of the away team's third player
+      in the match.
+  - name: away_player_x11
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x11
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's eleventh player on the
+      field during the match.
+  - name: home_player_x3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x3
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 3.
+  - name: bwh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bwh
+    datatype: Float
+    description: Indicates the decimal odds offered by Bet&Win for a home team win
+      in the match.
+  - name: possession
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: possession
+    datatype: String
+    description: Textual details of possession statistics or events during the match.
+  - name: shoton
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: shoton
+    datatype: String
+    description: Textual details of shots on target including player, minute, and
+      outcome.
+  - name: vca
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: vca
+    datatype: Float
+    description: Stores the away team win betting odds from bookmaker VC as a real
+      number.
+  - name: home_player_x8
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x8
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 8.
+  - name: bwa
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bwa
+    datatype: Float
+    description: Indicates the decimal odds offered by Bet&Win for an away team win
+      in the match.
+  - name: whd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: whd
+    datatype: Float
+    description: Stores the draw betting odds from bookmaker WH as a real number.
+  - name: corner
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: corner
+    datatype: String
+    description: Textual details of corner kick events including team, minute, and
+      outcome.
+  - name: bsh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bsh
+    datatype: Float
+    description: Stores the home team win betting odds from bookmaker BS as a real
+      number.
+  - name: home_player_y6
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y6
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's sixth player
+      in the match.
+  - name: shotoff
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: shotoff
+    datatype: String
+    description: Textual details of shots off target including player, minute, and
+      outcome.
+  - name: card
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: card
+    datatype: String
+    description: Textual details of card events including player, card type, and minute.
+  - name: gbd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gbd
+    datatype: Float
+    description: Stores the draw betting odds from bookmaker GB as a real number.
+  - name: away_player_x8
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x8
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's eighth player on the
+      field during the match.
+  - name: home_player_y10
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y10
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's tenth player
+      in the match.
+  - name: goal
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: goal
+    datatype: String
+    description: Textual details of goal events including scorer, minute, and goal
+      type.
+  - name: away_player_x5
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x5
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's fifth player on the
+      field during the match.
+  - name: home_player_y9
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y9
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's ninth player
+      in the match.
+  - name: b365d
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: b365d
+    datatype: Float
+    description: Indicates the decimal odds offered by Bet365 for a draw outcome in
+      the match.
+  - name: iwh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: iwh
+    datatype: Float
+    description: Indicates the decimal odds offered by Interwetten for a home team
+      win in the match.
+  - name: home_player_y4
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y4
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's fourth player
+      in the match.
+  - name: home_player_y1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y1
+    datatype: Integer
+    description: Captures the y-coordinate of the home team's first player on the
+      field during the match.
+  - name: away_player_x9
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x9
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's ninth player on the
+      field during the match.
+  - name: gbh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gbh
+    datatype: Float
+    description: Stores the home team win betting odds from bookmaker GB as a real
+      number.
+  - name: psd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: psd
+    datatype: Float
+    description: Indicates the decimal odds offered by Pinnacle Sports for a draw
+      outcome in the match.
+  - name: away_player_x7
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x7
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's seventh player on the
+      field during the match.
+  - name: home_player_x6
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x6
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 6.
+  - name: away_player_y10
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y10
+    datatype: Integer
+    description: Jersey number of the tenth away team player in the match lineup.
+  - name: lba
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lba
+    datatype: Float
+    description: Indicates the decimal odds offered by Ladbrokes for an away team
+      win in the match.
+  - name: away_player_x1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x1
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's first player on the
+      field during the match.
+  - name: home_player_y11
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y11
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's eleventh
+      player in the match.
+  - name: home_player_x10
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x10
+    datatype: Integer
+    description: Captures the x-coordinate of the home team's tenth player on the
+      field during the match.
+  - name: psa
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: psa
+    datatype: Float
+    description: Indicates the decimal odds offered by Pinnacle Sports for an away
+      team win in the match.
+  - name: match_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Unique identifier for the match record.
+  - name: iwa
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: iwa
+    datatype: Float
+    description: Indicates the decimal odds offered by Interwetten for an away team
+      win in the match.
+  - name: b365h
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: b365h
+    datatype: Float
+    description: Bet365 decimal odds for the home team to win the match.
+  - name: bsa
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bsa
+    datatype: Float
+    description: Stores the away team win betting odds from bookmaker BS as a real
+      number.
+  - name: lbd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lbd
+    datatype: Float
+    description: Indicates the decimal odds offered by Ladbrokes for a draw outcome
+      in the match.
+  - name: cross_
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cross
+    datatype: String
+    description: Textual details of cross events including player, minute, and outcome.
+    ai_context:
+      synonyms:
+      - cross
+  - name: bsd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bsd
+    datatype: Float
+    description: Stores the draw betting odds from bookmaker BS as a real number.
+  - name: b365a
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: b365a
+    datatype: Float
+    description: Indicates the decimal odds offered by Bet365 for an away team win
+      in the match.
+  - name: match_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: match_api_id
+    datatype: Integer
+    description: External API identifier linking the match to external football data
+      sources.
+  - name: stage
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: stage
+    datatype: Integer
+    description: Matchday or round number within the season.
+  - name: away_player_y1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y1
+    datatype: Integer
+    description: Records the vertical field coordinate of the away team's first player
+      in the match.
+  - name: home_player_x9
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x9
+    datatype: Integer
+    description: Captures the x-coordinate of the home team's ninth player on the
+      field during the match.
+  - name: away_player_y6
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y6
+    datatype: Integer
+    description: Jersey number of the sixth away team player in the match lineup.
+  - name: away_player_y8
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y8
+    datatype: Integer
+    description: Jersey number of the eighth away team player in the match lineup.
+  - name: home_player_y5
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y5
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's fifth player
+      in the match.
+  - name: home_player_x1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x1
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 1.
+  - name: lbh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lbh
+    datatype: Float
+    description: Indicates the decimal odds offered by Ladbrokes for a home team win
+      in the match.
+  - name: home_player_x11
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x11
+    datatype: Integer
+    description: Captures the x-coordinate of the home team's eleventh player on the
+      field during the match.
+  - name: away_player_y7
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y7
+    datatype: Integer
+    description: Jersey number of the seventh away team player in the match lineup.
+  - name: iwd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: iwd
+    datatype: Float
+    description: Indicates the decimal odds offered by Interwetten for a draw outcome
+      in the match.
+  - name: away_player_x10
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x10
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's tenth player on the
+      field during the match.
+  - name: home_player_x7
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x7
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 7.
+  - name: away_player_y4
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y4
+    datatype: Integer
+    description: Records the vertical field coordinate of the away team's fourth player
+      in the match.
+  - name: home_player_y2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y2
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's second player
+      in the match.
+  - name: away_team_goals
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_team_goal
+    datatype: Integer
+    description: Number of goals scored by the away team.
+  - name: away_player_y2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y2
+    datatype: Integer
+    description: Records the vertical field coordinate of the away team's second player
+      in the match.
+  - name: vch
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: vch
+    datatype: Float
+    description: Stores the home team win betting odds from bookmaker VC as a real
+      number.
+  - name: home_player_x2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x2
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 2.
+  - name: away_player_y9
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y9
+    datatype: Integer
+    description: Jersey number of the ninth away team player in the match lineup.
+  - name: away_player_x4
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x4
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's fourth player on the
+      field during the match.
+  - name: home_player_y8
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y8
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's eighth player
+      in the match.
+  - name: wha
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: wha
+    datatype: Float
+    description: Stores the away team win betting odds from bookmaker WH as a real
+      number.
+  - name: gba
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gba
+    datatype: Float
+    description: Stores the away team win betting odds from bookmaker GB as a real
+      number.
+  - name: home_player_x4
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_x4
+    datatype: Integer
+    description: Player identifier for the home team's starting lineup position 4.
+  - name: sjd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: sjd
+    datatype: Float
+    description: Stores the draw betting odds from bookmaker SJ as a real number.
+  - name: away_player_x3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_x3
+    datatype: Integer
+    description: Captures the x-coordinate of the away team's third player on the
+      field during the match.
+  - name: foulcommit
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: foulcommit
+    datatype: String
+    description: Textual details of fouls committed including player, minute, and
+      location.
+  - name: away_player_y11
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y11
+    datatype: Integer
+    description: Jersey number of the eleventh away team player in the match lineup.
+  - name: sja
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: sja
+    datatype: Float
+    description: Stores the away team win betting odds from bookmaker SJ as a real
+      number.
+  - name: season
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: season
+    datatype: String
+    description: Football season when the match was played, formatted as YYYY/YYYY.
+  - name: home_player_y7
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_y7
+    datatype: Integer
+    description: Records the vertical field coordinate of the home team's seventh
+      player in the match.
+  - name: sjh
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: sjh
+    datatype: Float
+    description: Stores the home team win betting odds from bookmaker SJ as a real
+      number.
+  - name: bwd
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bwd
+    datatype: Float
+    description: Indicates the decimal odds offered by Bet&Win for a draw outcome
+      in the match.
+  - name: away_player_y5
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_y5
+    datatype: Integer
+    description: Records the vertical field coordinate of the away team's fifth player
+      in the match.
+  - name: home_player_1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_1
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_5
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_5
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_6
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_6
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_3
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_8
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_8
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_10
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_10
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_11
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_11
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_4
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_4
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_7
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_7
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_4
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_4
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_10
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_10
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_9
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_9
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_3
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_3
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_9
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_9
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_2
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_11
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_11
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_1
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_1
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_6
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_6
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_2
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_2
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_8
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_8
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_player_5
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_player_5
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_player_7
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_player_7
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: home_team_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: home_team_api_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: away_team_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: away_team_api_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: league_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: league_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: country_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: country_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: player
+  source: d2_european_football_2.public.player
+  unique_keys:
+  - - player_id
+  - - player_api_id
+  fields:
+  - name: player_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: player_name
+    datatype: String
+    description: Full legal name of the player as recorded.
+  - name: player_fifa_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: player_fifa_api_id
+    datatype: Integer
+    description: FIFA system identifier used to associate player attribute data.
+  - name: height
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: height
+    datatype: Integer
+    description: Player's height measured in centimeters.
+  - name: weight
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: weight
+    datatype: Integer
+    description: Player's weight measurement as recorded.
+  - name: birthday
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: birthday
+    datatype: String
+    description: Date of birth of the player in YYYY-MM-DD HH:MM:SS format.
+  - name: player_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Unique internal identifier for each player record.
+  - name: player_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: player_api_id
+    datatype: Integer
+    description: External API identifier linking the player to match lineup records.
+- name: player_attribute
+  source: d2_european_football_2.public.player_attributes
+  fields:
+  - name: vision
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: vision
+    datatype: Integer
+    description: Measures a player's anticipation and passing accuracy to teammates
+      in advantageous positions on a numeric scale.
+  - name: marking
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: marking
+    datatype: Integer
+    description: Assesses a player's effectiveness in tracking and closely defending
+      an assigned opponent during play on a numeric scale.
+  - name: long_passing
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: long_passing
+    datatype: Integer
+    description: Rates the player's long passing ability as an integer score (e.g.,
+      53).
+  - name: stamina
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: stamina
+    datatype: Integer
+    description: Rates the player's stamina as an integer score (e.g., 79).
+  - name: sprint_speed
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: sprint_speed
+    datatype: Integer
+    description: Rates the player's sprint speed as an integer score (e.g., 78).
+  - name: defensive_work_rate
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defensive_work_rate
+    datatype: String
+    description: Qualitatively rates the player's defensive contribution and tracking
+      back behavior.
+  - name: agility
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: agility
+    datatype: Integer
+    description: Rates the player's agility as an integer score (e.g., 74).
+  - name: jumping
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: jumping
+    datatype: Integer
+    description: Rates the player's jumping ability as an integer score (e.g., 71).
+  - name: gk_kicking
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gk_kicking
+    datatype: Integer
+    description: Reflects a goalkeeper's accuracy and distance when distributing the
+      ball via goal kicks or punts on a numeric scale.
+  - name: gk_diving
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gk_diving
+    datatype: Integer
+    description: Measures a goalkeeper's agility and reach when diving to make saves
+      across the goal on a numeric scale.
+  - name: overall_rating
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: overall_rating
+    datatype: Integer
+    description: Represents the player's overall ability level as a composite numerical
+      score.
+  - name: date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: String
+    description: Records the timestamp when the player's attributes were captured,
+      formatted as YYYY-MM-DD HH:MM:SS.
+  - name: balance
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: balance
+    datatype: Integer
+    description: Rates the player's balance as an integer score (e.g., 72).
+  - name: acceleration
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: acceleration
+    datatype: Integer
+    description: Rates the player's acceleration as an integer score (e.g., 69).
+  - name: ball_control
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ball_control
+    datatype: Integer
+    description: Rates the player's ball control skill as an integer score (e.g.,
+      73).
+  - name: attacking_work_rate
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: attacking_work_rate
+    datatype: String
+    description: Qualitatively rates the player's offensive effort and positioning
+      tendency.
+  - name: reactions
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: reactions
+    datatype: Integer
+    description: Rates the player's reactions as an integer score (e.g., 70).
+  - name: interceptions
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: interceptions
+    datatype: Integer
+    description: Rates the player's interceptions ability as an integer score (e.g.,
+      66).
+  - name: positioning
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: positioning
+    datatype: Integer
+    description: Rates the player's positioning ability as an integer score (e.g.,
+      68).
+  - name: finishing
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: finishing
+    datatype: Integer
+    description: Evaluates the player's accuracy and composure when shooting at goal
+      from close range.
+  - name: standing_tackle
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: standing_tackle
+    datatype: Integer
+    description: Evaluates a player's skill in cleanly winning the ball via standing
+      tackle without fouling on a numeric scale.
+  - name: long_shots
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: long_shots
+    datatype: Integer
+    description: Rates the player's long shots ability as an integer score (e.g.,
+      74).
+  - name: curve
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: curve
+    datatype: Integer
+    description: Assesses the player's ability to apply spin on the ball for curved
+      passes or shots.
+  - name: short_passing
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: short_passing
+    datatype: Integer
+    description: Assesses the player's accuracy and speed in completing short-distance
+      passes.
+  - name: free_kick_accuracy
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: free_kick_accuracy
+    datatype: Integer
+    description: Measures the player's precision in placing direct free kicks on target.
+  - name: heading_accuracy
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: heading_accuracy
+    datatype: Integer
+    description: Measures the player's precision and effectiveness in heading the
+      ball.
+  - name: shot_power
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: shot_power
+    datatype: Integer
+    description: Rates the player's shot power as an integer score (e.g., 71).
+  - name: preferred_foot
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: preferred_foot
+    datatype: String
+    description: Specifies the foot the player prefers for kicking and ball control.
+  - name: sliding_tackle
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: sliding_tackle
+    datatype: Integer
+    description: Rates a player's ability to execute sliding tackles to dispossess
+      opponents while minimizing foul risk on a numeric scale.
+  - name: gk_reflexes
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gk_reflexes
+    datatype: Integer
+    description: Measures a goalkeeper's reaction speed for instinctive saves on close-range
+      or deflected shots on a numeric scale.
+  - name: strength
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: strength
+    datatype: Integer
+    description: Rates the player's physical strength as an integer score (e.g., 71).
+  - name: gk_positioning
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gk_positioning
+    datatype: Integer
+    description: Represents a goalkeeper's sense of optimal placement relative to
+      ball and goal to reduce scoring angles on a numeric scale.
+  - name: crossing
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: crossing
+    datatype: Integer
+    description: Assesses the player's ability to deliver accurate crosses from wide
+      areas into the penalty box.
+  - name: gk_handling
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: gk_handling
+    datatype: Integer
+    description: Indicates a goalkeeper's ability to securely catch and hold shots
+      rather than parry on a numeric scale.
+  - name: id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each player attribute snapshot in the dataset.
+  - name: penalties
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: penalties
+    datatype: Integer
+    description: Quantifies a player's penalty kick proficiency, including accuracy
+      and composure under pressure, on a numeric scale.
+  - name: potential
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: potential
+    datatype: Integer
+    description: Indicates the projected maximum overall rating the player can achieve
+      in their career.
+  - name: dribbling
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: dribbling
+    datatype: Integer
+    description: Measures the player's close ball control and ability to maneuver
+      past opponents while running.
+  - name: volleys
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: volleys
+    datatype: Integer
+    description: Evaluates the player's skill in striking the ball cleanly while it
+      is airborne.
+  - name: aggression
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: aggression
+    datatype: Integer
+    description: Rates the player's aggression as an integer score (e.g., 59).
+  - name: player_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: player_api_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: player_fifa_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: player_fifa_api_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: team
+  source: d2_european_football_2.public.team
+  unique_keys:
+  - - team_api_id
+  - - team_fifa_api_id
+  fields:
+  - name: team_long_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: team_long_name
+    datatype: String
+    description: Full official competition name of the football team.
+  - name: team_fifa_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: team_fifa_api_id
+    datatype: Integer
+    description: FIFA-assigned identifier connecting the team to official FIFA data
+      and attribute records.
+  - name: team_short_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: team_short_name
+    datatype: String
+    description: Abbreviated display code used to identify the team.
+  - name: team_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: team_api_id
+    datatype: Integer
+    description: External API identifier linking the team to matches and attribute
+      records in third-party systems.
+  - name: id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Internal unique identifier for each team record in the system.
+- name: team_tactical_profile
+  source: d2_european_football_2.public.team_attributes
+  description: A tactical profile record for a team capturing buildup play, chance
+    creation, and defensive attributes.
+  fields:
+  - name: buildup_play_speed
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: buildupplayspeed
+    datatype: Integer
+    description: Rates the team's buildup play speed on a numeric scale.
+  - name: defence_team_width_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defenceteamwidthclass
+    datatype: String
+    description: The defensive formation width categorized as Normal, Wide, or Narrow
+      based on the numerical width indicator.
+  - name: buildup_play_passing
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: buildupplaypassing
+    datatype: Integer
+    description: Rates the team's passing style during buildup play on a numeric scale.
+  - name: buildup_play_positioning_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: buildupplaypositioningclass
+    datatype: String
+    description: Classifies the team's buildup positioning as Organised or Free Form.
+  - name: buildup_play_dribbling
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: buildupplaydribbling
+    datatype: Integer
+    description: Rates the team's dribbling tendency during buildup play on a numeric
+      scale.
+  - name: chance_creation_shooting_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chancecreationshootingclass
+    datatype: String
+    description: Classifies the team's chance creation shooting tendency as Normal,
+      Lots, or Little.
+  - name: profile_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: String
+    description: Records the timestamp when the tactical profile was captured in YYYY-MM-DD
+      HH:MM:SS format.
+  - name: chance_creation_shooting
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chancecreationshooting
+    datatype: Integer
+    description: Rates the team's shooting tendency during chance creation on a numeric
+      scale.
+  - name: buildup_play_dribbling_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: buildupplaydribblingclass
+    datatype: String
+    description: Classifies the team's buildup dribbling tendency as Little, Normal,
+      or Lots.
+  - name: defence_pressure_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defencepressureclass
+    datatype: String
+    description: The defensive pressure intensity categorized as Medium, Deep, or
+      High based on the numerical pressure rating.
+  - name: buildup_play_speed_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: buildupplayspeedclass
+    datatype: String
+    description: Classifies the team's buildup play speed as Balanced, Fast, or Slow.
+  - name: chance_creation_crossing_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chancecreationcrossingclass
+    datatype: String
+    description: Classifies the team's chance creation crossing frequency as Normal,
+      Lots, or Little.
+  - name: chance_creation_positioning_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chancecreationpositioningclass
+    datatype: String
+    description: The tactical positioning approach a team uses when creating scoring
+      opportunities, classified as Organised or Free Form.
+  - name: buildup_play_passing_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: buildupplaypassingclass
+    datatype: String
+    description: Classifies the team's buildup passing style as Mixed, Short, or Long.
+  - name: profile_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each team tactical profile record.
+  - name: chance_creation_crossing
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chancecreationcrossing
+    datatype: Integer
+    description: Rates the team's crossing frequency during chance creation on a numeric
+      scale.
+  - name: chance_creation_passing
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chancecreationpassing
+    datatype: Integer
+    description: Rates the team's passing approach during chance creation on a numeric
+      scale.
+  - name: defence_team_width
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defenceteamwidth
+    datatype: Integer
+    description: A numerical indicator of the horizontal spread of a team's defensive
+      unit on the pitch, expressed as an integer.
+  - name: defence_pressure
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defencepressure
+    datatype: Integer
+    description: A numerical rating measuring the intensity of defensive pressure
+      a team applies, expressed as an integer value.
+  - name: chance_creation_passing_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: chancecreationpassingclass
+    datatype: String
+    description: Classifies the team's chance creation passing as Normal, Risky, or
+      Safe.
+  - name: defence_aggression
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defenceaggression
+    datatype: Integer
+    description: A numerical score quantifying how aggressively a team's defense engages
+      opposing attackers, expressed as an integer.
+  - name: defence_defender_line_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defencedefenderlineclass
+    datatype: String
+    description: The defensive line strategy employed by a team, classified as either
+      Cover or Offside Trap.
+  - name: defence_aggression_class
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: defenceaggressionclass
+    datatype: String
+    description: The defensive aggression style classified as Press, Double, or Contain
+      based on the numerical aggression rating.
+  - name: team_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: team_api_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: team_fifa_api_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: team_fifa_api_id
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_european_football_2","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"ebd7522b-f321-4b16-a97c-853d1daf3288","schemas":[{"database_name":"d2_european_football_2","id":"e2fd1bd3-9b98-4b55-b514-92570887d5bd","name":"public","tables":[{"columns":[{"description":"A
+    unique numeric identifier for each country record.","id":"6216602b-72bd-4d57-b5dc-b181c0d5af7d","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,1729,4769,7809,10257],"type":"bigint"},{"description":"The
+    official name of the country.","id":"2c96b029-d448-4c1f-87df-0352670825c8","is_nullable":true,"is_unique":true,"name":"name","sample_values":["Belgium","England","France","Germany","Italy"],"type":"text"}],"description":"","id":"ed942359-f21d-4caf-b67e-7859553db695","name":"country","pk":[],"type":"base
+    table"},{"columns":[{"description":"A unique numeric identifier assigned to each
+    football league record.","id":"2d2aa8d0-d689-4af2-93ff-1238d712fd1d","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,1729,4769,7809,10257],"type":"bigint"},{"description":"","id":"56ae8960-1874-470c-8303-71bad33bb97d","is_nullable":true,"is_unique":true,"name":"country_id","sample_values":[1,1729,4769,7809,10257],"type":"bigint"},{"description":"The
+    official name of the football league, including the country and league title.","id":"002d05dc-3909-4ab7-bb25-a7feede02dd8","is_nullable":true,"is_unique":true,"name":"name","sample_values":["Belgium
+    Jupiler League","England Premier League","France Ligue 1","Germany 1. Bundesliga","Italy
+    Serie A"],"type":"text"}],"description":"","id":"708091aa-8d91-4709-8d62-f7d91ae0edac","name":"league","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each match record in
+    the dataset.","id":"54acfae2-4132-4a4e-8c33-57fec881a5fb","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"b3e47f42-01ab-45b1-856f-b4eea38d56a8","is_nullable":true,"is_unique":false,"name":"country_id","sample_values":[1],"type":"bigint"},{"description":"","id":"10f843c5-cda0-40ab-856a-9db43cbed795","is_nullable":true,"is_unique":false,"name":"league_id","sample_values":[1],"type":"bigint"},{"description":"The
+    football season during which the match was played, represented as a start year/end
+    year string.","id":"7cea927b-9a05-42e5-a9ba-4b1cb0a85f40","is_nullable":true,"is_unique":false,"name":"season","sample_values":["2008/2009","2010/2011","2011/2012","2009/2010","2012/2013"],"type":"text"},{"description":"The
+    matchday or round number within the season when the match occurred.","id":"83b309b3-9550-4f13-aea1-060d4bf93fd6","is_nullable":true,"is_unique":false,"name":"stage","sample_values":[1,10,11,12,13],"type":"bigint"},{"description":"The
+    date and time when the match took place, stored as a text string in ISO-like format.","id":"14bc28d7-371b-46b6-8940-0b9644be7dea","is_nullable":true,"is_unique":false,"name":"date","sample_values":["2009-05-09
+    00:00:00","2009-05-16 00:00:00","2011-03-12 00:00:00","2012-03-18 00:00:00","2012-03-21
+    00:00:00"],"type":"text"},{"description":"External API identifier for the match,
+    used to link with external football data sources.","id":"44667174-14c1-43ec-9e33-ee7a87d3543f","is_nullable":true,"is_unique":true,"name":"match_api_id","sample_values":[492473,492474,492475,492476,492477],"type":"bigint"},{"description":"","id":"c87475d7-9ed3-4fef-86e0-44c512a6e1e8","is_nullable":true,"is_unique":false,"name":"home_team_api_id","sample_values":[9985,9993,8571,9987,10000],"type":"bigint"},{"description":"","id":"e817399f-bef9-4d78-a3e2-6ebafd8d32ba","is_nullable":true,"is_unique":false,"name":"away_team_api_id","sample_values":[9994,8635,10000,9993,9985],"type":"bigint"},{"description":"Number
+    of goals scored by the home team in the match.","id":"08d5bbed-0846-46a1-a43d-4b92afd74e08","is_nullable":true,"is_unique":false,"name":"home_team_goal","sample_values":[1,2,0,3,4],"type":"bigint"},{"description":"Number
+    of goals scored by the away team in the match.","id":"054f4ef7-2d3c-4398-85ef-c968e0c76337","is_nullable":true,"is_unique":false,"name":"away_team_goal","sample_values":[1,0,2,3,4],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 1 of the starting lineup.","id":"1009b708-3804-4f97-bf15-ea1f43bdba09","is_nullable":true,"is_unique":false,"name":"home_player_x1","sample_values":[1.0],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 2 of the starting lineup.","id":"5dde6e10-cef2-4355-8868-2374aa396381","is_nullable":true,"is_unique":false,"name":"home_player_x2","sample_values":[2.0,3.0,1.0,4.0,5.0],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 3 of the starting lineup.","id":"0928b350-6e16-46be-8968-70b6a6e0f70c","is_nullable":true,"is_unique":false,"name":"home_player_x3","sample_values":[4.0,3.0,5.0,6.0,7.0],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 4 of the starting lineup.","id":"d16de3fe-2406-4dac-9996-95d05adec77b","is_nullable":true,"is_unique":false,"name":"home_player_x4","sample_values":[6.0,7.0,5.0,8.0,4.0],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 5 of the starting lineup.","id":"30d6615c-55d7-4c7a-a543-1c46519bbaf5","is_nullable":true,"is_unique":false,"name":"home_player_x5","sample_values":[8.0,1.0,7.0,2.0,6.0],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 6 of the starting lineup.","id":"3d3e38fc-10cf-46ca-883d-e40da3c9a6f5","is_nullable":true,"is_unique":false,"name":"home_player_x6","sample_values":[2.0,3.0,9.0,4.0,1.0],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 7 of the starting lineup.","id":"42b9007d-f701-4995-b01d-4d10187469fe","is_nullable":true,"is_unique":false,"name":"home_player_x7","sample_values":[4.0,5.0,3.0,6.0,7.0],"type":"bigint"},{"description":"Player
+    ID for the home team''s player in position 8 of the starting lineup.","id":"3a672099-5738-41a6-8363-a394e6d3fea6","is_nullable":true,"is_unique":false,"name":"home_player_x8","sample_values":[6.0,7.0,5.0,8.0,4.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the home team''s ninth player on the field during the
+    match.","id":"5ac22eec-962a-4b5e-9672-36b3a1a8d178","is_nullable":true,"is_unique":false,"name":"home_player_x9","sample_values":[8.0,3.0,7.0,9.0,6.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the home team''s tenth player on the field during the
+    match.","id":"5f79eb42-7b31-4f86-afa4-52d0a87505d3","is_nullable":true,"is_unique":false,"name":"home_player_x10","sample_values":[4.0,5.0,9.0,8.0,6.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the home team''s eleventh player on the field during
+    the match.","id":"70cfdf28-558b-4e18-a24f-c9d7444a8efc","is_nullable":true,"is_unique":false,"name":"home_player_x11","sample_values":[6.0,7.0,5.0,4.0,3.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s first player on the field during the
+    match.","id":"891fd3d3-dc48-4ca3-a83e-116c72feecb7","is_nullable":true,"is_unique":false,"name":"away_player_x1","sample_values":[1.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s second player on the field during the
+    match.","id":"057b3cb6-cb0c-45c2-ad47-5f0b6a9031a9","is_nullable":true,"is_unique":false,"name":"away_player_x2","sample_values":[2.0,3.0,1.0,4.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s third player on the field during the
+    match.","id":"e02acea2-7bc3-42aa-929d-bbbefb8490a2","is_nullable":true,"is_unique":false,"name":"away_player_x3","sample_values":[4.0,3.0,5.0,6.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s fourth player on the field during the
+    match.","id":"2d0e4586-13a1-4f54-b45e-243d676aabc8","is_nullable":true,"is_unique":false,"name":"away_player_x4","sample_values":[6.0,7.0,5.0,8.0,2.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s fifth player on the field during the
+    match.","id":"bf10b224-e6e3-46ad-bbc0-ff60dfab7280","is_nullable":true,"is_unique":false,"name":"away_player_x5","sample_values":[8.0,1.0,7.0,2.0,6.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s sixth player on the field during the
+    match.","id":"5600544a-73a1-4139-ac2c-dc4c2c5dc278","is_nullable":true,"is_unique":false,"name":"away_player_x6","sample_values":[2.0,3.0,9.0,4.0,1.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s seventh player on the field during the
+    match.","id":"04860c11-c9ce-425b-a92c-427480314143","is_nullable":true,"is_unique":false,"name":"away_player_x7","sample_values":[4.0,5.0,3.0,6.0,7.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s eighth player on the field during the
+    match.","id":"90b8bfb5-edcf-410b-b63a-8546868971bb","is_nullable":true,"is_unique":false,"name":"away_player_x8","sample_values":[6.0,7.0,5.0,8.0,4.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s ninth player on the field during the
+    match.","id":"26fbb06a-887e-46dc-b052-07a3608ba7b9","is_nullable":true,"is_unique":false,"name":"away_player_x9","sample_values":[8.0,3.0,7.0,9.0,6.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s tenth player on the field during the
+    match.","id":"a2f10d21-5a05-43c7-9670-eb94a1ea528b","is_nullable":true,"is_unique":false,"name":"away_player_x10","sample_values":[4.0,5.0,9.0,8.0,6.0],"type":"bigint"},{"description":"The
+    x-coordinate position of the away team''s eleventh player on the field during
+    the match.","id":"c05ed483-f353-4f21-b4e6-a49abe1942d9","is_nullable":true,"is_unique":false,"name":"away_player_x11","sample_values":[6.0,7.0,5.0,4.0,3.0],"type":"bigint"},{"description":"The
+    y-coordinate position of the home team''s first player on the field during the
+    match.","id":"ec7d7e08-03ed-4a27-9ec0-74d52e67cd7f","is_nullable":true,"is_unique":false,"name":"home_player_y1","sample_values":[1.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 2 on the field.","id":"bf56e5fb-6d56-4351-a5a3-ec81471aa1e0","is_nullable":true,"is_unique":false,"name":"home_player_y2","sample_values":[3.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 3 on the field.","id":"34e586fe-e4ba-48b0-849f-2a3731731c2d","is_nullable":true,"is_unique":false,"name":"home_player_y3","sample_values":[3.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 4 on the field.","id":"a1283359-d59c-491d-abdc-d300e1d32124","is_nullable":true,"is_unique":false,"name":"home_player_y4","sample_values":[3.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 5 on the field.","id":"126dc355-369d-4ebb-ad93-6bf72d8ab3f5","is_nullable":true,"is_unique":false,"name":"home_player_y5","sample_values":[3.0,7.0,6.0,5.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 6 on the field.","id":"d881c778-8751-4eb7-877a-2a18a52e7069","is_nullable":true,"is_unique":false,"name":"home_player_y6","sample_values":[7.0,3.0,6.0,5.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 7 on the field.","id":"9e3c9c11-63d3-4a22-92c4-73f3b649edb8","is_nullable":true,"is_unique":false,"name":"home_player_y7","sample_values":[7.0,6.0,8.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 8 on the field.","id":"dbdcd268-4e9f-48b7-afe9-72afa66043eb","is_nullable":true,"is_unique":false,"name":"home_player_y8","sample_values":[7.0,8.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 9 on the field.","id":"6ebd93af-2667-4f69-9331-37fa65441a25","is_nullable":true,"is_unique":false,"name":"home_player_y9","sample_values":[7.0,10.0,8.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 10 on the field.","id":"5c7b7d7f-7587-4bf6-b868-7ed9e8177cfa","is_nullable":true,"is_unique":false,"name":"home_player_y10","sample_values":[10.0,7.0,8.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the home team''s player number 11 on the field.","id":"75db96b8-2366-4071-8b3c-f9e9faeab485","is_nullable":true,"is_unique":false,"name":"home_player_y11","sample_values":[10.0,11.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the away team''s player number 1 on the field.","id":"30b5ab79-cd0f-4810-a876-558ae93ca180","is_nullable":true,"is_unique":false,"name":"away_player_y1","sample_values":[1.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the away team''s player number 2 on the field.","id":"bef4050f-bb19-4f3f-b0b7-7d0b80083c0c","is_nullable":true,"is_unique":false,"name":"away_player_y2","sample_values":[3.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the away team''s player number 3 on the field.","id":"282e7ede-4fbc-44ac-8b82-b1c4a899c6ff","is_nullable":true,"is_unique":false,"name":"away_player_y3","sample_values":[3.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the away team''s player number 4 on the field.","id":"9abfacf9-a35a-4df5-b87e-688d77f098cd","is_nullable":true,"is_unique":false,"name":"away_player_y4","sample_values":[3.0],"type":"bigint"},{"description":"Represents
+    the y-coordinate position of the away team''s player number 5 on the field.","id":"66778320-dec1-4b01-b642-debf77d30b13","is_nullable":true,"is_unique":false,"name":"away_player_y5","sample_values":[3.0,7.0,6.0],"type":"bigint"},{"description":"Represents
+    the jersey number of the sixth away team player in the match lineup.","id":"e5689f4e-cfbb-46f0-b212-f46eb1c0d25d","is_nullable":true,"is_unique":false,"name":"away_player_y6","sample_values":[7.0,3.0,6.0],"type":"bigint"},{"description":"Represents
+    the jersey number of the seventh away team player in the match lineup.","id":"f032f07c-16ee-4837-8104-18bc64ed5462","is_nullable":true,"is_unique":false,"name":"away_player_y7","sample_values":[7.0,6.0,8.0],"type":"bigint"},{"description":"Represents
+    the jersey number of the eighth away team player in the match lineup.","id":"443b6fa8-4dd2-498d-84d4-d55d105fb805","is_nullable":true,"is_unique":false,"name":"away_player_y8","sample_values":[7.0,8.0,6.0],"type":"bigint"},{"description":"Represents
+    the jersey number of the ninth away team player in the match lineup.","id":"5345e476-edf4-486e-92ff-1acd9e41e5a7","is_nullable":true,"is_unique":false,"name":"away_player_y9","sample_values":[7.0,10.0,8.0],"type":"bigint"},{"description":"Represents
+    the jersey number of the tenth away team player in the match lineup.","id":"bbcbc053-e0ea-4258-83b7-cc41ba73497a","is_nullable":true,"is_unique":false,"name":"away_player_y10","sample_values":[10.0,7.0,8.0,9.0],"type":"bigint"},{"description":"Represents
+    the jersey number of the eleventh away team player in the match lineup.","id":"c0904121-567d-41fe-9a54-f879fa06bb58","is_nullable":true,"is_unique":false,"name":"away_player_y11","sample_values":[10.0,11.0],"type":"bigint"},{"description":"","id":"18688e02-3d90-47d6-b12d-068adbade2d4","is_nullable":true,"is_unique":false,"name":"home_player_1","sample_values":[38391.0,37900.0,104378.0,36835.0,38797.0],"type":"bigint"},{"description":"","id":"bd71fa40-33e0-4c30-bd82-a1386cf18e39","is_nullable":true,"is_unique":false,"name":"home_player_2","sample_values":[38342.0,36832.0,67950.0,37886.0,37988.0],"type":"bigint"},{"description":"","id":"302abcb9-e6d3-41f3-ad33-2322b8c8e8d9","is_nullable":true,"is_unique":false,"name":"home_player_3","sample_values":[36849.0,38389.0,37100.0,38441.0,37047.0],"type":"bigint"},{"description":"","id":"78f3df28-6bd9-44b3-9b87-57ec426cb72b","is_nullable":true,"is_unique":false,"name":"home_player_4","sample_values":[38789.0,45413.0,12473.0,42594.0,94462.0],"type":"bigint"},{"description":"","id":"1c2bd87e-57fc-4368-9f34-feec854ee156","is_nullable":true,"is_unique":false,"name":"home_player_5","sample_values":[148314.0,67941.0,149150.0,131404.0,47411.0],"type":"bigint"},{"description":"","id":"1c676110-1a79-4d32-8c5b-5349c43c00b7","is_nullable":true,"is_unique":false,"name":"home_player_6","sample_values":[38354.0,39578.0,32863.0,27110.0,38371.0],"type":"bigint"},{"description":"","id":"fd79e973-5548-4682-9f3f-fd1281e34e12","is_nullable":true,"is_unique":false,"name":"home_player_7","sample_values":[37866.0,67898.0,39498.0,38290.0,37981.0],"type":"bigint"},{"description":"","id":"329be031-7697-4e16-853a-b7838b05a8be","is_nullable":true,"is_unique":false,"name":"home_player_8","sample_values":[38366.0,104386.0,131531.0,38253.0,104411.0],"type":"bigint"},{"description":"","id":"9098e566-82f8-47aa-8aa2-63082c4017fb","is_nullable":true,"is_unique":false,"name":"home_player_9","sample_values":[38357.0,169200.0,148335.0,166618.0,163670.0],"type":"bigint"},{"description":"","id":"388f15cf-cf12-491d-87aa-46020f5ff84c","is_nullable":true,"is_unique":false,"name":"home_player_10","sample_values":[42153.0,27423.0,33622.0,12574.0,37262.0],"type":"bigint"},{"description":"","id":"a71b1187-32b0-4881-a6f2-f7eaf55ada1b","is_nullable":true,"is_unique":false,"name":"home_player_11","sample_values":[148315.0,164732.0,38440.0,46335.0,104404.0],"type":"bigint"},{"description":"","id":"b4c02586-b9bf-4ba9-bfb9-ac4129176785","is_nullable":true,"is_unique":false,"name":"away_player_1","sample_values":[38391.0,37900.0,104378.0,39573.0,38797.0],"type":"bigint"},{"description":"","id":"93a64fdf-35e2-48a9-82b7-c8dc152bc836","is_nullable":true,"is_unique":false,"name":"away_player_2","sample_values":[38342.0,67950.0,36832.0,37988.0,37886.0],"type":"bigint"},{"description":"","id":"8e797f64-c47e-4958-8a36-255854b0c781","is_nullable":true,"is_unique":false,"name":"away_player_3","sample_values":[38441.0,38389.0,36849.0,38337.0,37100.0],"type":"bigint"},{"description":"","id":"6230a756-9c63-4da4-8a6a-79138da6727e","is_nullable":true,"is_unique":false,"name":"away_player_4","sample_values":[12473.0,38789.0,94030.0,39389.0,94462.0],"type":"bigint"},{"description":"","id":"eccd250f-6cbb-4550-9022-4eb17524390c","is_nullable":true,"is_unique":false,"name":"away_player_5","sample_values":[148314.0,67941.0,131404.0,149150.0,94030.0],"type":"bigint"},{"description":"","id":"b6fecb5b-a517-41b9-b534-7382c2dbfc68","is_nullable":true,"is_unique":false,"name":"away_player_6","sample_values":[27110.0,30910.0,38354.0,32863.0,37893.0],"type":"bigint"},{"description":"","id":"75db51f8-bce9-4fe6-9076-85810a745700","is_nullable":true,"is_unique":false,"name":"away_player_7","sample_values":[37866.0,67898.0,37112.0,38969.0,38257.0],"type":"bigint"},{"description":"","id":"e2b5f292-e3e6-4e0d-8202-989978e3d578","is_nullable":true,"is_unique":false,"name":"away_player_8","sample_values":[38253.0,38290.0,131531.0,38366.0,40521.0],"type":"bigint"},{"description":"","id":"837a66c7-9f9f-4930-b0c6-72ea99aa30e9","is_nullable":true,"is_unique":false,"name":"away_player_9","sample_values":[182605.0,42706.0,178291.0,38786.0,163670.0],"type":"bigint"},{"description":"","id":"8128760f-10a0-4578-b2ea-0ea70cab4db1","is_nullable":true,"is_unique":false,"name":"away_player_10","sample_values":[12574.0,5016.0,37025.0,37262.0,33622.0],"type":"bigint"},{"description":"","id":"6048e808-6594-45ef-99bc-d413411b8307","is_nullable":true,"is_unique":false,"name":"away_player_11","sample_values":[38369.0,148315.0,181276.0,38782.0,46335.0],"type":"bigint"},{"description":"Contains
+    textual details about goal events such as scorer, minute, or type of goal.","id":"09598009-d6fb-4582-b881-15a8c44fc41d","is_nullable":true,"is_unique":false,"name":"goal","sample_values":[],"type":"text"},{"description":"Contains
+    textual details about shots on target including player, minute, or outcome.","id":"61efc63f-34b2-4618-a995-14165d32aa32","is_nullable":true,"is_unique":false,"name":"shoton","sample_values":[],"type":"text"},{"description":"Contains
+    textual details about shots off target including player, minute, or outcome.","id":"ff21cf43-b38b-460b-bb66-8ea067e5d1d0","is_nullable":true,"is_unique":false,"name":"shotoff","sample_values":[],"type":"text"},{"description":"Contains
+    textual details about fouls committed including player, minute, or location.","id":"d05c039f-f5e3-436a-aa22-5cfed4910bc8","is_nullable":true,"is_unique":false,"name":"foulcommit","sample_values":[],"type":"text"},{"description":"Contains
+    textual details about card events such as player, card type, and minute.","id":"78d6431e-2e56-4824-9243-c1995b5095d1","is_nullable":true,"is_unique":false,"name":"card","sample_values":[],"type":"text"},{"description":"Contains
+    textual details about cross events including player, minute, or outcome.","id":"10fe9215-2bbc-4ead-8797-f7c0dfa61dbb","is_nullable":true,"is_unique":false,"name":"cross","sample_values":[],"type":"text"},{"description":"Contains
+    textual details about corner kick events including team, minute, or outcome.","id":"546b5cf5-d057-4cf6-a2b4-fa7a23ec91d0","is_nullable":true,"is_unique":false,"name":"corner","sample_values":[],"type":"text"},{"description":"Contains
+    textual details about possession statistics or events during the match.","id":"560089c9-26bc-4262-8b8b-2af2701e4e71","is_nullable":true,"is_unique":false,"name":"possession","sample_values":[],"type":"text"},{"description":"Represents
+    the Bet365 decimal odds for the home team to win the match.","id":"524d1e58-cf2a-4e0d-986a-42bf5ce89d7d","is_nullable":true,"is_unique":false,"name":"b365h","sample_values":[2.1,1.91,2.0,2.2,1.44],"type":"real"},{"description":"Bet365
+    decimal odds for a draw outcome in the match.","id":"456d08c8-5ef6-4b35-a43d-a4d352277b96","is_nullable":true,"is_unique":false,"name":"b365d","sample_values":[3.3,3.4,3.25,3.5,3.6],"type":"real"},{"description":"Bet365
+    decimal odds for an away team win in the match.","id":"3d486d0d-ac3f-4934-8b1d-5af86d1176aa","is_nullable":true,"is_unique":false,"name":"b365a","sample_values":[4.0,5.0,2.5,6.0,8.0],"type":"real"},{"description":"Bet&Win
+    decimal odds for a home team win in the match.","id":"872c0c38-a143-47cd-a724-39d70085026d","is_nullable":true,"is_unique":false,"name":"bwh","sample_values":[2.2,2.1,1.75,2.3,1.45],"type":"real"},{"description":"Bet&Win
+    decimal odds for a draw outcome in the match.","id":"d99769ae-2e5b-4f66-a02a-e665ac88fd1f","is_nullable":true,"is_unique":false,"name":"bwd","sample_values":[3.3,3.2,3.4,3.25,3.5],"type":"real"},{"description":"Bet&Win
+    decimal odds for an away team win in the match.","id":"019bd4df-1cdb-436d-9408-92958a3b87e3","is_nullable":true,"is_unique":false,"name":"bwa","sample_values":[3.0,3.1,2.8,3.4,2.3],"type":"real"},{"description":"Interwetten
+    decimal odds for a home team win in the match.","id":"14c5af91-4dd5-4e54-a612-b72fe3fc07bd","is_nullable":true,"is_unique":false,"name":"iwh","sample_values":[2.2,2.0,2.3,2.1,1.9],"type":"real"},{"description":"Interwetten
+    decimal odds for a draw outcome in the match.","id":"06517b57-9b3c-4d33-ac72-1b0ac464827a","is_nullable":true,"is_unique":false,"name":"iwd","sample_values":[3.2,3.3,3.1,3.4,3.9],"type":"real"},{"description":"Interwetten
+    decimal odds for an away team win in the match.","id":"bc04dbd3-3d1b-488b-acb9-5a141276a8c9","is_nullable":true,"is_unique":false,"name":"iwa","sample_values":[2.5,2.3,3.1,6.0,2.8],"type":"real"},{"description":"Ladbrokes
+    decimal odds for a home team win in the match.","id":"fe7a360e-1dba-4e9f-91f5-750cc963369e","is_nullable":true,"is_unique":false,"name":"lbh","sample_values":[2.2,2.5,2.1,1.91,2.0],"type":"real"},{"description":"Ladbrokes
+    decimal odds for a draw outcome in the match.","id":"888e2562-da99-4909-a381-84c29053c9f1","is_nullable":true,"is_unique":false,"name":"lbd","sample_values":[3.2,3.25,3.3,3.4,3.5],"type":"real"},{"description":"Ladbrokes
+    decimal odds for an away team win in the match.","id":"a7fe9b67-5a45-41c6-ae42-6f3162594a5d","is_nullable":true,"is_unique":false,"name":"lba","sample_values":[2.5,7.0,2.75,8.0,5.0],"type":"real"},{"description":"Pinnacle
+    Sports decimal odds for a home team win in the match.","id":"ece86525-b7b0-44f8-8a4c-73cbaf4e1675","is_nullable":true,"is_unique":true,"name":"psh","sample_values":[5.1,2.48,1.83,1.74],"type":"real"},{"description":"Pinnacle
+    Sports decimal odds for a draw outcome in the match.","id":"43c01143-1761-486e-bea6-9b45698b16f8","is_nullable":true,"is_unique":false,"name":"psd","sample_values":[3.82,3.52,3.79],"type":"real"},{"description":"Pinnacle
+    Sports decimal odds for an away team win in the match.","id":"2e9488e7-972e-4988-9bba-ed821c07ea24","is_nullable":true,"is_unique":true,"name":"psa","sample_values":[1.76,2.96,4.63,5.2],"type":"real"},{"description":"William
+    Hill decimal odds for a home team win in the match.","id":"f985a041-bc30-4a79-9ade-ef91d6826b89","is_nullable":true,"is_unique":false,"name":"whh","sample_values":[2.1,2.5,2.2,2.0,1.8],"type":"real"},{"description":"whd
+    is a real-valued column with sample values typically ranging from 3.2 to 3.5.","id":"df0127ef-e453-45fb-9550-ac75e4898126","is_nullable":true,"is_unique":false,"name":"whd","sample_values":[3.3,3.2,3.25,3.4,3.5],"type":"real"},{"description":"wha
+    is a real-valued column with sample values observed between 2.5 and 8.0.","id":"14ebc5cb-1448-4b22-afcd-fc3d2878f9a7","is_nullable":true,"is_unique":false,"name":"wha","sample_values":[3.0,5.0,3.2,8.0,5.5],"type":"real"},{"description":"sjh
+    is a real-valued column with sample values typically ranging from 1.67 to 2.3.","id":"616b50dc-a292-43f8-8b77-6b71420583ad","is_nullable":true,"is_unique":false,"name":"sjh","sample_values":[2.1,2.2,2.3,2.0,1.67],"type":"real"},{"description":"sjd
+    is a real-valued column with sample values typically ranging from 3.2 to 3.5.","id":"4f245026-1577-46d7-91fc-8867fdfb5f42","is_nullable":true,"is_unique":false,"name":"sjd","sample_values":[3.3,3.4,3.25,3.5,3.2],"type":"real"},{"description":"sja
+    is a real-valued column with sample values observed between 2.5 and 7.5.","id":"e4a4918e-4644-4a35-8ad0-6a58aa5da8b2","is_nullable":true,"is_unique":false,"name":"sja","sample_values":[4.0,3.0,2.5,3.1,7.5],"type":"real"},{"description":"vch
+    is a real-valued column with sample values typically ranging from 1.4 to 2.4.","id":"e136337f-5580-4668-b283-6a7a1d960fa8","is_nullable":true,"is_unique":false,"name":"vch","sample_values":[2.25,2.0,1.4,2.1,2.4],"type":"real"},{"description":"vcd
+    is a real-valued column with sample values typically ranging from 3.2 to 3.5.","id":"a3b45358-49a6-47b6-8ba4-b11876f04655","is_nullable":true,"is_unique":false,"name":"vcd","sample_values":[3.25,3.4,3.3,3.2,3.5],"type":"real"},{"description":"vca
+    is a real-valued column with sample values observed between 4.0 and 7.5.","id":"2f410e19-9d28-4fc9-8777-f119a669e88d","is_nullable":true,"is_unique":false,"name":"vca","sample_values":[4.0,4.5,5.5,7.5,5.0],"type":"real"},{"description":"gbh
+    is a real-valued column with sample values typically ranging from 2.0 to 2.5.","id":"4fb47b6e-9b8f-4009-aee9-aa7e0ca6a8f6","is_nullable":true,"is_unique":false,"name":"gbh","sample_values":[2.1,2.2,2.3,2.0,2.5],"type":"real"},{"description":"gbd
+    is a real-valued column with sample values typically ranging from 3.2 to 3.5.","id":"d3bccb3e-11e6-4222-93d6-118074e82e55","is_nullable":true,"is_unique":false,"name":"gbd","sample_values":[3.25,3.2,3.4,3.3,3.5],"type":"real"},{"description":"gba
+    is a real-valued column with sample values observed between 2.5 and 10.0.","id":"e684caac-aad2-45cd-85c8-883782197620","is_nullable":true,"is_unique":false,"name":"gba","sample_values":[7.0,3.0,2.5,3.75,10.0],"type":"real"},{"description":"bsh
+    is a real-valued column with sample values typically ranging from 1.44 to 2.5.","id":"59485858-d4ef-4594-ac88-af418972c598","is_nullable":true,"is_unique":false,"name":"bsh","sample_values":[2.0,2.3,2.1,1.44,2.5],"type":"real"},{"description":"bsd
+    is a real-valued column with sample values typically ranging from 3.2 to 3.6.","id":"581ef986-f17c-4734-bbd1-b30a47326623","is_nullable":true,"is_unique":false,"name":"bsd","sample_values":[3.2,3.25,3.3,3.4,3.6],"type":"real"},{"description":"bsa
+    is a real-valued column with sample values observed between 2.5 and 7.0.","id":"c931a06b-4f66-4f94-9e5c-a8f5530ce9da","is_nullable":true,"is_unique":false,"name":"bsa","sample_values":[2.5,7.0,3.3,5.0,3.1],"type":"real"}],"description":"","id":"642572f5-422b-403f-a7fe-561149fccf04","name":"match","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each player record.","id":"79c58002-f1f2-422c-8bbf-631d005bbcea","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"External
+    API identifier assigned to the player.","id":"40b70d77-6aff-4e6a-a77f-817cd2386040","is_nullable":true,"is_unique":true,"name":"player_api_id","sample_values":[505942,155782,162549,30572,23780],"type":"bigint"},{"description":"Full
+    name of the player.","id":"c56044a9-47b9-44ea-b33e-2aaa07213688","is_nullable":true,"is_unique":true,"name":"player_name","sample_values":["Adriano","Alex","Anselmo","Adailton","Adam
+    Drury"],"type":"text"},{"description":"A unique identifier assigned to a player
+    in the FIFA API system.","id":"b12acdb8-2815-4c0a-901c-2a13db694d43","is_nullable":true,"is_unique":true,"name":"player_fifa_api_id","sample_values":[218353,189615,186170,140161,17725],"type":"bigint"},{"description":"Date
+    of birth of the player.","id":"299d8c93-5ec9-4511-bdd7-0e709b927f2d","is_nullable":true,"is_unique":false,"name":"birthday","sample_values":["1992-03-30
+    00:00:00","1995-03-07 00:00:00","1987-04-01 00:00:00","1979-05-29 00:00:00","1986-06-17
+    00:00:00"],"type":"text"},{"description":"Height of the player in centimeters.","id":"71d4c27e-7565-4a42-b90b-d096d278ce72","is_nullable":true,"is_unique":false,"name":"height","sample_values":[182,177,180,187,185],"type":"bigint"},{"description":"Weight
+    of the player.","id":"6ac792fb-d9a8-4cf8-bdd0-179b2c31c91c","is_nullable":true,"is_unique":false,"name":"weight","sample_values":[165,172,161,176,154],"type":"bigint"}],"description":"","id":"aa413435-eb2e-4bbc-955a-9a035f843aed","name":"player","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each player record in
+    the dataset.","id":"c80bcd37-31f8-4da9-98c2-4d600885893f","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"1d37649b-9336-4993-9d4f-495083d99828","is_nullable":true,"is_unique":false,"name":"player_fifa_api_id","sample_values":[186561,189615,161999,204826,194958],"type":"bigint"},{"description":"","id":"d9f79dad-35f4-4244-a15f-01a89631169c","is_nullable":true,"is_unique":false,"name":"player_api_id","sample_values":[75489,155782,39562,191784,231592],"type":"bigint"},{"description":"Timestamp
+    indicating when the player''s attribute snapshot was recorded.","id":"627037c9-8bc6-4763-8c9d-e45ef8996784","is_nullable":true,"is_unique":false,"name":"date","sample_values":["2007-02-22
+    00:00:00","2015-09-21 00:00:00","2014-09-18 00:00:00","2013-02-15 00:00:00","2012-08-31
+    00:00:00"],"type":"text"},{"description":"Composite numerical score representing
+    the player''s overall ability level.","id":"4a7ba310-cb2b-44bb-9ee4-604132c74432","is_nullable":true,"is_unique":false,"name":"overall_rating","sample_values":[71.0,69.0,67.0,73.0,66.0],"type":"bigint"},{"description":"Projected
+    maximum overall rating the player can achieve in their career.","id":"aeb215fe-4014-43ce-ae2f-8e56bd1980e3","is_nullable":true,"is_unique":false,"name":"potential","sample_values":[73.0,75.0,70.0,74.0,77.0],"type":"bigint"},{"description":"The
+    foot the player favors for kicking and ball control.","id":"3d340aca-0eeb-4cec-b3f4-5885e25e4ab5","is_nullable":true,"is_unique":false,"name":"preferred_foot","sample_values":["right","left"],"type":"text"},{"description":"Qualitative
+    measure of the player''s offensive effort and positioning tendency.","id":"4e7497c4-75a5-4755-a050-222d165e1956","is_nullable":true,"is_unique":false,"name":"attacking_work_rate","sample_values":["medium","high","low","None","le"],"type":"text"},{"description":"Qualitative
+    measure of the player''s defensive contribution and tracking back behavior.","id":"a015248f-1c16-4f22-b5df-a00fecaa1338","is_nullable":true,"is_unique":false,"name":"defensive_work_rate","sample_values":["medium","high","low","_0","5"],"type":"text"},{"description":"Player''s
+    ability to deliver accurate passes from wide areas into the penalty box.","id":"ee8b02fb-3d7c-4d02-9418-732fa18d3ac7","is_nullable":true,"is_unique":false,"name":"crossing","sample_values":[64.0,65.0,48.0,74.0,67.0],"type":"bigint"},{"description":"Player''s
+    accuracy and composure when shooting at goal from close range.","id":"5ed67165-1ca9-4043-b619-2de799fbab02","is_nullable":true,"is_unique":false,"name":"finishing","sample_values":[50.0,21.0,33.0,67.0,52.0],"type":"bigint"},{"description":"Player''s
+    precision and effectiveness when directing the ball with their head.","id":"8546281b-249f-4e96-97d3-4d3edd1d24f6","is_nullable":true,"is_unique":false,"name":"heading_accuracy","sample_values":[66.0,65.0,58.0,61.0,62.0],"type":"bigint"},{"description":"Player''s
+    accuracy and speed in completing short-distance passes to teammates.","id":"adc75a73-8819-4440-bb89-db60260126cd","is_nullable":true,"is_unique":false,"name":"short_passing","sample_values":[64.0,69.0,66.0,63.0,68.0],"type":"bigint"},{"description":"Player''s
+    skill in striking the ball cleanly while it is in the air before it bounces.","id":"42c630b9-dbda-4b1c-9bc4-f0e930f466d8","is_nullable":true,"is_unique":false,"name":"volleys","sample_values":[29.0,64.0,30.0,55.0,32.0],"type":"bigint"},{"description":"Player''s
+    close ball control and ability to maneuver past opponents while running.","id":"750af3cf-a191-4bad-ac46-ba833cb98202","is_nullable":true,"is_unique":false,"name":"dribbling","sample_values":[66.0,73.0,69.0,75.0,71.0],"type":"bigint"},{"description":"Player''s
+    ability to apply spin on the ball for curved passes or shots.","id":"025e8663-02a9-4e48-997f-15dc93e36b33","is_nullable":true,"is_unique":false,"name":"curve","sample_values":[64.0,68.0,65.0,35.0,69.0],"type":"bigint"},{"description":"Player''s
+    precision in placing direct free kicks on target.","id":"27c879f8-5794-4c44-bc76-d0104e25bfd6","is_nullable":true,"is_unique":false,"name":"free_kick_accuracy","sample_values":[57.0,48.0,58.0,22.0,70.0],"type":"bigint"},{"description":"Represents
+    a player''s long passing ability rating in football.","id":"ed7f1aec-1f1b-41ba-89e0-30175b0d8594","is_nullable":true,"is_unique":false,"name":"long_passing","sample_values":[53.0,67.0,63.0,56.0,64.0],"type":"bigint"},{"description":"Represents
+    a player''s ball control skill rating in football.","id":"8aaa083a-fcde-44a7-9181-ccf933a6bcd7","is_nullable":true,"is_unique":false,"name":"ball_control","sample_values":[73.0,70.0,71.0,62.0,78.0],"type":"bigint"},{"description":"Represents
+    a player''s acceleration rating in football.","id":"16a25694-a2e2-4104-aec2-3e4475b33fff","is_nullable":true,"is_unique":false,"name":"acceleration","sample_values":[69.0,77.0,79.0,66.0,73.0],"type":"bigint"},{"description":"Represents
+    a player''s sprint speed rating in football.","id":"0671fcd5-ba3a-4969-82b7-8330b74f5b16","is_nullable":true,"is_unique":false,"name":"sprint_speed","sample_values":[78.0,69.0,77.0,66.0,81.0],"type":"bigint"},{"description":"Represents
+    a player''s agility rating in football.","id":"a4d53a06-4518-420d-b8c6-81f9de74c452","is_nullable":true,"is_unique":false,"name":"agility","sample_values":[74.0,71.0,57.0,79.0,81.0],"type":"bigint"},{"description":"Represents
+    a player''s reactions rating in football.","id":"4543970d-c1d7-43ba-bbad-28875ed3f4bc","is_nullable":true,"is_unique":false,"name":"reactions","sample_values":[70.0,64.0,67.0,62.0,69.0],"type":"bigint"},{"description":"Represents
+    a player''s balance rating in football.","id":"97aac51e-a6d3-42ad-b0c9-ede53e9fcfee","is_nullable":true,"is_unique":false,"name":"balance","sample_values":[72.0,62.0,65.0,52.0,60.0],"type":"bigint"},{"description":"Represents
+    a player''s shot power rating in football.","id":"d152c54a-d74d-4465-a8d8-b36462c7d279","is_nullable":true,"is_unique":false,"name":"shot_power","sample_values":[71.0,70.0,63.0,61.0,73.0],"type":"bigint"},{"description":"Represents
+    a player''s jumping ability rating in football.","id":"6022675b-0ed5-4014-850c-6705b4b4d8ce","is_nullable":true,"is_unique":false,"name":"jumping","sample_values":[71.0,70.0,65.0,73.0,63.0],"type":"bigint"},{"description":"Represents
+    a player''s stamina rating in football.","id":"fc91f8b8-f82f-484f-a19d-e6d8421295bd","is_nullable":true,"is_unique":false,"name":"stamina","sample_values":[79.0,72.0,64.0,74.0,75.0],"type":"bigint"},{"description":"Represents
+    a player''s physical strength rating in football.","id":"6f650765-af37-4e5f-b0be-4c76b0215b15","is_nullable":true,"is_unique":false,"name":"strength","sample_values":[71.0,68.0,74.0,66.0,75.0],"type":"bigint"},{"description":"Represents
+    a player''s long shots ability rating in football.","id":"b94b3cf7-4cc9-484f-b389-3d60a0c3012d","is_nullable":true,"is_unique":false,"name":"long_shots","sample_values":[74.0,52.0,51.0,56.0,25.0],"type":"bigint"},{"description":"Represents
+    a player''s aggression rating in football.","id":"d22cb16d-beb2-4f83-ba12-ad81689de13d","is_nullable":true,"is_unique":false,"name":"aggression","sample_values":[59.0,62.0,66.0,69.0,65.0],"type":"bigint"},{"description":"Represents
+    a player''s interceptions ability rating in football.","id":"d6d1f896-9e80-4ec8-9a5e-a3c23aa7f237","is_nullable":true,"is_unique":false,"name":"interceptions","sample_values":[66.0,54.0,62.0,67.0,44.0],"type":"bigint"},{"description":"Represents
+    a player''s positioning ability rating in football.","id":"28747b06-bc57-45ef-868c-0248c5bb1193","is_nullable":true,"is_unique":false,"name":"positioning","sample_values":[68.0,57.0,67.0,56.0,66.0],"type":"bigint"},{"description":"Represents
+    a player''s ability to anticipate play and make accurate passes to teammates in
+    advantageous positions.","id":"6811e6d0-ea4b-4c36-83fa-1303990817c1","is_nullable":true,"is_unique":false,"name":"vision","sample_values":[67.0,68.0,81.0,70.0,61.0],"type":"bigint"},{"description":"Measures
+    a player''s proficiency in taking penalty kicks, including accuracy and composure
+    under pressure.","id":"70c3fd5b-1118-4032-b62d-710a3ea1c39f","is_nullable":true,"is_unique":false,"name":"penalties","sample_values":[44.0,67.0,53.0,68.0,41.0],"type":"bigint"},{"description":"Indicates
+    a player''s effectiveness in tracking and closely defending an assigned opponent
+    during play.","id":"afff6041-9b35-415b-8299-9273a5b7cc42","is_nullable":true,"is_unique":false,"name":"marking","sample_values":[22.0,65.0,52.0,67.0,25.0],"type":"bigint"},{"description":"Reflects
+    a player''s skill in winning the ball cleanly using a standing tackle without
+    committing a foul.","id":"ddfb1485-8118-429e-911d-aa8258fd9779","is_nullable":true,"is_unique":false,"name":"standing_tackle","sample_values":[68.0,63.0,64.0,65.0,71.0],"type":"bigint"},{"description":"Represents
+    a player''s ability to execute a sliding tackle to dispossess an opponent while
+    minimizing foul risk.","id":"f30492ab-dd48-4ef1-844f-33a7d3175970","is_nullable":true,"is_unique":false,"name":"sliding_tackle","sample_values":[61.0,60.0,62.0,21.0,65.0],"type":"bigint"},{"description":"Measures
+    a goalkeeper''s agility and reach when diving to make saves across the goal.","id":"10bce8e7-a834-4e4f-8f09-b8a261c9ec1b","is_nullable":true,"is_unique":false,"name":"gk_diving","sample_values":[11.0,14.0,10.0,6.0,7.0],"type":"bigint"},{"description":"Indicates
+    a goalkeeper''s ability to securely catch and hold onto shots rather than parrying
+    them.","id":"d748091c-20ed-440a-8b52-ea4448f7d665","is_nullable":true,"is_unique":false,"name":"gk_handling","sample_values":[11.0,10.0,6.0,13.0,14.0],"type":"bigint"},{"description":"Reflects
+    a goalkeeper''s accuracy and distance when distributing the ball via goal kicks
+    or punts.","id":"f896a4b0-d159-4489-96a4-a566febff04d","is_nullable":true,"is_unique":false,"name":"gk_kicking","sample_values":[11.0,8.0,5.0,12.0,7.0],"type":"bigint"},{"description":"Represents
+    a goalkeeper''s sense of optimal placement relative to the ball and goal to reduce
+    scoring angles.","id":"bc3113ca-5545-46b9-9db9-bcfa3faf4913","is_nullable":true,"is_unique":false,"name":"gk_positioning","sample_values":[11.0,10.0,7.0,15.0,14.0],"type":"bigint"},{"description":"Measures
+    a goalkeeper''s reaction speed to make instinctive saves on close-range or deflected
+    shots.","id":"873637c6-8738-427b-83df-7f6325ae4402","is_nullable":true,"is_unique":false,"name":"gk_reflexes","sample_values":[8.0,14.0,10.0,7.0,9.0],"type":"bigint"}],"description":"","id":"5dddbb7f-4d74-4bf7-a5b1-1f10b8f996da","name":"player_attributes","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each team record in
+    the database.","id":"9a73532c-3126-419b-9780-b5b1fedde92b","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"External
+    API identifier used to reference the team in third-party data sources.","id":"0693bb20-ae25-41f8-ba7a-df0ae2c6a119","is_nullable":true,"is_unique":true,"name":"team_api_id","sample_values":[9987,9993,10000,9994,9984],"type":"bigint"},{"description":"FIFA-assigned
+    API identifier for the team, used in official FIFA data systems.","id":"4aeb6d74-9926-4a56-88f1-e0c60bd5fa2a","is_nullable":true,"is_unique":true,"name":"team_fifa_api_id","sample_values":[111560.0,111429.0,301.0,673.0,675.0],"type":"bigint"},{"description":"Full
+    official name of the football team as recognized in competitions.","id":"5ad52d11-e554-414f-8f6a-7943d17b5dc0","is_nullable":true,"is_unique":true,"name":"team_long_name","sample_values":["Royal
+    Excel Mouscron","Polonia Bytom","Widzew \u0141\u00f3d\u017a","KRC Genk","Beerschot
+    AC"],"type":"text"},{"description":"Abbreviated code representing the team for
+    display and identification purposes.","id":"11820994-6727-48b0-af5d-229e7e055a57","is_nullable":true,"is_unique":false,"name":"team_short_name","sample_values":["GEN","MON","POR","VAL","GRA"],"type":"text"}],"description":"","id":"238d9f1f-07c4-4b5c-81b2-de7dabf7485b","name":"team","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each team tactical profile
+    record.","id":"da3e0c90-134a-4852-9ec4-af13286c942b","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"92d8de0d-d87d-45e5-a245-623febfd6c38","is_nullable":true,"is_unique":false,"name":"team_fifa_api_id","sample_values":[77,614,47,1901,650],"type":"bigint"},{"description":"","id":"abf24a80-52c5-4427-9c94-a15f53dee2dd","is_nullable":true,"is_unique":false,"name":"team_api_id","sample_values":[8485,8576,8564,10215,10217],"type":"bigint"},{"description":"Timestamp
+    indicating when the tactical profile was recorded, stored as text in ISO format.","id":"15f83109-56e3-4588-90f9-7352c9dc48d3","is_nullable":true,"is_unique":false,"name":"date","sample_values":["2015-09-10
+    00:00:00","2014-09-19 00:00:00","2011-02-22 00:00:00","2012-02-22 00:00:00","2010-02-22
+    00:00:00"],"type":"text"},{"description":"Numeric rating representing the team''s
+    speed during buildup play.","id":"f2b54b0c-d501-4732-aa8d-e6372be540a6","is_nullable":true,"is_unique":false,"name":"buildupplayspeed","sample_values":[50,45,30,70,55],"type":"bigint"},{"description":"Categorical
+    classification of the team''s buildup play speed as Balanced, Fast, or Slow.","id":"b11790d1-09e0-4726-aae3-ee4b83053364","is_nullable":true,"is_unique":false,"name":"buildupplayspeedclass","sample_values":["Balanced","Fast","Slow"],"type":"text"},{"description":"Numeric
+    rating representing the team''s dribbling tendency during buildup play.","id":"fe82009f-12ba-4e98-b6b5-e5d19e154c2b","is_nullable":true,"is_unique":false,"name":"buildupplaydribbling","sample_values":[48.0,52.0,55.0,53.0,49.0],"type":"bigint"},{"description":"Categorical
+    classification of the team''s buildup dribbling as Little, Normal, or Lots.","id":"6d813993-ff64-4726-80e1-c02a8d969e24","is_nullable":true,"is_unique":false,"name":"buildupplaydribblingclass","sample_values":["Little","Normal","Lots"],"type":"text"},{"description":"Numeric
+    rating representing the team''s passing style during buildup play.","id":"013a07fb-ca6e-4483-804f-b0cd198a67af","is_nullable":true,"is_unique":false,"name":"buildupplaypassing","sample_values":[50,52,30,54,55],"type":"bigint"},{"description":"Categorical
+    classification of the team''s buildup passing as Mixed, Short, or Long.","id":"252979f0-a759-419c-88c9-1cdcffe01958","is_nullable":true,"is_unique":false,"name":"buildupplaypassingclass","sample_values":["Mixed","Short","Long"],"type":"text"},{"description":"Categorical
+    classification of the team''s buildup positioning as Organised or Free Form.","id":"a3a7a137-0ade-4709-8f49-ec3351328ad9","is_nullable":true,"is_unique":false,"name":"buildupplaypositioningclass","sample_values":["Organised","Free
+    Form"],"type":"text"},{"description":"Numeric rating representing the team''s
+    passing approach during chance creation.","id":"272590cd-e521-4b67-a528-3a3aa3ecc9e6","is_nullable":true,"is_unique":false,"name":"chancecreationpassing","sample_values":[50,55,52,49,53],"type":"bigint"},{"description":"Categorical
+    classification of the team''s chance creation passing as Normal, Risky, or Safe.","id":"937cb6da-38cf-49c9-9389-93e39fdb1b28","is_nullable":true,"is_unique":false,"name":"chancecreationpassingclass","sample_values":["Normal","Risky","Safe"],"type":"text"},{"description":"Numeric
+    rating representing the team''s crossing frequency during chance creation.","id":"9df7cdf6-271c-4df7-9af5-9bd4429a75da","is_nullable":true,"is_unique":false,"name":"chancecreationcrossing","sample_values":[50,53,70,54,55],"type":"bigint"},{"description":"Categorical
+    classification of the team''s chance creation crossing as Normal, Lots, or Little.","id":"4e61f672-a893-4b46-9374-44a7727c00dc","is_nullable":true,"is_unique":false,"name":"chancecreationcrossingclass","sample_values":["Normal","Lots","Little"],"type":"text"},{"description":"Numeric
+    rating representing the team''s shooting tendency during chance creation.","id":"f1a6cf4c-09f7-45cc-9843-da8a9bbec69f","is_nullable":true,"is_unique":false,"name":"chancecreationshooting","sample_values":[50,52,70,55,65],"type":"bigint"},{"description":"Categorical
+    classification of the team''s chance creation shooting as Normal, Lots, or Little.","id":"a5e57be4-88a0-4d59-9974-6acf4d39818c","is_nullable":true,"is_unique":false,"name":"chancecreationshootingclass","sample_values":["Normal","Lots","Little"],"type":"text"},{"description":"The
+    tactical positioning style employed when creating scoring opportunities, categorized
+    as Organised or Free Form.","id":"173b401c-0b6e-4cc3-bd81-571bf1485ca8","is_nullable":true,"is_unique":false,"name":"chancecreationpositioningclass","sample_values":["Organised","Free
+    Form"],"type":"text"},{"description":"A numeric rating indicating the intensity
+    of defensive pressure applied by the team.","id":"2a34b0ae-6e1b-406b-b21a-616c1623d912","is_nullable":true,"is_unique":false,"name":"defencepressure","sample_values":[45,47,30,50,48],"type":"bigint"},{"description":"A
+    categorical classification of defensive pressure level into Medium, Deep, or High.","id":"45e4f5af-e685-485d-bcfd-71ac74ace67c","is_nullable":true,"is_unique":false,"name":"defencepressureclass","sample_values":["Medium","Deep","High"],"type":"text"},{"description":"A
+    numeric measure of how aggressively the defense engages opposing attackers.","id":"762b998e-0ac7-4e25-aaa7-12509d8661d3","is_nullable":true,"is_unique":false,"name":"defenceaggression","sample_values":[45,47,50,70,55],"type":"bigint"},{"description":"A
+    categorical label describing the defensive aggression style such as Press, Double,
+    or Contain.","id":"bfecbb83-9200-4e46-9cb2-56a65b5c21a3","is_nullable":true,"is_unique":false,"name":"defenceaggressionclass","sample_values":["Press","Double","Contain"],"type":"text"},{"description":"A
+    numeric indicator of the horizontal spread of the defensive unit on the pitch.","id":"5007192f-ef96-4a26-976a-efd5987deb05","is_nullable":true,"is_unique":false,"name":"defenceteamwidth","sample_values":[50,52,53,65,70],"type":"bigint"},{"description":"A
+    classification of defensive team width into Normal, Wide, or Narrow.","id":"7fe97c8c-8db9-482c-8497-e4264a6bc300","is_nullable":true,"is_unique":false,"name":"defenceteamwidthclass","sample_values":["Normal","Wide","Narrow"],"type":"text"},{"description":"A
+    tactical classification of the defensive line strategy, such as Cover or Offside
+    Trap.","id":"b31a62c1-8b70-419b-a0a3-7ffd19d9a841","is_nullable":true,"is_unique":false,"name":"defencedefenderlineclass","sample_values":["Cover","Offside
+    Trap"],"type":"text"}],"description":"","id":"df31622a-159d-44cd-8eb2-558f2ca0f59c","name":"team_attributes","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[{"source_column_id":"18688e02-3d90-47d6-b12d-068adbade2d4","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"1c2bd87e-57fc-4368-9f34-feec854ee156","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"1c676110-1a79-4d32-8c5b-5349c43c00b7","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"302abcb9-e6d3-41f3-ad33-2322b8c8e8d9","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"329be031-7697-4e16-853a-b7838b05a8be","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"388f15cf-cf12-491d-87aa-46020f5ff84c","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"6048e808-6594-45ef-99bc-d413411b8307","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"6230a756-9c63-4da4-8a6a-79138da6727e","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"75db51f8-bce9-4fe6-9076-85810a745700","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"78f3df28-6bd9-44b3-9b87-57ec426cb72b","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"8128760f-10a0-4578-b2ea-0ea70cab4db1","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"837a66c7-9f9f-4930-b0c6-72ea99aa30e9","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"8e797f64-c47e-4958-8a36-255854b0c781","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"9098e566-82f8-47aa-8aa2-63082c4017fb","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"93a64fdf-35e2-48a9-82b7-c8dc152bc836","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"a71b1187-32b0-4881-a6f2-f7eaf55ada1b","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"abf24a80-52c5-4427-9c94-a15f53dee2dd","target_column_id":"0693bb20-ae25-41f8-ba7a-df0ae2c6a119"},{"source_column_id":"b4c02586-b9bf-4ba9-bfb9-ac4129176785","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"b6fecb5b-a517-41b9-b534-7382c2dbfc68","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"bd71fa40-33e0-4c30-bd82-a1386cf18e39","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"c87475d7-9ed3-4fef-86e0-44c512a6e1e8","target_column_id":"0693bb20-ae25-41f8-ba7a-df0ae2c6a119"},{"source_column_id":"d9f79dad-35f4-4244-a15f-01a89631169c","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"e2b5f292-e3e6-4e0d-8202-989978e3d578","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"e817399f-bef9-4d78-a3e2-6ebafd8d32ba","target_column_id":"0693bb20-ae25-41f8-ba7a-df0ae2c6a119"},{"source_column_id":"eccd250f-6cbb-4550-9022-4eb17524390c","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"},{"source_column_id":"fd79e973-5548-4682-9f3f-fd1281e34e12","target_column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040"}],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"2a84a5ff-0b01-41d6-92a6-86ccde126752","column_id":"10f843c5-cda0-40ab-856a-9db43cbed795","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"18688e02-3d90-47d6-b12d-068adbade2d4","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"1c2bd87e-57fc-4368-9f34-feec854ee156","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"1c676110-1a79-4d32-8c5b-5349c43c00b7","use_in_join_paths":false},{"column_attribute_id":"d0918e8e-f683-4bbf-b216-8de605412e7d","column_id":"1d37649b-9336-4993-9d4f-495083d99828","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"302abcb9-e6d3-41f3-ad33-2322b8c8e8d9","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"329be031-7697-4e16-853a-b7838b05a8be","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"388f15cf-cf12-491d-87aa-46020f5ff84c","use_in_join_paths":false},{"column_attribute_id":"3d210861-595c-48bc-b220-1a0d6d1f295c","column_id":"56ae8960-1874-470c-8303-71bad33bb97d","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"6048e808-6594-45ef-99bc-d413411b8307","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"6230a756-9c63-4da4-8a6a-79138da6727e","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"75db51f8-bce9-4fe6-9076-85810a745700","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"78f3df28-6bd9-44b3-9b87-57ec426cb72b","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"8128760f-10a0-4578-b2ea-0ea70cab4db1","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"837a66c7-9f9f-4930-b0c6-72ea99aa30e9","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"8e797f64-c47e-4958-8a36-255854b0c781","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"9098e566-82f8-47aa-8aa2-63082c4017fb","use_in_join_paths":false},{"column_attribute_id":"2ada4e0f-6077-4065-ade0-4ef9badd8f75","column_id":"92d8de0d-d87d-45e5-a245-623febfd6c38","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"93a64fdf-35e2-48a9-82b7-c8dc152bc836","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"a71b1187-32b0-4881-a6f2-f7eaf55ada1b","use_in_join_paths":false},{"column_attribute_id":"ea0fe60e-d7c9-4973-853a-52e550272437","column_id":"abf24a80-52c5-4427-9c94-a15f53dee2dd","use_in_join_paths":true},{"column_attribute_id":"3d210861-595c-48bc-b220-1a0d6d1f295c","column_id":"b3e47f42-01ab-45b1-856f-b4eea38d56a8","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"b4c02586-b9bf-4ba9-bfb9-ac4129176785","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"b6fecb5b-a517-41b9-b534-7382c2dbfc68","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"bd71fa40-33e0-4c30-bd82-a1386cf18e39","use_in_join_paths":false},{"column_attribute_id":"ea0fe60e-d7c9-4973-853a-52e550272437","column_id":"c87475d7-9ed3-4fef-86e0-44c512a6e1e8","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"d9f79dad-35f4-4244-a15f-01a89631169c","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"e2b5f292-e3e6-4e0d-8202-989978e3d578","use_in_join_paths":false},{"column_attribute_id":"ea0fe60e-d7c9-4973-853a-52e550272437","column_id":"e817399f-bef9-4d78-a3e2-6ebafd8d32ba","use_in_join_paths":true},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"eccd250f-6cbb-4550-9022-4eb17524390c","use_in_join_paths":false},{"column_attribute_id":"dc9a555c-4523-4035-aeed-55433c38b1a7","column_id":"fd79e973-5548-4682-9f3f-fd1281e34e12","use_in_join_paths":false}],"sql_attributes":{"bridge_table":[],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"6216602b-72bd-4d57-b5dc-b181c0d5af7d","description":"A
+    unique numeric identifier for each country, referenced by leagues and matches
+    to indicate the country they belong to.","id":"3d210861-595c-48bc-b220-1a0d6d1f295c","name":"Country
+    ID"},{"column_id":"2c96b029-d448-4c1f-87df-0352670825c8","description":"The official
+    name of the country, such as Belgium, England, or Germany.","id":"515bf129-7fa3-4fe9-8195-cb34a311c4c7","name":"Country
+    Name"}],"description":"A country reference entity.","id":"0f15eb41-da91-430f-8f75-8490e40cdc27","name":"Country
+    (d2_european_football_2.public.country)","represents":["ed942359-f21d-4caf-b67e-7859553db695"]},{"columns_attributes":[{"column_id":"002d05dc-3909-4ab7-bb25-a7feede02dd8","description":"Official
+    league name combining country and competition title, e.g., England Premier League.","id":"133830c3-e5d0-4795-87f5-dce729b2e986","name":"League
+    Name"},{"column_id":"2d2aa8d0-d689-4af2-93ff-1238d712fd1d","description":"Unique
+    numeric identifier for a football league, used to link matches to their league.","id":"2a84a5ff-0b01-41d6-92a6-86ccde126752","name":"League
+    ID"}],"description":"A football league entity with its identifier and official
+    name.","id":"59d46651-fbe8-4bab-9ee2-e11434ed25fd","name":"Football League","represents":["708091aa-8d91-4709-8d62-f7d91ae0edac"]},{"columns_attributes":[{"column_id":"5600544a-73a1-4139-ac2c-dc4c2c5dc278","description":"Captures
+    the x-coordinate of the away team''s sixth player on the field during the match.","id":"01ab8aa7-9107-452a-a1d0-edec50b4c9ff","name":"awayPlayerX6"},{"column_id":"34e586fe-e4ba-48b0-849f-2a3731731c2d","description":"Records
+    the vertical field coordinate of the home team''s third player in the match.","id":"0272a2bf-af46-43af-974e-9e721311ba24","name":"homePlayerY3"},{"column_id":"08d5bbed-0846-46a1-a43d-4b92afd74e08","description":"Number
+    of goals scored by the home team.","id":"0385387b-7abb-46e3-84b9-009b24b1c644","name":"Home
+    Team Goals"},{"column_id":"057b3cb6-cb0c-45c2-ad47-5f0b6a9031a9","description":"Captures
+    the x-coordinate of the away team''s second player on the field during the match.","id":"05783352-c737-4a26-8ce6-1e25e2d7ff18","name":"awayPlayerX2"},{"column_id":"14bc28d7-371b-46b6-8940-0b9644be7dea","description":"Date
+    and time of the match in YYYY-MM-DD HH:MM:SS format.","id":"0d428754-8e93-4429-a2a2-4d0fc0cef35a","name":"Match
+    Date"},{"column_id":"30d6615c-55d7-4c7a-a543-1c46519bbaf5","description":"Player
+    identifier for the home team''s starting lineup position 5.","id":"104efd96-254a-4faa-9942-db9be83f09c9","name":"homePlayerX5"},{"column_id":"ece86525-b7b0-44f8-8a4c-73cbaf4e1675","description":"Indicates
+    the decimal odds offered by Pinnacle Sports for a home team win in the match.","id":"107ca152-c1fb-4df1-a6d7-609817f6cf73","name":"psh"},{"column_id":"f985a041-bc30-4a79-9ade-ef91d6826b89","description":"Indicates
+    the decimal odds offered by William Hill for a home team win in the match.","id":"12b35efd-fe36-4109-affb-6ee91a61a9e1","name":"whh"},{"column_id":"a3b45358-49a6-47b6-8ba4-b11876f04655","description":"Stores
+    the draw betting odds from bookmaker VC as a real number.","id":"149263e1-b4de-413e-b418-82d1e55f2a62","name":"vcd"},{"column_id":"282e7ede-4fbc-44ac-8b82-b1c4a899c6ff","description":"Records
+    the vertical field coordinate of the away team''s third player in the match.","id":"1e0f5e89-9865-4b83-94c6-fad2cb201324","name":"awayPlayerY3"},{"column_id":"c05ed483-f353-4f21-b4e6-a49abe1942d9","description":"Captures
+    the x-coordinate of the away team''s eleventh player on the field during the match.","id":"24d0d25b-948c-4d35-9109-8879d95c77a8","name":"awayPlayerX11"},{"column_id":"0928b350-6e16-46be-8968-70b6a6e0f70c","description":"Player
+    identifier for the home team''s starting lineup position 3.","id":"2a9ce875-f281-4f16-8ea5-7d1944095875","name":"homePlayerX3"},{"column_id":"872c0c38-a143-47cd-a724-39d70085026d","description":"Indicates
+    the decimal odds offered by Bet&Win for a home team win in the match.","id":"2fa76a14-f973-4046-963d-93e09aa9ba00","name":"bwh"},{"column_id":"560089c9-26bc-4262-8b8b-2af2701e4e71","description":"Textual
+    details of possession statistics or events during the match.","id":"36cd8926-9d0c-4200-bacf-c32532b5d7c8","name":"possession"},{"column_id":"61efc63f-34b2-4618-a995-14165d32aa32","description":"Textual
+    details of shots on target including player, minute, and outcome.","id":"36f6179a-1531-4b6a-8df2-256169079ccf","name":"shoton"},{"column_id":"2f410e19-9d28-4fc9-8777-f119a669e88d","description":"Stores
+    the away team win betting odds from bookmaker VC as a real number.","id":"37a5c627-7c46-46e5-887e-47cdfeb96cf7","name":"vca"},{"column_id":"3a672099-5738-41a6-8363-a394e6d3fea6","description":"Player
+    identifier for the home team''s starting lineup position 8.","id":"3811b98c-140b-4203-9441-a535c071766b","name":"homePlayerX8"},{"column_id":"019bd4df-1cdb-436d-9408-92958a3b87e3","description":"Indicates
+    the decimal odds offered by Bet&Win for an away team win in the match.","id":"3837717e-2af6-4da6-847f-030c306d1e93","name":"bwa"},{"column_id":"df0127ef-e453-45fb-9550-ac75e4898126","description":"Stores
+    the draw betting odds from bookmaker WH as a real number.","id":"383ceee6-be31-478e-9449-e546bfc14949","name":"whd"},{"column_id":"546b5cf5-d057-4cf6-a2b4-fa7a23ec91d0","description":"Textual
+    details of corner kick events including team, minute, and outcome.","id":"3943503f-89a1-401d-8ab0-7da751182e41","name":"corner"},{"column_id":"59485858-d4ef-4594-ac88-af418972c598","description":"Stores
+    the home team win betting odds from bookmaker BS as a real number.","id":"39e1331c-0541-474e-a3e7-77446ae43b41","name":"bsh"},{"column_id":"d881c778-8751-4eb7-877a-2a18a52e7069","description":"Records
+    the vertical field coordinate of the home team''s sixth player in the match.","id":"3b2b000d-6adb-4625-b89f-ebed7b8134a2","name":"homePlayerY6"},{"column_id":"ff21cf43-b38b-460b-bb66-8ea067e5d1d0","description":"Textual
+    details of shots off target including player, minute, and outcome.","id":"3bc3e689-16f8-4352-af50-1ff5c5be9900","name":"shotoff"},{"column_id":"78d6431e-2e56-4824-9243-c1995b5095d1","description":"Textual
+    details of card events including player, card type, and minute.","id":"3c32ab1d-ee28-4f04-9cb8-dd6d973a6dc7","name":"card"},{"column_id":"d3bccb3e-11e6-4222-93d6-118074e82e55","description":"Stores
+    the draw betting odds from bookmaker GB as a real number.","id":"3c4b40d1-e7ae-4cfa-94d1-dd779ecbd41e","name":"gbd"},{"column_id":"90b8bfb5-edcf-410b-b63a-8546868971bb","description":"Captures
+    the x-coordinate of the away team''s eighth player on the field during the match.","id":"3e6d28e0-6c9c-4ca6-bbb2-5e0145036f54","name":"awayPlayerX8"},{"column_id":"5c7b7d7f-7587-4bf6-b868-7ed9e8177cfa","description":"Records
+    the vertical field coordinate of the home team''s tenth player in the match.","id":"44ce80c4-8d82-47a6-bc5f-a056f6c9009a","name":"homePlayerY10"},{"column_id":"09598009-d6fb-4582-b881-15a8c44fc41d","description":"Textual
+    details of goal events including scorer, minute, and goal type.","id":"4a01c553-c1f9-4a32-b172-4c2ed08e2f5b","name":"goal"},{"column_id":"bf10b224-e6e3-46ad-bbc0-ff60dfab7280","description":"Captures
+    the x-coordinate of the away team''s fifth player on the field during the match.","id":"4cb2ddf5-19b9-483e-a2df-e41d56698e63","name":"awayPlayerX5"},{"column_id":"6ebd93af-2667-4f69-9331-37fa65441a25","description":"Records
+    the vertical field coordinate of the home team''s ninth player in the match.","id":"4e7d5d20-5808-4eef-901f-5fd38bc6a20f","name":"homePlayerY9"},{"column_id":"456d08c8-5ef6-4b35-a43d-a4d352277b96","description":"Indicates
+    the decimal odds offered by Bet365 for a draw outcome in the match.","id":"4ea033cd-44b4-4b11-bd4a-82707cb8dd7f","name":"b365d"},{"column_id":"14c5af91-4dd5-4e54-a612-b72fe3fc07bd","description":"Indicates
+    the decimal odds offered by Interwetten for a home team win in the match.","id":"4fd2f71c-3ac9-426d-90d4-c84473dad801","name":"iwh"},{"column_id":"a1283359-d59c-491d-abdc-d300e1d32124","description":"Records
+    the vertical field coordinate of the home team''s fourth player in the match.","id":"50e2660a-7ce9-4279-be62-d30467a669df","name":"homePlayerY4"},{"column_id":"ec7d7e08-03ed-4a27-9ec0-74d52e67cd7f","description":"Captures
+    the y-coordinate of the home team''s first player on the field during the match.","id":"58df8fc1-3374-4e28-aff4-8d957866c696","name":"homePlayerY1"},{"column_id":"26fbb06a-887e-46dc-b052-07a3608ba7b9","description":"Captures
+    the x-coordinate of the away team''s ninth player on the field during the match.","id":"5f092d3f-5550-4142-98d1-556bafc550bb","name":"awayPlayerX9"},{"column_id":"4fb47b6e-9b8f-4009-aee9-aa7e0ca6a8f6","description":"Stores
+    the home team win betting odds from bookmaker GB as a real number.","id":"5fce3ecb-2521-4c16-a1cd-e52187a66afe","name":"gbh"},{"column_id":"43c01143-1761-486e-bea6-9b45698b16f8","description":"Indicates
+    the decimal odds offered by Pinnacle Sports for a draw outcome in the match.","id":"61d9be10-2732-4ded-8816-bd163d8a139a","name":"psd"},{"column_id":"04860c11-c9ce-425b-a92c-427480314143","description":"Captures
+    the x-coordinate of the away team''s seventh player on the field during the match.","id":"62122fdb-9a26-40df-8aa5-5999a49014e1","name":"awayPlayerX7"},{"column_id":"3d3e38fc-10cf-46ca-883d-e40da3c9a6f5","description":"Player
+    identifier for the home team''s starting lineup position 6.","id":"674cee8e-94aa-4fc4-aae9-78806df92df7","name":"homePlayerX6"},{"column_id":"bbcbc053-e0ea-4258-83b7-cc41ba73497a","description":"Jersey
+    number of the tenth away team player in the match lineup.","id":"6791f4ca-de03-4f78-b447-020b56ef774d","name":"awayPlayerY10"},{"column_id":"a7fe9b67-5a45-41c6-ae42-6f3162594a5d","description":"Indicates
+    the decimal odds offered by Ladbrokes for an away team win in the match.","id":"6a843646-d0f7-4ece-b350-8dd53d1d8201","name":"lba"},{"column_id":"891fd3d3-dc48-4ca3-a83e-116c72feecb7","description":"Captures
+    the x-coordinate of the away team''s first player on the field during the match.","id":"6baaad78-faa6-422d-b7b2-745ecfe5b483","name":"awayPlayerX1"},{"column_id":"75db96b8-2366-4071-8b3c-f9e9faeab485","description":"Records
+    the vertical field coordinate of the home team''s eleventh player in the match.","id":"6bb7b4f0-87d5-436c-bb78-ffb1bf348db5","name":"homePlayerY11"},{"column_id":"5f79eb42-7b31-4f86-afa4-52d0a87505d3","description":"Captures
+    the x-coordinate of the home team''s tenth player on the field during the match.","id":"6ee3eef3-0737-4bcb-8c0d-ae485b4f048a","name":"homePlayerX10"},{"column_id":"2e9488e7-972e-4988-9bba-ed821c07ea24","description":"Indicates
+    the decimal odds offered by Pinnacle Sports for an away team win in the match.","id":"70a77a3a-a89c-46ec-95d8-ab67b12ef1b7","name":"psa"},{"column_id":"54acfae2-4132-4a4e-8c33-57fec881a5fb","description":"Unique
+    identifier for the match record.","id":"73870499-bf0c-41fc-852d-f42cba3fa422","name":"Match
+    ID"},{"column_id":"bc04dbd3-3d1b-488b-acb9-5a141276a8c9","description":"Indicates
+    the decimal odds offered by Interwetten for an away team win in the match.","id":"73dfad3d-9bcb-439a-89f0-7800aa11f44b","name":"iwa"},{"column_id":"524d1e58-cf2a-4e0d-986a-42bf5ce89d7d","description":"Bet365
+    decimal odds for the home team to win the match.","id":"78a7b975-e3da-458c-89e7-03469261c0cf","name":"b365h"},{"column_id":"c931a06b-4f66-4f94-9e5c-a8f5530ce9da","description":"Stores
+    the away team win betting odds from bookmaker BS as a real number.","id":"84d7d51d-5e77-4b6f-9bb1-d859a9ba40c2","name":"bsa"},{"column_id":"888e2562-da99-4909-a381-84c29053c9f1","description":"Indicates
+    the decimal odds offered by Ladbrokes for a draw outcome in the match.","id":"85fda831-8819-4f7f-b6e6-3a4680d2af62","name":"lbd"},{"column_id":"10fe9215-2bbc-4ead-8797-f7c0dfa61dbb","description":"Textual
+    details of cross events including player, minute, and outcome.","id":"8b89a96f-e24d-4f95-9351-64546ac72c95","name":"cross"},{"column_id":"581ef986-f17c-4734-bbd1-b30a47326623","description":"Stores
+    the draw betting odds from bookmaker BS as a real number.","id":"99817b8f-9af0-4411-aea7-2e0ddfb98c0e","name":"bsd"},{"column_id":"3d486d0d-ac3f-4934-8b1d-5af86d1176aa","description":"Indicates
+    the decimal odds offered by Bet365 for an away team win in the match.","id":"9c0bd3a9-1e89-454f-a873-fb70b6082cdd","name":"b365a"},{"column_id":"44667174-14c1-43ec-9e33-ee7a87d3543f","description":"External
+    API identifier linking the match to external football data sources.","id":"9cebaf56-13bf-418d-b278-c59568dada67","name":"Match
+    API ID"},{"column_id":"83b309b3-9550-4f13-aea1-060d4bf93fd6","description":"Matchday
+    or round number within the season.","id":"9f0aa33e-bd04-4d8b-aa4b-12debcac7a59","name":"Stage"},{"column_id":"30b5ab79-cd0f-4810-a876-558ae93ca180","description":"Records
+    the vertical field coordinate of the away team''s first player in the match.","id":"a94810de-bfca-4b9d-9e53-3b414c602409","name":"awayPlayerY1"},{"column_id":"5ac22eec-962a-4b5e-9672-36b3a1a8d178","description":"Captures
+    the x-coordinate of the home team''s ninth player on the field during the match.","id":"ad62c0e7-5c96-4e70-a280-ad4e0e8e012f","name":"homePlayerX9"},{"column_id":"e5689f4e-cfbb-46f0-b212-f46eb1c0d25d","description":"Jersey
+    number of the sixth away team player in the match lineup.","id":"ae502820-9a9d-4693-8d17-484e3c431184","name":"awayPlayerY6"},{"column_id":"443b6fa8-4dd2-498d-84d4-d55d105fb805","description":"Jersey
+    number of the eighth away team player in the match lineup.","id":"af9adc6f-79f7-4590-935f-75de8fa06cab","name":"awayPlayerY8"},{"column_id":"126dc355-369d-4ebb-ad93-6bf72d8ab3f5","description":"Records
+    the vertical field coordinate of the home team''s fifth player in the match.","id":"b0379550-7eb8-4add-a862-d5b12268e95d","name":"homePlayerY5"},{"column_id":"1009b708-3804-4f97-bf15-ea1f43bdba09","description":"Player
+    identifier for the home team''s starting lineup position 1.","id":"b07069e2-3e1f-422f-a61d-f47c0fe19ff4","name":"homePlayerX1"},{"column_id":"fe7a360e-1dba-4e9f-91f5-750cc963369e","description":"Indicates
+    the decimal odds offered by Ladbrokes for a home team win in the match.","id":"b2ebedd7-794f-4fc8-b6f6-63a869657061","name":"lbh"},{"column_id":"70cfdf28-558b-4e18-a24f-c9d7444a8efc","description":"Captures
+    the x-coordinate of the home team''s eleventh player on the field during the match.","id":"b4b49c0b-79d3-458b-aa71-328a052a8c55","name":"homePlayerX11"},{"column_id":"f032f07c-16ee-4837-8104-18bc64ed5462","description":"Jersey
+    number of the seventh away team player in the match lineup.","id":"b5fc8c56-b06e-4b18-89e2-67c17b5ed3b2","name":"awayPlayerY7"},{"column_id":"06517b57-9b3c-4d33-ac72-1b0ac464827a","description":"Indicates
+    the decimal odds offered by Interwetten for a draw outcome in the match.","id":"b6a00577-3994-4c2e-bc89-0165e1eb6913","name":"iwd"},{"column_id":"a2f10d21-5a05-43c7-9670-eb94a1ea528b","description":"Captures
+    the x-coordinate of the away team''s tenth player on the field during the match.","id":"b6ec7c27-0210-4dcf-b08b-6f8558a61d8f","name":"awayPlayerX10"},{"column_id":"42b9007d-f701-4995-b01d-4d10187469fe","description":"Player
+    identifier for the home team''s starting lineup position 7.","id":"bc0717d5-22ee-4047-b2bb-a8b92002007d","name":"homePlayerX7"},{"column_id":"9abfacf9-a35a-4df5-b87e-688d77f098cd","description":"Records
+    the vertical field coordinate of the away team''s fourth player in the match.","id":"bd5500ef-5dd9-4b65-8eb2-fb082c528794","name":"awayPlayerY4"},{"column_id":"bf56e5fb-6d56-4351-a5a3-ec81471aa1e0","description":"Records
+    the vertical field coordinate of the home team''s second player in the match.","id":"c1e1201c-4a4b-4d72-b37c-8c39cc5c6a00","name":"homePlayerY2"},{"column_id":"054f4ef7-2d3c-4398-85ef-c968e0c76337","description":"Number
+    of goals scored by the away team.","id":"c4cd9450-2db9-4956-b4ce-99df5b77235a","name":"Away
+    Team Goals"},{"column_id":"bef4050f-bb19-4f3f-b0b7-7d0b80083c0c","description":"Records
+    the vertical field coordinate of the away team''s second player in the match.","id":"c80d5e15-b6e2-484c-a70e-7f3e63487844","name":"awayPlayerY2"},{"column_id":"e136337f-5580-4668-b283-6a7a1d960fa8","description":"Stores
+    the home team win betting odds from bookmaker VC as a real number.","id":"cc41b3a1-94f5-464a-bf80-6197d85b04f8","name":"vch"},{"column_id":"5dde6e10-cef2-4355-8868-2374aa396381","description":"Player
+    identifier for the home team''s starting lineup position 2.","id":"d28bb634-e80d-495b-9ad9-55b2270aa054","name":"homePlayerX2"},{"column_id":"5345e476-edf4-486e-92ff-1acd9e41e5a7","description":"Jersey
+    number of the ninth away team player in the match lineup.","id":"d5ec5087-b7f3-4749-a1fb-b398d183328f","name":"awayPlayerY9"},{"column_id":"2d0e4586-13a1-4f54-b45e-243d676aabc8","description":"Captures
+    the x-coordinate of the away team''s fourth player on the field during the match.","id":"db3a5d62-273c-4c9d-9968-da7ca510d257","name":"awayPlayerX4"},{"column_id":"dbdcd268-4e9f-48b7-afe9-72afa66043eb","description":"Records
+    the vertical field coordinate of the home team''s eighth player in the match.","id":"db9b87cc-fb4d-42fa-adf4-8e679aeb0155","name":"homePlayerY8"},{"column_id":"14ebc5cb-1448-4b22-afcd-fc3d2878f9a7","description":"Stores
+    the away team win betting odds from bookmaker WH as a real number.","id":"df611d8f-7e39-4bb4-90f7-cbe8574a5736","name":"wha"},{"column_id":"e684caac-aad2-45cd-85c8-883782197620","description":"Stores
+    the away team win betting odds from bookmaker GB as a real number.","id":"e8843f58-2e9d-457a-94fd-c7288b2cd8fc","name":"gba"},{"column_id":"d16de3fe-2406-4dac-9996-95d05adec77b","description":"Player
+    identifier for the home team''s starting lineup position 4.","id":"eb445993-8158-4449-95e0-44fabe79a9e2","name":"homePlayerX4"},{"column_id":"4f245026-1577-46d7-91fc-8867fdfb5f42","description":"Stores
+    the draw betting odds from bookmaker SJ as a real number.","id":"ebe646f8-780c-429d-9b7b-c2a211836954","name":"sjd"},{"column_id":"e02acea2-7bc3-42aa-929d-bbbefb8490a2","description":"Captures
+    the x-coordinate of the away team''s third player on the field during the match.","id":"eeef3afd-6bab-46a6-90c7-365abae25233","name":"awayPlayerX3"},{"column_id":"d05c039f-f5e3-436a-aa22-5cfed4910bc8","description":"Textual
+    details of fouls committed including player, minute, and location.","id":"f18785c7-84ed-491b-8c41-5ddeec221301","name":"foulcommit"},{"column_id":"c0904121-567d-41fe-9a54-f879fa06bb58","description":"Jersey
+    number of the eleventh away team player in the match lineup.","id":"f943b82d-715a-47ae-98d9-45500e09abd4","name":"awayPlayerY11"},{"column_id":"e4a4918e-4644-4a35-8ad0-6a58aa5da8b2","description":"Stores
+    the away team win betting odds from bookmaker SJ as a real number.","id":"f9f19400-c468-47f9-b650-6142767dd08b","name":"sja"},{"column_id":"7cea927b-9a05-42e5-a9ba-4b1cb0a85f40","description":"Football
+    season when the match was played, formatted as YYYY/YYYY.","id":"fae99bca-968d-4773-b2b5-b91cb6cbd84f","name":"Season"},{"column_id":"9e3c9c11-63d3-4a22-92c4-73f3b649edb8","description":"Records
+    the vertical field coordinate of the home team''s seventh player in the match.","id":"fc5134d6-c2e5-483d-a069-da255c2f7d37","name":"homePlayerY7"},{"column_id":"616b50dc-a292-43f8-8b77-6b71420583ad","description":"Stores
+    the home team win betting odds from bookmaker SJ as a real number.","id":"fd482550-d1ba-41de-9916-4b43d266132d","name":"sjh"},{"column_id":"d99769ae-2e5b-4f66-a02a-e665ac88fd1f","description":"Indicates
+    the decimal odds offered by Bet&Win for a draw outcome in the match.","id":"fd4be11f-ee2a-4e50-8cb3-3b5616380ffa","name":"bwd"},{"column_id":"66778320-dec1-4b01-b642-debf77d30b13","description":"Records
+    the vertical field coordinate of the away team''s fifth player in the match.","id":"fde1ce7b-8ac8-424c-a853-ac4db464c1a7","name":"awayPlayerY5"}],"description":"A
+    football match with its metadata, scores, and player lineup/position data.","id":"fc8c6418-84d1-4792-a599-5b659be650db","name":"Match","represents":["642572f5-422b-403f-a7fe-561149fccf04"]},{"columns_attributes":[{"column_id":"c56044a9-47b9-44ea-b33e-2aaa07213688","description":"Full
+    legal name of the player as recorded.","id":"6cb2a4bc-79bc-48ac-a838-abd8f48fe802","name":"Player
+    Name"},{"column_id":"b12acdb8-2815-4c0a-901c-2a13db694d43","description":"FIFA
+    system identifier used to associate player attribute data.","id":"6d3f229f-7156-44a3-a3f4-39484b42ebf3","name":"playerFifaApiId"},{"column_id":"71d4c27e-7565-4a42-b90b-d096d278ce72","description":"Player''s
+    height measured in centimeters.","id":"6e17fcff-3b02-41a2-acd7-75bfb4ec05e9","name":"Height"},{"column_id":"6ac792fb-d9a8-4cf8-bdd0-179b2c31c91c","description":"Player''s
+    weight measurement as recorded.","id":"a013a054-ec15-44f1-8a5c-f6d3acfe36ca","name":"Weight"},{"column_id":"299d8c93-5ec9-4511-bdd7-0e709b927f2d","description":"Date
+    of birth of the player in YYYY-MM-DD HH:MM:SS format.","id":"a139511d-a6d3-4041-bfb3-e41471ffcbf1","name":"Birthday"},{"column_id":"79c58002-f1f2-422c-8bbf-631d005bbcea","description":"Unique
+    internal identifier for each player record.","id":"d0918e8e-f683-4bbf-b216-8de605412e7d","name":"Player
+    ID"},{"column_id":"40b70d77-6aff-4e6a-a77f-817cd2386040","description":"External
+    API identifier linking the player to match lineup records.","id":"dc9a555c-4523-4035-aeed-55433c38b1a7","name":"Player
+    API ID"}],"description":"","id":"d8d2318f-813a-4259-b1fd-e6e87ac3c6f8","name":"Player","represents":["aa413435-eb2e-4bbc-955a-9a035f843aed"]},{"columns_attributes":[{"column_id":"6811e6d0-ea4b-4c36-83fa-1303990817c1","description":"Measures
+    a player''s anticipation and passing accuracy to teammates in advantageous positions
+    on a numeric scale.","id":"019b772f-9a82-40ed-8446-1c2f448ee133","name":"Vision"},{"column_id":"afff6041-9b35-415b-8299-9273a5b7cc42","description":"Assesses
+    a player''s effectiveness in tracking and closely defending an assigned opponent
+    during play on a numeric scale.","id":"03db9580-04ca-400c-851a-e43f48fcc12e","name":"Marking"},{"column_id":"ed7f1aec-1f1b-41ba-89e0-30175b0d8594","description":"Rates
+    the player''s long passing ability as an integer score (e.g., 53).","id":"0f640260-960e-4e09-bb43-e92b93204fe0","name":"Long
+    Passing"},{"column_id":"fc91f8b8-f82f-484f-a19d-e6d8421295bd","description":"Rates
+    the player''s stamina as an integer score (e.g., 79).","id":"129d5d50-bf23-487a-9a39-51d92c28f346","name":"Stamina"},{"column_id":"0671fcd5-ba3a-4969-82b7-8330b74f5b16","description":"Rates
+    the player''s sprint speed as an integer score (e.g., 78).","id":"1df484bd-adaf-43e7-80af-56333b157150","name":"Sprint
+    Speed"},{"column_id":"a015248f-1c16-4f22-b5df-a00fecaa1338","description":"Qualitatively
+    rates the player''s defensive contribution and tracking back behavior.","id":"1fa1ad8f-903f-4a52-9b2a-5ad6831f1d77","name":"Defensive
+    Work Rate"},{"column_id":"a4d53a06-4518-420d-b8c6-81f9de74c452","description":"Rates
+    the player''s agility as an integer score (e.g., 74).","id":"253d030b-32b2-406b-9dfe-9e0efd321a63","name":"Agility"},{"column_id":"6022675b-0ed5-4014-850c-6705b4b4d8ce","description":"Rates
+    the player''s jumping ability as an integer score (e.g., 71).","id":"313c78b2-897d-4ae6-8fee-8279d4a936e5","name":"Jumping"},{"column_id":"f896a4b0-d159-4489-96a4-a566febff04d","description":"Reflects
+    a goalkeeper''s accuracy and distance when distributing the ball via goal kicks
+    or punts on a numeric scale.","id":"348600ee-ff94-4566-aaec-8f3e14c2967d","name":"GK
+    Kicking"},{"column_id":"10bce8e7-a834-4e4f-8f09-b8a261c9ec1b","description":"Measures
+    a goalkeeper''s agility and reach when diving to make saves across the goal on
+    a numeric scale.","id":"34c9616f-aa52-4643-a509-fe2d896a4cea","name":"GK Diving"},{"column_id":"4a7ba310-cb2b-44bb-9ee4-604132c74432","description":"Represents
+    the player''s overall ability level as a composite numerical score.","id":"3a90024a-28bc-43ac-b2d3-8ebb8b99d249","name":"Overall
+    Rating"},{"column_id":"627037c9-8bc6-4763-8c9d-e45ef8996784","description":"Records
+    the timestamp when the player''s attributes were captured, formatted as YYYY-MM-DD
+    HH:MM:SS.","id":"3c04a028-6d18-4c7e-9fbb-09edefdce608","name":"Date"},{"column_id":"97aac51e-a6d3-42ad-b0c9-ede53e9fcfee","description":"Rates
+    the player''s balance as an integer score (e.g., 72).","id":"3cf5808a-87f4-4610-a674-f45ebf3c6fb0","name":"Balance"},{"column_id":"16a25694-a2e2-4104-aec2-3e4475b33fff","description":"Rates
+    the player''s acceleration as an integer score (e.g., 69).","id":"42ee4c70-31b0-4087-bae4-3d300030cdd2","name":"Acceleration"},{"column_id":"8aaa083a-fcde-44a7-9181-ccf933a6bcd7","description":"Rates
+    the player''s ball control skill as an integer score (e.g., 73).","id":"47b23c38-39c3-46af-996f-d2497008bec1","name":"Ball
+    Control"},{"column_id":"4e7497c4-75a5-4755-a050-222d165e1956","description":"Qualitatively
+    rates the player''s offensive effort and positioning tendency.","id":"4b3194aa-f70c-4454-a842-fac4beae39b0","name":"Attacking
+    Work Rate"},{"column_id":"4543970d-c1d7-43ba-bbad-28875ed3f4bc","description":"Rates
+    the player''s reactions as an integer score (e.g., 70).","id":"51c4e860-9c0d-4236-b824-61f907f82be8","name":"Reactions"},{"column_id":"d6d1f896-9e80-4ec8-9a5e-a3c23aa7f237","description":"Rates
+    the player''s interceptions ability as an integer score (e.g., 66).","id":"6beb8db9-46e0-481a-ba19-45f19514d0a3","name":"Interceptions"},{"column_id":"28747b06-bc57-45ef-868c-0248c5bb1193","description":"Rates
+    the player''s positioning ability as an integer score (e.g., 68).","id":"7007d05e-d4f5-4ea7-b8ab-f3e4eae19d7b","name":"Positioning"},{"column_id":"5ed67165-1ca9-4043-b619-2de799fbab02","description":"Evaluates
+    the player''s accuracy and composure when shooting at goal from close range.","id":"71ebb65a-03d4-4d96-91a8-162aa9b421af","name":"Finishing"},{"column_id":"ddfb1485-8118-429e-911d-aa8258fd9779","description":"Evaluates
+    a player''s skill in cleanly winning the ball via standing tackle without fouling
+    on a numeric scale.","id":"7b649dcb-e8a6-4560-8ef3-cd244be9ef6f","name":"Standing
+    Tackle"},{"column_id":"b94b3cf7-4cc9-484f-b389-3d60a0c3012d","description":"Rates
+    the player''s long shots ability as an integer score (e.g., 74).","id":"8560a23a-c4cf-4b69-98ff-9cbec02a067c","name":"Long
+    Shots"},{"column_id":"025e8663-02a9-4e48-997f-15dc93e36b33","description":"Assesses
+    the player''s ability to apply spin on the ball for curved passes or shots.","id":"8632d8ed-375c-42fa-b4d4-25544234faca","name":"Curve"},{"column_id":"adc75a73-8819-4440-bb89-db60260126cd","description":"Assesses
+    the player''s accuracy and speed in completing short-distance passes.","id":"8b6e1f9c-ce2c-45ca-a85f-a450b36543c3","name":"Short
+    Passing"},{"column_id":"27c879f8-5794-4c44-bc76-d0104e25bfd6","description":"Measures
+    the player''s precision in placing direct free kicks on target.","id":"8f8c4c9e-c398-40dd-b51d-cb1b955ffd82","name":"Free
+    Kick Accuracy"},{"column_id":"8546281b-249f-4e96-97d3-4d3edd1d24f6","description":"Measures
+    the player''s precision and effectiveness in heading the ball.","id":"9fc77d3e-d7c0-4c65-a217-02084b3a530a","name":"Heading
+    Accuracy"},{"column_id":"d152c54a-d74d-4465-a8d8-b36462c7d279","description":"Rates
+    the player''s shot power as an integer score (e.g., 71).","id":"a32d2f9b-b688-49ab-a139-b52b64daf728","name":"Shot
+    Power"},{"column_id":"3d340aca-0eeb-4cec-b3f4-5885e25e4ab5","description":"Specifies
+    the foot the player prefers for kicking and ball control.","id":"a79fe330-3152-4727-a7f3-6e2c3e38eb61","name":"Preferred
+    Foot"},{"column_id":"f30492ab-dd48-4ef1-844f-33a7d3175970","description":"Rates
+    a player''s ability to execute sliding tackles to dispossess opponents while minimizing
+    foul risk on a numeric scale.","id":"a9aece4e-c175-4526-a810-b2777dfa116c","name":"Sliding
+    Tackle"},{"column_id":"873637c6-8738-427b-83df-7f6325ae4402","description":"Measures
+    a goalkeeper''s reaction speed for instinctive saves on close-range or deflected
+    shots on a numeric scale.","id":"b04c24ac-4748-43e5-b5c4-0a0abee09bd6","name":"GK
+    Reflexes"},{"column_id":"6f650765-af37-4e5f-b0be-4c76b0215b15","description":"Rates
+    the player''s physical strength as an integer score (e.g., 71).","id":"b656efd3-ac68-4314-a801-858d6535198f","name":"Strength"},{"column_id":"bc3113ca-5545-46b9-9db9-bcfa3faf4913","description":"Represents
+    a goalkeeper''s sense of optimal placement relative to ball and goal to reduce
+    scoring angles on a numeric scale.","id":"b7563b26-1399-4382-96f5-dd03a239516f","name":"GK
+    Positioning"},{"column_id":"ee8b02fb-3d7c-4d02-9418-732fa18d3ac7","description":"Assesses
+    the player''s ability to deliver accurate crosses from wide areas into the penalty
+    box.","id":"c179da73-d8aa-45f8-ab7f-5eb8ec83854e","name":"Crossing"},{"column_id":"d748091c-20ed-440a-8b52-ea4448f7d665","description":"Indicates
+    a goalkeeper''s ability to securely catch and hold shots rather than parry on
+    a numeric scale.","id":"cd06f5a8-856f-447e-a0ce-a5ee494e48f6","name":"GK Handling"},{"column_id":"c80bcd37-31f8-4da9-98c2-4d600885893f","description":"Uniquely
+    identifies each player attribute snapshot in the dataset.","id":"d0db7b92-e5d5-4f61-807a-b000c9ae77be","name":"ID"},{"column_id":"70c3fd5b-1118-4032-b62d-710a3ea1c39f","description":"Quantifies
+    a player''s penalty kick proficiency, including accuracy and composure under pressure,
+    on a numeric scale.","id":"d1a5938a-fcc6-4687-acc6-02be07bcede6","name":"Penalties"},{"column_id":"aeb215fe-4014-43ce-ae2f-8e56bd1980e3","description":"Indicates
+    the projected maximum overall rating the player can achieve in their career.","id":"db02e567-2304-4e06-ad33-6e55de5d6a31","name":"Potential"},{"column_id":"750af3cf-a191-4bad-ac46-ba833cb98202","description":"Measures
+    the player''s close ball control and ability to maneuver past opponents while
+    running.","id":"db9bbdc3-8f03-4d33-9018-3e73de4e5bef","name":"Dribbling"},{"column_id":"42c630b9-dbda-4b1c-9bc4-f0e930f466d8","description":"Evaluates
+    the player''s skill in striking the ball cleanly while it is airborne.","id":"dd8ffaf3-4c6d-4998-a716-49512ecc660e","name":"Volleys"},{"column_id":"d22cb16d-beb2-4f83-ba12-ad81689de13d","description":"Rates
+    the player''s aggression as an integer score (e.g., 59).","id":"f4ac8acc-42cf-4ea3-9426-567c7e0d80a2","name":"Aggression"}],"description":"","id":"e024fa83-ea42-479b-9250-c196c5ddde52","name":"Player
+    Attribute","represents":["5dddbb7f-4d74-4bf7-a5b1-1f10b8f996da"]},{"columns_attributes":[{"column_id":"5ad52d11-e554-414f-8f6a-7943d17b5dc0","description":"Full
+    official competition name of the football team.","id":"004782a5-ff3f-4289-b147-7a7a658e7998","name":"Team
+    Long Name"},{"column_id":"4aeb6d74-9926-4a56-88f1-e0c60bd5fa2a","description":"FIFA-assigned
+    identifier connecting the team to official FIFA data and attribute records.","id":"2ada4e0f-6077-4065-ade0-4ef9badd8f75","name":"Team
+    FIFA API ID"},{"column_id":"11820994-6727-48b0-af5d-229e7e055a57","description":"Abbreviated
+    display code used to identify the team.","id":"42a2da1d-096f-426b-8ef0-3b3408d4b121","name":"Team
+    Short Name"},{"column_id":"0693bb20-ae25-41f8-ba7a-df0ae2c6a119","description":"External
+    API identifier linking the team to matches and attribute records in third-party
+    systems.","id":"ea0fe60e-d7c9-4973-853a-52e550272437","name":"Team API ID"},{"column_id":"9a73532c-3126-419b-9780-b5b1fedde92b","description":"Internal
+    unique identifier for each team record in the system.","id":"f091f78e-f68d-4f1f-8b12-53d110f303b2","name":"ID"}],"description":"","id":"4b4580c2-5a74-4497-af26-702354a9362d","name":"Team","represents":["238d9f1f-07c4-4b5c-81b2-de7dabf7485b"]},{"columns_attributes":[{"column_id":"f2b54b0c-d501-4732-aa8d-e6372be540a6","description":"Rates
+    the team''s buildup play speed on a numeric scale.","id":"05f1813c-123d-4c23-8180-aeca92191187","name":"Buildup
+    Play Speed"},{"column_id":"7fe97c8c-8db9-482c-8497-e4264a6bc300","description":"The
+    defensive formation width categorized as Normal, Wide, or Narrow based on the
+    numerical width indicator.","id":"1ee5b19b-f342-46f3-a204-a2e5f654e805","name":"Defence
+    Team Width Class"},{"column_id":"013a07fb-ca6e-4483-804f-b0cd198a67af","description":"Rates
+    the team''s passing style during buildup play on a numeric scale.","id":"1f3b2ae2-b23e-4f09-9a2c-965f6301754a","name":"Buildup
+    Play Passing"},{"column_id":"a3a7a137-0ade-4709-8f49-ec3351328ad9","description":"Classifies
+    the team''s buildup positioning as Organised or Free Form.","id":"1fa19845-5835-4288-8601-e1adbe3c9538","name":"Buildup
+    Play Positioning Class"},{"column_id":"fe82009f-12ba-4e98-b6b5-e5d19e154c2b","description":"Rates
+    the team''s dribbling tendency during buildup play on a numeric scale.","id":"290a059c-4eea-4564-ac6d-9f10342fd5c0","name":"Buildup
+    Play Dribbling"},{"column_id":"a5e57be4-88a0-4d59-9974-6acf4d39818c","description":"Classifies
+    the team''s chance creation shooting tendency as Normal, Lots, or Little.","id":"3d445919-17ea-41bc-9ba6-f26e4e562f4c","name":"Chance
+    Creation Shooting Class"},{"column_id":"15f83109-56e3-4588-90f9-7352c9dc48d3","description":"Records
+    the timestamp when the tactical profile was captured in YYYY-MM-DD HH:MM:SS format.","id":"488e558a-a989-4a44-8352-686d7861869c","name":"Profile
+    Date"},{"column_id":"f1a6cf4c-09f7-45cc-9843-da8a9bbec69f","description":"Rates
+    the team''s shooting tendency during chance creation on a numeric scale.","id":"57a5f6cc-fe18-40e6-89a7-db1bc1079ec4","name":"Chance
+    Creation Shooting"},{"column_id":"6d813993-ff64-4726-80e1-c02a8d969e24","description":"Classifies
+    the team''s buildup dribbling tendency as Little, Normal, or Lots.","id":"6137758b-3c7f-417f-8452-0d2173ae8cf2","name":"Buildup
+    Play Dribbling Class"},{"column_id":"45e4f5af-e685-485d-bcfd-71ac74ace67c","description":"The
+    defensive pressure intensity categorized as Medium, Deep, or High based on the
+    numerical pressure rating.","id":"66d67174-e080-49a1-8c73-13629dc178a2","name":"Defence
+    Pressure Class"},{"column_id":"b11790d1-09e0-4726-aae3-ee4b83053364","description":"Classifies
+    the team''s buildup play speed as Balanced, Fast, or Slow.","id":"78bdb804-f581-4b2c-9f50-2f53c9262838","name":"Buildup
+    Play Speed Class"},{"column_id":"4e61f672-a893-4b46-9374-44a7727c00dc","description":"Classifies
+    the team''s chance creation crossing frequency as Normal, Lots, or Little.","id":"8220e718-2efb-484b-8da3-4c77b4d3e207","name":"Chance
+    Creation Crossing Class"},{"column_id":"173b401c-0b6e-4cc3-bd81-571bf1485ca8","description":"The
+    tactical positioning approach a team uses when creating scoring opportunities,
+    classified as Organised or Free Form.","id":"866640c3-92c2-4b18-9f02-506eecb85619","name":"Chance
+    Creation Positioning Class"},{"column_id":"252979f0-a759-419c-88c9-1cdcffe01958","description":"Classifies
+    the team''s buildup passing style as Mixed, Short, or Long.","id":"8fbec065-c143-4216-87d1-d2dc922e7250","name":"Buildup
+    Play Passing Class"},{"column_id":"da3e0c90-134a-4852-9ec4-af13286c942b","description":"Uniquely
+    identifies each team tactical profile record.","id":"94220b95-5059-42cb-82e6-90abfacdff9b","name":"Profile
+    ID"},{"column_id":"9df7cdf6-271c-4df7-9af5-9bd4429a75da","description":"Rates
+    the team''s crossing frequency during chance creation on a numeric scale.","id":"bf236234-f73d-4772-851a-51eed0733505","name":"Chance
+    Creation Crossing"},{"column_id":"272590cd-e521-4b67-a528-3a3aa3ecc9e6","description":"Rates
+    the team''s passing approach during chance creation on a numeric scale.","id":"c8e5808f-e1f1-487a-8cfb-db17ad6c4625","name":"Chance
+    Creation Passing"},{"column_id":"5007192f-ef96-4a26-976a-efd5987deb05","description":"A
+    numerical indicator of the horizontal spread of a team''s defensive unit on the
+    pitch, expressed as an integer.","id":"ccaa6427-5dc6-489f-9ca0-fbc84458b0fa","name":"Defence
+    Team Width"},{"column_id":"2a34b0ae-6e1b-406b-b21a-616c1623d912","description":"A
+    numerical rating measuring the intensity of defensive pressure a team applies,
+    expressed as an integer value.","id":"d1ea9198-3f09-4e52-90e6-337d2c459d0c","name":"Defence
+    Pressure"},{"column_id":"937cb6da-38cf-49c9-9389-93e39fdb1b28","description":"Classifies
+    the team''s chance creation passing as Normal, Risky, or Safe.","id":"d4f9bfe8-ad07-4f65-891c-9deb730f28cf","name":"Chance
+    Creation Passing Class"},{"column_id":"762b998e-0ac7-4e25-aaa7-12509d8661d3","description":"A
+    numerical score quantifying how aggressively a team''s defense engages opposing
+    attackers, expressed as an integer.","id":"e6b559bf-c729-4348-b28b-95f9bdefbdad","name":"Defence
+    Aggression"},{"column_id":"b31a62c1-8b70-419b-a0a3-7ffd19d9a841","description":"The
+    defensive line strategy employed by a team, classified as either Cover or Offside
+    Trap.","id":"f59cf763-3996-4f9d-9b87-db0512259b9d","name":"Defence Defender Line
+    Class"},{"column_id":"bfecbb83-9200-4e46-9cb2-56a65b5c21a3","description":"The
+    defensive aggression style classified as Press, Double, or Contain based on the
+    numerical aggression rating.","id":"f73ea853-fc58-4a11-8b6a-a558584fe93b","name":"Defence
+    Aggression Class"}],"description":"A tactical profile record for a team capturing
+    buildup play, chance creation, and defensive attributes.","id":"008be00f-d1fe-4654-a989-73475621997b","name":"Team
+    Tactical Profile","represents":["df31622a-159d-44cd-8eb2-558f2ca0f59c"]}]},"zones":[]}}'
+relationships:
+- name: match_home_player_1_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_1
+  to_columns:
+  - player_api_id
+- name: match_home_player_5_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_5
+  to_columns:
+  - player_api_id
+- name: match_home_player_6_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_6
+  to_columns:
+  - player_api_id
+- name: match_home_player_3_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_3
+  to_columns:
+  - player_api_id
+- name: match_home_player_8_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_8
+  to_columns:
+  - player_api_id
+- name: match_home_player_10_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_10
+  to_columns:
+  - player_api_id
+- name: match_away_player_11_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_11
+  to_columns:
+  - player_api_id
+- name: match_away_player_4_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_4
+  to_columns:
+  - player_api_id
+- name: match_away_player_7_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_7
+  to_columns:
+  - player_api_id
+- name: match_home_player_4_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_4
+  to_columns:
+  - player_api_id
+- name: match_away_player_10_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_10
+  to_columns:
+  - player_api_id
+- name: match_away_player_9_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_9
+  to_columns:
+  - player_api_id
+- name: match_away_player_3_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_3
+  to_columns:
+  - player_api_id
+- name: match_home_player_9_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_9
+  to_columns:
+  - player_api_id
+- name: match_away_player_2_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_2
+  to_columns:
+  - player_api_id
+- name: match_home_player_11_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_11
+  to_columns:
+  - player_api_id
+- name: match_away_player_1_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_1
+  to_columns:
+  - player_api_id
+- name: match_away_player_6_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_6
+  to_columns:
+  - player_api_id
+- name: match_home_player_2_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_2
+  to_columns:
+  - player_api_id
+- name: match_away_player_8_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_8
+  to_columns:
+  - player_api_id
+- name: match_away_player_5_to_player
+  from: match
+  to: player
+  from_columns:
+  - away_player_5
+  to_columns:
+  - player_api_id
+- name: match_home_player_7_to_player
+  from: match
+  to: player
+  from_columns:
+  - home_player_7
+  to_columns:
+  - player_api_id
+- name: team_tactical_profile_team_api_id_to_team
+  from: team_tactical_profile
+  to: team
+  from_columns:
+  - team_api_id
+  to_columns:
+  - team_api_id
+- name: match_home_team_api_id_to_team
+  from: match
+  to: team
+  from_columns:
+  - home_team_api_id
+  to_columns:
+  - team_api_id
+- name: match_away_team_api_id_to_team
+  from: match
+  to: team
+  from_columns:
+  - away_team_api_id
+  to_columns:
+  - team_api_id
+- name: player_attribute_player_api_id_to_player
+  from: player_attribute
+  to: player
+  from_columns:
+  - player_api_id
+  to_columns:
+  - player_api_id
+- name: match_league_id_to_football_league
+  from: match
+  to: football_league
+  from_columns:
+  - league_id
+  to_columns:
+  - league_id
+- name: player_attribute_player_fifa_api_id_to_player
+  from: player_attribute
+  to: player
+  from_columns:
+  - player_fifa_api_id
+  to_columns:
+  - player_id
+- name: football_league_country_id_to_country
+  from: football_league
+  to: country
+  from_columns:
+  - country_id
+  to_columns:
+  - country_id
+- name: team_tactical_profile_team_fifa_api_id_to_team
+  from: team_tactical_profile
+  to: team
+  from_columns:
+  - team_fifa_api_id
+  to_columns:
+  - team_fifa_api_id
+- name: match_country_id_to_country
+  from: match
+  to: country
+  from_columns:
+  - country_id
+  to_columns:
+  - country_id

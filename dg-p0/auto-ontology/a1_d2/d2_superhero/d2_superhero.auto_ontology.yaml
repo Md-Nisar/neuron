@@ -1,0 +1,686 @@
+data_layer:
+  databases:
+  - id: b2fa8558-3fa5-44aa-a458-2d4fd267fb58
+    dialect: postgres
+    schemas:
+    - id: b2c3b478-053a-43e5-89b8-12719fdb6e6e
+      name: public
+      database_name: d2_superhero
+      tables:
+      - id: 91c5799f-c77a-49f3-a232-4a1b2f4002b3
+        name: alignment
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 63155a8f-b3d2-488b-8c57-6b16cb87e684
+          name: id
+          description: Unique identifier for each record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          is_nullable: false
+          is_unique: true
+        - id: c39b1379-216a-40d6-a0af-d61ddebaa6e1
+          name: alignment
+          description: Categorical indicator of alignment quality or status.
+          type: text
+          sample_values:
+          - Good
+          - Bad
+          - Neutral
+          - N/A
+          is_nullable: true
+          is_unique: true
+      - id: 97b8bbd4-8307-4107-9a8a-7e6b3e3f4eda
+        name: attribute
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 088a7e80-0b89-4446-bb8e-6858db13613f
+          name: id
+          description: A unique numeric identifier assigned to each attribute record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 6a7d20b5-3d61-41fb-b9ad-40496479dcbd
+          name: attribute_name
+          description: The descriptive name of an attribute, such as Intelligence
+            or Strength, representing a quantifiable characteristic of an entity.
+          type: text
+          sample_values:
+          - Intelligence
+          - Strength
+          - Speed
+          - Durability
+          - Power
+          is_nullable: true
+          is_unique: true
+      - id: d47f4ce9-ab42-4cb5-b1c8-ee3327ae55a1
+        name: colour
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 93522a0b-6edd-4a71-b172-a581241f999c
+          name: id
+          description: Unique identifier for each record in the table.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 2423f397-44e5-45f0-a798-f3d449e1f562
+          name: colour
+          description: The color attribute of the product, including solid colors
+            and multi-color combinations.
+          type: text
+          sample_values:
+          - No Colour
+          - Amber
+          - Auburn
+          - Black
+          - Black/Blue
+          is_nullable: true
+          is_unique: true
+      - id: 594029f2-68a4-49f9-bd42-933218ef647a
+        name: gender
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 591779fc-32e9-4ec8-b515-6b901437e3ef
+          name: id
+          description: A unique numeric identifier assigned to each record in the
+            table.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          is_nullable: false
+          is_unique: true
+        - id: c59e43e0-9fa7-4cfa-b32f-e76099799b79
+          name: gender
+          description: The gender classification of the individual, with values Male,
+            Female, or N/A for not applicable.
+          type: text
+          sample_values:
+          - Male
+          - Female
+          - N/A
+          is_nullable: true
+          is_unique: true
+      - id: d36bbae8-8e7b-466e-8115-f2f460e9f8cb
+        name: hero_attribute
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: d8600d5c-3398-4c52-b0cd-59cf5c453ecd
+          name: hero_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: true
+          is_unique: false
+        - id: 7e1990e8-fafb-41a8-be14-f9490942439c
+          name: attribute_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          is_nullable: true
+          is_unique: false
+        - id: 884f43b0-0d15-4e08-ba99-fca55130fdb0
+          name: attribute_value
+          description: attribute_value represents the numeric value of an attribute,
+            such as a score, percentage, or measurement, stored as a large integer.
+          type: bigint
+          sample_values:
+          - 85
+          - 80
+          - 90
+          - 100
+          - 10
+          is_nullable: true
+          is_unique: false
+      - id: e16ef51f-9fc4-41a9-996d-a6439bead92e
+        name: hero_power
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 9ab7b402-bb9c-41c9-bdc9-7c7b44906e2c
+          name: hero_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 21
+          - 16
+          - 39
+          - 36
+          - 33
+          is_nullable: true
+          is_unique: false
+        - id: 54aa1322-9299-4845-a3a6-3b0b294fa724
+          name: power_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 18
+          - 26
+          - 31
+          - 1
+          - 6
+          is_nullable: true
+          is_unique: false
+      - id: e8461ca9-25a7-4f1a-9e7c-d122c56aeecc
+        name: publisher
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: fd0c2462-7e98-4672-99ec-aa22f8d0e717
+          name: id
+          description: Unique identifier for each publisher record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 4b40714f-24e2-459d-b2a3-71b8042e9c32
+          name: publisher_name
+          description: Name of the publisher associated with the record.
+          type: text
+          sample_values:
+          - ''
+          - ABC Studios
+          - Dark Horse Comics
+          - DC Comics
+          - George Lucas
+          is_nullable: true
+          is_unique: true
+      - id: 69cedcab-72fb-4be1-93d2-851bdfb20a9d
+        name: race
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 978a1808-d5be-428a-adb4-156f4a7585bd
+          name: id
+          description: A unique numeric identifier assigned to each race entry.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 9c8fc19d-f47d-4284-b5e5-cf3ef38ffb34
+          name: race
+          description: The textual name or category of a race or species, with sample
+            values including Alien, Alpha, Amazon, Android, and a dash indicating
+            missing or unknown values.
+          type: text
+          sample_values:
+          - '-'
+          - Alien
+          - Alpha
+          - Amazon
+          - Android
+          is_nullable: true
+          is_unique: true
+      - id: 08552466-876d-4287-8572-119d028e7389
+        name: superhero
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: d2f669af-a675-4c5c-bd36-4cddb754a747
+          name: id
+          description: Unique identifier for each superhero record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 0198c070-13c8-433d-8480-077057654b48
+          name: superhero_name
+          description: Public or code name used by the superhero.
+          type: text
+          sample_values:
+          - Atlas
+          - Angel
+          - Ares
+          - Captain Marvel
+          - Chameleon
+          is_nullable: true
+          is_unique: true
+        - id: 4fdd98cd-e79b-4ed0-9c0b-f42afd131276
+          name: full_name
+          description: Civilian or legal name of the superhero, with '-' indicating
+            missing or unknown data.
+          type: text
+          sample_values:
+          - '-'
+          - Richard John Grayson
+          - Bartholomew Allen II
+          - Liam
+          - Angel Salvadore Bohusk
+          is_nullable: true
+          is_unique: false
+        - id: 672bc9b6-4855-4a49-aafb-b6f2321a18c0
+          name: gender_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          is_nullable: true
+          is_unique: false
+        - id: 3e72d210-960a-4ab4-b2a6-f2130e57493f
+          name: eye_colour_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 7
+          - 1
+          - 9
+          - 14
+          - 23
+          is_nullable: true
+          is_unique: false
+        - id: 9455b34d-0399-4cdf-ba88-099a8665a225
+          name: hair_colour_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 4
+          - 6
+          - 9
+          - 23
+          is_nullable: true
+          is_unique: false
+        - id: 25113e4d-8b9c-4aab-a8a1-883530566d0d
+          name: skin_colour_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 14
+          - 7
+          - 23
+          - 31
+          is_nullable: true
+          is_unique: false
+        - id: a94a5b0f-f8e2-4516-be9d-2789d65deb09
+          name: race_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1.0
+          - 24.0
+          - 42.0
+          - 21.0
+          - 28.0
+          is_nullable: true
+          is_unique: false
+        - id: 8376b34b-9397-4837-93b6-fe3a03d44945
+          name: publisher_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 13.0
+          - 4.0
+          - 3.0
+          - 15.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 88263978-dc8d-4b8d-8fc4-278a40004418
+          name: alignment_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1.0
+          - 2.0
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 2b6be711-80d8-476a-bee8-2007e1623fd6
+          name: height_cm
+          description: Height of the superhero in centimeters, with 0.0 indicating
+            missing or unknown values.
+          type: bigint
+          sample_values:
+          - 0.0
+          - 183.0
+          - 188.0
+          - 178.0
+          - 180.0
+          is_nullable: true
+          is_unique: false
+        - id: 4eee1a2c-7732-40ae-8285-d09a98331bab
+          name: weight_kg
+          description: Weight of the superhero in kilograms, with 0.0 indicating missing
+            or unknown values.
+          type: bigint
+          sample_values:
+          - 0.0
+          - 79.0
+          - 54.0
+          - 90.0
+          - 81.0
+          is_nullable: true
+          is_unique: false
+      - id: d95452bd-caba-4e12-8f0b-3e3f02da1422
+        name: superpower
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: a7b33861-3fa6-4881-a906-88444c7ec727
+          name: id
+          description: A unique numeric identifier assigned to each distinct power
+            record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 475381fc-b849-4624-a1c4-ed05ba2d819b
+          name: power_name
+          description: The descriptive name of a specific superpower or ability, such
+            as Agility or Lantern Power Ring.
+          type: text
+          sample_values:
+          - Agility
+          - Accelerated Healing
+          - Lantern Power Ring
+          - Dimensional Awareness
+          - Cold Resistance
+          is_nullable: true
+          is_unique: true
+  foreign_keys:
+  - source_column_id: 25113e4d-8b9c-4aab-a8a1-883530566d0d
+    target_column_id: 93522a0b-6edd-4a71-b172-a581241f999c
+  - source_column_id: 3e72d210-960a-4ab4-b2a6-f2130e57493f
+    target_column_id: 93522a0b-6edd-4a71-b172-a581241f999c
+  - source_column_id: 54aa1322-9299-4845-a3a6-3b0b294fa724
+    target_column_id: a7b33861-3fa6-4881-a906-88444c7ec727
+  - source_column_id: 672bc9b6-4855-4a49-aafb-b6f2321a18c0
+    target_column_id: 591779fc-32e9-4ec8-b515-6b901437e3ef
+  - source_column_id: 7e1990e8-fafb-41a8-be14-f9490942439c
+    target_column_id: 088a7e80-0b89-4446-bb8e-6858db13613f
+  - source_column_id: 8376b34b-9397-4837-93b6-fe3a03d44945
+    target_column_id: fd0c2462-7e98-4672-99ec-aa22f8d0e717
+  - source_column_id: 88263978-dc8d-4b8d-8fc4-278a40004418
+    target_column_id: 63155a8f-b3d2-488b-8c57-6b16cb87e684
+  - source_column_id: 9455b34d-0399-4cdf-ba88-099a8665a225
+    target_column_id: 93522a0b-6edd-4a71-b172-a581241f999c
+  - source_column_id: 9ab7b402-bb9c-41c9-bdc9-7c7b44906e2c
+    target_column_id: d2f669af-a675-4c5c-bd36-4cddb754a747
+  - source_column_id: a94a5b0f-f8e2-4516-be9d-2789d65deb09
+    target_column_id: 978a1808-d5be-428a-adb4-156f4a7585bd
+  - source_column_id: d8600d5c-3398-4c52-b0cd-59cf5c453ecd
+    target_column_id: d2f669af-a675-4c5c-bd36-4cddb754a747
+  joins: []
+semantic_layer:
+  terms:
+  - id: c23584d6-e61c-4d6c-aa13-d24e131a0630
+    name: Alignment Record
+    description: ''
+    represents:
+    - 91c5799f-c77a-49f3-a232-4a1b2f4002b3
+    columns_attributes:
+    - id: cd8ac72f-4ab8-45c9-8e43-ba854ef7dbca
+      name: Alignment Status
+      description: Categorical status indicating moral or ethical alignment quality,
+        with values Good, Bad, Neutral, or N/A.
+      column_id: c39b1379-216a-40d6-a0af-d61ddebaa6e1
+    - id: da80ab39-b3c8-4a15-8962-8893d0a10857
+      name: Record ID
+      description: Unique identifier for each alignment record, linking superheroes
+        to their alignment classification.
+      column_id: 63155a8f-b3d2-488b-8c57-6b16cb87e684
+  - id: 8be467c6-7d38-40a3-8e1b-47d47826b631
+    name: Attribute
+    description: A quantifiable characteristic or trait that can be assigned to an
+      entity, such as Intelligence or Strength.
+    represents:
+    - 97b8bbd4-8307-4107-9a8a-7e6b3e3f4eda
+    columns_attributes:
+    - id: 93513008-d083-4f68-9292-814e157d972c
+      name: Attribute Name
+      description: The descriptive name of a quantifiable characteristic, such as
+        Intelligence or Strength.
+      column_id: 6a7d20b5-3d61-41fb-b9ad-40496479dcbd
+    - id: d0f99b47-c268-474c-9623-28eace5ee66a
+      name: Attribute ID
+      description: A unique numeric identifier for each attribute, referenced by hero
+        attributes to link heroes to their attributes.
+      column_id: 088a7e80-0b89-4446-bb8e-6858db13613f
+  - id: e19b8b98-ad92-44a6-8e11-b52579e1a257
+    name: Colour
+    description: A colour reference used to describe product colour attributes, including
+      solid colours and multi-colour combinations.
+    represents:
+    - d47f4ce9-ab42-4cb5-b1c8-ee3327ae55a1
+    columns_attributes:
+    - id: 117cfd35-2a49-4abd-8221-d113d3927589
+      name: ID
+      description: Unique identifier for a colour reference, used to link superhero
+        eye, hair, and skin colour attributes.
+      column_id: 93522a0b-6edd-4a71-b172-a581241f999c
+    - id: cde9b2fd-94c5-4730-b368-9e821385396d
+      name: Colour
+      description: Text value representing a product colour, including solid colours
+        and multi-colour combinations such as 'Black/Blue'.
+      column_id: 2423f397-44e5-45f0-a798-f3d449e1f562
+  - id: 10cc9c70-2fa9-4bf7-b51d-b4f45ae71528
+    name: Gender
+    description: Gender classification reference data.
+    represents:
+    - 594029f2-68a4-49f9-bd42-933218ef647a
+    columns_attributes:
+    - id: 6a4c7d7b-805f-4844-84e6-5b74a8b8a157
+      name: Gender ID
+      description: Unique numeric identifier for each gender classification, used
+        to link superheroes to their gender.
+      column_id: 591779fc-32e9-4ec8-b515-6b901437e3ef
+    - id: ee063021-d111-44cb-8c05-d4d3c3d7be74
+      name: Gender
+      description: 'Text value representing the gender classification: Male, Female,
+        or N/A for not applicable.'
+      column_id: c59e43e0-9fa7-4cfa-b32f-e76099799b79
+  - id: 43a52da7-a3b4-49e3-a0a3-93d928289565
+    name: Hero Attribute
+    description: ''
+    represents:
+    - d36bbae8-8e7b-466e-8115-f2f460e9f8cb
+    columns_attributes:
+    - id: 6dd8d9e6-2598-447b-a8cd-9244aa324051
+      name: Attribute Value
+      description: 'attribute_value: The numeric score or measurement for a hero attribute,
+        stored as a large integer.'
+      column_id: 884f43b0-0d15-4e08-ba99-fca55130fdb0
+  - id: b25c1ddf-5551-4c21-acbd-1f0b1f9b99cc
+    name: Publisher
+    description: ''
+    represents:
+    - e8461ca9-25a7-4f1a-9e7c-d122c56aeecc
+    columns_attributes:
+    - id: 40afd69c-411a-421e-8242-fa7386807195
+      name: Publisher Name
+      description: Records the publisher's name, such as DC Comics or Dark Horse Comics,
+        which may be blank.
+      column_id: 4b40714f-24e2-459d-b2a3-71b8042e9c32
+    - id: 537d1106-59a2-4b07-b12e-8b30a05119fb
+      name: ID
+      description: Identifies each publisher uniquely and links superheroes to their
+        publishing company.
+      column_id: fd0c2462-7e98-4672-99ec-aa22f8d0e717
+  - id: f40a262b-20c0-4502-bcdb-3b342f9e27e4
+    name: Race (d2_superhero.public.race)
+    description: ''
+    represents:
+    - 69cedcab-72fb-4be1-93d2-851bdfb20a9d
+    columns_attributes:
+    - id: 173d93ec-8f7a-4fb9-acec-3f4459b893a0
+      name: Race ID
+      description: Unique numeric identifier for each race, referenced by superheroes
+        to indicate their race.
+      column_id: 978a1808-d5be-428a-adb4-156f4a7585bd
+    - id: c60e2c80-44dc-4d6d-9a95-ee2edc433eef
+      name: Race Name
+      description: Textual name categorizing a race or species, using a dash for unknown
+        values.
+      column_id: 9c8fc19d-f47d-4284-b5e5-cf3ef38ffb34
+  - id: 31668093-a463-4650-a039-2976d54ab3b8
+    name: Superhero
+    description: ''
+    represents:
+    - 08552466-876d-4287-8572-119d028e7389
+    columns_attributes:
+    - id: 416ba9f4-e76c-4029-b44c-beb6356142bc
+      name: Superhero Name
+      description: The public or code name by which the superhero is known.
+      column_id: 0198c070-13c8-433d-8480-077057654b48
+    - id: 628039d6-5ec6-4d31-a71f-6dfaf3080b89
+      name: heightCm
+      description: The superhero's height in centimeters, where 0.0 denotes missing
+        or unknown data.
+      column_id: 2b6be711-80d8-476a-bee8-2007e1623fd6
+    - id: b8d2c9eb-249c-4ffe-ac96-e93662e128e7
+      name: Superhero ID
+      description: Identifies the superhero and links to their attributes and powers.
+      column_id: d2f669af-a675-4c5c-bd36-4cddb754a747
+    - id: d2bed46c-7750-4532-a8d0-f1557c9820f8
+      name: Full Name
+      description: The civilian or legal name of the superhero, with a hyphen indicating
+        unknown.
+      column_id: 4fdd98cd-e79b-4ed0-9c0b-f42afd131276
+    - id: ec1dfa96-d320-41be-a397-1c7f92cb09e2
+      name: weightKg
+      description: The superhero's weight in kilograms, where 0.0 denotes missing
+        or unknown data.
+      column_id: 4eee1a2c-7732-40ae-8285-d09a98331bab
+  - id: 948c9b2b-4b49-4c10-a4ee-966af7ae08e0
+    name: Superpower
+    description: A distinct superpower or ability record.
+    represents:
+    - d95452bd-caba-4e12-8f0b-3e3f02da1422
+    columns_attributes:
+    - id: 62258054-2af4-4a5e-9221-eb64b37d3462
+      name: Superpower ID
+      description: Unique numeric identifier for each superpower, used to link heroes
+        to their powers.
+      column_id: a7b33861-3fa6-4881-a906-88444c7ec727
+    - id: a8138e92-ce6d-41da-8c31-2b41a3345372
+      name: Power Name
+      description: Descriptive name of the superpower ability, such as Agility or
+        Lantern Power Ring.
+      column_id: 475381fc-b849-4624-a1c4-ed05ba2d819b
+  semantic_fks:
+  - column_attribute_id: 117cfd35-2a49-4abd-8221-d113d3927589
+    column_id: 25113e4d-8b9c-4aab-a8a1-883530566d0d
+    use_in_join_paths: false
+  - column_attribute_id: 117cfd35-2a49-4abd-8221-d113d3927589
+    column_id: 3e72d210-960a-4ab4-b2a6-f2130e57493f
+    use_in_join_paths: true
+  - column_attribute_id: 62258054-2af4-4a5e-9221-eb64b37d3462
+    column_id: 54aa1322-9299-4845-a3a6-3b0b294fa724
+    use_in_join_paths: true
+  - column_attribute_id: 6a4c7d7b-805f-4844-84e6-5b74a8b8a157
+    column_id: 672bc9b6-4855-4a49-aafb-b6f2321a18c0
+    use_in_join_paths: true
+  - column_attribute_id: d0f99b47-c268-474c-9623-28eace5ee66a
+    column_id: 7e1990e8-fafb-41a8-be14-f9490942439c
+    use_in_join_paths: true
+  - column_attribute_id: 537d1106-59a2-4b07-b12e-8b30a05119fb
+    column_id: 8376b34b-9397-4837-93b6-fe3a03d44945
+    use_in_join_paths: true
+  - column_attribute_id: da80ab39-b3c8-4a15-8962-8893d0a10857
+    column_id: 88263978-dc8d-4b8d-8fc4-278a40004418
+    use_in_join_paths: true
+  - column_attribute_id: 117cfd35-2a49-4abd-8221-d113d3927589
+    column_id: 9455b34d-0399-4cdf-ba88-099a8665a225
+    use_in_join_paths: false
+  - column_attribute_id: b8d2c9eb-249c-4ffe-ac96-e93662e128e7
+    column_id: 9ab7b402-bb9c-41c9-bdc9-7c7b44906e2c
+    use_in_join_paths: true
+  - column_attribute_id: 173d93ec-8f7a-4fb9-acec-3f4459b893a0
+    column_id: a94a5b0f-f8e2-4516-be9d-2789d65deb09
+    use_in_join_paths: true
+  - column_attribute_id: b8d2c9eb-249c-4ffe-ac96-e93662e128e7
+    column_id: d8600d5c-3398-4c52-b0cd-59cf5c453ecd
+    use_in_join_paths: true
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table:
+    - id: f215814a-7a83-4ed3-b348-2325484bd013
+      name: Hero Powers
+      description: Junction linking superheroes to their superpowers via the hero_power
+        bridge table.
+      sql: SELECT hp.hero_id, hp.power_id, s.*, p.* FROM public.hero_power hp JOIN
+        public.superhero s ON hp.hero_id = s.id JOIN public.superpower p ON hp.power_id
+        = p.id
+      sql_column_is:
+      - 3e72d210-960a-4ab4-b2a6-f2130e57493f
+      - 475381fc-b849-4624-a1c4-ed05ba2d819b
+      - 88263978-dc8d-4b8d-8fc4-278a40004418
+      - 4eee1a2c-7732-40ae-8285-d09a98331bab
+      - 25113e4d-8b9c-4aab-a8a1-883530566d0d
+      - a94a5b0f-f8e2-4516-be9d-2789d65deb09
+      - 4fdd98cd-e79b-4ed0-9c0b-f42afd131276
+      - 9ab7b402-bb9c-41c9-bdc9-7c7b44906e2c
+      - 672bc9b6-4855-4a49-aafb-b6f2321a18c0
+      - 2b6be711-80d8-476a-bee8-2007e1623fd6
+      - 0198c070-13c8-433d-8480-077057654b48
+      - a7b33861-3fa6-4881-a906-88444c7ec727
+      - 8376b34b-9397-4837-93b6-fe3a03d44945
+      - 54aa1322-9299-4845-a3a6-3b0b294fa724
+      - 9455b34d-0399-4cdf-ba88-099a8665a225
+      - d2f669af-a675-4c5c-bd36-4cddb754a747
+      term_id: 948c9b2b-4b49-4c10-a4ee-966af7ae08e0
+  custom_analyses: []
+zones: []

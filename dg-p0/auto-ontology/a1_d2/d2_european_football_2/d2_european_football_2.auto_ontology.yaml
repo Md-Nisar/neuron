@@ -1,0 +1,3405 @@
+data_layer:
+  databases:
+  - id: ebd7522b-f321-4b16-a97c-853d1daf3288
+    dialect: postgres
+    schemas:
+    - id: e2fd1bd3-9b98-4b55-b514-92570887d5bd
+      name: public
+      database_name: d2_european_football_2
+      tables:
+      - id: ed942359-f21d-4caf-b67e-7859553db695
+        name: country
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 6216602b-72bd-4d57-b5dc-b181c0d5af7d
+          name: id
+          description: A unique numeric identifier for each country record.
+          type: bigint
+          sample_values:
+          - 1
+          - 1729
+          - 4769
+          - 7809
+          - 10257
+          is_nullable: false
+          is_unique: true
+        - id: 2c96b029-d448-4c1f-87df-0352670825c8
+          name: name
+          description: The official name of the country.
+          type: text
+          sample_values:
+          - Belgium
+          - England
+          - France
+          - Germany
+          - Italy
+          is_nullable: true
+          is_unique: true
+      - id: 708091aa-8d91-4709-8d62-f7d91ae0edac
+        name: league
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 2d2aa8d0-d689-4af2-93ff-1238d712fd1d
+          name: id
+          description: A unique numeric identifier assigned to each football league
+            record.
+          type: bigint
+          sample_values:
+          - 1
+          - 1729
+          - 4769
+          - 7809
+          - 10257
+          is_nullable: false
+          is_unique: true
+        - id: 56ae8960-1874-470c-8303-71bad33bb97d
+          name: country_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          - 1729
+          - 4769
+          - 7809
+          - 10257
+          is_nullable: true
+          is_unique: true
+        - id: 002d05dc-3909-4ab7-bb25-a7feede02dd8
+          name: name
+          description: The official name of the football league, including the country
+            and league title.
+          type: text
+          sample_values:
+          - Belgium Jupiler League
+          - England Premier League
+          - France Ligue 1
+          - Germany 1. Bundesliga
+          - Italy Serie A
+          is_nullable: true
+          is_unique: true
+      - id: 642572f5-422b-403f-a7fe-561149fccf04
+        name: match
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 54acfae2-4132-4a4e-8c33-57fec881a5fb
+          name: id
+          description: Unique identifier for each match record in the dataset.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: b3e47f42-01ab-45b1-856f-b4eea38d56a8
+          name: country_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 10f843c5-cda0-40ab-856a-9db43cbed795
+          name: league_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 1
+          is_nullable: true
+          is_unique: false
+        - id: 7cea927b-9a05-42e5-a9ba-4b1cb0a85f40
+          name: season
+          description: The football season during which the match was played, represented
+            as a start year/end year string.
+          type: text
+          sample_values:
+          - 2008/2009
+          - 2010/2011
+          - 2011/2012
+          - 2009/2010
+          - 2012/2013
+          is_nullable: true
+          is_unique: false
+        - id: 83b309b3-9550-4f13-aea1-060d4bf93fd6
+          name: stage
+          description: The matchday or round number within the season when the match
+            occurred.
+          type: bigint
+          sample_values:
+          - 1
+          - 10
+          - 11
+          - 12
+          - 13
+          is_nullable: true
+          is_unique: false
+        - id: 14bc28d7-371b-46b6-8940-0b9644be7dea
+          name: date
+          description: The date and time when the match took place, stored as a text
+            string in ISO-like format.
+          type: text
+          sample_values:
+          - '2009-05-09 00:00:00'
+          - '2009-05-16 00:00:00'
+          - '2011-03-12 00:00:00'
+          - '2012-03-18 00:00:00'
+          - '2012-03-21 00:00:00'
+          is_nullable: true
+          is_unique: false
+        - id: 44667174-14c1-43ec-9e33-ee7a87d3543f
+          name: match_api_id
+          description: External API identifier for the match, used to link with external
+            football data sources.
+          type: bigint
+          sample_values:
+          - 492473
+          - 492474
+          - 492475
+          - 492476
+          - 492477
+          is_nullable: true
+          is_unique: true
+        - id: c87475d7-9ed3-4fef-86e0-44c512a6e1e8
+          name: home_team_api_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 9985
+          - 9993
+          - 8571
+          - 9987
+          - 10000
+          is_nullable: true
+          is_unique: false
+        - id: e817399f-bef9-4d78-a3e2-6ebafd8d32ba
+          name: away_team_api_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 9994
+          - 8635
+          - 10000
+          - 9993
+          - 9985
+          is_nullable: true
+          is_unique: false
+        - id: 08d5bbed-0846-46a1-a43d-4b92afd74e08
+          name: home_team_goal
+          description: Number of goals scored by the home team in the match.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 0
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: 054f4ef7-2d3c-4398-85ef-c968e0c76337
+          name: away_team_goal
+          description: Number of goals scored by the away team in the match.
+          type: bigint
+          sample_values:
+          - 1
+          - 0
+          - 2
+          - 3
+          - 4
+          is_nullable: true
+          is_unique: false
+        - id: 1009b708-3804-4f97-bf15-ea1f43bdba09
+          name: home_player_x1
+          description: Player ID for the home team's player in position 1 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 5dde6e10-cef2-4355-8868-2374aa396381
+          name: home_player_x2
+          description: Player ID for the home team's player in position 2 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 2.0
+          - 3.0
+          - 1.0
+          - 4.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: 0928b350-6e16-46be-8968-70b6a6e0f70c
+          name: home_player_x3
+          description: Player ID for the home team's player in position 3 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 4.0
+          - 3.0
+          - 5.0
+          - 6.0
+          - 7.0
+          is_nullable: true
+          is_unique: false
+        - id: d16de3fe-2406-4dac-9996-95d05adec77b
+          name: home_player_x4
+          description: Player ID for the home team's player in position 4 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 6.0
+          - 7.0
+          - 5.0
+          - 8.0
+          - 4.0
+          is_nullable: true
+          is_unique: false
+        - id: 30d6615c-55d7-4c7a-a543-1c46519bbaf5
+          name: home_player_x5
+          description: Player ID for the home team's player in position 5 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 8.0
+          - 1.0
+          - 7.0
+          - 2.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: 3d3e38fc-10cf-46ca-883d-e40da3c9a6f5
+          name: home_player_x6
+          description: Player ID for the home team's player in position 6 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 2.0
+          - 3.0
+          - 9.0
+          - 4.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 42b9007d-f701-4995-b01d-4d10187469fe
+          name: home_player_x7
+          description: Player ID for the home team's player in position 7 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 4.0
+          - 5.0
+          - 3.0
+          - 6.0
+          - 7.0
+          is_nullable: true
+          is_unique: false
+        - id: 3a672099-5738-41a6-8363-a394e6d3fea6
+          name: home_player_x8
+          description: Player ID for the home team's player in position 8 of the starting
+            lineup.
+          type: bigint
+          sample_values:
+          - 6.0
+          - 7.0
+          - 5.0
+          - 8.0
+          - 4.0
+          is_nullable: true
+          is_unique: false
+        - id: 5ac22eec-962a-4b5e-9672-36b3a1a8d178
+          name: home_player_x9
+          description: The x-coordinate position of the home team's ninth player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 8.0
+          - 3.0
+          - 7.0
+          - 9.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: 5f79eb42-7b31-4f86-afa4-52d0a87505d3
+          name: home_player_x10
+          description: The x-coordinate position of the home team's tenth player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 4.0
+          - 5.0
+          - 9.0
+          - 8.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: 70cfdf28-558b-4e18-a24f-c9d7444a8efc
+          name: home_player_x11
+          description: The x-coordinate position of the home team's eleventh player
+            on the field during the match.
+          type: bigint
+          sample_values:
+          - 6.0
+          - 7.0
+          - 5.0
+          - 4.0
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 891fd3d3-dc48-4ca3-a83e-116c72feecb7
+          name: away_player_x1
+          description: The x-coordinate position of the away team's first player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 057b3cb6-cb0c-45c2-ad47-5f0b6a9031a9
+          name: away_player_x2
+          description: The x-coordinate position of the away team's second player
+            on the field during the match.
+          type: bigint
+          sample_values:
+          - 2.0
+          - 3.0
+          - 1.0
+          - 4.0
+          is_nullable: true
+          is_unique: false
+        - id: e02acea2-7bc3-42aa-929d-bbbefb8490a2
+          name: away_player_x3
+          description: The x-coordinate position of the away team's third player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 4.0
+          - 3.0
+          - 5.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: 2d0e4586-13a1-4f54-b45e-243d676aabc8
+          name: away_player_x4
+          description: The x-coordinate position of the away team's fourth player
+            on the field during the match.
+          type: bigint
+          sample_values:
+          - 6.0
+          - 7.0
+          - 5.0
+          - 8.0
+          - 2.0
+          is_nullable: true
+          is_unique: false
+        - id: bf10b224-e6e3-46ad-bbc0-ff60dfab7280
+          name: away_player_x5
+          description: The x-coordinate position of the away team's fifth player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 8.0
+          - 1.0
+          - 7.0
+          - 2.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: 5600544a-73a1-4139-ac2c-dc4c2c5dc278
+          name: away_player_x6
+          description: The x-coordinate position of the away team's sixth player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 2.0
+          - 3.0
+          - 9.0
+          - 4.0
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: 04860c11-c9ce-425b-a92c-427480314143
+          name: away_player_x7
+          description: The x-coordinate position of the away team's seventh player
+            on the field during the match.
+          type: bigint
+          sample_values:
+          - 4.0
+          - 5.0
+          - 3.0
+          - 6.0
+          - 7.0
+          is_nullable: true
+          is_unique: false
+        - id: 90b8bfb5-edcf-410b-b63a-8546868971bb
+          name: away_player_x8
+          description: The x-coordinate position of the away team's eighth player
+            on the field during the match.
+          type: bigint
+          sample_values:
+          - 6.0
+          - 7.0
+          - 5.0
+          - 8.0
+          - 4.0
+          is_nullable: true
+          is_unique: false
+        - id: 26fbb06a-887e-46dc-b052-07a3608ba7b9
+          name: away_player_x9
+          description: The x-coordinate position of the away team's ninth player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 8.0
+          - 3.0
+          - 7.0
+          - 9.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: a2f10d21-5a05-43c7-9670-eb94a1ea528b
+          name: away_player_x10
+          description: The x-coordinate position of the away team's tenth player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 4.0
+          - 5.0
+          - 9.0
+          - 8.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: c05ed483-f353-4f21-b4e6-a49abe1942d9
+          name: away_player_x11
+          description: The x-coordinate position of the away team's eleventh player
+            on the field during the match.
+          type: bigint
+          sample_values:
+          - 6.0
+          - 7.0
+          - 5.0
+          - 4.0
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: ec7d7e08-03ed-4a27-9ec0-74d52e67cd7f
+          name: home_player_y1
+          description: The y-coordinate position of the home team's first player on
+            the field during the match.
+          type: bigint
+          sample_values:
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: bf56e5fb-6d56-4351-a5a3-ec81471aa1e0
+          name: home_player_y2
+          description: Represents the y-coordinate position of the home team's player
+            number 2 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 34e586fe-e4ba-48b0-849f-2a3731731c2d
+          name: home_player_y3
+          description: Represents the y-coordinate position of the home team's player
+            number 3 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: a1283359-d59c-491d-abdc-d300e1d32124
+          name: home_player_y4
+          description: Represents the y-coordinate position of the home team's player
+            number 4 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 126dc355-369d-4ebb-ad93-6bf72d8ab3f5
+          name: home_player_y5
+          description: Represents the y-coordinate position of the home team's player
+            number 5 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          - 7.0
+          - 6.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: d881c778-8751-4eb7-877a-2a18a52e7069
+          name: home_player_y6
+          description: Represents the y-coordinate position of the home team's player
+            number 6 on the field.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 3.0
+          - 6.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: 9e3c9c11-63d3-4a22-92c4-73f3b649edb8
+          name: home_player_y7
+          description: Represents the y-coordinate position of the home team's player
+            number 7 on the field.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 6.0
+          - 8.0
+          is_nullable: true
+          is_unique: false
+        - id: dbdcd268-4e9f-48b7-afe9-72afa66043eb
+          name: home_player_y8
+          description: Represents the y-coordinate position of the home team's player
+            number 8 on the field.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 8.0
+          is_nullable: true
+          is_unique: false
+        - id: 6ebd93af-2667-4f69-9331-37fa65441a25
+          name: home_player_y9
+          description: Represents the y-coordinate position of the home team's player
+            number 9 on the field.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 10.0
+          - 8.0
+          is_nullable: true
+          is_unique: false
+        - id: 5c7b7d7f-7587-4bf6-b868-7ed9e8177cfa
+          name: home_player_y10
+          description: Represents the y-coordinate position of the home team's player
+            number 10 on the field.
+          type: bigint
+          sample_values:
+          - 10.0
+          - 7.0
+          - 8.0
+          is_nullable: true
+          is_unique: false
+        - id: 75db96b8-2366-4071-8b3c-f9e9faeab485
+          name: home_player_y11
+          description: Represents the y-coordinate position of the home team's player
+            number 11 on the field.
+          type: bigint
+          sample_values:
+          - 10.0
+          - 11.0
+          is_nullable: true
+          is_unique: false
+        - id: 30b5ab79-cd0f-4810-a876-558ae93ca180
+          name: away_player_y1
+          description: Represents the y-coordinate position of the away team's player
+            number 1 on the field.
+          type: bigint
+          sample_values:
+          - 1.0
+          is_nullable: true
+          is_unique: false
+        - id: bef4050f-bb19-4f3f-b0b7-7d0b80083c0c
+          name: away_player_y2
+          description: Represents the y-coordinate position of the away team's player
+            number 2 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 282e7ede-4fbc-44ac-8b82-b1c4a899c6ff
+          name: away_player_y3
+          description: Represents the y-coordinate position of the away team's player
+            number 3 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 9abfacf9-a35a-4df5-b87e-688d77f098cd
+          name: away_player_y4
+          description: Represents the y-coordinate position of the away team's player
+            number 4 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          is_nullable: true
+          is_unique: false
+        - id: 66778320-dec1-4b01-b642-debf77d30b13
+          name: away_player_y5
+          description: Represents the y-coordinate position of the away team's player
+            number 5 on the field.
+          type: bigint
+          sample_values:
+          - 3.0
+          - 7.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: e5689f4e-cfbb-46f0-b212-f46eb1c0d25d
+          name: away_player_y6
+          description: Represents the jersey number of the sixth away team player
+            in the match lineup.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 3.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: f032f07c-16ee-4837-8104-18bc64ed5462
+          name: away_player_y7
+          description: Represents the jersey number of the seventh away team player
+            in the match lineup.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 6.0
+          - 8.0
+          is_nullable: true
+          is_unique: false
+        - id: 443b6fa8-4dd2-498d-84d4-d55d105fb805
+          name: away_player_y8
+          description: Represents the jersey number of the eighth away team player
+            in the match lineup.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 8.0
+          - 6.0
+          is_nullable: true
+          is_unique: false
+        - id: 5345e476-edf4-486e-92ff-1acd9e41e5a7
+          name: away_player_y9
+          description: Represents the jersey number of the ninth away team player
+            in the match lineup.
+          type: bigint
+          sample_values:
+          - 7.0
+          - 10.0
+          - 8.0
+          is_nullable: true
+          is_unique: false
+        - id: bbcbc053-e0ea-4258-83b7-cc41ba73497a
+          name: away_player_y10
+          description: Represents the jersey number of the tenth away team player
+            in the match lineup.
+          type: bigint
+          sample_values:
+          - 10.0
+          - 7.0
+          - 8.0
+          - 9.0
+          is_nullable: true
+          is_unique: false
+        - id: c0904121-567d-41fe-9a54-f879fa06bb58
+          name: away_player_y11
+          description: Represents the jersey number of the eleventh away team player
+            in the match lineup.
+          type: bigint
+          sample_values:
+          - 10.0
+          - 11.0
+          is_nullable: true
+          is_unique: false
+        - id: 18688e02-3d90-47d6-b12d-068adbade2d4
+          name: home_player_1
+          description: ''
+          type: bigint
+          sample_values:
+          - 38391.0
+          - 37900.0
+          - 104378.0
+          - 36835.0
+          - 38797.0
+          is_nullable: true
+          is_unique: false
+        - id: bd71fa40-33e0-4c30-bd82-a1386cf18e39
+          name: home_player_2
+          description: ''
+          type: bigint
+          sample_values:
+          - 38342.0
+          - 36832.0
+          - 67950.0
+          - 37886.0
+          - 37988.0
+          is_nullable: true
+          is_unique: false
+        - id: 302abcb9-e6d3-41f3-ad33-2322b8c8e8d9
+          name: home_player_3
+          description: ''
+          type: bigint
+          sample_values:
+          - 36849.0
+          - 38389.0
+          - 37100.0
+          - 38441.0
+          - 37047.0
+          is_nullable: true
+          is_unique: false
+        - id: 78f3df28-6bd9-44b3-9b87-57ec426cb72b
+          name: home_player_4
+          description: ''
+          type: bigint
+          sample_values:
+          - 38789.0
+          - 45413.0
+          - 12473.0
+          - 42594.0
+          - 94462.0
+          is_nullable: true
+          is_unique: false
+        - id: 1c2bd87e-57fc-4368-9f34-feec854ee156
+          name: home_player_5
+          description: ''
+          type: bigint
+          sample_values:
+          - 148314.0
+          - 67941.0
+          - 149150.0
+          - 131404.0
+          - 47411.0
+          is_nullable: true
+          is_unique: false
+        - id: 1c676110-1a79-4d32-8c5b-5349c43c00b7
+          name: home_player_6
+          description: ''
+          type: bigint
+          sample_values:
+          - 38354.0
+          - 39578.0
+          - 32863.0
+          - 27110.0
+          - 38371.0
+          is_nullable: true
+          is_unique: false
+        - id: fd79e973-5548-4682-9f3f-fd1281e34e12
+          name: home_player_7
+          description: ''
+          type: bigint
+          sample_values:
+          - 37866.0
+          - 67898.0
+          - 39498.0
+          - 38290.0
+          - 37981.0
+          is_nullable: true
+          is_unique: false
+        - id: 329be031-7697-4e16-853a-b7838b05a8be
+          name: home_player_8
+          description: ''
+          type: bigint
+          sample_values:
+          - 38366.0
+          - 104386.0
+          - 131531.0
+          - 38253.0
+          - 104411.0
+          is_nullable: true
+          is_unique: false
+        - id: 9098e566-82f8-47aa-8aa2-63082c4017fb
+          name: home_player_9
+          description: ''
+          type: bigint
+          sample_values:
+          - 38357.0
+          - 169200.0
+          - 148335.0
+          - 166618.0
+          - 163670.0
+          is_nullable: true
+          is_unique: false
+        - id: 388f15cf-cf12-491d-87aa-46020f5ff84c
+          name: home_player_10
+          description: ''
+          type: bigint
+          sample_values:
+          - 42153.0
+          - 27423.0
+          - 33622.0
+          - 12574.0
+          - 37262.0
+          is_nullable: true
+          is_unique: false
+        - id: a71b1187-32b0-4881-a6f2-f7eaf55ada1b
+          name: home_player_11
+          description: ''
+          type: bigint
+          sample_values:
+          - 148315.0
+          - 164732.0
+          - 38440.0
+          - 46335.0
+          - 104404.0
+          is_nullable: true
+          is_unique: false
+        - id: b4c02586-b9bf-4ba9-bfb9-ac4129176785
+          name: away_player_1
+          description: ''
+          type: bigint
+          sample_values:
+          - 38391.0
+          - 37900.0
+          - 104378.0
+          - 39573.0
+          - 38797.0
+          is_nullable: true
+          is_unique: false
+        - id: 93a64fdf-35e2-48a9-82b7-c8dc152bc836
+          name: away_player_2
+          description: ''
+          type: bigint
+          sample_values:
+          - 38342.0
+          - 67950.0
+          - 36832.0
+          - 37988.0
+          - 37886.0
+          is_nullable: true
+          is_unique: false
+        - id: 8e797f64-c47e-4958-8a36-255854b0c781
+          name: away_player_3
+          description: ''
+          type: bigint
+          sample_values:
+          - 38441.0
+          - 38389.0
+          - 36849.0
+          - 38337.0
+          - 37100.0
+          is_nullable: true
+          is_unique: false
+        - id: 6230a756-9c63-4da4-8a6a-79138da6727e
+          name: away_player_4
+          description: ''
+          type: bigint
+          sample_values:
+          - 12473.0
+          - 38789.0
+          - 94030.0
+          - 39389.0
+          - 94462.0
+          is_nullable: true
+          is_unique: false
+        - id: eccd250f-6cbb-4550-9022-4eb17524390c
+          name: away_player_5
+          description: ''
+          type: bigint
+          sample_values:
+          - 148314.0
+          - 67941.0
+          - 131404.0
+          - 149150.0
+          - 94030.0
+          is_nullable: true
+          is_unique: false
+        - id: b6fecb5b-a517-41b9-b534-7382c2dbfc68
+          name: away_player_6
+          description: ''
+          type: bigint
+          sample_values:
+          - 27110.0
+          - 30910.0
+          - 38354.0
+          - 32863.0
+          - 37893.0
+          is_nullable: true
+          is_unique: false
+        - id: 75db51f8-bce9-4fe6-9076-85810a745700
+          name: away_player_7
+          description: ''
+          type: bigint
+          sample_values:
+          - 37866.0
+          - 67898.0
+          - 37112.0
+          - 38969.0
+          - 38257.0
+          is_nullable: true
+          is_unique: false
+        - id: e2b5f292-e3e6-4e0d-8202-989978e3d578
+          name: away_player_8
+          description: ''
+          type: bigint
+          sample_values:
+          - 38253.0
+          - 38290.0
+          - 131531.0
+          - 38366.0
+          - 40521.0
+          is_nullable: true
+          is_unique: false
+        - id: 837a66c7-9f9f-4930-b0c6-72ea99aa30e9
+          name: away_player_9
+          description: ''
+          type: bigint
+          sample_values:
+          - 182605.0
+          - 42706.0
+          - 178291.0
+          - 38786.0
+          - 163670.0
+          is_nullable: true
+          is_unique: false
+        - id: 8128760f-10a0-4578-b2ea-0ea70cab4db1
+          name: away_player_10
+          description: ''
+          type: bigint
+          sample_values:
+          - 12574.0
+          - 5016.0
+          - 37025.0
+          - 37262.0
+          - 33622.0
+          is_nullable: true
+          is_unique: false
+        - id: 6048e808-6594-45ef-99bc-d413411b8307
+          name: away_player_11
+          description: ''
+          type: bigint
+          sample_values:
+          - 38369.0
+          - 148315.0
+          - 181276.0
+          - 38782.0
+          - 46335.0
+          is_nullable: true
+          is_unique: false
+        - id: 09598009-d6fb-4582-b881-15a8c44fc41d
+          name: goal
+          description: Contains textual details about goal events such as scorer,
+            minute, or type of goal.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 61efc63f-34b2-4618-a995-14165d32aa32
+          name: shoton
+          description: Contains textual details about shots on target including player,
+            minute, or outcome.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: ff21cf43-b38b-460b-bb66-8ea067e5d1d0
+          name: shotoff
+          description: Contains textual details about shots off target including player,
+            minute, or outcome.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: d05c039f-f5e3-436a-aa22-5cfed4910bc8
+          name: foulcommit
+          description: Contains textual details about fouls committed including player,
+            minute, or location.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 78d6431e-2e56-4824-9243-c1995b5095d1
+          name: card
+          description: Contains textual details about card events such as player,
+            card type, and minute.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 10fe9215-2bbc-4ead-8797-f7c0dfa61dbb
+          name: cross
+          description: Contains textual details about cross events including player,
+            minute, or outcome.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 546b5cf5-d057-4cf6-a2b4-fa7a23ec91d0
+          name: corner
+          description: Contains textual details about corner kick events including
+            team, minute, or outcome.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 560089c9-26bc-4262-8b8b-2af2701e4e71
+          name: possession
+          description: Contains textual details about possession statistics or events
+            during the match.
+          type: text
+          sample_values: []
+          is_nullable: true
+          is_unique: false
+        - id: 524d1e58-cf2a-4e0d-986a-42bf5ce89d7d
+          name: b365h
+          description: Represents the Bet365 decimal odds for the home team to win
+            the match.
+          type: real
+          sample_values:
+          - 2.1
+          - 1.91
+          - 2.0
+          - 2.2
+          - 1.44
+          is_nullable: true
+          is_unique: false
+        - id: 456d08c8-5ef6-4b35-a43d-a4d352277b96
+          name: b365d
+          description: Bet365 decimal odds for a draw outcome in the match.
+          type: real
+          sample_values:
+          - 3.3
+          - 3.4
+          - 3.25
+          - 3.5
+          - 3.6
+          is_nullable: true
+          is_unique: false
+        - id: 3d486d0d-ac3f-4934-8b1d-5af86d1176aa
+          name: b365a
+          description: Bet365 decimal odds for an away team win in the match.
+          type: real
+          sample_values:
+          - 4.0
+          - 5.0
+          - 2.5
+          - 6.0
+          - 8.0
+          is_nullable: true
+          is_unique: false
+        - id: 872c0c38-a143-47cd-a724-39d70085026d
+          name: bwh
+          description: Bet&Win decimal odds for a home team win in the match.
+          type: real
+          sample_values:
+          - 2.2
+          - 2.1
+          - 1.75
+          - 2.3
+          - 1.45
+          is_nullable: true
+          is_unique: false
+        - id: d99769ae-2e5b-4f66-a02a-e665ac88fd1f
+          name: bwd
+          description: Bet&Win decimal odds for a draw outcome in the match.
+          type: real
+          sample_values:
+          - 3.3
+          - 3.2
+          - 3.4
+          - 3.25
+          - 3.5
+          is_nullable: true
+          is_unique: false
+        - id: 019bd4df-1cdb-436d-9408-92958a3b87e3
+          name: bwa
+          description: Bet&Win decimal odds for an away team win in the match.
+          type: real
+          sample_values:
+          - 3.0
+          - 3.1
+          - 2.8
+          - 3.4
+          - 2.3
+          is_nullable: true
+          is_unique: false
+        - id: 14c5af91-4dd5-4e54-a612-b72fe3fc07bd
+          name: iwh
+          description: Interwetten decimal odds for a home team win in the match.
+          type: real
+          sample_values:
+          - 2.2
+          - 2.0
+          - 2.3
+          - 2.1
+          - 1.9
+          is_nullable: true
+          is_unique: false
+        - id: 06517b57-9b3c-4d33-ac72-1b0ac464827a
+          name: iwd
+          description: Interwetten decimal odds for a draw outcome in the match.
+          type: real
+          sample_values:
+          - 3.2
+          - 3.3
+          - 3.1
+          - 3.4
+          - 3.9
+          is_nullable: true
+          is_unique: false
+        - id: bc04dbd3-3d1b-488b-acb9-5a141276a8c9
+          name: iwa
+          description: Interwetten decimal odds for an away team win in the match.
+          type: real
+          sample_values:
+          - 2.5
+          - 2.3
+          - 3.1
+          - 6.0
+          - 2.8
+          is_nullable: true
+          is_unique: false
+        - id: fe7a360e-1dba-4e9f-91f5-750cc963369e
+          name: lbh
+          description: Ladbrokes decimal odds for a home team win in the match.
+          type: real
+          sample_values:
+          - 2.2
+          - 2.5
+          - 2.1
+          - 1.91
+          - 2.0
+          is_nullable: true
+          is_unique: false
+        - id: 888e2562-da99-4909-a381-84c29053c9f1
+          name: lbd
+          description: Ladbrokes decimal odds for a draw outcome in the match.
+          type: real
+          sample_values:
+          - 3.2
+          - 3.25
+          - 3.3
+          - 3.4
+          - 3.5
+          is_nullable: true
+          is_unique: false
+        - id: a7fe9b67-5a45-41c6-ae42-6f3162594a5d
+          name: lba
+          description: Ladbrokes decimal odds for an away team win in the match.
+          type: real
+          sample_values:
+          - 2.5
+          - 7.0
+          - 2.75
+          - 8.0
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: ece86525-b7b0-44f8-8a4c-73cbaf4e1675
+          name: psh
+          description: Pinnacle Sports decimal odds for a home team win in the match.
+          type: real
+          sample_values:
+          - 5.1
+          - 2.48
+          - 1.83
+          - 1.74
+          is_nullable: true
+          is_unique: true
+        - id: 43c01143-1761-486e-bea6-9b45698b16f8
+          name: psd
+          description: Pinnacle Sports decimal odds for a draw outcome in the match.
+          type: real
+          sample_values:
+          - 3.82
+          - 3.52
+          - 3.79
+          is_nullable: true
+          is_unique: false
+        - id: 2e9488e7-972e-4988-9bba-ed821c07ea24
+          name: psa
+          description: Pinnacle Sports decimal odds for an away team win in the match.
+          type: real
+          sample_values:
+          - 1.76
+          - 2.96
+          - 4.63
+          - 5.2
+          is_nullable: true
+          is_unique: true
+        - id: f985a041-bc30-4a79-9ade-ef91d6826b89
+          name: whh
+          description: William Hill decimal odds for a home team win in the match.
+          type: real
+          sample_values:
+          - 2.1
+          - 2.5
+          - 2.2
+          - 2.0
+          - 1.8
+          is_nullable: true
+          is_unique: false
+        - id: df0127ef-e453-45fb-9550-ac75e4898126
+          name: whd
+          description: whd is a real-valued column with sample values typically ranging
+            from 3.2 to 3.5.
+          type: real
+          sample_values:
+          - 3.3
+          - 3.2
+          - 3.25
+          - 3.4
+          - 3.5
+          is_nullable: true
+          is_unique: false
+        - id: 14ebc5cb-1448-4b22-afcd-fc3d2878f9a7
+          name: wha
+          description: wha is a real-valued column with sample values observed between
+            2.5 and 8.0.
+          type: real
+          sample_values:
+          - 3.0
+          - 5.0
+          - 3.2
+          - 8.0
+          - 5.5
+          is_nullable: true
+          is_unique: false
+        - id: 616b50dc-a292-43f8-8b77-6b71420583ad
+          name: sjh
+          description: sjh is a real-valued column with sample values typically ranging
+            from 1.67 to 2.3.
+          type: real
+          sample_values:
+          - 2.1
+          - 2.2
+          - 2.3
+          - 2.0
+          - 1.67
+          is_nullable: true
+          is_unique: false
+        - id: 4f245026-1577-46d7-91fc-8867fdfb5f42
+          name: sjd
+          description: sjd is a real-valued column with sample values typically ranging
+            from 3.2 to 3.5.
+          type: real
+          sample_values:
+          - 3.3
+          - 3.4
+          - 3.25
+          - 3.5
+          - 3.2
+          is_nullable: true
+          is_unique: false
+        - id: e4a4918e-4644-4a35-8ad0-6a58aa5da8b2
+          name: sja
+          description: sja is a real-valued column with sample values observed between
+            2.5 and 7.5.
+          type: real
+          sample_values:
+          - 4.0
+          - 3.0
+          - 2.5
+          - 3.1
+          - 7.5
+          is_nullable: true
+          is_unique: false
+        - id: e136337f-5580-4668-b283-6a7a1d960fa8
+          name: vch
+          description: vch is a real-valued column with sample values typically ranging
+            from 1.4 to 2.4.
+          type: real
+          sample_values:
+          - 2.25
+          - 2.0
+          - 1.4
+          - 2.1
+          - 2.4
+          is_nullable: true
+          is_unique: false
+        - id: a3b45358-49a6-47b6-8ba4-b11876f04655
+          name: vcd
+          description: vcd is a real-valued column with sample values typically ranging
+            from 3.2 to 3.5.
+          type: real
+          sample_values:
+          - 3.25
+          - 3.4
+          - 3.3
+          - 3.2
+          - 3.5
+          is_nullable: true
+          is_unique: false
+        - id: 2f410e19-9d28-4fc9-8777-f119a669e88d
+          name: vca
+          description: vca is a real-valued column with sample values observed between
+            4.0 and 7.5.
+          type: real
+          sample_values:
+          - 4.0
+          - 4.5
+          - 5.5
+          - 7.5
+          - 5.0
+          is_nullable: true
+          is_unique: false
+        - id: 4fb47b6e-9b8f-4009-aee9-aa7e0ca6a8f6
+          name: gbh
+          description: gbh is a real-valued column with sample values typically ranging
+            from 2.0 to 2.5.
+          type: real
+          sample_values:
+          - 2.1
+          - 2.2
+          - 2.3
+          - 2.0
+          - 2.5
+          is_nullable: true
+          is_unique: false
+        - id: d3bccb3e-11e6-4222-93d6-118074e82e55
+          name: gbd
+          description: gbd is a real-valued column with sample values typically ranging
+            from 3.2 to 3.5.
+          type: real
+          sample_values:
+          - 3.25
+          - 3.2
+          - 3.4
+          - 3.3
+          - 3.5
+          is_nullable: true
+          is_unique: false
+        - id: e684caac-aad2-45cd-85c8-883782197620
+          name: gba
+          description: gba is a real-valued column with sample values observed between
+            2.5 and 10.0.
+          type: real
+          sample_values:
+          - 7.0
+          - 3.0
+          - 2.5
+          - 3.75
+          - 10.0
+          is_nullable: true
+          is_unique: false
+        - id: 59485858-d4ef-4594-ac88-af418972c598
+          name: bsh
+          description: bsh is a real-valued column with sample values typically ranging
+            from 1.44 to 2.5.
+          type: real
+          sample_values:
+          - 2.0
+          - 2.3
+          - 2.1
+          - 1.44
+          - 2.5
+          is_nullable: true
+          is_unique: false
+        - id: 581ef986-f17c-4734-bbd1-b30a47326623
+          name: bsd
+          description: bsd is a real-valued column with sample values typically ranging
+            from 3.2 to 3.6.
+          type: real
+          sample_values:
+          - 3.2
+          - 3.25
+          - 3.3
+          - 3.4
+          - 3.6
+          is_nullable: true
+          is_unique: false
+        - id: c931a06b-4f66-4f94-9e5c-a8f5530ce9da
+          name: bsa
+          description: bsa is a real-valued column with sample values observed between
+            2.5 and 7.0.
+          type: real
+          sample_values:
+          - 2.5
+          - 7.0
+          - 3.3
+          - 5.0
+          - 3.1
+          is_nullable: true
+          is_unique: false
+      - id: aa413435-eb2e-4bbc-955a-9a035f843aed
+        name: player
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 79c58002-f1f2-422c-8bbf-631d005bbcea
+          name: id
+          description: Unique identifier for each player record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+          name: player_api_id
+          description: External API identifier assigned to the player.
+          type: bigint
+          sample_values:
+          - 505942
+          - 155782
+          - 162549
+          - 30572
+          - 23780
+          is_nullable: true
+          is_unique: true
+        - id: c56044a9-47b9-44ea-b33e-2aaa07213688
+          name: player_name
+          description: Full name of the player.
+          type: text
+          sample_values:
+          - Adriano
+          - Alex
+          - Anselmo
+          - Adailton
+          - Adam Drury
+          is_nullable: true
+          is_unique: true
+        - id: b12acdb8-2815-4c0a-901c-2a13db694d43
+          name: player_fifa_api_id
+          description: A unique identifier assigned to a player in the FIFA API system.
+          type: bigint
+          sample_values:
+          - 218353
+          - 189615
+          - 186170
+          - 140161
+          - 17725
+          is_nullable: true
+          is_unique: true
+        - id: 299d8c93-5ec9-4511-bdd7-0e709b927f2d
+          name: birthday
+          description: Date of birth of the player.
+          type: text
+          sample_values:
+          - '1992-03-30 00:00:00'
+          - '1995-03-07 00:00:00'
+          - '1987-04-01 00:00:00'
+          - '1979-05-29 00:00:00'
+          - '1986-06-17 00:00:00'
+          is_nullable: true
+          is_unique: false
+        - id: 71d4c27e-7565-4a42-b90b-d096d278ce72
+          name: height
+          description: Height of the player in centimeters.
+          type: bigint
+          sample_values:
+          - 182
+          - 177
+          - 180
+          - 187
+          - 185
+          is_nullable: true
+          is_unique: false
+        - id: 6ac792fb-d9a8-4cf8-bdd0-179b2c31c91c
+          name: weight
+          description: Weight of the player.
+          type: bigint
+          sample_values:
+          - 165
+          - 172
+          - 161
+          - 176
+          - 154
+          is_nullable: true
+          is_unique: false
+      - id: 5dddbb7f-4d74-4bf7-a5b1-1f10b8f996da
+        name: player_attributes
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: c80bcd37-31f8-4da9-98c2-4d600885893f
+          name: id
+          description: Unique identifier for each player record in the dataset.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 1d37649b-9336-4993-9d4f-495083d99828
+          name: player_fifa_api_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 186561
+          - 189615
+          - 161999
+          - 204826
+          - 194958
+          is_nullable: true
+          is_unique: false
+        - id: d9f79dad-35f4-4244-a15f-01a89631169c
+          name: player_api_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 75489
+          - 155782
+          - 39562
+          - 191784
+          - 231592
+          is_nullable: true
+          is_unique: false
+        - id: 627037c9-8bc6-4763-8c9d-e45ef8996784
+          name: date
+          description: Timestamp indicating when the player's attribute snapshot was
+            recorded.
+          type: text
+          sample_values:
+          - '2007-02-22 00:00:00'
+          - '2015-09-21 00:00:00'
+          - '2014-09-18 00:00:00'
+          - '2013-02-15 00:00:00'
+          - '2012-08-31 00:00:00'
+          is_nullable: true
+          is_unique: false
+        - id: 4a7ba310-cb2b-44bb-9ee4-604132c74432
+          name: overall_rating
+          description: Composite numerical score representing the player's overall
+            ability level.
+          type: bigint
+          sample_values:
+          - 71.0
+          - 69.0
+          - 67.0
+          - 73.0
+          - 66.0
+          is_nullable: true
+          is_unique: false
+        - id: aeb215fe-4014-43ce-ae2f-8e56bd1980e3
+          name: potential
+          description: Projected maximum overall rating the player can achieve in
+            their career.
+          type: bigint
+          sample_values:
+          - 73.0
+          - 75.0
+          - 70.0
+          - 74.0
+          - 77.0
+          is_nullable: true
+          is_unique: false
+        - id: 3d340aca-0eeb-4cec-b3f4-5885e25e4ab5
+          name: preferred_foot
+          description: The foot the player favors for kicking and ball control.
+          type: text
+          sample_values:
+          - right
+          - left
+          is_nullable: true
+          is_unique: false
+        - id: 4e7497c4-75a5-4755-a050-222d165e1956
+          name: attacking_work_rate
+          description: Qualitative measure of the player's offensive effort and positioning
+            tendency.
+          type: text
+          sample_values:
+          - medium
+          - high
+          - low
+          - None
+          - le
+          is_nullable: true
+          is_unique: false
+        - id: a015248f-1c16-4f22-b5df-a00fecaa1338
+          name: defensive_work_rate
+          description: Qualitative measure of the player's defensive contribution
+            and tracking back behavior.
+          type: text
+          sample_values:
+          - medium
+          - high
+          - low
+          - _0
+          - '5'
+          is_nullable: true
+          is_unique: false
+        - id: ee8b02fb-3d7c-4d02-9418-732fa18d3ac7
+          name: crossing
+          description: Player's ability to deliver accurate passes from wide areas
+            into the penalty box.
+          type: bigint
+          sample_values:
+          - 64.0
+          - 65.0
+          - 48.0
+          - 74.0
+          - 67.0
+          is_nullable: true
+          is_unique: false
+        - id: 5ed67165-1ca9-4043-b619-2de799fbab02
+          name: finishing
+          description: Player's accuracy and composure when shooting at goal from
+            close range.
+          type: bigint
+          sample_values:
+          - 50.0
+          - 21.0
+          - 33.0
+          - 67.0
+          - 52.0
+          is_nullable: true
+          is_unique: false
+        - id: 8546281b-249f-4e96-97d3-4d3edd1d24f6
+          name: heading_accuracy
+          description: Player's precision and effectiveness when directing the ball
+            with their head.
+          type: bigint
+          sample_values:
+          - 66.0
+          - 65.0
+          - 58.0
+          - 61.0
+          - 62.0
+          is_nullable: true
+          is_unique: false
+        - id: adc75a73-8819-4440-bb89-db60260126cd
+          name: short_passing
+          description: Player's accuracy and speed in completing short-distance passes
+            to teammates.
+          type: bigint
+          sample_values:
+          - 64.0
+          - 69.0
+          - 66.0
+          - 63.0
+          - 68.0
+          is_nullable: true
+          is_unique: false
+        - id: 42c630b9-dbda-4b1c-9bc4-f0e930f466d8
+          name: volleys
+          description: Player's skill in striking the ball cleanly while it is in
+            the air before it bounces.
+          type: bigint
+          sample_values:
+          - 29.0
+          - 64.0
+          - 30.0
+          - 55.0
+          - 32.0
+          is_nullable: true
+          is_unique: false
+        - id: 750af3cf-a191-4bad-ac46-ba833cb98202
+          name: dribbling
+          description: Player's close ball control and ability to maneuver past opponents
+            while running.
+          type: bigint
+          sample_values:
+          - 66.0
+          - 73.0
+          - 69.0
+          - 75.0
+          - 71.0
+          is_nullable: true
+          is_unique: false
+        - id: 025e8663-02a9-4e48-997f-15dc93e36b33
+          name: curve
+          description: Player's ability to apply spin on the ball for curved passes
+            or shots.
+          type: bigint
+          sample_values:
+          - 64.0
+          - 68.0
+          - 65.0
+          - 35.0
+          - 69.0
+          is_nullable: true
+          is_unique: false
+        - id: 27c879f8-5794-4c44-bc76-d0104e25bfd6
+          name: free_kick_accuracy
+          description: Player's precision in placing direct free kicks on target.
+          type: bigint
+          sample_values:
+          - 57.0
+          - 48.0
+          - 58.0
+          - 22.0
+          - 70.0
+          is_nullable: true
+          is_unique: false
+        - id: ed7f1aec-1f1b-41ba-89e0-30175b0d8594
+          name: long_passing
+          description: Represents a player's long passing ability rating in football.
+          type: bigint
+          sample_values:
+          - 53.0
+          - 67.0
+          - 63.0
+          - 56.0
+          - 64.0
+          is_nullable: true
+          is_unique: false
+        - id: 8aaa083a-fcde-44a7-9181-ccf933a6bcd7
+          name: ball_control
+          description: Represents a player's ball control skill rating in football.
+          type: bigint
+          sample_values:
+          - 73.0
+          - 70.0
+          - 71.0
+          - 62.0
+          - 78.0
+          is_nullable: true
+          is_unique: false
+        - id: 16a25694-a2e2-4104-aec2-3e4475b33fff
+          name: acceleration
+          description: Represents a player's acceleration rating in football.
+          type: bigint
+          sample_values:
+          - 69.0
+          - 77.0
+          - 79.0
+          - 66.0
+          - 73.0
+          is_nullable: true
+          is_unique: false
+        - id: 0671fcd5-ba3a-4969-82b7-8330b74f5b16
+          name: sprint_speed
+          description: Represents a player's sprint speed rating in football.
+          type: bigint
+          sample_values:
+          - 78.0
+          - 69.0
+          - 77.0
+          - 66.0
+          - 81.0
+          is_nullable: true
+          is_unique: false
+        - id: a4d53a06-4518-420d-b8c6-81f9de74c452
+          name: agility
+          description: Represents a player's agility rating in football.
+          type: bigint
+          sample_values:
+          - 74.0
+          - 71.0
+          - 57.0
+          - 79.0
+          - 81.0
+          is_nullable: true
+          is_unique: false
+        - id: 4543970d-c1d7-43ba-bbad-28875ed3f4bc
+          name: reactions
+          description: Represents a player's reactions rating in football.
+          type: bigint
+          sample_values:
+          - 70.0
+          - 64.0
+          - 67.0
+          - 62.0
+          - 69.0
+          is_nullable: true
+          is_unique: false
+        - id: 97aac51e-a6d3-42ad-b0c9-ede53e9fcfee
+          name: balance
+          description: Represents a player's balance rating in football.
+          type: bigint
+          sample_values:
+          - 72.0
+          - 62.0
+          - 65.0
+          - 52.0
+          - 60.0
+          is_nullable: true
+          is_unique: false
+        - id: d152c54a-d74d-4465-a8d8-b36462c7d279
+          name: shot_power
+          description: Represents a player's shot power rating in football.
+          type: bigint
+          sample_values:
+          - 71.0
+          - 70.0
+          - 63.0
+          - 61.0
+          - 73.0
+          is_nullable: true
+          is_unique: false
+        - id: 6022675b-0ed5-4014-850c-6705b4b4d8ce
+          name: jumping
+          description: Represents a player's jumping ability rating in football.
+          type: bigint
+          sample_values:
+          - 71.0
+          - 70.0
+          - 65.0
+          - 73.0
+          - 63.0
+          is_nullable: true
+          is_unique: false
+        - id: fc91f8b8-f82f-484f-a19d-e6d8421295bd
+          name: stamina
+          description: Represents a player's stamina rating in football.
+          type: bigint
+          sample_values:
+          - 79.0
+          - 72.0
+          - 64.0
+          - 74.0
+          - 75.0
+          is_nullable: true
+          is_unique: false
+        - id: 6f650765-af37-4e5f-b0be-4c76b0215b15
+          name: strength
+          description: Represents a player's physical strength rating in football.
+          type: bigint
+          sample_values:
+          - 71.0
+          - 68.0
+          - 74.0
+          - 66.0
+          - 75.0
+          is_nullable: true
+          is_unique: false
+        - id: b94b3cf7-4cc9-484f-b389-3d60a0c3012d
+          name: long_shots
+          description: Represents a player's long shots ability rating in football.
+          type: bigint
+          sample_values:
+          - 74.0
+          - 52.0
+          - 51.0
+          - 56.0
+          - 25.0
+          is_nullable: true
+          is_unique: false
+        - id: d22cb16d-beb2-4f83-ba12-ad81689de13d
+          name: aggression
+          description: Represents a player's aggression rating in football.
+          type: bigint
+          sample_values:
+          - 59.0
+          - 62.0
+          - 66.0
+          - 69.0
+          - 65.0
+          is_nullable: true
+          is_unique: false
+        - id: d6d1f896-9e80-4ec8-9a5e-a3c23aa7f237
+          name: interceptions
+          description: Represents a player's interceptions ability rating in football.
+          type: bigint
+          sample_values:
+          - 66.0
+          - 54.0
+          - 62.0
+          - 67.0
+          - 44.0
+          is_nullable: true
+          is_unique: false
+        - id: 28747b06-bc57-45ef-868c-0248c5bb1193
+          name: positioning
+          description: Represents a player's positioning ability rating in football.
+          type: bigint
+          sample_values:
+          - 68.0
+          - 57.0
+          - 67.0
+          - 56.0
+          - 66.0
+          is_nullable: true
+          is_unique: false
+        - id: 6811e6d0-ea4b-4c36-83fa-1303990817c1
+          name: vision
+          description: Represents a player's ability to anticipate play and make accurate
+            passes to teammates in advantageous positions.
+          type: bigint
+          sample_values:
+          - 67.0
+          - 68.0
+          - 81.0
+          - 70.0
+          - 61.0
+          is_nullable: true
+          is_unique: false
+        - id: 70c3fd5b-1118-4032-b62d-710a3ea1c39f
+          name: penalties
+          description: Measures a player's proficiency in taking penalty kicks, including
+            accuracy and composure under pressure.
+          type: bigint
+          sample_values:
+          - 44.0
+          - 67.0
+          - 53.0
+          - 68.0
+          - 41.0
+          is_nullable: true
+          is_unique: false
+        - id: afff6041-9b35-415b-8299-9273a5b7cc42
+          name: marking
+          description: Indicates a player's effectiveness in tracking and closely
+            defending an assigned opponent during play.
+          type: bigint
+          sample_values:
+          - 22.0
+          - 65.0
+          - 52.0
+          - 67.0
+          - 25.0
+          is_nullable: true
+          is_unique: false
+        - id: ddfb1485-8118-429e-911d-aa8258fd9779
+          name: standing_tackle
+          description: Reflects a player's skill in winning the ball cleanly using
+            a standing tackle without committing a foul.
+          type: bigint
+          sample_values:
+          - 68.0
+          - 63.0
+          - 64.0
+          - 65.0
+          - 71.0
+          is_nullable: true
+          is_unique: false
+        - id: f30492ab-dd48-4ef1-844f-33a7d3175970
+          name: sliding_tackle
+          description: Represents a player's ability to execute a sliding tackle to
+            dispossess an opponent while minimizing foul risk.
+          type: bigint
+          sample_values:
+          - 61.0
+          - 60.0
+          - 62.0
+          - 21.0
+          - 65.0
+          is_nullable: true
+          is_unique: false
+        - id: 10bce8e7-a834-4e4f-8f09-b8a261c9ec1b
+          name: gk_diving
+          description: Measures a goalkeeper's agility and reach when diving to make
+            saves across the goal.
+          type: bigint
+          sample_values:
+          - 11.0
+          - 14.0
+          - 10.0
+          - 6.0
+          - 7.0
+          is_nullable: true
+          is_unique: false
+        - id: d748091c-20ed-440a-8b52-ea4448f7d665
+          name: gk_handling
+          description: Indicates a goalkeeper's ability to securely catch and hold
+            onto shots rather than parrying them.
+          type: bigint
+          sample_values:
+          - 11.0
+          - 10.0
+          - 6.0
+          - 13.0
+          - 14.0
+          is_nullable: true
+          is_unique: false
+        - id: f896a4b0-d159-4489-96a4-a566febff04d
+          name: gk_kicking
+          description: Reflects a goalkeeper's accuracy and distance when distributing
+            the ball via goal kicks or punts.
+          type: bigint
+          sample_values:
+          - 11.0
+          - 8.0
+          - 5.0
+          - 12.0
+          - 7.0
+          is_nullable: true
+          is_unique: false
+        - id: bc3113ca-5545-46b9-9db9-bcfa3faf4913
+          name: gk_positioning
+          description: Represents a goalkeeper's sense of optimal placement relative
+            to the ball and goal to reduce scoring angles.
+          type: bigint
+          sample_values:
+          - 11.0
+          - 10.0
+          - 7.0
+          - 15.0
+          - 14.0
+          is_nullable: true
+          is_unique: false
+        - id: 873637c6-8738-427b-83df-7f6325ae4402
+          name: gk_reflexes
+          description: Measures a goalkeeper's reaction speed to make instinctive
+            saves on close-range or deflected shots.
+          type: bigint
+          sample_values:
+          - 8.0
+          - 14.0
+          - 10.0
+          - 7.0
+          - 9.0
+          is_nullable: true
+          is_unique: false
+      - id: 238d9f1f-07c4-4b5c-81b2-de7dabf7485b
+        name: team
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: 9a73532c-3126-419b-9780-b5b1fedde92b
+          name: id
+          description: Unique identifier for each team record in the database.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 0693bb20-ae25-41f8-ba7a-df0ae2c6a119
+          name: team_api_id
+          description: External API identifier used to reference the team in third-party
+            data sources.
+          type: bigint
+          sample_values:
+          - 9987
+          - 9993
+          - 10000
+          - 9994
+          - 9984
+          is_nullable: true
+          is_unique: true
+        - id: 4aeb6d74-9926-4a56-88f1-e0c60bd5fa2a
+          name: team_fifa_api_id
+          description: FIFA-assigned API identifier for the team, used in official
+            FIFA data systems.
+          type: bigint
+          sample_values:
+          - 111560.0
+          - 111429.0
+          - 301.0
+          - 673.0
+          - 675.0
+          is_nullable: true
+          is_unique: true
+        - id: 5ad52d11-e554-414f-8f6a-7943d17b5dc0
+          name: team_long_name
+          description: Full official name of the football team as recognized in competitions.
+          type: text
+          sample_values:
+          - Royal Excel Mouscron
+          - Polonia Bytom
+          - "Widzew \u0141\xF3d\u017A"
+          - KRC Genk
+          - Beerschot AC
+          is_nullable: true
+          is_unique: true
+        - id: 11820994-6727-48b0-af5d-229e7e055a57
+          name: team_short_name
+          description: Abbreviated code representing the team for display and identification
+            purposes.
+          type: text
+          sample_values:
+          - GEN
+          - MON
+          - POR
+          - VAL
+          - GRA
+          is_nullable: true
+          is_unique: false
+      - id: df31622a-159d-44cd-8eb2-558f2ca0f59c
+        name: team_attributes
+        description: ''
+        pk: []
+        type: base table
+        columns:
+        - id: da3e0c90-134a-4852-9ec4-af13286c942b
+          name: id
+          description: Unique identifier for each team tactical profile record.
+          type: bigint
+          sample_values:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          is_nullable: false
+          is_unique: true
+        - id: 92d8de0d-d87d-45e5-a245-623febfd6c38
+          name: team_fifa_api_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 77
+          - 614
+          - 47
+          - 1901
+          - 650
+          is_nullable: true
+          is_unique: false
+        - id: abf24a80-52c5-4427-9c94-a15f53dee2dd
+          name: team_api_id
+          description: ''
+          type: bigint
+          sample_values:
+          - 8485
+          - 8576
+          - 8564
+          - 10215
+          - 10217
+          is_nullable: true
+          is_unique: false
+        - id: 15f83109-56e3-4588-90f9-7352c9dc48d3
+          name: date
+          description: Timestamp indicating when the tactical profile was recorded,
+            stored as text in ISO format.
+          type: text
+          sample_values:
+          - '2015-09-10 00:00:00'
+          - '2014-09-19 00:00:00'
+          - '2011-02-22 00:00:00'
+          - '2012-02-22 00:00:00'
+          - '2010-02-22 00:00:00'
+          is_nullable: true
+          is_unique: false
+        - id: f2b54b0c-d501-4732-aa8d-e6372be540a6
+          name: buildupplayspeed
+          description: Numeric rating representing the team's speed during buildup
+            play.
+          type: bigint
+          sample_values:
+          - 50
+          - 45
+          - 30
+          - 70
+          - 55
+          is_nullable: true
+          is_unique: false
+        - id: b11790d1-09e0-4726-aae3-ee4b83053364
+          name: buildupplayspeedclass
+          description: Categorical classification of the team's buildup play speed
+            as Balanced, Fast, or Slow.
+          type: text
+          sample_values:
+          - Balanced
+          - Fast
+          - Slow
+          is_nullable: true
+          is_unique: false
+        - id: fe82009f-12ba-4e98-b6b5-e5d19e154c2b
+          name: buildupplaydribbling
+          description: Numeric rating representing the team's dribbling tendency during
+            buildup play.
+          type: bigint
+          sample_values:
+          - 48.0
+          - 52.0
+          - 55.0
+          - 53.0
+          - 49.0
+          is_nullable: true
+          is_unique: false
+        - id: 6d813993-ff64-4726-80e1-c02a8d969e24
+          name: buildupplaydribblingclass
+          description: Categorical classification of the team's buildup dribbling
+            as Little, Normal, or Lots.
+          type: text
+          sample_values:
+          - Little
+          - Normal
+          - Lots
+          is_nullable: true
+          is_unique: false
+        - id: 013a07fb-ca6e-4483-804f-b0cd198a67af
+          name: buildupplaypassing
+          description: Numeric rating representing the team's passing style during
+            buildup play.
+          type: bigint
+          sample_values:
+          - 50
+          - 52
+          - 30
+          - 54
+          - 55
+          is_nullable: true
+          is_unique: false
+        - id: 252979f0-a759-419c-88c9-1cdcffe01958
+          name: buildupplaypassingclass
+          description: Categorical classification of the team's buildup passing as
+            Mixed, Short, or Long.
+          type: text
+          sample_values:
+          - Mixed
+          - Short
+          - Long
+          is_nullable: true
+          is_unique: false
+        - id: a3a7a137-0ade-4709-8f49-ec3351328ad9
+          name: buildupplaypositioningclass
+          description: Categorical classification of the team's buildup positioning
+            as Organised or Free Form.
+          type: text
+          sample_values:
+          - Organised
+          - Free Form
+          is_nullable: true
+          is_unique: false
+        - id: 272590cd-e521-4b67-a528-3a3aa3ecc9e6
+          name: chancecreationpassing
+          description: Numeric rating representing the team's passing approach during
+            chance creation.
+          type: bigint
+          sample_values:
+          - 50
+          - 55
+          - 52
+          - 49
+          - 53
+          is_nullable: true
+          is_unique: false
+        - id: 937cb6da-38cf-49c9-9389-93e39fdb1b28
+          name: chancecreationpassingclass
+          description: Categorical classification of the team's chance creation passing
+            as Normal, Risky, or Safe.
+          type: text
+          sample_values:
+          - Normal
+          - Risky
+          - Safe
+          is_nullable: true
+          is_unique: false
+        - id: 9df7cdf6-271c-4df7-9af5-9bd4429a75da
+          name: chancecreationcrossing
+          description: Numeric rating representing the team's crossing frequency during
+            chance creation.
+          type: bigint
+          sample_values:
+          - 50
+          - 53
+          - 70
+          - 54
+          - 55
+          is_nullable: true
+          is_unique: false
+        - id: 4e61f672-a893-4b46-9374-44a7727c00dc
+          name: chancecreationcrossingclass
+          description: Categorical classification of the team's chance creation crossing
+            as Normal, Lots, or Little.
+          type: text
+          sample_values:
+          - Normal
+          - Lots
+          - Little
+          is_nullable: true
+          is_unique: false
+        - id: f1a6cf4c-09f7-45cc-9843-da8a9bbec69f
+          name: chancecreationshooting
+          description: Numeric rating representing the team's shooting tendency during
+            chance creation.
+          type: bigint
+          sample_values:
+          - 50
+          - 52
+          - 70
+          - 55
+          - 65
+          is_nullable: true
+          is_unique: false
+        - id: a5e57be4-88a0-4d59-9974-6acf4d39818c
+          name: chancecreationshootingclass
+          description: Categorical classification of the team's chance creation shooting
+            as Normal, Lots, or Little.
+          type: text
+          sample_values:
+          - Normal
+          - Lots
+          - Little
+          is_nullable: true
+          is_unique: false
+        - id: 173b401c-0b6e-4cc3-bd81-571bf1485ca8
+          name: chancecreationpositioningclass
+          description: The tactical positioning style employed when creating scoring
+            opportunities, categorized as Organised or Free Form.
+          type: text
+          sample_values:
+          - Organised
+          - Free Form
+          is_nullable: true
+          is_unique: false
+        - id: 2a34b0ae-6e1b-406b-b21a-616c1623d912
+          name: defencepressure
+          description: A numeric rating indicating the intensity of defensive pressure
+            applied by the team.
+          type: bigint
+          sample_values:
+          - 45
+          - 47
+          - 30
+          - 50
+          - 48
+          is_nullable: true
+          is_unique: false
+        - id: 45e4f5af-e685-485d-bcfd-71ac74ace67c
+          name: defencepressureclass
+          description: A categorical classification of defensive pressure level into
+            Medium, Deep, or High.
+          type: text
+          sample_values:
+          - Medium
+          - Deep
+          - High
+          is_nullable: true
+          is_unique: false
+        - id: 762b998e-0ac7-4e25-aaa7-12509d8661d3
+          name: defenceaggression
+          description: A numeric measure of how aggressively the defense engages opposing
+            attackers.
+          type: bigint
+          sample_values:
+          - 45
+          - 47
+          - 50
+          - 70
+          - 55
+          is_nullable: true
+          is_unique: false
+        - id: bfecbb83-9200-4e46-9cb2-56a65b5c21a3
+          name: defenceaggressionclass
+          description: A categorical label describing the defensive aggression style
+            such as Press, Double, or Contain.
+          type: text
+          sample_values:
+          - Press
+          - Double
+          - Contain
+          is_nullable: true
+          is_unique: false
+        - id: 5007192f-ef96-4a26-976a-efd5987deb05
+          name: defenceteamwidth
+          description: A numeric indicator of the horizontal spread of the defensive
+            unit on the pitch.
+          type: bigint
+          sample_values:
+          - 50
+          - 52
+          - 53
+          - 65
+          - 70
+          is_nullable: true
+          is_unique: false
+        - id: 7fe97c8c-8db9-482c-8497-e4264a6bc300
+          name: defenceteamwidthclass
+          description: A classification of defensive team width into Normal, Wide,
+            or Narrow.
+          type: text
+          sample_values:
+          - Normal
+          - Wide
+          - Narrow
+          is_nullable: true
+          is_unique: false
+        - id: b31a62c1-8b70-419b-a0a3-7ffd19d9a841
+          name: defencedefenderlineclass
+          description: A tactical classification of the defensive line strategy, such
+            as Cover or Offside Trap.
+          type: text
+          sample_values:
+          - Cover
+          - Offside Trap
+          is_nullable: true
+          is_unique: false
+  foreign_keys:
+  - source_column_id: 18688e02-3d90-47d6-b12d-068adbade2d4
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 1c2bd87e-57fc-4368-9f34-feec854ee156
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 1c676110-1a79-4d32-8c5b-5349c43c00b7
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 302abcb9-e6d3-41f3-ad33-2322b8c8e8d9
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 329be031-7697-4e16-853a-b7838b05a8be
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 388f15cf-cf12-491d-87aa-46020f5ff84c
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 6048e808-6594-45ef-99bc-d413411b8307
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 6230a756-9c63-4da4-8a6a-79138da6727e
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 75db51f8-bce9-4fe6-9076-85810a745700
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 78f3df28-6bd9-44b3-9b87-57ec426cb72b
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 8128760f-10a0-4578-b2ea-0ea70cab4db1
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 837a66c7-9f9f-4930-b0c6-72ea99aa30e9
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 8e797f64-c47e-4958-8a36-255854b0c781
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 9098e566-82f8-47aa-8aa2-63082c4017fb
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: 93a64fdf-35e2-48a9-82b7-c8dc152bc836
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: a71b1187-32b0-4881-a6f2-f7eaf55ada1b
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: abf24a80-52c5-4427-9c94-a15f53dee2dd
+    target_column_id: 0693bb20-ae25-41f8-ba7a-df0ae2c6a119
+  - source_column_id: b4c02586-b9bf-4ba9-bfb9-ac4129176785
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: b6fecb5b-a517-41b9-b534-7382c2dbfc68
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: bd71fa40-33e0-4c30-bd82-a1386cf18e39
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: c87475d7-9ed3-4fef-86e0-44c512a6e1e8
+    target_column_id: 0693bb20-ae25-41f8-ba7a-df0ae2c6a119
+  - source_column_id: d9f79dad-35f4-4244-a15f-01a89631169c
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: e2b5f292-e3e6-4e0d-8202-989978e3d578
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: e817399f-bef9-4d78-a3e2-6ebafd8d32ba
+    target_column_id: 0693bb20-ae25-41f8-ba7a-df0ae2c6a119
+  - source_column_id: eccd250f-6cbb-4550-9022-4eb17524390c
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - source_column_id: fd79e973-5548-4682-9f3f-fd1281e34e12
+    target_column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  joins: []
+semantic_layer:
+  terms:
+  - id: 0f15eb41-da91-430f-8f75-8490e40cdc27
+    name: Country (d2_european_football_2.public.country)
+    description: A country reference entity.
+    represents:
+    - ed942359-f21d-4caf-b67e-7859553db695
+    columns_attributes:
+    - id: 3d210861-595c-48bc-b220-1a0d6d1f295c
+      name: Country ID
+      description: A unique numeric identifier for each country, referenced by leagues
+        and matches to indicate the country they belong to.
+      column_id: 6216602b-72bd-4d57-b5dc-b181c0d5af7d
+    - id: 515bf129-7fa3-4fe9-8195-cb34a311c4c7
+      name: Country Name
+      description: The official name of the country, such as Belgium, England, or
+        Germany.
+      column_id: 2c96b029-d448-4c1f-87df-0352670825c8
+  - id: 59d46651-fbe8-4bab-9ee2-e11434ed25fd
+    name: Football League
+    description: A football league entity with its identifier and official name.
+    represents:
+    - 708091aa-8d91-4709-8d62-f7d91ae0edac
+    columns_attributes:
+    - id: 133830c3-e5d0-4795-87f5-dce729b2e986
+      name: League Name
+      description: Official league name combining country and competition title, e.g.,
+        England Premier League.
+      column_id: 002d05dc-3909-4ab7-bb25-a7feede02dd8
+    - id: 2a84a5ff-0b01-41d6-92a6-86ccde126752
+      name: League ID
+      description: Unique numeric identifier for a football league, used to link matches
+        to their league.
+      column_id: 2d2aa8d0-d689-4af2-93ff-1238d712fd1d
+  - id: fc8c6418-84d1-4792-a599-5b659be650db
+    name: Match
+    description: A football match with its metadata, scores, and player lineup/position
+      data.
+    represents:
+    - 642572f5-422b-403f-a7fe-561149fccf04
+    columns_attributes:
+    - id: 01ab8aa7-9107-452a-a1d0-edec50b4c9ff
+      name: awayPlayerX6
+      description: Captures the x-coordinate of the away team's sixth player on the
+        field during the match.
+      column_id: 5600544a-73a1-4139-ac2c-dc4c2c5dc278
+    - id: 0272a2bf-af46-43af-974e-9e721311ba24
+      name: homePlayerY3
+      description: Records the vertical field coordinate of the home team's third
+        player in the match.
+      column_id: 34e586fe-e4ba-48b0-849f-2a3731731c2d
+    - id: 0385387b-7abb-46e3-84b9-009b24b1c644
+      name: Home Team Goals
+      description: Number of goals scored by the home team.
+      column_id: 08d5bbed-0846-46a1-a43d-4b92afd74e08
+    - id: 05783352-c737-4a26-8ce6-1e25e2d7ff18
+      name: awayPlayerX2
+      description: Captures the x-coordinate of the away team's second player on the
+        field during the match.
+      column_id: 057b3cb6-cb0c-45c2-ad47-5f0b6a9031a9
+    - id: 0d428754-8e93-4429-a2a2-4d0fc0cef35a
+      name: Match Date
+      description: Date and time of the match in YYYY-MM-DD HH:MM:SS format.
+      column_id: 14bc28d7-371b-46b6-8940-0b9644be7dea
+    - id: 104efd96-254a-4faa-9942-db9be83f09c9
+      name: homePlayerX5
+      description: Player identifier for the home team's starting lineup position
+        5.
+      column_id: 30d6615c-55d7-4c7a-a543-1c46519bbaf5
+    - id: 107ca152-c1fb-4df1-a6d7-609817f6cf73
+      name: psh
+      description: Indicates the decimal odds offered by Pinnacle Sports for a home
+        team win in the match.
+      column_id: ece86525-b7b0-44f8-8a4c-73cbaf4e1675
+    - id: 12b35efd-fe36-4109-affb-6ee91a61a9e1
+      name: whh
+      description: Indicates the decimal odds offered by William Hill for a home team
+        win in the match.
+      column_id: f985a041-bc30-4a79-9ade-ef91d6826b89
+    - id: 149263e1-b4de-413e-b418-82d1e55f2a62
+      name: vcd
+      description: Stores the draw betting odds from bookmaker VC as a real number.
+      column_id: a3b45358-49a6-47b6-8ba4-b11876f04655
+    - id: 1e0f5e89-9865-4b83-94c6-fad2cb201324
+      name: awayPlayerY3
+      description: Records the vertical field coordinate of the away team's third
+        player in the match.
+      column_id: 282e7ede-4fbc-44ac-8b82-b1c4a899c6ff
+    - id: 24d0d25b-948c-4d35-9109-8879d95c77a8
+      name: awayPlayerX11
+      description: Captures the x-coordinate of the away team's eleventh player on
+        the field during the match.
+      column_id: c05ed483-f353-4f21-b4e6-a49abe1942d9
+    - id: 2a9ce875-f281-4f16-8ea5-7d1944095875
+      name: homePlayerX3
+      description: Player identifier for the home team's starting lineup position
+        3.
+      column_id: 0928b350-6e16-46be-8968-70b6a6e0f70c
+    - id: 2fa76a14-f973-4046-963d-93e09aa9ba00
+      name: bwh
+      description: Indicates the decimal odds offered by Bet&Win for a home team win
+        in the match.
+      column_id: 872c0c38-a143-47cd-a724-39d70085026d
+    - id: 36cd8926-9d0c-4200-bacf-c32532b5d7c8
+      name: possession
+      description: Textual details of possession statistics or events during the match.
+      column_id: 560089c9-26bc-4262-8b8b-2af2701e4e71
+    - id: 36f6179a-1531-4b6a-8df2-256169079ccf
+      name: shoton
+      description: Textual details of shots on target including player, minute, and
+        outcome.
+      column_id: 61efc63f-34b2-4618-a995-14165d32aa32
+    - id: 37a5c627-7c46-46e5-887e-47cdfeb96cf7
+      name: vca
+      description: Stores the away team win betting odds from bookmaker VC as a real
+        number.
+      column_id: 2f410e19-9d28-4fc9-8777-f119a669e88d
+    - id: 3811b98c-140b-4203-9441-a535c071766b
+      name: homePlayerX8
+      description: Player identifier for the home team's starting lineup position
+        8.
+      column_id: 3a672099-5738-41a6-8363-a394e6d3fea6
+    - id: 3837717e-2af6-4da6-847f-030c306d1e93
+      name: bwa
+      description: Indicates the decimal odds offered by Bet&Win for an away team
+        win in the match.
+      column_id: 019bd4df-1cdb-436d-9408-92958a3b87e3
+    - id: 383ceee6-be31-478e-9449-e546bfc14949
+      name: whd
+      description: Stores the draw betting odds from bookmaker WH as a real number.
+      column_id: df0127ef-e453-45fb-9550-ac75e4898126
+    - id: 3943503f-89a1-401d-8ab0-7da751182e41
+      name: corner
+      description: Textual details of corner kick events including team, minute, and
+        outcome.
+      column_id: 546b5cf5-d057-4cf6-a2b4-fa7a23ec91d0
+    - id: 39e1331c-0541-474e-a3e7-77446ae43b41
+      name: bsh
+      description: Stores the home team win betting odds from bookmaker BS as a real
+        number.
+      column_id: 59485858-d4ef-4594-ac88-af418972c598
+    - id: 3b2b000d-6adb-4625-b89f-ebed7b8134a2
+      name: homePlayerY6
+      description: Records the vertical field coordinate of the home team's sixth
+        player in the match.
+      column_id: d881c778-8751-4eb7-877a-2a18a52e7069
+    - id: 3bc3e689-16f8-4352-af50-1ff5c5be9900
+      name: shotoff
+      description: Textual details of shots off target including player, minute, and
+        outcome.
+      column_id: ff21cf43-b38b-460b-bb66-8ea067e5d1d0
+    - id: 3c32ab1d-ee28-4f04-9cb8-dd6d973a6dc7
+      name: card
+      description: Textual details of card events including player, card type, and
+        minute.
+      column_id: 78d6431e-2e56-4824-9243-c1995b5095d1
+    - id: 3c4b40d1-e7ae-4cfa-94d1-dd779ecbd41e
+      name: gbd
+      description: Stores the draw betting odds from bookmaker GB as a real number.
+      column_id: d3bccb3e-11e6-4222-93d6-118074e82e55
+    - id: 3e6d28e0-6c9c-4ca6-bbb2-5e0145036f54
+      name: awayPlayerX8
+      description: Captures the x-coordinate of the away team's eighth player on the
+        field during the match.
+      column_id: 90b8bfb5-edcf-410b-b63a-8546868971bb
+    - id: 44ce80c4-8d82-47a6-bc5f-a056f6c9009a
+      name: homePlayerY10
+      description: Records the vertical field coordinate of the home team's tenth
+        player in the match.
+      column_id: 5c7b7d7f-7587-4bf6-b868-7ed9e8177cfa
+    - id: 4a01c553-c1f9-4a32-b172-4c2ed08e2f5b
+      name: goal
+      description: Textual details of goal events including scorer, minute, and goal
+        type.
+      column_id: 09598009-d6fb-4582-b881-15a8c44fc41d
+    - id: 4cb2ddf5-19b9-483e-a2df-e41d56698e63
+      name: awayPlayerX5
+      description: Captures the x-coordinate of the away team's fifth player on the
+        field during the match.
+      column_id: bf10b224-e6e3-46ad-bbc0-ff60dfab7280
+    - id: 4e7d5d20-5808-4eef-901f-5fd38bc6a20f
+      name: homePlayerY9
+      description: Records the vertical field coordinate of the home team's ninth
+        player in the match.
+      column_id: 6ebd93af-2667-4f69-9331-37fa65441a25
+    - id: 4ea033cd-44b4-4b11-bd4a-82707cb8dd7f
+      name: b365d
+      description: Indicates the decimal odds offered by Bet365 for a draw outcome
+        in the match.
+      column_id: 456d08c8-5ef6-4b35-a43d-a4d352277b96
+    - id: 4fd2f71c-3ac9-426d-90d4-c84473dad801
+      name: iwh
+      description: Indicates the decimal odds offered by Interwetten for a home team
+        win in the match.
+      column_id: 14c5af91-4dd5-4e54-a612-b72fe3fc07bd
+    - id: 50e2660a-7ce9-4279-be62-d30467a669df
+      name: homePlayerY4
+      description: Records the vertical field coordinate of the home team's fourth
+        player in the match.
+      column_id: a1283359-d59c-491d-abdc-d300e1d32124
+    - id: 58df8fc1-3374-4e28-aff4-8d957866c696
+      name: homePlayerY1
+      description: Captures the y-coordinate of the home team's first player on the
+        field during the match.
+      column_id: ec7d7e08-03ed-4a27-9ec0-74d52e67cd7f
+    - id: 5f092d3f-5550-4142-98d1-556bafc550bb
+      name: awayPlayerX9
+      description: Captures the x-coordinate of the away team's ninth player on the
+        field during the match.
+      column_id: 26fbb06a-887e-46dc-b052-07a3608ba7b9
+    - id: 5fce3ecb-2521-4c16-a1cd-e52187a66afe
+      name: gbh
+      description: Stores the home team win betting odds from bookmaker GB as a real
+        number.
+      column_id: 4fb47b6e-9b8f-4009-aee9-aa7e0ca6a8f6
+    - id: 61d9be10-2732-4ded-8816-bd163d8a139a
+      name: psd
+      description: Indicates the decimal odds offered by Pinnacle Sports for a draw
+        outcome in the match.
+      column_id: 43c01143-1761-486e-bea6-9b45698b16f8
+    - id: 62122fdb-9a26-40df-8aa5-5999a49014e1
+      name: awayPlayerX7
+      description: Captures the x-coordinate of the away team's seventh player on
+        the field during the match.
+      column_id: 04860c11-c9ce-425b-a92c-427480314143
+    - id: 674cee8e-94aa-4fc4-aae9-78806df92df7
+      name: homePlayerX6
+      description: Player identifier for the home team's starting lineup position
+        6.
+      column_id: 3d3e38fc-10cf-46ca-883d-e40da3c9a6f5
+    - id: 6791f4ca-de03-4f78-b447-020b56ef774d
+      name: awayPlayerY10
+      description: Jersey number of the tenth away team player in the match lineup.
+      column_id: bbcbc053-e0ea-4258-83b7-cc41ba73497a
+    - id: 6a843646-d0f7-4ece-b350-8dd53d1d8201
+      name: lba
+      description: Indicates the decimal odds offered by Ladbrokes for an away team
+        win in the match.
+      column_id: a7fe9b67-5a45-41c6-ae42-6f3162594a5d
+    - id: 6baaad78-faa6-422d-b7b2-745ecfe5b483
+      name: awayPlayerX1
+      description: Captures the x-coordinate of the away team's first player on the
+        field during the match.
+      column_id: 891fd3d3-dc48-4ca3-a83e-116c72feecb7
+    - id: 6bb7b4f0-87d5-436c-bb78-ffb1bf348db5
+      name: homePlayerY11
+      description: Records the vertical field coordinate of the home team's eleventh
+        player in the match.
+      column_id: 75db96b8-2366-4071-8b3c-f9e9faeab485
+    - id: 6ee3eef3-0737-4bcb-8c0d-ae485b4f048a
+      name: homePlayerX10
+      description: Captures the x-coordinate of the home team's tenth player on the
+        field during the match.
+      column_id: 5f79eb42-7b31-4f86-afa4-52d0a87505d3
+    - id: 70a77a3a-a89c-46ec-95d8-ab67b12ef1b7
+      name: psa
+      description: Indicates the decimal odds offered by Pinnacle Sports for an away
+        team win in the match.
+      column_id: 2e9488e7-972e-4988-9bba-ed821c07ea24
+    - id: 73870499-bf0c-41fc-852d-f42cba3fa422
+      name: Match ID
+      description: Unique identifier for the match record.
+      column_id: 54acfae2-4132-4a4e-8c33-57fec881a5fb
+    - id: 73dfad3d-9bcb-439a-89f0-7800aa11f44b
+      name: iwa
+      description: Indicates the decimal odds offered by Interwetten for an away team
+        win in the match.
+      column_id: bc04dbd3-3d1b-488b-acb9-5a141276a8c9
+    - id: 78a7b975-e3da-458c-89e7-03469261c0cf
+      name: b365h
+      description: Bet365 decimal odds for the home team to win the match.
+      column_id: 524d1e58-cf2a-4e0d-986a-42bf5ce89d7d
+    - id: 84d7d51d-5e77-4b6f-9bb1-d859a9ba40c2
+      name: bsa
+      description: Stores the away team win betting odds from bookmaker BS as a real
+        number.
+      column_id: c931a06b-4f66-4f94-9e5c-a8f5530ce9da
+    - id: 85fda831-8819-4f7f-b6e6-3a4680d2af62
+      name: lbd
+      description: Indicates the decimal odds offered by Ladbrokes for a draw outcome
+        in the match.
+      column_id: 888e2562-da99-4909-a381-84c29053c9f1
+    - id: 8b89a96f-e24d-4f95-9351-64546ac72c95
+      name: cross
+      description: Textual details of cross events including player, minute, and outcome.
+      column_id: 10fe9215-2bbc-4ead-8797-f7c0dfa61dbb
+    - id: 99817b8f-9af0-4411-aea7-2e0ddfb98c0e
+      name: bsd
+      description: Stores the draw betting odds from bookmaker BS as a real number.
+      column_id: 581ef986-f17c-4734-bbd1-b30a47326623
+    - id: 9c0bd3a9-1e89-454f-a873-fb70b6082cdd
+      name: b365a
+      description: Indicates the decimal odds offered by Bet365 for an away team win
+        in the match.
+      column_id: 3d486d0d-ac3f-4934-8b1d-5af86d1176aa
+    - id: 9cebaf56-13bf-418d-b278-c59568dada67
+      name: Match API ID
+      description: External API identifier linking the match to external football
+        data sources.
+      column_id: 44667174-14c1-43ec-9e33-ee7a87d3543f
+    - id: 9f0aa33e-bd04-4d8b-aa4b-12debcac7a59
+      name: Stage
+      description: Matchday or round number within the season.
+      column_id: 83b309b3-9550-4f13-aea1-060d4bf93fd6
+    - id: a94810de-bfca-4b9d-9e53-3b414c602409
+      name: awayPlayerY1
+      description: Records the vertical field coordinate of the away team's first
+        player in the match.
+      column_id: 30b5ab79-cd0f-4810-a876-558ae93ca180
+    - id: ad62c0e7-5c96-4e70-a280-ad4e0e8e012f
+      name: homePlayerX9
+      description: Captures the x-coordinate of the home team's ninth player on the
+        field during the match.
+      column_id: 5ac22eec-962a-4b5e-9672-36b3a1a8d178
+    - id: ae502820-9a9d-4693-8d17-484e3c431184
+      name: awayPlayerY6
+      description: Jersey number of the sixth away team player in the match lineup.
+      column_id: e5689f4e-cfbb-46f0-b212-f46eb1c0d25d
+    - id: af9adc6f-79f7-4590-935f-75de8fa06cab
+      name: awayPlayerY8
+      description: Jersey number of the eighth away team player in the match lineup.
+      column_id: 443b6fa8-4dd2-498d-84d4-d55d105fb805
+    - id: b0379550-7eb8-4add-a862-d5b12268e95d
+      name: homePlayerY5
+      description: Records the vertical field coordinate of the home team's fifth
+        player in the match.
+      column_id: 126dc355-369d-4ebb-ad93-6bf72d8ab3f5
+    - id: b07069e2-3e1f-422f-a61d-f47c0fe19ff4
+      name: homePlayerX1
+      description: Player identifier for the home team's starting lineup position
+        1.
+      column_id: 1009b708-3804-4f97-bf15-ea1f43bdba09
+    - id: b2ebedd7-794f-4fc8-b6f6-63a869657061
+      name: lbh
+      description: Indicates the decimal odds offered by Ladbrokes for a home team
+        win in the match.
+      column_id: fe7a360e-1dba-4e9f-91f5-750cc963369e
+    - id: b4b49c0b-79d3-458b-aa71-328a052a8c55
+      name: homePlayerX11
+      description: Captures the x-coordinate of the home team's eleventh player on
+        the field during the match.
+      column_id: 70cfdf28-558b-4e18-a24f-c9d7444a8efc
+    - id: b5fc8c56-b06e-4b18-89e2-67c17b5ed3b2
+      name: awayPlayerY7
+      description: Jersey number of the seventh away team player in the match lineup.
+      column_id: f032f07c-16ee-4837-8104-18bc64ed5462
+    - id: b6a00577-3994-4c2e-bc89-0165e1eb6913
+      name: iwd
+      description: Indicates the decimal odds offered by Interwetten for a draw outcome
+        in the match.
+      column_id: 06517b57-9b3c-4d33-ac72-1b0ac464827a
+    - id: b6ec7c27-0210-4dcf-b08b-6f8558a61d8f
+      name: awayPlayerX10
+      description: Captures the x-coordinate of the away team's tenth player on the
+        field during the match.
+      column_id: a2f10d21-5a05-43c7-9670-eb94a1ea528b
+    - id: bc0717d5-22ee-4047-b2bb-a8b92002007d
+      name: homePlayerX7
+      description: Player identifier for the home team's starting lineup position
+        7.
+      column_id: 42b9007d-f701-4995-b01d-4d10187469fe
+    - id: bd5500ef-5dd9-4b65-8eb2-fb082c528794
+      name: awayPlayerY4
+      description: Records the vertical field coordinate of the away team's fourth
+        player in the match.
+      column_id: 9abfacf9-a35a-4df5-b87e-688d77f098cd
+    - id: c1e1201c-4a4b-4d72-b37c-8c39cc5c6a00
+      name: homePlayerY2
+      description: Records the vertical field coordinate of the home team's second
+        player in the match.
+      column_id: bf56e5fb-6d56-4351-a5a3-ec81471aa1e0
+    - id: c4cd9450-2db9-4956-b4ce-99df5b77235a
+      name: Away Team Goals
+      description: Number of goals scored by the away team.
+      column_id: 054f4ef7-2d3c-4398-85ef-c968e0c76337
+    - id: c80d5e15-b6e2-484c-a70e-7f3e63487844
+      name: awayPlayerY2
+      description: Records the vertical field coordinate of the away team's second
+        player in the match.
+      column_id: bef4050f-bb19-4f3f-b0b7-7d0b80083c0c
+    - id: cc41b3a1-94f5-464a-bf80-6197d85b04f8
+      name: vch
+      description: Stores the home team win betting odds from bookmaker VC as a real
+        number.
+      column_id: e136337f-5580-4668-b283-6a7a1d960fa8
+    - id: d28bb634-e80d-495b-9ad9-55b2270aa054
+      name: homePlayerX2
+      description: Player identifier for the home team's starting lineup position
+        2.
+      column_id: 5dde6e10-cef2-4355-8868-2374aa396381
+    - id: d5ec5087-b7f3-4749-a1fb-b398d183328f
+      name: awayPlayerY9
+      description: Jersey number of the ninth away team player in the match lineup.
+      column_id: 5345e476-edf4-486e-92ff-1acd9e41e5a7
+    - id: db3a5d62-273c-4c9d-9968-da7ca510d257
+      name: awayPlayerX4
+      description: Captures the x-coordinate of the away team's fourth player on the
+        field during the match.
+      column_id: 2d0e4586-13a1-4f54-b45e-243d676aabc8
+    - id: db9b87cc-fb4d-42fa-adf4-8e679aeb0155
+      name: homePlayerY8
+      description: Records the vertical field coordinate of the home team's eighth
+        player in the match.
+      column_id: dbdcd268-4e9f-48b7-afe9-72afa66043eb
+    - id: df611d8f-7e39-4bb4-90f7-cbe8574a5736
+      name: wha
+      description: Stores the away team win betting odds from bookmaker WH as a real
+        number.
+      column_id: 14ebc5cb-1448-4b22-afcd-fc3d2878f9a7
+    - id: e8843f58-2e9d-457a-94fd-c7288b2cd8fc
+      name: gba
+      description: Stores the away team win betting odds from bookmaker GB as a real
+        number.
+      column_id: e684caac-aad2-45cd-85c8-883782197620
+    - id: eb445993-8158-4449-95e0-44fabe79a9e2
+      name: homePlayerX4
+      description: Player identifier for the home team's starting lineup position
+        4.
+      column_id: d16de3fe-2406-4dac-9996-95d05adec77b
+    - id: ebe646f8-780c-429d-9b7b-c2a211836954
+      name: sjd
+      description: Stores the draw betting odds from bookmaker SJ as a real number.
+      column_id: 4f245026-1577-46d7-91fc-8867fdfb5f42
+    - id: eeef3afd-6bab-46a6-90c7-365abae25233
+      name: awayPlayerX3
+      description: Captures the x-coordinate of the away team's third player on the
+        field during the match.
+      column_id: e02acea2-7bc3-42aa-929d-bbbefb8490a2
+    - id: f18785c7-84ed-491b-8c41-5ddeec221301
+      name: foulcommit
+      description: Textual details of fouls committed including player, minute, and
+        location.
+      column_id: d05c039f-f5e3-436a-aa22-5cfed4910bc8
+    - id: f943b82d-715a-47ae-98d9-45500e09abd4
+      name: awayPlayerY11
+      description: Jersey number of the eleventh away team player in the match lineup.
+      column_id: c0904121-567d-41fe-9a54-f879fa06bb58
+    - id: f9f19400-c468-47f9-b650-6142767dd08b
+      name: sja
+      description: Stores the away team win betting odds from bookmaker SJ as a real
+        number.
+      column_id: e4a4918e-4644-4a35-8ad0-6a58aa5da8b2
+    - id: fae99bca-968d-4773-b2b5-b91cb6cbd84f
+      name: Season
+      description: Football season when the match was played, formatted as YYYY/YYYY.
+      column_id: 7cea927b-9a05-42e5-a9ba-4b1cb0a85f40
+    - id: fc5134d6-c2e5-483d-a069-da255c2f7d37
+      name: homePlayerY7
+      description: Records the vertical field coordinate of the home team's seventh
+        player in the match.
+      column_id: 9e3c9c11-63d3-4a22-92c4-73f3b649edb8
+    - id: fd482550-d1ba-41de-9916-4b43d266132d
+      name: sjh
+      description: Stores the home team win betting odds from bookmaker SJ as a real
+        number.
+      column_id: 616b50dc-a292-43f8-8b77-6b71420583ad
+    - id: fd4be11f-ee2a-4e50-8cb3-3b5616380ffa
+      name: bwd
+      description: Indicates the decimal odds offered by Bet&Win for a draw outcome
+        in the match.
+      column_id: d99769ae-2e5b-4f66-a02a-e665ac88fd1f
+    - id: fde1ce7b-8ac8-424c-a853-ac4db464c1a7
+      name: awayPlayerY5
+      description: Records the vertical field coordinate of the away team's fifth
+        player in the match.
+      column_id: 66778320-dec1-4b01-b642-debf77d30b13
+  - id: d8d2318f-813a-4259-b1fd-e6e87ac3c6f8
+    name: Player
+    description: ''
+    represents:
+    - aa413435-eb2e-4bbc-955a-9a035f843aed
+    columns_attributes:
+    - id: 6cb2a4bc-79bc-48ac-a838-abd8f48fe802
+      name: Player Name
+      description: Full legal name of the player as recorded.
+      column_id: c56044a9-47b9-44ea-b33e-2aaa07213688
+    - id: 6d3f229f-7156-44a3-a3f4-39484b42ebf3
+      name: playerFifaApiId
+      description: FIFA system identifier used to associate player attribute data.
+      column_id: b12acdb8-2815-4c0a-901c-2a13db694d43
+    - id: 6e17fcff-3b02-41a2-acd7-75bfb4ec05e9
+      name: Height
+      description: Player's height measured in centimeters.
+      column_id: 71d4c27e-7565-4a42-b90b-d096d278ce72
+    - id: a013a054-ec15-44f1-8a5c-f6d3acfe36ca
+      name: Weight
+      description: Player's weight measurement as recorded.
+      column_id: 6ac792fb-d9a8-4cf8-bdd0-179b2c31c91c
+    - id: a139511d-a6d3-4041-bfb3-e41471ffcbf1
+      name: Birthday
+      description: Date of birth of the player in YYYY-MM-DD HH:MM:SS format.
+      column_id: 299d8c93-5ec9-4511-bdd7-0e709b927f2d
+    - id: d0918e8e-f683-4bbf-b216-8de605412e7d
+      name: Player ID
+      description: Unique internal identifier for each player record.
+      column_id: 79c58002-f1f2-422c-8bbf-631d005bbcea
+    - id: dc9a555c-4523-4035-aeed-55433c38b1a7
+      name: Player API ID
+      description: External API identifier linking the player to match lineup records.
+      column_id: 40b70d77-6aff-4e6a-a77f-817cd2386040
+  - id: e024fa83-ea42-479b-9250-c196c5ddde52
+    name: Player Attribute
+    description: ''
+    represents:
+    - 5dddbb7f-4d74-4bf7-a5b1-1f10b8f996da
+    columns_attributes:
+    - id: 019b772f-9a82-40ed-8446-1c2f448ee133
+      name: Vision
+      description: Measures a player's anticipation and passing accuracy to teammates
+        in advantageous positions on a numeric scale.
+      column_id: 6811e6d0-ea4b-4c36-83fa-1303990817c1
+    - id: 03db9580-04ca-400c-851a-e43f48fcc12e
+      name: Marking
+      description: Assesses a player's effectiveness in tracking and closely defending
+        an assigned opponent during play on a numeric scale.
+      column_id: afff6041-9b35-415b-8299-9273a5b7cc42
+    - id: 0f640260-960e-4e09-bb43-e92b93204fe0
+      name: Long Passing
+      description: Rates the player's long passing ability as an integer score (e.g.,
+        53).
+      column_id: ed7f1aec-1f1b-41ba-89e0-30175b0d8594
+    - id: 129d5d50-bf23-487a-9a39-51d92c28f346
+      name: Stamina
+      description: Rates the player's stamina as an integer score (e.g., 79).
+      column_id: fc91f8b8-f82f-484f-a19d-e6d8421295bd
+    - id: 1df484bd-adaf-43e7-80af-56333b157150
+      name: Sprint Speed
+      description: Rates the player's sprint speed as an integer score (e.g., 78).
+      column_id: 0671fcd5-ba3a-4969-82b7-8330b74f5b16
+    - id: 1fa1ad8f-903f-4a52-9b2a-5ad6831f1d77
+      name: Defensive Work Rate
+      description: Qualitatively rates the player's defensive contribution and tracking
+        back behavior.
+      column_id: a015248f-1c16-4f22-b5df-a00fecaa1338
+    - id: 253d030b-32b2-406b-9dfe-9e0efd321a63
+      name: Agility
+      description: Rates the player's agility as an integer score (e.g., 74).
+      column_id: a4d53a06-4518-420d-b8c6-81f9de74c452
+    - id: 313c78b2-897d-4ae6-8fee-8279d4a936e5
+      name: Jumping
+      description: Rates the player's jumping ability as an integer score (e.g., 71).
+      column_id: 6022675b-0ed5-4014-850c-6705b4b4d8ce
+    - id: 348600ee-ff94-4566-aaec-8f3e14c2967d
+      name: GK Kicking
+      description: Reflects a goalkeeper's accuracy and distance when distributing
+        the ball via goal kicks or punts on a numeric scale.
+      column_id: f896a4b0-d159-4489-96a4-a566febff04d
+    - id: 34c9616f-aa52-4643-a509-fe2d896a4cea
+      name: GK Diving
+      description: Measures a goalkeeper's agility and reach when diving to make saves
+        across the goal on a numeric scale.
+      column_id: 10bce8e7-a834-4e4f-8f09-b8a261c9ec1b
+    - id: 3a90024a-28bc-43ac-b2d3-8ebb8b99d249
+      name: Overall Rating
+      description: Represents the player's overall ability level as a composite numerical
+        score.
+      column_id: 4a7ba310-cb2b-44bb-9ee4-604132c74432
+    - id: 3c04a028-6d18-4c7e-9fbb-09edefdce608
+      name: Date
+      description: Records the timestamp when the player's attributes were captured,
+        formatted as YYYY-MM-DD HH:MM:SS.
+      column_id: 627037c9-8bc6-4763-8c9d-e45ef8996784
+    - id: 3cf5808a-87f4-4610-a674-f45ebf3c6fb0
+      name: Balance
+      description: Rates the player's balance as an integer score (e.g., 72).
+      column_id: 97aac51e-a6d3-42ad-b0c9-ede53e9fcfee
+    - id: 42ee4c70-31b0-4087-bae4-3d300030cdd2
+      name: Acceleration
+      description: Rates the player's acceleration as an integer score (e.g., 69).
+      column_id: 16a25694-a2e2-4104-aec2-3e4475b33fff
+    - id: 47b23c38-39c3-46af-996f-d2497008bec1
+      name: Ball Control
+      description: Rates the player's ball control skill as an integer score (e.g.,
+        73).
+      column_id: 8aaa083a-fcde-44a7-9181-ccf933a6bcd7
+    - id: 4b3194aa-f70c-4454-a842-fac4beae39b0
+      name: Attacking Work Rate
+      description: Qualitatively rates the player's offensive effort and positioning
+        tendency.
+      column_id: 4e7497c4-75a5-4755-a050-222d165e1956
+    - id: 51c4e860-9c0d-4236-b824-61f907f82be8
+      name: Reactions
+      description: Rates the player's reactions as an integer score (e.g., 70).
+      column_id: 4543970d-c1d7-43ba-bbad-28875ed3f4bc
+    - id: 6beb8db9-46e0-481a-ba19-45f19514d0a3
+      name: Interceptions
+      description: Rates the player's interceptions ability as an integer score (e.g.,
+        66).
+      column_id: d6d1f896-9e80-4ec8-9a5e-a3c23aa7f237
+    - id: 7007d05e-d4f5-4ea7-b8ab-f3e4eae19d7b
+      name: Positioning
+      description: Rates the player's positioning ability as an integer score (e.g.,
+        68).
+      column_id: 28747b06-bc57-45ef-868c-0248c5bb1193
+    - id: 71ebb65a-03d4-4d96-91a8-162aa9b421af
+      name: Finishing
+      description: Evaluates the player's accuracy and composure when shooting at
+        goal from close range.
+      column_id: 5ed67165-1ca9-4043-b619-2de799fbab02
+    - id: 7b649dcb-e8a6-4560-8ef3-cd244be9ef6f
+      name: Standing Tackle
+      description: Evaluates a player's skill in cleanly winning the ball via standing
+        tackle without fouling on a numeric scale.
+      column_id: ddfb1485-8118-429e-911d-aa8258fd9779
+    - id: 8560a23a-c4cf-4b69-98ff-9cbec02a067c
+      name: Long Shots
+      description: Rates the player's long shots ability as an integer score (e.g.,
+        74).
+      column_id: b94b3cf7-4cc9-484f-b389-3d60a0c3012d
+    - id: 8632d8ed-375c-42fa-b4d4-25544234faca
+      name: Curve
+      description: Assesses the player's ability to apply spin on the ball for curved
+        passes or shots.
+      column_id: 025e8663-02a9-4e48-997f-15dc93e36b33
+    - id: 8b6e1f9c-ce2c-45ca-a85f-a450b36543c3
+      name: Short Passing
+      description: Assesses the player's accuracy and speed in completing short-distance
+        passes.
+      column_id: adc75a73-8819-4440-bb89-db60260126cd
+    - id: 8f8c4c9e-c398-40dd-b51d-cb1b955ffd82
+      name: Free Kick Accuracy
+      description: Measures the player's precision in placing direct free kicks on
+        target.
+      column_id: 27c879f8-5794-4c44-bc76-d0104e25bfd6
+    - id: 9fc77d3e-d7c0-4c65-a217-02084b3a530a
+      name: Heading Accuracy
+      description: Measures the player's precision and effectiveness in heading the
+        ball.
+      column_id: 8546281b-249f-4e96-97d3-4d3edd1d24f6
+    - id: a32d2f9b-b688-49ab-a139-b52b64daf728
+      name: Shot Power
+      description: Rates the player's shot power as an integer score (e.g., 71).
+      column_id: d152c54a-d74d-4465-a8d8-b36462c7d279
+    - id: a79fe330-3152-4727-a7f3-6e2c3e38eb61
+      name: Preferred Foot
+      description: Specifies the foot the player prefers for kicking and ball control.
+      column_id: 3d340aca-0eeb-4cec-b3f4-5885e25e4ab5
+    - id: a9aece4e-c175-4526-a810-b2777dfa116c
+      name: Sliding Tackle
+      description: Rates a player's ability to execute sliding tackles to dispossess
+        opponents while minimizing foul risk on a numeric scale.
+      column_id: f30492ab-dd48-4ef1-844f-33a7d3175970
+    - id: b04c24ac-4748-43e5-b5c4-0a0abee09bd6
+      name: GK Reflexes
+      description: Measures a goalkeeper's reaction speed for instinctive saves on
+        close-range or deflected shots on a numeric scale.
+      column_id: 873637c6-8738-427b-83df-7f6325ae4402
+    - id: b656efd3-ac68-4314-a801-858d6535198f
+      name: Strength
+      description: Rates the player's physical strength as an integer score (e.g.,
+        71).
+      column_id: 6f650765-af37-4e5f-b0be-4c76b0215b15
+    - id: b7563b26-1399-4382-96f5-dd03a239516f
+      name: GK Positioning
+      description: Represents a goalkeeper's sense of optimal placement relative to
+        ball and goal to reduce scoring angles on a numeric scale.
+      column_id: bc3113ca-5545-46b9-9db9-bcfa3faf4913
+    - id: c179da73-d8aa-45f8-ab7f-5eb8ec83854e
+      name: Crossing
+      description: Assesses the player's ability to deliver accurate crosses from
+        wide areas into the penalty box.
+      column_id: ee8b02fb-3d7c-4d02-9418-732fa18d3ac7
+    - id: cd06f5a8-856f-447e-a0ce-a5ee494e48f6
+      name: GK Handling
+      description: Indicates a goalkeeper's ability to securely catch and hold shots
+        rather than parry on a numeric scale.
+      column_id: d748091c-20ed-440a-8b52-ea4448f7d665
+    - id: d0db7b92-e5d5-4f61-807a-b000c9ae77be
+      name: ID
+      description: Uniquely identifies each player attribute snapshot in the dataset.
+      column_id: c80bcd37-31f8-4da9-98c2-4d600885893f
+    - id: d1a5938a-fcc6-4687-acc6-02be07bcede6
+      name: Penalties
+      description: Quantifies a player's penalty kick proficiency, including accuracy
+        and composure under pressure, on a numeric scale.
+      column_id: 70c3fd5b-1118-4032-b62d-710a3ea1c39f
+    - id: db02e567-2304-4e06-ad33-6e55de5d6a31
+      name: Potential
+      description: Indicates the projected maximum overall rating the player can achieve
+        in their career.
+      column_id: aeb215fe-4014-43ce-ae2f-8e56bd1980e3
+    - id: db9bbdc3-8f03-4d33-9018-3e73de4e5bef
+      name: Dribbling
+      description: Measures the player's close ball control and ability to maneuver
+        past opponents while running.
+      column_id: 750af3cf-a191-4bad-ac46-ba833cb98202
+    - id: dd8ffaf3-4c6d-4998-a716-49512ecc660e
+      name: Volleys
+      description: Evaluates the player's skill in striking the ball cleanly while
+        it is airborne.
+      column_id: 42c630b9-dbda-4b1c-9bc4-f0e930f466d8
+    - id: f4ac8acc-42cf-4ea3-9426-567c7e0d80a2
+      name: Aggression
+      description: Rates the player's aggression as an integer score (e.g., 59).
+      column_id: d22cb16d-beb2-4f83-ba12-ad81689de13d
+  - id: 4b4580c2-5a74-4497-af26-702354a9362d
+    name: Team
+    description: ''
+    represents:
+    - 238d9f1f-07c4-4b5c-81b2-de7dabf7485b
+    columns_attributes:
+    - id: 004782a5-ff3f-4289-b147-7a7a658e7998
+      name: Team Long Name
+      description: Full official competition name of the football team.
+      column_id: 5ad52d11-e554-414f-8f6a-7943d17b5dc0
+    - id: 2ada4e0f-6077-4065-ade0-4ef9badd8f75
+      name: Team FIFA API ID
+      description: FIFA-assigned identifier connecting the team to official FIFA data
+        and attribute records.
+      column_id: 4aeb6d74-9926-4a56-88f1-e0c60bd5fa2a
+    - id: 42a2da1d-096f-426b-8ef0-3b3408d4b121
+      name: Team Short Name
+      description: Abbreviated display code used to identify the team.
+      column_id: 11820994-6727-48b0-af5d-229e7e055a57
+    - id: ea0fe60e-d7c9-4973-853a-52e550272437
+      name: Team API ID
+      description: External API identifier linking the team to matches and attribute
+        records in third-party systems.
+      column_id: 0693bb20-ae25-41f8-ba7a-df0ae2c6a119
+    - id: f091f78e-f68d-4f1f-8b12-53d110f303b2
+      name: ID
+      description: Internal unique identifier for each team record in the system.
+      column_id: 9a73532c-3126-419b-9780-b5b1fedde92b
+  - id: 008be00f-d1fe-4654-a989-73475621997b
+    name: Team Tactical Profile
+    description: A tactical profile record for a team capturing buildup play, chance
+      creation, and defensive attributes.
+    represents:
+    - df31622a-159d-44cd-8eb2-558f2ca0f59c
+    columns_attributes:
+    - id: 05f1813c-123d-4c23-8180-aeca92191187
+      name: Buildup Play Speed
+      description: Rates the team's buildup play speed on a numeric scale.
+      column_id: f2b54b0c-d501-4732-aa8d-e6372be540a6
+    - id: 1ee5b19b-f342-46f3-a204-a2e5f654e805
+      name: Defence Team Width Class
+      description: The defensive formation width categorized as Normal, Wide, or Narrow
+        based on the numerical width indicator.
+      column_id: 7fe97c8c-8db9-482c-8497-e4264a6bc300
+    - id: 1f3b2ae2-b23e-4f09-9a2c-965f6301754a
+      name: Buildup Play Passing
+      description: Rates the team's passing style during buildup play on a numeric
+        scale.
+      column_id: 013a07fb-ca6e-4483-804f-b0cd198a67af
+    - id: 1fa19845-5835-4288-8601-e1adbe3c9538
+      name: Buildup Play Positioning Class
+      description: Classifies the team's buildup positioning as Organised or Free
+        Form.
+      column_id: a3a7a137-0ade-4709-8f49-ec3351328ad9
+    - id: 290a059c-4eea-4564-ac6d-9f10342fd5c0
+      name: Buildup Play Dribbling
+      description: Rates the team's dribbling tendency during buildup play on a numeric
+        scale.
+      column_id: fe82009f-12ba-4e98-b6b5-e5d19e154c2b
+    - id: 3d445919-17ea-41bc-9ba6-f26e4e562f4c
+      name: Chance Creation Shooting Class
+      description: Classifies the team's chance creation shooting tendency as Normal,
+        Lots, or Little.
+      column_id: a5e57be4-88a0-4d59-9974-6acf4d39818c
+    - id: 488e558a-a989-4a44-8352-686d7861869c
+      name: Profile Date
+      description: Records the timestamp when the tactical profile was captured in
+        YYYY-MM-DD HH:MM:SS format.
+      column_id: 15f83109-56e3-4588-90f9-7352c9dc48d3
+    - id: 57a5f6cc-fe18-40e6-89a7-db1bc1079ec4
+      name: Chance Creation Shooting
+      description: Rates the team's shooting tendency during chance creation on a
+        numeric scale.
+      column_id: f1a6cf4c-09f7-45cc-9843-da8a9bbec69f
+    - id: 6137758b-3c7f-417f-8452-0d2173ae8cf2
+      name: Buildup Play Dribbling Class
+      description: Classifies the team's buildup dribbling tendency as Little, Normal,
+        or Lots.
+      column_id: 6d813993-ff64-4726-80e1-c02a8d969e24
+    - id: 66d67174-e080-49a1-8c73-13629dc178a2
+      name: Defence Pressure Class
+      description: The defensive pressure intensity categorized as Medium, Deep, or
+        High based on the numerical pressure rating.
+      column_id: 45e4f5af-e685-485d-bcfd-71ac74ace67c
+    - id: 78bdb804-f581-4b2c-9f50-2f53c9262838
+      name: Buildup Play Speed Class
+      description: Classifies the team's buildup play speed as Balanced, Fast, or
+        Slow.
+      column_id: b11790d1-09e0-4726-aae3-ee4b83053364
+    - id: 8220e718-2efb-484b-8da3-4c77b4d3e207
+      name: Chance Creation Crossing Class
+      description: Classifies the team's chance creation crossing frequency as Normal,
+        Lots, or Little.
+      column_id: 4e61f672-a893-4b46-9374-44a7727c00dc
+    - id: 866640c3-92c2-4b18-9f02-506eecb85619
+      name: Chance Creation Positioning Class
+      description: The tactical positioning approach a team uses when creating scoring
+        opportunities, classified as Organised or Free Form.
+      column_id: 173b401c-0b6e-4cc3-bd81-571bf1485ca8
+    - id: 8fbec065-c143-4216-87d1-d2dc922e7250
+      name: Buildup Play Passing Class
+      description: Classifies the team's buildup passing style as Mixed, Short, or
+        Long.
+      column_id: 252979f0-a759-419c-88c9-1cdcffe01958
+    - id: 94220b95-5059-42cb-82e6-90abfacdff9b
+      name: Profile ID
+      description: Uniquely identifies each team tactical profile record.
+      column_id: da3e0c90-134a-4852-9ec4-af13286c942b
+    - id: bf236234-f73d-4772-851a-51eed0733505
+      name: Chance Creation Crossing
+      description: Rates the team's crossing frequency during chance creation on a
+        numeric scale.
+      column_id: 9df7cdf6-271c-4df7-9af5-9bd4429a75da
+    - id: c8e5808f-e1f1-487a-8cfb-db17ad6c4625
+      name: Chance Creation Passing
+      description: Rates the team's passing approach during chance creation on a numeric
+        scale.
+      column_id: 272590cd-e521-4b67-a528-3a3aa3ecc9e6
+    - id: ccaa6427-5dc6-489f-9ca0-fbc84458b0fa
+      name: Defence Team Width
+      description: A numerical indicator of the horizontal spread of a team's defensive
+        unit on the pitch, expressed as an integer.
+      column_id: 5007192f-ef96-4a26-976a-efd5987deb05
+    - id: d1ea9198-3f09-4e52-90e6-337d2c459d0c
+      name: Defence Pressure
+      description: A numerical rating measuring the intensity of defensive pressure
+        a team applies, expressed as an integer value.
+      column_id: 2a34b0ae-6e1b-406b-b21a-616c1623d912
+    - id: d4f9bfe8-ad07-4f65-891c-9deb730f28cf
+      name: Chance Creation Passing Class
+      description: Classifies the team's chance creation passing as Normal, Risky,
+        or Safe.
+      column_id: 937cb6da-38cf-49c9-9389-93e39fdb1b28
+    - id: e6b559bf-c729-4348-b28b-95f9bdefbdad
+      name: Defence Aggression
+      description: A numerical score quantifying how aggressively a team's defense
+        engages opposing attackers, expressed as an integer.
+      column_id: 762b998e-0ac7-4e25-aaa7-12509d8661d3
+    - id: f59cf763-3996-4f9d-9b87-db0512259b9d
+      name: Defence Defender Line Class
+      description: The defensive line strategy employed by a team, classified as either
+        Cover or Offside Trap.
+      column_id: b31a62c1-8b70-419b-a0a3-7ffd19d9a841
+    - id: f73ea853-fc58-4a11-8b6a-a558584fe93b
+      name: Defence Aggression Class
+      description: The defensive aggression style classified as Press, Double, or
+        Contain based on the numerical aggression rating.
+      column_id: bfecbb83-9200-4e46-9cb2-56a65b5c21a3
+  semantic_fks:
+  - column_attribute_id: 2a84a5ff-0b01-41d6-92a6-86ccde126752
+    column_id: 10f843c5-cda0-40ab-856a-9db43cbed795
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 18688e02-3d90-47d6-b12d-068adbade2d4
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 1c2bd87e-57fc-4368-9f34-feec854ee156
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 1c676110-1a79-4d32-8c5b-5349c43c00b7
+    use_in_join_paths: false
+  - column_attribute_id: d0918e8e-f683-4bbf-b216-8de605412e7d
+    column_id: 1d37649b-9336-4993-9d4f-495083d99828
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 302abcb9-e6d3-41f3-ad33-2322b8c8e8d9
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 329be031-7697-4e16-853a-b7838b05a8be
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 388f15cf-cf12-491d-87aa-46020f5ff84c
+    use_in_join_paths: false
+  - column_attribute_id: 3d210861-595c-48bc-b220-1a0d6d1f295c
+    column_id: 56ae8960-1874-470c-8303-71bad33bb97d
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 6048e808-6594-45ef-99bc-d413411b8307
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 6230a756-9c63-4da4-8a6a-79138da6727e
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 75db51f8-bce9-4fe6-9076-85810a745700
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 78f3df28-6bd9-44b3-9b87-57ec426cb72b
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 8128760f-10a0-4578-b2ea-0ea70cab4db1
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 837a66c7-9f9f-4930-b0c6-72ea99aa30e9
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 8e797f64-c47e-4958-8a36-255854b0c781
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 9098e566-82f8-47aa-8aa2-63082c4017fb
+    use_in_join_paths: false
+  - column_attribute_id: 2ada4e0f-6077-4065-ade0-4ef9badd8f75
+    column_id: 92d8de0d-d87d-45e5-a245-623febfd6c38
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: 93a64fdf-35e2-48a9-82b7-c8dc152bc836
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: a71b1187-32b0-4881-a6f2-f7eaf55ada1b
+    use_in_join_paths: false
+  - column_attribute_id: ea0fe60e-d7c9-4973-853a-52e550272437
+    column_id: abf24a80-52c5-4427-9c94-a15f53dee2dd
+    use_in_join_paths: true
+  - column_attribute_id: 3d210861-595c-48bc-b220-1a0d6d1f295c
+    column_id: b3e47f42-01ab-45b1-856f-b4eea38d56a8
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: b4c02586-b9bf-4ba9-bfb9-ac4129176785
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: b6fecb5b-a517-41b9-b534-7382c2dbfc68
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: bd71fa40-33e0-4c30-bd82-a1386cf18e39
+    use_in_join_paths: false
+  - column_attribute_id: ea0fe60e-d7c9-4973-853a-52e550272437
+    column_id: c87475d7-9ed3-4fef-86e0-44c512a6e1e8
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: d9f79dad-35f4-4244-a15f-01a89631169c
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: e2b5f292-e3e6-4e0d-8202-989978e3d578
+    use_in_join_paths: false
+  - column_attribute_id: ea0fe60e-d7c9-4973-853a-52e550272437
+    column_id: e817399f-bef9-4d78-a3e2-6ebafd8d32ba
+    use_in_join_paths: true
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: eccd250f-6cbb-4550-9022-4eb17524390c
+    use_in_join_paths: false
+  - column_attribute_id: dc9a555c-4523-4035-aeed-55433c38b1a7
+    column_id: fd79e973-5548-4682-9f3f-fd1281e34e12
+    use_in_join_paths: false
+  sql_attributes:
+    manual: []
+    table: []
+    sql: []
+    bridge_table: []
+  custom_analyses: []
+zones: []

@@ -1,0 +1,157 @@
+version: 0.2.0.dev0
+name: d2_student_club_mapping
+description: Maps the d2_student_club_ontology onto the d2_student_club semantic model
+ontology_ref:
+  name: d2_student_club_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_student_club
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: AcademicMajor
+  object_mappings:
+  - expression: academic_major.major_id
+  link_mappings:
+  - object_mapping:
+      expression: academic_major.major_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: academic_major.major_name
+      relationship: major_name
+    - object_mapping:
+        concept: String
+        expression: academic_major.college
+      relationship: college
+    - object_mapping:
+        concept: String
+        expression: academic_major.department
+      relationship: department
+- concept: Budget
+  object_mappings:
+  - expression: budget.budget_id
+  link_mappings:
+  - object_mapping:
+      expression: budget.budget_id
+    children:
+    - object_mapping:
+        concept: Float
+        expression: budget.spent_amount
+      relationship: spent_amount
+    - object_mapping:
+        concept: String
+        expression: budget.category
+      relationship: category
+    - object_mapping:
+        concept: String
+        expression: budget.event_status
+      relationship: event_status
+    - object_mapping:
+        concept: Integer
+        expression: budget.allocated_amount
+      relationship: allocated_amount
+    - object_mapping:
+        concept: Float
+        expression: budget.remaining_amount
+      relationship: remaining_amount
+    - object_mapping:
+        concept: Event
+        expression: budget.link_to_event
+      relationship: event
+- concept: Event
+  object_mappings:
+  - expression: event.event_id
+  link_mappings:
+  - object_mapping:
+      expression: event.event_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: event.notes
+      relationship: notes
+    - object_mapping:
+        concept: String
+        expression: event.status
+      relationship: status
+    - object_mapping:
+        concept: String
+        expression: event.location
+      relationship: location
+    - object_mapping:
+        concept: String
+        expression: event.event_date
+      relationship: event_date
+    - object_mapping:
+        concept: String
+        expression: event.event_type
+      relationship: event_type
+    - object_mapping:
+        concept: String
+        expression: event.event_name
+      relationship: event_name
+- concept: Member
+  object_mappings:
+  - expression: member.member_id
+  link_mappings:
+  - object_mapping:
+      expression: member.member_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: member.last_name
+      relationship: last_name
+    - object_mapping:
+        concept: String
+        expression: member.email
+      relationship: email
+    - object_mapping:
+        concept: String
+        expression: member.t_shirt_size
+      relationship: t_shirt_size
+    - object_mapping:
+        concept: String
+        expression: member.phone
+      relationship: phone
+    - object_mapping:
+        concept: String
+        expression: member.first_name
+      relationship: first_name
+    - object_mapping:
+        concept: String
+        expression: member.position
+      relationship: position
+    - object_mapping:
+        concept: AcademicMajor
+        expression: member.link_to_major
+      relationship: academic_major
+    - object_mapping:
+        concept: ZipCode
+        expression: member.zip
+      relationship: zip_code
+- concept: ZipCode
+  object_mappings:
+  - expression: zip_code.zip_code
+  link_mappings:
+  - object_mapping:
+      expression: zip_code.zip_code
+    children:
+    - object_mapping:
+        concept: String
+        expression: zip_code.city
+      relationship: city
+    - object_mapping:
+        concept: String
+        expression: zip_code.zip_code_type
+      relationship: zip_code_type
+    - object_mapping:
+        concept: String
+        expression: zip_code.county
+      relationship: county
+    - object_mapping:
+        concept: String
+        expression: zip_code.state_abbreviation
+      relationship: state_abbreviation
+    - object_mapping:
+        concept: String
+        expression: zip_code.state
+      relationship: state

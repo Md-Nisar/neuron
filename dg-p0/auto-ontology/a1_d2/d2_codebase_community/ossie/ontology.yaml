@@ -1,0 +1,538 @@
+version: 0.2.0.dev0
+name: d2_codebase_community_ontology
+description: Business concepts of the d2_codebase_community semantic model
+ontology:
+- concept: Badge
+  type: EntityType
+  description: A role or badge assigned to a user.
+  relationships:
+  - name: badge_name
+    description: Specifies the title of the badge or role granted to a user.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Badge} has badge name {String}'
+  - name: badge_id
+    description: Uniquely identifies each badge assignment record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Badge} has badge id {Integer}'
+  - name: assigned_date
+    description: Records the timestamp with time zone when the badge was awarded.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Badge} has assigned date {DateTime}'
+  - name: user_account
+    roles:
+    - concept: UserAccount
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Badge} has {UserAccount}'
+- concept: Comment
+  type: EntityType
+  description: A user-submitted comment with its score, text, creation timestamp,
+    and author display name.
+  relationships:
+  - name: text
+    description: Text content submitted by the comment author.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Comment} has text {String}'
+  - name: user_display_name
+    description: Display name of the comment's author.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Comment} has user display name {String}'
+  - name: creation_date
+    description: Timestamp with time zone when the comment was created.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Comment} has creation date {DateTime}'
+  - name: score
+    description: Numeric community rating of the comment.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Comment} has score {Integer}'
+  - name: comment_id
+    description: Identifies each comment uniquely.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Comment} has comment id {Integer}'
+  - name: user_account
+    roles:
+    - concept: UserAccount
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Comment} has {UserAccount}'
+  - name: post
+    roles:
+    - concept: Post
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Comment} has {Post}'
+- concept: Post
+  type: EntityType
+  identify_by:
+  - post_id
+  relationships:
+  - name: body
+    description: Full textual content of the post stored in HTML format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has body {String}'
+  - name: favorite_count
+    description: Number of users who have bookmarked the post.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has favorite count {Integer}'
+  - name: score
+    description: Net vote score of the post, calculated as upvotes minus downvotes.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has score {Integer}'
+  - name: closed_date
+    description: Timestamp when the question was closed, if applicable.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has closed date {DateTime}'
+  - name: answer_count
+    description: Number of answers submitted for the question.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has answer count {Integer}'
+  - name: last_edit_date
+    description: Timestamp of the most recent edit made to the post.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has last edit date {DateTime}'
+  - name: last_editor_display_name
+    description: lasteditordisplayname is the free-text display name of the user who
+      most recently edited the post.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has last editor display name {String}'
+  - name: tags
+    description: Topic labels associated with the question, enclosed in angle brackets.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has tags {String}'
+  - name: owner_display_name
+    description: ownerdisplayname is the free-text display name of the user who authored
+      the post.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has owner display name {String}'
+  - name: view_count
+    description: Total number of times the post has been viewed by users.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has view count {Integer}'
+  - name: last_activity_date
+    description: Timestamp of the most recent activity on the post, such as edits,
+      answers, or comments.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has last activity date {DateTime}'
+  - name: posttypeid
+    description: Indicates whether the post is a question (1) or an answer (2).
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has posttypeid {Integer}'
+  - name: creation_date
+    description: Timestamp with time zone of when the post was originally created.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has creation date {DateTime}'
+  - name: community_owned_date
+    description: Timestamp when the post was converted to community-owned status.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has community owned date {DateTime}'
+  - name: post_id
+    description: Unique numeric identifier for each post, used by comments, history,
+      links, and accepted answer references.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Post} is identified by post id {Integer}'
+  - name: comment_count
+    description: Number of comments posted on the post.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has comment count {Integer}'
+  - name: title
+    description: Headline summarizing the question post.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has title {String}'
+  - name: owneruserid
+    roles:
+    - concept: UserAccount
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has {UserAccount}'
+  - name: lasteditoruserid
+    roles:
+    - concept: UserAccount
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has {UserAccount}'
+  - name: acceptedanswerid
+    roles:
+    - concept: Post
+      name: acceptedanswerid
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has {Post:acceptedanswerid}'
+  - name: parentid
+    roles:
+    - concept: Post
+      name: parentid
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Post} has {Post:parentid}'
+- concept: PostLink
+  type: EntityType
+  description: A link between two posts, such as a duplicate or related post reference.
+  relationships:
+  - name: creation_date
+    description: Records the exact date and time with time zone when the post link
+      was created.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostLink} has creation date {DateTime}'
+  - name: linktypeid
+    description: Identifies the category of relationship between posts, such as duplicate
+      or related, using a numeric code like 1.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostLink} has linktypeid {Integer}'
+  - name: id
+    description: Uniquely identifies each post link record with a numeric key such
+      as 108 or 264.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostLink} has id {Integer}'
+  - name: relatedpostid
+    roles:
+    - concept: Post
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostLink} has {Post}'
+  - name: postid
+    roles:
+    - concept: Post
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostLink} has {Post}'
+- concept: PostRevision
+  type: EntityType
+  relationships:
+  - name: posthistorytypeid
+    description: Categorizes the revision by the type of historical action performed.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has posthistorytypeid {Integer}'
+  - name: historical_user_display_name
+    description: Identifies the revising user by their display name, e.g., user28.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has historical user display name {String}'
+  - name: historical_comment
+    description: Captures the user's descriptive note explaining the nature of the
+      edit.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has historical comment {String}'
+  - name: historical_creation_date
+    description: Records the timestamp with time zone when the revision was created.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has historical creation date {DateTime}'
+  - name: historical_revision_guid
+    description: Provides a globally unique UUID reference for each revision.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has historical revision guid {String}'
+  - name: historical_revision_text
+    description: Stores the revised content in tag markup format such as <data-visualization>.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has historical revision text {String}'
+  - name: historical_revision_id
+    description: Uniquely identifies each post revision with a sequential numeric
+      key.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has historical revision id {Integer}'
+  - name: user_account
+    roles:
+    - concept: UserAccount
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has {UserAccount}'
+  - name: post
+    roles:
+    - concept: Post
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PostRevision} has {Post}'
+- concept: Tag
+  type: EntityType
+  relationships:
+  - name: tag_id
+    description: Uniquely identifies each tag record in the system.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Tag} has tag id {Integer}'
+  - name: excerptpostid
+    description: Identifies the excerpt post associated with the tag.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Tag} has excerptpostid {Integer}'
+  - name: count
+    description: Indicates the number of occurrences or references linked to the tag.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Tag} has count {Integer}'
+  - name: tag_name
+    description: Provides the textual label for a statistical or methodological concept.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Tag} has tag name {String}'
+  - name: wikipostid
+    description: Identifies the wiki post associated with the tag.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Tag} has wikipostid {Integer}'
+- concept: UserAccount
+  type: EntityType
+  description: Represents a user account in the system, including profile information,
+    activity metrics, and reputation.
+  identify_by:
+  - user_id
+  relationships:
+  - name: website_url
+    description: User-provided website URL, with 'none' indicating no URL supplied.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has website url {String}'
+  - name: upvotes_received
+    description: Total number of upvotes received on the user's posts.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has upvotes received {Integer}'
+  - name: last_access_date
+    description: Timestamp with time zone of the user's most recent site access or
+      login.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has last access date {DateTime}'
+  - name: profile_views
+    description: Total count of profile page views by other users.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has profile views {Integer}'
+  - name: location
+    description: Self-reported geographic location such as country, city, or region.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has location {String}'
+  - name: downvotes_received
+    description: Total number of downvotes received on the user's posts.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has downvotes received {Integer}'
+  - name: about_me
+    description: User-written profile biography in HTML format describing background
+      or interests.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has about me {String}'
+  - name: profile_image_url
+    description: URL of the user's profile avatar image hosted on Stack Imgur or Gravatar.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has profile image url {String}'
+  - name: display_name
+    description: Public display name chosen by the user for their profile.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has display name {String}'
+  - name: creation_date
+    description: Timestamp with time zone of when the user account was created.
+    roles:
+    - concept: DateTime
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has creation date {DateTime}'
+  - name: reputation_score
+    description: Reputation score indicating community trust earned from contributions.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has reputation score {Integer}'
+  - name: accountid
+    description: Unique account identifier, where -1 denotes a default or placeholder
+      account.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has accountid {Integer}'
+  - name: user_id
+    description: Unique identifier for the user account, where -1 denotes a system
+      or anonymous user.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{UserAccount} is identified by user id {Integer}'
+  - name: age
+    description: Self-reported age of the user in years.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{UserAccount} has age {Integer}'
+- concept: Vote
+  type: EntityType
+  relationships:
+  - name: bounty_amount
+    description: Specifies the monetary bounty amount associated with the vote.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Vote} has bounty amount {Integer}'
+  - name: vote_id
+    description: Uniquely identifies each vote record in the system.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Vote} has vote id {Integer}'
+  - name: creation_date
+    description: Records the date the vote was cast in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Vote} has creation date {Date}'
+  - name: votetypeid
+    description: Identifies the category of vote cast, such as upvote, downvote, or
+      acceptance.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Vote} has votetypeid {Integer}'
+  - name: post
+    roles:
+    - concept: Post
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Vote} has {Post}'
+  - name: user_account
+    roles:
+    - concept: UserAccount
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Vote} has {UserAccount}'

@@ -1,0 +1,77 @@
+version: 0.2.0.dev0
+name: d2_toxicology_ontology
+description: Business concepts of the d2_toxicology semantic model
+ontology:
+- concept: Atom
+  type: EntityType
+  relationships:
+  - name: atom_id
+    description: Unique identifier for an atom in a molecular structure, formatted
+      as a prefix followed by an underscore and sequential number, used to link atoms
+      in connectivity records.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Atom} has atom id {String}'
+  - name: element
+    description: Chemical element symbol denoting the atom type, using standard lowercase
+      abbreviations like h, c, cl, o, n.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Atom} has element {String}'
+  - name: molecule
+    roles:
+    - concept: Molecule
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Atom} has {Molecule}'
+- concept: Bond
+  type: EntityType
+  relationships:
+  - name: bond_type
+    description: Categorical code representing the bond type using symbolic characters
+      such as '-', '=', or '#'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Bond} has bond type {String}'
+  - name: bond_id
+    description: Unique identifier for a bond instrument, formatted as a prefix and
+      numeric components separated by underscores, used to link related bonds.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Bond} has bond id {String}'
+  - name: molecule
+    roles:
+    - concept: Molecule
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Bond} has {Molecule}'
+- concept: Molecule
+  type: EntityType
+  identify_by:
+  - molecule_id
+  relationships:
+  - name: experimental_outcome
+    description: Binary indicator of experimental outcome for a molecule, with '+'
+      for positive and '-' for negative results.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Molecule} has experimental outcome {String}'
+  - name: molecule_id
+    description: Unique identifier for a molecular compound in a screening library,
+      formatted as 'TR' followed by a numeric code, linking to its constituent atoms
+      and bonds.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Molecule} is identified by molecule id {String}'

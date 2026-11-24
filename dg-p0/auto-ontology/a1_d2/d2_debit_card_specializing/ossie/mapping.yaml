@@ -1,0 +1,56 @@
+version: 0.2.0.dev0
+name: d2_debit_card_specializing_mapping
+description: Maps the d2_debit_card_specializing_ontology onto the d2_debit_card_specializing
+  semantic model
+ontology_ref:
+  name: d2_debit_card_specializing_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_debit_card_specializing
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: Customer
+  object_mappings:
+  - expression: customer.customer_id
+  link_mappings:
+  - object_mapping:
+      expression: customer.customer_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: customer.segment
+      relationship: segment
+    - object_mapping:
+        concept: String
+        expression: customer.currency
+      relationship: currency
+- concept: GasStation
+  object_mappings:
+  - expression: gas_station.gas_station_id
+  link_mappings:
+  - object_mapping:
+      expression: gas_station.gas_station_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: gas_station.segment
+      relationship: segment
+    - object_mapping:
+        concept: Integer
+        expression: gas_station.chainid
+      relationship: chainid
+    - object_mapping:
+        concept: String
+        expression: gas_station.country
+      relationship: country
+- concept: Product
+  object_mappings:
+  - expression: product.product_id
+  link_mappings:
+  - object_mapping:
+      expression: product.product_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: product.description
+      relationship: description

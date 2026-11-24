@@ -1,0 +1,858 @@
+version: 0.2.0.dev0
+name: d2_codebase_community
+datasets:
+- name: badge
+  source: d2_codebase_community.public.badges
+  description: A role or badge assigned to a user.
+  fields:
+  - name: badge_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: name
+    datatype: String
+    description: Specifies the title of the badge or role granted to a user.
+  - name: badge_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each badge assignment record.
+  - name: assigned_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date
+    datatype: DateTimeTz
+    description: Records the timestamp with time zone when the badge was awarded.
+  - name: userid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: userid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: comment
+  source: d2_codebase_community.public.comments
+  description: A user-submitted comment with its score, text, creation timestamp,
+    and author display name.
+  fields:
+  - name: text
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: text
+    datatype: String
+    description: Text content submitted by the comment author.
+  - name: user_display_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: userdisplayname
+    datatype: String
+    description: Display name of the comment's author.
+  - name: creation_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: creationdate
+    datatype: DateTimeTz
+    description: Timestamp with time zone when the comment was created.
+  - name: score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: score
+    datatype: Integer
+    description: Numeric community rating of the comment.
+  - name: comment_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Identifies each comment uniquely.
+  - name: userid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: userid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: postid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: postid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: post
+  source: d2_codebase_community.public.posts
+  unique_keys:
+  - - post_id
+  fields:
+  - name: body
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: body
+    datatype: String
+    description: Full textual content of the post stored in HTML format.
+  - name: favorite_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: favoritecount
+    datatype: Integer
+    description: Number of users who have bookmarked the post.
+  - name: score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: score
+    datatype: Integer
+    description: Net vote score of the post, calculated as upvotes minus downvotes.
+  - name: closed_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: closeddate
+    datatype: DateTimeTz
+    description: Timestamp when the question was closed, if applicable.
+  - name: answer_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: answercount
+    datatype: Integer
+    description: Number of answers submitted for the question.
+  - name: last_edit_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lasteditdate
+    datatype: DateTimeTz
+    description: Timestamp of the most recent edit made to the post.
+  - name: last_editor_display_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lasteditordisplayname
+    datatype: String
+    description: lasteditordisplayname is the free-text display name of the user who
+      most recently edited the post.
+  - name: tags
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: tags
+    datatype: String
+    description: Topic labels associated with the question, enclosed in angle brackets.
+  - name: owner_display_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: ownerdisplayname
+    datatype: String
+    description: ownerdisplayname is the free-text display name of the user who authored
+      the post.
+  - name: view_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: viewcount
+    datatype: Integer
+    description: Total number of times the post has been viewed by users.
+  - name: last_activity_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lasactivitydate
+    datatype: DateTimeTz
+    description: Timestamp of the most recent activity on the post, such as edits,
+      answers, or comments.
+  - name: posttypeid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: posttypeid
+    datatype: Integer
+    description: Indicates whether the post is a question (1) or an answer (2).
+  - name: creation_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: creaiondate
+    datatype: DateTimeTz
+    description: Timestamp with time zone of when the post was originally created.
+  - name: community_owned_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: communityowneddate
+    datatype: DateTimeTz
+    description: Timestamp when the post was converted to community-owned status.
+  - name: post_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Unique numeric identifier for each post, used by comments, history,
+      links, and accepted answer references.
+  - name: comment_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: commentcount
+    datatype: Integer
+    description: Number of comments posted on the post.
+  - name: title
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: title
+    datatype: String
+    description: Headline summarizing the question post.
+  - name: owneruserid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: owneruserid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: lasteditoruserid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lasteditoruserid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: acceptedanswerid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: acceptedanswerid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: parentid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: parentid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: post_link
+  source: d2_codebase_community.public.postlinks
+  description: A link between two posts, such as a duplicate or related post reference.
+  fields:
+  - name: creation_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: creationdate
+    datatype: DateTimeTz
+    description: Records the exact date and time with time zone when the post link
+      was created.
+  - name: linktypeid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: linktypeid
+    datatype: Integer
+    description: Identifies the category of relationship between posts, such as duplicate
+      or related, using a numeric code like 1.
+  - name: id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each post link record with a numeric key such
+      as 108 or 264.
+  - name: relatedpostid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: relatedpostid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: postid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: postid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: post_revision
+  source: d2_codebase_community.public.posthistory
+  fields:
+  - name: posthistorytypeid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: posthistorytypeid
+    datatype: Integer
+    description: Categorizes the revision by the type of historical action performed.
+  - name: historical_user_display_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: userdisplayname
+    datatype: String
+    description: Identifies the revising user by their display name, e.g., user28.
+  - name: historical_comment
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: comment
+    datatype: String
+    description: Captures the user's descriptive note explaining the nature of the
+      edit.
+  - name: historical_creation_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: creationdate
+    datatype: DateTimeTz
+    description: Records the timestamp with time zone when the revision was created.
+  - name: historical_revision_guid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: revisionguid
+    datatype: String
+    description: Provides a globally unique UUID reference for each revision.
+  - name: historical_revision_text
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: text
+    datatype: String
+    description: Stores the revised content in tag markup format such as <data-visualization>.
+  - name: historical_revision_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each post revision with a sequential numeric
+      key.
+  - name: userid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: userid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: postid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: postid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: tag
+  source: d2_codebase_community.public.tags
+  fields:
+  - name: tag_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each tag record in the system.
+  - name: excerptpostid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: excerptpostid
+    datatype: Integer
+    description: Identifies the excerpt post associated with the tag.
+  - name: count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: count
+    datatype: Integer
+    description: Indicates the number of occurrences or references linked to the tag.
+  - name: tag_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: tagname
+    datatype: String
+    description: Provides the textual label for a statistical or methodological concept.
+  - name: wikipostid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: wikipostid
+    datatype: Integer
+    description: Identifies the wiki post associated with the tag.
+- name: user_account
+  source: d2_codebase_community.public.users
+  description: Represents a user account in the system, including profile information,
+    activity metrics, and reputation.
+  unique_keys:
+  - - user_id
+  fields:
+  - name: website_url
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: websiteurl
+    datatype: String
+    description: User-provided website URL, with 'none' indicating no URL supplied.
+  - name: upvotes_received
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: upvotes
+    datatype: Integer
+    description: Total number of upvotes received on the user's posts.
+  - name: last_access_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: lastaccessdate
+    datatype: DateTimeTz
+    description: Timestamp with time zone of the user's most recent site access or
+      login.
+  - name: profile_views
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: views
+    datatype: Integer
+    description: Total count of profile page views by other users.
+  - name: location
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: location
+    datatype: String
+    description: Self-reported geographic location such as country, city, or region.
+  - name: downvotes_received
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: downvotes
+    datatype: Integer
+    description: Total number of downvotes received on the user's posts.
+  - name: about_me
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: aboutme
+    datatype: String
+    description: User-written profile biography in HTML format describing background
+      or interests.
+  - name: profile_image_url
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: profileimageurl
+    datatype: String
+    description: URL of the user's profile avatar image hosted on Stack Imgur or Gravatar.
+  - name: display_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: displayname
+    datatype: String
+    description: Public display name chosen by the user for their profile.
+  - name: creation_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: creationdate
+    datatype: DateTimeTz
+    description: Timestamp with time zone of when the user account was created.
+  - name: reputation_score
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: reputation
+    datatype: Integer
+    description: Reputation score indicating community trust earned from contributions.
+  - name: accountid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: accountid
+    datatype: Integer
+    description: Unique account identifier, where -1 denotes a default or placeholder
+      account.
+  - name: user_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Unique identifier for the user account, where -1 denotes a system
+      or anonymous user.
+  - name: age
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: age
+    datatype: Integer
+    description: Self-reported age of the user in years.
+- name: vote
+  source: d2_codebase_community.public.votes
+  fields:
+  - name: bounty_amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bountyamount
+    datatype: Integer
+    description: Specifies the monetary bounty amount associated with the vote.
+  - name: vote_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: id
+    datatype: Integer
+    description: Uniquely identifies each vote record in the system.
+  - name: creation_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: creationdate
+    datatype: Date
+    description: Records the date the vote was cast in YYYY-MM-DD format.
+  - name: votetypeid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: votetypeid
+    datatype: Integer
+    description: Identifies the category of vote cast, such as upvote, downvote, or
+      acceptance.
+  - name: postid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: postid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: userid
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: userid
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_codebase_community","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"33197a14-1fdb-4d06-badf-f2aaf6746f5a","schemas":[{"database_name":"d2_codebase_community","id":"20fd4f51-a3c9-4fe4-871b-4977da037cab","name":"public","tables":[{"columns":[{"description":"Unique
+    identifier for each record in the table.","id":"316e6dd1-c69f-43c5-b19d-cd161251d537","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"347139f6-a340-4e40-a07e-4ce57b1e7999","is_nullable":true,"is_unique":false,"name":"userid","sample_values":[5,159,190,223,8],"type":"bigint"},{"description":"The
+    name of the role or badge assigned to a user.","id":"f0757c44-9dd9-4487-8988-efb36dd0d6f1","is_nullable":true,"is_unique":false,"name":"name","sample_values":["Supporter","Autobiographer","Teacher","Student","Editor"],"type":"text"},{"description":"The
+    date and time when the record was created or the role was assigned, including
+    time zone information.","id":"ca51cd52-061b-46d7-97a4-b332240a5b33","is_nullable":true,"is_unique":false,"name":"date","sample_values":[],"type":"timestamp
+    with time zone"}],"description":"","id":"44331bc5-28fb-4162-b66d-50b9149677ee","name":"badges","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for the comment.","id":"c0e900f7-c6b0-4dd5-a095-c293fdf01866","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"56a7ad2a-8f36-4adc-9cbe-09a495857093","is_nullable":true,"is_unique":false,"name":"postid","sample_values":[652,981,1094,1194,130],"type":"bigint"},{"description":"Numeric
+    score indicating the community rating of the comment.","id":"3fee2dc0-ae21-4925-8631-a105da0a5c14","is_nullable":true,"is_unique":false,"name":"score","sample_values":[0,1,2,3,4],"type":"bigint"},{"description":"Text
+    content of the comment posted by a user.","id":"3cc60ba7-9f5b-4ab6-9213-f574bb080bf8","is_nullable":true,"is_unique":true,"name":"text","sample_values":["Should
+    be community wiki.","Should be community wiki?"],"type":"text"},{"description":"Date
+    and time when the comment was created, including time zone.","id":"e2ffaa11-d4af-4743-b678-831e5d59c718","is_nullable":true,"is_unique":true,"name":"creationdate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"","id":"654da927-25ab-402d-bf9f-d5c1a0c84882","is_nullable":true,"is_unique":false,"name":"userid","sample_values":[88.0,223.0,5.0,159.0,196.0],"type":"bigint"},{"description":"Display
+    name of the user who authored the comment.","id":"ec5cf048-f436-476e-8d3e-6f8bafe872ad","is_nullable":true,"is_unique":false,"name":"userdisplayname","sample_values":["user28","Pete","anonymous","Statprof","jjgibaja"],"type":"text"}],"description":"","id":"997efe37-66c2-4268-abcb-3deab42baa87","name":"comments","pk":[],"type":"base
+    table"},{"columns":[{"description":"A unique numeric identifier assigned to each
+    revision record.","id":"ca56a21e-83a7-469c-b039-9cfe910fdda1","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"The
+    posthistorytypeid column identifies the type of historical action performed on
+    a post, such as initial creation, edits, or community ownership.","id":"05d03fef-712c-4d12-a0e9-4b0eb21a8d33","is_nullable":true,"is_unique":false,"name":"posthistorytypeid","sample_values":[2,3,1,5,16],"type":"bigint"},{"description":"","id":"c54a7ce7-587b-4d56-8341-98529cf2a5cf","is_nullable":true,"is_unique":false,"name":"postid","sample_values":[134,130,2,3,8],"type":"bigint"},{"description":"A
+    globally unique identifier (UUID) that distinguishes each revision.","id":"5005d9f1-8c0e-4e6f-b4ee-414d7013c0bb","is_nullable":true,"is_unique":false,"name":"revisionguid","sample_values":[],"type":"text"},{"description":"The
+    date and time, with time zone, when the revision was created.","id":"f23d3eaa-7553-4cf5-929f-f3d4afbd91ad","is_nullable":true,"is_unique":false,"name":"creationdate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"","id":"a840c645-7fb3-496a-9d01-d89787268d4f","is_nullable":true,"is_unique":false,"name":"userid","sample_values":[-1.0,5.0,8.0,88.0,13.0],"type":"bigint"},{"description":"The
+    revision''s content stored as tag markup such as <data-visualization> or <hypothesis-testing><p-value><t-value>.","id":"477df08d-8b14-4ff7-ab34-1320d3b8ec99","is_nullable":true,"is_unique":false,"name":"text","sample_values":["","<data-visualization>","<statistical-significance>","<r>"],"type":"text"},{"description":"A
+    user\u2011provided note describing the nature of the edit, e.g., \"edited tags\"
+    or \"Removed the word ''most''...\".","id":"a8349964-abe0-4c14-909d-3acd50fb993f","is_nullable":true,"is_unique":false,"name":"comment","sample_values":["","edited
+    tags","edited title","added 12 characters in body"],"type":"text"},{"description":"The
+    display name of the user who performed the revision, such as \"user28\".","id":"6e1555ca-9539-445b-a984-c9d9a46dca31","is_nullable":true,"is_unique":false,"name":"userdisplayname","sample_values":["","user28","user209"],"type":"text"}],"description":"","id":"84b50092-40aa-4afb-8d13-c54880be63a6","name":"posthistory","pk":[],"type":"base
+    table"},{"columns":[{"description":"A unique identifier assigned to each record
+    for distinct referencing in the system.","id":"e6a229ea-9550-469a-9165-8bf9eca3eb6c","is_nullable":false,"is_unique":true,"name":"id","sample_values":[108,145,217,263,264],"type":"bigint"},{"description":"The
+    date and time when the record was created, including time zone information.","id":"4347c166-b414-4070-ab61-f18f63a58c78","is_nullable":true,"is_unique":false,"name":"creationdate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"","id":"5ec06b91-c6f6-42d6-b89d-2e9a10d8b1c3","is_nullable":true,"is_unique":false,"name":"postid","sample_values":[13655,3201,10088,11232,15052],"type":"bigint"},{"description":"","id":"27f0121b-f918-47ad-9d13-c33f8fbec106","is_nullable":true,"is_unique":false,"name":"relatedpostid","sample_values":[6,577,1444,1576,2492],"type":"bigint"},{"description":"A
+    unique identifier representing the type of link or relationship between entities.","id":"c1f4af70-9893-4a74-bd89-e49b059d7ada","is_nullable":true,"is_unique":false,"name":"linktypeid","sample_values":[1],"type":"bigint"}],"description":"","id":"f91d93d7-bc59-4fd9-8c64-3695424ae9c8","name":"postlinks","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each question in the
+    system.","id":"82a29c76-5d56-4f20-ad34-395de9858acd","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Identifies
+    the type of post, where 1 represents a question and 2 represents an answer.","id":"910fdfe9-9d2a-423a-b7a7-d5b8b9d11c65","is_nullable":true,"is_unique":false,"name":"posttypeid","sample_values":[2,1],"type":"bigint"},{"description":"","id":"47f1a68a-54d8-4c7e-a92b-81cd7b003c92","is_nullable":true,"is_unique":true,"name":"acceptedanswerid","sample_values":[15.0,59.0,5.0,135.0,18.0],"type":"bigint"},{"description":"Timestamp
+    indicating when the question was originally created.","id":"e5143888-88a5-43d0-b569-56f45cf0ff84","is_nullable":true,"is_unique":true,"name":"creaiondate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"Net vote score of the question, calculated as
+    upvotes minus downvotes.","id":"69b06861-bc82-454a-8a7a-19a83050c2d7","is_nullable":true,"is_unique":false,"name":"score","sample_values":[3,2,4,1,5],"type":"bigint"},{"description":"Total
+    number of times the question has been viewed by users.","id":"f7652280-e163-4d94-8d9d-f0fe846d5975","is_nullable":true,"is_unique":true,"name":"viewcount","sample_values":[247.0,288.0,120.0,754.0,3293.0],"type":"bigint"},{"description":"Full
+    textual content of the question, stored in HTML format.","id":"d9f56b9b-74da-43ac-b657-4b3ff5fc7c56","is_nullable":true,"is_unique":true,"name":"body","sample_values":[],"type":"text"},{"description":"","id":"3b11c796-df3c-4195-ac96-6d8178ada33e","is_nullable":true,"is_unique":false,"name":"owneruserid","sample_values":[88.0,5.0,215.0,159.0,251.0],"type":"bigint"},{"description":"Timestamp
+    of the most recent activity on the question, such as an edit, answer, or comment.","id":"61a88e8f-d709-476e-8004-7e6689bbc842","is_nullable":true,"is_unique":false,"name":"lasactivitydate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"Headline or subject line summarizing the question.","id":"0922b41f-f367-4265-b20b-7cc1c6900d5d","is_nullable":true,"is_unique":true,"name":"title","sample_values":["Eliciting
+    priors from experts","What is normality?"],"type":"text"},{"description":"Topic
+    labels associated with the question, enclosed in angle brackets.","id":"48568f88-1c28-493d-b85b-b7e91938eea1","is_nullable":true,"is_unique":false,"name":"tags","sample_values":["<hypothesis-testing>","<r>","<regression>","<books>","<machine-learning>"],"type":"text"},{"description":"Number
+    of answers submitted in response to the question.","id":"29151ea7-ca2d-4f6d-a66b-f084f253b263","is_nullable":true,"is_unique":false,"name":"answercount","sample_values":[2.0,1.0,3.0,4.0,5.0],"type":"bigint"},{"description":"Number
+    of comments posted on the question.","id":"c14e5898-af85-428d-990d-8c208fc15815","is_nullable":true,"is_unique":false,"name":"commentcount","sample_values":[0,1,2,3,4],"type":"bigint"},{"description":"Number
+    of users who have bookmarked or favorited the question.","id":"2f0f436b-6d60-464e-a2e6-88354f68b7d5","is_nullable":true,"is_unique":false,"name":"favoritecount","sample_values":[1.0,2.0,4.0,5.0,3.0],"type":"bigint"},{"description":"","id":"595a8316-5cda-4541-a2cf-7b264984329b","is_nullable":true,"is_unique":false,"name":"lasteditoruserid","sample_values":[88.0,8.0,159.0,74.0,919.0],"type":"bigint"},{"description":"Timestamp
+    of the most recent edit made to the question.","id":"ce2db774-fdea-4d0b-9245-5ac50d65a314","is_nullable":true,"is_unique":true,"name":"lasteditdate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"Timestamp when the question was converted to
+    community-owned status.","id":"770f2991-88c5-4dbd-9dc4-fee8c84cddb5","is_nullable":true,"is_unique":false,"name":"communityowneddate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"","id":"c8dd78e8-7189-4e4f-bd80-06831dec6374","is_nullable":true,"is_unique":false,"name":"parentid","sample_values":[726.0,73.0,138.0,170.0,7.0],"type":"bigint"},{"description":"Timestamp
+    when the question was closed, if applicable.","id":"770de055-49c6-493d-9590-817e1470b818","is_nullable":true,"is_unique":true,"name":"closeddate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"Display name of the user who authored the question.","id":"3f52bc87-6eba-4c84-9400-3ff02bfd7330","is_nullable":true,"is_unique":false,"name":"ownerdisplayname","sample_values":["user28","Michael
+    Bishop","Tzippy","sjcockell","esco"],"type":"text"},{"description":"The display
+    name of the user who most recently edited the record.","id":"31a8f140-d45e-4510-b1a7-c9db123f3e3e","is_nullable":true,"is_unique":false,"name":"lasteditordisplayname","sample_values":["user28","user10525","sjcockell"],"type":"text"}],"description":"","id":"77ae701a-c39c-4264-b031-234d007911ab","name":"posts","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each tag record.","id":"ef3d680d-6c07-4395-bd39-a69e32af1cc1","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"Textual
+    label representing a statistical or methodological concept.","id":"81ee0e3a-4131-43b4-bc8d-6e78aeb76dfe","is_nullable":true,"is_unique":true,"name":"tagname","sample_values":["bayesian","prior","elicitation","normality","open-source"],"type":"text"},{"description":"Number
+    of occurrences or references associated with the tag.","id":"036cc5a5-33b8-48d5-865c-e8b0d593b006","is_nullable":true,"is_unique":false,"name":"count","sample_values":[2,3,1,4,5],"type":"bigint"},{"description":"Unique
+    identifier for an excerpt post in the system.","id":"3b58c12b-0699-478f-a629-8ed0b9a45511","is_nullable":true,"is_unique":true,"name":"excerptpostid","sample_values":[20258.0,62158.0,67815.0,8046.0,9066.0],"type":"bigint"},{"description":"Unique
+    identifier for a wiki post in the system.","id":"1cd46460-cba8-421c-af3c-24883ac3cde8","is_nullable":true,"is_unique":true,"name":"wikipostid","sample_values":[20257.0,62157.0,67814.0,8045.0,9065.0],"type":"bigint"}],"description":"","id":"294cfdb1-e749-479a-9424-179ab5ed6a86","name":"tags","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each user account, with
+    -1 indicating a system or anonymous user.","id":"fcb489a5-525f-4b51-ae3b-9dde74f73494","is_nullable":false,"is_unique":true,"name":"id","sample_values":[-1,2,3,4,5],"type":"bigint"},{"description":"User''s
+    reputation score reflecting community trust earned through contributions.","id":"6a170f1c-c6b7-4b32-b2cc-159372add994","is_nullable":true,"is_unique":false,"name":"reputation","sample_values":[101,111,1,121,31],"type":"bigint"},{"description":"Timestamp
+    indicating when the user account was created.","id":"c6124179-b40e-466d-a3f1-6df8225e1639","is_nullable":true,"is_unique":true,"name":"creationdate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"Publicly displayed name chosen by the user for
+    their profile.","id":"7cf6886c-5be7-4523-ad77-6744135d2f82","is_nullable":true,"is_unique":true,"name":"displayname","sample_values":["Mark","Tom","Tim","julien","David"],"type":"text"},{"description":"Timestamp
+    of the user''s most recent site access or login.","id":"2ad4ca96-203f-4dd0-99b2-3e013a4a26a8","is_nullable":true,"is_unique":true,"name":"lastaccessdate","sample_values":[],"type":"timestamp
+    with time zone"},{"description":"User-provided personal or professional website
+    URL, with ''none'' indicating no URL provided.","id":"d709ff37-eb2b-498f-adf7-1c8958629cfc","is_nullable":true,"is_unique":true,"name":"websiteurl","sample_values":["http://none","http://stackoverflow.com","http://None","http://www.google.com","http://meta.stackexchange.com/"],"type":"text"},{"description":"User''s
+    self-reported geographic location, such as country, city, or region.","id":"383b1908-86f7-4b8b-bde7-ef8b67998579","is_nullable":true,"is_unique":false,"name":"location","sample_values":["United
+    States","United Kingdom","New York, NY","London, United Kingdom","California"],"type":"text"},{"description":"User-written
+    profile biography in HTML format describing their background or interests.","id":"c7f8ad73-9929-4c22-aa11-209b23015508","is_nullable":true,"is_unique":true,"name":"aboutme","sample_values":["<p></p>\n"],"type":"text"},{"description":"Total
+    number of times the user''s profile page has been viewed by others.","id":"5896a578-d498-4d3c-94e5-d20d3046a22d","is_nullable":true,"is_unique":false,"name":"views","sample_values":[0,1,2,3,4],"type":"bigint"},{"description":"Total
+    count of upvotes received across all of the user''s posts.","id":"faf2f0d3-f10c-45c1-856d-4b1f3e5bd70a","is_nullable":true,"is_unique":false,"name":"upvotes","sample_values":[0,1,2,3,4],"type":"bigint"},{"description":"Total
+    count of downvotes received across all of the user''s posts.","id":"cdc132bc-e869-4678-85b8-59a15c3ae4eb","is_nullable":true,"is_unique":false,"name":"downvotes","sample_values":[0,1,2,4,3],"type":"bigint"},{"description":"The
+    accountid column is a bigint identifier uniquely representing an account, with
+    sample values including -1 (likely a default or placeholder) and positive integers
+    such as 2, 3, 1998, and 54503.","id":"fc406dc8-3f6b-4bcd-9d03-a9cdc75e3872","is_nullable":true,"is_unique":true,"name":"accountid","sample_values":[-1,2,3,1998,54503],"type":"bigint"},{"description":"User''s
+    self-reported age in years.","id":"e4ba16c1-7f6d-406c-aaa1-4e2d99510a2d","is_nullable":true,"is_unique":false,"name":"age","sample_values":[29.0,33.0,32.0,36.0,31.0],"type":"bigint"},{"description":"URL
+    pointing to the user''s profile avatar image, hosted on Stack Imgur or Gravatar.","id":"167021b5-c292-46ae-b5f8-212d35903f26","is_nullable":true,"is_unique":true,"name":"profileimageurl","sample_values":[],"type":"text"}],"description":"","id":"c650397b-0de0-4bf4-b199-ece92e913e93","name":"users","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each record in the table.","id":"ecb3524b-c578-45d6-805a-633fd28dd309","is_nullable":false,"is_unique":true,"name":"id","sample_values":[1,2,3,4,5],"type":"bigint"},{"description":"","id":"7a6ec573-2420-4505-a7ec-9d2717ef49f1","is_nullable":true,"is_unique":false,"name":"postid","sample_values":[5,22,3,6,7],"type":"bigint"},{"description":"votetypeid
+    is a foreign key identifier that categorizes the type of vote cast, such as upvote,
+    downvote, or acceptance.","id":"973031c5-90d1-4643-ab01-d6f64a7c4639","is_nullable":true,"is_unique":false,"name":"votetypeid","sample_values":[2,5,3,1],"type":"bigint"},{"description":"Date
+    when the record was created.","id":"7ff0c96f-b9cb-4ac6-91e5-422fd104c459","is_nullable":true,"is_unique":false,"name":"creationdate","sample_values":[],"type":"date"},{"description":"","id":"b1aa5543-8565-40dc-a670-6001453bee08","is_nullable":true,"is_unique":false,"name":"userid","sample_values":[158.0,24.0,71.0,22.0,138.0],"type":"bigint"},{"description":"Monetary
+    amount associated with a bounty.","id":"69ec120b-0130-4f4f-8664-ca211bebd417","is_nullable":true,"is_unique":false,"name":"bountyamount","sample_values":[],"type":"bigint"}],"description":"","id":"ac592159-33bf-42e4-b979-f95a8b534a75","name":"votes","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[{"source_column_id":"347139f6-a340-4e40-a07e-4ce57b1e7999","target_column_id":"fcb489a5-525f-4b51-ae3b-9dde74f73494"},{"source_column_id":"3b11c796-df3c-4195-ac96-6d8178ada33e","target_column_id":"fcb489a5-525f-4b51-ae3b-9dde74f73494"},{"source_column_id":"595a8316-5cda-4541-a2cf-7b264984329b","target_column_id":"fcb489a5-525f-4b51-ae3b-9dde74f73494"},{"source_column_id":"654da927-25ab-402d-bf9f-d5c1a0c84882","target_column_id":"fcb489a5-525f-4b51-ae3b-9dde74f73494"},{"source_column_id":"7a6ec573-2420-4505-a7ec-9d2717ef49f1","target_column_id":"82a29c76-5d56-4f20-ad34-395de9858acd"},{"source_column_id":"a840c645-7fb3-496a-9d01-d89787268d4f","target_column_id":"fcb489a5-525f-4b51-ae3b-9dde74f73494"},{"source_column_id":"b1aa5543-8565-40dc-a670-6001453bee08","target_column_id":"fcb489a5-525f-4b51-ae3b-9dde74f73494"}],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","column_id":"27f0121b-f918-47ad-9d13-c33f8fbec106","use_in_join_paths":false},{"column_attribute_id":"ef513b64-7cf5-4a7c-864a-c288f77b840a","column_id":"347139f6-a340-4e40-a07e-4ce57b1e7999","use_in_join_paths":true},{"column_attribute_id":"ef513b64-7cf5-4a7c-864a-c288f77b840a","column_id":"3b11c796-df3c-4195-ac96-6d8178ada33e","use_in_join_paths":true},{"column_attribute_id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","column_id":"47f1a68a-54d8-4c7e-a92b-81cd7b003c92","use_in_join_paths":false},{"column_attribute_id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","column_id":"56a7ad2a-8f36-4adc-9cbe-09a495857093","use_in_join_paths":true},{"column_attribute_id":"ef513b64-7cf5-4a7c-864a-c288f77b840a","column_id":"595a8316-5cda-4541-a2cf-7b264984329b","use_in_join_paths":false},{"column_attribute_id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","column_id":"5ec06b91-c6f6-42d6-b89d-2e9a10d8b1c3","use_in_join_paths":true},{"column_attribute_id":"ef513b64-7cf5-4a7c-864a-c288f77b840a","column_id":"654da927-25ab-402d-bf9f-d5c1a0c84882","use_in_join_paths":true},{"column_attribute_id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","column_id":"7a6ec573-2420-4505-a7ec-9d2717ef49f1","use_in_join_paths":true},{"column_attribute_id":"ef513b64-7cf5-4a7c-864a-c288f77b840a","column_id":"a840c645-7fb3-496a-9d01-d89787268d4f","use_in_join_paths":true},{"column_attribute_id":"ef513b64-7cf5-4a7c-864a-c288f77b840a","column_id":"b1aa5543-8565-40dc-a670-6001453bee08","use_in_join_paths":true},{"column_attribute_id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","column_id":"c54a7ce7-587b-4d56-8341-98529cf2a5cf","use_in_join_paths":true},{"column_attribute_id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","column_id":"c8dd78e8-7189-4e4f-bd80-06831dec6374","use_in_join_paths":true}],"sql_attributes":{"bridge_table":[],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"f0757c44-9dd9-4487-8988-efb36dd0d6f1","description":"Specifies
+    the title of the badge or role granted to a user.","id":"1d9dcb26-8f88-45b7-b536-5306fea97312","name":"Badge
+    Name"},{"column_id":"316e6dd1-c69f-43c5-b19d-cd161251d537","description":"Uniquely
+    identifies each badge assignment record.","id":"4d642b06-7414-4a33-a1b7-2ab4a2c6e3f9","name":"Badge
+    ID"},{"column_id":"ca51cd52-061b-46d7-97a4-b332240a5b33","description":"Records
+    the timestamp with time zone when the badge was awarded.","id":"f687ae12-d98f-4dde-b38e-92f19a71dae3","name":"Assigned
+    Date"}],"description":"A role or badge assigned to a user.","id":"2e6708cc-21f6-4d1d-a075-975f3d98ba13","name":"Badge","represents":["44331bc5-28fb-4162-b66d-50b9149677ee"]},{"columns_attributes":[{"column_id":"3cc60ba7-9f5b-4ab6-9213-f574bb080bf8","description":"Text
+    content submitted by the comment author.","id":"5abe079e-66a1-45ea-922b-18c6627fbbe5","name":"Text"},{"column_id":"ec5cf048-f436-476e-8d3e-6f8bafe872ad","description":"Display
+    name of the comment''s author.","id":"5ae66867-868f-4e86-859a-32b8ab627f67","name":"User
+    Display Name"},{"column_id":"e2ffaa11-d4af-4743-b678-831e5d59c718","description":"Timestamp
+    with time zone when the comment was created.","id":"63156ef4-e53e-4108-afa3-a6725b0e70ea","name":"Creation
+    Date"},{"column_id":"3fee2dc0-ae21-4925-8631-a105da0a5c14","description":"Numeric
+    community rating of the comment.","id":"9b78e3d0-0e42-4ade-9fee-493ee13f23c8","name":"Score"},{"column_id":"c0e900f7-c6b0-4dd5-a095-c293fdf01866","description":"Identifies
+    each comment uniquely.","id":"d4ca2fc0-9eee-4aaa-b5ad-1464e9fc6bc8","name":"Comment
+    ID"}],"description":"A user-submitted comment with its score, text, creation timestamp,
+    and author display name.","id":"9be085cd-f02c-4d0e-b7d2-517b09746a8d","name":"Comment","represents":["997efe37-66c2-4268-abcb-3deab42baa87"]},{"columns_attributes":[{"column_id":"d9f56b9b-74da-43ac-b657-4b3ff5fc7c56","description":"Full
+    textual content of the post stored in HTML format.","id":"09d68540-0b09-4b37-bc9e-46f866b93075","name":"Body"},{"column_id":"2f0f436b-6d60-464e-a2e6-88354f68b7d5","description":"Number
+    of users who have bookmarked the post.","id":"09fd8f61-5e86-4ac1-868a-736b72d98c60","name":"Favorite
+    Count"},{"column_id":"69b06861-bc82-454a-8a7a-19a83050c2d7","description":"Net
+    vote score of the post, calculated as upvotes minus downvotes.","id":"30d072ad-bc6d-453b-bcaf-6840d18e0ab1","name":"Score"},{"column_id":"770de055-49c6-493d-9590-817e1470b818","description":"Timestamp
+    when the question was closed, if applicable.","id":"354f9e59-9503-4a0e-ab91-b69ca90e4e28","name":"Closed
+    Date"},{"column_id":"29151ea7-ca2d-4f6d-a66b-f084f253b263","description":"Number
+    of answers submitted for the question.","id":"499b1245-e74a-46f2-b9de-5a146b38d7f6","name":"Answer
+    Count"},{"column_id":"ce2db774-fdea-4d0b-9245-5ac50d65a314","description":"Timestamp
+    of the most recent edit made to the post.","id":"4e1e2251-2d51-4587-b4e5-d896c790fb1a","name":"Last
+    Edit Date"},{"column_id":"31a8f140-d45e-4510-b1a7-c9db123f3e3e","description":"lasteditordisplayname
+    is the free-text display name of the user who most recently edited the post.","id":"51c6b907-0958-49af-8a7a-f0715df36853","name":"Last
+    Editor Display Name"},{"column_id":"48568f88-1c28-493d-b85b-b7e91938eea1","description":"Topic
+    labels associated with the question, enclosed in angle brackets.","id":"7388c9e8-e649-41a0-8055-28c5155eebf2","name":"Tags"},{"column_id":"3f52bc87-6eba-4c84-9400-3ff02bfd7330","description":"ownerdisplayname
+    is the free-text display name of the user who authored the post.","id":"76c68bdc-486c-4700-950e-5b6cde78ad8e","name":"Owner
+    Display Name"},{"column_id":"f7652280-e163-4d94-8d9d-f0fe846d5975","description":"Total
+    number of times the post has been viewed by users.","id":"86aa7cc4-76c7-418d-a8e0-ea7a511d9017","name":"View
+    Count"},{"column_id":"61a88e8f-d709-476e-8004-7e6689bbc842","description":"Timestamp
+    of the most recent activity on the post, such as edits, answers, or comments.","id":"9867827f-5284-40b1-863c-b19681fd4124","name":"Last
+    Activity Date"},{"column_id":"910fdfe9-9d2a-423a-b7a7-d5b8b9d11c65","description":"Indicates
+    whether the post is a question (1) or an answer (2).","id":"9c179606-bb5e-4715-86bb-f3d98efa0c12","name":"posttypeid"},{"column_id":"e5143888-88a5-43d0-b569-56f45cf0ff84","description":"Timestamp
+    with time zone of when the post was originally created.","id":"cb200bf2-b4ba-4740-ae4d-563d849fc11c","name":"Creation
+    Date"},{"column_id":"770f2991-88c5-4dbd-9dc4-fee8c84cddb5","description":"Timestamp
+    when the post was converted to community-owned status.","id":"d0f1f49f-5cc4-4854-9557-c84368a68015","name":"Community
+    Owned Date"},{"column_id":"82a29c76-5d56-4f20-ad34-395de9858acd","description":"Unique
+    numeric identifier for each post, used by comments, history, links, and accepted
+    answer references.","id":"d4b2b172-662e-4a59-82c0-ac24d22a091b","name":"Post ID"},{"column_id":"c14e5898-af85-428d-990d-8c208fc15815","description":"Number
+    of comments posted on the post.","id":"f162401c-672d-4691-92cb-612ed9f48fc4","name":"Comment
+    Count"},{"column_id":"0922b41f-f367-4265-b20b-7cc1c6900d5d","description":"Headline
+    summarizing the question post.","id":"f34389b2-2959-4a41-a919-94148be3b7fa","name":"Title"}],"description":"","id":"eb966d0d-26e4-4966-a17f-e197fad8ec20","name":"Post","represents":["77ae701a-c39c-4264-b031-234d007911ab"]},{"columns_attributes":[{"column_id":"4347c166-b414-4070-ab61-f18f63a58c78","description":"Records
+    the exact date and time with time zone when the post link was created.","id":"ad22f460-acfb-4c02-bf7c-12d8873c0ab7","name":"Creation
+    Date"},{"column_id":"c1f4af70-9893-4a74-bd89-e49b059d7ada","description":"Identifies
+    the category of relationship between posts, such as duplicate or related, using
+    a numeric code like 1.","id":"d90d800b-da8b-48eb-a042-836299bb57f3","name":"linktypeid"},{"column_id":"e6a229ea-9550-469a-9165-8bf9eca3eb6c","description":"Uniquely
+    identifies each post link record with a numeric key such as 108 or 264.","id":"ff43778a-fb2e-4769-aa27-2591584b0995","name":"Id"}],"description":"A
+    link between two posts, such as a duplicate or related post reference.","id":"c344f5d7-51dd-47ee-9e96-fd5149720c4b","name":"Post
+    Link","represents":["f91d93d7-bc59-4fd9-8c64-3695424ae9c8"]},{"columns_attributes":[{"column_id":"05d03fef-712c-4d12-a0e9-4b0eb21a8d33","description":"Categorizes
+    the revision by the type of historical action performed.","id":"27034383-f227-43f8-ae96-a0932f9f8bd8","name":"posthistorytypeid"},{"column_id":"6e1555ca-9539-445b-a984-c9d9a46dca31","description":"Identifies
+    the revising user by their display name, e.g., user28.","id":"2faf4f32-7dfd-49fb-8071-e3eeb46997a8","name":"Historical
+    User Display Name"},{"column_id":"a8349964-abe0-4c14-909d-3acd50fb993f","description":"Captures
+    the user''s descriptive note explaining the nature of the edit.","id":"6f8638ec-f94e-4a07-b403-26c593368f49","name":"Historical
+    Comment"},{"column_id":"f23d3eaa-7553-4cf5-929f-f3d4afbd91ad","description":"Records
+    the timestamp with time zone when the revision was created.","id":"bb5b4a3a-131f-4180-bdc4-9bb5dc87f78e","name":"Historical
+    Creation Date"},{"column_id":"5005d9f1-8c0e-4e6f-b4ee-414d7013c0bb","description":"Provides
+    a globally unique UUID reference for each revision.","id":"db5013c5-861b-4f50-9065-82dc572e0255","name":"Historical
+    Revision GUID"},{"column_id":"477df08d-8b14-4ff7-ab34-1320d3b8ec99","description":"Stores
+    the revised content in tag markup format such as <data-visualization>.","id":"eb6f44f1-00d4-42a6-910a-04a82d6d4c2f","name":"Historical
+    Revision Text"},{"column_id":"ca56a21e-83a7-469c-b039-9cfe910fdda1","description":"Uniquely
+    identifies each post revision with a sequential numeric key.","id":"ec606b3f-c347-4252-be64-0f2dd2d0d2dd","name":"Historical
+    Revision ID"}],"description":"","id":"ce7ec3f0-9d93-45b9-8158-5dc02935a687","name":"Post
+    Revision","represents":["84b50092-40aa-4afb-8d13-c54880be63a6"]},{"columns_attributes":[{"column_id":"ef3d680d-6c07-4395-bd39-a69e32af1cc1","description":"Uniquely
+    identifies each tag record in the system.","id":"2f9414d9-55cc-4544-a0e2-5bd09913fd89","name":"Tag
+    ID"},{"column_id":"3b58c12b-0699-478f-a629-8ed0b9a45511","description":"Identifies
+    the excerpt post associated with the tag.","id":"4bd3a097-749f-47e4-974c-634f002f26da","name":"excerptpostid"},{"column_id":"036cc5a5-33b8-48d5-865c-e8b0d593b006","description":"Indicates
+    the number of occurrences or references linked to the tag.","id":"9e3ae3c8-4e8d-4671-85bf-8ff216e4acc6","name":"Count"},{"column_id":"81ee0e3a-4131-43b4-bc8d-6e78aeb76dfe","description":"Provides
+    the textual label for a statistical or methodological concept.","id":"a606c538-2827-4b06-8431-9e312f8aca59","name":"Tag
+    Name"},{"column_id":"1cd46460-cba8-421c-af3c-24883ac3cde8","description":"Identifies
+    the wiki post associated with the tag.","id":"e5622474-fc86-4b44-a2d9-5d40adb9a379","name":"wikipostid"}],"description":"","id":"686a3775-8dcc-4024-840e-9616a9328e88","name":"Tag","represents":["294cfdb1-e749-479a-9424-179ab5ed6a86"]},{"columns_attributes":[{"column_id":"d709ff37-eb2b-498f-adf7-1c8958629cfc","description":"User-provided
+    website URL, with ''none'' indicating no URL supplied.","id":"011d55a0-3b8d-411f-98cf-ab3ca0298399","name":"Website
+    URL"},{"column_id":"faf2f0d3-f10c-45c1-856d-4b1f3e5bd70a","description":"Total
+    number of upvotes received on the user''s posts.","id":"21726b4b-4c23-45df-acf0-99214fc9a7ea","name":"Upvotes
+    Received"},{"column_id":"2ad4ca96-203f-4dd0-99b2-3e013a4a26a8","description":"Timestamp
+    with time zone of the user''s most recent site access or login.","id":"25e80d6f-f600-4d8f-b5a7-cde10439be7a","name":"Last
+    Access Date"},{"column_id":"5896a578-d498-4d3c-94e5-d20d3046a22d","description":"Total
+    count of profile page views by other users.","id":"447d0811-e29c-4a3a-9e72-01234e6ff253","name":"Profile
+    Views"},{"column_id":"383b1908-86f7-4b8b-bde7-ef8b67998579","description":"Self-reported
+    geographic location such as country, city, or region.","id":"5f173a9a-906c-4e18-b876-82af36def7f3","name":"Location"},{"column_id":"cdc132bc-e869-4678-85b8-59a15c3ae4eb","description":"Total
+    number of downvotes received on the user''s posts.","id":"75e6c02c-31c7-4708-aad8-ae41f1dd4dc3","name":"Downvotes
+    Received"},{"column_id":"c7f8ad73-9929-4c22-aa11-209b23015508","description":"User-written
+    profile biography in HTML format describing background or interests.","id":"c7b00973-0d39-44ba-bfeb-2b1a503ffc7b","name":"About
+    Me"},{"column_id":"167021b5-c292-46ae-b5f8-212d35903f26","description":"URL of
+    the user''s profile avatar image hosted on Stack Imgur or Gravatar.","id":"c911d560-d5da-4685-8a33-9faad99ba633","name":"Profile
+    Image URL"},{"column_id":"7cf6886c-5be7-4523-ad77-6744135d2f82","description":"Public
+    display name chosen by the user for their profile.","id":"dd30c10c-a1a3-41f1-95ff-5bc7f1293c2b","name":"Display
+    Name"},{"column_id":"c6124179-b40e-466d-a3f1-6df8225e1639","description":"Timestamp
+    with time zone of when the user account was created.","id":"e545b479-a790-4060-bedc-8a3a4215c083","name":"Creation
+    Date"},{"column_id":"6a170f1c-c6b7-4b32-b2cc-159372add994","description":"Reputation
+    score indicating community trust earned from contributions.","id":"e551a012-347b-47dd-9ce1-d095bc2802cb","name":"Reputation
+    Score"},{"column_id":"fc406dc8-3f6b-4bcd-9d03-a9cdc75e3872","description":"Unique
+    account identifier, where -1 denotes a default or placeholder account.","id":"ecb21a08-237f-4a23-a017-eb5989a51fe1","name":"accountid"},{"column_id":"fcb489a5-525f-4b51-ae3b-9dde74f73494","description":"Unique
+    identifier for the user account, where -1 denotes a system or anonymous user.","id":"ef513b64-7cf5-4a7c-864a-c288f77b840a","name":"User
+    ID"},{"column_id":"e4ba16c1-7f6d-406c-aaa1-4e2d99510a2d","description":"Self-reported
+    age of the user in years.","id":"f38d1698-4d17-42b8-8d35-91f7d6cce695","name":"Age"}],"description":"Represents
+    a user account in the system, including profile information, activity metrics,
+    and reputation.","id":"3a9e9af1-81e2-4d4f-93e4-70c41a74a732","name":"User Account","represents":["c650397b-0de0-4bf4-b199-ece92e913e93"]},{"columns_attributes":[{"column_id":"69ec120b-0130-4f4f-8664-ca211bebd417","description":"Specifies
+    the monetary bounty amount associated with the vote.","id":"3a0a7c8e-04b0-49b2-bacb-2d10b05a040d","name":"Bounty
+    Amount"},{"column_id":"ecb3524b-c578-45d6-805a-633fd28dd309","description":"Uniquely
+    identifies each vote record in the system.","id":"7632fb7d-3e2e-4f37-aadb-1093b8b87069","name":"Vote
+    ID"},{"column_id":"7ff0c96f-b9cb-4ac6-91e5-422fd104c459","description":"Records
+    the date the vote was cast in YYYY-MM-DD format.","id":"a597d3f3-32b4-4bce-acfa-249b8587a995","name":"Creation
+    Date"},{"column_id":"973031c5-90d1-4643-ab01-d6f64a7c4639","description":"Identifies
+    the category of vote cast, such as upvote, downvote, or acceptance.","id":"f4f28c04-7881-4871-aa0f-537fdd300e26","name":"votetypeid"}],"description":"","id":"7793ff1c-4997-4d1f-950d-35e8327fa271","name":"Vote","represents":["ac592159-33bf-42e4-b979-f95a8b534a75"]}]},"zones":[]}}'
+relationships:
+- name: badge_userid_to_user_account
+  from: badge
+  to: user_account
+  from_columns:
+  - userid
+  to_columns:
+  - user_id
+- name: post_owneruserid_to_user_account
+  from: post
+  to: user_account
+  from_columns:
+  - owneruserid
+  to_columns:
+  - user_id
+- name: post_lasteditoruserid_to_user_account
+  from: post
+  to: user_account
+  from_columns:
+  - lasteditoruserid
+  to_columns:
+  - user_id
+- name: comment_userid_to_user_account
+  from: comment
+  to: user_account
+  from_columns:
+  - userid
+  to_columns:
+  - user_id
+- name: vote_postid_to_post
+  from: vote
+  to: post
+  from_columns:
+  - postid
+  to_columns:
+  - post_id
+- name: post_revision_userid_to_user_account
+  from: post_revision
+  to: user_account
+  from_columns:
+  - userid
+  to_columns:
+  - user_id
+- name: vote_userid_to_user_account
+  from: vote
+  to: user_account
+  from_columns:
+  - userid
+  to_columns:
+  - user_id
+- name: post_link_relatedpostid_to_post
+  from: post_link
+  to: post
+  from_columns:
+  - relatedpostid
+  to_columns:
+  - post_id
+- name: post_link_postid_to_post
+  from: post_link
+  to: post
+  from_columns:
+  - postid
+  to_columns:
+  - post_id
+- name: post_acceptedanswerid_to_post
+  from: post
+  to: post
+  from_columns:
+  - acceptedanswerid
+  to_columns:
+  - post_id
+- name: post_parentid_to_post
+  from: post
+  to: post
+  from_columns:
+  - parentid
+  to_columns:
+  - post_id
+- name: comment_postid_to_post
+  from: comment
+  to: post
+  from_columns:
+  - postid
+  to_columns:
+  - post_id
+- name: post_revision_postid_to_post
+  from: post_revision
+  to: post
+  from_columns:
+  - postid
+  to_columns:
+  - post_id

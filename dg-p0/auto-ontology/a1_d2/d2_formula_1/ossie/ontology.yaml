@@ -1,0 +1,742 @@
+version: 0.2.0.dev0
+name: d2_formula_1_ontology
+description: Business concepts of the d2_formula_1 semantic model
+ontology:
+- concept: Constructor
+  type: EntityType
+  description: A Formula 1 constructor (team) that designs and builds racing cars.
+  identify_by:
+  - constructor_id
+  relationships:
+  - name: nationality
+    description: Country of origin associated with the constructor, such as British,
+      Italian, or German.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Constructor} has nationality {String}'
+  - name: wikipedia_url
+    description: Hyperlink to the constructor's Wikipedia page providing additional
+      reference information.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Constructor} has wikipedia url {String}'
+  - name: constructor_id
+    description: Unique numeric identifier for each Formula 1 constructor, used to
+      link constructor performance and standings across race data.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Constructor} is identified by constructor id {Integer}'
+  - name: constructor_reference
+    description: Lowercase, underscore-separated system code uniquely identifying
+      each constructor for internal reference.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Constructor} has constructor reference {String}'
+  - name: name
+    description: Official display name of the Formula 1 constructor as recognized
+      in championship records.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Constructor} has name {String}'
+- concept: ConstructorResult
+  type: EntityType
+  relationships:
+  - name: constructor_result_id
+    description: Uniquely identifies each constructor race result record with a numeric
+      identifier.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorResult} has constructor result id {Integer}'
+  - name: points
+    description: Records the championship points awarded to a constructor for a specific
+      race as a decimal value.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorResult} has points {Float}'
+  - name: status
+    description: Indicates the constructor's race outcome using a single-character
+      status code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorResult} has status {String}'
+  - name: constructor
+    roles:
+    - concept: Constructor
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorResult} has {Constructor}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorResult} has {Race}'
+- concept: ConstructorStanding
+  type: EntityType
+  description: Represents a constructor's final standing in a championship season.
+  relationships:
+  - name: position
+    description: Numerical rank of the constructor in the final championship standings.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorStanding} has position {Integer}'
+  - name: wins
+    description: Number of race victories achieved by the constructor during the championship
+      season.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorStanding} has wins {Integer}'
+  - name: constructor_standing_id
+    description: Unique identifier for each constructor's championship standing record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorStanding} has constructor standing id {Integer}'
+  - name: total_points
+    description: Total championship points earned by the constructor during the season,
+      stored as a real number.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorStanding} has total points {Float}'
+  - name: position_text
+    description: Textual representation of the constructor's championship position
+      for display purposes.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorStanding} has position text {String}'
+  - name: constructor
+    roles:
+    - concept: Constructor
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorStanding} has {Constructor}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ConstructorStanding} has {Race}'
+- concept: Driver
+  type: EntityType
+  description: A racing driver with their personal details, racing identifiers, and
+    biographical information.
+  identify_by:
+  - driver_id
+  relationships:
+  - name: nationality
+    description: nationality indicates the country the driver represents or holds
+      citizenship for.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has nationality {String}'
+  - name: date_of_birth
+    description: dob captures the driver's date of birth in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has date of birth {Date}'
+  - name: driver_id
+    description: driverid identifies the driver uniquely across standings, lap times,
+      pit stops, qualifying, and results.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Driver} is identified by driver id {Integer}'
+  - name: racing_number
+    description: number stores the driver's permanent racing number used in competition.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has racing number {Integer}'
+  - name: last_name
+    description: surname records the driver's family name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has last name {String}'
+  - name: driver_reference
+    description: driverref provides a lowercase system-friendly identifier for the
+      driver.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has driver reference {String}'
+  - name: first_name
+    description: forename records the driver's given first name.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has first name {String}'
+  - name: driver_code
+    description: code holds the three-letter abbreviation used for the driver in official
+      timing and results.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has driver code {String}'
+  - name: wikipedia_url
+    description: url provides a link to the driver's Wikipedia page for further biographical
+      details.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Driver} has wikipedia url {String}'
+- concept: DriverStanding
+  type: EntityType
+  description: Represents a driver's championship standing including points, position,
+    and wins.
+  relationships:
+  - name: position_text
+    description: Provides the driver's championship position as text for display.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DriverStanding} has position text {String}'
+  - name: position
+    description: Indicates the driver's numerical rank in the championship standings.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DriverStanding} has position {Integer}'
+  - name: driver_standing_id
+    description: Uniquely identifies each driver's championship standing record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DriverStanding} has driver standing id {Integer}'
+  - name: total_points
+    description: Records the total championship points accumulated by the driver.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DriverStanding} has total points {Float}'
+  - name: wins
+    description: Counts the number of race victories the driver achieved this season.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DriverStanding} has wins {Integer}'
+  - name: driver
+    roles:
+    - concept: Driver
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DriverStanding} has {Driver}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{DriverStanding} has {Race}'
+- concept: LapTime
+  type: EntityType
+  relationships:
+  - name: lap_number
+    description: Identifies the sequential lap number completed by a driver during
+      a race session.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LapTime} has lap number {Integer}'
+  - name: milliseconds
+    description: Records the exact lap duration in total milliseconds for precise
+      timing analysis.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LapTime} has milliseconds {Integer}'
+  - name: formatted_time
+    description: Displays the human-readable lap time in minutes:seconds.milliseconds
+      format for reporting.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LapTime} has formatted time {String}'
+  - name: position
+    description: Shows the driver's race position after completing each lap.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LapTime} has position {Integer}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LapTime} has {Race}'
+  - name: driver
+    roles:
+    - concept: Driver
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{LapTime} has {Driver}'
+- concept: PitStop
+  type: EntityType
+  relationships:
+  - name: stop_number
+    description: Identifies the sequential number of a pit stop within a race session.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PitStop} has stop number {Integer}'
+  - name: duration
+    description: Captures the pit stop duration in seconds as a text value.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PitStop} has duration {String}'
+  - name: milliseconds
+    description: Provides the pit stop duration in milliseconds as an integer.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PitStop} has milliseconds {Integer}'
+  - name: clock_time
+    description: Records the clock time of the pit stop in HH:MM:SS format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PitStop} has clock time {String}'
+  - name: lap_number
+    description: Indicates the lap number on which the pit stop occurred.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PitStop} has lap number {Integer}'
+  - name: driver
+    roles:
+    - concept: Driver
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PitStop} has {Driver}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{PitStop} has {Race}'
+- concept: QualifyingResult
+  type: EntityType
+  description: Represents a driver's qualifying session result including car number,
+    final position, and segment lap times.
+  relationships:
+  - name: q3_lap_time
+    description: Records the driver's lap time in the third qualifying segment (Q3)
+      in minutes:seconds.milliseconds format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has q3 lap time {String}'
+  - name: car_number
+    description: Indicates the car number assigned to the driver for that qualifying
+      session.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has car number {Integer}'
+  - name: q1_lap_time
+    description: Records the driver's lap time in the first qualifying segment (Q1)
+      in minutes:seconds.milliseconds format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has q1 lap time {String}'
+  - name: qualifying_position
+    description: Shows the final grid position the driver achieved in the qualifying
+      session.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has qualifying position {Integer}'
+  - name: q2_lap_time
+    description: Records the driver's lap time in the second qualifying segment (Q2)
+      in minutes:seconds.milliseconds format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has q2 lap time {String}'
+  - name: qualifying_result_id
+    description: Uniquely identifies each qualifying session result record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has qualifying result id {Integer}'
+  - name: constructor
+    roles:
+    - concept: Constructor
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has {Constructor}'
+  - name: driver
+    roles:
+    - concept: Driver
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has {Driver}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{QualifyingResult} has {Race}'
+- concept: Race
+  type: EntityType
+  description: A Grand Prix racing event in a Formula 1 season.
+  identify_by:
+  - race_id
+  relationships:
+  - name: race_id
+    description: Unique identifier for each Grand Prix race, used to link results,
+      standings, and session data.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Race} is identified by race id {Integer}'
+  - name: race_time
+    description: Scheduled start time of the race in HH:MM:SS format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has race time {String}'
+  - name: round_number
+    description: Sequential round number indicating the race's position within a Formula
+      1 season.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has round number {Integer}'
+  - name: race_url
+    description: Web link to the race's Wikipedia page for reference.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has race url {String}'
+  - name: race_name
+    description: Official name of the Grand Prix event, such as 'British Grand Prix'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has race name {String}'
+  - name: race_date
+    description: Calendar date on which the race takes place in YYYY-MM-DD format.
+    roles:
+    - concept: Date
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has race date {Date}'
+  - name: season
+    roles:
+    - concept: Season
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has {Season}'
+  - name: racing_circuit
+    roles:
+    - concept: RacingCircuit
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Race} has {RacingCircuit}'
+- concept: RaceResult
+  type: EntityType
+  description: Represents a single driver's result in a race, including starting position,
+    finishing position, laps completed, points earned, and fastest lap details.
+  relationships:
+  - name: grid_position
+    description: Indicates the driver's starting grid position for the race.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has grid position {Integer}'
+  - name: fastest_lap_number
+    description: Indicates the lap number where the driver set their fastest lap.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has fastest lap number {Integer}'
+  - name: race_time
+    description: Captures the winner's total race time or the time gap behind the
+      winner.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has race time {String}'
+  - name: car_number
+    description: Identifies the car number assigned to the driver for the race.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has car number {Integer}'
+  - name: fastest_lap_speed
+    description: Provides the average speed in km/h during the driver's fastest lap.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has fastest lap speed {String}'
+  - name: result_id
+    description: Uniquely identifies each race result record.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has result id {Integer}'
+  - name: finishing_position
+    description: Shows the driver's numeric finishing position in the race.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has finishing position {Integer}'
+  - name: position_order
+    description: Defines the sequential ranking order used to sort race results.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has position order {Integer}'
+  - name: position_text
+    description: Provides the finishing position as text, using 'R' for retired drivers.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has position text {String}'
+  - name: fastest_lap_time
+    description: Records the driver's fastest lap time in minutes:seconds.milliseconds
+      format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has fastest lap time {String}'
+  - name: race_time_milliseconds
+    description: Stores the exact race time in milliseconds for precise measurement.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has race time milliseconds {Integer}'
+  - name: fastest_lap_rank
+    description: Ranks the driver's fastest lap time against all other drivers' fastest
+      laps.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has fastest lap rank {Integer}'
+  - name: championship_points
+    description: Records the championship points earned by the driver in this race.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has championship points {Float}'
+  - name: laps_completed
+    description: Counts the total laps completed by the driver during the race.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has laps completed {Integer}'
+  - name: race
+    roles:
+    - concept: Race
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has {Race}'
+  - name: race_session_status
+    roles:
+    - concept: RaceSessionStatus
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has {RaceSessionStatus}'
+  - name: driver
+    roles:
+    - concept: Driver
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has {Driver}'
+  - name: constructor
+    roles:
+    - concept: Constructor
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceResult} has {Constructor}'
+- concept: RaceSessionStatus
+  type: EntityType
+  description: A unique status type for a race or session, such as Finished, Disqualified,
+    or a mechanical failure reason.
+  identify_by:
+  - status_id
+  relationships:
+  - name: status_description
+    description: The descriptive label for a race or session result, such as Finished,
+      Disqualified, Accident, Collision, or Engine failure.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RaceSessionStatus} has status description {String}'
+  - name: status_id
+    description: A unique numeric code that identifies each race or session outcome
+      type, such as Finished or Disqualified.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{RaceSessionStatus} is identified by status id {Integer}'
+- concept: RacingCircuit
+  type: EntityType
+  identify_by:
+  - circuit_id
+  relationships:
+  - name: longitude
+    description: Records the circuit's geographic longitude in decimal degrees.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has longitude {Float}'
+  - name: name
+    description: States the official full name of the racing circuit as recognized
+      by Formula 1.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has name {String}'
+  - name: circuit_reference
+    description: Provides a standardized short code for identifying the circuit in
+      URLs and internal systems.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has circuit reference {String}'
+  - name: altitude
+    description: Measures the circuit's elevation above sea level in meters.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has altitude {Integer}'
+  - name: circuit_id
+    description: Uniquely identifies each racing circuit and links to associated races.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{RacingCircuit} is identified by circuit id {Integer}'
+  - name: location
+    description: Indicates the city or geographic region where the racing circuit
+      is physically located.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has location {String}'
+  - name: country
+    description: Specifies the sovereign country in which the racing circuit is located.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has country {String}'
+  - name: url
+    description: Provides a hyperlink to the circuit's Wikipedia page for reference.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has url {String}'
+  - name: latitude
+    description: Records the circuit's geographic latitude in decimal degrees.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{RacingCircuit} has latitude {Float}'
+- concept: Season
+  type: EntityType
+  identify_by:
+  - year
+  relationships:
+  - name: wikipedia_url
+    description: Provides the Wikipedia web address for the Formula One season.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Season} has wikipedia url {String}'
+  - name: year
+    description: Identifies the four-digit calendar year of the Formula One season,
+      linking races to their respective season.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Season} is identified by year {Integer}'

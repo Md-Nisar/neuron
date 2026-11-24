@@ -1,0 +1,168 @@
+version: 0.2.0.dev0
+name: d2_formula_1_mapping
+description: Maps the d2_formula_1_ontology onto the d2_formula_1 semantic model
+ontology_ref:
+  name: d2_formula_1_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_formula_1
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: Constructor
+  object_mappings:
+  - expression: constructor.constructor_id
+  link_mappings:
+  - object_mapping:
+      expression: constructor.constructor_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: constructor.nationality
+      relationship: nationality
+    - object_mapping:
+        concept: String
+        expression: constructor.wikipedia_url
+      relationship: wikipedia_url
+    - object_mapping:
+        concept: String
+        expression: constructor.constructor_reference
+      relationship: constructor_reference
+    - object_mapping:
+        concept: String
+        expression: constructor.name
+      relationship: name
+- concept: Driver
+  object_mappings:
+  - expression: driver.driver_id
+  link_mappings:
+  - object_mapping:
+      expression: driver.driver_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: driver.nationality
+      relationship: nationality
+    - object_mapping:
+        concept: Date
+        expression: driver.date_of_birth
+      relationship: date_of_birth
+    - object_mapping:
+        concept: Integer
+        expression: driver.racing_number
+      relationship: racing_number
+    - object_mapping:
+        concept: String
+        expression: driver.last_name
+      relationship: last_name
+    - object_mapping:
+        concept: String
+        expression: driver.driver_reference
+      relationship: driver_reference
+    - object_mapping:
+        concept: String
+        expression: driver.first_name
+      relationship: first_name
+    - object_mapping:
+        concept: String
+        expression: driver.driver_code
+      relationship: driver_code
+    - object_mapping:
+        concept: String
+        expression: driver.wikipedia_url
+      relationship: wikipedia_url
+- concept: Race
+  object_mappings:
+  - expression: race.race_id
+  link_mappings:
+  - object_mapping:
+      expression: race.race_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: race.race_time
+      relationship: race_time
+    - object_mapping:
+        concept: Integer
+        expression: race.round_number
+      relationship: round_number
+    - object_mapping:
+        concept: String
+        expression: race.race_url
+      relationship: race_url
+    - object_mapping:
+        concept: String
+        expression: race.race_name
+      relationship: race_name
+    - object_mapping:
+        concept: Date
+        expression: race.race_date
+      relationship: race_date
+    - object_mapping:
+        concept: Season
+        expression: race.year
+      relationship: season
+    - object_mapping:
+        concept: RacingCircuit
+        expression: race.circuitid
+      relationship: racing_circuit
+- concept: RaceSessionStatus
+  object_mappings:
+  - expression: race_session_status.status_id
+  link_mappings:
+  - object_mapping:
+      expression: race_session_status.status_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: race_session_status.status_description
+      relationship: status_description
+- concept: RacingCircuit
+  object_mappings:
+  - expression: racing_circuit.circuit_id
+  link_mappings:
+  - object_mapping:
+      expression: racing_circuit.circuit_id
+    children:
+    - object_mapping:
+        concept: Float
+        expression: racing_circuit.longitude
+      relationship: longitude
+    - object_mapping:
+        concept: String
+        expression: racing_circuit.name
+      relationship: name
+    - object_mapping:
+        concept: String
+        expression: racing_circuit.circuit_reference
+      relationship: circuit_reference
+    - object_mapping:
+        concept: Integer
+        expression: racing_circuit.altitude
+      relationship: altitude
+    - object_mapping:
+        concept: String
+        expression: racing_circuit.location
+      relationship: location
+    - object_mapping:
+        concept: String
+        expression: racing_circuit.country
+      relationship: country
+    - object_mapping:
+        concept: String
+        expression: racing_circuit.url
+      relationship: url
+    - object_mapping:
+        concept: Float
+        expression: racing_circuit.latitude
+      relationship: latitude
+- concept: Season
+  object_mappings:
+  - expression: season.year
+  link_mappings:
+  - object_mapping:
+      expression: season.year
+    children:
+    - object_mapping:
+        concept: String
+        expression: season.wikipedia_url
+      relationship: wikipedia_url

@@ -1,0 +1,150 @@
+version: 0.2.0.dev0
+name: d2_toxicology
+datasets:
+- name: atom
+  source: d2_toxicology.public.atom
+  fields:
+  - name: atom_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: atom_id
+    datatype: String
+    description: Unique identifier for an atom in a molecular structure, formatted
+      as a prefix followed by an underscore and sequential number, used to link atoms
+      in connectivity records.
+  - name: element
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: element
+    datatype: String
+    description: Chemical element symbol denoting the atom type, using standard lowercase
+      abbreviations like h, c, cl, o, n.
+  - name: connected_atoms_bonds
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: c.atom_id
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"sql_attribute","id":"f57dce33-64c2-4f59-9906-fb8d8c0ba047","ossie_expression":"c.atom_id","sql":"SELECT
+        c.atom_id, c.atom_id2, c.bond_id, a1.atom_id AS atom_id_1, a2.atom_id AS atom_id_2,
+        b.bond_id FROM public.connected c JOIN public.atom a1 ON c.atom_id = a1.atom_id
+        JOIN public.atom a2 ON c.atom_id2 = a2.atom_id JOIN public.bond b ON c.bond_id
+        = b.bond_id","sql_column_is":["d237fd79-d670-4d50-872a-62309ab7edc2","c7a2e5e8-7a08-41df-95a5-3cecb85d228e","d77ae28b-78a9-48d8-a65b-2d0e899452ea","729c1e34-41c3-4c94-bd8c-ca58ea3e62e0","8d123b78-4db3-4ed0-868d-4992c5bda12d"],"sql_source":"bridge_table","term_id":"98a67c01-837c-4163-a8ab-3df7de60cb35"}'
+    description: Bridge table connecting atoms and bonds, with two atom references
+      (atom_id and atom_id2) and one bond reference.
+  - name: molecule_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: molecule_id
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: bond
+  source: d2_toxicology.public.bond
+  fields:
+  - name: bond_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bond_type
+    datatype: String
+    description: Categorical code representing the bond type using symbolic characters
+      such as '-', '=', or '#'.
+  - name: bond_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: bond_id
+    datatype: String
+    description: Unique identifier for a bond instrument, formatted as a prefix and
+      numeric components separated by underscores, used to link related bonds.
+  - name: molecule_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: molecule_id
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: molecule
+  source: d2_toxicology.public.molecule
+  unique_keys:
+  - - molecule_id
+  fields:
+  - name: experimental_outcome
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: label
+    datatype: String
+    description: Binary indicator of experimental outcome for a molecule, with '+'
+      for positive and '-' for negative results.
+  - name: molecule_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: molecule_id
+    datatype: String
+    description: Unique identifier for a molecular compound in a screening library,
+      formatted as 'TR' followed by a numeric code, linking to its constituent atoms
+      and bonds.
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_toxicology","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"576d19da-706a-40a8-a449-c4c2c9ba7238","schemas":[{"database_name":"d2_toxicology","id":"8e115ea3-9b61-48f3-8d41-c8874c535137","name":"public","tables":[{"columns":[{"description":"Unique
+    identifier for each atom within a molecular structure, combining a molecule or
+    residue prefix with a sequential atom number.","id":"c7a2e5e8-7a08-41df-95a5-3cecb85d228e","is_nullable":false,"is_unique":true,"name":"atom_id","sample_values":["TR000_1","TR000_2","TR000_3","TR000_4","TR000_5"],"type":"text"},{"description":"","id":"cf3bd6c8-948f-4c53-90eb-21fef6f8de94","is_nullable":true,"is_unique":false,"name":"molecule_id","sample_values":["TR030","TR039","TR021","TR006","TR011"],"type":"text"},{"description":"Chemical
+    element symbol representing the type of atom, such as hydrogen (h), carbon (c),
+    chlorine (cl), oxygen (o), or nitrogen (n).","id":"35948e18-6f43-48b3-898a-4be59edcba92","is_nullable":true,"is_unique":false,"name":"element","sample_values":["h","c","cl","o","n"],"type":"text"}],"description":"","id":"4e194134-b1ef-4d39-90a2-aa3d9484c633","name":"atom","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for a bond instrument, composed
+    of a prefix and numeric components separated by underscores.","id":"d77ae28b-78a9-48d8-a65b-2d0e899452ea","is_nullable":false,"is_unique":true,"name":"bond_id","sample_values":["TR000_1_2","TR000_2_3","TR000_2_4","TR000_2_5","TR001_10_11"],"type":"text"},{"description":"","id":"04f16e71-7f9b-4264-82a2-2aa4aa21797d","is_nullable":true,"is_unique":false,"name":"molecule_id","sample_values":["TR030","TR039","TR021","TR006","TR034"],"type":"text"},{"description":"Categorical
+    code denoting the bond type using symbolic characters such as ''-'', ''='', or
+    ''#''.","id":"596f37f8-553c-4a98-9c2e-ce69f0401d97","is_nullable":true,"is_unique":false,"name":"bond_type","sample_values":["-","=","#"],"type":"text"}],"description":"","id":"95fd5a11-2d67-4964-a563-2a8a486aef34","name":"bond","pk":[],"type":"base
+    table"},{"columns":[{"description":"","id":"d237fd79-d670-4d50-872a-62309ab7edc2","is_nullable":false,"is_unique":false,"name":"atom_id","sample_values":["TR000_2","TR001_1","TR001_2","TR001_7","TR001_8"],"type":"text"},{"description":"","id":"729c1e34-41c3-4c94-bd8c-ca58ea3e62e0","is_nullable":false,"is_unique":false,"name":"atom_id2","sample_values":["TR000_2","TR001_1","TR001_2","TR001_7","TR001_8"],"type":"text"},{"description":"","id":"8d123b78-4db3-4ed0-868d-4992c5bda12d","is_nullable":true,"is_unique":false,"name":"bond_id","sample_values":["TR000_1_2","TR000_2_3","TR000_2_4","TR000_2_5","TR001_10_11"],"type":"text"}],"description":"","id":"02d362cf-6dea-4594-9fc0-aca49377c9c8","name":"connected","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for a molecular compound
+    in a screening library, formatted with a ''TR'' prefix followed by a numeric code.","id":"e0a22137-1dfe-4ab0-8c3b-13a7816acd9e","is_nullable":false,"is_unique":true,"name":"molecule_id","sample_values":["TR000","TR001","TR002","TR004","TR006"],"type":"text"},{"description":"Binary
+    classification indicator denoting the experimental outcome for a molecule, where
+    ''+'' represents a positive result and ''-'' a negative result.","id":"233fd574-c39d-4658-8359-5e56dfc6f191","is_nullable":true,"is_unique":false,"name":"label","sample_values":["-","+"],"type":"text"}],"description":"","id":"027e5968-1254-4089-a811-bd138783e436","name":"molecule","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[{"source_column_id":"04f16e71-7f9b-4264-82a2-2aa4aa21797d","target_column_id":"e0a22137-1dfe-4ab0-8c3b-13a7816acd9e"},{"source_column_id":"729c1e34-41c3-4c94-bd8c-ca58ea3e62e0","target_column_id":"c7a2e5e8-7a08-41df-95a5-3cecb85d228e"},{"source_column_id":"8d123b78-4db3-4ed0-868d-4992c5bda12d","target_column_id":"d77ae28b-78a9-48d8-a65b-2d0e899452ea"},{"source_column_id":"cf3bd6c8-948f-4c53-90eb-21fef6f8de94","target_column_id":"e0a22137-1dfe-4ab0-8c3b-13a7816acd9e"},{"source_column_id":"d237fd79-d670-4d50-872a-62309ab7edc2","target_column_id":"c7a2e5e8-7a08-41df-95a5-3cecb85d228e"}],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"3dcc6ff7-bcbc-44cc-a2c9-d19c21a57033","column_id":"04f16e71-7f9b-4264-82a2-2aa4aa21797d","use_in_join_paths":true},{"column_attribute_id":"7cee41c1-5e2c-447c-9aae-0e7a9a57a0ec","column_id":"729c1e34-41c3-4c94-bd8c-ca58ea3e62e0","use_in_join_paths":false},{"column_attribute_id":"c88fffab-7577-4200-a335-d03fd9d9b2f1","column_id":"8d123b78-4db3-4ed0-868d-4992c5bda12d","use_in_join_paths":true},{"column_attribute_id":"3dcc6ff7-bcbc-44cc-a2c9-d19c21a57033","column_id":"cf3bd6c8-948f-4c53-90eb-21fef6f8de94","use_in_join_paths":true},{"column_attribute_id":"7cee41c1-5e2c-447c-9aae-0e7a9a57a0ec","column_id":"d237fd79-d670-4d50-872a-62309ab7edc2","use_in_join_paths":true}],"sql_attributes":{"bridge_table":[{"description":"Bridge
+    table connecting atoms and bonds, with two atom references (atom_id and atom_id2)
+    and one bond reference.","id":"f57dce33-64c2-4f59-9906-fb8d8c0ba047","name":"Connected
+    Atoms Bonds","sql":"SELECT c.atom_id, c.atom_id2, c.bond_id, a1.atom_id AS atom_id_1,
+    a2.atom_id AS atom_id_2, b.bond_id FROM public.connected c JOIN public.atom a1
+    ON c.atom_id = a1.atom_id JOIN public.atom a2 ON c.atom_id2 = a2.atom_id JOIN
+    public.bond b ON c.bond_id = b.bond_id","sql_column_is":["d237fd79-d670-4d50-872a-62309ab7edc2","c7a2e5e8-7a08-41df-95a5-3cecb85d228e","d77ae28b-78a9-48d8-a65b-2d0e899452ea","729c1e34-41c3-4c94-bd8c-ca58ea3e62e0","8d123b78-4db3-4ed0-868d-4992c5bda12d"],"term_id":"98a67c01-837c-4163-a8ab-3df7de60cb35"}],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"c7a2e5e8-7a08-41df-95a5-3cecb85d228e","description":"Unique
+    identifier for an atom in a molecular structure, formatted as a prefix followed
+    by an underscore and sequential number, used to link atoms in connectivity records.","id":"7cee41c1-5e2c-447c-9aae-0e7a9a57a0ec","name":"Atom
+    ID"},{"column_id":"35948e18-6f43-48b3-898a-4be59edcba92","description":"Chemical
+    element symbol denoting the atom type, using standard lowercase abbreviations
+    like h, c, cl, o, n.","id":"ea1ef83d-5ab8-4bf3-9c80-ea362cd4916d","name":"Element"}],"description":"","id":"98a67c01-837c-4163-a8ab-3df7de60cb35","name":"Atom","represents":["4e194134-b1ef-4d39-90a2-aa3d9484c633"]},{"columns_attributes":[{"column_id":"596f37f8-553c-4a98-9c2e-ce69f0401d97","description":"Categorical
+    code representing the bond type using symbolic characters such as ''-'', ''='',
+    or ''#''.","id":"21c0987d-23d6-488b-845f-7585f642b51d","name":"Bond Type"},{"column_id":"d77ae28b-78a9-48d8-a65b-2d0e899452ea","description":"Unique
+    identifier for a bond instrument, formatted as a prefix and numeric components
+    separated by underscores, used to link related bonds.","id":"c88fffab-7577-4200-a335-d03fd9d9b2f1","name":"Bond
+    ID"}],"description":"","id":"f7d34931-8a07-4f6f-9ed3-1f977f0e971b","name":"Bond","represents":["95fd5a11-2d67-4964-a563-2a8a486aef34"]},{"columns_attributes":[{"column_id":"233fd574-c39d-4658-8359-5e56dfc6f191","description":"Binary
+    indicator of experimental outcome for a molecule, with ''+'' for positive and
+    ''-'' for negative results.","id":"280efdac-bee3-4ef7-b100-52360871fb55","name":"Experimental
+    Outcome"},{"column_id":"e0a22137-1dfe-4ab0-8c3b-13a7816acd9e","description":"Unique
+    identifier for a molecular compound in a screening library, formatted as ''TR''
+    followed by a numeric code, linking to its constituent atoms and bonds.","id":"3dcc6ff7-bcbc-44cc-a2c9-d19c21a57033","name":"Molecule
+    ID"}],"description":"","id":"e7f487b8-0a8b-43c5-aca2-00c504ba7ca7","name":"Molecule","represents":["027e5968-1254-4089-a811-bd138783e436"]}]},"zones":[]}}'
+relationships:
+- name: bond_molecule_id_to_molecule
+  from: bond
+  to: molecule
+  from_columns:
+  - molecule_id
+  to_columns:
+  - molecule_id
+- name: atom_molecule_id_to_molecule
+  from: atom
+  to: molecule
+  from_columns:
+  - molecule_id
+  to_columns:
+  - molecule_id

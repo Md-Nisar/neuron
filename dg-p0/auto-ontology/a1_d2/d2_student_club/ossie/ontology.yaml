@@ -1,0 +1,378 @@
+version: 0.2.0.dev0
+name: d2_student_club_ontology
+description: Business concepts of the d2_student_club semantic model
+ontology:
+- concept: AcademicMajor
+  type: EntityType
+  identify_by:
+  - major_id
+  relationships:
+  - name: major_id
+    description: Unique identifier for an academic major program, formatted as text,
+      used to link members to their major.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{AcademicMajor} is identified by major id {String}'
+  - name: major_name
+    description: Official name of an academic major program offered by the institution,
+      stored as text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{AcademicMajor} has major name {String}'
+  - name: college
+    description: College or school within the university that houses the department
+      offering the major, stored as text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{AcademicMajor} has college {String}'
+  - name: department
+    description: Academic department responsible for administering the major program,
+      recorded as text.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{AcademicMajor} has department {String}'
+- concept: Budget
+  type: EntityType
+  description: A budget record tracking allocated, spent, and remaining amounts by
+    category with associated event status.
+  identify_by:
+  - budget_id
+  relationships:
+  - name: budget_id
+    description: Identifies a specific budget record and links to related expenses.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Budget} is identified by budget id {String}'
+  - name: spent_amount
+    description: Shows the total money already spent from this budget.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Budget} has spent amount {Float}'
+  - name: category
+    description: Classifies the type of expense the budget covers, e.g., Food or Advertising.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Budget} has category {String}'
+  - name: event_status
+    description: Reflects the current stage of the event linked to this budget, such
+      as Open or Closed.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Budget} has event status {String}'
+  - name: allocated_amount
+    description: Specifies the total funds allocated to this budget category.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Budget} has allocated amount {Integer}'
+  - name: remaining_amount
+    description: Indicates the amount of budget still available for future spending.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Budget} has remaining amount {Float}'
+  - name: event
+    roles:
+    - concept: Event
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Budget} has {Event}'
+- concept: Event
+  type: EntityType
+  description: An event record with details such as name, date, type, location, and
+    status.
+  identify_by:
+  - event_id
+  relationships:
+  - name: notes
+    description: Additional details, instructions, or attendance requirements associated
+      with the event.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Event} has notes {String}'
+  - name: status
+    description: Current state of the event, such as Open, Closed, or Planning.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Event} has status {String}'
+  - name: location
+    description: Venue name or physical address where the event occurs, such as 'MU
+      215' or 'Campus Soccer/Lacrosse stadium'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Event} has location {String}'
+  - name: event_date
+    description: Scheduled date and time of the event in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Event} has event date {String}'
+  - name: event_type
+    description: Category classifying the event, such as Meeting, Guest Speaker, Game,
+      Social, or Community Service.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Event} has event type {String}'
+  - name: event_id
+    description: Unique identifier for the event, referenced by attendance and budget
+      records to link related information.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Event} is identified by event id {String}'
+  - name: event_name
+    description: Descriptive title identifying the event, such as 'Laugh Out Loud'
+      or 'Football game'.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Event} has event name {String}'
+- concept: Expense
+  type: EntityType
+  description: A record of an expense incurred.
+  relationships:
+  - name: approved
+    description: Indicates whether the expense has been approved, stored as text boolean.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Expense} has approved {String}'
+  - name: expense_description
+    description: Describes the item or service purchased for the expense.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Expense} has expense description {String}'
+  - name: expense_id
+    description: Identifies a specific expense record.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Expense} has expense id {String}'
+  - name: cost
+    description: Specifies the monetary amount of the expense in currency units.
+    roles:
+    - concept: Float
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Expense} has cost {Float}'
+  - name: expense_date
+    description: Records the date the expense was incurred in YYYY-MM-DD format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Expense} has expense date {String}'
+  - name: member
+    roles:
+    - concept: Member
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Expense} has {Member}'
+  - name: budget
+    roles:
+    - concept: Budget
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Expense} has {Budget}'
+- concept: IncomeRecord
+  type: EntityType
+  description: A record of income received, including its source, amount, date, and
+    any additional notes.
+  relationships:
+  - name: date_received
+    description: Records the date the income was received in YYYY-MM-DD format.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{IncomeRecord} has date received {String}'
+  - name: notes
+    description: Captures additional descriptive details about the income entry, such
+      as purpose or context.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{IncomeRecord} has notes {String}'
+  - name: income_id
+    description: Uniquely identifies each income record using a text-based code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{IncomeRecord} has income id {String}'
+  - name: source
+    description: Categorizes the origin of the income, such as Dues or Sponsorship.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{IncomeRecord} has source {String}'
+  - name: amount
+    description: Specifies the monetary amount of the income as a whole number.
+    roles:
+    - concept: Integer
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{IncomeRecord} has amount {Integer}'
+  - name: member
+    roles:
+    - concept: Member
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{IncomeRecord} has {Member}'
+- concept: Member
+  type: EntityType
+  description: Represents a member in the system with their personal and contact details.
+  identify_by:
+  - member_id
+  relationships:
+  - name: member_id
+    description: Unique record ID (prefixed 'rec') identifying the member and linking
+      to attendance, expenses, and income.
+    roles:
+    - concept: String
+    multiplicity: OneToOne
+    verbalizes:
+    - '{Member} is identified by member id {String}'
+  - name: last_name
+    description: Member's family name used for identification and communication.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has last name {String}'
+  - name: email
+    description: Institutional email address in firstname.lastname@lpu.edu format
+      for official communication.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has email {String}'
+  - name: t_shirt_size
+    description: Preferred apparel size (Small, Medium, Large, X-Large) for merchandise
+      distribution.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has t shirt size {String}'
+  - name: phone
+    description: Contact phone number in varying formats (e.g., (651) 928-4507 or
+      403-555-1310) for member outreach.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has phone {String}'
+  - name: first_name
+    description: Member's given name used for identification and communication.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has first name {String}'
+  - name: position
+    description: Current organizational role such as Member, President, Vice President,
+      Treasurer, or Inactive status.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has position {String}'
+  - name: academic_major
+    roles:
+    - concept: AcademicMajor
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has {AcademicMajor}'
+  - name: zip_code
+    roles:
+    - concept: ZipCode
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{Member} has {ZipCode}'
+- concept: ZipCode
+  type: EntityType
+  identify_by:
+  - zip_code
+  relationships:
+  - name: city
+    description: Names the city associated with the ZIP code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ZipCode} has city {String}'
+  - name: zip_code_type
+    description: Classifies the ZIP code by delivery type such as Standard, PO Box,
+      or Unique.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ZipCode} has zip code type {String}'
+  - name: county
+    description: Names the county associated with the ZIP code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ZipCode} has county {String}'
+  - name: zip_code
+    description: Numeric ZIP code without leading zeros that identifies a geographic
+      location and links to member records.
+    roles:
+    - concept: Integer
+    multiplicity: OneToOne
+    verbalizes:
+    - '{ZipCode} is identified by zip code {Integer}'
+  - name: state_abbreviation
+    description: Gives the two-letter state or territory abbreviation for the ZIP
+      code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ZipCode} has state abbreviation {String}'
+  - name: state
+    description: Provides the full state or territory name for the ZIP code.
+    roles:
+    - concept: String
+    multiplicity: ManyToOne
+    verbalizes:
+    - '{ZipCode} has state {String}'

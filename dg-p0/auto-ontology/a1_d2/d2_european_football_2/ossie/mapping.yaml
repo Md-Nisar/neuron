@@ -1,0 +1,91 @@
+version: 0.2.0.dev0
+name: d2_european_football_2_mapping
+description: Maps the d2_european_football_2_ontology onto the d2_european_football_2
+  semantic model
+ontology_ref:
+  name: d2_european_football_2_ontology
+  iri: ./ontology.yaml
+semantic_model_ref:
+  name: d2_european_football_2
+  iri: ./semantic_model.yaml
+concept_mappings:
+- concept: Country
+  object_mappings:
+  - expression: country.country_id
+  link_mappings:
+  - object_mapping:
+      expression: country.country_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: country.country_name
+      relationship: country_name
+- concept: FootballLeague
+  object_mappings:
+  - expression: football_league.league_id
+  link_mappings:
+  - object_mapping:
+      expression: football_league.league_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: football_league.league_name
+      relationship: league_name
+    - object_mapping:
+        concept: Country
+        expression: football_league.country_id
+      relationship: country
+- concept: Player
+  object_mappings:
+  - expression: player.player_id
+  link_mappings:
+  - object_mapping:
+      expression: player.player_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: player.player_name
+      relationship: player_name
+    - object_mapping:
+        concept: Integer
+        expression: player.player_fifa_api_id
+      relationship: player_fifa_api_id
+    - object_mapping:
+        concept: Integer
+        expression: player.height
+      relationship: height
+    - object_mapping:
+        concept: Integer
+        expression: player.weight
+      relationship: weight
+    - object_mapping:
+        concept: String
+        expression: player.birthday
+      relationship: birthday
+    - object_mapping:
+        concept: Integer
+        expression: player.player_api_id
+      relationship: player_api_id
+- concept: Team
+  object_mappings:
+  - expression: team.team_api_id
+  link_mappings:
+  - object_mapping:
+      expression: team.team_api_id
+    children:
+    - object_mapping:
+        concept: String
+        expression: team.team_long_name
+      relationship: team_long_name
+    - object_mapping:
+        concept: Integer
+        expression: team.team_fifa_api_id
+      relationship: team_fifa_api_id
+    - object_mapping:
+        concept: String
+        expression: team.team_short_name
+      relationship: team_short_name
+    - object_mapping:
+        concept: Integer
+        expression: team.id
+      relationship: id

@@ -1,0 +1,597 @@
+version: 0.2.0.dev0
+name: d2_student_club
+datasets:
+- name: academic_major
+  source: d2_student_club.public.major
+  unique_keys:
+  - - major_id
+  fields:
+  - name: major_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: major_id
+    datatype: String
+    description: Unique identifier for an academic major program, formatted as text,
+      used to link members to their major.
+  - name: major_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: major_name
+    datatype: String
+    description: Official name of an academic major program offered by the institution,
+      stored as text.
+  - name: college
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: college
+    datatype: String
+    description: College or school within the university that houses the department
+      offering the major, stored as text.
+  - name: department
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: department
+    datatype: String
+    description: Academic department responsible for administering the major program,
+      recorded as text.
+- name: budget
+  source: d2_student_club.public.budget
+  description: A budget record tracking allocated, spent, and remaining amounts by
+    category with associated event status.
+  unique_keys:
+  - - budget_id
+  fields:
+  - name: budget_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: budget_id
+    datatype: String
+    description: Identifies a specific budget record and links to related expenses.
+  - name: spent_amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: spent
+    datatype: Float
+    description: Shows the total money already spent from this budget.
+  - name: category
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: category
+    datatype: String
+    description: Classifies the type of expense the budget covers, e.g., Food or Advertising.
+  - name: event_status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: event_status
+    datatype: String
+    description: Reflects the current stage of the event linked to this budget, such
+      as Open or Closed.
+  - name: allocated_amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: amount
+    datatype: Integer
+    description: Specifies the total funds allocated to this budget category.
+  - name: remaining_amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: remaining
+    datatype: Float
+    description: Indicates the amount of budget still available for future spending.
+  - name: link_to_event
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: link_to_event
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: event
+  source: d2_student_club.public.event
+  description: An event record with details such as name, date, type, location, and
+    status.
+  unique_keys:
+  - - event_id
+  fields:
+  - name: notes
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: notes
+    datatype: String
+    description: Additional details, instructions, or attendance requirements associated
+      with the event.
+  - name: status
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: status
+    datatype: String
+    description: Current state of the event, such as Open, Closed, or Planning.
+  - name: location
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: location
+    datatype: String
+    description: Venue name or physical address where the event occurs, such as 'MU
+      215' or 'Campus Soccer/Lacrosse stadium'.
+  - name: event_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: event_date
+    datatype: String
+    description: Scheduled date and time of the event in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
+  - name: event_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: Category classifying the event, such as Meeting, Guest Speaker, Game,
+      Social, or Community Service.
+  - name: event_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: event_id
+    datatype: String
+    description: Unique identifier for the event, referenced by attendance and budget
+      records to link related information.
+  - name: event_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: event_name
+    datatype: String
+    description: Descriptive title identifying the event, such as 'Laugh Out Loud'
+      or 'Football game'.
+- name: expense
+  source: d2_student_club.public.expense
+  description: A record of an expense incurred.
+  fields:
+  - name: approved
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: approved
+    datatype: String
+    description: Indicates whether the expense has been approved, stored as text boolean.
+  - name: expense_description
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: expense_description
+    datatype: String
+    description: Describes the item or service purchased for the expense.
+  - name: expense_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: expense_id
+    datatype: String
+    description: Identifies a specific expense record.
+  - name: cost
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: cost
+    datatype: Float
+    description: Specifies the monetary amount of the expense in currency units.
+  - name: expense_date
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: expense_date
+    datatype: String
+    description: Records the date the expense was incurred in YYYY-MM-DD format.
+  - name: link_to_member
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: link_to_member
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: link_to_budget
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: link_to_budget
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: income_record
+  source: d2_student_club.public.income
+  description: A record of income received, including its source, amount, date, and
+    any additional notes.
+  fields:
+  - name: date_received
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: date_received
+    datatype: String
+    description: Records the date the income was received in YYYY-MM-DD format.
+  - name: notes
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: notes
+    datatype: String
+    description: Captures additional descriptive details about the income entry, such
+      as purpose or context.
+  - name: income_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: income_id
+    datatype: String
+    description: Uniquely identifies each income record using a text-based code.
+  - name: source
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: source
+    datatype: String
+    description: Categorizes the origin of the income, such as Dues or Sponsorship.
+  - name: amount
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: amount
+    datatype: Integer
+    description: Specifies the monetary amount of the income as a whole number.
+  - name: link_to_member
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: link_to_member
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: member
+  source: d2_student_club.public.member
+  description: Represents a member in the system with their personal and contact details.
+  unique_keys:
+  - - member_id
+  fields:
+  - name: member_id
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: member_id
+    datatype: String
+    description: Unique record ID (prefixed 'rec') identifying the member and linking
+      to attendance, expenses, and income.
+  - name: last_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: last_name
+    datatype: String
+    description: Member's family name used for identification and communication.
+  - name: email
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: email
+    datatype: String
+    description: Institutional email address in firstname.lastname@lpu.edu format
+      for official communication.
+  - name: t_shirt_size
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: t_shirt_size
+    datatype: String
+    description: Preferred apparel size (Small, Medium, Large, X-Large) for merchandise
+      distribution.
+  - name: phone
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: phone
+    datatype: String
+    description: Contact phone number in varying formats (e.g., (651) 928-4507 or
+      403-555-1310) for member outreach.
+  - name: first_name
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: first_name
+    datatype: String
+    description: Member's given name used for identification and communication.
+  - name: position
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: position
+    datatype: String
+    description: Current organizational role such as Member, President, Vice President,
+      Treasurer, or Inactive status.
+  - name: member_event_attendance
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: m.member_id
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"sql_attribute","id":"40278316-2cc3-477f-80bc-f5659ae64723","ossie_expression":"m.member_id","sql":"SELECT
+        m.member_id, e.event_id FROM public.attendance a JOIN public.member m ON a.link_to_member
+        = m.member_id JOIN public.event e ON a.link_to_event = e.event_id","sql_column_is":["da0aae2a-8cd9-4de8-94cb-528207ccd93f","a43a928f-cf65-43a0-851d-d4d16b319f10","7b9fad5d-ec95-483c-a156-5b21e3027fc0","2445380d-4c44-42ce-bc72-bd4ded5cac2a"],"sql_source":"bridge_table","term_id":"b611e9c3-38c3-43d4-ba5e-e1a9c4295b38"}'
+    description: Links members to events they attended via the attendance bridge table.
+  - name: link_to_major
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: link_to_major
+    datatype: String
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+  - name: zip
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: zip
+    datatype: Integer
+    custom_extensions:
+    - vendor_name: NVIDIA_AUTO_ONTOLOGY
+      data: '{"entity":"key_column"}'
+- name: zip_code
+  source: d2_student_club.public.zip_code
+  unique_keys:
+  - - zip_code
+  fields:
+  - name: city
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: city
+    datatype: String
+    description: Names the city associated with the ZIP code.
+  - name: zip_code_type
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: type
+    datatype: String
+    description: Classifies the ZIP code by delivery type such as Standard, PO Box,
+      or Unique.
+  - name: county
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: county
+    datatype: String
+    description: Names the county associated with the ZIP code.
+  - name: zip_code
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: zip_code
+    datatype: Integer
+    description: Numeric ZIP code without leading zeros that identifies a geographic
+      location and links to member records.
+  - name: state_abbreviation
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: short_state
+    datatype: String
+    description: Gives the two-letter state or territory abbreviation for the ZIP
+      code.
+  - name: state
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: state
+    datatype: String
+    description: Provides the full state or territory name for the ZIP code.
+custom_extensions:
+- vendor_name: NVIDIA_AUTO_ONTOLOGY
+  data: '{"model_name":"d2_student_club","native_document":{"data_layer":{"databases":[{"dialect":"postgres","id":"0850775e-d7cc-4a83-9992-10393f582ac7","schemas":[{"database_name":"d2_student_club","id":"644f0c8d-9606-4ca9-9cd7-3e493cf349e1","name":"public","tables":[{"columns":[{"description":"","id":"a43a928f-cf65-43a0-851d-d4d16b319f10","is_nullable":false,"is_unique":false,"name":"link_to_event","sample_values":["recLKj8BbTNqxFbTb","recykdvf4LgsyA3wZ","recEVTik3MlqbvLFi","recI43CzsZ0Q625ma","reciRZdAqNIKuMC96"],"type":"text"},{"description":"","id":"2445380d-4c44-42ce-bc72-bd4ded5cac2a","is_nullable":false,"is_unique":false,"name":"link_to_member","sample_values":["recD078PnS3x2doBe","recro8T1MPMwRadVH","recTjHY5xXhvkCdVT","recZ4PkGERzl9ziHO","recEFd8s6pkrTt4Pz"],"type":"text"}],"description":"","id":"3beb3287-5012-446e-b79e-f0707ffa0651","name":"attendance","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each budget record.","id":"8c31db01-e7d0-4903-8dcb-52b071af75d0","is_nullable":false,"is_unique":true,"name":"budget_id","sample_values":["rec0QmEc3cSQFQ6V2","rec1bG6HSft7XIvTP","rec1z6ISJU2HdIsVm","rec33PFqxLtnp80RJ","rec4DYUKBHMPZXWB2"],"type":"text"},{"description":"Classification
+    of the budget expense type such as Food, Advertisement, or Club T-Shirts.","id":"c054ae86-8def-4a03-af98-6f3a78204bbe","is_nullable":true,"is_unique":false,"name":"category","sample_values":["Food","Advertisement","Speaker
+    Gifts","Parking","Club T-Shirts"],"type":"text"},{"description":"Total monetary
+    amount expended against the budget.","id":"cadb642f-ca6d-480e-91c6-58d53ea58a54","is_nullable":true,"is_unique":false,"name":"spent","sample_values":[0.0,20.2,6.0,54.25,67.81],"type":"real"},{"description":"Unspent
+    portion of the allocated budget still available.","id":"a7435802-aac5-46b0-8274-e78a65296c8f","is_nullable":true,"is_unique":false,"name":"remaining","sample_values":[150.0,25.0,10.0,55.0,75.0],"type":"real"},{"description":"Total
+    budgeted amount allocated for the category.","id":"6b89720a-e072-40f9-bf96-efb61c0f8584","is_nullable":true,"is_unique":false,"name":"amount","sample_values":[150,75,20,25,10],"type":"bigint"},{"description":"Current
+    lifecycle stage of the associated event such as Open, Closed, or Planning.","id":"f39487cd-09b8-44d7-a69c-208da52a1763","is_nullable":true,"is_unique":false,"name":"event_status","sample_values":["Open","Closed","Planning"],"type":"text"},{"description":"","id":"5782cb08-5f61-4999-8b36-e88741e9351e","is_nullable":true,"is_unique":false,"name":"link_to_event","sample_values":["recI43CzsZ0Q625ma","recHaMmaKyfktt5fW","recs4x1BYWAsU2SKg","rec2mJrCofveboaz6","recEVTik3MlqbvLFi"],"type":"text"}],"description":"","id":"86eb0549-9e9a-498f-810e-2217a9fcc510","name":"budget","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each event record.","id":"da0aae2a-8cd9-4de8-94cb-528207ccd93f","is_nullable":false,"is_unique":true,"name":"event_id","sample_values":["rec0Si5cQ4rJRVzd6","rec0akZnLLpGUloLH","rec0dZPcWXF0QjNnE","rec180D2MI4EpckHy","rec2N69DMcrqN9PJC"],"type":"text"},{"description":"Descriptive
+    title or name of the event.","id":"bd283b72-61eb-4d68-ae95-e5f6eee70736","is_nullable":true,"is_unique":false,"name":"event_name","sample_values":["Laugh
+    Out Loud","Football game","Community Theater","March Meeting","Officers meeting
+    - January"],"type":"text"},{"description":"Date and time when the event is scheduled
+    to occur, in ISO 8601 format.","id":"ff778d18-0370-4a3d-8e3b-8cd9b20e7a4b","is_nullable":true,"is_unique":true,"name":"event_date","sample_values":["2020-03-10T12:00:00","2020-01-14T09:30:00","2019-11-24T09:00:00","2020-03-10T09:30:00","2019-10-05T12:00:00"],"type":"text"},{"description":"Category
+    classification of the event such as Meeting, Guest Speaker, Game, Social, or Community
+    Service.","id":"8083fb04-0561-45cf-8d35-1ef6db7debb8","is_nullable":true,"is_unique":false,"name":"type","sample_values":["Meeting","Guest
+    Speaker","Game","Social","Community Service"],"type":"text"},{"description":"Additional
+    details, instructions, or attendance requirements for the event.","id":"3202e3b0-fb7c-409e-bf94-a301232b457d","is_nullable":true,"is_unique":false,"name":"notes","sample_values":[],"type":"text"},{"description":"Venue
+    name or physical address where the event takes place.","id":"53abe5de-5f5a-42f6-baba-25b7eacd7d75","is_nullable":true,"is_unique":false,"name":"location","sample_values":["MU
+    215","Campus Soccer/Lacrosse stadium","900 E. Washington St.","Campus Football
+    stadium","Conference Room BA 452"],"type":"text"},{"description":"Current state
+    of the event, such as Open, Closed, or Planning.","id":"a14f4ca5-0852-42db-8d05-7b87d036e8d6","is_nullable":true,"is_unique":false,"name":"status","sample_values":["Closed","Open","Planning"],"type":"text"}],"description":"","id":"57edc38a-d876-482e-8140-1de2bd6babca","name":"event","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each expense record.","id":"9e65304b-eaef-42d0-99f0-3f3db624d329","is_nullable":false,"is_unique":true,"name":"expense_id","sample_values":["rec017x6R3hQqkLAo","rec1nIjoZKTYayqZ6","rec1oMgNFt7Y0G40x","rec4Zg7WEmfiHXcnC","rec7gUiykKKW4RaJS"],"type":"text"},{"description":"Text
+    description of the item or service purchased.","id":"0df46fe2-9391-4a57-9271-d0c07ceed1ea","is_nullable":true,"is_unique":false,"name":"expense_description","sample_values":["Pizza","Posters","Water,
+    chips, cookies","Water, Cookies","Parking"],"type":"text"},{"description":"Date
+    when the expense was incurred, stored in ISO 8601 format.","id":"82fa9d81-0b8d-4659-8e23-0447d8a8f88e","is_nullable":true,"is_unique":false,"name":"expense_date","sample_values":["2019-10-08","2019-09-10","2019-11-19","2019-10-22","2019-09-03"],"type":"text"},{"description":"Monetary
+    amount of the expense in currency units.","id":"b5e28892-dc70-4a56-ac95-79da2326b11e","is_nullable":true,"is_unique":false,"name":"cost","sample_values":[20.2,6.0,54.25,51.81,67.81],"type":"real"},{"description":"Approval
+    status of the expense, represented as a text boolean value.","id":"34bf348a-be65-430c-b507-3179bd0931e1","is_nullable":true,"is_unique":false,"name":"approved","sample_values":["true"],"type":"text"},{"description":"","id":"2a6a80e5-dd74-42a3-9f4a-4e93aca54e93","is_nullable":true,"is_unique":false,"name":"link_to_member","sample_values":["rec4BLdZHS2Blfp4v","recD078PnS3x2doBe","recro8T1MPMwRadVH"],"type":"text"},{"description":"","id":"2c1e5f5d-8af2-4284-8a43-e966f9612dcd","is_nullable":true,"is_unique":false,"name":"link_to_budget","sample_values":["recca5tkvdQgoLKZz","recwXIiKoBMjXJsGZ","recr60T1tLsfdICV8","reczf4LoOK6z7oOec","recexNBMuCY9emh6y"],"type":"text"}],"description":"","id":"f3a9e320-ed2d-4839-ab67-3109cf6e03c0","name":"expense","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier for each income record.","id":"2eb8ebff-cd22-4220-8c1d-6f382b6af603","is_nullable":false,"is_unique":true,"name":"income_id","sample_values":["rec0s9ZrO15zhzUeE","rec7f5XMQZexgtQJo","rec8BUJa8GXUjiglg","rec8V9BPNIoewWt2z","recCRWMfFqifuKMc6"],"type":"text"},{"description":"Date
+    when the income was received, stored as text in YYYY-MM-DD format.","id":"1333dbb0-19d6-4e00-a48a-182a8978847e","is_nullable":true,"is_unique":false,"name":"date_received","sample_values":["2019-09-25","2019-10-31","2019-09-18","2019-09-09","2019-10-17"],"type":"text"},{"description":"Monetary
+    value of the income received, represented as a whole number.","id":"f697db18-709c-461d-af84-a0573fdd9fff","is_nullable":true,"is_unique":false,"name":"amount","sample_values":[50,200,3000,1000],"type":"bigint"},{"description":"Category
+    or origin of the income, such as Dues, Fundraising, or Sponsorship.","id":"7e0660b2-68f6-4ae2-9696-491ad8e65961","is_nullable":true,"is_unique":false,"name":"source","sample_values":["Dues","Fundraising","School
+    Appropration","Sponsorship"],"type":"text"},{"description":"Additional descriptive
+    details about the income entry, such as purpose or context.","id":"26b1c338-3442-4738-8e49-84c07c4d15c8","is_nullable":true,"is_unique":true,"name":"notes","sample_values":[],"type":"text"},{"description":"","id":"3182c31a-3468-4557-8fb8-fdf5999b5152","is_nullable":true,"is_unique":false,"name":"link_to_member","sample_values":["rec3pH4DxMcWHMRB7","rec4BLdZHS2Blfp4v","reccW7q1KkhSKZsea","recTjHY5xXhvkCdVT","recUdRhbhcEO1Hk5r"],"type":"text"}],"description":"","id":"00e433cd-98ea-40ac-88aa-42871bc9bf72","name":"income","pk":[],"type":"base
+    table"},{"columns":[{"description":"A unique identifier for each academic major
+    program.","id":"58dabdf1-1bcd-48db-b1d6-b3fb9dbe20e4","is_nullable":false,"is_unique":true,"name":"major_id","sample_values":["rec06DF6vZ1CyPKpc","rec09LedkREyskCNv","rec0Eanv576RhQllI","rec0xRZtkzxrg8kj2","rec1N0upiVLy5esTO"],"type":"text"},{"description":"The
+    official name of an academic major program offered by the institution.","id":"9a51905d-9150-4cd5-a3d8-0e82e370219c","is_nullable":true,"is_unique":true,"name":"major_name","sample_values":["Agricultural
+    Communication","Fisheries and Aquatic Sciences","Finance","Forest Ecology and
+    Management"],"type":"text"},{"description":"The academic department responsible
+    for administering the major program.","id":"55402ea3-304f-4c88-afdb-76fbca5d60fd","is_nullable":true,"is_unique":false,"name":"department","sample_values":["Wildland
+    Resources Department"],"type":"text"},{"description":"The college or school within
+    the university that houses the department offering the major.","id":"b12c2f62-8ddf-4ada-8829-96a8254ff7d8","is_nullable":true,"is_unique":false,"name":"college","sample_values":["College
+    of Science","College of Natural Resources"],"type":"text"}],"description":"","id":"89e8aefd-db48-4e7a-a55d-101e3b7956e2","name":"major","pk":[],"type":"base
+    table"},{"columns":[{"description":"Unique identifier assigned to each member
+    in the system.","id":"7b9fad5d-ec95-483c-a156-5b21e3027fc0","is_nullable":false,"is_unique":true,"name":"member_id","sample_values":["rec1x5zBFIqoOuPW8","rec280Sk7o31iG0Tx","rec28ORZgcm1dtqBZ","rec2a03QXbFQAUZ7X","rec3pH4DxMcWHMRB7"],"type":"text"},{"description":"Given
+    name of the member.","id":"06e04d6c-f8b2-430c-84f0-d40a12ca715d","is_nullable":true,"is_unique":true,"name":"first_name","sample_values":["Angela","Grant","Luisa","Randy","Connor"],"type":"text"},{"description":"Family
+    name or surname of the member.","id":"1cc6246c-3b77-4c95-a106-462b29e0e722","is_nullable":true,"is_unique":true,"name":"last_name","sample_values":["Sanders","Gilmour","Guidi","Woodard","Hilton"],"type":"text"},{"description":"Institutional
+    email address of the member, using the lpu.edu domain.","id":"1ce97435-9574-42fb-8d17-ad19c3662672","is_nullable":true,"is_unique":true,"name":"email","sample_values":["angela.sanders@lpu.edu","grant.gilmour@lpu.edu","luisa.guidi@lpu.edu","randy.woodard@lpu.edu","connor.hilton@lpu.edu"],"type":"text"},{"description":"Current
+    role or status of the member within the organization, such as Member, President,
+    or Inactive.","id":"1b983d4c-9db3-49b9-a608-1b2c62356af1","is_nullable":true,"is_unique":false,"name":"position","sample_values":["Member","Inactive","President","Vice
+    President","Treasurer"],"type":"text"},{"description":"Preferred T-shirt size
+    of the member for apparel distribution.","id":"315521f0-f9ac-4258-bc79-e3990c0b8d0f","is_nullable":true,"is_unique":false,"name":"t_shirt_size","sample_values":["Large","Medium","X-Large","Small"],"type":"text"},{"description":"Contact
+    phone number of the member in various formats.","id":"b23d49f4-40c7-4a4c-9e68-5899861a773c","is_nullable":true,"is_unique":true,"name":"phone","sample_values":["(651)
+    928-4507","403-555-1310","442-555-5882","490-555-8460","454-555-7970"],"type":"text"},{"description":"","id":"2dfb31a2-c8f1-4e2f-a1f7-11d95bfa20e6","is_nullable":true,"is_unique":true,"name":"zip","sample_values":[55108,29440,10002,8021,48236],"type":"bigint"},{"description":"","id":"03864756-b7b0-47c6-87c2-17b7c0e92fe5","is_nullable":true,"is_unique":false,"name":"link_to_major","sample_values":["recKJHO1P6ZC5m567","recdIBgeU38UbV2sy","recxRBSgVYeSEGvyo","recObV24Ass2ouQHK","reclQ8BVvj2w4cQ4V"],"type":"text"}],"description":"","id":"2600cfbd-ea9f-44bc-ad21-845c68103b58","name":"member","pk":[],"type":"base
+    table"},{"columns":[{"description":"The ZIP code for the location, stored as a
+    numeric value without leading zeros.","id":"d412b67e-de39-4464-8aeb-d94545cd47da","is_nullable":false,"is_unique":true,"name":"zip_code","sample_values":[501,544,601,602,603],"type":"bigint"},{"description":"The
+    classification of the ZIP code indicating its delivery type, such as standard
+    delivery, PO Box only, or unique to a single entity.","id":"7db36b4d-ff42-47c2-9442-e964dd50107e","is_nullable":true,"is_unique":false,"name":"type","sample_values":["Standard","PO
+    Box","Unique"],"type":"text"},{"description":"The city name associated with the
+    ZIP code.","id":"c673a537-4882-40ca-97f9-86db810242e3","is_nullable":true,"is_unique":false,"name":"city","sample_values":["Boston","San
+    Juan","Springfield","Worcester","Providence"],"type":"text"},{"description":"The
+    county name associated with the ZIP code.","id":"e42cdfd1-2823-48a6-be95-132a615a683b","is_nullable":true,"is_unique":false,"name":"county","sample_values":["Middlesex
+    County","Worcester County","Plymouth County","Suffolk County","Barnstable County"],"type":"text"},{"description":"The
+    full name of the state or territory associated with the ZIP code.","id":"cacba1bd-82ff-4368-a4f0-55e9222c24a0","is_nullable":true,"is_unique":false,"name":"state","sample_values":["Massachusetts","Puerto
+    Rico","Rhode Island","New Hampshire","New York"],"type":"text"},{"description":"The
+    two-letter abbreviation for the state or territory associated with the ZIP code.","id":"8934a319-9e54-45da-9180-3a4279df3823","is_nullable":true,"is_unique":false,"name":"short_state","sample_values":["MA","PR","RI","NH","NY"],"type":"text"}],"description":"","id":"430f80bc-9599-4e84-a982-1e23014367b3","name":"zip_code","pk":[],"type":"base
+    table"}]}]}],"foreign_keys":[{"source_column_id":"03864756-b7b0-47c6-87c2-17b7c0e92fe5","target_column_id":"58dabdf1-1bcd-48db-b1d6-b3fb9dbe20e4"},{"source_column_id":"2445380d-4c44-42ce-bc72-bd4ded5cac2a","target_column_id":"7b9fad5d-ec95-483c-a156-5b21e3027fc0"},{"source_column_id":"2a6a80e5-dd74-42a3-9f4a-4e93aca54e93","target_column_id":"7b9fad5d-ec95-483c-a156-5b21e3027fc0"},{"source_column_id":"2c1e5f5d-8af2-4284-8a43-e966f9612dcd","target_column_id":"8c31db01-e7d0-4903-8dcb-52b071af75d0"},{"source_column_id":"2dfb31a2-c8f1-4e2f-a1f7-11d95bfa20e6","target_column_id":"d412b67e-de39-4464-8aeb-d94545cd47da"},{"source_column_id":"3182c31a-3468-4557-8fb8-fdf5999b5152","target_column_id":"7b9fad5d-ec95-483c-a156-5b21e3027fc0"},{"source_column_id":"5782cb08-5f61-4999-8b36-e88741e9351e","target_column_id":"da0aae2a-8cd9-4de8-94cb-528207ccd93f"},{"source_column_id":"a43a928f-cf65-43a0-851d-d4d16b319f10","target_column_id":"da0aae2a-8cd9-4de8-94cb-528207ccd93f"}],"joins":[]},"semantic_layer":{"custom_analyses":[],"semantic_fks":[{"column_attribute_id":"10a5ea39-c72f-468e-877d-3013745494a5","column_id":"03864756-b7b0-47c6-87c2-17b7c0e92fe5","use_in_join_paths":true},{"column_attribute_id":"2695f25d-3b9d-42de-a380-cf598110b2c4","column_id":"2445380d-4c44-42ce-bc72-bd4ded5cac2a","use_in_join_paths":true},{"column_attribute_id":"2695f25d-3b9d-42de-a380-cf598110b2c4","column_id":"2a6a80e5-dd74-42a3-9f4a-4e93aca54e93","use_in_join_paths":true},{"column_attribute_id":"2120d4b5-478b-4aa6-95a5-7a27873a6359","column_id":"2c1e5f5d-8af2-4284-8a43-e966f9612dcd","use_in_join_paths":true},{"column_attribute_id":"54ff837f-3469-4350-a4ae-64e2295049d3","column_id":"2dfb31a2-c8f1-4e2f-a1f7-11d95bfa20e6","use_in_join_paths":true},{"column_attribute_id":"2695f25d-3b9d-42de-a380-cf598110b2c4","column_id":"3182c31a-3468-4557-8fb8-fdf5999b5152","use_in_join_paths":true},{"column_attribute_id":"98ef6da2-fc48-492f-9e54-d21d8c79c896","column_id":"5782cb08-5f61-4999-8b36-e88741e9351e","use_in_join_paths":true},{"column_attribute_id":"98ef6da2-fc48-492f-9e54-d21d8c79c896","column_id":"a43a928f-cf65-43a0-851d-d4d16b319f10","use_in_join_paths":true}],"sql_attributes":{"bridge_table":[{"description":"Links
+    members to events they attended via the attendance bridge table.","id":"40278316-2cc3-477f-80bc-f5659ae64723","name":"Member
+    Event Attendance","sql":"SELECT m.member_id, e.event_id FROM public.attendance
+    a JOIN public.member m ON a.link_to_member = m.member_id JOIN public.event e ON
+    a.link_to_event = e.event_id","sql_column_is":["da0aae2a-8cd9-4de8-94cb-528207ccd93f","a43a928f-cf65-43a0-851d-d4d16b319f10","7b9fad5d-ec95-483c-a156-5b21e3027fc0","2445380d-4c44-42ce-bc72-bd4ded5cac2a"],"term_id":"b611e9c3-38c3-43d4-ba5e-e1a9c4295b38"}],"manual":[],"sql":[],"table":[]},"terms":[{"columns_attributes":[{"column_id":"58dabdf1-1bcd-48db-b1d6-b3fb9dbe20e4","description":"Unique
+    identifier for an academic major program, formatted as text, used to link members
+    to their major.","id":"10a5ea39-c72f-468e-877d-3013745494a5","name":"Major ID"},{"column_id":"9a51905d-9150-4cd5-a3d8-0e82e370219c","description":"Official
+    name of an academic major program offered by the institution, stored as text.","id":"89aa3f5d-a340-4d93-8d3f-0c7e826aa14d","name":"Major
+    Name"},{"column_id":"b12c2f62-8ddf-4ada-8829-96a8254ff7d8","description":"College
+    or school within the university that houses the department offering the major,
+    stored as text.","id":"9b5ef6ce-7fb4-4bde-8a9e-8fb6a7c624f8","name":"College"},{"column_id":"55402ea3-304f-4c88-afdb-76fbca5d60fd","description":"Academic
+    department responsible for administering the major program, recorded as text.","id":"c97eed69-18d8-499e-b387-5312ef2baec1","name":"Department"}],"description":"","id":"974253ad-90c6-4866-be15-87cf746f489b","name":"Academic
+    Major","represents":["89e8aefd-db48-4e7a-a55d-101e3b7956e2"]},{"columns_attributes":[{"column_id":"8c31db01-e7d0-4903-8dcb-52b071af75d0","description":"Identifies
+    a specific budget record and links to related expenses.","id":"2120d4b5-478b-4aa6-95a5-7a27873a6359","name":"Budget
+    ID"},{"column_id":"cadb642f-ca6d-480e-91c6-58d53ea58a54","description":"Shows
+    the total money already spent from this budget.","id":"2e90d44d-6409-440e-96ff-00f72f2dddd3","name":"Spent
+    Amount"},{"column_id":"c054ae86-8def-4a03-af98-6f3a78204bbe","description":"Classifies
+    the type of expense the budget covers, e.g., Food or Advertising.","id":"67ca62e4-474c-40cc-9f9f-60495456977c","name":"Category"},{"column_id":"f39487cd-09b8-44d7-a69c-208da52a1763","description":"Reflects
+    the current stage of the event linked to this budget, such as Open or Closed.","id":"bd66c228-9eff-4748-b9bf-1d39f53b1679","name":"Event
+    Status"},{"column_id":"6b89720a-e072-40f9-bf96-efb61c0f8584","description":"Specifies
+    the total funds allocated to this budget category.","id":"c173505c-7c96-4062-bd5c-31007a420ec2","name":"Allocated
+    Amount"},{"column_id":"a7435802-aac5-46b0-8274-e78a65296c8f","description":"Indicates
+    the amount of budget still available for future spending.","id":"e38e2f2d-5e6b-4d02-92e9-c3debed56e7f","name":"Remaining
+    Amount"}],"description":"A budget record tracking allocated, spent, and remaining
+    amounts by category with associated event status.","id":"49303901-458d-4089-b2ed-7d3e7765885a","name":"Budget","represents":["86eb0549-9e9a-498f-810e-2217a9fcc510"]},{"columns_attributes":[{"column_id":"3202e3b0-fb7c-409e-bf94-a301232b457d","description":"Additional
+    details, instructions, or attendance requirements associated with the event.","id":"225c4197-5b95-4361-99b5-7924b461db5f","name":"Notes"},{"column_id":"a14f4ca5-0852-42db-8d05-7b87d036e8d6","description":"Current
+    state of the event, such as Open, Closed, or Planning.","id":"22eb2cb3-63e7-410a-a9ab-21c0f160d0be","name":"Status"},{"column_id":"53abe5de-5f5a-42f6-baba-25b7eacd7d75","description":"Venue
+    name or physical address where the event occurs, such as ''MU 215'' or ''Campus
+    Soccer/Lacrosse stadium''.","id":"34f6737d-597f-4623-84be-cd2e0bb32fb5","name":"Location"},{"column_id":"ff778d18-0370-4a3d-8e3b-8cd9b20e7a4b","description":"Scheduled
+    date and time of the event in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).","id":"3fe1ef1f-9a61-435b-852f-4896e886f6a8","name":"Event
+    Date"},{"column_id":"8083fb04-0561-45cf-8d35-1ef6db7debb8","description":"Category
+    classifying the event, such as Meeting, Guest Speaker, Game, Social, or Community
+    Service.","id":"4950760a-dead-41aa-8b6a-90ad360fce8a","name":"Event Type"},{"column_id":"da0aae2a-8cd9-4de8-94cb-528207ccd93f","description":"Unique
+    identifier for the event, referenced by attendance and budget records to link
+    related information.","id":"98ef6da2-fc48-492f-9e54-d21d8c79c896","name":"Event
+    ID"},{"column_id":"bd283b72-61eb-4d68-ae95-e5f6eee70736","description":"Descriptive
+    title identifying the event, such as ''Laugh Out Loud'' or ''Football game''.","id":"bf71f9a7-c524-42cd-be88-15460c629065","name":"Event
+    Name"}],"description":"An event record with details such as name, date, type,
+    location, and status.","id":"1e895308-24e1-493e-8aaf-5ff08708c373","name":"Event","represents":["57edc38a-d876-482e-8140-1de2bd6babca"]},{"columns_attributes":[{"column_id":"34bf348a-be65-430c-b507-3179bd0931e1","description":"Indicates
+    whether the expense has been approved, stored as text boolean.","id":"3c8977b9-cedc-40e6-9611-45a25e60db3f","name":"Approved"},{"column_id":"0df46fe2-9391-4a57-9271-d0c07ceed1ea","description":"Describes
+    the item or service purchased for the expense.","id":"792be2ef-e390-410a-b0bc-766bbd5a4190","name":"Expense
+    Description"},{"column_id":"9e65304b-eaef-42d0-99f0-3f3db624d329","description":"Identifies
+    a specific expense record.","id":"a5afa23b-5a33-4b79-b459-0eac9bef93cc","name":"Expense
+    ID"},{"column_id":"b5e28892-dc70-4a56-ac95-79da2326b11e","description":"Specifies
+    the monetary amount of the expense in currency units.","id":"baa85521-17fd-4a95-968a-d159c5c4a212","name":"Cost"},{"column_id":"82fa9d81-0b8d-4659-8e23-0447d8a8f88e","description":"Records
+    the date the expense was incurred in YYYY-MM-DD format.","id":"e6d95f9e-5945-45e1-a480-7648419c58e8","name":"Expense
+    Date"}],"description":"A record of an expense incurred.","id":"cd240f39-ddcd-4372-a489-4477feeaa0d2","name":"Expense","represents":["f3a9e320-ed2d-4839-ab67-3109cf6e03c0"]},{"columns_attributes":[{"column_id":"1333dbb0-19d6-4e00-a48a-182a8978847e","description":"Records
+    the date the income was received in YYYY-MM-DD format.","id":"1bd2f576-f05a-4761-846a-810d3906fed2","name":"Date
+    Received"},{"column_id":"26b1c338-3442-4738-8e49-84c07c4d15c8","description":"Captures
+    additional descriptive details about the income entry, such as purpose or context.","id":"4bb9aa94-0580-420c-be13-c9fb04e22f96","name":"Notes"},{"column_id":"2eb8ebff-cd22-4220-8c1d-6f382b6af603","description":"Uniquely
+    identifies each income record using a text-based code.","id":"9c51d22a-f54a-4926-b4a4-3900f0d7fd4c","name":"Income
+    ID"},{"column_id":"7e0660b2-68f6-4ae2-9696-491ad8e65961","description":"Categorizes
+    the origin of the income, such as Dues or Sponsorship.","id":"9dfc55d6-fbf1-47fb-ab04-ccfbd8d3a916","name":"Source"},{"column_id":"f697db18-709c-461d-af84-a0573fdd9fff","description":"Specifies
+    the monetary amount of the income as a whole number.","id":"dd698fab-35ee-4aed-a2d1-b0b945d6f7f4","name":"Amount"}],"description":"A
+    record of income received, including its source, amount, date, and any additional
+    notes.","id":"fdf382cd-6a5a-462d-b148-d755da800599","name":"Income Record","represents":["00e433cd-98ea-40ac-88aa-42871bc9bf72"]},{"columns_attributes":[{"column_id":"7b9fad5d-ec95-483c-a156-5b21e3027fc0","description":"Unique
+    record ID (prefixed ''rec'') identifying the member and linking to attendance,
+    expenses, and income.","id":"2695f25d-3b9d-42de-a380-cf598110b2c4","name":"Member
+    ID"},{"column_id":"1cc6246c-3b77-4c95-a106-462b29e0e722","description":"Member''s
+    family name used for identification and communication.","id":"2d213605-5c83-499e-b342-19d48962e718","name":"Last
+    Name"},{"column_id":"1ce97435-9574-42fb-8d17-ad19c3662672","description":"Institutional
+    email address in firstname.lastname@lpu.edu format for official communication.","id":"59abbede-2809-4250-b257-b411be13678b","name":"Email"},{"column_id":"315521f0-f9ac-4258-bc79-e3990c0b8d0f","description":"Preferred
+    apparel size (Small, Medium, Large, X-Large) for merchandise distribution.","id":"60151503-9f46-4bc6-948f-5a7638215289","name":"T
+    Shirt Size"},{"column_id":"b23d49f4-40c7-4a4c-9e68-5899861a773c","description":"Contact
+    phone number in varying formats (e.g., (651) 928-4507 or 403-555-1310) for member
+    outreach.","id":"9d8c959d-88e1-4455-9ff1-2e2b0eda499a","name":"Phone"},{"column_id":"06e04d6c-f8b2-430c-84f0-d40a12ca715d","description":"Member''s
+    given name used for identification and communication.","id":"b03eb579-6731-4422-9834-87405fd887f2","name":"First
+    Name"},{"column_id":"1b983d4c-9db3-49b9-a608-1b2c62356af1","description":"Current
+    organizational role such as Member, President, Vice President, Treasurer, or Inactive
+    status.","id":"fa8b8ee0-c8ef-46e0-af96-db9486d76e69","name":"Position"}],"description":"Represents
+    a member in the system with their personal and contact details.","id":"b611e9c3-38c3-43d4-ba5e-e1a9c4295b38","name":"Member","represents":["2600cfbd-ea9f-44bc-ad21-845c68103b58"]},{"columns_attributes":[{"column_id":"c673a537-4882-40ca-97f9-86db810242e3","description":"Names
+    the city associated with the ZIP code.","id":"15abe5a4-b5a8-4350-ac80-91ccf7cc7c34","name":"City"},{"column_id":"7db36b4d-ff42-47c2-9442-e964dd50107e","description":"Classifies
+    the ZIP code by delivery type such as Standard, PO Box, or Unique.","id":"3d377b43-3fa1-4004-8071-ef5f75259a13","name":"ZIP
+    Code Type"},{"column_id":"e42cdfd1-2823-48a6-be95-132a615a683b","description":"Names
+    the county associated with the ZIP code.","id":"4a45e5d4-d5dc-4c68-be91-5de0e9d2db80","name":"County"},{"column_id":"d412b67e-de39-4464-8aeb-d94545cd47da","description":"Numeric
+    ZIP code without leading zeros that identifies a geographic location and links
+    to member records.","id":"54ff837f-3469-4350-a4ae-64e2295049d3","name":"ZIP Code"},{"column_id":"8934a319-9e54-45da-9180-3a4279df3823","description":"Gives
+    the two-letter state or territory abbreviation for the ZIP code.","id":"70d2d841-9e0f-4b79-91a4-efe6075a3768","name":"State
+    Abbreviation"},{"column_id":"cacba1bd-82ff-4368-a4f0-55e9222c24a0","description":"Provides
+    the full state or territory name for the ZIP code.","id":"c23646fd-1ba3-4ac5-b902-9f6201d3a317","name":"State"}],"description":"","id":"fda09e7b-fe44-4258-83a5-dd9871c0f260","name":"ZIP
+    Code","represents":["430f80bc-9599-4e84-a982-1e23014367b3"]}]},"zones":[]}}'
+relationships:
+- name: member_link_to_major_to_academic_major
+  from: member
+  to: academic_major
+  from_columns:
+  - link_to_major
+  to_columns:
+  - major_id
+- name: expense_link_to_member_to_member
+  from: expense
+  to: member
+  from_columns:
+  - link_to_member
+  to_columns:
+  - member_id
+- name: expense_link_to_budget_to_budget
+  from: expense
+  to: budget
+  from_columns:
+  - link_to_budget
+  to_columns:
+  - budget_id
+- name: member_zip_to_zip_code
+  from: member
+  to: zip_code
+  from_columns:
+  - zip
+  to_columns:
+  - zip_code
+- name: income_record_link_to_member_to_member
+  from: income_record
+  to: member
+  from_columns:
+  - link_to_member
+  to_columns:
+  - member_id
+- name: budget_link_to_event_to_event
+  from: budget
+  to: event
+  from_columns:
+  - link_to_event
+  to_columns:
+  - event_id
