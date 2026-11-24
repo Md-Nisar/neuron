@@ -1,0 +1,511 @@
+{
+ "arms": {
+  "T": {
+   "accuracy_when_answered_units": {
+    "k": 9,
+    "n": 18,
+    "rate": 0.5,
+    "wilson95": [
+     0.2903,
+     0.7097
+    ]
+   },
+   "answered_one_reading": 0,
+   "correct_refusals_units": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "exec_errors": 0,
+   "execution_accuracy_units": {
+    "k": 9,
+    "n": 34,
+    "rate": 0.2647,
+    "wilson95": [
+     0.146,
+     0.4312
+    ]
+   },
+   "guard_rejected": 1,
+   "model_calls": null,
+   "no_access_refused": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "not_answered_units": {
+    "k": 16,
+    "n": 34,
+    "rate": 0.4706,
+    "wilson95": [
+     0.3145,
+     0.6326
+    ]
+   },
+   "p95_latency_s": 77.12,
+   "questions": {
+    "answerable": {
+     "k": 9,
+     "n": 34,
+     "rate": 0.2647,
+     "wilson95": [
+      0.146,
+      0.4312
+     ]
+    }
+   },
+   "ref_comparator_units": {
+    "k": 2,
+    "n": 34,
+    "rate": 0.0588,
+    "wilson95": [
+     0.0163,
+     0.1909
+    ]
+   },
+   "units": 39,
+   "unparsed": 0,
+   "unscorable": [
+    "W-A-012",
+    "W-A-033",
+    "W-A-035",
+    "W-A-039",
+    "W-A-040"
+   ],
+   "wrong_answers_without_refusal": {
+    "k": 8,
+    "n": 34,
+    "rate": 0.2353,
+    "wilson95": [
+     0.1244,
+     0.4
+    ]
+   }
+  }
+ },
+ "dataset": "d1",
+ "models": [
+  "nvidia/nemotron-3-ultra-550b-a55b"
+ ],
+ "run": "tri-d1",
+ "tables_changed": [],
+ "units": [
+  {
+   "arm": "T",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-001"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-002"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-003"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-005"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-006"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-007"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-008"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "guard": "rejected",
+    "guard_code": "FUNCTION_NOT_ALLOWED",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-009"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-010"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-011"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 57262 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-012"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-013"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-014"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-015"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-016"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-017"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-018"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-019"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-020"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-021"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-022"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-023"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-024"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-025"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-026"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-028"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-029"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-030"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-031"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-032"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 1811 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-033"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-034"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 73595 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-035"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "reader",
+   "qid": "W-A-036"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-037"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "reader",
+   "qid": "W-A-038"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 2438 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-039"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "sql",
+    "result": "unscorable",
+    "why": "expected 231412 rows, guard limit 1000"
+   },
+   "persona": "reader",
+   "qid": "W-A-040"
+  },
+  {
+   "arm": "T",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "reader",
+   "qid": "W-A-041"
+  }
+ ]
+}
