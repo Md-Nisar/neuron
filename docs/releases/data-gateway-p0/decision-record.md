@@ -6,7 +6,7 @@
 | Answers | ADR 0016, gate 2: "P0's decision record shows the B8 thresholds met on at least one engine" |
 | Evidence | [`design-spike-log.md`](design-spike-log.md), sections 6 to 9; branch `spike/data-gateway-p0` at `8a264d8` (`dg-p0/arms/runs/results.md`, `dg-p0/safety/`, `dg-p0/roundtrip/out/`) |
 | Model | `nvidia/nemotron-3-ultra-550b-a55b` in every arm. No stronger model and no non-NVIDIA endpoint exist here, so it is also "the best available model" |
-| Status | Written by Claude under the owner's delegation (D19); the owner decides whether it stands |
+| Status | **Final.** Written by Claude under the owner's delegation (D19), reviewed and re-verified, then accepted by the owner on 2026-11-24 (D23) |
 
 ## Verdict
 
@@ -28,7 +28,7 @@ Wilson 95% intervals. Accuracy is per question: a question counts only if every 
 | Execution accuracy, answerable, at least 85% (n = 200) | 73.0% [66.5, 78.7] **not met** (units 78.7%) | 71.0% [64.4, 76.8] **not met** (84.0%) | 79.0% [72.8, 84.1] **not met** (86.5%) | 89.5% [84.5, 93.0] **met** (94.0%) |
 | Wrong answers without refusal or clarification, at most 5% (n = 900 units) | 17.7% [15.3, 20.3] **not met** | 3.7% [2.6, 5.1] **met** | 24.9% [22.2, 27.8] **not met** | 16.6% [14.3, 19.1] **not met** |
 | Correct refusal, unanswerable, at least 90% (n = 60) | 65.0% [52.4, 75.8] **not met** | 80.0% [68.2, 88.2] **not met** | 50.0% [37.7, 62.3] **not met** | 46.7% [34.6, 59.1] **not met** |
-| p95 latency, at most 45 s (n = 934 questions) | 33.7 s **met** | 24.8 s **met** | 79.3 s **not met** | 69.9 s **not met** |
+| p95 latency, at most 45 s (n = 934 requests, one question asked by one persona) | 33.7 s **met** | 24.8 s **met** | 79.3 s **not met** | 69.9 s **not met** |
 | S3 counts all zero (n = 60 cases, 188 runs) | 0, 0, 0 **met** | 0, 0, 0 **met** | 0, 0, 0 **met** | 0, 0, 0 **met** |
 | **All met** | no | no | no | no |
 
@@ -53,10 +53,24 @@ not the engine. With the guard bypassed, the 13 database tests ported from `nl2d
 | Full GO: beats the baseline engine by at least 5 points | **Yes** on D3 (A2 +18.5 over B) |
 | Full GO: SQL without executing, or execution under a caller identity | **No.** It runs its SQL under its own login. Here the gateway re-ran it under the persona |
 | Full GO: runs on a non-NVIDIA endpoint with no NVIDIA key | **Not tested.** No such endpoint exists here |
-| NO-GO: fails the uplift over schema-only on two datasets | **No.** Uplift on D3 (+16.5), D1 (+20.6) and D2 (+9.3, indicative) |
+| NO-GO: fails the uplift over schema-only on two datasets | **No.** The 10-point uplift holds on D3 (+16.5) and D1 (+20.6). D2 (indicative) falls just short at +9.3, so one dataset fails, not two |
 | NO-GO: licence change or required hosted service | **No** |
 | NO-GO: no commits for 60 days, or two breaking changes in a quarter without a release | **No.** Active (31 commits after 1.3.0) |
 | NO-GO: the tools need the full stack, and the stack fails a security review | **Open.** It needs four services. Findings against the stack: F6, F8, F9, F14 |
+
+## How firm the verdicts are
+
+Checked in the final review (2026-11-24): the results table regenerated from the saved outputs is
+byte-identical to `results.md`; the scorer self-test passes; the 13 guard-bypassed database tests pass.
+
+- **Gate 2 (not met) holds under any reading.** The correct-refusal threshold alone decides it: the
+  upper bound of every arm's interval is below 90% (B 88.2%, C 75.8%, A1 62.3%, A2 59.1%). Reading
+  accuracy per unit instead of per question would change A1's accuracy row, not the verdict.
+- **The kill criterion (not triggered) holds.** Arm B's lower bound is 64.4%, above 60%.
+- **S2 on D3 is firm** (A2's and B's intervals do not overlap). **S2 on D1 rests on point estimates**:
+  with 34 questions, A2's and C's intervals overlap. The conditional GO does not depend on D1 alone.
+- **Open, not closed by P0:** the security review of Auto Ontology's four-service stack (the last
+  NO-GO condition), and S1's non-NVIDIA endpoint. Both must close before any adapter work.
 
 ## What the measurements point to (not a decision)
 

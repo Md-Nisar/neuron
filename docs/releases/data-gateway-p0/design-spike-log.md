@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record written; gate 2 not met (section 10, `decision-record.md`). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -179,6 +179,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D20 | 2026-11-23 | DG-00.05 approach (section 8): same model in every arm; arm C on D3 and D1 reused from DG-00.03; arm B run as D16 decided (Ossie model plus physical columns); A1 and A2 asked through Auto Ontology's gateway with the caller line as `evidence`, their SQL re-run through the guard and the persona's executor; D2 is BIRD Mini-Dev's PostgreSQL edition, all 500 questions, with BIRD's evidence for every arm and Ossie models generated from BIRD's own documentation for arms B and A2; Ossie round trip in both directions through a version converter (F10). | Claude (delegated) |
 | D21 | 2026-11-24 | DG-00.06 approach (section 9): the gateway prototype replays the engine decisions of the DG-00.05 runs (all four arms) through the guard and the A' executor, so the safety run covers exactly what the accuracy table scores; a foreign-row probe runs in the same read-only transaction; all 60 adversarial cases (D6 doubled the backlog's 30); the 26 SQL cases also run with the guard bypassed; `nl2data-ref`'s guard-bypassed database tests are ported to the mart's A' hardening, each mapping stated. | Claude (delegated) |
 | D22 | 2026-11-24 | DG-00.07 reading rules (decision record): accuracy is read per question (right for every persona), with units beside it; "correct refusal" is the unanswerable questions; "wrong answers" counts every non-adversarial D3 unit; p95 is per question as measured (4 to 6 concurrent requests); only one model exists here, so "best available model" is that model. | Claude (delegated) |
+| D23 | 2026-11-24 | The decision record (DG-00.07) is final, after a review of the whole spike: gate 2 of ADR 0016 is not met; the kill criterion is not triggered; Auto Ontology stays a conditional GO. The review corrected two statements (D2's uplift is +9.3, below the 10-point bar, on one dataset only; p95 counts 934 requests, not questions) and added how firm each verdict is. No verdict changed. | Owner, on Claude's review |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -1077,10 +1078,30 @@ is not met**; no engine meets every release threshold. The kill criterion does n
 arm B, is 71.0%, above 60%). Auto Ontology stays a conditional GO as an engine behind the gateway,
 not a full GO. ADR 0016's status names the outcome and the date.
 
+### Final review (2026-11-24, D23)
+
+Before the record was made final, the whole spike was reviewed against its sources:
+
+| Check | Result |
+| --- | --- |
+| Every number in the record against `results.md` | Match |
+| `results.md` regenerated from the saved outputs | Byte-identical |
+| Scorer self-test (`arms/selftest.py`) | Passes, 0 failures |
+| Guard-bypassed database tests (`safety/test_mart_bypass.py`) | 13 passed |
+| Each threshold against B8, each Auto Ontology row against B1 (handoff) | Match, with two corrections below |
+| Secrets in either branch | None (only a placeholder and a password-generating template) |
+
+Corrections, no verdict changed: (1) on D2, A2's uplift over schema-only is +9.3, below S2's 10-point
+bar; the NO-GO condition needs two datasets to fail and only D2 does, so it is still not triggered,
+but the record now says so. (2) p95 is over 934 requests (one question asked by one persona), not
+934 questions. The record also gained "How firm the verdicts are": gate 2 holds under any reading
+(every arm's refusal interval ends below 90%), the kill criterion holds (B's lower bound 64.4%), and
+S2 on D1 rests on point estimates.
+
 ### For the owner
 
-1. **Read the decision record** and say whether the verdicts stand. The ADR 0016 status line is
-   changed in this PR; nothing else in the ADR is.
+1. **Decision record: final** (D23). The ADR 0016 status line is changed in this PR; nothing else in
+   the ADR is.
 2. **What next.** The record lists what the measurements point to (refusal and clarification are the
    gap; Auto Ontology's SQL is the most accurate). Choosing a direction is a backlog decision for you;
    per D2 I have designed nothing beyond the DG-E00 stories.
