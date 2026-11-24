@@ -15,6 +15,11 @@ The gateway itself (phase P1) may start only when all three hold:
 2. P0's decision record in `docs/releases/` shows the B8 thresholds met on at least one engine;
 3. a first database and user are named in this file.
 
+P0 outcome (2026-11-24): the proof ran, and gate 2 is **not met**. No engine met every B8 release
+threshold. The kill criterion was not triggered: the baseline engine scored 71.0% on D3, above 60%.
+Auto Ontology remains a conditional GO as an engine behind the gateway. See
+[`docs/releases/data-gateway-p0/decision-record.md`](../releases/data-gateway-p0/decision-record.md).
+
 This ADR replaces draft ADRs 0016 and 0018 in
 [`STRUCTURED_DATA_DECISION_AND_HANDOFF.md`](../research/data-analytics/proposals/STRUCTURED_DATA_DECISION_AND_HANDOFF.md)
 (part C). Draft ADR 0017 (first-party MCP servers) is not adopted: Neuron reaches the gateway

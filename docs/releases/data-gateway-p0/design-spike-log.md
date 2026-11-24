@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): in progress (D20, section 8). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record written; gate 2 not met (section 10, `decision-record.md`). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -177,6 +177,8 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D18 | 2026-11-23 | F6, as recommended: `GRANT EXECUTE ON set_config` to `d3_ao_reader` only, a recorded deviation from ADR 0016 decision 5 for Auto Ontology's login. Under A' no authorization depends on a setting; the login is read-only, a member of no role, and Auto Ontology rejects `set_config` in model-written SQL. Checked after the grant: read-only queries run, a write is refused, read-only cannot be turned off mid-transaction, `rep_compensation` is still denied. | Owner |
 | D19 | 2026-11-23 | Owner: "Accepted with your recommendation, start DG-00.05", then: continue with DG-00.05 and the remaining two stories, "take your decisions", stop and ask only if a very critical decision is required, and keep the PR updated. Read as: A2 stands as certified (`a2/certify.yaml`, `a2/columns.tsv`); F9 option (a), Auto Ontology measured as shipped with F9 recorded; decisions in DG-00.05 to DG-00.07 are delegated to Claude and recorded below as "Claude (delegated)". | Owner |
 | D20 | 2026-11-23 | DG-00.05 approach (section 8): same model in every arm; arm C on D3 and D1 reused from DG-00.03; arm B run as D16 decided (Ossie model plus physical columns); A1 and A2 asked through Auto Ontology's gateway with the caller line as `evidence`, their SQL re-run through the guard and the persona's executor; D2 is BIRD Mini-Dev's PostgreSQL edition, all 500 questions, with BIRD's evidence for every arm and Ossie models generated from BIRD's own documentation for arms B and A2; Ossie round trip in both directions through a version converter (F10). | Claude (delegated) |
+| D21 | 2026-11-24 | DG-00.06 approach (section 9): the gateway prototype replays the engine decisions of the DG-00.05 runs (all four arms) through the guard and the A' executor, so the safety run covers exactly what the accuracy table scores; a foreign-row probe runs in the same read-only transaction; all 60 adversarial cases (D6 doubled the backlog's 30); the 26 SQL cases also run with the guard bypassed; `nl2data-ref`'s guard-bypassed database tests are ported to the mart's A' hardening, each mapping stated. | Claude (delegated) |
+| D22 | 2026-11-24 | DG-00.07 reading rules (decision record): accuracy is read per question (right for every persona), with units beside it; "correct refusal" is the unanswerable questions; "wrong answers" counts every non-adversarial D3 unit; p95 is per question as measured (4 to 6 concurrent requests); only one model exists here, so "best available model" is that model. | Claude (delegated) |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -931,3 +933,156 @@ granted to this login (D18).
 | D2 oracle | The gold SQL through the guard and executor scores 485 of 487 scorable; 2 gold queries (B-122, B-133) use `AGE`, which the guard's allowlist does not include; both also depend on today's date, so their frozen answers hold for 2026-11-23 only |
 | D2 models | 11 generated Ossie models pass the pinned validator; `check_models.py` finds dangling foreign keys in BIRD's own data (codebase_community, formula_1, card_games, european_football_2), not model errors |
 | Auto Ontology | Connected to D3, D1 and the 11 D2 databases (`env.sh`, `AO_DATASETS=all`); the startup pass compiled 0 tables on D3 (its certified model untouched) and compiles D1 and D2 |
+| Incidents | The container restarted twice (22:28 and 00:44). Both times the session's HTTPS proxy moved to a new port, so Auto Ontology's model calls failed until the egress logger was pointed at it again, and with 13 databases attached it ran out of database connections (F14). Auto Ontology reports both failures as a refusal (F15). Records written in those windows were removed and re-asked: replies that were empty, or the generic refusal in under 3 s with no step trail. The runner now treats both as failures. `up.sh` and `resume.sh` in the scratchpad brought the stack back |
+
+### Results (spike `dg-p0/arms/runs/results.md`, at `8a264d8`)
+
+One model in every arm (`nvidia/nemotron-3-ultra-550b-a55b`); no stronger model and no non-NVIDIA
+endpoint exist here. Wilson 95% intervals. Every SQL answer from every arm went through the same
+guard and the persona's read-only executor.
+
+**D3** (200 answerable, 60 unanswerable, 40 ambiguous, 34 adversarial questions; 3 personas)
+
+| Measure | C | B (D16) | A1 | A2 |
+| --- | --- | --- | --- | --- |
+| Execution accuracy, questions (every persona right) | 146/200 = 73.0% [66.5, 78.7] | 142/200 = 71.0% [64.4, 76.8] | 158/200 = 79.0% [72.8, 84.1] | 179/200 = 89.5% [84.5, 93.0] |
+| Execution accuracy, units | 472/600 = 78.7% [75.2, 81.8] | 504/600 = 84.0% [80.8, 86.7] | 519/600 = 86.5% [83.5, 89.0] | 564/600 = 94.0% [91.8, 95.6] |
+| Accuracy where the engine wrote SQL | 82.2% | 84.6% | 87.4% | 95.2% |
+| Wrong answers without refusal or clarification (units) | 159/900 = 17.7% [15.3, 20.3] | 33/900 = 3.7% [2.6, 5.1] | 224/900 = 24.9% [22.2, 27.8] | 149/900 = 16.6% [14.3, 19.1] |
+| Correct refusals, unanswerable questions | 39/60 = 65.0% [52.4, 75.8] | 48/60 = 80.0% [68.2, 88.2] | 30/60 = 50.0% [37.7, 62.3] | 28/60 = 46.7% [34.6, 59.1] |
+| Correct refusals, no-access units | 16/16 | 16/16 | 15/16 | 14/16 |
+| Correct clarifications, ambiguous questions | 24/40 = 60.0% | 27/40 = 67.5% | 0/40 = 0.0% [0.0, 8.8] | 0/40 = 0.0% [0.0, 8.8] |
+| Adversarial questions handled correctly | 29/34 = 85.3% | 29/34 = 85.3% | 21/34 = 61.8% | 22/34 = 64.7% |
+| Adversarial units that followed a planted instruction | 0/34 | 0/34 | 0/34 | 0/34 |
+| Statements the guard rejected | 7 | 91 | 4 | 9 |
+| p95 latency per question | 33.7 s | 24.8 s | 79.3 s | 69.9 s |
+| Model calls | 934 | 951 | not observable | not observable |
+
+DG-00.03's model-only arm B, for reference: 48.0% of questions, 2.7% wrong answers, 80.0% refusals.
+
+**D1** (34 scorable of 39 questions, one reader)
+
+| Measure | C | B (D16) | A1 | A2 |
+| --- | --- | --- | --- | --- |
+| Execution accuracy | 7/34 = 20.6% [10.3, 36.8] | 9/34 = 26.5% [14.6, 43.1] | 15/34 = 44.1% [28.9, 60.6] | 14/34 = 41.2% [26.4, 57.8] |
+| Not answered (refused or clarified) | 18/34 | 16/34 | 0/34 | 1/34 |
+| Accuracy where the engine wrote SQL | 7/16 = 43.8% | 9/18 = 50.0% | 15/34 = 44.1% | 14/33 = 42.4% |
+| Wrong answers without refusal or clarification | 9/34 = 26.5% | 8/34 = 23.5% | 17/34 = 50.0% | 18/34 = 52.9% |
+| p95 latency | 21.0 s | 26.2 s | 105.6 s | 79.8 s |
+
+**D2, indicative only** (BIRD Mini-Dev, 487 scorable of 500, one reader; B and A2 from generated models)
+
+| Measure | C | B (D16) | A1 | A2 |
+| --- | --- | --- | --- | --- |
+| Execution accuracy | 248/487 = 50.9% [46.5, 55.3] | 270/487 = 55.4% [51.0, 59.8] | 301/487 = 61.8% [57.4, 66.0] | 293/487 = 60.2% [55.8, 64.4] |
+| Not answered | 64/487 | 28/487 | 2/487 | 1/487 |
+| Wrong answers without refusal or clarification | 32.2% | 35.1% | 36.1% | 38.2% |
+| p95 latency | 39.6 s | 43.7 s | 55.4 s | 62.2 s |
+
+### What the numbers say
+
+1. **Auto Ontology writes the most accurate SQL, and A2 is the only arm over 85% on D3** (89.5% of
+   questions; 95.2% when it writes SQL). Certification helps on D3 (A1 79.0% to A2 89.5%) and does
+   nothing measurable on D1 or D2, where the certified content is thinner (D2's is generated).
+2. **It answers almost everything, including what it should not.** It never asks to clarify (0 of 40
+   ambiguous questions, both A1 and A2: it has no clarify outcome), refuses only half of the
+   unanswerable questions, and so gives the most wrong answers presented as answers (16.6% and
+   24.9% of D3 units). On D1 it answers every question and half of its answers are wrong.
+3. **Arm B with physical columns (D16) is the safest engine.** 3.7% wrong answers, 80.0% refusals,
+   67.5% clarifications, the lowest latency. D16 lifted it from 48.0% to 71.0% of questions; 83 of its
+   91 guard rejections are still model field names written as columns (F5 shrinks, it does not
+   vanish).
+4. **Latency.** Auto Ontology's p95 is 70 to 106 s with 4 to 6 concurrent questions (several model
+   calls per question); arms B and C make one call and stay under 45 s.
+5. **No arm meets every release threshold** (section 10).
+
+### Findings
+
+- **F11. Certification does not travel.** Auto Ontology's export, native or Ossie, carries no
+  certification flag. After the A2 model went out as Ossie and back in, all 16 terms and all 13 SQL
+  attributes returned uncertified. A native import with `replace` skips items that already exist, so
+  it does not restore their descriptions either (`restore_a1.py` had to put A1's back through the API).
+- **F12. Ossie import limits.** (a) A model for a database Auto Ontology has already catalogued cannot
+  be imported (500: it tries to create a second catalog database with the same name). (b) Two
+  relationships between the same two tables, valid Ossie, fail the import (500), so
+  `assessments_to_assessor` cannot go in. (c) Dataset-scoped metrics are dropped: 9 of the hand
+  model's 12 metrics are lost; the 3 model-scoped ones survive. (d) The export writes SQL attributes as
+  Ossie fields holding aggregates, so it exports 0 metrics. (e) SQL attribute names are unique across
+  all databases ("Customer Count" in D1 clashed with D3's).
+- **F13. No clarify outcome.** Auto Ontology's pipeline ends in SQL, an information answer or
+  "unconstructable"; it never asks back. Every ambiguous question got one reading.
+- **F14. Connections and query history.** Each Auto Ontology worker opens a pool to every connected
+  database: with 13 databases, 100 connections on the mart and on its metadata store were not enough
+  (raised to 400), and the shortage showed up as empty answers, not errors. Its ingestion reads
+  "query history" from `pg_stat_activity`: for a plain login that is its own SQL (a small feedback loop
+  into suggested SQL attributes); a login with `pg_read_all_stats` would hand it every user's SQL.
+  It also failed to profile some WWI `_archive` tables (an indexing error in its key-value probe).
+- **F15. A failure looks like a refusal.** When its model calls fail, Auto Ontology answers "I couldn't
+  write a query that answers this question", the same text as a genuine refusal. A gateway counting
+  refusals must tell them apart (here: the reply's step trail is empty).
+
+### Ossie round trip (spike `dg-p0/roundtrip/out/report.md`)
+
+| Direction | Fields (dimensions) | Metrics | Other |
+| --- | --- | --- | --- |
+| Hand-written D3 (sales and skills merged) to Auto Ontology to Ossie | 77 of 77 kept | 3 kept (model-scoped: revenue, units sold, average order value); 9 lost (every dataset-scoped metric) | One relationship not importable (F12b); imported as `d3_hand` because `d3` cannot be (F12a); no certification in Ossie core (D13) |
+| Auto Ontology A2 to Ossie 0.3 to Auto Ontology to Ossie | 90 of 90 kept (77 fields and 13 SQL attributes, exported as fields) | none exported as metrics (F12d) | All certification lost (F11); the export fails the pinned validator as exported and passes after `convert_ossie.py` (F10) |
+
+S4 ("export, import and re-export keep every metric and dimension") **is not met**: dimensions
+survive, metrics and certification do not.
+
+### DG-00.05 against its acceptance criteria
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| Every arm, dataset and model has the DG-00.03 metrics with intervals | Met, for the one model available | `arms/runs/results.md`; tables above. Model calls for A1 and A2 are not observable; B and A2 on D2 use generated models |
+| Every metric and dimension of the round trip is kept or listed as lost | Met | `roundtrip/out/report.md`: 89 items of the hand model and 90 of Auto Ontology's, each listed |
+
+Deviations: no second, stronger model (none available); D2 runs on the PostgreSQL edition, not
+SQLite (the gateway and guard are PostgreSQL); B and A2 on D2 from generated models; A1 and A2
+asked through Auto Ontology's gateway and re-executed through Neuron's guard and executor.
+
+## 9. DG-00.06: safety prototype (2026-11-24, D21)
+
+Code: spike `dg-p0/safety/` (`gateway.py`, `cases.md`, `test_mart_bypass.py`).
+
+| Count (all must be zero) | Result |
+| --- | --- |
+| Mutating statements executed | **0** of 188 gateway runs |
+| Rows from another role's scope returned | **0** (probe of every regional table each statement read, in the same transaction) |
+| Planted instructions followed | **0** (34 question cases times 4 arms) |
+| Tables changed (md5 of every table, before and after) | **0** |
+
+- **Question cases (34, four arms each, 136 runs).** Engine decisions replayed from DG-00.05; 98 wrote
+  SQL, which went through the guard and the executor; the rest refused or asked back.
+- **SQL cases (26).** Through the gateway the guard rejected 20 and allowed 6 read-only probes, which
+  returned no foreign rows. With the guard bypassed, the database refused 19 (read-only transaction,
+  permission denied on the confidential tables, `set_config`, role switching, file reads and COPY) and
+  the other 7 returned only the persona's own rows. Every case ended as its file expects.
+- **Guard-bypassed database tests.** `nl2data-ref`'s seven tests (13 cases with parameters) ported to
+  the mart: **13 passed**. Two expectations differ and are stated in the file: a multi-statement call
+  fails on its DROP (read-only) rather than on the protocol, and `app.set_claims` does not exist under
+  A'. A negative control shows the tests can fail: `set_config` succeeds for `d3_ao_reader`, the one
+  login granted it (D18).
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| Zero mutating statements, zero rows from another role's scope, zero planted instructions followed; each case listed | Met | `safety/cases.md`, `safety/results.json` |
+| With the guard bypassed, every database test on the mart passes | Met | `safety/test_mart_bypass.py`, `safety/bypass_tests.txt` |
+
+## 10. DG-00.07: decision record (2026-11-24, D22)
+
+The one-page record is [`decision-record.md`](decision-record.md). In short: **gate 2 of ADR 0016
+is not met**; no engine meets every release threshold. The kill criterion does not apply (the baseline,
+arm B, is 71.0%, above 60%). Auto Ontology stays a conditional GO as an engine behind the gateway,
+not a full GO. ADR 0016's status names the outcome and the date.
+
+### For the owner
+
+1. **Read the decision record** and say whether the verdicts stand. The ADR 0016 status line is
+   changed in this PR; nothing else in the ADR is.
+2. **What next.** The record lists what the measurements point to (refusal and clarification are the
+   gap; Auto Ontology's SQL is the most accurate). Choosing a direction is a backlog decision for you;
+   per D2 I have designed nothing beyond the DG-E00 stories.
+3. **ADR 0016 corrections (D14)** are still to draft: decision 5 (F6, D18), certification outside core
+   Ossie (D13, F11), and now the round-trip limits (F12).
