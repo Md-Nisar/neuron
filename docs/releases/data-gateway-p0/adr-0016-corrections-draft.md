@@ -1,8 +1,8 @@
-# ADR 0016 corrections: draft for owner approval
+# ADR 0016 corrections (approved and applied)
 
 | Field | Value |
 | --- | --- |
-| Status | **Draft.** Nothing here is applied to ADR 0016 until the owner approves it (D14, D29) |
+| Status | **Approved and applied** to ADR 0016 on 2026-11-25, all five corrections (D30). Drafted under D14 and D29 |
 | Date | 2026-11-25 |
 | Source | The P0 spike: [`design-spike-log.md`](design-spike-log.md), findings F1, F6, F9, F11, F12; decisions D13, D18, D28 |
 | Changes | Decision 3 (one sentence), decision 5 (replaced), decision 7 (two bullets), decision 8 (one sentence), one new consequence. Status, context, product requirement and every other decision are unchanged |
