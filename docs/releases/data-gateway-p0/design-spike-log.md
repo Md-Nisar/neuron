@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Follow-up, opportunity 1 (D24): estimated offline (section 11). Opportunity 2 (D25): value check, estimated offline with one new model call per question (section 12); upstream 1.3.0 release checked (section 13). Live T4 (D26, D27): run on a D3 sample and a fresh set, gate 2 still not met (section 14). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Follow-up, opportunity 1 (D24): estimated offline (section 11). Opportunity 2 (D25): value check, estimated offline with one new model call per question (section 12); upstream 1.3.0 release checked (section 13). Live T4 (D26, D27): run on a D3 sample and a fresh set, gate 2 still not met (section 14). Owner rule on out-of-region values and value check v4 (D28): rescored, gate 2 still not met (section 15). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -184,6 +184,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D25 | 2026-11-24 | Owner: "Accepted with your recommendation, start opportunity 2". Read as: build the sharper refusal gate as a value check (every leaked unanswerable D3 question names a value the data lacks), estimate it offline on top of arm T with one extraction call per question, score with the unchanged scorer, keep D2 as the holdout; decision record unchanged (section 12) | Owner |
 | D26 | 2026-11-24 | Owner: "Accepted with your recommendation, start the live T4 run". Read as: run T4 live, not composed: arm B's call also names the values (no separate extraction call), the gateway checks them (v3 lookup), and A2 is asked live only when both pass; every step timed. On all 934 D3 units and on a fresh D3 set written before any live result: 40 unanswerable questions (D3's kinds) and 40 answerable controls aimed at the check's weak spots (split names, codes, plurals, negation, values outside a persona's regions). Expected answers and second annotation by `batch.py`, disagreements adjudicated by Claude and logged (as from D12), file hashes recorded before the run; kept in `d3/fresh.jsonl`, D3's 300 unchanged. Auto Ontology restarted at `7dac5ff7` with A2 re-applied (section 14); scorer unchanged; decision record unchanged | Owner |
 | D27 | 2026-11-24 | Owner, asked when the free tier allowed about 30 live units an hour (61 of 934 done after 4 hours, about 37 hours in all): "Sample, then stop". Read as: a stratified D3 sample drawn with seed 20261124 and committed before any live unit was scored (spike `8465c81`, `d3/live-sample.json`): 30 answerable, 15 unanswerable and 10 ambiguous questions, half sales and half skills, every persona of each, plus all 34 adversarial cases, 199 units; units already run are reused, not asked again; the whole fresh set. On 2026-11-25, after a container restart removed `LLM_API_KEY` from the environment, the owner chose "Use NVIDIA_API_KEY": same provider and model, mapped inside the run's processes only; the last 60 fresh units ran with it | Owner |
+| D28 | 2026-11-25 | Owner, on section 14's questions: "We can ignore latency for now because of free tier. And value outside region shall repsond with refuse". Read as: (1) a question naming a value whose rows all sit outside the caller's regions expects a refusal; the D3 and fresh expectations are changed by a script (`d3/scope_rule.py`; 2 and 16 units, all previously 0 or empty), an owner change to frozen sets, with hashes logged; (2) the value check enforces it (v4, region step under the persona, no cross-region lookup), measured by replaying the recorded live values, no model calls; (3) latency is set aside, not waived: B8 is unchanged and the decision record stays final. The section 14 p95s were corrected to the scorer's values (352 s, 90 s, 57 s) (section 15) | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -1329,7 +1330,7 @@ expects a refusal, as D3's K-U-022 does (`d3/batches/fresh-adjudication.md`).
 | Answerable units not answered | 8.9% | 8.9% | **19.2% [13.1, 27.1]** |
 | Accuracy where SQL was written | 96.3% | 98.8% | 100% (96/96) |
 | S3: planted instruction followed, tables changed | 0, none | 0, none | n/a (no adversarial cases), none |
-| p95, at most 45 s (sequential; parallel) | 345 s; 274 s | 92 s; 58 s | 222 s; 200 s |
+| p95, at most 45 s (sequential; parallel) | 352 s; 275 s | 90 s; 57 s | 222 s; 200 s |
 
 - **Live matches the offline estimate on D3.** Same questions right, same refusals; 20 of the 199
   units differ, in both directions. 6 A2 units still gave the canned reply after 6 attempts, which
@@ -1367,7 +1368,7 @@ expects a refusal, as D3's K-U-022 does (`d3/batches/fresh-adjudication.md`).
 | A2, units retried | 52 of 118 | 33 of 99 |
 | Value check, slowest unit | 0.04 s | 0.06 s |
 
-The measured p95s (345 s and 222 s) are mostly waits for the rate limit. A2's first attempts are
+The measured p95s (352 s and 222 s) are mostly waits for the rate limit. A2's first attempts are
 slow too, because Auto Ontology retries its own rate-limited calls internally, where the runner
 cannot see them. What the run does show: folding the values into B's call costs nothing
 measurable, since B is 33 s at p95 when it is not throttled, against 59.5 s for section 12's separate
@@ -1386,7 +1387,7 @@ extraction call, and the lookups are free. The latency threshold needs a provide
   persona scope and stored forms. Split names, plurals, codes and negation, which were fixed in
   v3 or are B's job, caused no false refusal.
 
-### For the owner
+### For the owner (answered in D28, section 15: refuse; latency set aside for now)
 
 1. **Out-of-scope values: refuse with a reason, or answer 0?** If refuse, the D3 and fresh
    expectations for those units change (an owner change to frozen sets, logged). If answer 0, the
@@ -1395,3 +1396,80 @@ extraction call, and the lookups are free. The latency threshold needs a provide
    and B's prompt needs the same rule.
 2. Should a later run use a **paid or self-hosted endpoint**, so that latency is measured rather
    than rate-limited?
+
+## 15. Owner rule: values outside the caller's regions are refused (2026-11-25, D28)
+
+The owner settled section 14's two questions: **a question about a value outside the caller's
+regions is refused**, and **latency is set aside for now**, because the free tier cannot measure it.
+B8's latency threshold is not waived; it stays open until a run on an unthrottled endpoint.
+
+### The rule, applied to the frozen sets
+
+`d3/scope_rule.py` (spike `266bd74`) applies the rule without judgment calls. Each text value the
+reference SQL compares with `=` or `IN` is placed in its regions, counted across all rows (every
+table that holds named values has `region_id`; products, skills and cycles have none and are
+shared). If none of those regions is the persona's, that persona's expectation becomes a refusal,
+in the scorer's existing no-access form, with the old expectation kept beside it. The scorer is
+unchanged, and its self-test passes.
+
+| Set | Units changed | Examples |
+| --- | --- | --- |
+| D3 (`questions.jsonl`) | 2 | Customers in Germany (APAC analyst), revenue from Japan (EMEA analyst) |
+| Fresh (`fresh.jsonl`) | 16 | Nova Motors SA, Fatima Varga, Brazil, "reps based in the Americas" |
+
+Every changed unit previously expected 0 or empty. The rule covers two cases: values row-level
+security hides (customers, staff, departments), and reference values every persona can read but
+that belong to another region (countries, regions). The second case is wider than section 14's
+framing ("a value the caller cannot see"): read narrowly, "0 customers in Germany" would stay a
+valid answer for the APAC analyst. It follows the owner's wording, "value outside region". Hashes
+before and after are in `d3/batches/fresh-adjudication.md`. Scores made before D28 stand as
+recorded.
+
+### Value check v4
+
+Under the new expectations, T4 already refused 14 of the 16 fresh units, from B or from v3's
+lookup. It answered 0 on Brazil (S-FA-12, both analysts) and, offline, on Germany (S-A-084),
+because the countries table is readable by every persona, so the lookup found the value. **v4**
+adds one step: when the value's table has `region_id`, the same lookup (under the persona, through
+the guard) returns the regions it can see. If none is the caller's, it refuses: "Brazil" belongs to
+AMER, outside the regions you can see. This needs no lookup outside the persona's scope. A value
+row-level security hides still returns no row, and the reply ("not in the data you can see")
+does not confirm it exists elsewhere. So section 14's safety-review line is not needed.
+
+v4 was measured by replaying each run's recorded values through it (`arms/t4_v4.py`, no model
+calls). B's output and the values are unchanged, and v4 can only add refusals, so the replay is
+exact for every unit except the latency of the A2 calls it saves.
+
+| Run (unchanged scorer) | Questions, at least 85% | Units | Wrong answers, at most 5% | Correct refusal, at least 90% | Out-of-region refused |
+| --- | --- | --- | --- | --- | --- |
+| Fresh, live, before D28 | 24/40 = 60.0% | 80.0% | 0.4% | 36/40 = 90.0% | n/a |
+| Fresh, live, D28 expectations | 32/40 = 80.0% [65.2, 89.5] | 90.0% | 0.4% | 90.0% | 14/16 |
+| **Fresh, live, D28 plus v4** | **33/40 = 82.5% [68.0, 91.2]** | 91.7% [85.3, 95.4] | 0.4% [0.1, 2.3] | **36/40 = 90.0% [77.0, 96.0]** | 16/16 |
+| D3 sample, live, D28 plus v4 | 25/30 = 83.3% [66.4, 92.7] | 92.2% | 4.2% | 13/15 = 86.7% | none in the sample |
+| **D3, all 934 units, offline T4, D28 plus v4** | **174/200 = 87.0% [81.6, 91.0]** | 93.3% | 4.0% [2.9, 5.5] | **55/60 = 91.7% [81.9, 96.4]** | 2/2 |
+
+On all of D3, v4 changed one decision (Germany) and refused no answerable unit, so it caused no
+false refusal. On fresh, every SQL answer T4 wrote is right (94/94). The scorer's "not answered"
+measure now includes the correct out-of-region refusals. Without them, 10 of 120 fresh answerable
+units (8.3%) went unanswered wrongly, down from 23 in section 14.
+
+### What is left on the fresh set (7 questions)
+
+| Cause | Questions | Units |
+| --- | --- | --- |
+| B asks to clarify a question with one reasonable reading | K-FA-01, K-FA-05, K-FA-16 | 4 |
+| Value check: extraction gives "27-inch monitors" for the stored "Monitor 27in" | S-FA-13 | 3 |
+| A2 gave the canned reply after 6 attempts, probably rate limits (F15) | K-FA-07, S-FA-01 | 2 |
+| B's reply unparsed | S-FA-11 | 1 |
+
+### What it means (not a decision)
+
+- **Gate 2 is still not met; the decision record stands unchanged.** Setting latency aside, T4
+  meets every other B8 threshold on all of D3 (offline, and D3 is the set the check was designed
+  on). Live, it does not: fresh accuracy is 82.5% against 85%, and the D3 sample's 15 unanswerable
+  questions show 86.7%. Every interval includes the threshold, so neither set settles it either way.
+- **The owner rule costs nothing and makes the check simpler.** It turned 16 fresh "false
+  refusals" into correct ones, and v4 enforces it in code instead of relying on B's prompt.
+- **Three of the seven fresh misses are free-tier failures** (canned or unparsed replies). If a
+  rerun on an unthrottled endpoint answered them correctly, fresh would reach 36/40. That is a
+  projection, not a measurement. The same rerun would measure latency.
