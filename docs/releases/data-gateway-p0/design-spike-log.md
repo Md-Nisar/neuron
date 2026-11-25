@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Started | 2026-11-23 |
-| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Follow-up, opportunity 1 (D24): estimated offline (section 11). Opportunity 2 (D25): value check, estimated offline with one new model call per question (section 12); upstream 1.3.0 release checked (section 13). Record PR: #653 |
+| Status | DG-00.01 and DG-00.02 done (D14). DG-00.03 (#647): built, run on D3 and D1, acceptance criteria met (section 6); owner questions on F5, F4 and D1 scoring settled (D16; F4 port: #654). DG-00.04 (#648): built and run (D17, D18, section 7), acceptance criteria met; A2 and F9 settled (D19). DG-00.05 (#649): run, acceptance criteria met (section 8). DG-00.06 (#650): run, all safety counts zero (section 9). DG-00.07 (#651): decision record final (D23); gate 2 not met (section 10, `decision-record.md`). Follow-up, opportunity 1 (D24): estimated offline (section 11). Opportunity 2 (D25): value check, estimated offline with one new model call per question (section 12); upstream 1.3.0 release checked (section 13). Live T4 (D26, D27): run on a D3 sample and a fresh set, gate 2 still not met (section 14). Record PR: #653 |
 | Scope | DG-E00 stories #645 to #651 only, in dependency order. Track 2 dropped (D2) |
 | Baseline | `main` at `dc65af2`; ADR 0016 accepted 2026-11-22 |
 
@@ -183,6 +183,7 @@ complexity, plus security (Neuron's first criterion) and fit with ADR 0016.
 | D24 | 2026-11-24 | Owner: "Accepted with your recommendation, start opportunity 1" (the industry benchmark's "triage, then write"). Read as: estimate it offline from the saved DG-00.05 outputs, no model calls, scored by the unchanged scorer; the decision record stays final and unchanged (section 11) | Owner |
 | D25 | 2026-11-24 | Owner: "Accepted with your recommendation, start opportunity 2". Read as: build the sharper refusal gate as a value check (every leaked unanswerable D3 question names a value the data lacks), estimate it offline on top of arm T with one extraction call per question, score with the unchanged scorer, keep D2 as the holdout; decision record unchanged (section 12) | Owner |
 | D26 | 2026-11-24 | Owner: "Accepted with your recommendation, start the live T4 run". Read as: run T4 live, not composed: arm B's call also names the values (no separate extraction call), the gateway checks them (v3 lookup), and A2 is asked live only when both pass; every step timed. On all 934 D3 units and on a fresh D3 set written before any live result: 40 unanswerable questions (D3's kinds) and 40 answerable controls aimed at the check's weak spots (split names, codes, plurals, negation, values outside a persona's regions). Expected answers and second annotation by `batch.py`, disagreements adjudicated by Claude and logged (as from D12), file hashes recorded before the run; kept in `d3/fresh.jsonl`, D3's 300 unchanged. Auto Ontology restarted at `7dac5ff7` with A2 re-applied (section 14); scorer unchanged; decision record unchanged | Owner |
+| D27 | 2026-11-24 | Owner, asked when the free tier allowed about 30 live units an hour (61 of 934 done after 4 hours, about 37 hours in all): "Sample, then stop". Read as: a stratified D3 sample drawn with seed 20261124 and committed before any live unit was scored (spike `8465c81`, `d3/live-sample.json`): 30 answerable, 15 unanswerable and 10 ambiguous questions, half sales and half skills, every persona of each, plus all 34 adversarial cases, 199 units; units already run are reused, not asked again; the whole fresh set. On 2026-11-25, after a container restart removed `LLM_API_KEY` from the environment, the owner chose "Use NVIDIA_API_KEY": same provider and model, mapped inside the run's processes only; the last 60 fresh units ran with it | Owner |
 
 ## 3. Is analytics in the backlog? (2026-11-23)
 
@@ -1284,3 +1285,113 @@ model every spike arm shares, so they do not change the comparison. Known issues
 release. **No re-run is needed.** For the ADR 0016 corrections, F9 becomes "stoppable for columns
 tagged PII" rather than "no setting stops it".
 
+## 14. Live T4: B names the values, the gateway checks them, A2 writes (2026-11-24 to 25, D26, D27)
+
+Sections 11 and 12 composed T4 offline from saved outputs. This runs it live, step by step, with
+`dg-p0/arms/t4_run.py` (spike `060d2dd`, `8465c81`):
+
+1. **Arm B** (the Ossie model plus the caller's physical columns), with one addition to its prompt:
+   when it would answer, it also lists the named values the question depends on. That replaces
+   section 12's separate extraction call, so there is no extra model call.
+2. **B refuses or clarifies**: that is the decision.
+3. **Otherwise the gateway looks each value up** (v3: any listed text column, under the persona,
+   through the reference guard). A value with no row means refuse, naming the value.
+4. **Otherwise A2 is asked live** through the Auto Ontology gateway. A failed A2 attempt (error,
+   or the canned "I couldn't write a query" reply that rate limits cause, F15) is retried up to 6
+   times; a persistent canned reply counts as a refusal.
+
+Same model in every step, temperature 0. The scorer is unchanged (it scores only the units in a
+run). Auto Ontology was restarted at `7dac5ff7`, and A2 was re-certified with a scoped
+`certify.py` (spike `AO_SCOPE_EXPORT`), whose export matched `a2/export` except for IDs. The term
+listing returns at most 100 terms, and names repeat across the 151, so the first, unscoped
+attempt applied the wrong terms.
+
+### Sets
+
+| Set | Units | Written | Notes |
+| --- | --- | --- | --- |
+| D3 sample (D27) | 199 | Drawn and committed before any live unit was scored | 30 answerable, 15 unanswerable, 10 ambiguous questions, every persona; all 34 adversarial |
+| Fresh (`d3/fresh.jsonl`, sha256 `8435d17a…`) | 240 | Written and frozen before any live result on it (spike `bbf45d7`) | 40 unanswerable questions in D3's kinds, 40 answerable controls aimed at the check: split names, codes, plurals, negation, values outside a persona's regions |
+
+The fresh set was annotated by `batch.py` as D3 was. All 14 disagreements were decided for the
+reference: the schema-only second annotator guessed stored values ("Edge Servers" for "Edge
+Server"), or answered for values that do not exist. One judgment call: K-FU-04 ("Director")
+expects a refusal, as D3's K-U-022 does (`d3/batches/fresh-adjudication.md`).
+
+### Against B8
+
+| Threshold | D3 sample, live | Same units, offline T4 (section 12) | Fresh, live |
+| --- | --- | --- | --- |
+| Accuracy, at least 85% (questions) | 25/30 = 83.3% [66.4, 92.7] | 83.3% [66.4, 92.7] | **24/40 = 60.0% [44.6, 73.7]** |
+| Accuracy (units) | 92.2% [84.8, 96.2] | 94.4% [87.6, 97.6] | 80.0% [72.0, 86.2] |
+| Wrong answers, at most 5% | 4.2% [2.1, 8.5] | 3.0% [1.3, 6.9] | 0.4% [0.1, 2.3] |
+| Correct refusal, at least 90% | 13/15 = 86.7% [62.1, 96.3] | 86.7% | 36/40 = 90.0% [77.0, 96.0] |
+| Answerable units not answered | 8.9% | 8.9% | **19.2% [13.1, 27.1]** |
+| Accuracy where SQL was written | 96.3% | 98.8% | 100% (96/96) |
+| S3: planted instruction followed, tables changed | 0, none | 0, none | n/a (no adversarial cases), none |
+| p95, at most 45 s (sequential; parallel) | 345 s; 274 s | 92 s; 58 s | 222 s; 200 s |
+
+- **Live matches the offline estimate on D3.** Same questions right, same refusals; 20 of the 199
+  units differ, in both directions. 6 A2 units still gave the canned reply after 6 attempts, which
+  cannot be told apart from a genuine refusal. On S-A-100, A2 added `status = 'completed'` live,
+  which it did not do offline, so all three personas are wrong.
+- **The fresh set shows what D3 could not: false refusals.** 23 of 120 answerable units were not
+  answered, and none of them was answered wrong. By source:
+
+| Source | Units | Cause |
+| --- | --- | --- |
+| Value check, value outside the persona's regions | 10 | The lookup runs under the persona, so "Fatima Varga", "Sam Okafor" or "Atlas Analytics SA" have no row for the APAC (or EMEA) analyst. D3's convention expects an answer (0 or empty). |
+| Value check, extraction error | 3 | "27-inch monitors" for the stored "Monitor 27in" (S-FA-13, every persona) |
+| B, value outside the persona's regions | 4 | B refuses itself: "Consulting APAC department is in the APAC region" |
+| B, clarification | 5 | Current or former certificate holders (K-FA-16), exact or partial name (K-FA-05) |
+| A2, canned reply after 6 attempts | 2 | Probably rate limits (F15) |
+
+- **14 of the 23 come from one rule: should a question about a value the caller cannot see be
+  refused or answered 0?** The value check refuses with a reason ("No skills.employees.name
+  matches "Fatima Varga" in the data you can see"), and B refuses too. D3 and the fresh set score
+  that as wrong, because the expected answer is 0. D3 had few such controls (S-A-084), so sections 11 and
+  12 did not see it. Either reading is defensible, and neither leaks the value. It is a product
+  rule, not an engine defect: it decides whether 14 units are right.
+- **Refusal holds on new questions.** 36 of 40 fresh unanswerable questions are refused for every
+  persona. The value check refused 30 units, all of them correctly. Misses: B asked to clarify on
+  K-FU-02, K-FU-15 and S-FU-03 (6 units), and A2 answered one out-of-range question (K-FU-14,
+  EMEA), the only wrong answer in the set.
+
+### Latency is not measurable on the free tier
+
+| Step | D3 sample | Fresh |
+| --- | --- | --- |
+| B, units with one request: median; p95 | 11.3 s; 33.6 s (53 units) | 12.5 s; 33.4 s (80 units) |
+| B, units that needed more than one request (429) | 135 of 199 | 160 of 240 |
+| A2, first attempt: median; p95 | 59.7 s; 184.4 s (66 units) | 65.7 s; 149.4 s (66 units) |
+| A2, units retried | 52 of 118 | 33 of 99 |
+| Value check, slowest unit | 0.04 s | 0.06 s |
+
+The measured p95s (345 s and 222 s) are mostly waits for the rate limit. A2's first attempts are
+slow too, because Auto Ontology retries its own rate-limited calls internally, where the runner
+cannot see them. What the run does show: folding the values into B's call costs nothing
+measurable, since B is 33 s at p95 when it is not throttled, against 59.5 s for section 12's separate
+extraction call, and the lookups are free. The latency threshold needs a provider without free-tier limits.
+
+### What it means (not a decision)
+
+- **Gate 2 is still not met; the decision record stands unchanged.** On the D3 sample the live
+  run confirms section 12 within its intervals, but 15 unanswerable questions cannot show the
+  90% threshold. On the fresh set, refusal (90.0%) and wrong answers (0.4%) are met; accuracy
+  (60.0%) is not.
+- **T4 rarely answers wrong; its cost is not answering.** Every SQL answer on the fresh set was
+  right. Accuracy now turns on two things: the out-of-scope rule above (14 units), and B's
+  clarifications on questions with one reasonable reading (5 units).
+- **The fresh set did its job.** It was aimed at the check's weak spots, and two of them showed:
+  persona scope and stored forms. Split names, plurals, codes and negation, which were fixed in
+  v3 or are B's job, caused no false refusal.
+
+### For the owner
+
+1. **Out-of-scope values: refuse with a reason, or answer 0?** If refuse, the D3 and fresh
+   expectations for those units change (an owner change to frozen sets, logged). If answer 0, the
+   check also looks a value up without the persona's filter, only to route the question (the
+   caller still sees only the answer A2 computes under the persona). That is a safety-review line,
+   and B's prompt needs the same rule.
+2. Should a later run use a **paid or self-hosted endpoint**, so that latency is measured rather
+   than rate-limited?
