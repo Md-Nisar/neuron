@@ -122,7 +122,11 @@ _ANN_SETTINGS = (
     " set_config('enable_bitmapscan', 'off', true), set_config('enable_sort', 'off', true)"
 )
 # A web page's URL and fetch time, for its citations (RAG-10.02); NULL for a file.
-WEB_SOURCE = "CASE WHEN d.source_type = 'web' THEN d.source_ref END AS source_url, d.fetched_at"
+# Query parameters are stripped so signed tokens in a fetched URL never leak into citations.
+WEB_SOURCE = (
+    "CASE WHEN d.source_type = 'web' THEN split_part(d.source_ref, '?', 1) END AS source_url,"
+    " d.fetched_at"
+)
 _PASSAGES = (
     "SELECT c.chunk_id, c.doc_id, c.kb_id, d.title, c.ordinal, c.text, c.headings,"
     " c.page_start, c.page_end, "
@@ -289,8 +293,23 @@ class Retriever:
                 bases = await self._bases(conn, owner_key, roles, kb_ids)
             profile_id, model = self._model(bases)
             if model is not None and self._dense_bases(bases, profile_id, model):
+                embed_timeout = max(
+                    1.0,
+                    min(
+                        float(self._settings.knowledge_embedding_timeout_seconds),
+                        float(self._settings.tool_timeout_seconds)
+                        - float(self._settings.knowledge_reranker_timeout_seconds)
+                        - 2.0,
+                    ),
+                )
                 try:
-                    values = await model.embed_query(query, owner=owner_key)
+                    async with asyncio.timeout(embed_timeout):
+                        values = await model.embed_query(query, owner=owner_key)
+                except TimeoutError as exc:
+                    if mode == "dense":
+                        raise EmbeddingError("embedding_timeout", retryable=True) from exc
+                    log.warning("knowledge_search_dense_skipped", error_code="embedding_timeout")
+                    metrics.record_knowledge_search_degraded("dense_skipped", "embedding_timeout")
                 except EmbeddingError as exc:
                     if mode == "dense":
                         raise
@@ -467,18 +486,25 @@ class Retriever:
         bases: Sequence[dict[str, Any]],
         query: str,
     ) -> list[list[uuid.UUID]]:
-        """One ranking per text-search config among the bases (`simple` unless set). A base's
-        config is fixed when it is created, so its chunks' `tsv` were built with the same one."""
+        """One combined FTS ranking across all base text-search configs, weighted by rank
+        so multi-language bases do not multiply RRF weight."""
         by_config: dict[str, list[uuid.UUID]] = {}
         for row in bases:
             by_config.setdefault(row["ts_config"], []).append(row["kb_id"])
-        rankings: list[list[uuid.UUID]] = []
+        scores: dict[uuid.UUID, float] = {}
         for config, kbs in sorted(by_config.items()):
             cursor = await conn.execute(
                 _FTS, {"kbs": kbs, "cfg": config, "q": query, "n": CANDIDATES}
             )
-            rankings.append([row["chunk_id"] for row in await cursor.fetchall()])
-        return rankings
+            for rank, row in enumerate(await cursor.fetchall(), 1):
+                cid = row["chunk_id"]
+                scores[cid] = max(scores.get(cid, 0.0), 1.0 / (RRF_K + rank))
+        if not scores:
+            return []
+        ranked = [
+            cid for cid, _ in sorted(scores.items(), key=lambda pair: (-pair[1], str(pair[0])))
+        ]
+        return [ranked[:CANDIDATES]]
 
     @staticmethod
     async def _passages(

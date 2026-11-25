@@ -121,7 +121,8 @@ _DOCUMENT_FILTER = (
 _DOCUMENT_COLUMNS = (
     "SELECT d.doc_id, d.kb_id, d.title, d.mime_type, d.size_bytes, d.page_count, d.status,"
     " d.error_code, d.created_at, d.updated_at,"
-    " CASE WHEN d.source_type = 'web' THEN d.source_ref END AS source_url, d.fetched_at"
+    " CASE WHEN d.source_type = 'web' THEN split_part(d.source_ref, '?', 1) END AS source_url,"
+    " d.fetched_at"
 )
 _DOCUMENT = _DOCUMENT_COLUMNS + _DOCUMENT_FILTER + " AND d.doc_id = %(doc)s"
 _FILE = (
@@ -160,14 +161,19 @@ _TABLE_FILTER = (
     " WHERE d.kb_id = ANY(%(kbs)s) AND b.deleted_at IS NULL"
     " AND d.deleted_at IS NULL AND d.status = 'ready'"
 )
-# Up to 10 tables, the most query words in their title, name or columns first, then the newest.
+# Up to 10 tables, the most query words in their title, name or column names first, then newest.
 _FIND_TABLES = (
-    "SELECT t.doc_id, t.position, d.title, t.name, t.columns, t.row_count,"  # noqa: S608  # nosec B608 - constants only
-    " jsonb_path_query_array(t.rows, '$[0 to 2]') AS sample"
+    "WITH ranked AS ("  # noqa: S608  # nosec B608 - constants only
+    " SELECT t.doc_id, t.position, d.title, t.name, t.columns, t.row_count, d.updated_at,"
+    " jsonb_path_query_array(t.rows, '$[0 to 2]') AS sample,"
+    " (SELECT count(*) FROM unnest(%(words)s::text[]) w"
+    " WHERE strpos(lower(d.title || ' ' || t.name || ' ' || coalesce("
+    "(SELECT string_agg(elem->>'name', ' ') FROM jsonb_array_elements(t.columns) elem), '')),"
+    " w) > 0) AS hits"
     + _TABLE_FILTER
-    + " ORDER BY (SELECT count(*) FROM unnest(%(words)s::text[]) w"  # nosec B608 - a bound parameter
-    " WHERE strpos(lower(d.title || ' ' || t.name || ' ' || t.columns::text), w) > 0) DESC,"
-    " d.updated_at DESC, t.doc_id, t.position LIMIT 10"
+    + ") SELECT doc_id, position, title, name, columns, row_count, sample FROM ranked"
+    " WHERE coalesce(array_length(%(words)s::text[], 1), 0) = 0 OR hits > 0"
+    " ORDER BY hits DESC, updated_at DESC, doc_id, position LIMIT 10"
 )
 _TABLE = (
     "SELECT d.title, t.name, t.columns, t.rows"

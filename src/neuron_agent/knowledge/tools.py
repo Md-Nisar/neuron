@@ -125,17 +125,30 @@ def _calls(messages: Sequence[Any], name: str) -> int:
     )
 
 
-def _search_key(args: Any) -> tuple[str, tuple[str, ...]] | None:
+def _search_key(
+    args: Any, scope: frozenset[uuid.UUID] | None = None
+) -> tuple[str, tuple[str, ...]] | None:
     if not isinstance(args, dict) or not isinstance(args.get("query"), str):
         return None
     kb_ids = args.get("kb_ids") or ()
     if not isinstance(kb_ids, list | tuple):
         return None
+    if scope is not None:
+        allowed = {str(kb).lower() for kb in scope}
+        scoped = [str(kb).lower() for kb in kb_ids if str(kb).lower() in allowed]
+        effective = scoped or sorted(allowed)
+    else:
+        effective = [str(kb).lower() for kb in kb_ids]
     query = " ".join(args["query"].lower().split())
-    return query, tuple(sorted(str(kb).lower() for kb in kb_ids))
+    return query, tuple(sorted(set(effective)))
 
 
-def _repeated(messages: Sequence[Any], call_id: str | None, args: dict[str, Any]) -> bool:
+def _repeated(
+    messages: Sequence[Any],
+    call_id: str | None,
+    args: dict[str, Any],
+    scope: frozenset[uuid.UUID] | None = None,
+) -> bool:
     """Whether a search call made before this one in the run, including one earlier in the
     same model turn, asked the same query (ignoring case and spacing) of the same bases. The
     result limit is ignored: a larger one returns mostly the same passages. A call that failed
@@ -143,7 +156,7 @@ def _repeated(messages: Sequence[Any], call_id: str | None, args: dict[str, Any]
     cannot be told apart, so nothing is refused."""
     if call_id is None:
         return False
-    key = _search_key(args)
+    key = _search_key(args, scope)
     failed = {
         m.tool_call_id for m in messages if isinstance(m, ToolMessage) and m.status == "error"
     }
@@ -156,7 +169,7 @@ def _repeated(messages: Sequence[Any], call_id: str | None, args: dict[str, Any]
             if (
                 call["name"] == "search_knowledge"
                 and call.get("id") not in failed
-                and _search_key(call["args"]) == key
+                and _search_key(call["args"], scope) == key
             ):
                 return True
     return False
@@ -164,17 +177,27 @@ def _repeated(messages: Sequence[Any], call_id: str | None, args: dict[str, Any]
 
 def _capped(items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
     """The framed block, within `MAX_CHARS`: later items are dropped first, then the text of
-    the one left is shortened."""
+    the one left is shortened via binary search so multibyte or escaped characters keep the
+    longest valid prefix."""
     items = [dict(item) for item in items]
     while True:
         text = frame(_PREAMBLE, "knowledge", items)
-        excess = len(text) - MAX_CHARS
-        if excess <= 0:
+        if len(text) <= MAX_CHARS:
             return text, items
         if len(items) > 1 or not items[0].get("text"):
             items.pop()  # one item whose other fields are too long is dropped too
         else:
-            items[0]["text"] = items[0]["text"][: max(0, len(items[0]["text"]) - excess)]
+            raw = items[0]["text"]
+            lo, hi = 0, len(raw)
+            while lo < hi:
+                mid = (lo + hi + 1) // 2
+                items[0]["text"] = raw[:mid]
+                if len(frame(_PREAMBLE, "knowledge", items)) <= MAX_CHARS:
+                    lo = mid
+                else:
+                    hi = mid - 1
+            items[0]["text"] = raw[:lo]
+            return frame(_PREAMBLE, "knowledge", items), items
 
 
 def _minted(
@@ -314,11 +337,11 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
         messages = _messages(runtime)
         if _calls(messages, "search_knowledge") > MAX_SEARCHES:
             raise ToolException(_TOO_MANY)
-        if _repeated(messages, runtime.tool_call_id, {"query": query, "kb_ids": kb_ids}):
-            raise ToolException(_REPEATED)
         if (scope := _scope(runtime)) is not None:
             # The model's `kb_ids` narrow the request's bases further, never widen them.
             kb_ids = [kb for kb in kb_ids or () if kb in scope] or sorted(scope, key=str)
+        if _repeated(messages, runtime.tool_call_id, {"query": query, "kb_ids": kb_ids}, scope):
+            raise ToolException(_REPEATED)
         try:
             result = await retriever().search(
                 owner, query, k=limit, kb_ids=kb_ids, roles=_roles(runtime)

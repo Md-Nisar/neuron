@@ -110,7 +110,7 @@ SEARCH_TEXT_FUNCTION = "knowledge.search_text(kbs uuid[], cfg regconfig, q text,
 # A query of common words alone matches nearly every chunk, and ranking them all took seconds;
 # at most 10,000 matches are ranked, so such a query's text ranking draws on a subset (dense
 # search still covers the whole base in hybrid mode).
-SEARCH_TEXT_QUERY = (
+_SEARCH_TEXT_QUERY_V33 = (
     "SELECT m.chunk_id FROM (SELECT c.chunk_id, c.tsv FROM knowledge.chunks c"
     " JOIN knowledge.documents d ON d.doc_id = c.doc_id AND d.kb_id = c.kb_id"
     " JOIN knowledge.bases b ON b.kb_id = d.kb_id"
@@ -119,6 +119,37 @@ SEARCH_TEXT_QUERY = (
     " AND b.deleted_at IS NULL AND d.deleted_at IS NULL AND d.status = 'ready'"
     " AND c.tsv @@ websearch_to_tsquery($2, $3) LIMIT 10000) m"
     " ORDER BY ts_rank_cd(m.tsv, websearch_to_tsquery($2, $3)) DESC, m.chunk_id LIMIT $4"
+)
+SEARCH_TEXT_QUERY = (
+    "SELECT m.chunk_id FROM (SELECT c.chunk_id,"
+    " c.tsv || coalesce(c.headings_tsv, ''::tsvector) AS tsv FROM knowledge.chunks c"
+    " JOIN knowledge.documents d ON d.doc_id = c.doc_id AND d.kb_id = c.kb_id"
+    " JOIN knowledge.bases b ON b.kb_id = d.kb_id"
+    " WHERE c.kb_id = ANY ($1)"
+    " AND c.kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[])"
+    " AND b.deleted_at IS NULL AND d.deleted_at IS NULL AND d.status = 'ready'"
+    " AND (c.tsv @@ websearch_to_tsquery($2, $3)"
+    " OR c.headings_tsv @@ websearch_to_tsquery($2, $3)) LIMIT 10000) m"
+    " ORDER BY ts_rank_cd(m.tsv, websearch_to_tsquery($2, $3)) DESC, m.chunk_id LIMIT $4"
+)
+_SEARCH_TEXT_OR_QUERY = (
+    "WITH q AS ("
+    " SELECT to_tsquery($2, string_agg('(' || t || ')', ' | ')) AS tsq"
+    " FROM (SELECT nullif(plainto_tsquery($2, w)::text, '') AS t"
+    " FROM regexp_split_to_table(trim($3), E'\\s+') AS w) words"
+    " WHERE t IS NOT NULL"
+    ") SELECT m.chunk_id FROM (SELECT c.chunk_id,"
+    " c.tsv || coalesce(c.headings_tsv, ''::tsvector) AS tsv, q.tsq"
+    " FROM knowledge.chunks c CROSS JOIN q"
+    " JOIN knowledge.documents d ON d.doc_id = c.doc_id AND d.kb_id = c.kb_id"
+    " JOIN knowledge.bases b ON b.kb_id = d.kb_id"
+    " WHERE q.tsq IS NOT NULL AND c.kb_id = ANY ($1)"
+    " AND c.kb_id = ANY (string_to_array(current_setting('neuron.kb_ids', true), ',')::uuid[])"
+    " AND b.deleted_at IS NULL AND d.deleted_at IS NULL AND d.status = 'ready'"
+    " AND (c.tsv @@ q.tsq OR c.headings_tsv @@ q.tsq)"
+    " AND NOT (c.tsv @@ websearch_to_tsquery($2, $3)"
+    " OR coalesce(c.headings_tsv, ''::tsvector) @@ websearch_to_tsquery($2, $3))"
+    " LIMIT 10000) m ORDER BY ts_rank_cd(m.tsv, m.tsq) DESC, m.chunk_id LIMIT $4"
 )
 # The tables the guards (run leases, token budget, rate limiter) read and write, derived from the
 # grants above so a new guard table is picked up by readiness without another list.
@@ -707,10 +738,102 @@ CREATE OR REPLACE FUNCTION {SEARCH_TEXT_FUNCTION}
 RETURNS TABLE (chunk_id uuid)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $f$
 BEGIN
-    RETURN QUERY EXECUTE $q${SEARCH_TEXT_QUERY}$q$ USING kbs, cfg, q, n;
+    RETURN QUERY EXECUTE $q${_SEARCH_TEXT_QUERY_V33}$q$ USING kbs, cfg, q, n;
 END
 $f$;
 REVOKE ALL ON FUNCTION {SEARCH_TEXT_SIGNATURE} FROM PUBLIC
+""",
+        feature="knowledge",
+    ),
+    # Headings full-text vector on chunks + GIN index for weighted 'A' heading matching.
+    Migration(
+        version=34,
+        name="chunks_headings_tsv",
+        sql="""
+ALTER TABLE knowledge.chunks
+    ADD COLUMN IF NOT EXISTS headings_tsv tsvector;
+CREATE OR REPLACE FUNCTION knowledge.chunks_headings_tsv_sync() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $f$
+BEGIN
+    NEW.headings_tsv := setweight(
+        to_tsvector(NEW.ts_config, coalesce(array_to_string(NEW.headings, ' '), '')),
+        'A'
+    );
+    RETURN NEW;
+END
+$f$;
+DO $t$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'knowledge' AND c.relname = 'chunks'
+          AND t.tgname = 'chunks_headings_tsv_sync'
+    ) THEN
+        CREATE TRIGGER chunks_headings_tsv_sync
+            BEFORE INSERT OR UPDATE OF headings, ts_config
+            ON knowledge.chunks
+            FOR EACH ROW
+            EXECUTE FUNCTION knowledge.chunks_headings_tsv_sync();
+    END IF;
+END
+$t$;
+UPDATE knowledge.chunks
+SET headings_tsv = setweight(
+    to_tsvector(ts_config, coalesce(array_to_string(headings, ' '), '')),
+    'A'
+)
+WHERE headings_tsv IS NULL
+""",
+        feature="knowledge",
+    ),
+    Migration(
+        version=35,
+        name="chunks_headings_tsv_idx",
+        sql="CREATE INDEX CONCURRENTLY IF NOT EXISTS chunks_headings_tsv_idx"
+        " ON knowledge.chunks USING gin (headings_tsv)",
+        concurrent=True,
+        index="knowledge.chunks_headings_tsv_idx",
+        feature="knowledge",
+    ),
+    Migration(
+        version=36,
+        name="documents_blob_key_idx",
+        sql="CREATE INDEX CONCURRENTLY IF NOT EXISTS documents_blob_key_idx"
+        " ON knowledge.documents (blob_key) WHERE blob_key IS NOT NULL",
+        concurrent=True,
+        index="knowledge.documents_blob_key_idx",
+        feature="knowledge",
+    ),
+    Migration(
+        version=37,
+        name="procrastinate_jobs_knowledge_doc_idx",
+        sql="CREATE INDEX CONCURRENTLY IF NOT EXISTS procrastinate_jobs_knowledge_doc_idx"
+        " ON knowledge.procrastinate_jobs ((args->>'doc_id'))"
+        " WHERE task_name = 'ingest_document'",
+        concurrent=True,
+        index="knowledge.procrastinate_jobs_knowledge_doc_idx",
+        feature="knowledge",
+    ),
+    # Update search_text to include headings_tsv and relaxed OR fallback when strict AND underfills.
+    Migration(
+        version=38,
+        name="chunks_search_text_headings_or",
+        sql=f"""
+CREATE OR REPLACE FUNCTION {SEARCH_TEXT_FUNCTION}
+RETURNS TABLE (chunk_id uuid)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $f$
+DECLARE
+    strict_count integer := 0;
+BEGIN
+    RETURN QUERY EXECUTE $q${SEARCH_TEXT_QUERY}$q$ USING kbs, cfg, q, n;
+    GET DIAGNOSTICS strict_count = ROW_COUNT;
+    IF strict_count < n THEN
+        RETURN QUERY EXECUTE $q${_SEARCH_TEXT_OR_QUERY}$q$ USING kbs, cfg, q, n - strict_count;
+    END IF;
+END
+$f$
 """,
         feature="knowledge",
     ),
