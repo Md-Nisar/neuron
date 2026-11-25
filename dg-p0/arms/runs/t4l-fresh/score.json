@@ -1,0 +1,2555 @@
+{
+ "arms": {
+  "T4L": {
+   "accuracy_when_answered_units": {
+    "k": 96,
+    "n": 96,
+    "rate": 1.0,
+    "wilson95": [
+     0.9615,
+     1.0
+    ]
+   },
+   "answered_one_reading": 0,
+   "correct_refusals_units": {
+    "k": 113,
+    "n": 120,
+    "rate": 0.9417,
+    "wilson95": [
+     0.8845,
+     0.9715
+    ]
+   },
+   "exec_errors": 0,
+   "execution_accuracy_units": {
+    "k": 96,
+    "n": 120,
+    "rate": 0.8,
+    "wilson95": [
+     0.7196,
+     0.8618
+    ]
+   },
+   "guard_rejected": 0,
+   "model_calls": 678,
+   "no_access_refused": {
+    "k": 0,
+    "n": 0,
+    "rate": null,
+    "wilson95": [
+     0.0,
+     0.0
+    ]
+   },
+   "not_answered_units": {
+    "k": 23,
+    "n": 120,
+    "rate": 0.1917,
+    "wilson95": [
+     0.1313,
+     0.2712
+    ]
+   },
+   "p95_latency_s": 221.51,
+   "questions": {
+    "answerable": {
+     "k": 24,
+     "n": 40,
+     "rate": 0.6,
+     "wilson95": [
+      0.446,
+      0.7365
+     ]
+    },
+    "unanswerable": {
+     "k": 36,
+     "n": 40,
+     "rate": 0.9,
+     "wilson95": [
+      0.7695,
+      0.9604
+     ]
+    }
+   },
+   "ref_comparator_units": {
+    "k": 5,
+    "n": 120,
+    "rate": 0.0417,
+    "wilson95": [
+     0.0179,
+     0.0938
+    ]
+   },
+   "units": 240,
+   "unparsed": 1,
+   "unscorable": [],
+   "wrong_answers_without_refusal": {
+    "k": 1,
+    "n": 240,
+    "rate": 0.0042,
+    "wilson95": [
+     0.0007,
+     0.0232
+    ]
+   }
+  }
+ },
+ "dataset": "d3",
+ "models": [
+  "nvidia/nemotron-3-ultra-550b-a55b"
+ ],
+ "run": "t4l-fresh",
+ "tables_changed": [],
+ "units": [
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FA-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FA-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "K-FA-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "result": "wrong",
+    "wrong_answer": true
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "K-FU-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "K-FU-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "K-FU-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "unparsed",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": true,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FA-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "wrong"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FA-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "sql",
+    "delivered": true,
+    "ref_comparator": false,
+    "result": "correct",
+    "wrong_answer": false
+   },
+   "persona": "global_manager",
+   "qid": "S-FA-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-01"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-02"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "clarify",
+    "result": "wrong"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-03"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-04"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-05"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-06"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-07"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-08"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-09"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-10"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-11"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-12"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-13"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-14"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-15"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-16"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-17"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-18"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-19"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "apac_analyst",
+   "qid": "S-FU-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "emea_analyst",
+   "qid": "S-FU-20"
+  },
+  {
+   "arm": "T4L",
+   "out": {
+    "action": "refuse",
+    "result": "correct"
+   },
+   "persona": "global_manager",
+   "qid": "S-FU-20"
+  }
+ ]
+}
