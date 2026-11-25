@@ -1,0 +1,2 @@
+S-FA-12 emea_analyst: sql -> refuse ("Brazil" belongs to AMER, outside the regions you can see.)
+S-FA-12 apac_analyst: sql -> refuse ("Brazil" belongs to AMER, outside the regions you can see.)

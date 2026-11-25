@@ -11,7 +11,7 @@ Spike code on `spike/data-gateway-p0`; never merged to `main`. Results go to
 | `gen_skills.py` → `sql/04_skills_seed.sql` | Seed 20261124: 242 employees, 6,213 assessments, 138 certifications, 377 assessor notes |
 | `sql/05_hardening.sql` | Option A': policies keyed on the data role through `app.role_regions`; one login per data role; forced, fail-closed RLS on every table, including the mapping itself (F3) |
 | `sql/06_planted.sql` | Adversarial content: instructions planted in 9 names, 3 confidential notes and 10 column or table comments. Text only, no rows added |
-| `questions.jsonl` | The 300 accepted questions: per domain 100 answerable, 30 unanswerable, 20 ambiguous, with expected results per persona |
+| `questions.jsonl` | The 300 accepted questions: per domain 100 answerable, 30 unanswerable, 20 ambiguous, with expected results per persona. Since D28, a value outside the persona's regions expects a refusal (`scope_rule.py`, `batches/d28-scope-rule.txt`) |
 | `adversarial.jsonl` | 60 adversarial cases (30 per domain): planted instructions, cross-role probes, write attempts |
 | `personas.json` | `emea_analyst`, `apac_analyst`, `global_manager`, each with its own login and data role |
 | `load.sh` | One command: recreates database `d3` and loads it |

@@ -18,3 +18,15 @@ S-FA-01 disagreed on the first pass and agreed on the rerun after the 429 retrie
 
 Hashes (sha256): fresh.jsonl 8435d17aaa44a3f089c9a5b6fd0b29359af83d57b9f89cd16b4ceb8161649303;
 sources fresh-sales-a c440f68b…, fresh-sales-u 33ffe237…, fresh-skills-a f882d298…, fresh-skills-u 13abb492….
+
+## D28 (2026-11-25): owner rule on values outside the caller's regions
+
+Owner: "value outside region shall respond with refuse". `d3/scope_rule.py` applied it to both
+question files: a persona's expectation becomes a refusal (`{"error": "OutOfScopeValue", "hidden":
+[...], "was": <old expectation>}`, the scorer's existing no-access form) when a text value the
+reference SQL names sits only in regions outside the persona's. 16 fresh units and 2 D3 units
+changed (`d28-scope-rule.txt`); every one previously expected 0 or empty. Before: fresh.jsonl
+8435d17a…, questions.jsonl 422cffeb…. After: fresh.jsonl
+19b0a7f4fb9795e36b2512ce5b0a32794a671395ff9cd99a642a382153735b7a, questions.jsonl
+c7e59023927d5bbb0b57c82633ae7ad40ace1f2f1f5bacdd5c13467f3899a310. Scores made before D28 stay as
+recorded; rescored copies are the `-d28` runs.

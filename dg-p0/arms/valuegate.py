@@ -46,6 +46,8 @@ GATE, OUT, ARM = "vg2", "tri3", "T3"
 # calls. Two lookup defects fixed: a value may span the listed columns (first and last name), and
 # only text columns are searched (a value named for a numeric column is inconclusive).
 V3 = False
+# D28 (v4): a value whose visible rows all sit in regions outside the caller's is refused too.
+V4 = False
 TEXT_TYPES = ("text", "character varying", "character")
 _types: dict = {}
 
@@ -221,6 +223,8 @@ def lookup_sql3(v: dict, db: str) -> str | None:
         return "(" + " OR ".join(f"{ident(c)} ILIKE {like(frag)}" for c in cols) + ")"
 
     per_form = ["(" + " AND ".join(anywhere(frag) for frag in form) + ")" for form in forms(v)]
+    if V4 and "region_id" in _types[(db, parts[0] if len(parts) == 2 else "public", parts[-1])]:
+        return f"SELECT DISTINCT region_id FROM {table} WHERE {' OR '.join(per_form)} LIMIT 10"
     return f"SELECT 1 FROM {table} WHERE {' OR '.join(per_form)} LIMIT 1"
 
 
@@ -257,7 +261,18 @@ def check(ds: str, persona: str, values: list[dict] | None, scopes: dict, db: st
             if not res["rows"]
             else "present"
         )
+        mine = set(score.PERSONAS[persona]["regions"]) if ds == "d3" else None
+        if V4 and state == "present" and mine and res["columns"] == ["region_id"]:
+            where = sorted({r[0] for r in res["rows"]})
+            if not set(where) & mine:
+                state = "out_of_region"
         lookups.append({**v, "state": state, "code": res.get("code") or res.get("error")})
+        if state == "out_of_region":
+            return {
+                "verdict": "refuse",
+                "lookups": lookups,
+                "reason": f'"{v["text"]}" belongs to {", ".join(where)}, outside the regions you can see.',
+            }
         if state == "absent":
             return {
                 "verdict": "refuse",
