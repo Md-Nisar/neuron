@@ -6,7 +6,7 @@
 | Answers | ADR 0016, gate 2: "P0's decision record shows the B8 thresholds met on at least one engine" |
 | Evidence | [`design-spike-log.md`](design-spike-log.md), sections 6 to 9; branch `spike/data-gateway-p0` at `8a264d8` (`dg-p0/arms/runs/results.md`, `dg-p0/safety/`, `dg-p0/roundtrip/out/`) |
 | Model | `nvidia/nemotron-3-ultra-550b-a55b` in every arm. No stronger model and no non-NVIDIA endpoint exist here, so it is also "the best available model" |
-| Status | **Final.** Written by Claude under the owner's delegation (D19), reviewed and re-verified, then accepted by the owner on 2026-11-24 (D23) |
+| Status | **Final.** Written by Claude under the owner's delegation (D19), reviewed and re-verified, then accepted by the owner on 2026-11-24 (D23). **Gate 2 accepted by owner decision on 2026-11-26 (D31); see the last section.** The verdicts below are the measurements as recorded and are not rewritten |
 
 ## Verdict
 
@@ -80,3 +80,31 @@ byte-identical to `results.md`; the scorer self-test passes; the 13 guard-bypass
 - The refusal threshold (90%) is missed by every arm, so it is the binding constraint for any engine.
 - Auto Ontology's latency (several model calls per question) misses 45 s with this model.
 - Choosing what to do next is the owner's backlog decision (D2). Nothing here designs it.
+
+## Owner acceptance of gate 2 (2026-11-26, D31)
+
+The owner accepted gate 2 on the live T4 result, by owner decision rather than by every threshold
+being met: "mark 82.5 as accepted as it tested against free tier models, frontier model may reach".
+
+| What is accepted | Value | Threshold |
+| --- | --- | --- |
+| T4 (B triage, value check v4, A2), fresh set, live, accuracy per question | 33/40 = 82.5% [68.0, 91.2] | 85% |
+| Same run, correct refusal | 36/40 = 90.0% [77.0, 96.0] | 90%, met |
+| Same run, wrong answers | 0.4% [0.1, 2.3] | 5%, met |
+| T4 on all of D3, offline (accuracy, refusal, wrong answers) | 87.0%, 91.7%, 4.0% | all met |
+| Safety (S3) | 0 in every count | met |
+| p95 latency | Not measurable on the free tier (D28) | 45 s, set aside |
+
+The reason: every run used one free-tier model, with rate limits that caused 3 of the 7 fresh misses
+(canned or unparsed replies). The other 4 (B asking to clarify, one stored-form mismatch) are not
+caused by the tier. The 85% threshold lies inside the accuracy interval, so the shortfall is not
+statistically clear either way.
+
+Conditions that come with the acceptance:
+
+- **The engine accepted is T4, not any single arm.** The verdict on arms C, B, A1 and A2 above stands.
+- **Before the gateway's first release**, accuracy and p95 latency are re-measured on the
+  deployment's model, on a question set written before the run. That run must meet B8 without an
+  exception.
+- **Gates 1 and 3 are unchanged.** P1 still waits for the hosted deployment and a named first
+  database and user. The Auto Ontology adapter stays a conditional GO until its security review.

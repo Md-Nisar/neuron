@@ -20,6 +20,11 @@ release threshold. The kill criterion was not triggered: the baseline engine sco
 above 60%. Auto Ontology remains a conditional GO as an engine behind the gateway. See
 [`docs/releases/data-gateway-p0/decision-record.md`](../releases/data-gateway-p0/decision-record.md).
 
+Gate 2 accepted (2026-11-26, owner decision, D31): the live T4 result, 82.5% accuracy on a fresh
+set against the 85% threshold, measured on a free-tier model only, with refusal and wrong answers
+met. Before the gateway's first release, B8 is re-measured on the deployment's model with no
+exception. Gates 1 and 3 still hold P1. See the decision record's last section.
+
 Amended (2026-11-25, owner approval, D30): decisions 3, 5, 7 and 8, the product requirement and the
 consequences were corrected from the P0 findings. The corrections and their evidence are in
 [`docs/releases/data-gateway-p0/adr-0016-corrections-draft.md`](../releases/data-gateway-p0/adr-0016-corrections-draft.md).
