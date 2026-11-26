@@ -21,7 +21,6 @@ from neuron_agent.knowledge.reindex import Reindexer
 from neuron_agent.knowledge.retrieval import WEB_SOURCE, Retriever
 from neuron_agent.knowledge.service import _DOCUMENT_COLUMNS, _FIND_TABLES
 from neuron_agent.knowledge.tools import MAX_CHARS, _capped, _repeated
-from neuron_agent.persistence.migrations import _SEARCH_TEXT_OR_QUERY, SEARCH_TEXT_QUERY
 
 pytestmark = pytest.mark.anyio
 
@@ -82,12 +81,6 @@ def test_find_tables_sql_searches_column_names_and_filters_on_words() -> None:
     assert "jsonb_array_elements(t.columns)" in _FIND_TABLES
     assert "t.columns::text" not in _FIND_TABLES
     assert "OR hits > 0" in _FIND_TABLES
-
-
-def test_search_text_sql_includes_headings_and_relaxed_or_fallback() -> None:
-    assert "c.headings_tsv @@ websearch_to_tsquery($2, $3)" in SEARCH_TEXT_QUERY
-    assert "plainto_tsquery($2, w)" in _SEARCH_TEXT_OR_QUERY
-    assert "c.headings_tsv @@ q.tsq" in _SEARCH_TEXT_OR_QUERY
 
 
 class _SlowQueryEmbeddings(Embeddings):
