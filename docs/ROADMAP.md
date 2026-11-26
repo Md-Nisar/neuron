@@ -36,4 +36,4 @@ v1.1.0 ("Personal Knowledge") is designed in [ADR 0014](decisions/0014-knowledge
 | Hosted Render deployment, pipeline, restore and rollback on Render, OpenAI production model, Anthropic live, staging and production runs | Never run; #160 and #253 were closed on 2026-10-29 without them | after v1.0.0 |
 | #285 | Forwarding ratings to LangSmith | after v1.0.0 (design check and proposed ADR 0013: the run ID already is the LangSmith run ID) |
 | External penetration test | ADR 0012 open question 2 | after v1.0.0 |
-| Structured data questions (ADR 0016) | Proof DG-E00 may start now; the gateway (DG-E01) waits for the hosted deployment, a passed proof and a named first database (`docs/product/NEURON_DATA_GATEWAY_BACKLOG.md`) | after the hosted deployment |
+| Structured data questions (ADR 0016) | Proof DG-E00 done; gate 2 accepted by owner decision on 2026-11-26 ([record](releases/data-gateway-p0/decision-record.md)). The gateway (DG-E01) waits for the hosted deployment and a named first database (`docs/product/NEURON_DATA_GATEWAY_BACKLOG.md`) | after the hosted deployment |
