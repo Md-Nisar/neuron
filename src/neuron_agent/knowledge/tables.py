@@ -25,8 +25,11 @@ _NAME_CHARS = 100
 _TITLE_CHARS = 300
 # ASCII digits, no leading zeros (`02134` is a code), at most 18 digits (SQLite's int64). A
 # two-digit exponent keeps a real from overflowing or silently underflowing to 0.
-_INTEGER = re.compile(r"[+-]?(?:0|[1-9][0-9]{0,17})")
-_REAL = re.compile(r"[+-]?(?:(?:0|[1-9][0-9]*)(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]{1,2})?")
+_INTEGER = re.compile(r"[+-]?(?:0|[1-9](?:[0-9]{0,17}|[0-9]{0,2}(?:,[0-9]{3}){1,5}))")
+_REAL = re.compile(
+    r"[+-]?(?:(?:0|[1-9](?:[0-9]*|[0-9]{0,2}(?:,[0-9]{3})+))(?:\.[0-9]+)?|\.[0-9]+)"
+    r"(?:[eE][+-]?[0-9]{1,2})?"
+)
 _EXACT = 2**53  # the largest integer a float holds exactly
 
 Value = int | float | str | None
@@ -131,15 +134,19 @@ def _real(value: str) -> bool:
     """A decimal, or an integer a float holds exactly: a longer one is an id, not a number to
     round."""
     if _INTEGER.fullmatch(value):
-        return abs(int(value)) <= _EXACT
+        return abs(int(value.replace(",", ""))) <= _EXACT
     return (
         _REAL.fullmatch(value) is not None
-        and not value.lstrip("+-").isdigit()
-        and math.isfinite(float(value))
+        and not value.lstrip("+-").replace(",", "").isdigit()
+        and math.isfinite(float(value.replace(",", "")))
     )
 
 
 def _value(cell: str, kind: str) -> Value:
     if not cell:
         return None
-    return int(cell) if kind == "integer" else float(cell) if kind == "real" else cell
+    if kind == "integer":
+        return int(cell.replace(",", ""))
+    if kind == "real":
+        return float(cell.replace(",", ""))
+    return cell

@@ -329,10 +329,11 @@ class _RequestBodyLimitMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        upload = (
-            scope.get("method") == "POST"
-            and _UPLOAD_PATH.fullmatch(scope.get("path", "")) is not None
-        )
+        path = scope.get("path", "")
+        root = scope.get("root_path", "")
+        if root and path.startswith(root):
+            path = path[len(root) :] or "/"
+        upload = scope.get("method") == "POST" and _UPLOAD_PATH.fullmatch(path) is not None
         limit = upload_body_limit() if upload else settings.max_request_body_bytes
         declared_size: int | None = None
         for name, value in scope["headers"]:

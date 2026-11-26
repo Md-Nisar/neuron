@@ -43,7 +43,9 @@ def estimate_tokens(text: str) -> int:
     return math.ceil(len(text.encode("utf-8")) / _BYTES_PER_TOKEN)
 
 
-def chunk_document(document: ParsedDocument, max_tokens: int) -> list[Chunk]:
+def chunk_document(
+    document: ParsedDocument, max_tokens: int, *, repeat_table_headers: bool = False
+) -> list[Chunk]:
     """The document's chunks in reading order, each at most `max_tokens` (estimated)."""
     budget = max_tokens * _BYTES_PER_TOKEN
     chunks: list[Chunk] = []
@@ -77,7 +79,11 @@ def chunk_document(document: ParsedDocument, max_tokens: int) -> list[Chunk]:
                 path.pop()
             path.append((level, block.text[:_MAX_HEADING_CHARS]))
             continue
-        for piece in _pieces(block.text, budget):
+        for piece in _pieces(
+            block.text,
+            budget,
+            repeat_header=repeat_table_headers and block.kind == "table",
+        ):
             length = len(piece.encode("utf-8"))
             if pending and size + len(_JOIN) + length > budget:
                 flush()
@@ -87,11 +93,23 @@ def chunk_document(document: ParsedDocument, max_tokens: int) -> list[Chunk]:
     return chunks
 
 
-def _pieces(text: str, budget: int) -> Iterator[str]:
+def _pieces(text: str, budget: int, *, repeat_header: bool = False) -> Iterator[str]:
     """The text, or parts of it that each fit `budget` bytes."""
     if len(text.encode("utf-8")) <= budget:
         yield text
         return
+    if repeat_header:
+        header, sep, body = text.partition("\n")
+        prefix = header + sep
+        prefix_bytes = len(prefix.encode("utf-8"))
+        if sep and body and prefix_bytes < budget // 2:
+            first = True
+            for part in _split(body, budget - prefix_bytes, (_LINES, _WORDS)):
+                if part := part.strip():
+                    yield f"{header}\n{part}"
+                    first = False
+            if not first:
+                return
     for part in _split(text, budget, (_LINES, _WORDS)):
         if part := part.strip():
             yield part

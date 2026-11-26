@@ -248,16 +248,21 @@ class Reindexer:
     async def purge_retired(self, batch: int = _RETIRED_BATCH) -> int:
         """Delete the vectors of retired profiles, after a swap or a failure; returns the count."""
         deleted = 0
+        scope_batch = 100
         async with await self.connect() as conn:
-            while True:
-                async with conn.transaction():
-                    cursor = await conn.execute("SELECT kb_id FROM knowledge.bases")
-                    bases = ",".join(str(r["kb_id"]) for r in await cursor.fetchall())
-                    await conn.execute(_SCOPE, (bases,))
-                    removed = (await conn.execute(_PURGE_RETIRED, (batch,))).rowcount
-                deleted += removed
-                if removed < batch:
-                    return deleted
+            async with conn.transaction():
+                cursor = await conn.execute("SELECT kb_id FROM knowledge.bases ORDER BY kb_id")
+                kbs = [str(r["kb_id"]) for r in await cursor.fetchall()]
+            for start in range(0, len(kbs), scope_batch):
+                scope = ",".join(kbs[start : start + scope_batch])
+                while True:
+                    async with conn.transaction():
+                        await conn.execute(_SCOPE, (scope,))
+                        removed = (await conn.execute(_PURGE_RETIRED, (batch,))).rowcount
+                    deleted += removed
+                    if removed < batch:
+                        break
+        return deleted
 
     async def fail(self, code: str) -> None:
         """Retire the building profile; the active one stays (a failed or refused job)."""

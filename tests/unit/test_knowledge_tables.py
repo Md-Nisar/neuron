@@ -92,3 +92,26 @@ def test_tables_past_the_document_caps_are_skipped_and_counted() -> None:
     assert len(tables) == MAX_TABLES
     assert skipped == 2
     assert extract_tables(_doc(small), CSV, 0) == ([], 1)
+
+
+def test_comma_grouped_numbers_type_and_parse_while_bad_groups_stay_text() -> None:
+    blocks = (
+        _table(
+            ("int_col", "real_col", "mixed_col", "bad_group", "lead_zero"),
+            ("1,234", "-12,345.67", "1,000", "1,2", "02,134"),
+            ("5,678,900", "0.50", "2.5", "3,456", "01,000"),
+        ),
+    )
+    (table,), skipped = extract_tables(_doc(*blocks), CSV, 1_000)
+    assert skipped == 0
+    assert table.columns == (
+        ("int_col", "integer"),
+        ("real_col", "real"),
+        ("mixed_col", "real"),
+        ("bad_group", "text"),
+        ("lead_zero", "text"),
+    )
+    assert table.rows == (
+        (1234, -12345.67, 1000.0, "1,2", "02,134"),
+        (5678900, 0.5, 2.5, "3,456", "01,000"),
+    )

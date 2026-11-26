@@ -133,3 +133,26 @@ async def test_a_provider_that_ignores_the_required_call_keeps_the_first_answer(
 def test_it_sits_inside_tool_authorization() -> None:
     kinds = [type(m).__name__ for m in agent_middleware(Settings(env="test"), builtin_registry())]
     assert kinds.index("_ToolAuthorizationMiddleware") < kinds.index("_QueryAfterFindMiddleware")
+
+
+async def test_response_that_already_calls_query_table_is_not_discarded() -> None:
+    request = _Request([HumanMessage("total?"), _CALLS, _found()])
+    combined = ModelResponse(
+        result=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "query_table",
+                        "args": {"table": "t0", "sql": "SELECT 1"},
+                        "id": "call_q1",
+                        "type": "tool_call",
+                    }
+                ],
+            )
+        ],
+        structured_response={"answer": "partial"},
+    )
+    response, seen = await _run(request, combined)
+    assert response is combined
+    assert len(seen) == 1

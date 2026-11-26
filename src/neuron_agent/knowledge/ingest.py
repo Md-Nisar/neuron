@@ -169,41 +169,43 @@ class Ingestor:
     async def _ingest(self, doc_id: uuid.UUID, span: Span, *, last_attempt: bool) -> str:
         async with await self.connect() as conn:
             row = await self._start(conn, doc_id)
-            if row is None:
+        if row is None:
+            log.info("knowledge.ingest.skipped", doc_id=str(doc_id))
+            return "skipped"
+        span.set_attribute(semconv.NEURON_KNOWLEDGE_KB_ID, str(row["kb_id"]))
+        try:
+            # Before anything is read: docling-serve is part of the deployment (internal, no
+            # egress), so the setting governs the embedding provider, the only hosted step.
+            with _stage("policy"):
+                models = self._models(row)
+            if row["blob_key"] is None and not await self._download(doc_id, row):
                 log.info("knowledge.ingest.skipped", doc_id=str(doc_id))
                 return "skipped"
-            span.set_attribute(semconv.NEURON_KNOWLEDGE_KB_ID, str(row["kb_id"]))
-            try:
-                # Before anything is read: docling-serve is part of the deployment (internal, no
-                # egress), so the setting governs the embedding provider, the only hosted step.
-                with _stage("policy"):
-                    models = self._models(row)
-                if row["blob_key"] is None and not await self._download(conn, doc_id, row):
-                    log.info("knowledge.ingest.skipped", doc_id=str(doc_id))
-                    return "skipped"
-                chunks, parsed, tables = await self._parse(row, doc_id)
-                span.set_attribute(semconv.NEURON_KNOWLEDGE_CHUNKS, len(chunks))
+            chunks, parsed, tables = await self._parse(row, doc_id)
+            span.set_attribute(semconv.NEURON_KNOWLEDGE_CHUNKS, len(chunks))
+            async with await self.connect() as conn:
                 await self._set(conn, doc_id, "embedding")
-                with _stage("embed"):
-                    passages = [_passage(c) for c in chunks]
-                    vectors = {pid: await embed_passages(m, passages) for pid, m in models.items()}
-                with _stage("write"):
+            with _stage("embed"):
+                passages = [_passage(c) for c in chunks]
+                vectors = {pid: await embed_passages(m, passages) for pid, m in models.items()}
+            with _stage("write"):
+                async with await self.connect() as conn:
                     written = await self._write(conn, doc_id, row, chunks, vectors, parsed, tables)
-            except (ParseError, EmbeddingError) as exc:
-                if exc.retryable and not last_attempt:
-                    raise
-                return await self._fail_on(conn, doc_id, exc.code)
-            except BlobStoreError as exc:
-                # An unreachable store may come back; a missing or altered file will not.
-                if exc.code == "blob_backend_error" and not last_attempt:
-                    raise
-                return await self._fail_on(conn, doc_id, exc.code)
-            except FetchError as exc:
-                if exc.code in _RETRYABLE_FETCH and not last_attempt:
-                    raise
-                return await self._fail_on(conn, doc_id, exc.code)
-            except _RefusedError as exc:
-                return await self._fail_on(conn, doc_id, exc.code)
+        except (ParseError, EmbeddingError) as exc:
+            if exc.retryable and not last_attempt:
+                raise
+            return await self.fail(doc_id, exc.code)
+        except BlobStoreError as exc:
+            # An unreachable store may come back; a missing or altered file will not.
+            if exc.code == "blob_backend_error" and not last_attempt:
+                raise
+            return await self.fail(doc_id, exc.code)
+        except FetchError as exc:
+            if exc.code in _RETRYABLE_FETCH and not last_attempt:
+                raise
+            return await self.fail(doc_id, exc.code)
+        except _RefusedError as exc:
+            return await self.fail(doc_id, exc.code)
         if not written:
             log.info("knowledge.ingest.skipped", doc_id=str(doc_id))  # tombstoned meanwhile
             return "skipped"
@@ -245,9 +247,7 @@ class Ingestor:
                 row["profiles"] = await (await conn.execute(PROFILES)).fetchall()
         return row
 
-    async def _download(
-        self, conn: psycopg.AsyncConnection[dict[str, Any]], doc_id: uuid.UUID, row: dict[str, Any]
-    ) -> bool:
+    async def _download(self, doc_id: uuid.UUID, row: dict[str, Any]) -> bool:
         """Fetch a web page, store it and record its file on the row; False if tombstoned.
 
         Only a row without a file gets here, and the schema allows that for a web page with a
@@ -259,7 +259,7 @@ class Ingestor:
             if len(data) > self.limits.max_bytes:  # re-encoding can grow a page
                 raise _RefusedError("fetch_too_large")
             blob = await self.blobs.put(_once(data), max_bytes=self.limits.max_bytes)
-            async with conn.transaction():
+            async with await self.connect() as conn, conn.transaction():
                 if not await lock_document(conn, doc_id):
                     return False
                 try:

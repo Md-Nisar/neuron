@@ -714,6 +714,25 @@ REVOKE ALL ON FUNCTION {SEARCH_TEXT_SIGNATURE} FROM PUBLIC
 """,
         feature="knowledge",
     ),
+    Migration(
+        version=34,
+        name="documents_blob_key_idx",
+        sql="CREATE INDEX CONCURRENTLY IF NOT EXISTS documents_blob_key_idx"
+        " ON knowledge.documents (blob_key) WHERE blob_key IS NOT NULL",
+        concurrent=True,
+        index="knowledge.documents_blob_key_idx",
+        feature="knowledge",
+    ),
+    Migration(
+        version=35,
+        name="procrastinate_jobs_knowledge_doc_idx",
+        sql="CREATE INDEX CONCURRENTLY IF NOT EXISTS procrastinate_jobs_knowledge_doc_idx"
+        " ON knowledge.procrastinate_jobs ((args->>'doc_id'))"
+        " WHERE task_name = 'ingest_document'",
+        concurrent=True,
+        index="knowledge.procrastinate_jobs_knowledge_doc_idx",
+        feature="knowledge",
+    ),
 )
 # The schema migration 17 creates, and the extension it needs.
 KNOWLEDGE_SCHEMA = "knowledge"

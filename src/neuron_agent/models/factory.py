@@ -649,8 +649,13 @@ class _QueryAfterFindMiddleware(AgentMiddleware[Any, Any]):
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
         response = await handler(request)
         query = [tool for tool in request.tools if _tool_name(tool) == _QUERY_TABLE]
+        has_query_call = any(
+            isinstance(m, AIMessage) and any(c["name"] == _QUERY_TABLE for c in m.tool_calls)
+            for m in getattr(response, "result", [])
+        )
         if (
             getattr(response, "structured_response", None) is None
+            or has_query_call
             or not query
             or not _tables_found_not_queried(request.messages)
         ):

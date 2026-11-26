@@ -132,3 +132,11 @@ def test_the_corpus_pdf_chunks_keep_their_headings_and_pages() -> None:
 def _norm(text: str) -> str:
     text = text.replace("­", "").replace("ﬁ", "fi").replace("’", "'")
     return re.sub(r"\s+", " ", text).lower().strip()
+
+
+def test_repeat_table_headers_duplicates_header_on_split_table_chunks() -> None:
+    rows = "\n".join(f"item-{i} | {i * 10}" for i in range(40))
+    doc = _doc(Block(kind="table", text="item | amount\n" + rows))
+    chunks = chunk_document(doc, max_tokens=60, repeat_table_headers=True)
+    assert len(chunks) > 1
+    assert all(chunk.text.startswith("item | amount\n") for chunk in chunks)
