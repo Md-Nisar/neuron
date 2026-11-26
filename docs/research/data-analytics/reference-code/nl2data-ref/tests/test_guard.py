@@ -85,3 +85,13 @@ def test_too_many_tables():
     sql = "SELECT 1 FROM " + ", ".join(f"certified.fct_revenue t{i}" for i in range(9))
     v = validate(sql, SCOPE, Policy(max_tables=8))
     assert not v.ok and v.code == "TOO_MANY_TABLES"
+
+
+def test_boolean_operators_and_exists_are_not_functions():
+    # F4: with sqlglot 30, AND/OR/EXISTS are Func subclasses and were rejected as functions.
+    v = validate("SELECT region FROM certified.fct_revenue WHERE net_revenue > 1 AND region = 'EU' "
+                 "OR NOT region = 'US' AND EXISTS (SELECT 1 FROM certified.dim_customer)", SCOPE)
+    assert v.ok, v.detail
+    # Real functions outside the allowlist are still rejected.
+    v = validate("SELECT pg_sleep(1) FROM certified.fct_revenue WHERE net_revenue > 1 AND region = 'EU'", SCOPE)
+    assert not v.ok and v.code == "FUNCTION_NOT_ALLOWED"

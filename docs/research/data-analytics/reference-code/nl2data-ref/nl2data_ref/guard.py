@@ -109,7 +109,9 @@ def validate(sql: str, scope: Scope, policy: Policy = Policy()) -> Verdict:
             return Verdict.reject("FORBIDDEN_NODE", type(node).__name__)
         if isinstance(node, exp.With) and node.args.get("recursive") and not policy.allow_recursive_cte:
             return Verdict.reject("RECURSIVE_CTE", "recursive CTEs are not allowed")
-        if isinstance(node, exp.Func):
+        # sqlglot 30 models AND, OR, XOR and EXISTS as Func subclasses; they are operators, not
+        # function calls, so the allowlist does not apply to them (spike finding F4).
+        if isinstance(node, exp.Func) and not isinstance(node, (exp.Connector, exp.Exists)):
             name = _func_name(node)
             if name not in allowed:
                 return Verdict.reject("FUNCTION_NOT_ALLOWED", name.lower())
