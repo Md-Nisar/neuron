@@ -1927,10 +1927,11 @@ Start condition: a product requirement per tool; for mutating or outbound tools,
 **Phase 6 · evidence-gated · approved by the owner 2026-11-27 (#658).** Make multi-step
 questions work: across documents, across turns, and in wording the documents do not use.
 
-Why now: every gate the current eval measures is met (reranked recall@5 1.0, `cited_correctly`
-1.0, 12 of 12 abstentions; `docs/releases/v1.4.0-release-verification.md`). That eval cannot
-show a gain from any advanced technique: 182 of its 188 answerable cases need one document,
-5 are multi-hop, 8 are comparisons and none is a follow-up turn. So the epic first builds the
+Why now: the eval's gates were all met at v1.4.0 on its 64 answerable cases (reranked recall@5
+1.0, `cited_correctly` 1.0, 12 of 12 abstentions; `docs/releases/v1.4.0-release-verification.md`).
+Dataset 2.0.0 grew it to 188 answerable cases and lowered the offline baseline to recall@5 0.957
+and MRR 0.823, but it still cannot show a gain from an advanced technique: 182 of the 188 need
+one document, 5 are multi-hop, 8 are comparisons and none is a follow-up turn. So the epic first builds the
 cases that would fail, measures them, and only then picks techniques, cheapest first.
 
 Goal: a measured baseline on hard questions, and each technique adopted only where it beats
@@ -2134,13 +2135,19 @@ mutating tools.
 **Phase 6 · approved by the owner 2026-11-27 (#659).** Know what one answer costs and how
 the Knowledge Engine grows, then optimise what the numbers point at.
 
-Why now: the only load evidence is one 180 s run on a 4-CPU host with fake embeddings, a fake
-chat model and the plain-text parser (`docs/releases/v1.2.0-gate/knowledge-load-baseline.json`):
-search p50/p95 47/110 ms, 973 documents. The reranker alone takes 1.32 s p50 and 3.79 s p95
-(`v1.4.0-gate/rerank-eval.json`). The HNSW path (above 10,000 chunks in a caller's bases),
-real parsing and real embedding throughput have never been measured at volume, and no
-hosted deployment has run. Every figure here is from the reference stack and is re-measured
-when a hosted deployment exists.
+Why now: the evidence so far is from one 4-CPU host.
+- The load test (`docs/releases/v1.2.0-gate/knowledge-load-baseline.json`) ran 180 s with fake
+  embeddings, a fake chat model and the plain-text parser: search p50/p95 47/110 ms, 973 documents.
+- The scale benchmark (`qa/retrieval_scale_benchmark.md`, 2026-11-18) ran `Retriever.search` at
+  100,000 and 300,000 synthetic chunks without a reranker. It found full text reading every chunk
+  under RLS, which migration 33 fixed (hybrid p95 3.9 s to 0.25 s at 278,000 chunks; 8 in flight,
+  p95 0.94 s). HNSW recall@10 was 0.94 at 278,000 chunks at `ef_search` 100. One million chunks
+  did not fit on the disk.
+- The reranker alone takes 1.32 s p50 and 3.79 s p95 (`v1.4.0-gate/rerank-eval.json`), the
+  largest single stage measured.
+- Real parsing and real embedding throughput have not been measured at volume, nothing has
+  measured a whole answer stage by stage, and no hosted deployment has run. Every figure here
+  is from the reference stack and is re-measured when a hosted deployment exists.
 
 Goal: a per-stage latency and cost profile, scale and ingestion benchmarks, a capacity model,
 and optimisations taken only where the profile shows the time or cost.
@@ -2185,18 +2192,23 @@ Out of scope: a hosted deployment itself (ADR 0008 work); a second datastore (RA
 **Story.** As an operator, I want to know how search behaves at one and five million chunks, so that the Postgres choice rests on numbers.
 
 **Requirements**
-- Synthetic corpus at 100k, 1M and 5M chunks of 1,024-dimension `halfvec`, spread over many
-  users and bases, including a shared base many roles read.
-- Measured per size: HNSW build time, index and table size, memory; recall@10 of HNSW against
-  the exact scan at several `ef_search` values; filtered search p50/p95 under concurrency for
-  small and large allowed sets; the right value for `knowledge_exact_scan_max_chunks`.
+- Extends `qa/retrieval_scale_benchmark.md` (100,000 and 300,000 chunks, before and after
+  migration 33), with its corpus generator committed this time (the 2026-11-18 run's was not),
+  on a host with the disk for 1M and 5M chunks of
+  1,024-dimension `halfvec` (about 11 KB a chunk), including a shared base many roles read.
+- Measured per size: HNSW build time, index and table size, memory; recall@10 against the exact
+  scan at `ef_search` 40, 100, 200 and 400 (0.94 at 100 for a 278,000-chunk base today); hybrid
+  p50/p95 alone and with 8 and 32 searches in flight, for small and large allowed sets; whether
+  `knowledge_exact_scan_max_chunks` (10,000) still fits.
 
 **Acceptance criteria**
 - Given each size, when the benchmark finishes, then every figure above is recorded with the
   host, and the RAG-12.04 trigger (p95 or recall missed) is evaluated.
+- Given the `ef_search` sweep, when it is recorded, then the default is kept or changed on its
+  recall and p95, with the existing eval as the check.
 
 **Technical tasks**
-- [ ] Corpus generator; benchmark script; record.
+- [ ] Committed generator and benchmark script; sizes; `ef_search` sweep; record.
 
 **Changes.** Scripts and a record only.
 
