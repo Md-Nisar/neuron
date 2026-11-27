@@ -10,6 +10,9 @@ from typing import Any
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from tests.security.test_knowledge_tools import (
     _CHUNKS,
     _DOC,
@@ -27,7 +30,7 @@ from neuron_agent.config.settings import Settings
 from neuron_agent.graphs import main_graph
 from neuron_agent.knowledge import citations
 from neuron_agent.knowledge import tools as knowledge_tools
-from neuron_agent.observability import metrics
+from neuron_agent.observability import metrics, semconv, telemetry
 from neuron_agent.schemas.agent import AgentResponse, ThreadMessage
 from neuron_agent.security.authorization import AuthorizationContext
 from neuron_agent.services import agent_service
@@ -91,6 +94,24 @@ async def test_a_cite_id_no_tool_returned_is_dropped_and_counted(
 
     assert result["answer"].citations == ["cite-1"]
     assert rejected == [1]
+
+
+async def test_the_citation_check_is_a_span_with_counts_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(telemetry, "tracer", lambda: provider.get_tracer(__name__))
+    model = _model(monkeypatch, _call("search_knowledge", query="q"), _answer("cite-1", "cite-99"))
+
+    await _run(model)
+
+    [span] = [s for s in exporter.get_finished_spans() if s.name == semconv.CITATIONS_VALIDATE_SPAN]
+    assert dict(span.attributes or {}) == {
+        semconv.NEURON_CITATIONS_KEPT: 1,
+        semconv.NEURON_CITATIONS_REJECTED: 1,
+    }
 
 
 async def test_a_cite_id_copied_from_a_passage_is_dropped(

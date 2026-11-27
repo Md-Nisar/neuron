@@ -36,6 +36,11 @@ MEMORY_SPAN_PREFIX = "neuron.memory"
 # One span per knowledge search (RAG-08.03): ids, counts and timings only. Never the query, a
 # passage, a document title or file name, or a vector.
 KNOWLEDGE_SEARCH_SPAN = "neuron.knowledge.search"
+# A child span per search stage (RAG-14.01): `neuron.knowledge.search.{stage}`, for embed, fts,
+# dense, fuse, passages and rerank. Its duration is the stage's latency; no other attribute.
+KNOWLEDGE_SEARCH_STAGES = ("embed", "fts", "dense", "fuse", "passages", "rerank")
+# One span per answer's citation check (RAG-14.01): counts only, never a cite_id.
+CITATIONS_VALIDATE_SPAN = "neuron.citations.validate"
 # One span per upload, and per ingestion with a child span per stage (fetch, parse, embed,
 # write): ids, sizes, counts and codes only, never a file name, title or text.
 KNOWLEDGE_UPLOAD_SPAN = "neuron.knowledge.upload"
@@ -87,6 +92,9 @@ NEURON_KNOWLEDGE_DOC_ID = "neuron.knowledge.doc_id"
 NEURON_KNOWLEDGE_BYTES = "neuron.knowledge.bytes"
 NEURON_KNOWLEDGE_CHUNKS = "neuron.knowledge.chunks"
 NEURON_KNOWLEDGE_STAGE = "neuron.knowledge.ingest.stage"  # fetch, parse, embed or write
+NEURON_KNOWLEDGE_SEARCH_STAGE = "neuron.knowledge.search.stage"  # one of KNOWLEDGE_SEARCH_STAGES
+NEURON_CITATIONS_KEPT = "neuron.citations.kept"
+NEURON_CITATIONS_REJECTED = "neuron.citations.rejected"
 
 # HTTP attributes kept on the FastAPI HTTP metrics; every other one is dropped (ADR 0007).
 HTTP_ROUTE = "http.route"

@@ -23,8 +23,8 @@ import asyncio
 import dataclasses
 import time
 import uuid
-from collections.abc import AsyncIterator, Callable, Collection, Sequence
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable, Collection, Iterator, Sequence
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, get_args
@@ -181,6 +181,16 @@ def _rerank_skipped(code: str) -> None:
     metrics.record_knowledge_search_degraded("rerank_skipped", code)
 
 
+@contextmanager
+def _stage(name: str) -> Iterator[None]:
+    """A child span for one search stage (RAG-14.01): its duration and name, nothing else."""
+    with telemetry.start_span(
+        f"{semconv.KNOWLEDGE_SEARCH_SPAN}.{name}",
+        attributes={semconv.NEURON_KNOWLEDGE_SEARCH_STAGE: name},
+    ):
+        yield
+
+
 def ann_query(profile_id: int, dimensions: int) -> sql.Composed:
     """The HNSW query for one profile; both values come from its row, never from input."""
     return _ANN.format(dims=sql.Literal(dimensions), profile=sql.Literal(profile_id))
@@ -303,8 +313,9 @@ class Retriever:
                     ),
                 )
                 try:
-                    async with asyncio.timeout(embed_timeout):
-                        values = await model.embed_query(query, owner=owner_key)
+                    with _stage("embed"):
+                        async with asyncio.timeout(embed_timeout):
+                            values = await model.embed_query(query, owner=owner_key)
                 except TimeoutError as exc:
                     if mode == "dense":
                         raise EmbeddingError("embedding_timeout", retryable=True) from exc
@@ -325,20 +336,30 @@ class Retriever:
             path: Literal["exact", "hnsw", "none"] = "none"
             # Full text first: the HNSW path's planner settings would price out its GIN scan.
             if mode != "dense":
-                rankings.extend(await self._fts(conn, bases, query))
+                with _stage("fts"):
+                    rankings.extend(await self._fts(conn, bases, query))
             if (
                 vector is not None
                 and model is not None
                 and (dense := self._dense_bases(bases, profile_id, model))
             ):
                 assert profile_id is not None  # nosec B101
-                path, ranked = await self._dense(conn, dense, vector, profile_id, model.dimensions)
+                with _stage("dense"):
+                    path, ranked = await self._dense(
+                        conn, dense, vector, profile_id, model.dimensions
+                    )
                 rankings.insert(0, ranked)
-            fused = fuse(rankings)[: max(k, RERANK_CANDIDATES) if self._reranker else k]
+            with _stage("fuse"):
+                fused = fuse(rankings)[: max(k, RERANK_CANDIDATES) if self._reranker else k]
             # Primary-key lookups, which those settings leave alone.
-            passages = await self._passages(conn, owner_key, bases, fused)
+            with _stage("passages"):
+                passages = await self._passages(conn, owner_key, bases, fused)
         # After the transaction: no connection is held during the reranker's call.
-        passages, reranked = await self._rerank(query, bases, passages, k)
+        if self._reranker is not None and passages:
+            with _stage("rerank"):
+                passages, reranked = await self._rerank(query, bases, passages, k)
+        else:
+            passages, reranked = passages[:k], False
         audit(
             "knowledge_searched",
             outcome="allowed",
