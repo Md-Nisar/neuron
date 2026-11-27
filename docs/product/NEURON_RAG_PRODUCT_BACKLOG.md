@@ -1952,10 +1952,21 @@ mutating tools.
   fact), cross-document comparison, follow-up turns (a question that only makes sense with the
   earlier turns), vocabulary mismatch (none of the answer passage's distinctive words), and
   synthesis (an answer that needs five or more passages). Plus 10 unanswerable hard cases.
+- Cases come from published benchmarks, not written here (owner, 2026-11-27), each under a
+  licence that allows redistribution with attribution:
+  - multi-hop and hard unanswerable: MuSiQue (Stony Brook NLP, TACL 2022; CC BY 4.0), including
+    its unanswerable contrast questions;
+  - comparison: 2WikiMultihopQA (NII, COLING 2020; Apache-2.0), comparison and bridge-comparison types;
+  - synthesis: FRAMES (Google, 2024; Apache-2.0), questions that need several Wikipedia articles;
+  - follow-up turns: MTRAG (IBM, TACL 2025; Apache-2.0), its ClapNQ conversations (Apache-2.0);
+  - vocabulary mismatch: ClapNQ questions whose answer passage shares the fewest content words
+    with the question, chosen by a script.
+  The passages are Wikipedia text, so the committed documents carry CC BY-SA 4.0 with
+  attribution, as their own files' licence. Each case keeps its benchmark id, so it can be traced.
 - Every case lists all expected sources and its vital facts, checked against the parsed sources.
-- Distractor documents (near-duplicates, other versions, same topic) go in their own knowledge
+- Distractor documents (the benchmarks' own distractor paragraphs) go in their own knowledge
   base, so the existing cases and baselines are unchanged.
-- Openly licensed documents only, with licence and source recorded as today.
+- The selection is a script with a fixed seed, so the set can be rebuilt.
 
 **Acceptance criteria**
 - Given the fixture, when its schema test runs, then the counts per category, the sources and the
