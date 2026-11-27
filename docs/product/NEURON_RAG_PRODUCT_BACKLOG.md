@@ -38,7 +38,7 @@ Facts checked against the repository on 2026-11-03 (`main` at `89a3020`, after v
 | v1.2.0 (proposed) | 2 | RAG-E09 | Rerank, re-index, role-shared knowledge bases, nightly retrieval gate, load test |
 | v1.3.0 (proposed, owner 2026-11-13) | 3 | RAG-E10: RAG-10.01, RAG-10.05, RAG-10.02 | Safe outbound fetching, web page ingestion, self-hosted chat model; RAG-10.03 and RAG-10.04 deferred |
 | Later, evidence-gated | 3, 4, 5 | RAG-10.03, RAG-10.04, RAG-E11, RAG-E12 | GitHub and MCP sources, specialised tools, platform features. Each needs measured evidence before it starts |
-| Later (draft, 2026-11-27) | 6 | RAG-E13, RAG-E14 | Measure hard questions and per-answer cost first (RAG-13.01, 13.02, 14.01 to 14.04); then advanced retrieval and optimisation only where the numbers show a gain |
+| Later (approved 2026-11-27) | 6 | RAG-E13, RAG-E14 | Measure hard questions and per-answer cost first (RAG-13.01, 13.02, 14.01 to 14.04); then advanced retrieval and optimisation only where the numbers show a gain |
 
 The research puts Phases 0–2 at 13–18 engineer-weeks (estimated, not measured), and Phase 1 alone at 7–10.
 
@@ -106,8 +106,8 @@ new console script `neuron-worker`.
 | RAG-E10 | External knowledge sources | 3 | later | 5 |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 |
 | RAG-E12 | Platform and scale | 5 | later | 5 |
-| RAG-E13 | Advanced retrieval | 6 | later, evidence-gated (draft) | 6 |
-| RAG-E14 | Optimisation, system design and scale | 6 | later (draft) | 6 |
+| RAG-E13 | Advanced retrieval | 6 | later, evidence-gated | 6 |
+| RAG-E14 | Optimisation, system design and scale | 6 | later | 6 |
 
 Total: 15 epics, 68 stories.
 
@@ -1924,7 +1924,7 @@ Start condition: a product requirement per tool; for mutating or outbound tools,
 
 ## RAG-E13 Advanced retrieval
 
-**Phase 6 · later, evidence-gated · drafted 2026-11-27 for owner review.** Make multi-step
+**Phase 6 · evidence-gated · approved by the owner 2026-11-27 (#658).** Make multi-step
 questions work: across documents, across turns, and in wording the documents do not use.
 
 Why now: every gate the current eval measures is met (reranked recall@5 1.0, `cited_correctly`
@@ -2131,7 +2131,7 @@ mutating tools.
 
 ## RAG-E14 Optimisation, system design and scale
 
-**Phase 6 · later · drafted 2026-11-27 for owner review.** Know what one answer costs and how
+**Phase 6 · approved by the owner 2026-11-27 (#659).** Know what one answer costs and how
 the Knowledge Engine grows, then optimise what the numbers point at.
 
 Why now: the only load evidence is one 180 s run on a 4-CPU host with fake embeddings, a fake

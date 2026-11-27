@@ -59,14 +59,14 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 3 | 0 | 0 | 2 | — (v1.3.0 release) |
 | RAG-E11 | Specialised knowledge tools | 4 | v1.4.0 (proposed) | 5 | 1 | 0 | 0 | 4 | None picked |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| RAG-E13 | Advanced retrieval | 6 | later (draft) | 6 | 0 | 0 | 0 | 6 | RAG-13.01, once approved |
-| RAG-E14 | Optimisation, system design and scale | 6 | later (draft) | 6 | 0 | 0 | 0 | 6 | RAG-14.01, once approved |
-| **Total** | | | | **68** | **45** | **0** | **0** | **23** | **RAG-13.01 and RAG-14.01 (pending approval)** |
+| RAG-E13 | Advanced retrieval | 6 | later (approved) | 6 | 0 | 0 | 0 | 6 | RAG-13.01 |
+| RAG-E14 | Optimisation, system design and scale | 6 | later (approved) | 6 | 0 | 0 | 0 | 6 | RAG-14.01 |
+| **Total** | | | | **68** | **45** | **0** | **0** | **23** | **RAG-13.01 and RAG-14.01** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-27):** the owner reviewed the RAG work and asked to move on to advanced RAG, plus optimisation, system design and scale. Two epics are drafted for review: RAG-E13 "Advanced retrieval" and RAG-E14 "Optimisation, system design and scale". Both start by measuring, because the current eval meets every gate and cannot show a gain: 182 of 188 answerable cases need one document, 5 are multi-hop and none is a follow-up turn. Once approved, the first stories are RAG-13.01 (hard-question eval set) and RAG-14.01 (latency and cost profile), which can run in parallel. RAG-E10 to RAG-E12's deferred stories stay deferred until a requirement exists (owner, 2026-11-27).
+**Recommended next action (2026-11-27):** the owner reviewed the RAG work and asked to move on to advanced RAG, plus optimisation, system design and scale. Two epics are approved (owner, 2026-11-27; epics #658 and #659): RAG-E13 "Advanced retrieval" and RAG-E14 "Optimisation, system design and scale". Both start by measuring, because the current eval meets every gate and cannot show a gain: 182 of 188 answerable cases need one document, 5 are multi-hop and none is a follow-up turn. The first stories are RAG-13.01 (hard-question eval set) and RAG-14.01 (latency and cost profile), which can run in parallel. RAG-E10 to RAG-E12's deferred stories stay deferred until a requirement exists (owner, 2026-11-27).
 
 **Earlier (2026-11-17, after v1.4.0):** `v1.4.0` is tagged at `b8a4e03` and its GitHub Release is published (owner, 2026-11-17). No story is picked: the other nine E11 and E12 stories stay deferred for want of a product need (reasons under "Epic detail"), so the next story is the owner's choice.
 
@@ -147,6 +147,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-10.04 | #581 | Not on a board |
 | RAG-10.05 | #582 | Not on a board |
 | RAG-E11 | #593 | Not on a board |
+| RAG-E13 | #658 | Not on a board |
+| RAG-E14 | #659 | Not on a board |
 | RAG-11.01 | #594 | Not on a board |
 | RAG-11.02 to RAG-11.05, RAG-E12 and its stories | — (deferred, no issue) | — |
 
@@ -459,17 +461,17 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 - **Stories:** 6 total · 0 done · 0 in progress · 0 blocked · 6 pending
 - **Implemented functionality:** none.
-- **Outstanding work:** all; drafted 2026-11-27, waiting for owner approval before issues are created.
+- **Outstanding work:** all. Approved by the owner 2026-11-27; issues exist for the measurement stories only, the gated ones get an issue when their trigger is measured.
 - **Blockers and decisions:** measurement first. RAG-13.03 to RAG-13.06 each start only if RAG-13.02 measures the failure they address, and ship only on the gain their acceptance criteria name.
-- **Next recommended story:** RAG-13.01, once the epic is approved.
+- **Next recommended story:** RAG-13.01 (#660). Owner, 2026-11-27: cases come from published benchmarks (MuSiQue, 2WikiMultihopQA, FRAMES, MTRAG, ClapNQ).
 
 ### RAG-E14 Optimisation, system design and scale
 
 - **Stories:** 6 total · 0 done · 0 in progress · 0 blocked · 6 pending
 - **Implemented functionality:** none.
-- **Outstanding work:** all; drafted 2026-11-27, waiting for owner approval before issues are created.
+- **Outstanding work:** all. Approved by the owner 2026-11-27; issues exist for the measurement stories only, the gated ones get an issue when their trigger is measured.
 - **Blockers and decisions:** RAG-14.01 to RAG-14.04 measure and design; RAG-14.05 and RAG-14.06 start only where those numbers show a stage over budget. All figures are from the reference stack until a hosted deployment exists.
-- **Next recommended story:** RAG-14.01, once the epic is approved (can run beside RAG-13.01).
+- **Next recommended story:** RAG-14.01 (#662), beside RAG-13.01.
 
 ## Story status
 
@@ -531,16 +533,16 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 | RAG-12.03 | GraphRAG trial | 5 | P2 | Pending | — | — | — |
 | RAG-12.04 | External vector store benchmark | 5 | P2 | Pending | — | — | — |
 | RAG-12.05 | Organisation knowledge spaces | 5 | P2 | Pending | — | — | — |
-| RAG-13.01 | Hard-question eval set | 6 | P1 | Pending | — | — | — |
-| RAG-13.02 | Baseline and failure analysis on hard questions | 6 | P1 | Pending | — | — | — |
+| RAG-13.01 | Hard-question eval set | 6 | P1 | Pending | #660 | — | — |
+| RAG-13.02 | Baseline and failure analysis on hard questions | 6 | P1 | Pending | #661 | — | — |
 | RAG-13.03 | Follow-up question rewriting | 6 | P2 | Pending | — | — | — |
 | RAG-13.04 | Multi-query and decomposition in search | 6 | P2 | Pending | — | — | — |
 | RAG-13.05 | Contextual chunk enrichment | 6 | P2 | Pending | — | — | — |
 | RAG-13.06 | Context assembly for synthesis | 6 | P2 | Pending | — | — | — |
-| RAG-14.01 | Latency and cost profile per answer | 6 | P1 | Pending | — | — | — |
-| RAG-14.02 | Scale benchmark for vectors and filtered search | 6 | P1 | Pending | — | — | — |
-| RAG-14.03 | Ingestion throughput with the real parser and embeddings | 6 | P1 | Pending | — | — | — |
-| RAG-14.04 | Capacity model and scaling design | 6 | P1 | Pending | — | — | — |
+| RAG-14.01 | Latency and cost profile per answer | 6 | P1 | Pending | #662 | — | — |
+| RAG-14.02 | Scale benchmark for vectors and filtered search | 6 | P1 | Pending | #663 | — | — |
+| RAG-14.03 | Ingestion throughput with the real parser and embeddings | 6 | P1 | Pending | #664 | — | — |
+| RAG-14.04 | Capacity model and scaling design | 6 | P1 | Pending | #665 | — | — |
 | RAG-14.05 | Retrieval hot-path tuning | 6 | P2 | Pending | — | — | — |
 | RAG-14.06 | Ingestion scaling | 6 | P2 | Pending | — | — | — |
 
@@ -548,7 +550,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 | Date | Change | By |
 | --- | --- | --- |
-| 2026-11-27 | Review of the RAG work: tracker verified against `bfbd9ea`, RAG-E11 detail corrected (RAG-11.01 Done). RAG-E13 "Advanced retrieval" and RAG-E14 "Optimisation, system design and scale" drafted (12 stories, Phase 6) for owner review; deferred E10 to E12 stories stay deferred until a requirement exists (owner) | Claude session |
+| 2026-11-27 | Review of the RAG work: tracker verified against `bfbd9ea`, RAG-E11 detail corrected (RAG-11.01 Done). RAG-E13 "Advanced retrieval" and RAG-E14 "Optimisation, system design and scale" drafted (12 stories, Phase 6) and approved by the owner the same day (epics #658, #659; stories #660 to #665); deferred E10 to E12 stories stay deferred until a requirement exists (owner) | Claude session |
 | 2026-11-27 | #655 merged: review remediation (FTS ranks merged across text search configurations, embedding timeout falls back to full text in hybrid mode, query strings stripped from cited URLs, table search over column names, per-phase connections in ingestion, indexes on `documents.blob_key` and the jobs' `doc_id`). A relaxed OR fallback was dropped before merge: recall@5 0.957 to 0.83 | Claude session |
 | 2026-11-19 | RAG-08.01 follow-up from the RAG evaluation audit: dataset 1.3.0 (`expected_facts` and `question_type` on the 64 answerable cases, facts checked against the parsed sources); answer metrics (correct, partially correct, incorrect, false refusal, hallucination, vital-fact recall, CRAG score, Wilson intervals); trials per case (`APP_KNOWLEDGE_EVAL_TRIALS`, closing the "several trials per case" follow-up); optional claim-level faithfulness judge (`evaluation_judge.py`, uncalibrated, not a gate); `citation_precision` renamed `citation_source_precision`. No live run yet: no provider key in the session. Then dataset 2.0.0: 148 more cases (233 in all, grounded by a unit test). Their query vectors come from `nemotron-3-embed-1b` cut to 1,024 dimensions, which matches the committed `nemotron-3.5-embed-1b` vectors to cosine 0.9997 or more (3.5-1b answered 503 that day; `tests/fixtures/knowledge/README.md`). Retrieval baseline on pgvector 0.8.7: recall@5 0.984 to 0.957, MRR 0.833 to 0.823 (188 answerable cases). Pending: the live nightly baseline and a live answers run, both needing `nemotron-3.5-embed-1b` back | Claude session |
 | 2026-11-16 | v1.4.0 prepared: version 1.4.0, CHANGELOG, release record and gate evidence (upgrade from v1.3.0, table eval, live answer eval: `cited_correctly` 0.953, one abstention missed); `v1.3.0` tagged by the owner | Claude session |
