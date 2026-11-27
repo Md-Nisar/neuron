@@ -378,6 +378,14 @@ def test_capped_preserves_longest_prefix_under_json_escape_expansion() -> None:
     assert len(shown[0]["text"]) > 100
 
 
+def test_capped_drops_a_passage_whose_other_fields_alone_overflow() -> None:
+    # Six 300-character headings of CJK text escape to 6 chars each in the framed JSON.
+    item = {"cite_id": "abc", "headings": ["見出し" * 100] * 6, "text": "word " * 3000}
+    text, shown = _capped([item])
+    assert len(text) <= MAX_CHARS
+    assert shown == []
+
+
 def test_repeated_canonicalizes_narrowed_scope() -> None:
     kb_a, kb_other = uuid.uuid4(), uuid.uuid4()
     prior = AIMessage(
