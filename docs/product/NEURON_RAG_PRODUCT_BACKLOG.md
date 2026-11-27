@@ -1952,7 +1952,8 @@ mutating tools.
 - About 70 new cases, at least 10 in each category: multi-hop (a fact found through another
   fact), cross-document comparison, follow-up turns (a question that only makes sense with the
   earlier turns), vocabulary mismatch (none of the answer passage's distinctive words), and
-  synthesis (an answer that needs five or more passages). Plus 10 unanswerable hard cases.
+  synthesis (an answer that combines three or more whole articles; amended 2026-11-27 from "five
+  or more passages", because FRAMES names articles, not passages). Plus 10 unanswerable hard cases.
 - Cases come from published benchmarks, not written here (owner, 2026-11-27), each under a
   licence that allows redistribution with attribution:
   - multi-hop and hard unanswerable: MuSiQue (Stony Brook NLP, TACL 2022; CC BY 4.0), including
@@ -1976,7 +1977,7 @@ mutating tools.
   `knowledge_retrieval_live.json` still hold.
 
 **Technical tasks**
-- [ ] Schema version with `turns` and multiple required sources; documents; cases; tests.
+- [x] Schema version with `turns` and multiple required sources; documents; cases; tests.
 
 **Changes.** Test fixtures and eval harness only.
 
