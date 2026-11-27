@@ -196,8 +196,7 @@ def _capped(items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
                     lo = mid
                 else:
                     hi = mid - 1
-            items[0]["text"] = raw[:lo]
-            return frame(_PREAMBLE, "knowledge", items), items
+            items[0]["text"] = raw[:lo]  # if even no text fits, the next pass drops the item
 
 
 def _minted(
