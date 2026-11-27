@@ -19,10 +19,6 @@ import jsonschema
 import pytest
 
 _DIR = Path("tests/fixtures/knowledge/hard")
-# Temporary, while RAG-13.01's fixture is being built: removed in the commit that adds it.
-pytestmark = pytest.mark.skipif(
-    not (_DIR / "cases.json").exists(), reason="cases.json not built yet (RAG-13.01)"
-)
 _COUNTS = {
     "multi_hop": 15,
     "comparison": 12,
@@ -89,7 +85,9 @@ def test_answerable_categories_need_the_sources_their_category_names(
 ) -> None:
     least = {"multi_hop": 2, "comparison": 2, "synthesis": 3, "follow_up": 1}
     for case in dataset["cases"]:
-        n = len({s["document"] for s in case["required_sources"]})
+        # A multi-hop question needs passages, which may share an article; the others, articles.
+        key = ("document", "evidence") if case["category"] == "multi_hop" else ("document",)
+        n = len({tuple(s[k] for k in key) for s in case["required_sources"]})
         if case["category"] == "unanswerable":
             assert n == 0 and case["answer"] is None, case["id"]
         else:
