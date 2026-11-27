@@ -38,6 +38,7 @@ Facts checked against the repository on 2026-11-03 (`main` at `89a3020`, after v
 | v1.2.0 (proposed) | 2 | RAG-E09 | Rerank, re-index, role-shared knowledge bases, nightly retrieval gate, load test |
 | v1.3.0 (proposed, owner 2026-11-13) | 3 | RAG-E10: RAG-10.01, RAG-10.05, RAG-10.02 | Safe outbound fetching, web page ingestion, self-hosted chat model; RAG-10.03 and RAG-10.04 deferred |
 | Later, evidence-gated | 3, 4, 5 | RAG-10.03, RAG-10.04, RAG-E11, RAG-E12 | GitHub and MCP sources, specialised tools, platform features. Each needs measured evidence before it starts |
+| Later (draft, 2026-11-27) | 6 | RAG-E13, RAG-E14 | Measure hard questions and per-answer cost first (RAG-13.01, 13.02, 14.01 to 14.04); then advanced retrieval and optimisation only where the numbers show a gain |
 
 The research puts Phases 0–2 at 13–18 engineer-weeks (estimated, not measured), and Phase 1 alone at 7–10.
 
@@ -57,7 +58,7 @@ The research puts Phases 0–2 at 13–18 engineer-weeks (estimated, not measure
 | --- | --- | --- |
 | `epic`, `story` | Issue type | No, to create |
 | `rag` | Part of this backlog | No, to create |
-| `phase:0` … `phase:5` | Implementation phase | No, to create |
+| `phase:0` … `phase:6` | Implementation phase | No, to create |
 | `priority:p0`, `priority:p1`, `priority:p2` | Priority (P0 blocks the release of its phase) | Yes |
 | `v1.1.0`, `v1.2.0` | Target release, as with earlier releases | No, to create |
 | `security`, `frontend`, `testing`, `observability`, `documentation`, `deployment` | Area | Yes |
@@ -105,8 +106,10 @@ new console script `neuron-worker`.
 | RAG-E10 | External knowledge sources | 3 | later | 5 |
 | RAG-E11 | Specialised knowledge tools | 4 | later | 5 |
 | RAG-E12 | Platform and scale | 5 | later | 5 |
+| RAG-E13 | Advanced retrieval | 6 | later, evidence-gated (draft) | 6 |
+| RAG-E14 | Optimisation, system design and scale | 6 | later (draft) | 6 |
 
-Total: 13 epics, 56 stories.
+Total: 15 epics, 68 stories.
 
 ---
 
@@ -1916,3 +1919,390 @@ Start condition: a product requirement per tool; for mutating or outbound tools,
 **Tests.** Security tests.
 
 **Definition of Done (additions).** ADR accepted.
+
+---
+
+## RAG-E13 Advanced retrieval
+
+**Phase 6 · later, evidence-gated · drafted 2026-11-27 for owner review.** Make multi-step
+questions work: across documents, across turns, and in wording the documents do not use.
+
+Why now: every gate the current eval measures is met (reranked recall@5 1.0, `cited_correctly`
+1.0, 12 of 12 abstentions; `docs/releases/v1.4.0-release-verification.md`). That eval cannot
+show a gain from any advanced technique: 182 of its 188 answerable cases need one document,
+5 are multi-hop, 8 are comparisons and none is a follow-up turn. So the epic first builds the
+cases that would fail, measures them, and only then picks techniques, cheapest first.
+
+Goal: a measured baseline on hard questions, and each technique adopted only where it beats
+the tool loop on that baseline without regressing the existing eval.
+Exit gate: RAG-13.02's failure report recorded; each of RAG-13.03 to RAG-13.06 Done or Dropped
+with its numbers; RAG-11.05 and RAG-12.03 decided on the multi-hop subset this epic provides.
+Out of scope: new runtimes or datastores (RAG-12.03 and RAG-12.04 keep those decisions);
+mutating tools.
+
+### RAG-13.01 Hard-question eval set
+
+- **Epic:** RAG-E13 · **Phase:** 6 · **Priority:** P1 · **Estimate:** 1 w · **Research:** ChatGPT §7.2, Claude Phase 4
+- **Depends on:** RAG-08.01
+
+**Story.** As an engineer, I want eval cases that need more than one passage, turn or wording, so that advanced retrieval can be measured instead of assumed.
+
+**Requirements**
+- About 70 new cases, at least 10 in each category: multi-hop (a fact found through another
+  fact), cross-document comparison, follow-up turns (a question that only makes sense with the
+  earlier turns), vocabulary mismatch (none of the answer passage's distinctive words), and
+  synthesis (an answer that needs five or more passages). Plus 10 unanswerable hard cases.
+- Every case lists all expected sources and its vital facts, checked against the parsed sources.
+- Distractor documents (near-duplicates, other versions, same topic) go in their own knowledge
+  base, so the existing cases and baselines are unchanged.
+- Openly licensed documents only, with licence and source recorded as today.
+
+**Acceptance criteria**
+- Given the fixture, when its schema test runs, then the counts per category, the sources and the
+  licences are checked, and a follow-up case carries its earlier turns.
+- Given the existing eval, when it runs after the change, then `knowledge_retrieval.json` and
+  `knowledge_retrieval_live.json` still hold.
+
+**Technical tasks**
+- [ ] Schema version with `turns` and multiple required sources; documents; cases; tests.
+
+**Changes.** Test fixtures and eval harness only.
+
+**Security.** Licence check per document; no private data.
+
+**Tests.** Fixture schema test; existing eval.
+
+**Definition of Done (additions).** Case counts and licences in the fixture README.
+
+### RAG-13.02 Baseline and failure analysis on hard questions
+
+- **Epic:** RAG-E13 · **Phase:** 6 · **Priority:** P1 · **Estimate:** 0.5 w · **Research:** —
+- **Depends on:** RAG-13.01, RAG-14.01
+
+**Story.** As the owner, I want to know where today's system fails on hard questions and why, so that we fix the largest failure first.
+
+**Requirements**
+- Retrieval metrics per category: complete recall@k (every required source in the top k) and MRR.
+- Live answer metrics per category with the existing answer scorer, three runs, on the
+  free-tier model, recorded with the model id.
+- Every failed case is classified: retrieval miss, ranking, follow-up not resolved, synthesis
+  (evidence found, answer wrong), or false abstention. Stage latency and tokens from RAG-14.01.
+
+**Acceptance criteria**
+- Given the hard set, when the baseline runs, then the metrics, the classification and the
+  latency are recorded in `docs/releases/` with a recommended order for RAG-13.03 to RAG-13.06.
+
+**Technical tasks**
+- [ ] Metrics in the harness; three live runs; report.
+
+**Changes.** Eval harness and a report.
+
+**Security.** Reports hold case ids and metrics, no passage text beyond the fixtures.
+
+**Tests.** Harness unit tests for the new metrics.
+
+**Definition of Done (additions).** Owner picks which of RAG-13.03 to RAG-13.06 start.
+
+### RAG-13.03 Follow-up question rewriting
+
+- **Epic:** RAG-E13 · **Phase:** 6 · **Priority:** P2 · **Estimate:** 1 w · **Research:** ChatGPT §7.2 (query rewriting)
+- **Depends on:** RAG-13.02 (starts only if follow-up failures are measured)
+
+**Story.** As a user, I want "and what about the second one?" to search for what I mean.
+
+**Requirements**
+- The search query is rewritten into a standalone question from the thread, inside the search
+  tool and bounded (one call, a token cap, a timeout that falls back to the original query).
+- The original query is kept and both are searched, fused by RRF.
+- No new graph node unless the tool cannot see the turns it needs (then `add-graph-node` and an ADR).
+
+**Acceptance criteria**
+- Given the follow-up subset, when it runs with and without rewriting, then rewriting ships only
+  if complete recall@5 improves by at least 0.10 and the existing eval holds.
+- Given a rewriting timeout, when a search runs, then the original query is searched and a stable code recorded.
+
+**Technical tasks**
+- [ ] Rewriter; flag; fallback; eval comparison.
+
+**Changes.** Knowledge tools.
+
+**Security.** The rewritten text is model output: it is used only as a query, never as an instruction; no query text in telemetry.
+
+**Tests.** Unit, timeout and eval comparison.
+
+**Definition of Done (additions).** Comparison recorded either way.
+
+### RAG-13.04 Multi-query and decomposition in search
+
+- **Epic:** RAG-E13 · **Phase:** 6 · **Priority:** P2 · **Estimate:** 1 w · **Research:** ChatGPT §7.2 (multi-query, decomposition)
+- **Depends on:** RAG-13.02 (starts only if multi-hop or comparison retrieval misses are measured)
+
+**Story.** As a user, I want a question with two parts to find evidence for both parts.
+
+**Requirements**
+- Up to three sub-queries per search, generated once, searched in parallel within the existing
+  per-run search budget, fused by RRF, then reranked once.
+- Bounded: no loop; a failure falls back to the single query.
+
+**Acceptance criteria**
+- Given the multi-hop and comparison subsets, when compared with the single query, then it ships
+  only if complete recall@5 improves by at least 0.10, the existing eval holds, and search p95
+  stays inside the RAG-14.01 budget.
+
+**Technical tasks**
+- [ ] Generator; parallel search; flag; eval comparison.
+
+**Changes.** Knowledge retrieval and tools.
+
+**Security.** Every sub-query runs under the same `allowed_kbs` and RLS as the original.
+
+**Tests.** Unit, authorisation and eval comparison.
+
+**Definition of Done (additions).** Comparison recorded either way.
+
+### RAG-13.05 Contextual chunk enrichment
+
+- **Epic:** RAG-E13 · **Phase:** 6 · **Priority:** P2 · **Estimate:** 1 w · **Research:** Claude §8 (chunk context)
+- **Depends on:** RAG-13.02 (starts only if vocabulary-mismatch misses are measured), RAG-09.04
+
+**Story.** As a user, I want a passage found even when it never repeats the document's subject.
+
+**Requirements**
+- Each chunk is embedded and indexed with its document title, heading path and a short
+  document summary, as a new index profile through the RAG-09.04 re-index (no in-place change).
+- The summary is generated once per document version; the cost per page is recorded.
+
+**Acceptance criteria**
+- Given the vocabulary-mismatch subset, when the new profile is compared with the active one,
+  then it is activated only if complete recall@5 improves by at least 0.10 and the existing eval holds.
+- Given the generated summary, when a citation is shown, then it still points to the original passage.
+
+**Technical tasks**
+- [ ] Enrichment step in ingestion; new profile; eval comparison.
+
+**Changes.** Ingestion, index profile.
+
+**Security.** Summaries follow the processing policy (`self_hosted_only` refuses a hosted model).
+
+**Tests.** Ingestion, citation and eval comparison.
+
+**Definition of Done (additions).** Ingestion cost per page recorded.
+
+### RAG-13.06 Context assembly for synthesis
+
+- **Epic:** RAG-E13 · **Phase:** 6 · **Priority:** P2 · **Estimate:** 1 w · **Research:** ChatGPT §7.1 (step 8), §7.2 (compression)
+- **Depends on:** RAG-13.02 (starts only if synthesis failures are measured)
+
+**Story.** As a user, I want answers that need many passages to see enough of them, in order.
+
+**Requirements**
+- Neighbouring chunks of a hit are merged, duplicates removed, passages grouped by document in
+  page order, inside a token budget for the tool result.
+- Citations still resolve to the chunk each sentence came from.
+
+**Acceptance criteria**
+- Given the synthesis subset, when compared with today's tool result, then it ships only if the
+  answer score improves and the existing eval holds.
+- Given the budget, when a search returns more text than it allows, then the result is cut at a passage boundary.
+
+**Technical tasks**
+- [ ] Assembly; budget; flag; eval comparison.
+
+**Changes.** Knowledge tools.
+
+**Security.** Only passages the caller may read; tainting unchanged.
+
+**Tests.** Unit, citation and eval comparison.
+
+**Definition of Done (additions).** Comparison recorded either way.
+
+---
+
+## RAG-E14 Optimisation, system design and scale
+
+**Phase 6 · later · drafted 2026-11-27 for owner review.** Know what one answer costs and how
+the Knowledge Engine grows, then optimise what the numbers point at.
+
+Why now: the only load evidence is one 180 s run on a 4-CPU host with fake embeddings, a fake
+chat model and the plain-text parser (`docs/releases/v1.2.0-gate/knowledge-load-baseline.json`):
+search p50/p95 47/110 ms, 973 documents. The reranker alone takes 1.32 s p50 and 3.79 s p95
+(`v1.4.0-gate/rerank-eval.json`). The HNSW path (above 10,000 chunks in a caller's bases),
+real parsing and real embedding throughput have never been measured at volume, and no
+hosted deployment has run. Every figure here is from the reference stack and is re-measured
+when a hosted deployment exists.
+
+Goal: a per-stage latency and cost profile, scale and ingestion benchmarks, a capacity model,
+and optimisations taken only where the profile shows the time or cost.
+Exit gate: RAG-14.01 to RAG-14.04 Done; RAG-14.05 and RAG-14.06 Done or Dropped with numbers;
+RAG-12.04 decided on RAG-14.02's results.
+Out of scope: a hosted deployment itself (ADR 0008 work); a second datastore (RAG-12.04).
+
+### RAG-14.01 Latency and cost profile per answer
+
+- **Epic:** RAG-E14 · **Phase:** 6 · **Priority:** P1 · **Estimate:** 0.5 w · **Research:** —
+- **Depends on:** RAG-08.03
+
+**Story.** As the owner, I want to see where an answer's time and money go, so that optimisation targets the largest stage.
+
+**Requirements**
+- Per stage, from the existing spans: query embedding, full text, dense, fusion, rerank, each
+  model turn, citation validation. Model tokens in and out per answer.
+- A report command over a live eval run giving p50/p95 per stage and tokens per answer.
+- A proposed budget per stage, for the owner to agree.
+
+**Acceptance criteria**
+- Given a live eval run, when the report runs, then it prints p50/p95 per stage and tokens per
+  answer, and no query or passage text.
+- Given the report, when it is recorded, then the owner's agreed budget is in the tracker.
+
+**Technical tasks**
+- [ ] Missing span attributes; report command; recorded profile.
+
+**Changes.** Observability and a script.
+
+**Security.** Leak scan of RAG-08.03 extended to the new attributes.
+
+**Tests.** Unit tests for the report; leak scan.
+
+**Definition of Done (additions).** Profile and budget recorded.
+
+### RAG-14.02 Scale benchmark for vectors and filtered search
+
+- **Epic:** RAG-E14 · **Phase:** 6 · **Priority:** P1 · **Estimate:** 1 w · **Research:** Gemini §7 (halfvec, iterative scans), Claude §11
+- **Depends on:** RAG-09.06
+
+**Story.** As an operator, I want to know how search behaves at one and five million chunks, so that the Postgres choice rests on numbers.
+
+**Requirements**
+- Synthetic corpus at 100k, 1M and 5M chunks of 1,024-dimension `halfvec`, spread over many
+  users and bases, including a shared base many roles read.
+- Measured per size: HNSW build time, index and table size, memory; recall@10 of HNSW against
+  the exact scan at several `ef_search` values; filtered search p50/p95 under concurrency for
+  small and large allowed sets; the right value for `knowledge_exact_scan_max_chunks`.
+
+**Acceptance criteria**
+- Given each size, when the benchmark finishes, then every figure above is recorded with the
+  host, and the RAG-12.04 trigger (p95 or recall missed) is evaluated.
+
+**Technical tasks**
+- [ ] Corpus generator; benchmark script; record.
+
+**Changes.** Scripts and a record only.
+
+**Security.** Synthetic data only.
+
+**Tests.** The benchmark run itself; a small-size smoke in CI.
+
+**Definition of Done (additions).** RAG-12.04 decision recorded.
+
+### RAG-14.03 Ingestion throughput with the real parser and embeddings
+
+- **Epic:** RAG-E14 · **Phase:** 6 · **Priority:** P1 · **Estimate:** 0.5 w · **Research:** —
+- **Depends on:** RAG-09.06
+
+**Story.** As an operator, I want real ingestion rates, so that a large first upload has a known duration.
+
+**Requirements**
+- The load test with docling-serve and a real embedding provider (self-hosted, or the hosted
+  one within its rate limit), on PDFs and DOCX from the corpus.
+- Pages per minute, time per stage (parse, chunk, embed, write), and where the queue backs up.
+
+**Acceptance criteria**
+- Given the run, when it finishes, then rate and per-stage time are recorded with the provider
+  and its limits, and the limiting stage is named.
+
+**Technical tasks**
+- [ ] Load-test options; run; record.
+
+**Changes.** Load test and a record.
+
+**Security.** Corpus documents only.
+
+**Tests.** The run itself.
+
+**Definition of Done (additions).** Limiting stage named.
+
+### RAG-14.04 Capacity model and scaling design
+
+- **Epic:** RAG-E14 · **Phase:** 6 · **Priority:** P1 · **Estimate:** 1 w · **Research:** ChatGPT §7.4
+- **Depends on:** RAG-14.01, RAG-14.02, RAG-14.03
+
+**Story.** As the owner, I want a design that says what to scale, when, and at what cost, so that the hosted deployment is sized from evidence.
+
+**Requirements**
+- A capacity model: users, documents and chunks to CPU, memory, storage and Postgres size, from
+  the measured figures.
+- How each component scales: API replicas, workers, the parser, the embedding and rerank
+  providers, Postgres (vertical, read replicas for search, partitioning by profile), with the
+  limit and the signal that triggers each step.
+- Failure modes and SLOs for search and ingestion; what changes with ADR 0008's hosted target.
+- An ADR only if the design changes a decision in ADR 0014.
+
+**Acceptance criteria**
+- Given the document, when the owner reviews it, then every number cites a recorded measurement
+  or is marked an estimate, and each scaling step names its trigger.
+
+**Technical tasks**
+- [ ] `docs/operations/knowledge-capacity.md`; ARCHITECTURE link; ADR if needed.
+
+**Changes.** Documentation.
+
+**Security.** Covers pool and role separation as it grows.
+
+**Tests.** —
+
+**Definition of Done (additions).** Owner accepted the design.
+
+### RAG-14.05 Retrieval hot-path tuning
+
+- **Epic:** RAG-E14 · **Phase:** 6 · **Priority:** P2 · **Estimate:** 1 w · **Research:** ChatGPT §7.1
+- **Depends on:** RAG-14.01, RAG-14.02 (starts only for a stage over its budget)
+
+**Story.** As a user, I want answers sooner without losing quality.
+
+**Requirements**
+- Candidates, each measured for quality and latency: rerank candidate depth (40 today), skipping
+  the rerank when the fused order is already decisive, `ef_search`, the exact-scan threshold, and
+  a query-embedding cache shared by replicas (owner-scoped, as today's in-process one).
+
+**Acceptance criteria**
+- Given a change, when compared on the existing and hard evals, then it ships only if the stage
+  meets its budget and recall@5 and MRR stay within 0.02 of the baselines.
+
+**Technical tasks**
+- [ ] One flag or setting per change; comparison per change.
+
+**Changes.** Retrieval settings and code.
+
+**Security.** A shared cache keys on the owner and holds no query text.
+
+**Tests.** Unit, authorisation (cache isolation) and eval comparison.
+
+**Definition of Done (additions).** Each change's numbers recorded.
+
+### RAG-14.06 Ingestion scaling
+
+- **Epic:** RAG-E14 · **Phase:** 6 · **Priority:** P2 · **Estimate:** 1 w · **Research:** —
+- **Depends on:** RAG-14.03 (starts only if the limiting stage needs a change)
+
+**Story.** As a user uploading many documents, I want them ready in a predictable time.
+
+**Requirements**
+- Address the stage RAG-14.03 names: upload slots per process (4 today, which set the rate in
+  RAG-09.06), worker replicas and concurrency, embedding batch size and backpressure on provider
+  limits, parser capacity.
+
+**Acceptance criteria**
+- Given the RAG-14.03 run, when repeated after the change, then the rate improves on the limiting
+  stage and no job is lost or duplicated (the RAG-02.01 guarantees hold).
+
+**Technical tasks**
+- [ ] Change; repeated run; record.
+
+**Changes.** Worker, upload path or settings.
+
+**Security.** Quotas and per-user ingestion limits unchanged.
+
+**Tests.** Worker integration tests; the repeated run.
+
+**Definition of Done (additions).** Before and after recorded.
