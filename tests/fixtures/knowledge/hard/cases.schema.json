@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neuron.invalid/schemas/knowledge-hard-cases-1.json",
+  "title": "Neuron hard-question eval set",
+  "description": "Format of tests/fixtures/knowledge/hard/cases.json (RAG-13.01). References to documents, quotes and counts are checked by tests/unit/test_knowledge_hard_cases.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "description", "benchmarks", "documents_file", "documents_sha256", "cases"],
+  "properties": {
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "description": {"type": "string", "minLength": 1},
+    "benchmarks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "url", "licence"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "url": {"type": "string", "pattern": "^https://"},
+          "licence": {"enum": ["CC BY 4.0", "Apache-2.0"]}
+        }
+      }
+    },
+    "documents_file": {"const": "documents.json.gz"},
+    "documents_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "cases": {"type": "array", "items": {"$ref": "#/$defs/case"}, "minItems": 1}
+  },
+  "$defs": {
+    "source": {
+      "description": "A passage the answer needs. `evidence` is its first sentence (at most 160 characters), or null when the benchmark names only the article (FRAMES).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document", "evidence"],
+      "properties": {
+        "document": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+        "evidence": {"type": ["string", "null"], "minLength": 1, "maxLength": 160}
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "aliases"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "aliases": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "turn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "text"],
+      "properties": {"role": {"enum": ["user", "assistant"]}, "text": {"type": "string"}}
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "benchmark", "question", "required_sources", "answer"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^hard-\\d{3}$"},
+        "category": {
+          "enum": ["multi_hop", "comparison", "synthesis", "follow_up", "vocabulary_mismatch", "unanswerable"]
+        },
+        "benchmark": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "id"],
+          "properties": {
+            "source": {"enum": ["musique", "2wiki", "frames", "mtrag", "clapnq"]},
+            "id": {"type": "string", "minLength": 1},
+            "type": {"type": "string"},
+            "reasoning": {"type": "string"}
+          }
+        },
+        "question": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "required_sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+        "answer": {"oneOf": [{"$ref": "#/$defs/answer"}, {"type": "null"}]},
+        "reference_answer": {"type": "string"},
+        "turns": {"type": "array", "items": {"$ref": "#/$defs/turn"}, "minItems": 1},
+        "standalone": {"type": "string", "minLength": 1},
+        "withheld_evidence": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+        "hops": {"type": "integer", "minimum": 2, "maximum": 4},
+        "word_overlap": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}
