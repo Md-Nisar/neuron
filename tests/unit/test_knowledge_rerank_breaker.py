@@ -140,6 +140,18 @@ async def test_only_one_search_probes_a_half_open_circuit(
     assert reranker.calls == 4
 
 
+async def test_a_refused_input_never_opens_the_circuit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(retrieval.time, "monotonic", lambda: 1000.0)
+    kb = uuid.uuid4()
+    reranker = _Reranker([RerankError("rerank_input_refused")] * 4)
+    retriever = _retriever(reranker)
+    for _ in range(4):
+        assert (await _search(retriever, kb))[1] is False
+    # Every search still asked the reranker, and the next one is reranked.
+    assert (await _search(retriever, kb))[1] is True
+    assert reranker.calls == 5
+
+
 async def test_every_skipped_rerank_is_counted_with_its_code(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -105,6 +105,10 @@ class NvidiaReranker:
         ) as client:
             try:
                 async with client.stream("POST", self._url, json=body) as response:
+                    if response.status_code == 422:
+                        # The provider refused this input (NVIDIA's content screening): a
+                        # verdict on one query and its passages, not an outage.
+                        raise RerankError("rerank_input_refused")
                     if response.status_code != 200:
                         raise RerankError("rerank_failed")
                     content = bytearray()

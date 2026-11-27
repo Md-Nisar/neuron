@@ -59,7 +59,6 @@ from neuron_agent.evaluation import (
     RequestThrottle,
     throttled_model_calls,
 )
-from neuron_agent.knowledge import citations
 from neuron_agent.knowledge.chunking import chunk_document
 from neuron_agent.knowledge.ingest import _INSERT_CHUNK, _INSERT_EMBEDDING, _passage, _vector
 from neuron_agent.knowledge.parsing import MARKDOWN, Limits, PlainTextParser, parse_document
@@ -224,8 +223,8 @@ def _expected_facts(case: dict[str, Any]) -> list[dict[str, Any]]:
 
 async def _ask(
     service: AgentService, principal: Principal, owner: str, case: dict[str, Any]
-) -> tuple[AgentResponse | None, list[Any]]:
-    """The reply (None at the step limit) and the run's messages."""
+) -> AgentResponse | None:
+    """The reply, or None at the step limit."""
     thread_id: str | None = None
     if turns := case.get("turns"):
         thread_id = str(uuid.uuid4())
@@ -242,12 +241,9 @@ async def _ask(
             AgentRequest(message=case["question"], thread_id=thread_id), principal=principal
         )
     except AgentStepLimitError:
-        return None, []
+        return None
     assert isinstance(reply, AgentResponse)
-    state = await service.graph.aget_state({"configurable": {"thread_id": reply.thread_id}})
-    messages = state.values.get("messages", [])
-    last_human = max(i for i, m in enumerate(messages) if isinstance(m, HumanMessage))
-    return reply, messages[last_human:]
+    return reply
 
 
 def _rate(values: Sequence[bool]) -> float | None:
@@ -301,6 +297,16 @@ async def test_the_hard_set_baseline(
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     monkeypatch.setattr(telemetry, "tracer", lambda: provider.get_tracer(__name__))
+    # Every passage the agent's own searches return, for the case being asked.
+    seen: list[Any] = []
+    search = Retriever.search
+
+    async def recorded(self: Retriever, *args: Any, **kwargs: Any) -> Any:
+        result = await search(self, *args, **kwargs)
+        seen.extend(result.passages)
+        return result
+
+    monkeypatch.setattr(Retriever, "search", recorded)
     trials = int(os.environ.get("APP_KNOWLEDGE_EVAL_TRIALS", "3"))
     runs: list[dict[str, Any]] = []
     errors: list[str] = []
@@ -311,12 +317,13 @@ async def test_the_hard_set_baseline(
             for trial in range(1, trials + 1):
                 for case in cases:
                     started = time.monotonic()
+                    seen.clear()
                     try:
-                        reply, messages = await _ask(service, principal, owner, case)
+                        reply = await _ask(service, principal, owner, case)
                     except Exception as exc:  # an infrastructure error: recorded, not scored
                         errors.append(f"{trial}/{case['id']}: {type(exc).__name__}")
                         continue
-                    runs.append(_score(case, trial, reply, messages, names, chunk_texts, ranks,
+                    runs.append(_score(case, trial, reply, seen, names, chunk_texts, ranks,
                                        standalone, time.monotonic() - started))  # fmt: skip
     finally:
         await service.shutdown()
@@ -334,7 +341,7 @@ def _score(
     case: dict[str, Any],
     trial: int,
     reply: AgentResponse | None,
-    messages: list[Any],
+    found: list[Any],
     names: dict[uuid.UUID, str],
     chunk_texts: dict[uuid.UUID, str],
     ranks: dict[str, list[int | None]],
@@ -353,11 +360,7 @@ def _score(
     }
     if case["category"] == "unanswerable":
         return run | {"correct": abstained}
-    seen = [
-        Located(names[uuid.UUID(str(c["doc_id"]))], text=chunk_texts.get(uuid.UUID(str(cid)), ""))
-        for c in citations.minted(messages).values()
-        if (cid := c.get("chunk_id"))
-    ]
+    seen = [Located(names[p.doc_id], text=p.text) for p in found]
     sources = case["required_sources"]
     saw_all = all(any(holds(s, p) for p in seen) for s in sources)
     cited = [

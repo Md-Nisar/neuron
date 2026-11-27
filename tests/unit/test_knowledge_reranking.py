@@ -116,6 +116,10 @@ async def test_a_reply_over_the_cap_is_refused() -> None:
     [
         (httpx2.Response(500, text=_PROVIDER_TEXT), "rerank_failed"),
         (httpx2.Response(401, json={"detail": _PROVIDER_TEXT}), "rerank_failed"),
+        (
+            httpx2.Response(422, json={"error": {"message": "input rejected by content safety"}}),
+            "rerank_input_refused",
+        ),
         (httpx2.Response(200, text="not json " + _PROVIDER_TEXT), "rerank_output_invalid"),
         # A passage missing, repeated, out of range, or a score that is not finite.
         (

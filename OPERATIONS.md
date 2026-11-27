@@ -263,7 +263,12 @@ APP_OTEL_TRACES_SAMPLE_RATIO=1.0                             # head sampling for
     the dense path did not run), `neuron.knowledge.kb_ids` (the bases searched),
     `neuron.knowledge.results` (a count), `neuron.owner_key_prefix` and `neuron.outcome`; a
     failure sets `error.type` (`embedding_error`, `persistence_error`, ...). Never the query, a
-    passage, a title or file name, or a vector (RAG-08.03).
+    passage, a title or file name, or a vector (RAG-08.03). A child span per stage,
+    `neuron.knowledge.search.<stage>` (`embed`, `fts`, `dense`, `fuse`, `passages`, `rerank`),
+    carries only `neuron.knowledge.search.stage`: its duration is the stage's latency (RAG-14.01;
+    `scripts/knowledge_profile.py` reports p50/p95 per stage from a span dump).
+  - `neuron.citations.validate`, one per answer's citation check, with `neuron.citations.kept` and
+    `neuron.citations.rejected` (counts; never a `cite_id`).
   - `neuron.knowledge.upload`, one per document upload, with `neuron.knowledge.kb_id`,
     `neuron.knowledge.bytes`, `neuron.knowledge.doc_id` and `neuron.outcome` (the document's
     status, `queued` for a new one); a refused upload sets `error.type` (`unsupported_media_type`,
@@ -1085,7 +1090,7 @@ Symptoms: uploads stay `queued`; an erasure's `purge_pending` stays true; `neuro
 
 #### Reranker failing or slow
 
-Search keeps working: a reranker error or timeout leaves the RRF order. Symptoms: `knowledge_rerank_skipped` warnings with an `error_code` (`rerank_timeout`, `rerank_unavailable`, `rerank_failed`, `rerank_output_invalid`, or `processing_locality_forbidden` for a search over a base kept off hosted processing, which is expected), `reranked: false` from `POST /v1/knowledge/search`, and `neuron.knowledge.reranked=false` on search spans. Searches slow by up to `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` (6 s) while it times out.
+Search keeps working: a reranker error or timeout leaves the RRF order. Symptoms: `knowledge_rerank_skipped` warnings with an `error_code` (`rerank_timeout`, `rerank_unavailable`, `rerank_failed`, `rerank_output_invalid`, `rerank_input_refused` when the provider refuses one search's input (NVIDIA's content screening answers `422`; it does not count toward the circuit, and that search keeps the RRF order), or `processing_locality_forbidden` for a search over a base kept off hosted processing, which is expected), `reranked: false` from `POST /v1/knowledge/search`, and `neuron.knowledge.reranked=false` on search spans. Searches slow by up to `APP_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS` (6 s) while it times out.
 
 1. A burst of `rerank_failed` or `rerank_unavailable` is NVIDIA's endpoint; `rerank_failed` from the first search after a deploy is more likely the key or the model name (`APP_KNOWLEDGE_RERANKER_MODEL`): NVIDIA retires model endpoints with `410`.
 2. To stop reranking, set `APP_KNOWLEDGE_RERANKER=none` and restart the API. Answers then use the RRF order, which was the v1.1.0 behaviour (`docs/releases/v1.2.0-rerank-eval.md` has the difference).

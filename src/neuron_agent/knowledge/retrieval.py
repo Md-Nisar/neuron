@@ -417,8 +417,11 @@ class Retriever:
         return [dataclasses.replace(passages[i], score=score) for i, score in order[:k]], True
 
     def _rerank_failed(self, exc: EmbeddingError | RerankError | None) -> None:
-        """Count a provider failure toward opening the circuit (a policy refusal is not one)."""
-        if isinstance(exc, EmbeddingError):
+        """Count a provider failure toward opening the circuit. A policy refusal is not one, nor
+        is the provider refusing one input, which says nothing about the next search."""
+        if isinstance(exc, EmbeddingError) or (
+            isinstance(exc, RerankError) and exc.code == "rerank_input_refused"
+        ):
             return
         self._rerank_failures += 1
         if self._rerank_failures >= _RERANK_BREAKER_FAILURES:
