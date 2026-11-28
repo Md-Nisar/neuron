@@ -55,12 +55,8 @@ from test_postgres_knowledge_tables import _knowledge_db
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
 
 from neuron_agent.config.settings import Settings
-from neuron_agent.errors.base import AgentStepLimitError
-from neuron_agent.evaluation import (
-    DEFAULT_MAX_REQUESTS_PER_MINUTE,
-    RequestThrottle,
-    throttled_model_calls,
-)
+from neuron_agent.errors.base import AgentStepLimitError, RateLimitError
+from neuron_agent.evaluation import RequestThrottle, throttled_model_calls
 from neuron_agent.knowledge.chunking import chunk_document
 from neuron_agent.knowledge.ingest import _INSERT_CHUNK, _INSERT_EMBEDDING, _passage, _vector
 from neuron_agent.knowledge.parsing import MARKDOWN, Limits, PlainTextParser, parse_document
@@ -97,6 +93,10 @@ K = 5
 # Two calls a search (query embedding, rerank) at 30 calls a minute.
 SECONDS_PER_SEARCH = 4.0
 LONG_FORM = {"mtrag", "clapnq"}
+# Below the eval CLI's 30: searches, embeddings and reranks share the free tier's limit, and a
+# first run at 30 was rate limited for five minutes.
+MODEL_CALLS_PER_MINUTE = 20
+RATE_LIMIT_PAUSE_SECONDS = 300
 
 
 def _settings(db: RoleDatabase, nvidia_key: str) -> Settings:
@@ -317,13 +317,19 @@ async def test_the_hard_set_baseline(
     service = AgentService(settings)
     await service.startup()
     try:
-        with throttled_model_calls(RequestThrottle(DEFAULT_MAX_REQUESTS_PER_MINUTE)):
+        with throttled_model_calls(RequestThrottle(MODEL_CALLS_PER_MINUTE)):
             for trial in range(first, trials + 1):
                 for case in cases:
                     started = time.monotonic()
                     seen.clear()
                     try:
-                        reply = await _ask(service, principal, owner, case)
+                        try:
+                            reply = await _ask(service, principal, owner, case)
+                        except RateLimitError:  # the free tier's window: wait it out, once
+                            await anyio.sleep(RATE_LIMIT_PAUSE_SECONDS)
+                            started = time.monotonic()
+                            seen.clear()
+                            reply = await _ask(service, principal, owner, case)
                     except Exception as exc:  # an infrastructure error: recorded, not scored
                         errors.append(f"{trial}/{case['id']}: {type(exc).__name__}")
                         continue
