@@ -19,8 +19,10 @@ Not a gate: the outcome is written to `APP_KNOWLEDGE_EVAL_REPORT` (case ids and 
 text), and the spans of every answer to `APP_KNOWLEDGE_EVAL_SPANS` for
 `scripts/knowledge_profile.py`. `APP_KNOWLEDGE_HARD_VECTORS` names a file that keeps the
 passage vectors between runs, and `APP_KNOWLEDGE_HARD_CASES` (ids, comma-separated) runs only
-those cases. Live and billed (`integration`): run it with `APP_DEFAULT_MODEL`
-set and `-o faulthandler_timeout=14400`.
+those cases. `APP_KNOWLEDGE_EVAL_FIRST_TRIAL` starts at a later trial, to finish a run that a
+rate limit cut short; the report keeps each case's source ranks, so runs can be merged. Live
+and billed (`integration`): run it with `APP_DEFAULT_MODEL` set and
+`-o faulthandler_timeout=14400`.
 """
 
 from __future__ import annotations
@@ -308,13 +310,15 @@ async def test_the_hard_set_baseline(
 
     monkeypatch.setattr(Retriever, "search", recorded)
     trials = int(os.environ.get("APP_KNOWLEDGE_EVAL_TRIALS", "3"))
+    # To finish a run a provider's rate limit cut short: the trials before it are not asked again.
+    first = int(os.environ.get("APP_KNOWLEDGE_EVAL_FIRST_TRIAL", "1"))
     runs: list[dict[str, Any]] = []
     errors: list[str] = []
     service = AgentService(settings)
     await service.startup()
     try:
         with throttled_model_calls(RequestThrottle(DEFAULT_MAX_REQUESTS_PER_MINUTE)):
-            for trial in range(1, trials + 1):
+            for trial in range(first, trials + 1):
                 for case in cases:
                     started = time.monotonic()
                     seen.clear()
@@ -334,7 +338,7 @@ async def test_the_hard_set_baseline(
     report |= {"degraded_searches": sorted(set(degraded)), "infrastructure_errors": errors}
     if path := os.environ.get("APP_KNOWLEDGE_EVAL_REPORT"):
         Path(path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    assert len(runs) + len(errors) == trials * len(cases)
+    assert len(runs) + len(errors) == (trials - first + 1) * len(cases)
 
 
 def _score(
@@ -439,5 +443,7 @@ def _report(
         "trials": trials,
         "k": K,
         "categories": per,
+        "ranks": ranks,
+        "standalone_ranks": standalone,
         "runs": runs,
     }

@@ -9,7 +9,9 @@ attributes in `KEPT`, so the file and the report hold no query, passage, answer 
 Stages: each search stage (`search.embed`, `search.fts`, `search.dense`, `search.fuse`,
 `search.passages`, `search.rerank`) and the whole search (`search`), each model turn
 (`model_turn`), each tool call (`tool`), the citation check (`citations`) and the whole answer
-(`answer`). An answer is one `invoke_agent` span and everything in its trace.
+(`answer`). An answer is one `invoke_agent` span and everything in its trace; a failed answer
+(its `invoke_agent` span has `error.type`, such as a provider's rate limit) is left out and
+counted in `failed_answers`, so the profile is of answers that finished.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from opentelemetry.sdk.trace import ReadableSpan
 from neuron_agent.observability import semconv
 
 KEPT = (
+    semconv.ERROR_TYPE,  # a stable code, never a message
     semconv.GEN_AI_OPERATION_NAME,
     semconv.GEN_AI_USAGE_INPUT_TOKENS,
     semconv.GEN_AI_USAGE_OUTPUT_TOKENS,
@@ -86,12 +89,18 @@ def _summary(values: Sequence[float], digits: int) -> dict[str, float | int]:
 
 def profile(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     """Milliseconds per stage, and per answer: model turns and tokens in and out."""
+    records = list(records)
+    failed = {
+        rec["trace"]
+        for rec in records
+        if stage(rec) == "answer" and semconv.ERROR_TYPE in rec["attributes"]
+    }
     durations: dict[str, list[float]] = defaultdict(list)
     answers: set[str] = set()
     turns: dict[str, int] = defaultdict(int)
     tokens: dict[str, dict[str, int]] = defaultdict(lambda: {"input": 0, "output": 0})
     for rec in records:
-        if (name := stage(rec)) is None:
+        if (name := stage(rec)) is None or rec["trace"] in failed:
             continue
         durations[name].append(float(rec["ms"]))
         if name == "answer":
@@ -108,6 +117,7 @@ def profile(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     per_answer = sorted(answers)
     return {
         "answers": len(per_answer),
+        "failed_answers": len(failed),
         "stages_ms": {name: _summary(values, 1) for name, values in sorted(durations.items())},
         "per_answer": {
             "model_turns": _summary([turns[t] for t in per_answer], 1) if per_answer else None,
@@ -123,7 +133,7 @@ def profile(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
 
 def table(report: Mapping[str, Any]) -> str:
     lines = [
-        f"{report['answers']} answers",
+        f"{report['answers']} answers ({report['failed_answers']} failed, left out)",
         "",
         "| Stage | Spans | p50 ms | p95 ms | Mean ms |",
         "| --- | ---: | ---: | ---: | ---: |",

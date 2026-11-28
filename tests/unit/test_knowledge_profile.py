@@ -74,6 +74,17 @@ def test_the_profile_gives_each_stage_and_tokens_per_answer() -> None:
     assert per_answer["model_turns"]["p95"] == 2
 
 
+def test_a_failed_answer_is_left_out_and_counted() -> None:
+    failed = _answer("f", 5.0, [(0, 0)])
+    failed[0]["attributes"][semconv.ERROR_TYPE] = "rate_limited"
+
+    report = profile(_answer("a", 900.0, [(100, 10)]) + failed)
+
+    assert (report["answers"], report["failed_answers"]) == (1, 1)
+    assert report["stages_ms"]["answer"]["count"] == 1
+    assert report["per_answer"]["input_tokens"]["p50"] == 100
+
+
 def test_a_dump_keeps_only_ids_timings_and_counts(tmp_path: Path) -> None:
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
