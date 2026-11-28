@@ -2054,7 +2054,8 @@ mutating tools.
 
 **Requirements**
 - Up to three sub-queries per search, generated once, searched in parallel within the existing
-  per-run search budget, fused by RRF, then reranked once.
+  per-run search budget, fused by RRF, then reranked once. The agent writes them in its
+  `search_knowledge` call (`also`), so no extra model call is made (owner, 2026-11-28).
 - Bounded: no loop; a failure falls back to the single query.
 
 **Acceptance criteria**

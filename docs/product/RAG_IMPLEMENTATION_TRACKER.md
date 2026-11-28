@@ -59,9 +59,9 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 3 | 0 | 0 | 2 | — (v1.3.0 release) |
 | RAG-E11 | Specialised knowledge tools | 4 | v1.4.0 (proposed) | 5 | 1 | 0 | 0 | 4 | None picked |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| RAG-E13 | Advanced retrieval | 6 | later (approved) | 6 | 1 | 0 | 0 | 5 | RAG-13.04 (owner to pick) |
-| RAG-E14 | Optimisation, system design and scale | 6 | later (approved) | 6 | 0 | 0 | 0 | 6 | RAG-14.02 |
-| **Total** | | | | **68** | **46** | **0** | **0** | **22** | **RAG-13.02 and RAG-14.01** |
+| RAG-E13 | Advanced retrieval | 6 | later (approved) | 6 | 2 | 1 | 0 | 3 | RAG-13.04 |
+| RAG-E14 | Optimisation, system design and scale | 6 | later (approved) | 6 | 0 | 1 | 0 | 5 | RAG-14.02 |
+| **Total** | | | | **68** | **47** | **2** | **0** | **19** | **RAG-13.04 and RAG-14.02** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
@@ -459,16 +459,17 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 ### RAG-E13 Advanced retrieval
 
-- **Stories:** 6 total · 1 done · 0 in progress · 0 blocked · 5 pending
+- **Stories:** 6 total · 2 done · 1 in progress · 0 blocked · 3 pending
 - **Implemented functionality:** RAG-13.01, the hard-question eval set: 72 cases in `tests/fixtures/knowledge/hard/` (15 multi-hop, 12 comparison, 10 synthesis, 15 follow-up, 10 vocabulary mismatch, 10 unanswerable), selected from MuSiQue, 2WikiMultihopQA, FRAMES, MTRAG and ClapNQ by `scripts/build_hard_eval.py` with a fixed seed, over 628 documents in their own corpus. `tests/unit/test_knowledge_hard_cases.py` checks counts, sources, quotes, turns, withheld evidence and licences.
 - **Outstanding work:** all. Approved by the owner 2026-11-27; issues exist for the measurement stories only, the gated ones get an issue when their trigger is measured.
 - **Blockers and decisions:** measurement first. RAG-13.03 to RAG-13.06 each start only if RAG-13.02 measures the failure they address, and ship only on the gain their acceptance criteria name.
-- **RAG-13.02 (Partial, 2026-11-28):** the hard-set baseline is recorded in `docs/releases/rag-13.02-hard-question-baseline.md`. 54 of 213 runs were wrong: 14 retrieval misses (all multi-hop), 12 ranking, 11 false abstentions (the evidence was found), 7 synthesis, 2 follow-up not resolved, and 8 unanswerable cases answered. The human-written standalone rewrite gains no complete recall@5 on follow-ups. The recommended order is RAG-13.04, then RAG-13.06, with RAG-13.05 held and RAG-13.03 not started. An abstention-calibration story (19 runs) is proposed for the owner. It becomes Done when the owner picks.
-- **Next recommended story:** RAG-13.04 (multi-query and decomposition), once the owner picks.
+- **RAG-13.02 (Partial, 2026-11-28):** the hard-set baseline is recorded in `docs/releases/rag-13.02-hard-question-baseline.md`. 54 of 213 runs were wrong: 14 retrieval misses (all multi-hop), 12 ranking, 11 false abstentions (the evidence was found), 7 synthesis, 2 follow-up not resolved, and 8 unanswerable cases answered. The human-written standalone rewrite gains no complete recall@5 on follow-ups. The recommended order is RAG-13.04, then RAG-13.06, with RAG-13.05 held and RAG-13.03 not started. An abstention-calibration story (19 runs) is proposed for the owner. The owner picked RAG-13.04 first, then RAG-13.06, on 2026-11-28; RAG-13.02 is Done.
+- **RAG-13.04 (In progress, #667):** design picked by the owner (2026-11-28): the agent writes the sub-queries in its `search_knowledge` call (`also`, at most two more), so there is no extra model call and no model inside `knowledge/`. The retriever searches each in the same authorised transaction, fuses by RRF and reranks once; every query counts toward the five searches a run may make. Behind `APP_KNOWLEDGE_MULTI_QUERY` (off). The hard-set comparison on the multi-hop and comparison subsets is running.
+- **Next recommended story:** RAG-13.04, then RAG-13.06.
 
 ### RAG-E14 Optimisation, system design and scale
 
-- **Stories:** 6 total · 1 done · 0 in progress · 0 blocked · 5 pending
+- **Stories:** 6 total · 0 done · 1 in progress (RAG-14.01, Partial: budget awaits the owner) · 0 blocked · 5 pending
 - **Implemented functionality:** RAG-13.01, the hard-question eval set: 72 cases in `tests/fixtures/knowledge/hard/` (15 multi-hop, 12 comparison, 10 synthesis, 15 follow-up, 10 vocabulary mismatch, 10 unanswerable), selected from MuSiQue, 2WikiMultihopQA, FRAMES, MTRAG and ClapNQ by `scripts/build_hard_eval.py` with a fixed seed, over 628 documents in their own corpus. `tests/unit/test_knowledge_hard_cases.py` checks counts, sources, quotes, turns, withheld evidence and licences.
 - **Outstanding work:** all. Approved by the owner 2026-11-27; issues exist for the measurement stories only, the gated ones get an issue when their trigger is measured.
 - **Blockers and decisions:** RAG-14.01 to RAG-14.04 measure and design; RAG-14.05 and RAG-14.06 start only where those numbers show a stage over budget. All figures are from the reference stack until a hosted deployment exists.
@@ -536,9 +537,9 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 | RAG-12.04 | External vector store benchmark | 5 | P2 | Pending | — | — | — |
 | RAG-12.05 | Organisation knowledge spaces | 5 | P2 | Pending | — | — | — |
 | RAG-13.01 | Hard-question eval set | 6 | P1 | Done | #660 | #666 | `tests/unit/test_knowledge_hard_cases.py` (7 tests); offline retrieval baseline holds; live baseline holds (recall@5 0.989, MRR 0.936, 2026-11-28) |
-| RAG-13.02 | Baseline and failure analysis on hard questions | 6 | P1 | Partial | #661 | #666 | `docs/releases/rag-13.02-hard-question-baseline.md` (3 live trials, 213 runs, 2026-11-28); `tests/unit/test_retrieval_metrics.py`. Waiting on the owner's pick of RAG-13.03 to RAG-13.06 |
+| RAG-13.02 | Baseline and failure analysis on hard questions | 6 | P1 | Done | #661 | #666 | `docs/releases/rag-13.02-hard-question-baseline.md` (3 live trials, 213 runs, 2026-11-28); `tests/unit/test_retrieval_metrics.py`. Owner picked RAG-13.04, then RAG-13.06 (2026-11-28) |
 | RAG-13.03 | Follow-up question rewriting | 6 | P2 | Pending | — | — | — |
-| RAG-13.04 | Multi-query and decomposition in search | 6 | P2 | Pending | — | — | — |
+| RAG-13.04 | Multi-query and decomposition in search | 6 | P2 | In progress | #667 | #666 | `tests/security/test_knowledge_tools.py` (flag, budget, repeat, validation), `tests/integration/test_postgres_knowledge_search.py` (fusion in the caller's bases only); hard-set comparison running |
 | RAG-13.05 | Contextual chunk enrichment | 6 | P2 | Pending | — | — | — |
 | RAG-13.06 | Context assembly for synthesis | 6 | P2 | Pending | — | — | — |
 | RAG-14.01 | Latency and cost profile per answer | 6 | P1 | Partial | #662 | #666 | `docs/releases/rag-14.01-latency-cost-profile.md` (213 answers, 2026-11-28); `tests/unit/test_knowledge_profile.py`, stage-span and citation-span tests. Waiting on the owner's agreement to the proposed budget |
@@ -552,6 +553,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-28 | Owner picked RAG-13.04, then RAG-13.06; RAG-13.02 Done. RAG-13.04 In progress (#667): agent-written sub-queries (`also`) behind `APP_KNOWLEDGE_MULTI_QUERY`, the owner's design choice. Data Gateway issues #646 to #651 closed (owner) | Claude session |
 | 2026-11-28 | RAG-13.02 and RAG-14.01 Partial: the hard-set baseline (3 live trials, 213 runs on `nemotron-3-ultra-550b-a55b`) and the latency and cost profile are recorded in `docs/releases/`. Both wait on the owner: the pick of RAG-13.03 to RAG-13.06 (recommended RAG-13.04, then RAG-13.06) and the proposed stage budget. The harness now saves each run and resumes, after a rate-limited run was cut off | Claude session |
 | 2026-11-28 | NVIDIA's reranker began refusing one live-eval case's passages (422, content screening), which made the live retrieval eval inconclusive twice. Now `rerank_input_refused`: the search keeps the RRF order, the circuit breaker ignores it, and the eval scores that case (`answerable-074`) on the fused order and lists it. No other NVIDIA reranker is available (404 or 410) | Claude session |
 | 2026-11-27 | RAG-13.01 Done: hard-question eval set (72 cases from five published benchmarks, 628 documents under CC BY-SA 4.0). Synthesis requirement amended from "five or more passages" to "three or more whole articles", as FRAMES names articles. `knowledge_retrieval.json` and `knowledge_retrieval_live.json` rerun and holding | Claude session |
