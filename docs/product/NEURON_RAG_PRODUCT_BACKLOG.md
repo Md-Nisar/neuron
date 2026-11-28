@@ -2006,7 +2006,7 @@ mutating tools.
   latency are recorded in `docs/releases/` with a recommended order for RAG-13.03 to RAG-13.06.
 
 **Technical tasks**
-- [ ] Metrics in the harness; three live runs; report.
+- [x] Metrics in the harness; three live runs; report.
 
 **Changes.** Eval harness and a report.
 
@@ -2175,7 +2175,7 @@ Out of scope: a hosted deployment itself (ADR 0008 work); a second datastore (RA
 - Given the report, when it is recorded, then the owner's agreed budget is in the tracker.
 
 **Technical tasks**
-- [ ] Missing span attributes; report command; recorded profile.
+- [x] Missing span attributes; report command; recorded profile.
 
 **Changes.** Observability and a script.
 
