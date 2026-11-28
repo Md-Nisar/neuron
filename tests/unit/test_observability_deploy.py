@@ -60,6 +60,7 @@ def _attribute_constants() -> set[str]:
         "APPROVAL_SPAN",
         "FEEDBACK_SPAN",
         "MEMORY_SPAN",
+        "CITATIONS_VALIDATE_SPAN",
         "KNOWLEDGE_",
         "OUTCOME_",
     )

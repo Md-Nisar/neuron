@@ -110,6 +110,29 @@ async def test_a_search_span_has_ids_counts_and_timings_only(
     assert (results.count, results.sum) == (1, 1)
 
 
+async def test_each_search_stage_is_a_child_span_with_its_name_only(
+    role_db: RoleDatabase,  # noqa: F811
+    captured: tuple[InMemorySpanExporter, InMemoryMetricReader],
+) -> None:
+    exporter, _ = captured
+    await _knowledge_db(role_db)
+    kb = await _base(role_db, _A)
+    await _document(role_db, kb, _A, [_TEXT])
+
+    await _retriever(role_db).search(_A, _TEXT, k=5)
+
+    parent = _search_span(exporter)
+    prefix = f"{semconv.KNOWLEDGE_SEARCH_SPAN}."
+    stages = {s.name: s for s in exporter.get_finished_spans() if s.name.startswith(prefix)}
+    # No reranker is configured here, so there is no rerank stage.
+    assert set(stages) == {prefix + n for n in ("embed", "fts", "dense", "fuse", "passages")}
+    for name, span in stages.items():
+        assert span.parent is not None and span.parent.span_id == parent.context.span_id, name
+        stage = name.removeprefix(prefix)
+        assert dict(span.attributes or {}) == {semconv.NEURON_KNOWLEDGE_SEARCH_STAGE: stage}
+        assert stage in semconv.KNOWLEDGE_SEARCH_STAGES
+
+
 async def test_a_failed_search_is_an_error_span_with_its_code(
     role_db: RoleDatabase,  # noqa: F811
     captured: tuple[InMemorySpanExporter, InMemoryMetricReader],

@@ -39,7 +39,7 @@ from neuron_agent.knowledge.providers import (
     create_reindex_embedding_provider,
 )
 from neuron_agent.knowledge.reranking import create_reranker
-from neuron_agent.knowledge.retrieval import Retriever
+from neuron_agent.knowledge.retrieval import MAX_QUERIES, Retriever
 from neuron_agent.knowledge.service import KnowledgeBases
 from neuron_agent.knowledge.table_engine import MAX_SQL_CHARS, TableQueryError, run_query
 from neuron_agent.security.authorization import AuthorizationContext
@@ -125,10 +125,25 @@ def _calls(messages: Sequence[Any], name: str) -> int:
     )
 
 
+def _searches(messages: Sequence[Any]) -> int:
+    """Queries the model searched in this run, the current call's included: a call with `also`
+    counts each of its queries (RAG-13.04), so more queries per call never widen the budget."""
+    return sum(
+        1 + (len(also) if isinstance(also := call["args"].get("also"), list) else 0)
+        for message in messages
+        if isinstance(message, AIMessage)
+        for call in message.tool_calls
+        if call["name"] == "search_knowledge" and isinstance(call["args"], dict)
+    )
+
+
 def _search_key(
     args: Any, scope: frozenset[uuid.UUID] | None = None
-) -> tuple[str, tuple[str, ...]] | None:
+) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
     if not isinstance(args, dict) or not isinstance(args.get("query"), str):
+        return None
+    also = args.get("also") or ()
+    if not isinstance(also, list | tuple) or not all(isinstance(q, str) for q in also):
         return None
     kb_ids = args.get("kb_ids") or ()
     if not isinstance(kb_ids, list | tuple):
@@ -139,8 +154,8 @@ def _search_key(
         effective = scoped or sorted(allowed)
     else:
         effective = [str(kb).lower() for kb in kb_ids]
-    query = " ".join(args["query"].lower().split())
-    return query, tuple(sorted(set(effective)))
+    queries = {" ".join(q.lower().split()) for q in (args["query"], *also)}
+    return tuple(sorted(queries)), tuple(sorted(set(effective)))
 
 
 def _repeated(
@@ -150,10 +165,10 @@ def _repeated(
     scope: frozenset[uuid.UUID] | None = None,
 ) -> bool:
     """Whether a search call made before this one in the run, including one earlier in the
-    same model turn, asked the same query (ignoring case and spacing) of the same bases. The
-    result limit is ignored: a larger one returns mostly the same passages. A call that failed
-    does not count, so it can be retried. Without the current call's id, the calls before it
-    cannot be told apart, so nothing is refused."""
+    same model turn, asked the same queries (ignoring case, spacing and order) of the same
+    bases. The result limit is ignored: a larger one returns mostly the same passages. A call
+    that failed does not count, so it can be retried. Without the current call's id, the calls
+    before it cannot be told apart, so nothing is refused."""
     if call_id is None:
         return False
     key = _search_key(args, scope)
@@ -320,31 +335,28 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
             found = [b for b in found if b.kb_id in scope]
         return _capped([{"kb_id": str(b.kb_id), "name": b.name} for b in found])[0]
 
-    @tool(response_format="content_and_artifact")
-    async def search_knowledge(
-        query: Annotated[str, Field(min_length=1, max_length=500)],
+    async def search(
+        query: str,
         runtime: ToolRuntime[Any, Any],
-        kb_ids: Annotated[list[uuid.UUID] | None, Field(min_length=1, max_length=10)] = None,
-        limit: Annotated[int, Field(ge=1, le=10)] = 5,
+        kb_ids: list[uuid.UUID] | None,
+        limit: int,
+        also: list[str],
     ) -> tuple[str, dict[str, dict[str, Any]]]:
-        """Search the user's knowledge bases for passages that answer `query`. Use it when the
-        question may be answered by the user's own documents. `kb_ids` (from
-        list_knowledge_bases) limits the search to those bases; `limit` is 1 to 10. A
-        `no_relevant_results` status means no passage scored high enough for `query`."""
         owner = _owner(runtime)
-        if not query.strip() or "\x00" in query:
+        if any(not q.strip() or "\x00" in q for q in (query, *also)):
             raise ToolException(_INVALID)
         messages = _messages(runtime)
-        if _calls(messages, "search_knowledge") > MAX_SEARCHES:
+        if _searches(messages) > MAX_SEARCHES:
             raise ToolException(_TOO_MANY)
         if (scope := _scope(runtime)) is not None:
             # The model's `kb_ids` narrow the request's bases further, never widen them.
             kb_ids = [kb for kb in kb_ids or () if kb in scope] or sorted(scope, key=str)
-        if _repeated(messages, runtime.tool_call_id, {"query": query, "kb_ids": kb_ids}, scope):
+        args = {"query": query, "kb_ids": kb_ids, "also": also}
+        if _repeated(messages, runtime.tool_call_id, args, scope):
             raise ToolException(_REPEATED)
         try:
             result = await retriever().search(
-                owner, query, k=limit, kb_ids=kb_ids, roles=_roles(runtime)
+                owner, query, k=limit, kb_ids=kb_ids, roles=_roles(runtime), also=also
             )
         except AppError:  # an embedding failure too
             raise ToolException(_UNAVAILABLE) from None
@@ -356,6 +368,44 @@ def knowledge_specs(settings: Settings, pool: Pool) -> list[ToolSpec]:
                 for p in result.passages
             ]
         )
+
+    if settings.knowledge_multi_query:
+
+        @tool(response_format="content_and_artifact")
+        async def search_knowledge(
+            query: Annotated[str, Field(min_length=1, max_length=500)],
+            runtime: ToolRuntime[Any, Any],
+            kb_ids: Annotated[list[uuid.UUID] | None, Field(min_length=1, max_length=10)] = None,
+            limit: Annotated[int, Field(ge=1, le=10)] = 5,
+            also: Annotated[
+                list[Annotated[str, Field(min_length=1, max_length=500)]] | None,
+                Field(max_length=MAX_QUERIES - 1),
+            ] = None,
+        ) -> tuple[str, dict[str, dict[str, Any]]]:
+            """Search the user's knowledge bases for passages that answer `query`. Use it when
+            the question may be answered by the user's own documents. When the question has
+            parts that different passages answer (two things to compare, or a fact needed to
+            find another), put each other part in `also` (at most two): they are searched
+            together and the best passages for all of them come back. Each query counts toward
+            the answer's search limit. `kb_ids` (from list_knowledge_bases) limits the search
+            to those bases; `limit` is 1 to 10. A `no_relevant_results` status means no passage
+            scored high enough."""
+            return await search(query, runtime, kb_ids, limit, also or [])
+
+    else:
+
+        @tool(response_format="content_and_artifact")
+        async def search_knowledge(
+            query: Annotated[str, Field(min_length=1, max_length=500)],
+            runtime: ToolRuntime[Any, Any],
+            kb_ids: Annotated[list[uuid.UUID] | None, Field(min_length=1, max_length=10)] = None,
+            limit: Annotated[int, Field(ge=1, le=10)] = 5,
+        ) -> tuple[str, dict[str, dict[str, Any]]]:
+            """Search the user's knowledge bases for passages that answer `query`. Use it when
+            the question may be answered by the user's own documents. `kb_ids` (from
+            list_knowledge_bases) limits the search to those bases; `limit` is 1 to 10. A
+            `no_relevant_results` status means no passage scored high enough for `query`."""
+            return await search(query, runtime, kb_ids, limit, [])
 
     @tool(response_format="content_and_artifact")
     async def get_document_excerpt(

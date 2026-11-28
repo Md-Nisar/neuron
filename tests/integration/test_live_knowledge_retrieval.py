@@ -16,7 +16,10 @@ nightly job runs them. The gate measures order, not latency: the reranker gets 1
 the production 3 (some calls take longer than 3 seconds), and a case that still falls back is
 tried once more. A case whose query embedding or rerank fails twice (a provider outage) makes
 the run inconclusive: the report says so and the test is skipped, which the nightly reports as a
-warning, not a regression. `APP_KNOWLEDGE_EVAL_REPORT` and
+warning, not a regression. A rerank the provider refuses for its input (`rerank_input_refused`,
+NVIDIA's content screening, which since November 2026 refuses one case's passages every time) is
+not an outage: that case keeps the fused order and is listed in the report's
+`rerank_input_refused`. `APP_KNOWLEDGE_EVAL_REPORT` and
 `APP_KNOWLEDGE_EVAL_WRITE_BASELINE=1` work as in the cached-vector gate.
 """
 
@@ -31,6 +34,7 @@ from typing import NoReturn
 
 import anyio
 import pytest
+import structlog.testing
 from scripts.build_knowledge_eval import DATASET, load_vectors
 from test_postgres_knowledge_api import _Connections
 from test_postgres_knowledge_retrieval import TOLERANCE, _store
@@ -79,18 +83,25 @@ async def test_live_recall_and_mrr_hold_the_baseline(
     )
 
     ranks: list[int | None] = []
+    # Cases whose input the reranker refused (content screening): a verdict on that input, not
+    # an outage, so they keep the fused order and are listed in the report.
+    refused: list[str] = []
     for case in dataset["cases"]:
         if case["category"] != "answerable":
             continue
         for _ in range(2):
             started = time.monotonic()
-            result = await retriever.search(owners[case["as_user"]], case["question"], k=10)
+            with structlog.testing.capture_logs() as logs:
+                result = await retriever.search(owners[case["as_user"]], case["question"], k=10)
             await anyio.sleep(max(0.0, SECONDS_PER_CASE - (time.monotonic() - started)))
-            if result.reranked and result.path != "none":
+            screened = any(log.get("error_code") == "rerank_input_refused" for log in logs)
+            if (result.reranked or screened) and result.path != "none":
                 break
         if result.path == "none":
             _inconclusive(dataset["version"], "the embedding model failed twice on one case")
-        if not result.reranked:
+        if screened and not result.reranked:
+            refused.append(case["id"])
+        elif not result.reranked:
             _inconclusive(dataset["version"], "the reranker fell back twice on one case")
         located = [
             Located(names[p.doc_id], p.page_start, p.page_end, tuple(p.headings), p.text)
@@ -101,7 +112,8 @@ async def test_live_recall_and_mrr_hold_the_baseline(
     report = retrieval_report(dataset["version"], ranks)
     metrics = {name: report[name] for name in ("recall_at_5", "mrr")}
     if path := os.environ.get("APP_KNOWLEDGE_EVAL_REPORT"):
-        Path(path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        written = report | {"rerank_input_refused": refused}
+        Path(path).write_text(json.dumps(written, indent=2) + "\n", encoding="utf-8")
     if os.environ.get("APP_KNOWLEDGE_EVAL_WRITE_BASELINE") == "1":
         BASELINE.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))

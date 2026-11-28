@@ -1,0 +1,2212 @@
+{
+  "version": "1.0.0",
+  "description": "RAG-13.01: hard questions selected from published benchmarks by scripts/build_hard_eval.py (seed 20261127).",
+  "benchmarks": {
+    "musique": {
+      "name": "MuSiQue v1.0",
+      "url": "https://github.com/StonyBrookNLP/musique",
+      "licence": "CC BY 4.0"
+    },
+    "2wiki": {
+      "name": "2WikiMultihopQA",
+      "url": "https://github.com/Alab-NII/2wikimultihop",
+      "licence": "Apache-2.0"
+    },
+    "frames": {
+      "name": "FRAMES",
+      "url": "https://huggingface.co/datasets/google/frames-benchmark",
+      "licence": "Apache-2.0"
+    },
+    "mtrag": {
+      "name": "MTRAG (human), ClapNQ domain",
+      "url": "https://github.com/IBM/mt-rag-benchmark",
+      "licence": "Apache-2.0"
+    },
+    "clapnq": {
+      "name": "ClapNQ",
+      "url": "https://github.com/primeqa/clapnq",
+      "licence": "Apache-2.0"
+    }
+  },
+  "documents_file": "documents.json.gz",
+  "documents_sha256": "1230ab81b713f6d681fbb6de40b3ca73320d30b0dae85837a02dba874f70ccea",
+  "cases": [
+    {
+      "id": "hard-001",
+      "answer": {
+        "text": "10 June 1819",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__107905_110222"
+      },
+      "category": "multi_hop",
+      "hops": 2,
+      "question": "When is the date of birth of the creator of A Burial at Ornans?",
+      "required_sources": [
+        {
+          "document": "musique-gustave-courbet",
+          "evidence": "Jean Désiré Gustave Courbet (; 10 June 1819 – 31 December 1877) was a French painter who led the Realism movement in 19th-century French painting."
+        },
+        {
+          "document": "musique-a-burial-at-ornans",
+          "evidence": "A Burial At Ornans (, also known as A Funeral At Ornans) is a painting of 1849–50 by Gustave Courbet, and one of the major turning points of 19th-century French"
+        }
+      ]
+    },
+    {
+      "id": "hard-002",
+      "answer": {
+        "text": "Seattle SuperSonics",
+        "aliases": [
+          "Sonics"
+        ]
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__66167_72467"
+      },
+      "category": "multi_hop",
+      "hops": 2,
+      "question": "Where did the player who scored the most points in a NBA season go in the NBA Draft?",
+      "required_sources": [
+        {
+          "document": "musique-list-of-national-basketball-association-annual-scoring-leade",
+          "evidence": "Wilt Chamberlain holds the all - time records for total points scored (4,029) and points per game (50.4) in a season; both records were achieved in the 1961 -- "
+        },
+        {
+          "document": "musique-2007-nba-draft",
+          "evidence": "Freshman Greg Oden from Ohio State University was drafted first overall by the Portland Trail Blazers, who won the draft lottery."
+        }
+      ]
+    },
+    {
+      "id": "hard-003",
+      "answer": {
+        "text": "Dottie Hinson",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__79875_72187"
+      },
+      "category": "multi_hop",
+      "hops": 2,
+      "question": "What character in A League of their Own was played by the actress who played Thelma in the movie Thelma and Louise?",
+      "required_sources": [
+        {
+          "document": "musique-thelma-louise",
+          "evidence": "Thelma & Louise is a 1991 American road film produced by Ridley Scott and Mimi Polk Gitlin, directed by Scott and written by Callie Khouri."
+        },
+        {
+          "document": "musique-a-league-of-their-own",
+          "evidence": "In 1988, Dottie Hinson (Geena Davis) attends the opening of the new All - American Girls Professional Baseball League (AAGPBL) exhibit at the Baseball Hall of F"
+        }
+      ]
+    },
+    {
+      "id": "hard-004",
+      "answer": {
+        "text": "June 1982",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__13548_13529"
+      },
+      "category": "multi_hop",
+      "hops": 2,
+      "question": "When was the person who Messi's goals in Copa del Rey compared to get signed by Barcelona?",
+      "required_sources": [
+        {
+          "document": "musique-fc-barcelona",
+          "evidence": "Despite being the favourites and starting strongly, Barcelona finished the 2006–07 season without trophies."
+        },
+        {
+          "document": "musique-fc-barcelona",
+          "evidence": "In June 1982, Diego Maradona was signed for a world record fee of £5 million from Boca Juniors."
+        }
+      ]
+    },
+    {
+      "id": "hard-005",
+      "answer": {
+        "text": "Thomas Bach",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__374495_68633"
+      },
+      "category": "multi_hop",
+      "hops": 2,
+      "question": "Who is the president of the organization that Avery Brundage is a member of?",
+      "required_sources": [
+        {
+          "document": "musique-avery-brundage",
+          "evidence": "Avery Brundage (; September 28, 1887 – May 8, 1975) was the fifth President of the International Olympic Committee (IOC), serving from 1952 to 1972."
+        },
+        {
+          "document": "musique-president-of-the-international-olympic-committee",
+          "evidence": "President of the International Olympic Committee Président du Comité international olympique Olympic rings Incumbent Thomas Bach since 10 September 2013 Interna"
+        }
+      ]
+    },
+    {
+      "id": "hard-006",
+      "answer": {
+        "text": "1941",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "3hop1__462960_160545_34751"
+      },
+      "category": "multi_hop",
+      "hops": 3,
+      "question": "What year did the country where Pao Sarasin was born form an alliance with Japan?",
+      "required_sources": [
+        {
+          "document": "musique-bang-bon-district",
+          "evidence": "Bang Bon (Thai: บางบอน, pronounced [bāːŋ bɔ̄ːn]) is one of the 50 districts (khet) of Bangkok, Thailand."
+        },
+        {
+          "document": "musique-pacific-war",
+          "evidence": "The Axis states which assisted Japan included the authoritarian government of Thailand in World War II, which quickly formed a temporary alliance with the Japan"
+        },
+        {
+          "document": "musique-pao-sarasin",
+          "evidence": "Pao Sarasin died at Siriraj Hospital in Bangkok after a month-long hospitalization for a blood infection on March 7, 2013, at the age of 83."
+        }
+      ]
+    },
+    {
+      "id": "hard-007",
+      "answer": {
+        "text": "1970s",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "3hop1__305282_282081_10972"
+      },
+      "category": "multi_hop",
+      "hops": 3,
+      "question": "When did the city where Ill's performer was born elect its first black mayor?",
+      "required_sources": [
+        {
+          "document": "musique-iii-stanton-moore-album",
+          "evidence": "III is Stanton Moore's third studio solo album released 2006."
+        },
+        {
+          "document": "musique-flyin-the-koop",
+          "evidence": "Flyin' the Koop is the second solo album by New Orleans drummer Stanton Moore."
+        },
+        {
+          "document": "musique-black-people",
+          "evidence": "Though Brazilians of at least partial African heritage make up a large percentage of the population, few blacks have been elected as politicians."
+        }
+      ]
+    },
+    {
+      "id": "hard-008",
+      "answer": {
+        "text": "English Channel",
+        "aliases": [
+          "The Channel"
+        ]
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "3hop1__160324_131905_41948"
+      },
+      "category": "multi_hop",
+      "hops": 3,
+      "question": "What body of water was dry land during the last ice age, besides the Irish Channel and the sea near the former Atlantic Hotel?",
+      "required_sources": [
+        {
+          "document": "musique-hamburg",
+          "evidence": "Hamburg is at a sheltered natural harbour on the southern fanning-out of the Jutland Peninsula, between Continental Europe to the south and Scandinavia to the n"
+        },
+        {
+          "document": "musique-islamic-centre-hamburg",
+          "evidence": "During a meeting at Atlantic Hotel (Hamburg) in 1953, a group of Iranian residents of Germany discussed the need to establish their own religious center."
+        },
+        {
+          "document": "musique-rhine",
+          "evidence": "The last glacial ran from ~74,000 (BP = Before Present), until the end of the Pleistocene (~11,600 BP)."
+        }
+      ]
+    },
+    {
+      "id": "hard-009",
+      "answer": {
+        "text": "February 7, 2018",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "3hop1__751782_2053_52946"
+      },
+      "category": "multi_hop",
+      "hops": 3,
+      "question": "When is Celebrity Big Brother coming to the network which, along with ABC and the original broadcaster of Undercovers, is the other major broadcaster based in NY?",
+      "required_sources": [
+        {
+          "document": "musique-new-york-city",
+          "evidence": "The television industry developed in New York and is a significant employer in the city's economy."
+        },
+        {
+          "document": "musique-undercovers-tv-series",
+          "evidence": "Undercovers is an American action spy television series created by J."
+        },
+        {
+          "document": "musique-celebrity-big-brother-american-tv-series",
+          "evidence": "Celebrity Big Brother also known as Big Brother: Celebrity Edition is a spin - off series of the American reality television series Big Brother."
+        }
+      ]
+    },
+    {
+      "id": "hard-010",
+      "answer": {
+        "text": "Sales began worldwide in April 2012",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "3hop1__133292_40769_64047"
+      },
+      "category": "multi_hop",
+      "hops": 3,
+      "question": "When did the RX 350 from The Hino Dutro creator's luxury division change body style?",
+      "required_sources": [
+        {
+          "document": "musique-lexus-rx",
+          "evidence": "A facelift was designed through late 2010 and patented on 7 January 2011 under design registration number 001845801 - 0004."
+        },
+        {
+          "document": "musique-hino-dutro",
+          "evidence": "The Hino Dutro () is a light commercial truck shared with the Toyota Dyna, manufactured by Hino Motors."
+        },
+        {
+          "document": "musique-1973-oil-crisis",
+          "evidence": "Some buyers lamented the small size of the first Japanese compacts, and both Toyota and Nissan (then known as Datsun) introduced larger cars such as the Toyota "
+        }
+      ]
+    },
+    {
+      "id": "hard-011",
+      "answer": {
+        "text": "Sebastian Cabot",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "4hop1__608132_508773_85832_745702"
+      },
+      "category": "multi_hop",
+      "hops": 4,
+      "question": "Who's the son of the Italian navigator who explored the eastern coast of the continent where Christian Sánchez was born?",
+      "required_sources": [
+        {
+          "document": "musique-sebastian-cabot-explorer",
+          "evidence": "Sebastian Cabot (Italian and , ; , \"Gaboto\" or \"Cabot\"; 1474 – December 1557) was an Italian explorer, likely born in the Venetian Republic."
+        },
+        {
+          "document": "musique-paula-santiago",
+          "evidence": "Paula Santiago (born 1969 in Guadalajara) is a Mexican mixed media artist whose works have been displayed at the Monterrey Museum of Modern Art and several gall"
+        },
+        {
+          "document": "musique-john-cabot",
+          "evidence": "John Cabot (Italian: Giovanni Caboto; c."
+        },
+        {
+          "document": "musique-christian-s-nchez-mexican-footballer",
+          "evidence": "Christian Emmanuel Sánchez Narváez (born April 4, 1989 in Guadalajara, Jalisco) is a Mexican football defender who plays for Alebrijes de Oaxaca in Ascenso MX."
+        }
+      ]
+    },
+    {
+      "id": "hard-012",
+      "answer": {
+        "text": "the Mississippi River Delta",
+        "aliases": [
+          "Mississippi River Delta"
+        ]
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "4hop1__860115_798482_131926_89261"
+      },
+      "category": "multi_hop",
+      "hops": 4,
+      "question": "Where does the river by the city sharing a border with Elizabeth Berg's birthplace empty into the Gulf of Mexico?",
+      "required_sources": [
+        {
+          "document": "musique-mississippi-river",
+          "evidence": "The Mississippi River is the chief river of the second - largest drainage system on the North American continent, second only to the Hudson Bay drainage system."
+        },
+        {
+          "document": "musique-minneapolis",
+          "evidence": "Minneapolis lies on both banks of the Mississippi River, just north of the river's confluence with the Minnesota River, and adjoins Saint Paul, the state's capi"
+        },
+        {
+          "document": "musique-newgate-education-center",
+          "evidence": "Newgate School is a post-secondary non-profit vocational-technical school for residents of Minneapolis and Saint Paul, Minnesota and the surrounding area."
+        },
+        {
+          "document": "musique-elizabeth-berg-author",
+          "evidence": "Berg was born in Saint Paul, Minnesota, USA, and lived in Boston prior to her residence in Chicago."
+        }
+      ]
+    },
+    {
+      "id": "hard-013",
+      "answer": {
+        "text": "5am",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "4hop1__625463_229349_66759_54221"
+      },
+      "category": "multi_hop",
+      "hops": 4,
+      "question": "Storm of the Century filmed in state A based on the book by the author who wrote a story featuring the author of The Hope. When do alcohol sales start in state A?",
+      "required_sources": [
+        {
+          "document": "musique-alcohol-laws-of-maine",
+          "evidence": "Alcohol may be sold between the hours of 5am and 1am each day of the week."
+        },
+        {
+          "document": "musique-the-hope-novel",
+          "evidence": "The Hope is a historical novel by Herman Wouk about pivotal events in the history of the State of Israel from 1948 to 1967."
+        },
+        {
+          "document": "musique-herman-wouk-is-still-alive",
+          "evidence": "\"Herman Wouk Is Still Alive\" is a short story by American author Stephen King."
+        },
+        {
+          "document": "musique-storm-of-the-century",
+          "evidence": "A very powerful blizzard hits the fictional small town of Little Tall Island (also the setting of King's novel Dolores Claiborne) off the coast of Maine."
+        }
+      ]
+    },
+    {
+      "id": "hard-014",
+      "answer": {
+        "text": "Treaty of Paris",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "4hop1__94201_642284_131926_13165"
+      },
+      "category": "multi_hop",
+      "hops": 4,
+      "question": "What treaty ceded territory to the US extending west to the body of water by the city where the designer of Southeast Library died?",
+      "required_sources": [
+        {
+          "document": "musique-military-history-of-the-united-states",
+          "evidence": "In the Treaty of Paris after the Revolution, the British had ceded the lands between the Appalachian Mountains and the Mississippi River to the United States, w"
+        },
+        {
+          "document": "musique-riverside-plaza",
+          "evidence": "Riverside Plaza is a modernist and brutalist apartment complex designed by Ralph Rapson that opened in Minneapolis, Minnesota in 1973."
+        },
+        {
+          "document": "musique-minneapolis",
+          "evidence": "Minneapolis lies on both banks of the Mississippi River, just north of the river's confluence with the Minnesota River, and adjoins Saint Paul, the state's capi"
+        },
+        {
+          "document": "musique-southeast-library",
+          "evidence": "Southeast Library's building was designed by master architect Ralph Rapson and originally functioned as a credit union for university and state employees."
+        }
+      ]
+    },
+    {
+      "id": "hard-015",
+      "answer": {
+        "text": "1905",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "musique",
+        "id": "4hop1__726391_153080_33952_34053"
+      },
+      "category": "multi_hop",
+      "hops": 4,
+      "question": "What was the wettest year in the second largest city of the state where the Oh Yeah performer is from?",
+      "required_sources": [
+        {
+          "document": "musique-tucson-arizona",
+          "evidence": "Tucson is located 118 mi (190 km) southeast of Phoenix and 60 mi (97 km) north of the United States - Mexico border."
+        },
+        {
+          "document": "musique-charles-mingus",
+          "evidence": "Charles Mingus was born in Nogales, Arizona."
+        },
+        {
+          "document": "musique-tucson-arizona",
+          "evidence": "At the University of Arizona, where records have been kept since 1894, the record maximum temperature was 115 °F (46 °C) on June 19, 1960, and July 28, 1995, an"
+        },
+        {
+          "document": "musique-oh-yeah-charles-mingus-album",
+          "evidence": "Oh Yeah is a 1962 album by jazz musician Charles Mingus."
+        }
+      ]
+    },
+    {
+      "id": "hard-016",
+      "answer": {
+        "text": "Philip Yorke, 3Rd Earl Of Hardwicke",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "6fd8bb2f08dd11ebbd9dac1f6bf848b6",
+        "type": "comparison"
+      },
+      "category": "comparison",
+      "question": "Who was born first out of Amol Redij and Philip Yorke, 3Rd Earl Of Hardwicke?",
+      "required_sources": [
+        {
+          "document": "2wiki-amol-redij",
+          "evidence": "Amol Redij( born 18 September 1977) is an Indian poet, writer and creative content designer from Maharashtra, India."
+        },
+        {
+          "document": "2wiki-philip-yorke-3rd-earl-of-hardwicke",
+          "evidence": "Philip Yorke, 3rd Earl of Hardwicke KG, PC, FRS( 31 May 1757 – 18 November 1834), known as Philip Yorke until 1790, was a British politician."
+        }
+      ]
+    },
+    {
+      "id": "hard-017",
+      "answer": {
+        "text": "Hiling",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "8f3395c1087e11ebbd6bac1f6bf848b6",
+        "type": "comparison"
+      },
+      "category": "comparison",
+      "question": "Which film was released earlier, Mazhai or Hiling?",
+      "required_sources": [
+        {
+          "document": "2wiki-mazhai",
+          "evidence": "Mazhai( English:\" Rain\") is a 2005 Indian Tamil- language romantic action film directed by Raj kumar."
+        },
+        {
+          "document": "2wiki-hiling",
+          "evidence": "Hiling is a 1998 Filipino family fantasy film starring the then child stars Camille Prats, Shaina Magdayao and Serena Dalrymple."
+        }
+      ]
+    },
+    {
+      "id": "hard-018",
+      "answer": {
+        "text": "Jamna Pyari",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "f756c8aa097911ebbdb0ac1f6bf848b6",
+        "type": "comparison"
+      },
+      "category": "comparison",
+      "question": "Which film was released more recently, The Glorious Lady or Jamna Pyari?",
+      "required_sources": [
+        {
+          "document": "2wiki-the-glorious-lady",
+          "evidence": "The Glorious Lady is a 1919 American silent drama film directed by George Irving."
+        },
+        {
+          "document": "2wiki-jamna-pyari",
+          "evidence": "Jamna Pyari is a 2015 Malayalam comedy film directed by Thomas Sebastian."
+        }
+      ]
+    },
+    {
+      "id": "hard-019",
+      "answer": {
+        "text": "Hermógenes López Coarchita",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "a8a760e908b411ebbd88ac1f6bf848b6",
+        "type": "comparison"
+      },
+      "category": "comparison",
+      "question": "Who is older, Tamás Lénárth or Hermógenes López Coarchita?",
+      "required_sources": [
+        {
+          "document": "2wiki-tam-s-l-n-rth",
+          "evidence": "Tamás Lénárth( born 7 June 1990) is a Slovak football midfielder of Hungarian ethnicity who currently plays for the club TJ OFC Gabčíkovo."
+        },
+        {
+          "document": "2wiki-herm-genes-l-pez-coarchita",
+          "evidence": "Hermógenes López Coarchita( 16 September 1928- 30 June 1978) was a Guatemalan Roman Catholic priest."
+        }
+      ]
+    },
+    {
+      "id": "hard-020",
+      "answer": {
+        "text": "Queen Of The Night Clubs",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "a678d14d08be11ebbd8aac1f6bf848b6",
+        "type": "comparison"
+      },
+      "category": "comparison",
+      "question": "Which film came out first, Les Petites Fugues or Queen Of The Night Clubs?",
+      "required_sources": [
+        {
+          "document": "2wiki-les-petites-fugues",
+          "evidence": "Les petites fugues is a 1979 Swiss comedy film directed by Yves Yersin."
+        },
+        {
+          "document": "2wiki-queen-of-the-night-clubs",
+          "evidence": "Queen of the Night Clubs is a 1929 American Pre- Code musical drama film produced and directed by Bryan Foy, distributed by Warner Bros., and starred legendary "
+        }
+      ]
+    },
+    {
+      "id": "hard-021",
+      "answer": {
+        "text": "yes",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "4770abf0088e11ebbd70ac1f6bf848b6",
+        "type": "comparison"
+      },
+      "category": "comparison",
+      "question": "Are both Coon Lake and Lake Verret located in the same country?",
+      "required_sources": [
+        {
+          "document": "2wiki-coon-lake",
+          "evidence": "Coon Lake is a lake in Anoka County, Minnesota, in the United States."
+        },
+        {
+          "document": "2wiki-lake-verret",
+          "evidence": "Lake Verret is natural lake located in Assumption, Parish, Louisiana, US."
+        }
+      ]
+    },
+    {
+      "id": "hard-022",
+      "answer": {
+        "text": "Bugsy",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "0f06923008d311ebbd96ac1f6bf848b6",
+        "type": "bridge_comparison"
+      },
+      "category": "comparison",
+      "question": "Which film whose director was born first, Bhaji On The Beach or Bugsy?",
+      "required_sources": [
+        {
+          "document": "2wiki-bhaji-on-the-beach",
+          "evidence": "Bhaji on the Beach( Hindi: भाजी ऑन द बीच) is a 1993 British comedy- drama film directed by Gurinder Chadha and written by Meera Syal."
+        },
+        {
+          "document": "2wiki-bugsy",
+          "evidence": "Bugsy is a 1991 American biographical crime drama film directed by Barry Levinson which tells the story of mobster Bugsy Siegel and his relationship with Virgin"
+        },
+        {
+          "document": "2wiki-gurinder-chadha",
+          "evidence": "Gurinder Chadha,( born 10 January 1960) is an English film director of Indian origin."
+        },
+        {
+          "document": "2wiki-barry-levinson",
+          "evidence": "Barry Levinson( born April 6, 1942) is an American filmmaker, screenwriter, and actor."
+        }
+      ]
+    },
+    {
+      "id": "hard-023",
+      "answer": {
+        "text": "Tongues Of Flame",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "24f50314087f11ebbd6bac1f6bf848b6",
+        "type": "bridge_comparison"
+      },
+      "category": "comparison",
+      "question": "Which film has the director who was born later, Tongues Of Flame or Glory Alley?",
+      "required_sources": [
+        {
+          "document": "2wiki-tongues-of-flame",
+          "evidence": "It is based on a novel by Peter Clark MacFarlane and was directed by Joseph Henabery."
+        },
+        {
+          "document": "2wiki-glory-alley",
+          "evidence": "Glory Alley is a 1952 musical drama film directed by Raoul Walsh."
+        },
+        {
+          "document": "2wiki-joseph-henabery",
+          "evidence": "Joseph Henabery (January 15, 1888 – February 18, 1976) Omaha, Nebraska, was a film actor, screenplay writer, and director in the United States."
+        },
+        {
+          "document": "2wiki-raoul-walsh",
+          "evidence": "Raoul A."
+        }
+      ]
+    },
+    {
+      "id": "hard-024",
+      "answer": {
+        "text": "The Shanghai Story",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "f3fa308308af11ebbd84ac1f6bf848b6",
+        "type": "bridge_comparison"
+      },
+      "category": "comparison",
+      "question": "Which film has the director born first, Sudden Jim or The Shanghai Story?",
+      "required_sources": [
+        {
+          "document": "2wiki-sudden-jim",
+          "evidence": "Sudden Jim is a 1917 American silent drama film directed by Victor Schertzinger and starring Charles Ray, Joseph J."
+        },
+        {
+          "document": "2wiki-the-shanghai-story",
+          "evidence": "The Shanghai Story is a 1954 film noir crime film directed by Frank Lloyd and starring Ruth Roman and Edmond O'Brien."
+        },
+        {
+          "document": "2wiki-victor-schertzinger",
+          "evidence": "Victor L."
+        },
+        {
+          "document": "2wiki-frank-lloyd",
+          "evidence": "Frank William George Lloyd( 2 February 1886 – 10 August 1960) was a British- born American film director, actor, scriptwriter, and producer."
+        }
+      ]
+    },
+    {
+      "id": "hard-025",
+      "answer": {
+        "text": "Roads Of Kiarostami",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "bbefa25e08cc11ebbd93ac1f6bf848b6",
+        "type": "bridge_comparison"
+      },
+      "category": "comparison",
+      "question": "Which film has the director who is older, Thought Moments or Roads Of Kiarostami?",
+      "required_sources": [
+        {
+          "document": "2wiki-thought-moments",
+          "evidence": "Thought Moments( 2004) is an anthropological short film in the style of cinéma vérité by Michael Simon Toon."
+        },
+        {
+          "document": "2wiki-roads-of-kiarostami",
+          "evidence": "Roads of Kiarostami is a 2005 Iranian documentary film directed by Abbas Kiarostami."
+        },
+        {
+          "document": "2wiki-michael-simon-toon",
+          "evidence": "Michael Simon Toon( born 12 March 1977) is an English photographer, filmmaker, designer and builder."
+        },
+        {
+          "document": "2wiki-abbas-kiarostami",
+          "evidence": "Abbas Kiarostami( 22 June 1940 – 4 July 2016) was an Iranian film director, screenwriter, poet, photographer, and film producer."
+        }
+      ]
+    },
+    {
+      "id": "hard-026",
+      "answer": {
+        "text": "Antareen",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "8266a796087a11ebbd67ac1f6bf848b6",
+        "type": "bridge_comparison"
+      },
+      "category": "comparison",
+      "question": "Which film has the director who died later, Shadows Of Forgotten Ancestors or Antareen?",
+      "required_sources": [
+        {
+          "document": "2wiki-shadows-of-forgotten-ancestors",
+          "evidence": "Shadows of Forgotten Ancestors(\" Tini zabutykh predkiv\"), also called\" Shadows of Our Forgotten Ancestors Shadows of Our Ancestors\", or\" Wild Horses of Fire\", i"
+        },
+        {
+          "document": "2wiki-antareen",
+          "evidence": "Antareen( The Confined) is a 1993 Indian film in Bengali language, directed by Mrinal Sen, based on a story named\" Badshahat Ka Khatimah\"( 1950) by Saadat Hasan"
+        },
+        {
+          "document": "2wiki-sergei-parajanov",
+          "evidence": "Sergei Parajanov( sometimes spelled Paradzhanov or Paradjanov; January 9, 1924 – July 20, 1990) was a Soviet film director and artist of Armenian descent who ma"
+        },
+        {
+          "document": "2wiki-mrinal-sen",
+          "evidence": "Mrinal Sen( also spelled\" Mrinal Shen\"; 14 May 1923 – 30 December 2018) was an Indian filmmaker and a nominated Member of the Indian parliament."
+        }
+      ]
+    },
+    {
+      "id": "hard-027",
+      "answer": {
+        "text": "yes",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "2wiki",
+        "id": "7ea99e4c08a211ebbd7aac1f6bf848b6",
+        "type": "bridge_comparison"
+      },
+      "category": "comparison",
+      "question": "Do both films Across The Badlands and A Gutter Magdalene have the directors that share the same nationality?",
+      "required_sources": [
+        {
+          "document": "2wiki-across-the-badlands",
+          "evidence": "Across the Badlands is a 1950 American Western film directed by Fred F."
+        },
+        {
+          "document": "2wiki-a-gutter-magdalene",
+          "evidence": "A Gutter Magdalene is a lost 1916 American drama silent film directed by George Melford and written by Clinton Stagg."
+        },
+        {
+          "document": "2wiki-fred-f-sears",
+          "evidence": "Frederick Francis Sears( July 7, 1913 – November 30, 1957) was an American film actor and director."
+        },
+        {
+          "document": "2wiki-george-melford",
+          "evidence": "George H."
+        }
+      ]
+    },
+    {
+      "id": "hard-028",
+      "answer": {
+        "text": "Saving Private Ryan",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "502",
+        "reasoning": "Numerical reasoning"
+      },
+      "category": "synthesis",
+      "question": "Out of all of Steven Spielberg's Oscar winning movies up until 2020, which one has made the most money?",
+      "required_sources": [
+        {
+          "document": "frames-list-of-awards-and-nominations-received-by-steven-spielberg",
+          "evidence": null
+        },
+        {
+          "document": "frames-schindler-s-list",
+          "evidence": null
+        },
+        {
+          "document": "frames-saving-private-ryan",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-029",
+      "answer": {
+        "text": "Jezebel",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "273",
+        "reasoning": "Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "What William Wyler movie debuted the same year that the chairman for the 1982–83 Wolverhampton Wanderers season was born?",
+      "required_sources": [
+        {
+          "document": "frames-1982-83-wolverhampton-wanderers-f-c-season",
+          "evidence": null
+        },
+        {
+          "document": "frames-derek-dougan",
+          "evidence": null
+        },
+        {
+          "document": "frames-william-wyler",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-030",
+      "answer": {
+        "text": "6 (Boston)",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "789",
+        "reasoning": "Multiple constraints | Post processing"
+      },
+      "category": "synthesis",
+      "question": "The creator of the animated series Family Guy was supposed to be on one of the planes that was involved in the 9/11 attacks but he arrived too late to board. Altogether, how many letters are in the name of the city from which his missed fight departed that day?",
+      "required_sources": [
+        {
+          "document": "frames-family-guy",
+          "evidence": null
+        },
+        {
+          "document": "frames-seth-macfarlane",
+          "evidence": null
+        },
+        {
+          "document": "frames-american-airlines-flight-11",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-031",
+      "answer": {
+        "text": "2,851 Passengers",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "663",
+        "reasoning": "Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "What was the daily average passenger count in 2011 of the first station on the train line that serves Hiraka Train Station in Japan?",
+      "required_sources": [
+        {
+          "document": "frames-hiraka-station",
+          "evidence": null
+        },
+        {
+          "document": "frames-k-nan-railway-k-nan-line",
+          "evidence": null
+        },
+        {
+          "document": "frames-hirosaki-station",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-032",
+      "answer": {
+        "text": "Ronald James Baker",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "260",
+        "reasoning": "Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "Canadian politician Keir Clark attended a now defunct university college, which shut its doors in 1969. Who served as the first President of its successor institution?",
+      "required_sources": [
+        {
+          "document": "frames-keir-clark",
+          "evidence": null
+        },
+        {
+          "document": "frames-prince-of-wales-college",
+          "evidence": null
+        },
+        {
+          "document": "frames-university-of-prince-edward-island",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-033",
+      "answer": {
+        "text": "Minardi M194",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "41",
+        "reasoning": "Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "What Formula One car was driven in 1994 by the nephew of a racing driver from Italy who drove a Ferrari 312T and shares a last name with a common cocktail drink?",
+      "required_sources": [
+        {
+          "document": "frames-minardi-m194",
+          "evidence": null
+        },
+        {
+          "document": "frames-pierluigi-martini",
+          "evidence": null
+        },
+        {
+          "document": "frames-giancarlo-martini",
+          "evidence": null
+        },
+        {
+          "document": "frames-list-of-cocktails",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-034",
+      "answer": {
+        "text": "20% of the company.",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "370",
+        "reasoning": "Numerical reasoning | Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "When the maker of the third-party console title \"ActRaiser\", merged with the makers of the console title \"Chrono Trigger\", what percentage of the company did the makers of \"ActRaiser\" make up?",
+      "required_sources": [
+        {
+          "document": "frames-square-enix",
+          "evidence": null
+        },
+        {
+          "document": "frames-enix",
+          "evidence": null
+        },
+        {
+          "document": "frames-chrono-trigger",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-035",
+      "answer": {
+        "text": "God's Window in Blyde River Canyon Nature Reserve",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "603",
+        "reasoning": "Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "What is the name of the popular vantage point that is featured in the 1980 comedy film \"The Gods Must Be Crazy\", and which provincial nature reserve is it located in as of 2024?",
+      "required_sources": [
+        {
+          "document": "frames-the-gods-must-be-crazy",
+          "evidence": null
+        },
+        {
+          "document": "frames-blyde-river-canyon-nature-reserve-god-27s-window",
+          "evidence": null
+        },
+        {
+          "document": "frames-blyde-river-canyon-nature-reserve",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-036",
+      "answer": {
+        "text": "5967",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "348",
+        "reasoning": "Numerical reasoning | Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "If you add up the birth years of Emma Watson, Daniel Radcliffe and Rupert Grint, what is the sum?",
+      "required_sources": [
+        {
+          "document": "frames-daniel-radcliffe",
+          "evidence": null
+        },
+        {
+          "document": "frames-emma-watson",
+          "evidence": null
+        },
+        {
+          "document": "frames-rupert-grint",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-037",
+      "answer": {
+        "text": "Jill Quertier",
+        "aliases": []
+      },
+      "benchmark": {
+        "source": "frames",
+        "id": "446",
+        "reasoning": "Multiple constraints"
+      },
+      "category": "synthesis",
+      "question": "Which set director born in 1936 won the Academy Award for Best Production Design during the 71st Academy Awards?",
+      "required_sources": [
+        {
+          "document": "frames-academy-award-for-best-production-design",
+          "evidence": null
+        },
+        {
+          "document": "frames-martin-childs",
+          "evidence": null
+        },
+        {
+          "document": "frames-jill-quertier",
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "hard-038",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "d5f0e7023ab90fe0240b7fc46cf00c26<::>2"
+      },
+      "category": "follow_up",
+      "question": "The West branch.",
+      "reference_answer": "The West Branch is home to many types of fish, such as landlocked salmon and brook trout. There are many deep pools within the river due to the many slate ledges, making the river ideal for fishing from shore, although there are still areas that are good for canoe fishing. The West Branch is a world-class landlocked salmon river, while the East Branch is known for its smallmouth bass fishery. In 2008, the Atlantic Salmon Commission opened the main stem of the river to catch and release fly fishing for Atlantic salmon.",
+      "required_sources": [
+        {
+          "document": "clapnq-penobscot-river",
+          "evidence": "Angling , especially fly fishing , has always been popular on the river ."
+        },
+        {
+          "document": "clapnq-penobscot-river",
+          "evidence": "The West Branch is home to many types of fish such as landlocked salmon and Brook Trout ."
+        }
+      ],
+      "standalone": "Which lake does the West Branch of the Penobscot River start from?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "where does the penobscot river start and end"
+        },
+        {
+          "role": "assistant",
+          "text": "The Penobscot River originates from four branches in various lakes in north-central Maine. It specifically begins where the West Branch meets the East Branch at Medway. The river flows into the Atlantic Ocean at Penobscot Bay, and historically served as an important trade route from the Atlantic coast to interior Maine.\n"
+        }
+      ]
+    },
+    {
+      "id": "hard-039",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "1534a095279f2cb888fb0bea17bd70da<::>4"
+      },
+      "category": "follow_up",
+      "question": "Is air-to-air phtography more difficult that ground-to-air?",
+      "reference_answer": "Air-to-air military aviation photography,  requires additional skills , as the photo and target aircraft often fly at velocities of over Mach 1, while under moderate to high G . On the other hand, in ground-to-air settings a long focus photographic lens is necessary due to the greater distance between the photographer and the target aircraft. Thus is it hard to say if one is more difficult than other conclusively.",
+      "required_sources": [
+        {
+          "document": "clapnq-aviation-photography",
+          "evidence": "In ground - to - air photography , photos of aircraft in flight are taken with the photographer on the ground ."
+        },
+        {
+          "document": "clapnq-aviation-photography",
+          "evidence": "Aviation photography is the act of taking images of aircraft , either in flight , or on the ground ."
+        },
+        {
+          "document": "clapnq-aviation-photography",
+          "evidence": "Air - to - air photography is the art of photographing aircraft in the air , while using another aircraft as a photo platform ."
+        }
+      ],
+      "standalone": "Is it more challenging for the photographer to take photos in air-to-air aviation photography compared to ground-to-air photography?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "who takes photos of planes in the air"
+        },
+        {
+          "role": "assistant",
+          "text": "In ground-to-air photography, photos of aircraft in flight are taken with the photographer on the ground. This type of photography is common at airshows or airports."
+        },
+        {
+          "role": "user",
+          "text": "No, I meant photos in the air."
+        },
+        {
+          "role": "assistant",
+          "text": "Air - to - air aviation photography is the art of photographing aircraft in the air, while using another aircraft as a photo platform."
+        },
+        {
+          "role": "user",
+          "text": "So does that mean pilot of the second aircraft also acts as a photographer?"
+        },
+        {
+          "role": "assistant",
+          "text": "I am sorry I don't have any specific knowledge about who acts as a photographer in air-to-air aviation photography. "
+        }
+      ]
+    },
+    {
+      "id": "hard-040",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "3a07680acfb0f951fc3210a8c1a282c9<::>5"
+      },
+      "category": "follow_up",
+      "question": "Is there a cure for HIV?",
+      "reference_answer": "With proper medical care, HIV can be controlled. It was reported in  October 2011 that  the anti-HIV drug tenofovir , when used topically in a microbicidal vaginal gel  reduce herpes virus sexual transmission by 51 % . Also  a genetic approach involving intrabodies that block CCR5 expression has been proposed as a treatment for HIV - 1 infected individuals . Some good results were reported in 2014 when enrollment of HIV - positive patients in a clinical trial was started in 2009 in which the patients ' cells were genetically modified with a zinc finger nuclease to carry the CCR5 - Δ32 trait and then reintroduced into the body as a potential HIV treatment .",
+      "required_sources": [
+        {
+          "document": "clapnq-herpes-simplex",
+          "evidence": "In October 2011 , the anti-HIV drug tenofovir , when used topically in a microbicidal vaginal gel , was reported to reduce herpes virus sexual transmission by 5"
+        },
+        {
+          "document": "clapnq-ccr5",
+          "evidence": "A genetic approach involving intrabodies that block CCR5 expression has been proposed as a treatment for HIV - 1 infected individuals ."
+        },
+        {
+          "document": "clapnq-ccr5",
+          "evidence": "Enrollment of HIV - positive patients in a clinical trial was started in 2009 in which the patients ' cells were genetically modified with a zinc finger nucleas"
+        }
+      ],
+      "standalone": "Is there a cure for HIV available now?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "What are the categories of people for which it is especially important to get a flu vaccine? "
+        },
+        {
+          "role": "assistant",
+          "text": "I do not have specific information about those categories of people that should get a flu vaccine. Nevertheless, vaccination is a cheap and effective way of preventing infections by viruses.  Their use has resulted in a dramatic decline in morbidity ( illness ) and mortality ( death ) associated with viral infections such as polio , measles , mumps and rubella . In fact, vaccines are available to prevent over thirteen viral infections of humans , and more are used to prevent viral infections of animals .                                            "
+        },
+        {
+          "role": "user",
+          "text": "Can you tell me the greatest pandemics worldwide before  COVID in 2020?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes, a number of pandemics have affected the world before COVID. The 1918 flu pandemic , which lasted until 1919, was a category 5 influenza pandemic caused by an unusually severe and deadly influenza A virus . The victims were healthy young adults , in contrast to most influenza outbreaks , which predominantly affect juvenile , elderly , or otherwise - weakened patients . Older estimates say it killed 40 -- 50 million people , while more recent research suggests that it may have killed as many as 100 million people , or 5 % of the world 's population in 1918. The third bubonic plague pandemic, also known as the modern pandemic, spread the bubonic plague disease to port cities throughout the world in the second half of the 19th century and early 20th century via shipping routes . The bubonic plague affected people in Chinatown in San Francisco from 1900 - 1904, and the people of Oakland and east bay again from 1907 - 1909. In 1994, Zimbabwe suffered outbreaks of acute diseases like plague. In 2014, West African had the Ebola virus epidemic. In 2001 the Bubonic plague affected Zambia , India , Malawi , Algeria , China , Peru , and the Democratic Republic of the Congo .   2009 saw a pandemic involving the H1N1 influenza virus (swine flu). These are just some examples of other modern-day pandemics.               "
+        },
+        {
+          "role": "user",
+          "text": "What about HIV pandemic? did it kill many people?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes, the HIV pandemic has also had a significant global impact. Approximately 38.6 million people are living with HIV worldwide, and there have been around 25 million deaths caused by AIDS since it was first recognized on 5 June 1981 , making it one of the most destructive epidemics in recorded history . It is estimated that in  the Democratic Republic of the Congo  about 1.1 % of adults aged 15 -- 49 were living with HIV / AIDS .   According to the 2015 UNAIDS Report , South Africa has an estimated 7 million people living with HIV -- more than any other country in the world . A 2008 study revealed that HIV / AIDS infection in South Africa is distinctly divided along racial lines : 13.6 % of blacks are HIV - positive , whereas only 0.3 % of whites have the disease . Most deaths are experienced by economically active individuals , resulting in many AIDS orphans who in many cases depend on the state for care and financial support                                     "
+        },
+        {
+          "role": "user",
+          "text": "How did  HIV originated and where did start the first cases?"
+        },
+        {
+          "role": "assistant",
+          "text": "The origin of HIV is still a matter of debate among scientists, but it is believed originated in sub-Saharan Africa (Southeast Cameroon) through exposure to infected blood and body fluids while butchering bushmeat during the 20th century , although  symptomatic infections were not reported until the 1980s. AIDS was at first considered a disease of gay men and drug addicts but then in Africa it took off among the general population . AIDS became a significant problem for the region , particularly in Côte d'Ivoire , Liberia , and Nigeria . The onset of the HIV epidemic in the region began in 1985 with reported cases in Benin and Nigeri , and in nearby countries, such as Côte d'Ivoire, in subsequent years ."
+        }
+      ]
+    },
+    {
+      "id": "hard-041",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "13a398b30067d58d179fa8cbc2592449<::>2"
+      },
+      "category": "follow_up",
+      "question": "That means North Carolina has most the time tough winters with some much snow. What can you tell me about the  summer months. Are they enyoyable ?",
+      "reference_answer": " I cannot definitively say whether the summer months in North Carolina are enjoyable or not, as relative humidity is highest in the winter suggesting  that the summer months might be less humid.  There is an average of forty - five inches of rain a year ( fifty in the mountains ) . July storms account for much of this precipitation .In fact, North Carolina experience severe weather in  both summer and winter. The summer can bring the threat of hurricanes , tropical storms , heavy rain , and flooding . Indeed, destructive hurricanes that have hit North Carolina include Hurricane Fran , Hurricane Floyd , and Hurricane Hazel , the latter being the strongest storm ever to make landfall in the state , as a Category 4 in 1954 . Hurricane Isabel ranks as the most destructive of the 21st century .",
+      "required_sources": [
+        {
+          "document": "clapnq-climate-of-north-carolina",
+          "evidence": "In winter , North Carolina is somewhat protected by the Appalachian Mountains to the west ."
+        },
+        {
+          "document": "clapnq-climate-of-north-carolina",
+          "evidence": "There is an average of forty - five inches of rain a year ( fifty in the mountains ) ."
+        },
+        {
+          "document": "clapnq-north-carolina",
+          "evidence": "North Carolina experiences severe weather in both summer and winter , with summer bringing threat of hurricanes , tropical storms , heavy rain , and flooding ."
+        }
+      ],
+      "standalone": "What are summers like in North Carolina?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "where does it snow the most in north carolina?"
+        },
+        {
+          "role": "assistant",
+          "text": "The mountains in western North Carolina receive the most snow in the state. This is because the Appalachian Mountains act as a barrier, preventing most snowstorms from entering the Piedmont. When snow does make it past the mountains, it is usually light and is seldom on the ground for more than two or three days. However, several storms have dropped 18 inches (460 mm) or more of snow within normally warm areas. For instance, during the 1993 Storm of the Century, most of the northwestern part of the state received somewhere between 2 feet (0.61 m) and 3 feet (0.91 m) of snow. In January of 2000, Raleigh area was hit with more than  20 inches(510 mm) of snowfall. There was also a heavy snowfall totaling 18 inches ( 460 mm ) that hit the Wilmington area on December 22 - 23 , 1989."
+        }
+      ]
+    },
+    {
+      "id": "hard-042",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "dd82f0f978316e73618cf0addd369cd8<::>2"
+      },
+      "category": "follow_up",
+      "question": "When did the MSL All-Star game start?",
+      "reference_answer": "The first MLS All-Star Game was played at Giants Stadium in the summer of 1996. The game , using the traditional East -- West format with players handpicked by the coaching staffs , was the first game of a doubleheader with the Brazilian national team defeating a team of FIFA World All - Stars.",
+      "required_sources": [
+        {
+          "document": "clapnq-major-league-soccer-all-star-game",
+          "evidence": "Major League Soccer 's first all - star game was played at Giants Stadium in the summer of 1996 ."
+        },
+        {
+          "document": "clapnq-major-league-soccer-all-star-game",
+          "evidence": "2015 MLS All - Star Game July 29 , 2015 MLS All - Stars 2 -- 1 Tottenham Hotspur ( show ) Dick 's Sporting Goods Park , Commerce City , Colorado Kaká 20 ' ( pen"
+        },
+        {
+          "document": "clapnq-major-league-soccer-all-star-game",
+          "evidence": "2012 MLS All - Star Game July 25 , 2012 MLS All - Stars 3 -- 2 Chelsea ( show ) PPL Park , Chester , Pennsylvania Wondolowski 21 ' Pontius 73 ' Johnson 90 + 1 '"
+        },
+        {
+          "document": "clapnq-major-league-soccer-all-star-game",
+          "evidence": "2013 MLS All - Star Game July 31 , 2013 MLS All - Stars 1 -- 3 Roma ( show ) Sporting Park , Kansas City , Kansas 20 : 30 Gonzalez 90 + 1 ' Report Strootman 4 '"
+        }
+      ],
+      "standalone": "When was the MLS All-Star game first held?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "how does the mls all star game work?"
+        },
+        {
+          "role": "assistant",
+          "text": "The MLS All-Star Game is an annual soccer game where selected players from Major League Soccer (MLS) compete against an international club. The format of the game has evolved over the years. Initially, it featured the Eastern Conference playing against the Western Conference. However, since 2005, MLS has been inviting a professional club from abroad to participate. The opponents are usually from Europe, specifically England's Premier League, due to the scheduling coincidence of the MLS midseason with the pre-seasons of most European leagues. Players earn roster spots through a combination of fan voting and selections by the appointed manager and league commissioner. The game is considered a pre-season friendly from a European perspective.              "
+        }
+      ]
+    },
+    {
+      "id": "hard-043",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "6a738cc02c5aa0b74319acd0e8a809dd<::>6"
+      },
+      "category": "follow_up",
+      "question": "Enough for a chemo and infertility, is this a hereditary?",
+      "reference_answer": "The cause of infertility is suspected to be immunological or genetic ; it may be that each partner is independently fertile but the couple can not conceive together. ",
+      "required_sources": [
+        {
+          "document": "clapnq-infertility",
+          "evidence": "In some cases , both the man and woman may be infertile or sub-fertile , and the couple 's infertility arises from the combination of these conditions ."
+        }
+      ],
+      "standalone": "Is infertility due to chemotherapy hereditary?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "types and causes of male and female infertility"
+        },
+        {
+          "role": "assistant",
+          "text": "Here are the types and causes of male and female infertility: Male infertility can be caused by: 1. Low semen quality 2. Endocrine problems 3. Drugs 4. Radiation 5. Infection 6. Testicular malformations 7. Hormone imbalance 8. Blockage of the duct system 9. Primary ciliary dyskinesia 10. Antisperm antibodies Female infertility can be caused by: 1. Inability to ovulate 2. Malformation of the eggs 3. Polycystic ovarian syndrome 4. Failure of ovaries to mature and release eggs 5. Ovulatory problems These causes can be diagnosed and, in some cases, treated through medical intervention. However, in about 10-20% of cases, no cause is found."
+        },
+        {
+          "role": "user",
+          "text": "How many years, think about adoption?"
+        },
+        {
+          "role": "assistant",
+          "text": "The documents do not include information on how long to consider adoption after experiencing infertility. "
+        },
+        {
+          "role": "user",
+          "text": "Regional differences"
+        },
+        {
+          "role": "assistant",
+          "text": "The documents do not include information about regional differences in infertility types and causes. It is important to note that  existing definitions of infertility lack uniformity , rendering comparisons in prevalence between countries or over time problematic . "
+        },
+        {
+          "role": "user",
+          "text": "chemo and fertility,  before puberty, still?"
+        },
+        {
+          "role": "assistant",
+          "text": "The documents do not provide specific information about the impact of chemotherapy on fertility before puberty.   But, yes, chemotherapy can affect fertility.  It can cause DNA damaging of the cells in the testicles or ovaries that produce sperm and eggs, potentially leading to reduced fertility or even sterility."
+        },
+        {
+          "role": "user",
+          "text": "any good idea to this?"
+        },
+        {
+          "role": "assistant",
+          "text": "While chemotherapy can impact fertility, there are options available to preserve fertility before starting treatment, such as sperm or egg freezing; eggs may be frozen and stored for later use.  For semen, cryopreservation can be used for far longer storage durations like 21 yrs.  However, these options may not be suitable for everyone, especially those who have not yet reached puberty.  It's important to discuss the potential risks and available options with a healthcare provider before starting chemotherapy."
+        }
+      ]
+    },
+    {
+      "id": "hard-044",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "1c0e5e78f1a16ea2eb2165b6aa31dc61<::>9"
+      },
+      "category": "follow_up",
+      "question": "streaming services?",
+      "reference_answer": "The Office is available for streaming on various platforms such as Netflix, Amazon Prime, and Hulu. ",
+      "required_sources": [
+        {
+          "document": "clapnq-apple-tv",
+          "evidence": "Video Streaming The primary function of Apple TV is streaming video through the internet ."
+        }
+      ],
+      "standalone": "Where can I stream The Office?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "what happens to toby at the end of the office"
+        },
+        {
+          "role": "assistant",
+          "text": "At the end of The Office, Toby Flenderson moves to Costa Rica for a new job. On his last day, he gets revenge when Michael's insulting farewell gift to him is exposed, and Pam gets Michael to unwillingly give up his watch to Toby. Toby's main concern is getting pictures of himself alone with Pam, which he finally does as his party is ending. As he leaves for Costa Rica, Michael has Hank the security guard escort Toby out of the office, and Toby still appears to be upset about this. In a deleted scene at his farewell party, Toby briefly mentions an undefined incident involving his sister, marking the first time he has mentioned having any siblings."
+        },
+        {
+          "role": "user",
+          "text": "any reason to end?"
+        },
+        {
+          "role": "assistant",
+          "text": "The producer Daniels felt that season 9 was the last chance to really go out together and make an artistic ending for the show that would pay off a lot of the stuff that mattered most to fans.  The episode was viewed by 4.28 million viewers and became the lowest - rated season premiere for the series and marked a 46 percent drop in viewership from the season eight premiere."
+        },
+        {
+          "role": "user",
+          "text": "who was the arch rival to this series?"
+        },
+        {
+          "role": "assistant",
+          "text": "The similar series are Arrested Development, Community, and 30 Rock but the document does not state that those are an arch rival to the series \"The Office.\""
+        },
+        {
+          "role": "user",
+          "text": "why 46% drop all the sudden?  who are audiences?"
+        },
+        {
+          "role": "assistant",
+          "text": "There is no definite information about why the 46% drop in viewership from the season eight premiere to the season nine happened.  As for the audience, the show received a 2.6 rating in the 18-to-49-year-old demographic, meaning that, on average, the season was viewed by 2.6 percent of all 18-to-49-year-olds. It was viewed by 3.32 million in this demographic. "
+        },
+        {
+          "role": "user",
+          "text": "any awards"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes, The Office has won several awards throughout its run including Primetime Emmy Awards for Outstanding Comedy Series.  The fifth win for The Office at the Emmys overall and the series  \"Finale\" was nominated for three awards at the 65th Primetime Emmy Awards , and won for Outstanding Single - Camera Picture Editing for a Comedy Series.  Michael Scott 's return was nominated and won the fan - voted Best TV Moment '' at the 3rd Critics ' Choice Television Awards in June of 2013 ."
+        },
+        {
+          "role": "user",
+          "text": "history best?"
+        },
+        {
+          "role": "assistant",
+          "text": "It is subjective to determine if \"The Office\" is the \"history best\" comedy series, as it depends on personal preferences and opinions. "
+        },
+        {
+          "role": "user",
+          "text": "no, I meant which TV series was the best in history?"
+        },
+        {
+          "role": "assistant",
+          "text": "Determining the \"best\" TV series in history is subjective and depends on personal preferences and opinions. However, it is worth mentioning that Saturday Night Live is one of the longest running comedy series on TV; it debuted in October 1975 and is now in its 42nd season, if longevity can be considered a criteria for 'best.'"
+        },
+        {
+          "role": "user",
+          "text": "So what is the next after The Office?"
+        },
+        {
+          "role": "assistant",
+          "text": "NBC has not yet announced The Office follow-up series, however, there are many highly rated series that you might enjoy including A.P. Bio, This Is Us, The Brave, Joey, and Modern Family."
+        }
+      ]
+    },
+    {
+      "id": "hard-045",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "5c13daa9432149f6243aa1115629cd1a<::>7"
+      },
+      "category": "follow_up",
+      "question": "Any cures for it?",
+      "reference_answer": "There is no cure for Huntington's disease. The best evidence for treatment of the movement problems is with tetrabenazine, and treatments can relieve some symptoms and in some improve quality of life. Several clinical trials of new experimental treatments are underway and planned in Huntington's disease. Carefully managed multidisciplinary caregiving becomes increasingly necessary as the disease progresses.",
+      "required_sources": [
+        {
+          "document": "clapnq-huntington-s-disease",
+          "evidence": "There is no cure for HD ."
+        },
+        {
+          "document": "clapnq-huntington-s-disease",
+          "evidence": "There is no cure for HD , but there are treatments available to reduce the severity of some of its symptoms ."
+        },
+        {
+          "document": "clapnq-huntington-s-disease",
+          "evidence": "Several clinical trials of new experimental treatments are underway and planned in Huntington 's disease ."
+        }
+      ],
+      "standalone": "Is there a cure for Huntington's disease?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "where is bone marrow found what does it do for the body"
+        },
+        {
+          "role": "assistant",
+          "text": "Bone marrow is found within the spongy or cancellous portions of bones. Human marrow produces approximately 500 billion blood cells per day. The main functional component of bone marrow includes the progenitor cells which are destined to mature into blood and lymphoid cells. These include white blood cells, red blood cells, and platelets. In humans, the red marrow of some bones is an important site for blood cell production, in order to replace existing cells that have been destroyed by the liver. "
+        },
+        {
+          "role": "user",
+          "text": "What happens if it does not work well?"
+        },
+        {
+          "role": "assistant",
+          "text": "If bone marrow does not function properly, it can lead to a decrease in the production of blood cells and blood platelets. This can be caused by various factors such as aplastic anemia, malignancies like multiple myeloma, congenital defects , autoimmune diseases, infections like tuberculosis, leukemia, or exposure to radiation or chemotherapy. Symptoms of a malfunctioning bone marrow can include fatigue, increased risk of infection, and easy bruising or bleeding. In the case of sickle cell disease, the bone marrow's attempt to compensate for the destruction of red cells is not sufficient, leading to anemia."
+        },
+        {
+          "role": "user",
+          "text": "How is Sickle cell treated?"
+        },
+        {
+          "role": "assistant",
+          "text": "The treatment for sickle cell disease may include infection prevention with vaccination and antibiotics, high fluid intake, folic acid supplementation, pain medication, blood transfusion, and the medication hydroxycarbamide (hydroxyurea). A small percentage of people can be cured by a transplant of bone marrow cells. When treating avascular necrosis of the bone in people with sickle cell disease, the aim of treatment is to reduce or stop the pain and maintain joint mobility. Current treatment options are to rest the joint, physical therapy, pain relief medicine, joint replacement surgery, or bone grafting. High quality randomized controlled trials are needed to assess the most effective treatment option and determine if a combination of physical therapy and surgery are more effective than physical therapy alone."
+        },
+        {
+          "role": "user",
+          "text": "Will it kill me?"
+        },
+        {
+          "role": "assistant",
+          "text": "A small percentage of people can be cured by a transplant of bone marrow cells. Life expectancy for people with sickle cell disease in the developed world is 40 to 60 years. About 90 % of people survive to age 20, and close to 50 % survive beyond age 50, and many people with the condition live well into adulthood with proper medical care. The disease can be life-threatening, but with appropriate treatment and management, the prognosis can be improved. "
+        },
+        {
+          "role": "user",
+          "text": "How about transplant?"
+        },
+        {
+          "role": "assistant",
+          "text": "A bone marrow transplant is a potential cure for sickle cell disease, although it is difficult to obtain a suitable donor due to the specific HLA typing necessary. Ideally, a close relative would donate the bone marrow. Risks associated with the procedure are a 7% mortality rate and the possibility of graft versus host disease. In phase 1 clinical trials for adults with severe sickle cell disease, the safety and initial evidence for efficacy have been assessed, no randomized controlled trials have been reported as of 2016. It is important to note that while a bone marrow transplant can potentially cure sickle cell disease, it is not a guaranteed solution and carries significant risks. "
+        },
+        {
+          "role": "user",
+          "text": "Is Huntington's disease also inherited?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes, Huntington's disease is an inherited disorder from one's parents. It is caused by an autosomal dominant mutation in the Huntingtin gene, which results in an abnormal protein that gradually damages cells in the brain. If a person inherits the mutated gene from an affected parent, they will typically develop the disease. The probability of inheriting the mutant allele and being affected with the disorder is 50% for each offspring of an affected individual, regardless of sex."
+        }
+      ]
+    },
+    {
+      "id": "hard-046",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "41a4006bfa6841516188c1695ebaf16c<::>3"
+      },
+      "category": "follow_up",
+      "question": "How many people died trying to cross the Berlin Wall?",
+      "reference_answer": "The number of people who died trying to cross the Wall, or as a result of the Wall's existence, has been disputed. Historical Research ( ZZF ) in Potsdam has confirmed at least 140 deaths. An estimated death toll ranges from 136 to more than 200 in and around Berlin.",
+      "required_sources": [
+        {
+          "document": "clapnq-berlin-wall",
+          "evidence": "During the years of the Wall , around 5,000 people successfully defected to West Berlin ."
+        },
+        {
+          "document": "clapnq-berlin-wall",
+          "evidence": "Before the Wall 's erection , 3.5 million East Germans circumvented Eastern Bloc emigration restrictions and defected from the GDR , many by crossing over the b"
+        }
+      ],
+      "standalone": "Can you tell me the number of people who died trying to cross the Berlin Wall?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "when did the wall in berlin come down"
+        },
+        {
+          "role": "assistant",
+          "text": "The Berlin Wall began to come down on the evening of 9 November 1989."
+        },
+        {
+          "role": "user",
+          "text": "When did the official reunification of Germany take place?"
+        },
+        {
+          "role": "assistant",
+          "text": "The official reunification of Germany took place on 3 October 1990."
+        }
+      ]
+    },
+    {
+      "id": "hard-047",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "79f0d0539d9ec0acbf90cb3388b30c17<::>4"
+      },
+      "category": "follow_up",
+      "question": "Celts",
+      "reference_answer": " Archaeological discoveries suggests that the pre-Roman Celtic societies were linked to the network of overland trade routes that spanned Eurasia but scholars assumed that the original land of the Celts was west of the Rhine , more precisely in Gaul , because it was where Greek and Roman ancient sources , namely Caesar , located the Celts . This view was challenged by the 19th - century historian Marie Henri d'Arbois de Jubainville who placed the land of origin of the Celts east of the Rhine.  Jubainville based his arguments on a phrase of Herodotus ' that placed the Celts at the source of the Danube , and argued that Herodotus had meant to place the Celtic homeland in southern Germany . The finding of the prehistoric cemetery of Hallstat in 1846 by Johan Ramsauer and the finding of the archaeological site of La Tène by Hansli Kopp in 1857 drew attention to this area. Archaeologists have also discovered large prehistoric trackways crossing bogs in Ireland and Germany . As the territory held by the Celts contained tin , lead , iron , silver and gold , they were metalworkers that created weapons and jewellery for international trade , particularly with the Romans .",
+      "required_sources": [
+        {
+          "document": "clapnq-celts",
+          "evidence": "Archaeological evidence suggests that the pre-Roman Celtic societies were linked to the network of overland trade routes that spanned Eurasia ."
+        },
+        {
+          "document": "clapnq-celts",
+          "evidence": "Before the 19th century , scholars assumed that the original land of the Celts was west of the Rhine , more precisely in Gaul , because it was where Greek and R"
+        }
+      ],
+      "standalone": "Can you tell me about the Celts in relation to archaeological discoveries and colonialists?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "what is the difference between primary and archaeological sources"
+        },
+        {
+          "role": "assistant",
+          "text": "  I do not have specific information on difference between primary and archaeological sources. However, a primary source ( also called original source or evidence ) is an artifact , a document , diary , manuscript , autobiography , a recording , or any other source of information that was created at the time under study . It serves as an original source of information about the topic .Also, a primary source could be defined as something that was created either during the time period being studied or afterward by individuals reflecting on their involvement in the events of that time                                                                "
+        },
+        {
+          "role": "user",
+          "text": "primary sources in history"
+        },
+        {
+          "role": "assistant",
+          "text": "If you asking about History as an academic discipline, it is based on primary sources can include artifacts, documents, diaries, manuscripts, autobiographies, recordings, or any other source of information that was created at the time under study. They serve as original sources of information about the topic. Examples of primary sources in history include novels or plays, photographs, newsreels, coins, paintings, buildings, archaeological artifacts, oral reports, and interviews. Written sources may be divided into three types: documents such as official reports, speeches, pamphlets, posters, or letters by participants, official election returns, and eyewitness accounts; books, essays, and letters written by intellectuals; and religious texts and descriptions of religious ceremonies and rituals."
+        },
+        {
+          "role": "user",
+          "text": "archaeological discoveries and colonialists"
+        },
+        {
+          "role": "assistant",
+          "text": "The archaeological discoveries helped to shaped the way European colonialists identified with the artifacts and the ancient people who made them . For instance, colonial Europe 's mission in Egypt was able to bring the glory and magnificence of ancient Egypt closer to Europe and incorporate it into knowledge of world history , putting that country  new spotlight . With the archaeological discoveries , ancient Egypt was adopted into the Western historical narrative and came to take on a significance that had up until that time been reserved for ancient Greek and Roman civilization . Also  , historians of the pre-Columbian period mainly interpreted the records of the European conquerors and the accounts of early European travelers and antiquaries ."
+        }
+      ]
+    },
+    {
+      "id": "hard-048",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "a277cf5022616282aa819ee76c9343de<::>4"
+      },
+      "category": "follow_up",
+      "question": "why MacArthur didn't criminalize the Emperor that time?",
+      "reference_answer": "General Douglas MacArthur did not hold Emperor Hirohito responsible for war crimes because he believed that the continuation of the imperial institution was necessary for the stability and rehabilitation of Japan.  At a meeting with the General later in September aboard the Missouri, Emperor Hirohito offered to take blame for the war crimes, but his offer was rejected, and he was never tried. As the Allied seemed to leave intact the principle of the preservation of the Throne , the Declaration made no mention of the Emperor at all . Allied intentions on issues of utmost importance to the Japanese, including whether Hirohito was to be regarded as one of those who had misled the people of Japan '' or even a war criminal, or alternatively, whether the Emperor might become part of a peacefully inclined and responsible government '' were thus left unstated.",
+      "required_sources": [
+        {
+          "document": "clapnq-surrender-of-japan",
+          "evidence": "After the formal surrender on September 2 aboard Missouri , investigations into Japanese war crimes began quickly ."
+        },
+        {
+          "document": "clapnq-atomic-bombings-of-hiroshima-and-nagasaki",
+          "evidence": "On August 12 , the Emperor informed the imperial family of his decision to surrender ."
+        },
+        {
+          "document": "clapnq-surrender-of-japan",
+          "evidence": "Contrary to what had been intended at its conception , the Declaration made no mention of the Emperor at all ."
+        }
+      ],
+      "standalone": "Why didn't MacArthur criminally charge the Emperor during that time?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "why did the us demand trade with japan"
+        },
+        {
+          "role": "assistant",
+          "text": "The United States demanded a complete halt to trade with Japan because it wanted to bring the Japanese war effort to a stop, particularly their war in China. The US recognized Chiang Kai-Shek's Nationalist Government as the legitimate government of China. The United States sought to bring the Japanese war effort to a halt by imposing an embargo on all trade between the United States and Japan. This was a response to Japan's dependence on the US for 80% of its petroleum. The US aimed to create an economic and military crisis for Japan, hoping that this would force Japan to withdraw its troops from China and Indochina."
+        },
+        {
+          "role": "user",
+          "text": "So, are you saying that the petroleum dependance eventually caused Japan to start WWII?"
+        },
+        {
+          "role": "assistant",
+          "text": "No, Japan's petroleum dependence on the US was not the direct cause of World War II.  However, the US full embargo on trade created an economic and military crisis for Japan.   In the 1930s , the Great Depression wrecked Japan 's economy and gave radical elements within the Japanese military the chance to force the entire military into working towards the conquest of all of Asia.  Japan sought to remove the Western powers ' influence in China and replace it with Japanese domination, and eventually leading up to the Second World War . "
+        },
+        {
+          "role": "user",
+          "text": "What it called \"greater something\"?"
+        },
+        {
+          "role": "assistant",
+          "text": "It seems like you might be referring to the concept of \"Greater East Asia Co-Prosperity Sphere.\" This was a concept put forward by the Japanese government before and during World War II. It promoted the idea of a bloc of Asian nations led by the Empire of Japan, free from Western powers and to create a self-sufficient economic sphere.  It included Manchuria , Inner Mongolia , large parts of China , Malaysia , French Indochina , Dutch East Indies , The Philippines , Burma , a small part of India , and various Pacific Islands in the central Pacific .  This idea was used to justify Japanese expansionism and aggression in Asia during World War II."
+        }
+      ]
+    },
+    {
+      "id": "hard-049",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "5b9edac124aea30a2256705d27226d7f<::>6"
+      },
+      "category": "follow_up",
+      "question": "A horse , a horse , my kingdom for a horse !",
+      "reference_answer": "The famous line \"A horse, a horse, my kingdom for a horse!\" is from Shakespeare's play Richard III. It is spoken by the character Richard, Duke of Gloucester, when he is unhorsed in the Battle of Bosworth Field, and realizes that he would give up his kingdom for a horse to continue fighting.",
+      "required_sources": [
+        {
+          "document": "clapnq-richard-iii-play",
+          "evidence": "At the Battle of Bosworth Field , Lord Stanley ( who is also Richmond 's stepfather ) and his followers desert Richard 's side , whereupon Richard calls for the"
+        }
+      ],
+      "standalone": "Can you tell me about Shakespeare's most popular historical play?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Were Shakespeare's plays popular when he was alive?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes, based on the provided document, Shakespeare's plays were popular during his lifetime.  Hamlet appears to have been his fourth most popular play at that time, surpassed only by Henry IV Part 1 , Richard III and Pericles. Romeo and Juliet is also known to have been extremely popular then, so much so that it was performed outside of England as well, in Nördlingen in 1604."
+        },
+        {
+          "role": "user",
+          "text": "How many film adaptations of Hamlet are there?"
+        },
+        {
+          "role": "assistant",
+          "text": "I do not have specific information about the exact number of film adaptations of Hamlet. However, the earliest screen success recorded for Hamlet was Sara Bernhardt's 5-minute film of the fencing scene, which was produced in 1900. The film was an early attempt at combining sound and film , music and words were recorded on phonograph records , to be played along with the film . Seven silent versions were released from 1907-1921. Laurence Olivier adapted, produced, directed and starred in his screen version in 1948. Tony Richardson directed  the first Hamlet film in color in 1969. Franco A version by Franco Zeffirelli, with Mel Gibson and Glenn Close came out in 1990, and Kenneth Branagh's version was released in 1996. A version set in contemporary Manhattan and starring Ethan Hawke dates back to 2000. There have also been several films that transposed the general storyline of Hamlet or elements thereof to other settings . For example , the 2014 Bollywood film Haider is an adaptation set in Kashmir . There have also been many films which included performances of scenes from Hamlet as a play - within - a-film ."
+        },
+        {
+          "role": "user",
+          "text": "What about Romeo and Juliet?"
+        },
+        {
+          "role": "assistant",
+          "text": "Just like Hamlet, Romeo and Juliet has been adapted multiple times for the small and large screens. It may be the most filmed play of all time, with notable theatrical releases such as George Cukor's 1936 production, Franco Zeffirelli's 1968 version, and Baz Luhrmann's 1996 MTV-inspired Romeo + Juliet. The play was first filmed in the silent era by Georges Méliès, although his film is now lost. The first sound recording of the play on film was in The Hollywood Revue of 1929, where John Gilbert recited the balcony scene opposite Norma Shearer. In 1960 , Peter Ustinov 's cold - war stage parody , Romanoff and Juliet was filmed. film A popular film of a musical theatre adaptation, West Side Story was made in 1961 . This version updated the setting to mid-20th - century New York City and the warring families to ethnic gangs. Other musical adaptations include Terrence Mann 's 1999 rock musical William Shakespeare 's Romeo and Juliet , co-written with Jerome Korman , Gérard Presgurvic 's 2001 Roméo et Juliette , de la Haine à l'Amour and Riccardo Cocciante 's 2007 Giulietta & Romeo . In 2013 , Sanjay Leela Bhansali directed the Bollywood film Goliyon Ki Raasleela Ram - Leela , a contemporary version of the play. which was a commercial and critical success. "
+        },
+        {
+          "role": "user",
+          "text": "Hamnet"
+        },
+        {
+          "role": "assistant",
+          "text": "Hamnet is the name of William Shakespeare's only son. He was born in 1585 and died in 1596 at the age of 11. The death of Hamnet had a profound impact on Shakespeare, and some literary scholars believe that it may have influenced his work, particularly his play \"Hamlet,\" which was written around the same time. However, this connection is still a subject of debate, most scholars rejecting the idea that the play is in any way connected to Shakespeare's son."
+        },
+        {
+          "role": "user",
+          "text": "What was Shakespeare's most popular historical play?"
+        },
+        {
+          "role": "assistant",
+          "text": "I do not have specific information to answer this. "
+        }
+      ]
+    },
+    {
+      "id": "hard-050",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "694e275f1a01ad0e8ac448ad809f7930<::>4"
+      },
+      "category": "follow_up",
+      "question": "Are those sport only played by man or woman also can play  them?",
+      "reference_answer": "Women can also participate in soccer and American football. The first match recorded by the Scottish Football Association took place in 1892 in Glasgow . In England , the first recorded game of football between women took place in 1895. The modern game also has documented early involvement of women . In Europe , it is possible that 12th - century French women played football as part of that era 's folk games . An annual competition in Mid-Lothian , Scotland during the 1790s is reported , too . In 1863 , football governing bodies introduced standardized rules to prohibit violence on the pitch , making it more socially acceptable for women to play . Women 's soccer is the most prominent team sport played by women around the globe . It is played at the professional level in numerous countries throughout the world and 176 national teams participate internationally .",
+      "required_sources": [
+        {
+          "document": "clapnq-women-s-association-football",
+          "evidence": "Women 's association football , also commonly known as women 's football , or women 's soccer , is the most prominent team sport played by women around the glob"
+        },
+        {
+          "document": "clapnq-women-s-association-football",
+          "evidence": "Women may have been playing `` football '' for as long as the game has existed ."
+        },
+        {
+          "document": "clapnq-women-s-association-football",
+          "evidence": "Association football , the modern game , also has documented early involvement of women ."
+        }
+      ],
+      "standalone": "Can women also play those sports?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "which sport awards the oldest trophy in international sports"
+        },
+        {
+          "role": "assistant",
+          "text": "The America's Cup, affectionately known as the `` Auld Mug '', a trophy awarded to the winner of the America's Cup match races between two sailing yachts, is the oldest international sporting trophy. However the Stanley Cup (the championship trophy awarded annually to the National Hockey League ( NHL ) playoff winner )is the oldest existing trophy to be awarded to a professional sports franchise and originally commissioned in 1892 as the Dominion Hockey Challenge Cup.  After a series of league mergers and folds , it was established as the de facto championship trophy of the NHL in 1926 and then the de jure NHL championship prize in 1947 ."
+        },
+        {
+          "role": "user",
+          "text": "As America's Cup is the oldest trophy awarded to sailing, May I ask you what is the oldest sport invented and if  it is still been currently playing ?"
+        },
+        {
+          "role": "assistant",
+          "text": "Sports have been a part of human culture for thousands of years, with evidence of sports-like activities dating back to ancient civilizations .Mesoamerican ballgame is considered one of the oldest sports and some archaelogists even  discovered at Paso de La Amada the oldest ball court, dated to approximately 1400 BCE . Football is considered a  very old sport, from the 1550s, thankfully for a discovery a ball in the roof of Stirling Castle , Scotland , in 1981. The ball was made of leather ( possibly from a deer ) and a pig 's bladder . It has a diameter of between 14 -- 16 cm ( 5.5 -- 6.3 in ) , weighs 125 g ( 4.4 oz )."
+        },
+        {
+          "role": "user",
+          "text": "Soccer is a very popular sport and watched by millions around the world. What is the difference between soccer and american football that is also very popular and viewed  by thousands around the world?"
+        },
+        {
+          "role": "assistant",
+          "text": "Soccer, also known as football in many parts of the world, is a sport where two teams of 11 players each try to score goals by kicking a ball into the opposing team's net between two goalposts. The goal or line being defended by the opposing team and the players only can use their body to move the ball. Nevertheless, in the American football, also know gridiron , is a team sport played by two teams of eleven players on a rectangular field with goalposts at each end . The offense , which is the team controlling the oval - shaped football , attempts to advance down the field by running with or passing the ball , while the defense , which is the team without control of the ball , aims to stop the offense 's advance and aims to take control of the ball for themselves . The offense must advance at least ten yards in four downs , or plays , and otherwise they turn over the football to the defense ; if the offense succeeds in advancing ten yards or more , they are given a new set of four downs . Points are primarily scored by advancing the ball into the opposing team 's end zone for a touchdown or kicking the ball through the opponent 's goalposts for a field goal . The team with the most points at the end of a game wins ."
+        }
+      ]
+    },
+    {
+      "id": "hard-051",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "aea2634b0e5f1c2444550d31c41adc94<::>8"
+      },
+      "category": "follow_up",
+      "question": "Restrictions to immigration.",
+      "reference_answer": "The National Origins Formula of 1921 ( and its final form in 1924 ) not only restricted the number of immigrants who might enter the United States , but also assigned slots according to quotas based on national origins .",
+      "required_sources": [
+        {
+          "document": "clapnq-history-of-immigration-to-the-united-states",
+          "evidence": "Restriction proceeded piecemeal over the course of the late 19th and early 20th centuries , but immediately after the end of World War I ( 1914 -- 18 ) and into"
+        }
+      ],
+      "standalone": "What are the restrictions to immigration for same sex couples?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "what is the defense of marriage act 1996"
+        },
+        {
+          "role": "assistant",
+          "text": "The Defense of Marriage Act (DOMA) is a United States federal law that defines and protects the institution of marriage. enacted in 1996. It was introduced by Georgia Representative Bob Barr and Senator Don Nickles of Oklahoma. The Act was intended by Congress to reflect and honor a collective moral judgment and to express moral disapproval of homosexuality. It also defined marriage for federal purposes as the legal union of a man and a woman as husband and wife, and a spouse as a husband or wife of the opposite sex. Section 3 of DOMA defines marriage and spouse for federal purposes. Section 3 codified non-recognition of same - sex marriages for all federal purposes, including insurance benefits for government employees, social security survivors ' benefits, immigration, bankruptcy, and the filing of joint tax returns, as well as excluding same - sex spouses from the scope of laws protecting families of federal officers, laws evaluating financial aid eligibility, and federal ethics laws applicable to opposite - sex spouses."
+        },
+        {
+          "role": "user",
+          "text": "How is marriage defined?"
+        },
+        {
+          "role": "assistant",
+          "text": "In determining the meaning of any Act of Congress , or of any ruling , regulation , or interpretation of the various administrative bureaus and agencies of the United States , the word ' marriage ' means only a legal union between one man and one woman as husband and wife. Additionally, any other State , territory , possession , or tribe respecting a relationship between persons of the same sex that is treated as a marriage under the laws of such other State , territory , possession , or tribe , or a right or claim arising from such relationship based on \"Defense of Marriage Act,\"."
+        },
+        {
+          "role": "user",
+          "text": "How are weddings celebrated?"
+        },
+        {
+          "role": "assistant",
+          "text": "The typical wedding involves a couple proclaiming their commitment to one another in front of their close relatives and friends , often presided over by a religious figure such as a minister , priest , or rabbi , depending upon the faith of the couple . In traditional Christian ceremonies , the bride 's father will `` give away '' ( hand off ) the bride to the groom . Secular weddings are also common , often presided over by a judge , Justice of the Peace , or other municipal official . At a wedding reception , the father of the bride , in his role as host , regularly offers the first toast , thanking the guests for attending , offering tasteful remembrances of the bride 's childhood , and wishing the newlyweds a happy life together . The best man usually proposes a toast in the form of best wishes and congratulations to the newlyweds . A best man 's toast takes the form of a short speech ( 3 -- 5 minutes ) that combines a mixture of humor and sincerity . The actual `` toast '' is then delivered at the end of the speech and is a short phrase wishing the newlyweds a happy , healthy , loving life together . The maid of honor may follow suit , appropriately tailoring her comments to the bride . The groom may offer the final toast , thanking the bride 's parents for hosting the wedding , the wedding party for their participation , and finally dedicating the toast to the bridesmaids ."
+        },
+        {
+          "role": "user",
+          "text": "What is the meaning of the glass being broken at a Jewish wedding?"
+        },
+        {
+          "role": "assistant",
+          "text": "The primary reason is that joy must always be tempered . This is based on two accounts in the Talmud of rabbis who , upon seeing that their son 's wedding celebration was getting out of hand , broke a vessel -- in the second case a glass -- to calm things down . Another explanation is that it is a reminder that despite the joy , Jews still mourn the destruction of the Temple in Jerusalem ."
+        },
+        {
+          "role": "user",
+          "text": "Do all states allow same sex marriages?"
+        },
+        {
+          "role": "assistant",
+          "text": "As of the time when the Defense of Marriage Act (DOMA) was in effect, it allowed states to refuse to recognize same-sex marriages granted under the laws of other states. Therefore, not all states allowed same-sex marriages. However, same - sex marriage has been legal in the United States since 26 June 2015 by the Society of the United States Marriage laws."
+        },
+        {
+          "role": "user",
+          "text": "Can same sex couples adopt children?"
+        },
+        {
+          "role": "assistant",
+          "text": "I am sorry that I do not have that information."
+        },
+        {
+          "role": "user",
+          "text": "Legal immigration for same sex couples."
+        },
+        {
+          "role": "assistant",
+          "text": "I am sorry that I do not have information, either."
+        }
+      ]
+    },
+    {
+      "id": "hard-052",
+      "answer": null,
+      "benchmark": {
+        "source": "mtrag",
+        "id": "33431330abb38298cc79b96b2f4fde2a<::>3"
+      },
+      "category": "follow_up",
+      "question": "When was reorganized?",
+      "reference_answer": "Constantine I reorganized the Roman Empire in the early 4th century, around 324-337 AD. This reorganization included establishing Constantinople as the new capital and legalizing Christianity. Constantine's changes marked a significant shift that set the stage for the development of the Byzantine Empire as a distinct entity from the classical Roman Empire. Constantine moved the seat of the Empire to Constantinople, which he founded as a second Rome on the site of Byzantium, a city strategically located on the trade routes between Europe and Asia and between the Mediterranean and the Black Sea. Constantine significantly changed the Empire's military, monetary, civil, and religious institutions.",
+      "required_sources": [
+        {
+          "document": "clapnq-byzantine-empire",
+          "evidence": "Several signal events from the 4th to 6th centuries mark the period of transition during which the Roman Empire 's Greek East and Latin West divided ."
+        },
+        {
+          "document": "clapnq-byzantine-empire",
+          "evidence": "In 330 , Constantine moved the seat of the Empire to Constantinople , which he founded as a second Rome on the site of Byzantium , a city strategically located "
+        }
+      ],
+      "standalone": "When was the Byzantine Empire reorganized?",
+      "turns": [
+        {
+          "role": "user",
+          "text": "why was the eastern roman empire called the byzantine empire"
+        },
+        {
+          "role": "assistant",
+          "text": "Modern historians refer to the Byzantine Empire as such to distinguish it from ancient Rome. This name comes from Byzantium, the original name of Constantinople, the capital city of the empire. The citizens of the empire continued to refer to their empire as the Roman Empire or Romania and to themselves as \"Romans.\" "
+        },
+        {
+          "role": "user",
+          "text": "What was its religion?"
+        },
+        {
+          "role": "assistant",
+          "text": "During the reign of Constantine in the Byzantine Empire, Christianity was not declared the exclusive state religion, but it received special favor from the emperor, who granted it generous privileges. Constantine also established the principle that emperors could not unilaterally decide matters of religious doctrine, and instead, they should convene general ecclesiastical councils for that purpose. His summoning of the Synod of Arles and the First Council of Nicaea demonstrated his commitment to the unity of the Church and asserted his authority as its leader.The ascendancy of Christianity was briefly challenged when Emperor Julian came to power in 361 and sought to revive polytheism throughout the empire. He was later known as \"Julian the Apostate\" by the Church. However, Julian's efforts were reversed when he died in battle in 363.\nThe foundation of the Byzantine Empire was based on the belief that it was a reflection of the Kingdom of Heaven on Earth. Just as God ruled in Heaven, the Emperor, created in His image, was expected to govern on Earth and uphold His commandments. The empire aspired to be universal and aimed to encompass all the peoples of the Earth. Ideally, all people would be members of the one true Christian Church, the Orthodox Church."
+        }
+      ]
+    },
+    {
+      "id": "hard-053",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-1808518785098944547"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "why might it be difficult for medical professionals to diagnose a specific illness",
+      "reference_answer": "Diagnosis is often challenging, because many signs and symptoms are nonspecific. Thus differential diagnosis, in which several possible explanations are compared and contrasted, must be performed. This involves the correlation of various pieces of information followed by the recognition and differentiation of patterns. Occasionally the process is made easy by a sign or symptom that is pathognomonic.",
+      "required_sources": [
+        {
+          "document": "clapnq-medical-diagnosis",
+          "evidence": "Diagnosis is often challenging , because many signs and symptoms are nonspecific ."
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-054",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-2189548918642725127"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "in order to better control the conquistadors in the new world the spanish created",
+      "reference_answer": "The leader of the expedition received clear instructions about their duties towards the army , the native population, the type of military action. The royal official of the army, the veedor, ensured they complied with orders and instructions and preserved the King 's share of the booty.",
+      "required_sources": [
+        {
+          "document": "clapnq-conquistador",
+          "evidence": "In addition , the leader of the expedition received clear instructions about their duties towards the army , the native population , the type of military action"
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-055",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-3135281716449062067"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "where did the movie safe haven take place",
+      "reference_answer": "Safe Haven took place in Boston and the small town of Southport, North Carolina.",
+      "required_sources": [
+        {
+          "document": "clapnq-safe-haven-film",
+          "evidence": "A frightened woman ( Julianne Hough ) flees her house in Boston , holding a bloody knife ."
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-056",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-6584031180119173333"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "what is the story behind the song snuff",
+      "reference_answer": "Snuff (song) -  not naming names , it 's about someone who helped me through a lot, but then she let me down. It was a good thing she did though, as that gave me the final push to figure myself out.",
+      "required_sources": [
+        {
+          "document": "clapnq-snuff-song",
+          "evidence": "Again , not naming names , it 's about someone who helped me through a lot"
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-057",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-7652766263809313045"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "where did the idea of walmart come from",
+      "reference_answer": "Walton 's assistant, Bob Bogle, came up with the name `` Wal - Mart '' for the new chain.",
+      "required_sources": [
+        {
+          "document": "clapnq-history-of-walmart",
+          "evidence": "Responsible for the purchase and maintenance of signage , Walton 's assistant , Bob Bogle , came up with the name `` Wal - Mart '' for the new chain ."
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-058",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-8056304490971014048"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "what kind of rock is in joshua tree",
+      "reference_answer": "The park 's oldest rocks , Pinto gneiss, are in Joshua Tree National Park. Erosion eventually exposed the harder rocks , gneiss and granite , in the uplands and reduced the softer rocks to debris that filled the canyons and basins between the ranges .",
+      "required_sources": [
+        {
+          "document": "clapnq-joshua-tree-national-park",
+          "evidence": "The park 's oldest rocks , Pinto gneiss among them , are 1.7 billion years old ."
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-059",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-866042520475988200"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "system of a down meaning of chop suey",
+      "reference_answer": "In an interview , Daron Malakian explained , `` The song is about how we are regarded differently depending on how we pass. The lyric passages ' Father , into your hands I commend my spirit ' and ' why have you forsaken me ? ' are a reference to Jesus ' death on the cross , as , according to the Gospels , it was one of the seven things Jesus said while dying.",
+      "required_sources": [
+        {
+          "document": "clapnq-chop-suey-song",
+          "evidence": "In an interview , Daron Malakian explained , `` The song is about how we are regarded differently depending on how we pass ."
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-060",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "-8827209331783633212"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "price of ps3 when it first came out",
+      "reference_answer": "PlayStation3 had two hardware configurations announced: a 20 GB model and a 60 GB model , priced at US $499 ( € 499 ) and US $599 ( € 599 ).",
+      "required_sources": [
+        {
+          "document": "clapnq-playstation-3",
+          "evidence": "Two hardware configurations were also announced for the console : a 20 GB model and a 60 GB model , priced at US $499 ( € 499 ) and US $599 ( € 599 ) , respecti"
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-061",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "3103906544916591053"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "what is the meaning of rolls royce logo",
+      "reference_answer": "The Spirit of Ecstasy  carries with it a story about secret passion between Montagu , a pioneer of the automobile movement , and editor of The Car Illustrated magazine from 1902 , and the model for the emblem , Eleanor Velasco Thornton .  Their secret love was to remain hidden for more than a decade because Montagu was married and Eleanor was of an impoverished social status.",
+      "required_sources": [
+        {
+          "document": "clapnq-spirit-of-ecstasy",
+          "evidence": "The Spirit of Ecstasy , also called `` Emily '' , `` Silver Lady '' or `` Flying Lady '' , was designed by English sculptor Charles Robinson Sykes , a graduate "
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-062",
+      "answer": null,
+      "benchmark": {
+        "source": "clapnq",
+        "id": "5121004319758778839"
+      },
+      "category": "vocabulary_mismatch",
+      "question": "who sang joshua fought the battle of jericho",
+      "reference_answer": "The first recorded version of Joshua Fit the Battle of Jericho was by Harrod 's Jubilee Singers , on Paramount Records No. 12116. Later recordings include those by Paul Robeson ( 1925 ) , Mahalia Jackson ( 1958 ) , Clara Ward , and Hugh Laurie ( 2011 ) among many others.",
+      "required_sources": [
+        {
+          "document": "clapnq-joshua-fit-the-battle-of-jericho",
+          "evidence": "The first recorded version was by Harrod 's Jubilee Singers , on Paramount Records No."
+        }
+      ],
+      "word_overlap": 0.0
+    },
+    {
+      "id": "hard-063",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__41158_22946"
+      },
+      "category": "unanswerable",
+      "question": "Who said one of the greatest thinkers was the person who proposed explanations for the origins of earthquakes and the formation of mountains?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "George Sarton, the author of The History of Science, described Ibn Sīnā as \"one of the greatest thinkers and medical scholars in history\" and called him \"the mo"
+      ]
+    },
+    {
+      "id": "hard-064",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__593633_82341"
+      },
+      "category": "unanswerable",
+      "question": "Where is New Perry's place of death found in Florida?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "Ocala (/ oʊ ˈkælə / oh - KAL - ə) is a city located in Northern Florida."
+      ]
+    },
+    {
+      "id": "hard-065",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__274110_413723"
+      },
+      "category": "unanswerable",
+      "question": "In which district was Ernie Watts born?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "Woolhampton is a village and civil parish in West Berkshire, England.",
+        "Born in Woolhampton in Berkshire, his earliest known club was Reading, before he moved to Notts County, where he made 17 appearances in The Football League."
+      ]
+    },
+    {
+      "id": "hard-066",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__50936_90973"
+      },
+      "category": "unanswerable",
+      "question": "Who did the original voice of the character that Mila Kunis plays in Family Guy?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "Meg Griffin Family Guy character First appearance 1998 Pilot Pitch of Family Guy (Early version) ``Death Has a Shadow ''(Official version) Created by Seth MacFa",
+        "Mila Kunis is the voice of the character named Meg Griffin."
+      ]
+    },
+    {
+      "id": "hard-067",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__104095_40501"
+      },
+      "category": "unanswerable",
+      "question": "How many refugees emigrated to the country that Clara Peeters is a citizen of?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "After the revocation of the Edict of Nantes, the Dutch Republic received the largest group of Huguenot refugees, an estimated total of 75,000 to 100,000 people."
+      ]
+    },
+    {
+      "id": "hard-068",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__403060_92763"
+      },
+      "category": "unanswerable",
+      "question": "What is the enrollment at the school that owns the Miami Hurricane?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "University of Miami Latin: Universitas Miamiensis Motto Magna est veritas (Latin) Motto in English Great is the truth Type Private Established 1925; 93 years ag"
+      ]
+    },
+    {
+      "id": "hard-069",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__85753_64503"
+      },
+      "category": "unanswerable",
+      "question": "How deep is the Riverwalk in San Antonio in the state that still uses electric chair?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "Texas changed its execution laws in 1923, requiring the executions be carried out on the electric chair and that they take place at the Texas State Penitentiary"
+      ]
+    },
+    {
+      "id": "hard-070",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__75207_365216"
+      },
+      "category": "unanswerable",
+      "question": "In which province is San Clemente, from the country where Fuser and Alberto meet the indigenous couple who were traveling to look for work?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "During their expedition, Guevara and Granado encounter the poverty of the indigenous peasants, and the movie assumes a greater seriousness once the men gain a b"
+      ]
+    },
+    {
+      "id": "hard-071",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__59612_42429"
+      },
+      "category": "unanswerable",
+      "question": "When did the French and Indian War end on the continent where London Broil comes from?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "The war in North America officially ended with the signing of the Treaty of Paris on 10 February 1763, and war in the European theatre of the Seven Years' War w"
+      ]
+    },
+    {
+      "id": "hard-072",
+      "answer": null,
+      "benchmark": {
+        "source": "musique",
+        "id": "2hop__821197_368148"
+      },
+      "category": "unanswerable",
+      "question": "In which county is Southern Maryland Electric Cooperative headquartered?",
+      "required_sources": [],
+      "withheld_evidence": [
+        "The Southern Maryland Electric Cooperative (SMECO) is an electric distribution cooperative which is headquartered in Hughesville, Maryland.",
+        "Hughesville is a census-designated place (CDP) in Charles County, Maryland, United States."
+      ]
+    }
+  ]
+}

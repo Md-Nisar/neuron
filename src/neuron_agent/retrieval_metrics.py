@@ -231,3 +231,66 @@ def below_baseline(
         and (value := metrics.get(name)) is not None
         and value < floor - tolerance
     ]
+
+
+# The hard-question set (RAG-13.02, `tests/fixtures/knowledge/hard/`): a case needs every one of
+# its `required_sources`, each a document and, unless the benchmark names only the article, the
+# first sentence of the passage (`evidence`).
+Source = Mapping[str, Any]
+RETRIEVAL_MISS, RANKING, FOLLOW_UP, SYNTHESIS, FALSE_ABSTENTION = (
+    "retrieval_miss",
+    "ranking",
+    "follow_up_not_resolved",
+    "synthesis",
+    "false_abstention",
+)
+
+
+def holds(source: Source, located: Located) -> bool:
+    """Whether `located` is the source: its document and, if it names one, its passage."""
+    evidence = source["evidence"]
+    return source["document"] == located.document and (
+        evidence is None or _norm(evidence) in _norm(located.text)
+    )
+
+
+def source_ranks(sources: Sequence[Source], passages: Sequence[Located]) -> list[int | None]:
+    """Each source's 1-based rank of the first passage that holds it, or None if none does."""
+    return [next((i for i, p in enumerate(passages, 1) if holds(s, p)), None) for s in sources]
+
+
+def complete_rank(ranks: Sequence[int | None]) -> int | None:
+    """The rank by which every source was found (the worst rank), or None if one never was.
+    `recall_at_k` over these is complete recall@k: every required source in the top k."""
+    return None if not ranks or None in ranks else max(r for r in ranks if r is not None)
+
+
+def first_rank(ranks: Sequence[int | None]) -> int | None:
+    """The rank of the first source found, for MRR, or None if none was."""
+    return min((r for r in ranks if r is not None), default=None)
+
+
+def classify_failure(
+    *,
+    abstained: bool,
+    seen: bool,
+    complete: int | None,
+    k: int,
+    standalone_complete: int | None = None,
+) -> str:
+    """Why an answerable case's answer failed.
+
+    `seen` is whether the agent's own searches returned every source. If they did, the answer
+    abstained (a false abstention) or was wrong (synthesis). If not, a search for the question
+    decides: `complete` is its complete rank among the candidates (None: a source is not among
+    them), `standalone_complete` the same for a follow-up's standalone rewrite. Sources found
+    in the top `k` for the rewrite but not for the turn's own words mean the follow-up was not
+    resolved; otherwise they were found, but not where the agent looked (ranking), or never
+    found (a retrieval miss).
+    """
+    if seen:
+        return FALSE_ABSTENTION if abstained else SYNTHESIS
+    in_top = complete is not None and complete <= k
+    if not in_top and standalone_complete is not None and standalone_complete <= k:
+        return FOLLOW_UP
+    return RANKING if complete is not None else RETRIEVAL_MISS

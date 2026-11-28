@@ -4,7 +4,7 @@ The single place that says what is really done in the Knowledge Engine work. Sto
 acceptance criteria live in [`NEURON_RAG_PRODUCT_BACKLOG.md`](NEURON_RAG_PRODUCT_BACKLOG.md);
 research in `docs/research/rag/`.
 
-**Last verified:** 2026-11-12, against `main` at `8c6ea29`: v1.1.0 released (tag `v1.1.0` at `26295d5`); all story and epic issues of RAG-E00 to RAG-E08 closed (#398 to #520); the only open `rag` issue is #480; no open RAG PR. Since the release, `main` has had the 2026-11-11 security audit fixes (#526 to #532) and the concurrency review fixes (#534 to #538); those touching knowledge are in the change log. Earlier verifications are in the change log.
+**Last verified:** 2026-11-27, against `main` at `bfbd9ea`: v1.4.0 is the latest release (tag `v1.4.0` at `b8a4e03`); #655 (review remediation of retrieval, ingestion, concurrency and tools) is merged; the only open `rag` issue is epic #593, whose picked story RAG-11.01 is Done; no open RAG PR. Earlier: 2026-11-12, against `8c6ea29`.
 **Backlog status:** Approved epic by epic. Issues exist for RAG-E00 to RAG-E08, all stories of RAG-E00 to RAG-E06, RAG-07.01 (#495, closed), RAG-08.01 (#498, closed), RAG-08.02 (#503, closed), RAG-08.03 (#508, closed), RAG-08.04 (#485, closed), RAG-07.02 (#516, closed), RAG-07.03 (#518, closed) and RAG-08.05 (#520, closed). RAG-E09 (#544) and its eight stories (#545 to #552) created 2026-11-12, all closed 2026-11-13. The Project board has not been created.
 
 ## New session protocol
@@ -59,12 +59,16 @@ Definition of Done in the backlog is met. Do not change unrelated features.
 | RAG-E10 | External knowledge sources | 3 | v1.3.0 (proposed) | 5 | 3 | 0 | 0 | 2 | — (v1.3.0 release) |
 | RAG-E11 | Specialised knowledge tools | 4 | v1.4.0 (proposed) | 5 | 1 | 0 | 0 | 4 | None picked |
 | RAG-E12 | Platform and scale | 5 | later | 5 | 0 | 0 | 0 | 5 | — (evidence-gated) |
-| **Total** | | | | **56** | **45** | **0** | **0** | **11** | **None picked** |
+| RAG-E13 | Advanced retrieval | 6 | later (approved) | 6 | 2 | 1 | 0 | 3 | RAG-13.04 |
+| RAG-E14 | Optimisation, system design and scale | 6 | later (approved) | 6 | 0 | 1 | 0 | 5 | RAG-14.02 |
+| **Total** | | | | **68** | **47** | **2** | **0** | **19** | **RAG-13.04 and RAG-14.02** |
 
 v1.1.0 scope (E00–E08): 33 stories, 33 done. v1.1.0 released 2026-11-10.
 v1.2.0 scope (E09): 8 stories, 8 done. v1.2.0 released 2026-11-13 from `97072d8`.
 
-**Recommended next action (2026-11-17, after v1.4.0):** `v1.4.0` is tagged at `b8a4e03` and its GitHub Release is published (owner, 2026-11-17). No story is picked: the other nine E11 and E12 stories stay deferred for want of a product need (reasons under "Epic detail"), so the next story is the owner's choice.
+**Recommended next action (2026-11-27):** the owner reviewed the RAG work and asked to move on to advanced RAG, plus optimisation, system design and scale. Two epics are approved (owner, 2026-11-27; epics #658 and #659): RAG-E13 "Advanced retrieval" and RAG-E14 "Optimisation, system design and scale". Both start by measuring, because the current eval meets every gate and cannot show a gain: 182 of 188 answerable cases need one document, 5 are multi-hop and none is a follow-up turn. The first stories are RAG-13.01 (hard-question eval set) and RAG-14.01 (latency and cost profile), which can run in parallel. RAG-E10 to RAG-E12's deferred stories stay deferred until a requirement exists (owner, 2026-11-27).
+
+**Earlier (2026-11-17, after v1.4.0):** `v1.4.0` is tagged at `b8a4e03` and its GitHub Release is published (owner, 2026-11-17). No story is picked: the other nine E11 and E12 stories stay deferred for want of a product need (reasons under "Epic detail"), so the next story is the owner's choice.
 
 **Earlier (2026-11-17, v1.4.0):** #620 moved the reranker default to `nvidia/nemotron-3.5-rerank-8b` (MRR 0.977 against 0.833 for RRF; evidence under RAG-09.01), and the owner folded it into v1.4.0 (2026-11-17). With it, the live answer eval met both gates (`cited_correctly` 1.0, 12 of 12 abstentions), so criterion 9 of `docs/releases/v1.4.0-release-verification.md` is met. Next: the owner tags `v1.4.0` at the merge of the record's update and publishes the GitHub Release; then the owner's choice of story.
 
@@ -143,6 +147,8 @@ Filled in when issues are created. The bracketed ID in the issue title is what d
 | RAG-10.04 | #581 | Not on a board |
 | RAG-10.05 | #582 | Not on a board |
 | RAG-E11 | #593 | Not on a board |
+| RAG-E13 | #658 | Not on a board |
+| RAG-E14 | #659 | Not on a board |
 | RAG-11.01 | #594 | Not on a board |
 | RAG-11.02 to RAG-11.05, RAG-E12 and its stories | — (deferred, no issue) | — |
 
@@ -405,9 +411,10 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 
 ### RAG-E11 Specialised knowledge tools
 
-- **Stories:** 5 total · 0 done · 0 in progress · 0 blocked · 5 pending
-- **Implemented functionality:** none.
-- **Outstanding work:** RAG-11.01 (#594), in progress; the rest are deferred.
+- **Stories:** 5 total · 1 done · 0 in progress · 0 blocked · 4 pending
+- **Implemented functionality:** RAG-11.01: CSV and XLSX tables stored at ingest (`document_tables`), the `find_tables` and `query_table` tools over a SQLite engine with an authorizer and limits (released in v1.4.0).
+- **Outstanding work:** RAG-11.02 to RAG-11.05, deferred. RAG-11.05 now waits for RAG-13.02's multi-hop results.
+- **Earlier plan (RAG-11.01, now Done):**
   - Plan (RAG-11.01): four parts, each under 400 lines.
     - Part 1a: ADR 0014 amendment "tables". Part 1b: the table eval fixture (`scripts/build_table_eval.py`) and live test (`tests/integration/test_live_table_answers.py`). The baseline below was run with part 1b's code before it merged.
     - Part 2: CSV uploads, table cells on `table` blocks, the `document_tables` migration, and storage by the worker.
@@ -434,7 +441,7 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
     - RAG-11.03: the web app already saves and deletes documents. Approval on every call adds friction, and nobody has asked for it.
     - RAG-11.04: it depends on RAG-10.03, which is deferred.
     - RAG-11.05: there is no multi-hop eval subset or measured multi-hop failure (recall@5 0.984). The live eval's misses are abstentions, which a subgraph would not address.
-- **Next recommended story:** RAG-11.01 (#594).
+- **Next recommended story:** none; RAG-11.05 is decided with RAG-E13.
 
 ### RAG-E12 Platform and scale
 
@@ -448,7 +455,26 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
     - RAG-12.03 GraphRAG: there is no multi-hop failure to fix (recall@5 0.984).
     - RAG-12.04 external vector store: Postgres search runs at 47/110 ms p50/p95 on the reference stack (RAG-09.06), with no production chunk count to test against.
     - RAG-12.05 organisation spaces: the IdP supplies no organisation claim, and role grants (RAG-09.03) already cover sharing.
-- **Next recommended story:** none until a measured need exists.
+- **Next recommended story:** none until a measured need exists. RAG-12.03 is decided on RAG-13.01's multi-hop subset, RAG-12.04 on RAG-14.02's benchmark.
+
+### RAG-E13 Advanced retrieval
+
+- **Stories:** 6 total · 2 done · 1 in progress · 0 blocked · 3 pending
+- **Implemented functionality:** RAG-13.01, the hard-question eval set: 72 cases in `tests/fixtures/knowledge/hard/` (15 multi-hop, 12 comparison, 10 synthesis, 15 follow-up, 10 vocabulary mismatch, 10 unanswerable), selected from MuSiQue, 2WikiMultihopQA, FRAMES, MTRAG and ClapNQ by `scripts/build_hard_eval.py` with a fixed seed, over 628 documents in their own corpus. `tests/unit/test_knowledge_hard_cases.py` checks counts, sources, quotes, turns, withheld evidence and licences.
+- **Outstanding work:** all. Approved by the owner 2026-11-27; issues exist for the measurement stories only, the gated ones get an issue when their trigger is measured.
+- **Blockers and decisions:** measurement first. RAG-13.03 to RAG-13.06 each start only if RAG-13.02 measures the failure they address, and ship only on the gain their acceptance criteria name.
+- **RAG-13.02 (Partial, 2026-11-28):** the hard-set baseline is recorded in `docs/releases/rag-13.02-hard-question-baseline.md`. 54 of 213 runs were wrong: 14 retrieval misses (all multi-hop), 12 ranking, 11 false abstentions (the evidence was found), 7 synthesis, 2 follow-up not resolved, and 8 unanswerable cases answered. The human-written standalone rewrite gains no complete recall@5 on follow-ups. The recommended order is RAG-13.04, then RAG-13.06, with RAG-13.05 held and RAG-13.03 not started. An abstention-calibration story (19 runs) is proposed for the owner. The owner picked RAG-13.04 first, then RAG-13.06, on 2026-11-28; RAG-13.02 is Done.
+- **RAG-13.04 (In progress, #667):** design picked by the owner (2026-11-28): the agent writes the sub-queries in its `search_knowledge` call (`also`, at most two more), so there is no extra model call and no model inside `knowledge/`. The retriever searches each in the same authorised transaction, fuses by RRF and reranks once; every query counts toward the five searches a run may make. Behind `APP_KNOWLEDGE_MULTI_QUERY` (off). The hard-set comparison on the multi-hop and comparison subsets is running.
+- **Next recommended story:** RAG-13.04, then RAG-13.06.
+
+### RAG-E14 Optimisation, system design and scale
+
+- **Stories:** 6 total · 0 done · 1 in progress (RAG-14.01, Partial: budget awaits the owner) · 0 blocked · 5 pending
+- **Implemented functionality:** RAG-13.01, the hard-question eval set: 72 cases in `tests/fixtures/knowledge/hard/` (15 multi-hop, 12 comparison, 10 synthesis, 15 follow-up, 10 vocabulary mismatch, 10 unanswerable), selected from MuSiQue, 2WikiMultihopQA, FRAMES, MTRAG and ClapNQ by `scripts/build_hard_eval.py` with a fixed seed, over 628 documents in their own corpus. `tests/unit/test_knowledge_hard_cases.py` checks counts, sources, quotes, turns, withheld evidence and licences.
+- **Outstanding work:** all. Approved by the owner 2026-11-27; issues exist for the measurement stories only, the gated ones get an issue when their trigger is measured.
+- **Blockers and decisions:** RAG-14.01 to RAG-14.04 measure and design; RAG-14.05 and RAG-14.06 start only where those numbers show a stage over budget. All figures are from the reference stack until a hosted deployment exists.
+- **RAG-14.01 (Partial, 2026-11-28):** per-stage spans (`neuron.knowledge.search.<stage>`, `neuron.citations.validate`), `scripts/knowledge_profile.py`, and the profile in `docs/releases/rag-14.01-latency-cost-profile.md`. Model turns are about 88% of an answer's time. In a search, the reranker is 57% of the p50 and its p95 (3.3 s) is the one stage over the proposed budget (1.5 s). Per answer: input tokens p50 5.1k and p95 28.4k, 2.8 turns on average. **Proposed budget (owner to agree):** embed 500 ms, Postgres stages 150 ms, rerank 1,500 ms, search 2,000 ms, citations 5 ms, model turn 15 s, answer 45 s, at most 6 turns, input tokens 30k and output 2k per answer, all at p95. It becomes Done when the owner agrees.
+- **Next recommended story:** RAG-14.02 (#663).
 
 ## Story status
 
@@ -510,11 +536,29 @@ RAG-10.02: a page added by URL (`POST /v1/knowledge/bases/{kb_id}/web-pages`, or
 | RAG-12.03 | GraphRAG trial | 5 | P2 | Pending | — | — | — |
 | RAG-12.04 | External vector store benchmark | 5 | P2 | Pending | — | — | — |
 | RAG-12.05 | Organisation knowledge spaces | 5 | P2 | Pending | — | — | — |
+| RAG-13.01 | Hard-question eval set | 6 | P1 | Done | #660 | #666 | `tests/unit/test_knowledge_hard_cases.py` (7 tests); offline retrieval baseline holds; live baseline holds (recall@5 0.989, MRR 0.936, 2026-11-28) |
+| RAG-13.02 | Baseline and failure analysis on hard questions | 6 | P1 | Done | #661 | #666 | `docs/releases/rag-13.02-hard-question-baseline.md` (3 live trials, 213 runs, 2026-11-28); `tests/unit/test_retrieval_metrics.py`. Owner picked RAG-13.04, then RAG-13.06 (2026-11-28) |
+| RAG-13.03 | Follow-up question rewriting | 6 | P2 | Pending | — | — | — |
+| RAG-13.04 | Multi-query and decomposition in search | 6 | P2 | In progress | #667 | #666 | `tests/security/test_knowledge_tools.py` (flag, budget, repeat, validation), `tests/integration/test_postgres_knowledge_search.py` (fusion in the caller's bases only); hard-set comparison running |
+| RAG-13.05 | Contextual chunk enrichment | 6 | P2 | Pending | — | — | — |
+| RAG-13.06 | Context assembly for synthesis | 6 | P2 | Pending | — | — | — |
+| RAG-14.01 | Latency and cost profile per answer | 6 | P1 | Partial | #662 | #666 | `docs/releases/rag-14.01-latency-cost-profile.md` (213 answers, 2026-11-28); `tests/unit/test_knowledge_profile.py`, stage-span and citation-span tests. Waiting on the owner's agreement to the proposed budget |
+| RAG-14.02 | Scale benchmark for vectors and filtered search | 6 | P1 | Pending | #663 | — | — |
+| RAG-14.03 | Ingestion throughput with the real parser and embeddings | 6 | P1 | Pending | #664 | — | — |
+| RAG-14.04 | Capacity model and scaling design | 6 | P1 | Pending | #665 | — | — |
+| RAG-14.05 | Retrieval hot-path tuning | 6 | P2 | Pending | — | — | — |
+| RAG-14.06 | Ingestion scaling | 6 | P2 | Pending | — | — | — |
 
 ## Change log
 
 | Date | Change | By |
 | --- | --- | --- |
+| 2026-11-28 | Owner picked RAG-13.04, then RAG-13.06; RAG-13.02 Done. RAG-13.04 In progress (#667): agent-written sub-queries (`also`) behind `APP_KNOWLEDGE_MULTI_QUERY`, the owner's design choice. Data Gateway issues #646 to #651 closed (owner) | Claude session |
+| 2026-11-28 | RAG-13.02 and RAG-14.01 Partial: the hard-set baseline (3 live trials, 213 runs on `nemotron-3-ultra-550b-a55b`) and the latency and cost profile are recorded in `docs/releases/`. Both wait on the owner: the pick of RAG-13.03 to RAG-13.06 (recommended RAG-13.04, then RAG-13.06) and the proposed stage budget. The harness now saves each run and resumes, after a rate-limited run was cut off | Claude session |
+| 2026-11-28 | NVIDIA's reranker began refusing one live-eval case's passages (422, content screening), which made the live retrieval eval inconclusive twice. Now `rerank_input_refused`: the search keeps the RRF order, the circuit breaker ignores it, and the eval scores that case (`answerable-074`) on the fused order and lists it. No other NVIDIA reranker is available (404 or 410) | Claude session |
+| 2026-11-27 | RAG-13.01 Done: hard-question eval set (72 cases from five published benchmarks, 628 documents under CC BY-SA 4.0). Synthesis requirement amended from "five or more passages" to "three or more whole articles", as FRAMES names articles. `knowledge_retrieval.json` and `knowledge_retrieval_live.json` rerun and holding | Claude session |
+| 2026-11-27 | Review of the RAG work: tracker verified against `bfbd9ea`, RAG-E11 detail corrected (RAG-11.01 Done). RAG-E13 "Advanced retrieval" and RAG-E14 "Optimisation, system design and scale" drafted (12 stories, Phase 6) and approved by the owner the same day (epics #658, #659; stories #660 to #665); deferred E10 to E12 stories stay deferred until a requirement exists (owner) | Claude session |
+| 2026-11-27 | #655 merged: review remediation (FTS ranks merged across text search configurations, embedding timeout falls back to full text in hybrid mode, query strings stripped from cited URLs, table search over column names, per-phase connections in ingestion, indexes on `documents.blob_key` and the jobs' `doc_id`). A relaxed OR fallback was dropped before merge: recall@5 0.957 to 0.83 | Claude session |
 | 2026-11-19 | RAG-08.01 follow-up from the RAG evaluation audit: dataset 1.3.0 (`expected_facts` and `question_type` on the 64 answerable cases, facts checked against the parsed sources); answer metrics (correct, partially correct, incorrect, false refusal, hallucination, vital-fact recall, CRAG score, Wilson intervals); trials per case (`APP_KNOWLEDGE_EVAL_TRIALS`, closing the "several trials per case" follow-up); optional claim-level faithfulness judge (`evaluation_judge.py`, uncalibrated, not a gate); `citation_precision` renamed `citation_source_precision`. No live run yet: no provider key in the session. Then dataset 2.0.0: 148 more cases (233 in all, grounded by a unit test). Their query vectors come from `nemotron-3-embed-1b` cut to 1,024 dimensions, which matches the committed `nemotron-3.5-embed-1b` vectors to cosine 0.9997 or more (3.5-1b answered 503 that day; `tests/fixtures/knowledge/README.md`). Retrieval baseline on pgvector 0.8.7: recall@5 0.984 to 0.957, MRR 0.833 to 0.823 (188 answerable cases). Pending: the live nightly baseline and a live answers run, both needing `nemotron-3.5-embed-1b` back | Claude session |
 | 2026-11-16 | v1.4.0 prepared: version 1.4.0, CHANGELOG, release record and gate evidence (upgrade from v1.3.0, table eval, live answer eval: `cited_correctly` 0.953, one abstention missed); `v1.3.0` tagged by the owner | Claude session |
 | 2026-11-16 | RAG-11.01 close-out: `query_after_find_middleware` requires a `query_table` call when the model answers after `find_tables` found tables it never queried; live eval aggregates 6 of 6 and 5 of 6 (the miss never called `find_tables`, a known issue); story Done | Claude session |

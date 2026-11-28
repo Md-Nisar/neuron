@@ -241,7 +241,10 @@ def _final_answer(
         if not output_text.strip():
             raise AppStructuredOutputError("agent returned an empty answer")
         answer = AgentAnswer(answer=output_text, confidence=0.5)
-    cited, rejected = citations.validate(answer.citations, run_messages)
+    with telemetry.start_span(semconv.CITATIONS_VALIDATE_SPAN) as span:
+        cited, rejected = citations.validate(answer.citations, run_messages)
+        span.set_attribute(semconv.NEURON_CITATIONS_KEPT, len(cited))
+        span.set_attribute(semconv.NEURON_CITATIONS_REJECTED, rejected)
     if rejected:
         metrics.record_citations_rejected(rejected)
         logger.warning("citations_rejected", rejected=rejected, kept=len(cited))

@@ -11,9 +11,14 @@ import pytest
 
 from neuron_agent.retrieval_metrics import (
     ACCEPTABLE,
+    FALSE_ABSTENTION,
+    FOLLOW_UP,
     INCORRECT,
     MISSING,
     PERFECT,
+    RANKING,
+    RETRIEVAL_MISS,
+    SYNTHESIS,
     Grade,
     Located,
     abstention_accuracy,
@@ -22,12 +27,16 @@ from neuron_agent.retrieval_metrics import (
     ci95,
     citation_source_precision,
     cited_correctly,
+    classify_failure,
+    complete_rank,
     first_hit_rank,
+    first_rank,
     grade_answer,
     is_correct,
     mean_reciprocal_rank,
     recall_at_k,
     retrieval_report,
+    source_ranks,
     states,
 )
 
@@ -245,3 +254,44 @@ def test_the_answers_section_counts_labels_and_penalises_wrong_answers() -> None
     assert empty["correct"] == {"value": None, "ci95": None}
     assert empty["crag_score"] is None
     jsonschema.Draft202012Validator(_answers_schema()).validate(empty)
+
+
+def test_a_hard_source_is_its_document_and_passage_and_complete_recall_needs_all() -> None:
+    sources = [
+        {"document": "a", "evidence": "The first fact."},
+        {"document": "b", "evidence": None},  # an article: any passage of it
+    ]
+    passages = [
+        Located("b", text="anything"),
+        Located("a", text="Other text."),
+        Located("a", text="x  the first   FACT. y"),
+    ]
+
+    ranks = source_ranks(sources, passages)
+
+    assert ranks == [3, 1]
+    assert (complete_rank(ranks), first_rank(ranks)) == (3, 1)
+    assert (complete_rank([1, None]), first_rank([None, 4]), complete_rank([])) == (None, 4, None)
+    assert recall_at_k([complete_rank(ranks), complete_rank([1, None])], k=3) == 0.5
+
+
+@pytest.mark.parametrize(
+    ("abstained", "seen", "complete", "standalone", "expected"),
+    [
+        (False, False, None, None, RETRIEVAL_MISS),
+        (False, False, 12, None, RANKING),
+        (False, False, 3, None, RANKING),  # in the top k, but not where the agent searched
+        (False, True, 3, None, SYNTHESIS),
+        (True, True, None, None, FALSE_ABSTENTION),
+        (True, False, None, 2, FOLLOW_UP),
+        (False, False, 12, 5, FOLLOW_UP),
+        (False, False, None, 9, RETRIEVAL_MISS),
+    ],
+)
+def test_each_failure_is_classified_by_where_its_sources_were_found(
+    abstained: bool, seen: bool, complete: int | None, standalone: int | None, expected: str
+) -> None:
+    got = classify_failure(
+        abstained=abstained, seen=seen, complete=complete, k=5, standalone_complete=standalone
+    )
+    assert got == expected
