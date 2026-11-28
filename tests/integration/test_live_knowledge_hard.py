@@ -20,9 +20,11 @@ text), and the spans of every answer to `APP_KNOWLEDGE_EVAL_SPANS` for
 `scripts/knowledge_profile.py`. `APP_KNOWLEDGE_HARD_VECTORS` names a file that keeps the
 passage vectors between runs, and `APP_KNOWLEDGE_HARD_CASES` (ids, comma-separated) runs only
 those cases. `APP_KNOWLEDGE_EVAL_FIRST_TRIAL` starts at a later trial, to finish a run that a
-rate limit cut short; the report keeps each case's source ranks, so runs can be merged. Live
-and billed (`integration`): run it with `APP_DEFAULT_MODEL` set and
-`-o faulthandler_timeout=14400`.
+rate limit cut short; the report keeps each case's source ranks, so runs can be merged.
+`APP_KNOWLEDGE_EVAL_RUNS` names a JSON Lines file that each finished run is appended to (and
+each answer's spans to `APP_KNOWLEDGE_EVAL_SPANS`), so a run that is cut short resumes where it
+stopped: a trial and case already in the file is not asked again. Live and billed
+(`integration`): run it with `APP_DEFAULT_MODEL` set and `-o faulthandler_timeout=36000`.
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from pydantic import SecretStr
 from scripts.build_knowledge_eval import key
-from scripts.knowledge_profile import dump
+from scripts.knowledge_profile import record
 from test_postgres_knowledge_api import _Connections
 from test_postgres_knowledge_tables import _knowledge_db
 from test_postgres_roles import RoleDatabase, role_db, roles  # noqa: F401
@@ -278,6 +280,13 @@ async def test_the_hard_set_baseline(
     if only := os.environ.get("APP_KNOWLEDGE_HARD_CASES"):  # a comma-separated subset, to debug
         cases = [c for c in cases if c["id"] in only.split(",")]
 
+    runs_path = Path(p) if (p := os.environ.get("APP_KNOWLEDGE_EVAL_RUNS")) else None
+    spans_path = Path(p) if (p := os.environ.get("APP_KNOWLEDGE_EVAL_SPANS")) else None
+    runs: list[dict[str, Any]] = []
+    if runs_path and runs_path.exists():
+        runs = [json.loads(line) for line in runs_path.read_text().splitlines() if line.strip()]
+    done = {(r["trial"], r["case"]) for r in runs}
+
     # 1. Retrieval.
     ranks: dict[str, list[int | None]] = {}
     standalone: dict[str, list[int | None]] = {}
@@ -312,7 +321,6 @@ async def test_the_hard_set_baseline(
     trials = int(os.environ.get("APP_KNOWLEDGE_EVAL_TRIALS", "3"))
     # To finish a run a provider's rate limit cut short: the trials before it are not asked again.
     first = int(os.environ.get("APP_KNOWLEDGE_EVAL_FIRST_TRIAL", "1"))
-    runs: list[dict[str, Any]] = []
     errors: list[str] = []
     service = AgentService(settings)
     await service.startup()
@@ -320,6 +328,8 @@ async def test_the_hard_set_baseline(
         with throttled_model_calls(RequestThrottle(MODEL_CALLS_PER_MINUTE)):
             for trial in range(first, trials + 1):
                 for case in cases:
+                    if (trial, case["id"]) in done:
+                        continue
                     started = time.monotonic()
                     seen.clear()
                     try:
@@ -335,16 +345,23 @@ async def test_the_hard_set_baseline(
                         continue
                     runs.append(_score(case, trial, reply, seen, names, chunk_texts, ranks,
                                        standalone, time.monotonic() - started))  # fmt: skip
+                    _append(runs_path, [runs[-1]])
+                    _append(spans_path, [record(s) for s in exporter.get_finished_spans()])
+                    exporter.clear()
     finally:
         await service.shutdown()
-    if path := os.environ.get("APP_KNOWLEDGE_EVAL_SPANS"):
-        dump(exporter.get_finished_spans(), Path(path))
 
     report = _report(dataset, cases, ranks, standalone, runs, settings, trials)
     report |= {"degraded_searches": sorted(set(degraded)), "infrastructure_errors": errors}
     if path := os.environ.get("APP_KNOWLEDGE_EVAL_REPORT"):
         Path(path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    assert len(runs) + len(errors) == (trials - first + 1) * len(cases)
+    assert len(runs) + len(errors) >= (trials - first + 1) * len(cases)
+
+
+def _append(path: Path | None, lines: Sequence[dict[str, Any]]) -> None:
+    if path is not None:
+        with path.open("a", encoding="utf-8") as out:
+            out.writelines(json.dumps(line, sort_keys=True) + "\n" for line in lines)
 
 
 def _score(
