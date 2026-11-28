@@ -54,6 +54,8 @@ SearchMode = Literal["hybrid", "dense", "fts"]
 CANDIDATES = 80
 MAX_K = 50
 MAX_QUERY_CHARS = 2_000
+# A search's own query plus at most two more (RAG-13.04), each searched, all fused, reranked once.
+MAX_QUERIES = 3
 RRF_K = 60
 # A reranker reorders this many fused candidates, then the best `k` are kept (RAG-09.01).
 RERANK_CANDIDATES = 40
@@ -238,14 +240,26 @@ class Retriever:
         kb_ids: Collection[uuid.UUID] | None = None,
         mode: SearchMode | None = None,
         roles: frozenset[str] = frozenset(),
+        also: Sequence[str] = (),
     ) -> SearchResult:
         """The `k` best passages for `query` in the caller's readable bases, or only those of
         them in `kb_ids`: any other id there is ignored, as an unknown one is.
 
+        `also` holds up to two more queries for the same search (RAG-13.04): each is searched
+        in the same bases and transaction as `query`, all their rankings are fused by RRF, and
+        the reranker orders the fused candidates once, against all the queries.
+
         Callers validate input first; out-of-range values are a programming error here.
         """
-        if not 1 <= k <= MAX_K or not query.strip() or len(query) > MAX_QUERY_CHARS:
-            raise ValueError("search needs 1 <= k <= 50 and a query of 1 to 2,000 characters")
+        queries = list(dict.fromkeys([query, *also]))
+        if (
+            not 1 <= k <= MAX_K
+            or len(queries) > MAX_QUERIES
+            or any(not q.strip() or len(q) > MAX_QUERY_CHARS for q in queries)
+        ):
+            raise ValueError(
+                "search needs 1 <= k <= 50 and one to three queries of 1 to 2,000 characters"
+            )
         mode = mode or self._settings.knowledge_search_mode
         if mode not in get_args(SearchMode):  # it labels a metric: keep it bounded
             raise ValueError("search mode must be hybrid, dense or fts")
@@ -257,7 +271,7 @@ class Retriever:
         # Ids, counts and timings only: the query, passages and titles never reach telemetry.
         with telemetry.start_span(semconv.KNOWLEDGE_SEARCH_SPAN, attributes=attributes) as span:
             try:
-                result, searched = await self._search(owner_key, roles, query, k, kb_ids, mode)
+                result, searched = await self._search(owner_key, roles, queries, k, kb_ids, mode)
             except Exception as exc:
                 code = exc.context.code if isinstance(exc, AppError) else type(exc).__name__
                 telemetry.record_error(span, code)
@@ -287,12 +301,12 @@ class Retriever:
         self,
         owner_key: str,
         roles: frozenset[str],
-        query: str,
+        queries: list[str],
         k: int,
         kb_ids: Collection[uuid.UUID] | None,
         mode: SearchMode,
     ) -> tuple[SearchResult, list[uuid.UUID]]:
-        vector: str | None = None
+        vectors: list[str] = []
         profile_id: int | None = None
         model: EmbeddingProvider | None = None
         if mode != "fts":
@@ -312,23 +326,11 @@ class Retriever:
                         - 2.0,
                     ),
                 )
-                try:
-                    with _stage("embed"):
-                        async with asyncio.timeout(embed_timeout):
-                            values = await model.embed_query(query, owner=owner_key)
-                except TimeoutError as exc:
-                    if mode == "dense":
-                        raise EmbeddingError("embedding_timeout", retryable=True) from exc
-                    log.warning("knowledge_search_dense_skipped", error_code="embedding_timeout")
-                    metrics.record_knowledge_search_degraded("dense_skipped", "embedding_timeout")
-                except EmbeddingError as exc:
-                    if mode == "dense":
-                        raise
-                    # Hybrid degrades to full text while the provider is down.
-                    log.warning("knowledge_search_dense_skipped", error_code=exc.code)
-                    metrics.record_knowledge_search_degraded("dense_skipped", exc.code)
-                else:
-                    vector = "[" + ",".join(repr(float(value)) for value in values) + "]"
+                with _stage("embed"):
+                    embedded = await asyncio.gather(
+                        *(self._embed(model, q, owner_key, mode, embed_timeout) for q in queries)
+                    )
+                vectors = [v for v in embedded if v is not None]
         async with self._transaction() as conn:
             bases = await self._bases(conn, owner_key, roles, kb_ids)
             await conn.execute(_SCOPE, (",".join(str(row["kb_id"]) for row in bases),))
@@ -337,18 +339,20 @@ class Retriever:
             # Full text first: the HNSW path's planner settings would price out its GIN scan.
             if mode != "dense":
                 with _stage("fts"):
-                    rankings.extend(await self._fts(conn, bases, query))
+                    for q in queries:
+                        rankings.extend(await self._fts(conn, bases, q))
             if (
-                vector is not None
+                vectors
                 and model is not None
                 and (dense := self._dense_bases(bases, profile_id, model))
             ):
                 assert profile_id is not None  # nosec B101
                 with _stage("dense"):
-                    path, ranked = await self._dense(
-                        conn, dense, vector, profile_id, model.dimensions
-                    )
-                rankings.insert(0, ranked)
+                    for vector in vectors:
+                        path, ranked = await self._dense(
+                            conn, dense, vector, profile_id, model.dimensions
+                        )
+                        rankings.append(ranked)
             with _stage("fuse"):
                 fused = fuse(rankings)[: max(k, RERANK_CANDIDATES) if self._reranker else k]
             # Primary-key lookups, which those settings leave alone.
@@ -357,7 +361,7 @@ class Retriever:
         # After the transaction: no connection is held during the reranker's call.
         if self._reranker is not None and passages:
             with _stage("rerank"):
-                passages, reranked = await self._rerank(query, bases, passages, k)
+                passages, reranked = await self._rerank("\n".join(queries), bases, passages, k)
         else:
             passages, reranked = passages[:k], False
         audit(
@@ -370,6 +374,33 @@ class Retriever:
             count=len(passages),
         )
         return SearchResult(passages, path, reranked), [row["kb_id"] for row in bases]
+
+    async def _embed(
+        self,
+        model: EmbeddingProvider,
+        query: str,
+        owner_key: str,
+        mode: SearchMode,
+        timeout: float,
+    ) -> str | None:
+        """The query's vector as a literal, or None when hybrid search degrades to full text."""
+        try:
+            async with asyncio.timeout(timeout):
+                values = await model.embed_query(query, owner=owner_key)
+        except TimeoutError as exc:
+            if mode == "dense":
+                raise EmbeddingError("embedding_timeout", retryable=True) from exc
+            log.warning("knowledge_search_dense_skipped", error_code="embedding_timeout")
+            metrics.record_knowledge_search_degraded("dense_skipped", "embedding_timeout")
+        except EmbeddingError as exc:
+            if mode == "dense":
+                raise
+            # Hybrid degrades to full text while the provider is down.
+            log.warning("knowledge_search_dense_skipped", error_code=exc.code)
+            metrics.record_knowledge_search_degraded("dense_skipped", exc.code)
+        else:
+            return "[" + ",".join(repr(float(value)) for value in values) + "]"
+        return None
 
     async def _rerank(
         self, query: str, bases: Sequence[dict[str, Any]], passages: list[Passage], k: int

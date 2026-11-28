@@ -367,3 +367,36 @@ async def test_only_the_app_role_may_run_the_text_search(
             )
         ).fetchall()
     assert rows == [(True, False, True, ["search_path=pg_catalog, pg_temp"], False)]
+
+
+@pytest.mark.parametrize("mode", ["hybrid", "dense", "fts"])
+async def test_extra_queries_fuse_with_the_first_in_the_callers_bases_only(
+    role_db: RoleDatabase,  # noqa: F811
+    mode: Any,
+) -> None:
+    # RAG-13.04: each query finds its own chunk, and all of them come back from one search.
+    # Another owner's chunk matches an extra query exactly and still never returns.
+    await _knowledge_db(role_db)
+    first, second = "The falcon plan launches in March.", "The heron budget is four million."
+    kb = await _base(role_db, _A)
+    own = await _document(role_db, kb, _A, [first, second, "unrelated filler text"])
+    await _document(role_db, await _base(role_db, _B), _B, ["The osprey memo is secret."])
+    retriever = _retriever(role_db)
+
+    single = await retriever.search(_A, first, k=2, mode=mode)
+    both = await retriever.search(
+        _A, first, k=2, mode=mode, also=[second, "The osprey memo is secret."]
+    )
+
+    if mode == "fts":  # by meaning, a fake embedding matches anything at random
+        assert [p.chunk_id for p in single.passages] == [own[0]]
+    assert {p.chunk_id for p in both.passages} == {own[0], own[1]}
+
+
+@pytest.mark.parametrize("also", [["b", "c", "d"], [""], ["x" * 2_001]])
+async def test_too_many_or_bad_extra_queries_are_refused(
+    role_db: RoleDatabase,  # noqa: F811
+    also: list[str],
+) -> None:
+    with pytest.raises(ValueError, match="search needs"):
+        await _retriever(role_db).search(_A, "a", k=5, also=also)

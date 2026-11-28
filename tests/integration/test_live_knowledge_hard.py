@@ -21,6 +21,7 @@ text), and the spans of every answer to `APP_KNOWLEDGE_EVAL_SPANS` for
 passage vectors between runs, and `APP_KNOWLEDGE_HARD_CASES` (ids, comma-separated) runs only
 those cases. `APP_KNOWLEDGE_EVAL_FIRST_TRIAL` starts at a later trial, to finish a run that a
 rate limit cut short; the report keeps each case's source ranks, so runs can be merged.
+`APP_KNOWLEDGE_MULTI_QUERY=true` measures RAG-13.04's extra queries against this baseline.
 `APP_KNOWLEDGE_EVAL_RUNS` names a JSON Lines file that each finished run is appended to (and
 each answer's spans to `APP_KNOWLEDGE_EVAL_SPANS`), so a run that is cut short resumes where it
 stopped: a trial and case already in the file is not asked again. Live and billed
@@ -463,6 +464,7 @@ def _report(
         "model": settings.default_model,
         "embedding_model": settings.knowledge_embedding_model,
         "reranker_model": settings.knowledge_reranker_model,
+        "multi_query": settings.knowledge_multi_query,  # RAG-13.04, from APP_KNOWLEDGE_MULTI_QUERY
         "trials": trials,
         "k": K,
         "categories": per,

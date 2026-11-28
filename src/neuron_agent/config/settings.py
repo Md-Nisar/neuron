@@ -271,6 +271,8 @@ class Settings(BaseSettings):
     # the search is `no_relevant_results`.
     knowledge_search_min_similarity: float = Field(default=0.0, ge=-1.0, le=1.0)
     knowledge_search_mode: Literal["hybrid", "dense", "fts"] = "hybrid"
+    # RAG-13.04: `search_knowledge` takes up to two more queries, searched and fused as one.
+    knowledge_multi_query: bool = False
     # Reranking of the fused candidates (RAG-09.01). Unset means `nvidia` when the embeddings are
     # NVIDIA's and NVIDIA_API_KEY is set (the eval's gain, docs/releases/v1.2.0-rerank-eval.md),
     # else `none`. The reranker is hosted: the policy and each base's setting apply as for

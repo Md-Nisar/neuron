@@ -51,9 +51,18 @@ class _Retriever:
         pass
 
     async def search(
-        self, owner: str, query: str, *, k: int, kb_ids: Any = None, roles: Any = None
+        self,
+        owner: str,
+        query: str,
+        *,
+        k: int,
+        kb_ids: Any = None,
+        roles: Any = None,
+        also: Any = (),
     ) -> SearchResult:
         _calls.append(("search", owner, query, k, kb_ids))
+        if also:
+            _calls.append(("also", *also))
         if query == "down":
             raise PersistenceError("knowledge search failed")
         if query == "slow":
@@ -125,7 +134,7 @@ async def _run(
     knowledge_base_ids: frozenset[uuid.UUID] | None = None,
     **settings: Any,
 ) -> Any:
-    specs = knowledge_tools.knowledge_specs(Settings(env="test"), lambda: None)
+    specs = knowledge_tools.knowledge_specs(Settings(env="test", **settings), lambda: None)
     graph = main_graph.build_graph(
         Settings(env="test", **settings),
         checkpointer=InMemorySaver(),
@@ -290,6 +299,78 @@ async def test_a_repeated_search_is_refused_and_a_new_one_runs(
     assert results[4][0] == "success"  # the same query of all bases, not of one
     # The calls of one turn run concurrently, in no fixed order.
     assert sorted(c[2] for c in _calls) == ["pump P-3", "pump P-3", "pump P-4"]
+
+
+@pytest.mark.parametrize("on", [False, True])
+def test_extra_queries_are_offered_only_with_the_flag(on: bool) -> None:
+    specs = knowledge_tools.knowledge_specs(
+        Settings(env="test", knowledge_multi_query=on), lambda: None
+    )
+    [search] = [s.tool for s in specs if s.name == "search_knowledge"]
+    properties = search.tool_call_schema.model_json_schema()["properties"]
+
+    assert ("also" in properties) is on
+    if on:
+        assert properties["also"]["anyOf"][0]["maxItems"] == 2
+
+
+async def test_extra_queries_reach_the_search_and_each_counts_toward_the_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # RAG-13.04: a call with two more queries is three of the run's five searches.
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="pump P-3", also=["valve V-1", "seal S-2"]),
+        _call("search_knowledge", query="pump P-4"),
+        _call("search_knowledge", query="pump P-5", also=["valve V-6"]),
+        _call("search_knowledge", query="pump P-7"),
+        AIMessage(content="done"),
+    )
+
+    await _run(model, max_agent_iterations=20, knowledge_multi_query=True)
+
+    # 3 + 1 + 2 is over five, and a refused call counts, as a sixth single search does.
+    results = [(m.status, m.content) for m in _results(model)]
+    assert [status for status, _ in results] == ["success", "success", "error", "error"]
+    assert results[2][1] == results[3][1] == knowledge_tools._TOO_MANY
+    assert _calls == [
+        ("search", _OWNER, "pump P-3", 5, None),
+        ("also", "valve V-1", "seal S-2"),
+        ("search", _OWNER, "pump P-4", 5, None),
+    ]
+
+
+async def test_the_same_queries_in_another_order_are_a_repeated_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model(
+        monkeypatch,
+        _call("search_knowledge", query="pump P-3", also=["Valve  V-1"]),
+        _call("search_knowledge", query="valve v-1", also=["pump P-3"]),
+        _call("search_knowledge", query="pump P-3"),
+        AIMessage(content="done"),
+    )
+
+    await _run(model, max_agent_iterations=20, knowledge_multi_query=True)
+
+    results = [(m.status, m.content) for m in _results(model)]
+    assert results[1] == ("error", knowledge_tools._REPEATED)
+    assert results[0][0] == results[2][0] == "success"  # one query is another search
+
+
+@pytest.mark.parametrize("also", [["a", "b", "c"], [""], ["x" * 501]])
+async def test_more_than_two_extra_queries_or_a_bad_one_gets_the_fixed_error(
+    monkeypatch: pytest.MonkeyPatch, also: list[str]
+) -> None:
+    model = _model(
+        monkeypatch, _call("search_knowledge", query="q", also=also), AIMessage(content="done")
+    )
+
+    await _run(model, knowledge_multi_query=True)
+
+    [message] = _results(model)
+    assert (message.status, message.content) == ("error", knowledge_tools._INVALID)
+    assert _calls == []
 
 
 class _Offered(_RecordingModel):

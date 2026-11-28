@@ -116,6 +116,7 @@ All configuration parameters are read from environment variables (or `.env` in d
 | `APP_KNOWLEDGE_EMBEDDING_TIMEOUT_SECONDS` | integer (1–300) | `30` | Per-request timeout for embedding generation. |
 | `APP_KNOWLEDGE_EMBEDDING_MAX_RETRIES` | integer (0–8) | `3` | Max retries for transient embedding API failures. |
 | `APP_KNOWLEDGE_SEARCH_MODE` | `hybrid` \| `dense` \| `fts` | `hybrid` | Search candidate retrieval mode. |
+| `APP_KNOWLEDGE_MULTI_QUERY` | boolean | `false` | Lets `search_knowledge` take up to two more queries (`also`), searched in the same bases, fused by RRF and reranked once (RAG-13.04). Each query counts toward the per-answer search limit. |
 | `APP_KNOWLEDGE_SEARCH_MIN_SIMILARITY`| float (-1.0–1.0) | `0.0` | Minimum vector similarity threshold for returned passages. |
 | `APP_KNOWLEDGE_RERANKER` | `none` \| `nvidia` \| `None` | `None` | Cross-encoder reranker. Unset defaults to `nvidia` when embedding provider is `nvidia` and `NVIDIA_API_KEY` is set; otherwise `none`. |
 | `APP_KNOWLEDGE_RERANKER_MODEL` | string | `nvidia/nemotron-3.5-rerank-8b` | Reranker model identifier in `provider/model` format. |
